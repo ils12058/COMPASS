@@ -125,7 +125,7 @@ def _normalize_modes(values: list[str] | tuple[str, ...] | None) -> frozenset[st
 def _normalize_provider_roles(values: list[str] | tuple[str, ...] | None) -> frozenset[str]:
     if values is None:
         return frozenset()
-    normalized = list(values)
+    normalized = [getattr(value, "value", value) for value in values]
     if len(normalized) != len(set(normalized)):
         raise InvalidServiceCatalogInput("provider_roles must not contain duplicates")
     if not set(normalized) <= ELIGIBLE_PROVIDER_ROLE_CODES:
