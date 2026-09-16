@@ -388,7 +388,8 @@ def set_college_active(*, college_id: UUID, is_active: bool, context: AuditConte
             or CounselorResponsibility.objects.filter(college_id=college.pk).exists()
         ):
             raise OrganizationConflict(
-                "Remove or reassign current organizational relationships before disabling this College."
+                "Remove or reassign current organizational relationships "
+                "before disabling this College."
             )
         college.is_active = is_active
         college.save(update_fields=["is_active", "updated_at"])
