@@ -112,7 +112,9 @@ def _raise(exc: ServiceCatalogError) -> NoReturn:
         raise APIError(409, "service_catalog_conflict", str(exc)) from exc
     if isinstance(exc, InvalidServiceCatalogInput):
         raise APIError(422, "invalid_service_catalog_request", str(exc)) from exc
-    raise APIError(500, "internal_error", "The Service Catalog operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "The Service Catalog operation could not be completed."
+    ) from exc
 
 
 def _service(item) -> dict[str, object]:
@@ -222,7 +224,9 @@ def services_update(request, service_id: UUID, payload: ServiceUpdateRequest):
     if "provider_roles" in changes:
         changes["provider_roles"] = [value.value for value in payload.provider_roles]
     try:
-        return _service(update_service(service_id=service_id, changes=changes, context=_context(request)))
+        return _service(
+            update_service(service_id=service_id, changes=changes, context=_context(request))
+        )
     except ServiceCatalogError as exc:
         _raise(exc)
 
