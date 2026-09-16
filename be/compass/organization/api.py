@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
@@ -149,7 +149,7 @@ class RemovedResponse(StrictSchema):
     removed: bool
 
 
-class OrganizationRole(str, Enum):
+class OrganizationRole(StrEnum):
     COUNSELOR = "COUNSELOR"
     GUIDANCE_SERVICES_STAFF = "GUIDANCE_SERVICES_STAFF"
     STUDENT = "STUDENT"
