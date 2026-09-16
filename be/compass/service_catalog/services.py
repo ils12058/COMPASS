@@ -356,10 +356,7 @@ def update_service(
         if current_modes != next_modes:
             ServiceDeliveryMode.objects.filter(service=service).delete()
             ServiceDeliveryMode.objects.bulk_create(
-                [
-                    ServiceDeliveryMode(service=service, mode=mode)
-                    for mode in sorted(next_modes)
-                ]
+                [ServiceDeliveryMode(service=service, mode=mode) for mode in sorted(next_modes)]
             )
         if current_roles != next_roles:
             ServiceProviderRole.objects.filter(service=service).delete()
