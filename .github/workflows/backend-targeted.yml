@@ -74,9 +74,8 @@ jobs:
         working-directory: be
         run: >-
           uv run pytest
-          tests/test_organization.py
+          tests/test_service_catalog.py
           tests/test_accounts.py
-          tests/test_account_management.py
           tests/test_openapi_contract.py
       - name: Contract check
         working-directory: be

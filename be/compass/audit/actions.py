@@ -28,6 +28,10 @@ ORGANIZATION_STAFF_SUPERVISION_REMOVED = "organization.staff_supervision.removed
 ORGANIZATION_STUDENT_AFFILIATION_ASSIGNED = "organization.student_affiliation.assigned"
 ORGANIZATION_STUDENT_AFFILIATION_CHANGED = "organization.student_affiliation.changed"
 ORGANIZATION_STUDENT_AFFILIATION_REMOVED = "organization.student_affiliation.removed"
+SERVICE_CREATED = "service.created"
+SERVICE_UPDATED = "service.updated"
+SERVICE_ENABLED = "service.enabled"
+SERVICE_DISABLED = "service.disabled"
 
 __all__ = [
     "ACCOUNT_CREATED",
@@ -58,4 +62,8 @@ __all__ = [
     "ORGANIZATION_STUDENT_AFFILIATION_ASSIGNED",
     "ORGANIZATION_STUDENT_AFFILIATION_CHANGED",
     "ORGANIZATION_STUDENT_AFFILIATION_REMOVED",
+    "SERVICE_CREATED",
+    "SERVICE_UPDATED",
+    "SERVICE_ENABLED",
+    "SERVICE_DISABLED",
 ]

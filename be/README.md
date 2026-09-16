@@ -358,3 +358,43 @@ assignment, or role/designation/capability definition CRUD.
 The Organization domain models an explicit Campus -> College structure, current student college affiliation, one default counselor per College, and Guidance Services Staff supervision. Effective organizational scope is default responsibility/routing context rather than a permanent authorization wall: future preferred-counselor and case-specific assignment rules may cross those boundaries. An active Counselor holding the HEAD_GUIDANCE_COUNSELOR designation has institution-wide responsibility over active Colleges under active Campuses and is the deterministic fallback only when exactly one valid Head exists.
 
 Organization management uses the scope-free capabilities `organization.view` and `organization.manage`; mutations reuse recent-MFA step-up and are audited synchronously. No Campus or College delete endpoints are exposed.
+
+
+## Service Catalog
+
+The Service Catalog is the institution-wide configuration boundary for what the Guidance and
+Counseling Office offers. A Service is more fundamental than Appointment: each Service stores an
+appointment policy (`NONE`, `OPTIONAL`, or `REQUIRED`), one or more supported delivery modes
+(`IN_PERSON` and/or `ONLINE`), an optional default schedulable duration, and the operational
+roles that may potentially act as primary provider (`COUNSELOR` and
+`GUIDANCE_SERVICES_STAFF`). ONLINE Counseling is a delivery mode, not a separate E-Counseling
+Service.
+
+New Services are created inactive and are enabled explicitly only after the active configuration
+invariant is satisfied. OPTIONAL/REQUIRED Services need a default duration; any configured
+duration is bounded to 1–480 minutes. Service codes are normalized stable identifiers and are not
+editable through the normal PATCH API. There is no delete endpoint.
+
+`services.view` permits authenticated catalog reads. Inactive draft configuration additionally
+requires `services.manage`; all writes require `services.manage` plus recent MFA. IT Admin
+receives view/manage, Counselor/GSS/Student receive view, and the Head Guidance Counselor
+designation grants manage. Capability overrides remain authoritative.
+
+Provider-role eligibility is intentionally narrow: it does not imply organization scope,
+availability, student preference, case/resource authorization, or record access. Head remains a
+COUNSELOR, while GSS organizational responsibility continues to come from the supervising
+Counselor.
+
+```text
+GET   /api/v1/services
+POST  /api/v1/services
+GET   /api/v1/services/{service_id}
+PATCH /api/v1/services/{service_id}
+POST  /api/v1/services/{service_id}/enable
+POST  /api/v1/services/{service_id}/disable
+```
+
+Service Catalog configuration emits `service.created`, `service.updated`, `service.enabled`,
+and `service.disabled` Audit Trail events. These are deliberately not projected into My Activity
+or Security Activity. Availability, Appointment, ServiceDelivery, Counseling encounters, Good
+Moral, Exit Interview, Customer Feedback, and workflow-specific rules remain deferred.
