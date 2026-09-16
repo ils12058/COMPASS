@@ -264,7 +264,7 @@ def create_service(
             context=context,
             action=SERVICE_CREATED,
             outcome=AuditOutcome.SUCCESS,
-            target_type="service_catalog.service",
+            target_type="service.catalog.service",
             target_id=service.pk,
             metadata={"code": service.code},
         )
@@ -370,7 +370,7 @@ def update_service(
             context=context,
             action=SERVICE_UPDATED,
             outcome=AuditOutcome.SUCCESS,
-            target_type="service_catalog.service",
+            target_type="service.catalog.service",
             target_id=service.pk,
             metadata={"changed_fields": changed_fields},
         )
@@ -403,7 +403,7 @@ def set_service_active(
             context=context,
             action=SERVICE_ENABLED if is_active else SERVICE_DISABLED,
             outcome=AuditOutcome.SUCCESS,
-            target_type="service_catalog.service",
+            target_type="service.catalog.service",
             target_id=service.pk,
             metadata={},
         )
