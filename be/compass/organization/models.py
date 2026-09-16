@@ -46,7 +46,9 @@ class College(models.Model):
         default_permissions = ()
         ordering = ("campus__code", "code")
         constraints = [
-            models.UniqueConstraint(fields=("campus", "code"), name="organization_college_code_uniq"),
+            models.UniqueConstraint(
+                fields=("campus", "code"), name="organization_college_code_uniq"
+            ),
         ]
 
     def save(self, *args, **kwargs):
@@ -65,7 +67,9 @@ class StudentAffiliation(models.Model):
         related_name="organization_student_affiliation",
         primary_key=True,
     )
-    college = models.ForeignKey(College, on_delete=models.PROTECT, related_name="student_affiliations")
+    college = models.ForeignKey(
+        College, on_delete=models.PROTECT, related_name="student_affiliations"
+    )
     assigned_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

@@ -156,9 +156,7 @@ def resolve_default_counselor_for_student(student: User) -> DefaultCounselorReso
         and responsibility.counselor.is_active
         and responsibility.counselor.role.code == "COUNSELOR"
     ):
-        return DefaultCounselorResolution(
-            responsibility.counselor, "COLLEGE_RESPONSIBILITY"
-        )
+        return DefaultCounselorResolution(responsibility.counselor, "COLLEGE_RESPONSIBILITY")
     heads = list(
         User.objects.filter(
             is_active=True,
@@ -187,19 +185,25 @@ def validate_role_transition(*, user: User, new_role_code: str) -> None:
             raise OrganizationRoleTransitionConflict(
                 "Remove or reassign supervised Guidance Services Staff before changing role."
             )
-    if user.role.code == "GUIDANCE_SERVICES_STAFF" and StaffSupervision.objects.filter(
-        staff_id=user.pk
-    ).exists():
+    if (
+        user.role.code == "GUIDANCE_SERVICES_STAFF"
+        and StaffSupervision.objects.filter(staff_id=user.pk).exists()
+    ):
         raise OrganizationRoleTransitionConflict(
             "Remove the staff supervision relationship before changing role."
         )
-    if user.role.code == "STUDENT" and StudentAffiliation.objects.filter(student_id=user.pk).exists():
+    if (
+        user.role.code == "STUDENT"
+        and StudentAffiliation.objects.filter(student_id=user.pk).exists()
+    ):
         raise OrganizationRoleTransitionConflict(
             "Remove the student's organizational affiliation before changing role."
         )
 
 
-def list_campuses(*, is_active: bool | None = None, search: str | None = None) -> tuple[Campus, ...]:
+def list_campuses(
+    *, is_active: bool | None = None, search: str | None = None
+) -> tuple[Campus, ...]:
     qs = Campus.objects.all().order_by("code")
     if is_active is not None:
         qs = qs.filter(is_active=is_active)
@@ -285,7 +289,9 @@ def set_campus_active(*, campus_id: UUID, is_active: bool, context: AuditContext
         return campus
 
 
-def list_colleges(*, campus_id: UUID | None = None, is_active: bool | None = None, search: str | None = None) -> tuple[College, ...]:
+def list_colleges(
+    *, campus_id: UUID | None = None, is_active: bool | None = None, search: str | None = None
+) -> tuple[College, ...]:
     qs = College.objects.select_related("campus").order_by("campus__code", "code")
     if campus_id is not None:
         qs = qs.filter(campus_id=campus_id)
@@ -332,7 +338,9 @@ def create_college(*, campus_id: UUID, code: str, name: str, context: AuditConte
         return college
 
 
-def update_college(*, college_id: UUID, changes: dict[str, object], context: AuditContext) -> College:
+def update_college(
+    *, college_id: UUID, changes: dict[str, object], context: AuditContext
+) -> College:
     with transaction.atomic():
         college = (
             College.objects.select_for_update()
@@ -388,7 +396,8 @@ def set_college_active(*, college_id: UUID, is_active: bool, context: AuditConte
             or CounselorResponsibility.objects.filter(college_id=college.pk).exists()
         ):
             raise OrganizationConflict(
-                "Remove or reassign current organizational relationships before disabling this College."
+                "Remove or reassign current organizational relationships "
+                "before disabling this College."
             )
         college.is_active = is_active
         college.save(update_fields=["is_active", "updated_at"])
@@ -425,10 +434,7 @@ def _lock_active_user(user_id: UUID, role_code: str, label: str) -> User:
 
 def _lock_active_college(college_id: UUID) -> College:
     college = (
-        College.objects.select_for_update()
-        .select_related("campus")
-        .filter(pk=college_id)
-        .first()
+        College.objects.select_for_update().select_related("campus").filter(pk=college_id).first()
     )
     if college is None:
         raise OrganizationNotFound("The requested college was not found.")
@@ -437,11 +443,15 @@ def _lock_active_college(college_id: UUID) -> College:
     return college
 
 
-def set_student_affiliation(*, student_id: UUID, college_id: UUID, context: AuditContext) -> StudentAffiliation:
+def set_student_affiliation(
+    *, student_id: UUID, college_id: UUID, context: AuditContext
+) -> StudentAffiliation:
     with transaction.atomic():
         student = _lock_active_user(student_id, "STUDENT", "student")
         college = _lock_active_college(college_id)
-        current = StudentAffiliation.objects.select_for_update().filter(student_id=student.pk).first()
+        current = (
+            StudentAffiliation.objects.select_for_update().filter(student_id=student.pk).first()
+        )
         if current is not None and current.college_id == college.pk:
             return current
         previous = str(current.college_id) if current is not None else None
@@ -471,7 +481,9 @@ def set_student_affiliation(*, student_id: UUID, college_id: UUID, context: Audi
 def remove_student_affiliation(*, student_id: UUID, context: AuditContext) -> bool:
     with transaction.atomic():
         _lock_user_with_role(student_id, "STUDENT", "student", require_active=False)
-        current = StudentAffiliation.objects.select_for_update().filter(student_id=student_id).first()
+        current = (
+            StudentAffiliation.objects.select_for_update().filter(student_id=student_id).first()
+        )
         if current is None:
             return False
         college_id = str(current.college_id)
@@ -487,7 +499,9 @@ def remove_student_affiliation(*, student_id: UUID, context: AuditContext) -> bo
         return True
 
 
-def set_counselor_responsibility(*, college_id: UUID, counselor_id: UUID, context: AuditContext) -> CounselorResponsibility:
+def set_counselor_responsibility(
+    *, college_id: UUID, counselor_id: UUID, context: AuditContext
+) -> CounselorResponsibility:
     with transaction.atomic():
         college = _lock_active_college(college_id)
         counselor = _lock_active_user(counselor_id, "COUNSELOR", "counselor")
@@ -548,7 +562,9 @@ def remove_counselor_responsibility(*, college_id: UUID, context: AuditContext) 
         return True
 
 
-def set_staff_supervisor(*, staff_id: UUID, supervisor_id: UUID, context: AuditContext) -> StaffSupervision:
+def set_staff_supervisor(
+    *, staff_id: UUID, supervisor_id: UUID, context: AuditContext
+) -> StaffSupervision:
     with transaction.atomic():
         staff = _lock_active_user(staff_id, "GUIDANCE_SERVICES_STAFF", "staff member")
         supervisor = _lock_active_user(supervisor_id, "COUNSELOR", "supervisor")
@@ -606,7 +622,9 @@ def remove_staff_supervisor(*, staff_id: UUID, context: AuditContext) -> bool:
         return True
 
 
-def list_people(*, role: str, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE, search: str | None = None) -> PeoplePage:
+def list_people(
+    *, role: str, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE, search: str | None = None
+) -> PeoplePage:
     allowed = {"COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT"}
     if role not in allowed:
         raise InvalidOrganizationInput(
@@ -624,9 +642,7 @@ def list_people(*, role: str, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE,
     if search and search.strip():
         term = search.strip()[:254]
         qs = qs.filter(
-            Q(email__icontains=term)
-            | Q(first_name__icontains=term)
-            | Q(last_name__icontains=term)
+            Q(email__icontains=term) | Q(first_name__icontains=term) | Q(last_name__icontains=term)
         )
     offset = (page - 1) * page_size
     rows = list(qs[offset : offset + page_size + 1])

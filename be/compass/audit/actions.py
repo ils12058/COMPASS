@@ -19,15 +19,9 @@ ORGANIZATION_COLLEGE_CREATED = "organization.college.created"
 ORGANIZATION_COLLEGE_UPDATED = "organization.college.updated"
 ORGANIZATION_COLLEGE_ENABLED = "organization.college.enabled"
 ORGANIZATION_COLLEGE_DISABLED = "organization.college.disabled"
-ORGANIZATION_COUNSELOR_RESPONSIBILITY_ASSIGNED = (
-    "organization.counselor_responsibility.assigned"
-)
-ORGANIZATION_COUNSELOR_RESPONSIBILITY_CHANGED = (
-    "organization.counselor_responsibility.changed"
-)
-ORGANIZATION_COUNSELOR_RESPONSIBILITY_REMOVED = (
-    "organization.counselor_responsibility.removed"
-)
+ORGANIZATION_COUNSELOR_RESPONSIBILITY_ASSIGNED = "organization.counselor_responsibility.assigned"
+ORGANIZATION_COUNSELOR_RESPONSIBILITY_CHANGED = "organization.counselor_responsibility.changed"
+ORGANIZATION_COUNSELOR_RESPONSIBILITY_REMOVED = "organization.counselor_responsibility.removed"
 ORGANIZATION_STAFF_SUPERVISION_ASSIGNED = "organization.staff_supervision.assigned"
 ORGANIZATION_STAFF_SUPERVISION_CHANGED = "organization.staff_supervision.changed"
 ORGANIZATION_STAFF_SUPERVISION_REMOVED = "organization.staff_supervision.removed"

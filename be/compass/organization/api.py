@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
@@ -14,7 +14,11 @@ from compass.authentication.api import session_auth
 from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
-from compass.organization.models import CounselorResponsibility, StaffSupervision, StudentAffiliation
+from compass.organization.models import (
+    CounselorResponsibility,
+    StaffSupervision,
+    StudentAffiliation,
+)
 from compass.organization.services import (
     DEFAULT_PAGE_SIZE,
     InvalidOrganizationInput,
@@ -149,7 +153,7 @@ class RemovedResponse(StrictSchema):
     removed: bool
 
 
-class OrganizationRole(str, Enum):
+class OrganizationRole(StrEnum):
     COUNSELOR = "COUNSELOR"
     GUIDANCE_SERVICES_STAFF = "GUIDANCE_SERVICES_STAFF"
     STUDENT = "STUDENT"
@@ -176,11 +180,18 @@ def _raise(exc: OrganizationError) -> NoReturn:
         raise APIError(409, "organization_conflict", str(exc)) from exc
     if isinstance(exc, InvalidOrganizationInput):
         raise APIError(422, "invalid_organization_request", str(exc)) from exc
-    raise APIError(500, "internal_error", "The organization operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "The organization operation could not be completed."
+    ) from exc
 
 
 def _campus(campus) -> dict[str, object]:
-    return {"id": campus.pk, "code": campus.code, "name": campus.name, "is_active": campus.is_active}
+    return {
+        "id": campus.pk,
+        "code": campus.code,
+        "name": campus.name,
+        "is_active": campus.is_active,
+    }
 
 
 def _college(college) -> dict[str, object]:
@@ -272,7 +283,9 @@ def campus_update(request, campus_id: UUID, payload: CampusUpdateRequest):
 def campus_enable(request, campus_id: UUID):
     _require(request, "organization.manage", recent_mfa=True)
     try:
-        return _campus(set_campus_active(campus_id=campus_id, is_active=True, context=_context(request)))
+        return _campus(
+            set_campus_active(campus_id=campus_id, is_active=True, context=_context(request))
+        )
     except OrganizationError as exc:
         _raise(exc)
 
@@ -286,7 +299,9 @@ def campus_enable(request, campus_id: UUID):
 def campus_disable(request, campus_id: UUID):
     _require(request, "organization.manage", recent_mfa=True)
     try:
-        return _campus(set_campus_active(campus_id=campus_id, is_active=False, context=_context(request)))
+        return _campus(
+            set_campus_active(campus_id=campus_id, is_active=False, context=_context(request))
+        )
     except OrganizationError as exc:
         _raise(exc)
 
@@ -297,7 +312,9 @@ def campus_disable(request, campus_id: UUID):
     auth=session_auth,
     operation_id="organizationListColleges",
 )
-def colleges(request, campus_id: UUID | None = None, is_active: bool | None = None, search: str | None = None):
+def colleges(
+    request, campus_id: UUID | None = None, is_active: bool | None = None, search: str | None = None
+):
     _require(request, "organization.view")
     return {
         "items": [
@@ -370,7 +387,9 @@ def college_update(request, college_id: UUID, payload: CollegeUpdateRequest):
 def college_enable(request, college_id: UUID):
     _require(request, "organization.manage", recent_mfa=True)
     try:
-        return _college(set_college_active(college_id=college_id, is_active=True, context=_context(request)))
+        return _college(
+            set_college_active(college_id=college_id, is_active=True, context=_context(request))
+        )
     except OrganizationError as exc:
         _raise(exc)
 
@@ -384,7 +403,9 @@ def college_enable(request, college_id: UUID):
 def college_disable(request, college_id: UUID):
     _require(request, "organization.manage", recent_mfa=True)
     try:
-        return _college(set_college_active(college_id=college_id, is_active=False, context=_context(request)))
+        return _college(
+            set_college_active(college_id=college_id, is_active=False, context=_context(request))
+        )
     except OrganizationError as exc:
         _raise(exc)
 
@@ -413,8 +434,7 @@ def counselor_responsibilities(
         qs = qs.filter(college__campus_id=campus_id)
     return {
         "items": [
-            {"college": _college(item.college), "counselor": _person(item.counselor)}
-            for item in qs
+            {"college": _college(item.college), "counselor": _person(item.counselor)} for item in qs
         ]
     }
 
@@ -461,13 +481,12 @@ def college_counselor_remove(request, college_id: UUID):
 )
 def staff_supervisions(request):
     _require(request, "organization.manage")
-    qs = StaffSupervision.objects.select_related(
-        "staff__role", "supervisor__role"
-    ).order_by("staff__last_name", "staff__id")
+    qs = StaffSupervision.objects.select_related("staff__role", "supervisor__role").order_by(
+        "staff__last_name", "staff__id"
+    )
     return {
         "items": [
-            {"staff": _person(item.staff), "supervisor": _person(item.supervisor)}
-            for item in qs
+            {"staff": _person(item.staff), "supervisor": _person(item.supervisor)} for item in qs
         ]
     }
 
@@ -514,13 +533,12 @@ def staff_supervisor_remove(request, staff_id: UUID):
 )
 def student_affiliations(request):
     _require(request, "organization.manage")
-    qs = StudentAffiliation.objects.select_related(
-        "student__role", "college__campus"
-    ).order_by("student__last_name", "student__id")
+    qs = StudentAffiliation.objects.select_related("student__role", "college__campus").order_by(
+        "student__last_name", "student__id"
+    )
     return {
         "items": [
-            {"student": _person(item.student), "college": _college(item.college)}
-            for item in qs
+            {"student": _person(item.student), "college": _college(item.college)} for item in qs
         ]
     }
 
