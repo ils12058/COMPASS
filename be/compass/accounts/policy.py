@@ -110,9 +110,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
         }
     ),
     "COUNSELOR": frozenset({"accounts.view", "organization.view", "services.view"}),
-    "GUIDANCE_SERVICES_STAFF": frozenset(
-        {"accounts.view", "organization.view", "services.view"}
-    ),
+    "GUIDANCE_SERVICES_STAFF": frozenset({"accounts.view", "organization.view", "services.view"}),
     "STUDENT": frozenset({"accounts.view", "organization.view", "services.view"}),
 }
 
