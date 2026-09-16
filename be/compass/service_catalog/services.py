@@ -417,7 +417,10 @@ def service_allows_provider_role(service: Service, role_code: str) -> bool:
 
 
 def provider_role_eligible(service: Service, user: User) -> bool:
-    """Check role-level operational eligibility only, not routing, scope, access, or availability."""
+    """Check role-level operational eligibility only.
+
+    This does not evaluate routing, organization scope, record access, or availability.
+    """
     if not getattr(user, "pk", None) or not user.is_active:
         return False
     role_code = user.role.code
