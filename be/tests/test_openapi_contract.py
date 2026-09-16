@@ -80,6 +80,12 @@ EXPECTED_OPERATION_IDS = {
     "organizationSetStudentAffiliation",
     "organizationRemoveStudentAffiliation",
     "organizationListEligiblePeople",
+    "servicesList",
+    "servicesCreate",
+    "servicesGet",
+    "servicesUpdate",
+    "servicesEnable",
+    "servicesDisable",
 }
 
 
@@ -139,6 +145,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "activity",
         "accounts",
         "organization",
+        "services",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -287,8 +294,13 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "accounts.view",
         "organization.manage",
         "organization.view",
+        "services.manage",
+        "services.view",
     ]
     assert schemas["Effect"]["enum"] == ["GRANT", "REVOKE"]
+    assert schemas["AppointmentPolicy"]["enum"] == ["NONE", "OPTIONAL", "REQUIRED"]
+    assert schemas["DeliveryMode"]["enum"] == ["IN_PERSON", "ONLINE"]
+    assert schemas["ProviderRoleCode"]["enum"] == ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]
 
     response_schema_names = {
         "AccountSummaryResponse",
