@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
@@ -35,18 +35,18 @@ class StrictSchema(Schema):
     model_config = ConfigDict(extra="forbid")
 
 
-class AppointmentPolicy(str, Enum):
+class AppointmentPolicy(StrEnum):
     NONE = "NONE"
     OPTIONAL = "OPTIONAL"
     REQUIRED = "REQUIRED"
 
 
-class DeliveryMode(str, Enum):
+class DeliveryMode(StrEnum):
     IN_PERSON = "IN_PERSON"
     ONLINE = "ONLINE"
 
 
-class ProviderRoleCode(str, Enum):
+class ProviderRoleCode(StrEnum):
     COUNSELOR = "COUNSELOR"
     GUIDANCE_SERVICES_STAFF = "GUIDANCE_SERVICES_STAFF"
 
