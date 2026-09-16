@@ -83,6 +83,16 @@ CAPABILITY_DEFINITIONS = (
         name="Manage organization",
         description="Manage organizational routing and responsibility configuration.",
     ),
+    CapabilityDefinition(
+        code="services.view",
+        name="View service catalog",
+        description="View the active Guidance and Counseling Office service catalog.",
+    ),
+    CapabilityDefinition(
+        code="services.manage",
+        name="Manage service catalog",
+        description="Manage Guidance and Counseling Office service catalog configuration.",
+    ),
 )
 
 # Account identity is visible to operational actors through future, scoped workflows. Account
@@ -90,18 +100,27 @@ CAPABILITY_DEFINITIONS = (
 # concerns and are intentionally not implied by these grants.
 ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     "IT_ADMIN": frozenset(
-        {"accounts.view", "accounts.manage", "organization.view", "organization.manage"}
+        {
+            "accounts.view",
+            "accounts.manage",
+            "organization.view",
+            "organization.manage",
+            "services.view",
+            "services.manage",
+        }
     ),
-    "COUNSELOR": frozenset({"accounts.view", "organization.view"}),
-    "GUIDANCE_SERVICES_STAFF": frozenset({"accounts.view", "organization.view"}),
-    "STUDENT": frozenset({"accounts.view", "organization.view"}),
+    "COUNSELOR": frozenset({"accounts.view", "organization.view", "services.view"}),
+    "GUIDANCE_SERVICES_STAFF": frozenset(
+        {"accounts.view", "organization.view", "services.view"}
+    ),
+    "STUDENT": frozenset({"accounts.view", "organization.view", "services.view"}),
 }
 
 # No designation currently adds account-foundation authority. The relationship is still modeled
 # explicitly so later domain policy can grant designation-specific capabilities without turning a
 # designation into a role.
 DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
-    "HEAD_GUIDANCE_COUNSELOR": frozenset({"organization.manage"}),
+    "HEAD_GUIDANCE_COUNSELOR": frozenset({"organization.manage", "services.manage"}),
     "DPO": frozenset(),
 }
 
