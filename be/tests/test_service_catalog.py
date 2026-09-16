@@ -420,9 +420,7 @@ def test_student_can_read_only_active_catalog_and_cannot_manage():
     assert client.get("/api/v1/services?include_inactive=true").status_code == 403
     denied = client.post(
         "/api/v1/services",
-        data=json.dumps(
-            {"code": "NOPE", "name": "Nope", "appointment_policy": "NONE"}
-        ),
+        data=json.dumps({"code": "NOPE", "name": "Nope", "appointment_policy": "NONE"}),
         content_type="application/json",
         **csrf(client),
     )
@@ -442,9 +440,7 @@ def test_admin_and_head_can_manage_with_recent_mfa_but_revoke_and_stale_mfa_win(
     stale = auth_client(admin, recent_mfa=False)
     stale_response = stale.post(
         "/api/v1/services",
-        data=json.dumps(
-            {"code": "STALE", "name": "Stale", "appointment_policy": "NONE"}
-        ),
+        data=json.dumps({"code": "STALE", "name": "Stale", "appointment_policy": "NONE"}),
         content_type="application/json",
         **csrf(stale),
     )
@@ -512,9 +508,7 @@ def test_strict_api_rejects_activation_and_code_fields_and_has_no_delete_endpoin
 
     created = client.post(
         "/api/v1/services",
-        data=json.dumps(
-            {"code": "STRICT", "name": "Strict", "appointment_policy": "NONE"}
-        ),
+        data=json.dumps({"code": "STRICT", "name": "Strict", "appointment_policy": "NONE"}),
         content_type="application/json",
         **headers,
     )
