@@ -113,6 +113,11 @@ EXPECTED_OPERATION_IDS = {
     "counselingGetEncounter",
     "counselingUpdateEncounter",
     "counselingListStudents",
+    "counselingGetAssignedSharedSummary",
+    "counselingPutAssignedSharedSummary",
+    "counselingPublishAssignedSharedSummary",
+    "counselingListMySharedSummaries",
+    "counselingGetMySharedSummary",
     "academicYearsList",
     "academicYearsCreate",
     "academicYearsSetCurrent",
@@ -271,6 +276,8 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "SessionListResponse",
         "CounselingEncounterResponse",
         "CounselingStudentPageResponse",
+        "CounselingAssignedSharedSummaryResponse",
+        "CounselingStudentSharedSummaryPageResponse",
         "StudentWorkspaceResponse",
         "CounselorWorkspaceResponse",
         "JoinCredentialResponse",
@@ -365,6 +372,16 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         _operation(schema, "/api/v1/counseling/encounters/{encounter_id}", "patch")
     ) >= {200, 401, 403, 404, 409, 422}
     assert _response_statuses(
+        _operation(schema, "/api/v1/counseling/encounters/{encounter_id}/shared-summary", "put")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(
+            schema,
+            "/api/v1/counseling/encounters/{encounter_id}/shared-summary/publish",
+            "post",
+        )
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
         _operation(schema, "/api/v1/e-counseling/appointments/{appointment_id}/join", "post")
     ) >= {200, 401, 403, 404, 409, 502, 503}
     assert _response_statuses(_operation(schema, "/api/v1/integrations/daily/webhook", "post")) >= {
@@ -423,6 +440,9 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "routine_interviews.view_self",
             "services.manage",
             "services.view",
+            "shared_summaries.manage_assigned",
+            "shared_summaries.view_assigned",
+            "shared_summaries.view_self",
         ]
     )
     assert schemas["Effect"]["enum"] == ["GRANT", "REVOKE"]
@@ -456,6 +476,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "TrustedSessionSummary",
         "CounselingEncounterResponse",
         "CounselingStudentResponse",
+        "CounselingAssignedSharedSummaryResponse",
+        "CounselingStudentSharedSummaryResponse",
         "StudentWorkspaceResponse",
         "CounselorWorkspaceResponse",
     }
