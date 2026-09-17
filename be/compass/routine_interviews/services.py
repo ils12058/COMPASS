@@ -406,7 +406,7 @@ def create_direct(
                 raise RoutineInterviewCreationConflict(
                     "The Idempotency-Key was already used for a different "
                     "Routine Interview request."
-                )
+                ) from None
             return _queryset().get(pk=concurrent.pk)
 
         item_for_audit = RoutineInterview.objects.select_related(
