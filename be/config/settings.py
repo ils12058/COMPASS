@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "compass.institutional_forms",
     "compass.inventory",
     "compass.routine_interviews",
+    "compass.ecounseling",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -224,6 +225,32 @@ TURNSTILE_EXPECTED_HOSTNAMES = env_csv("TURNSTILE_EXPECTED_HOSTNAMES", [])
 TURNSTILE_EXPECTED_ACTION = env("TURNSTILE_EXPECTED_ACTION", "")
 if TURNSTILE_ENABLED and not TURNSTILE_SECRET_KEY:
     raise ValueError("TURNSTILE_SECRET_KEY is required when TURNSTILE_ENABLED is true")
+
+# Daily is deployment-owned provider infrastructure. Disabled mode must leave the rest of
+# COMPASS usable, while enabled deployments fail fast on missing credentials and invalid timing.
+DAILY_ENABLED = env_bool("DAILY_ENABLED", False)
+DAILY_API_KEY = env("DAILY_API_KEY", "")
+DAILY_API_BASE_URL = env("DAILY_API_BASE_URL", "https://api.daily.co/v1")
+DAILY_WEBHOOK_HMAC = env("DAILY_WEBHOOK_HMAC", "")
+DAILY_HTTP_TIMEOUT_SECONDS = env_float("DAILY_HTTP_TIMEOUT_SECONDS", 5.0)
+DAILY_MEETING_TOKEN_TTL_SECONDS = env_int("DAILY_MEETING_TOKEN_TTL_SECONDS", 300)
+DAILY_WEBHOOK_MAX_AGE_SECONDS = env_int("DAILY_WEBHOOK_MAX_AGE_SECONDS", 300)
+ECOUNSELING_JOIN_EARLY_SECONDS = env_int("ECOUNSELING_JOIN_EARLY_SECONDS", 0)
+ECOUNSELING_REJOIN_GRACE_SECONDS = env_int("ECOUNSELING_REJOIN_GRACE_SECONDS", 0)
+if DAILY_HTTP_TIMEOUT_SECONDS <= 0:
+    raise ValueError("DAILY_HTTP_TIMEOUT_SECONDS must be positive")
+if not 60 <= DAILY_MEETING_TOKEN_TTL_SECONDS <= 900:
+    raise ValueError("DAILY_MEETING_TOKEN_TTL_SECONDS must be between 60 and 900")
+if not 30 <= DAILY_WEBHOOK_MAX_AGE_SECONDS <= 900:
+    raise ValueError("DAILY_WEBHOOK_MAX_AGE_SECONDS must be between 30 and 900")
+if not 0 <= ECOUNSELING_JOIN_EARLY_SECONDS <= 3600:
+    raise ValueError("ECOUNSELING_JOIN_EARLY_SECONDS must be between 0 and 3600")
+if not 0 <= ECOUNSELING_REJOIN_GRACE_SECONDS <= 3600:
+    raise ValueError("ECOUNSELING_REJOIN_GRACE_SECONDS must be between 0 and 3600")
+if DAILY_ENABLED and not DAILY_API_KEY:
+    raise ValueError("DAILY_API_KEY is required when DAILY_ENABLED is true")
+if DAILY_ENABLED and not DAILY_WEBHOOK_HMAC:
+    raise ValueError("DAILY_WEBHOOK_HMAC is required when DAILY_ENABLED is true")
 
 # Authentication uses a separate server-managed opaque session rather than Django's signed
 # session cookie. The credential-bearing cookies are scoped to the API and are never readable by
