@@ -217,6 +217,17 @@ def has_current_submitted_inventory(student: User) -> bool:
     return get_current_inventory_status(student).status == InventoryStatus.SUBMITTED
 
 
+def require_current_submitted_inventory(student: User) -> StudentInventory:
+    """Resolve the current annual Inventory and require its submitted state."""
+
+    status = get_current_inventory_status(student)
+    if status.status != InventoryStatus.SUBMITTED or status.inventory is None:
+        raise InventoryConflict(
+            "A submitted Individual Inventory for the current Academic Year is required."
+        )
+    return status.inventory
+
+
 def get_current_inventory(student: User) -> StudentInventory:
     status = get_current_inventory_status(student)
     if status.inventory is None:
