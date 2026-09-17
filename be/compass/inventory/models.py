@@ -354,7 +354,9 @@ class InventoryFamilyMember(models.Model):
 
 class InventorySibling(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    inventory = models.ForeignKey(StudentInventory, on_delete=models.CASCADE, related_name="siblings")
+    inventory = models.ForeignKey(
+        StudentInventory, on_delete=models.CASCADE, related_name="siblings"
+    )
     sort_order = models.PositiveSmallIntegerField()
     name = models.CharField(max_length=160, blank=True, default="")
     sex = models.CharField(max_length=16, choices=Sex.choices, blank=True, default="")

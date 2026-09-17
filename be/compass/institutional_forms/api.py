@@ -139,7 +139,9 @@ def institutional_form_revisions_list(request, family_key: str):
 
 @router.post(
     "/{family_key}/revisions",
-    response=response_with_errors(FormRevisionResponse, 401, 403, 404, 409, 422, success_status=201),
+    response=response_with_errors(
+        FormRevisionResponse, 401, 403, 404, 409, 422, success_status=201
+    ),
     auth=session_auth,
     operation_id="institutionalFormRevisionsRegister",
 )
@@ -185,6 +187,8 @@ def institutional_form_revision_activate(request, revision_id: UUID):
 def institutional_form_revision_deactivate(request, revision_id: UUID):
     _require(request, "institutional_forms.manage", recent_mfa=True)
     try:
-        return _revision(deactivate_form_revision(revision_id=revision_id, context=_context(request)))
+        return _revision(
+            deactivate_form_revision(revision_id=revision_id, context=_context(request))
+        )
     except InstitutionalFormError as exc:
         _raise(exc)

@@ -42,6 +42,7 @@ TRUSTED_PROXY_CIDRS = env_csv(
 INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
+    "django.contrib.postgres",
     "django.contrib.sessions",
     "django.contrib.staticfiles",
     "compass.accounts",
@@ -52,6 +53,8 @@ INSTALLED_APPS = [
     "compass.availability",
     "compass.appointments",
     "compass.counseling",
+    "compass.institutional_forms",
+    "compass.inventory",
 ]
 
 AUTH_USER_MODEL = "accounts.User"

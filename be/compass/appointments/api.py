@@ -30,6 +30,8 @@ from compass.service_catalog.api import DeliveryMode
 from .services import (
     DEFAULT_PAGE_SIZE,
     AppointmentCancellationConflict,
+    AppointmentCurrentAcademicYearNotConfigured,
+    AppointmentCurrentInventoryRequired,
     AppointmentDefaultProviderUnresolved,
     AppointmentError,
     AppointmentNotFound,
@@ -131,6 +133,10 @@ def _require_student_self_management(request) -> None:
 
 
 def _raise(exc: AppointmentError) -> NoReturn:
+    if isinstance(exc, AppointmentCurrentAcademicYearNotConfigured):
+        raise APIError(409, "current_academic_year_not_configured", str(exc)) from exc
+    if isinstance(exc, AppointmentCurrentInventoryRequired):
+        raise APIError(409, "current_inventory_required", str(exc)) from exc
     if isinstance(exc, AppointmentNotFound):
         raise APIError(404, "appointment_not_found", str(exc)) from exc
     if isinstance(exc, InvalidAppointmentInput):

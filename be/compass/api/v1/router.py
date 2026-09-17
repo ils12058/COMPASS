@@ -11,6 +11,9 @@ from compass.authentication.api import router as authentication_router
 from compass.availability.api import router as availability_router
 from compass.common.errors import register_exception_handlers
 from compass.counseling.api import router as counseling_router
+from compass.institutional_forms.api import router as institutional_forms_router
+from compass.inventory.api import router as inventory_router
+from compass.organization.academic_years_api import router as academic_years_router
 from compass.organization.api import router as organization_router
 from compass.service_catalog.api import router as service_catalog_router
 
@@ -44,6 +47,18 @@ api = NinjaAPI(
                 "name": "counseling",
                 "description": "Assigned records of actual Counseling encounters.",
             },
+            {
+                "name": "academic-years",
+                "description": "Institution-wide current Academic Year configuration.",
+            },
+            {
+                "name": "institutional-forms",
+                "description": "QMS-approved controlled-form revision metadata used by COMPASS.",
+            },
+            {
+                "name": "inventory",
+                "description": "Student annual Individual Inventory self-service.",
+            },
         ]
     },
     openapi_url="/openapi.json" if settings.API_DOCS_ENABLED else None,
@@ -58,4 +73,7 @@ api.add_router("/services", service_catalog_router)
 api.add_router("/availability", availability_router)
 api.add_router("/appointments", appointments_router)
 api.add_router("/counseling", counseling_router)
+api.add_router("/academic-years", academic_years_router)
+api.add_router("/institutional-forms", institutional_forms_router)
+api.add_router("/inventory", inventory_router)
 register_exception_handlers(api)

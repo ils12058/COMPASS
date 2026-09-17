@@ -206,11 +206,7 @@ def _active_inventory_revision():
 
 def get_current_inventory_status(student: User) -> CurrentInventoryStatus:
     current = _current_year()
-    item = (
-        _inventory_queryset()
-        .filter(student_id=student.pk, academic_year_id=current.pk)
-        .first()
-    )
+    item = _inventory_queryset().filter(student_id=student.pk, academic_year_id=current.pk).first()
     if item is None:
         return CurrentInventoryStatus(current, InventoryStatus.MISSING, None)
     status = InventoryStatus.SUBMITTED if item.submitted_at is not None else InventoryStatus.DRAFT
@@ -238,12 +234,10 @@ def ensure_current_inventory(*, student: User, context: AuditContext) -> Student
             raise InventoryNotFound("The Student account was not found.")
         _require_active_student(locked_student)
         current = _current_year()
-        existing = (
-            StudentInventory.objects.filter(
-                student_id=locked_student.pk,
-                academic_year_id=current.pk,
-            ).first()
-        )
+        existing = StudentInventory.objects.filter(
+            student_id=locked_student.pk,
+            academic_year_id=current.pk,
+        ).first()
         if existing is not None:
             return _inventory_queryset().get(pk=existing.pk)
         revision = _active_inventory_revision()
@@ -260,7 +254,8 @@ def ensure_current_inventory(*, student: User, context: AuditContext) -> Student
             ).first()
             if item is None:
                 raise InventoryConflict(
-                    "The current Individual Inventory could not be created safely; retry the request."
+                    "The current Individual Inventory could not be created safely; "
+                    "retry the request."
                 ) from None
             return _inventory_queryset().get(pk=item.pk)
         record_event(
@@ -307,11 +302,17 @@ def _validate_submission(item: StudentInventory) -> None:
         raise InvalidInventoryInput(
             "immunization_other is required when OTHER immunization is selected."
         )
-    if CourseChoiceReason.OTHER in item.course_choice_reasons and not item.course_choice_other.strip():
+    if (
+        CourseChoiceReason.OTHER in item.course_choice_reasons
+        and not item.course_choice_other.strip()
+    ):
         raise InvalidInventoryInput(
             "course_choice_other is required when OTHER course-choice reason is selected."
         )
-    if item.intended_work_field == PostGraduationField.OTHER and not item.intended_work_other.strip():
+    if (
+        item.intended_work_field == PostGraduationField.OTHER
+        and not item.intended_work_other.strip()
+    ):
         raise InvalidInventoryInput(
             "intended_work_other is required when intended_work_field is OTHER."
         )

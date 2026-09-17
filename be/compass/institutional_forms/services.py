@@ -87,9 +87,7 @@ def get_active_form_revision(family_key: str) -> FormRevision | None:
 def require_active_form_revision(family_key: str) -> FormRevision:
     revision = get_active_form_revision(family_key)
     if revision is None:
-        raise InstitutionalFormConflict(
-            f"No active Form Revision is configured for {family_key}."
-        )
+        raise InstitutionalFormConflict(f"No active Form Revision is configured for {family_key}.")
     return revision
 
 

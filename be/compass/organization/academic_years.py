@@ -71,9 +71,7 @@ def create_academic_year(*, label: str, context: AuditContext) -> AcademicYear:
         return item
 
 
-def set_current_academic_year(
-    *, academic_year_id: UUID, context: AuditContext
-) -> AcademicYear:
+def set_current_academic_year(*, academic_year_id: UUID, context: AuditContext) -> AcademicYear:
     with transaction.atomic():
         rows = list(AcademicYear.objects.select_for_update().order_by("id"))
         by_id = {row.pk: row for row in rows}

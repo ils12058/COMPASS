@@ -65,7 +65,9 @@ def _raise(exc: AcademicYearError) -> NoReturn:
         raise APIError(409, "academic_year_conflict", str(exc)) from exc
     if isinstance(exc, InvalidAcademicYearInput):
         raise APIError(422, "invalid_academic_year_request", str(exc)) from exc
-    raise APIError(500, "internal_error", "The Academic Year operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "The Academic Year operation could not be completed."
+    ) from exc
 
 
 def _serialize(item) -> dict[str, object]:

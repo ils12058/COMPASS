@@ -350,7 +350,9 @@ def _context(request) -> AuditContext:
 def _require_student(request, capability: str) -> None:
     user = request.auth_user
     if user.role.code != "STUDENT" or not user.has_capability(capability):
-        raise APIError(403, "permission_denied", "Student Inventory self-service access is required.")
+        raise APIError(
+            403, "permission_denied", "Student Inventory self-service access is required."
+        )
 
 
 def _raise(exc: InventoryError) -> NoReturn:
@@ -364,7 +366,9 @@ def _raise(exc: InventoryError) -> NoReturn:
         raise APIError(409, "inventory_conflict", str(exc)) from exc
     if isinstance(exc, InvalidInventoryInput):
         raise APIError(422, "inventory_invalid", str(exc)) from exc
-    raise APIError(500, "internal_error", "The Inventory operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "The Inventory operation could not be completed."
+    ) from exc
 
 
 def _revision(item) -> dict[str, object]:
@@ -385,7 +389,9 @@ def _status(item) -> str:
 
 
 def _child_rows(item, relation: str, fields: tuple[str, ...]) -> list[dict[str, object]]:
-    return [{field: getattr(row, field) for field in fields} for row in getattr(item, relation).all()]
+    return [
+        {field: getattr(row, field) for field in fields} for row in getattr(item, relation).all()
+    ]
 
 
 def _inventory(item) -> dict[str, object]:
@@ -574,7 +580,9 @@ def inventory_get_my_current(request):
 def inventory_ensure_my_current(request):
     _require_student(request, "inventory.manage_self")
     try:
-        return _inventory(ensure_current_inventory(student=request.auth_user, context=_context(request)))
+        return _inventory(
+            ensure_current_inventory(student=request.auth_user, context=_context(request))
+        )
     except InventoryError as exc:
         _raise(exc)
 
@@ -604,7 +612,9 @@ def inventory_update_my_current(request, payload: InventoryPayload):
 def inventory_submit_my_current(request):
     _require_student(request, "inventory.manage_self")
     try:
-        return _inventory(submit_current_inventory(student=request.auth_user, context=_context(request)))
+        return _inventory(
+            submit_current_inventory(student=request.auth_user, context=_context(request))
+        )
     except InventoryError as exc:
         _raise(exc)
 
