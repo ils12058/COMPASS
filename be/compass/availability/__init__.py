@@ -1,0 +1,1 @@
+"""COMPASS Availability domain."""
