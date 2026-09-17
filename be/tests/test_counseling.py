@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 from uuid import uuid4
-from zoneinfo import ZoneInfo
 
 import pytest
 from django.core.management import call_command
@@ -29,6 +28,7 @@ from compass.counseling.services import (
     CounselingAppointmentInvalid,
     CounselingConfigurationConflict,
     CounselingInvalidTime,
+    CounselingNotFound,
     CounselingNotPermitted,
     create_encounter,
     update_encounter,
@@ -508,7 +508,7 @@ def test_update_is_assigned_only_immutable_identity_and_noop_has_no_fake_audit()
     assert unchanged.pk == item.pk
     assert AuditEvent.objects.count() == created_events
 
-    with pytest.raises(Exception):
+    with pytest.raises(CounselingNotFound):
         update_encounter(
             encounter_id=item.pk,
             counselor=other,
