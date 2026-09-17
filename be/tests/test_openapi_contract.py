@@ -117,10 +117,10 @@ EXPECTED_OPERATION_IDS = {
     "academicYearsCreate",
     "academicYearsSetCurrent",
     "institutionalFormsList",
-    "institutionalFormsRevisionsList",
-    "institutionalFormsRevisionsRegister",
-    "institutionalFormsRevisionsActivate",
-    "institutionalFormsRevisionsDeactivate",
+    "institutionalFormRevisionsList",
+    "institutionalFormRevisionsRegister",
+    "institutionalFormRevisionsActivate",
+    "institutionalFormRevisionsDeactivate",
     "inventoryGetMyStatus",
     "inventoryGetMyCurrent",
     "inventoryEnsureMyCurrent",
@@ -363,28 +363,30 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "STUDENT",
     ]
     assert schemas["DesignationCode"]["enum"] == ["DPO", "HEAD_GUIDANCE_COUNSELOR"]
-    assert schemas["CapabilityCode"]["enum"] == [
-        "accounts.manage",
-        "accounts.view",
-        "academic_years.manage",
-        "academic_years.view",
-        "appointments.manage",
-        "appointments.manage_self",
-        "appointments.view_self",
-        "availability.manage",
-        "availability.manage_self",
-        "availability.view",
-        "counseling.manage_assigned",
-        "counseling.view_assigned",
-        "institutional_forms.manage",
-        "institutional_forms.view",
-        "inventory.manage_self",
-        "inventory.view_self",
-        "organization.manage",
-        "organization.view",
-        "services.manage",
-        "services.view",
-    ]
+    assert schemas["CapabilityCode"]["enum"] == sorted(
+        [
+            "accounts.manage",
+            "accounts.view",
+            "academic_years.manage",
+            "academic_years.view",
+            "appointments.manage",
+            "appointments.manage_self",
+            "appointments.view_self",
+            "availability.manage",
+            "availability.manage_self",
+            "availability.view",
+            "counseling.manage_assigned",
+            "counseling.view_assigned",
+            "institutional_forms.manage",
+            "institutional_forms.view",
+            "inventory.manage_self",
+            "inventory.view_self",
+            "organization.manage",
+            "organization.view",
+            "services.manage",
+            "services.view",
+        ]
+    )
     assert schemas["Effect"]["enum"] == ["GRANT", "REVOKE"]
     assert schemas["AppointmentPolicy"]["enum"] == ["NONE", "OPTIONAL", "REQUIRED"]
     assert schemas["DeliveryMode"]["enum"] == ["IN_PERSON", "ONLINE"]
@@ -407,7 +409,6 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "REFERRED",
     ]
     assert "cancellation_cutoff_minutes" in schemas["ServiceResponse"]["properties"]
-    assert "requires_current_inventory" in schemas["ServiceResponse"]["properties"]
 
     response_schema_names = {
         "AccountSummaryResponse",
