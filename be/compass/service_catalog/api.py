@@ -58,6 +58,7 @@ class ServiceCreateRequest(StrictSchema):
     description: str = ""
     default_duration_minutes: int | None = None
     cancellation_cutoff_minutes: int | None = None
+    requires_current_inventory: bool = False
     delivery_modes: list[DeliveryMode] = Field(default_factory=list)
     provider_roles: list[ProviderRoleCode] = Field(default_factory=list)
 
@@ -68,6 +69,7 @@ class ServiceUpdateRequest(StrictSchema):
     appointment_policy: AppointmentPolicy = AppointmentPolicy.NONE
     default_duration_minutes: int | None = None
     cancellation_cutoff_minutes: int | None = None
+    requires_current_inventory: bool = False
     delivery_modes: list[DeliveryMode] = Field(default_factory=list)
     provider_roles: list[ProviderRoleCode] = Field(default_factory=list)
 
@@ -80,6 +82,7 @@ class ServiceResponse(StrictSchema):
     appointment_policy: AppointmentPolicy
     default_duration_minutes: int | None
     cancellation_cutoff_minutes: int | None
+    requires_current_inventory: bool
     delivery_modes: list[DeliveryMode]
     provider_roles: list[ProviderRoleCode]
     is_active: bool
@@ -129,6 +132,7 @@ def _service(item) -> dict[str, object]:
         "appointment_policy": item.appointment_policy,
         "default_duration_minutes": item.default_duration_minutes,
         "cancellation_cutoff_minutes": item.cancellation_cutoff_minutes,
+        "requires_current_inventory": item.requires_current_inventory,
         "delivery_modes": sorted(
             assignment.mode for assignment in item.delivery_mode_assignments.all()
         ),
