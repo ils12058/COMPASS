@@ -9,10 +9,8 @@ on:
       - ".github/workflows/backend-targeted.yml"
   workflow_dispatch:
 
-# TEMPORARY same-repository bootstrap permission. This will be restored to contents: read after
-# Ruff formatting and the generated OpenAPI contract are committed to the feature branch.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   targeted-backend:
@@ -53,53 +51,6 @@ jobs:
       - name: Install locked dependencies
         working-directory: be
         run: uv sync --frozen
-      - name: Normalize source formatting and mechanical state
-        working-directory: be
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          media = Path("compass/ecounseling/media.py")
-          text = media.read_text(encoding="utf-8")
-          text = text.replace("    ECounselingNotPermitted,\n", "")
-          text = text.replace(
-              "    # Consent needs a stable session anchor before either participant necessarily joins. This creates\n"
-              "    # only the local opaque binding; remote Daily provisioning remains join-driven.\n",
-              "    # Consent needs a stable session anchor before either participant necessarily joins.\n"
-              "    # This creates only the local opaque binding; remote Daily provisioning remains join-driven.\n",
-          )
-          media.write_text(text, encoding="utf-8")
-
-          services = Path("compass/ecounseling/services.py")
-          text = services.read_text(encoding="utf-8")
-          text = text.replace("    DailyWebhookSignatureInvalid,\n", "")
-          services.write_text(text, encoding="utf-8")
-
-          migration = Path("compass/ecounseling/migrations/0002_consent_media_capture.py")
-          text = migration.read_text(encoding="utf-8")
-          text = text.replace(
-              '                    models.Q(\n'
-              '                        ("decision", "PENDING"),\n'
-              '                        ("decided_at__isnull", True),\n'
-              '                        ("withdrawn_at__isnull", True),\n'
-              '                    )\n'
-              '                    | models.Q(\n'
-              '                        ("decision__in", ("APPROVED", "DENIED")),\n'
-              '                        ("decided_at__isnull", False),\n'
-              '                    )\n',
-              '                    models.Q(\n'
-              '                        ("decided_at__isnull", True),\n'
-              '                        ("decision", "PENDING"),\n'
-              '                        ("withdrawn_at__isnull", True),\n'
-              '                    )\n'
-              '                    | models.Q(\n'
-              '                        ("decided_at__isnull", False),\n'
-              '                        ("decision__in", ("APPROVED", "DENIED")),\n'
-              '                    )\n',
-          )
-          migration.write_text(text, encoding="utf-8")
-          PY
-          uv run ruff format .
       - name: Static and migration checks
         working-directory: be
         run: |
@@ -119,16 +70,6 @@ jobs:
         with:
           name: openapi-contract
           path: contracts/openapi.json
-      - name: Commit normalized source and OpenAPI contract
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add be contracts/openapi.json
-          if ! git diff --cached --quiet; then
-            git commit -m "Normalize media foundation and OpenAPI contract"
-            git push origin HEAD:${{ github.event.pull_request.head.ref }}
-          fi
       - name: Contract must be committed
         run: git diff --exit-code -- contracts/openapi.json
       # Daily provider traffic is fully mocked; targeted CI must never contact Daily.co.
@@ -139,7 +80,6 @@ jobs:
           tests/test_ecounseling.py
           tests/test_ecounseling_media.py
           tests/test_daily_integration.py
-          tests/test_daily_media_contract.py
           tests/test_routine_interviews.py
           tests/test_institutional_forms.py
           tests/test_inventory.py
