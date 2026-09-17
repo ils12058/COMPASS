@@ -388,6 +388,10 @@ def _status(item) -> str:
     return InventoryStatus.SUBMITTED if item.submitted_at is not None else InventoryStatus.DRAFT
 
 
+def _optional_choice(value):
+    return value or None
+
+
 def _child_rows(item, relation: str, fields: tuple[str, ...]) -> list[dict[str, object]]:
     return [
         {field: getattr(row, field) for field in fields} for row in getattr(item, relation).all()
@@ -485,6 +489,14 @@ def _inventory(item) -> dict[str, object]:
         "current_fears",
     ):
         data[field] = getattr(item, field)
+    for field in (
+        "sex",
+        "living_arrangement",
+        "handedness",
+        "ideal_monthly_allowance",
+        "intended_work_field",
+    ):
+        data[field] = _optional_choice(data[field])
     data["family_members"] = _child_rows(
         item,
         "family_members",
