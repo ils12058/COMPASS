@@ -213,9 +213,7 @@ def _validate_appointment_link(
             "The linked Appointment is assigned to a different Counselor."
         )
     if appointment.student_id != student_id:
-        raise CounselingAppointmentInvalid(
-            "The linked Appointment belongs to a different Student."
-        )
+        raise CounselingAppointmentInvalid("The linked Appointment belongs to a different Student.")
     if appointment.service_id != service_id:
         raise CounselingAppointmentInvalid(
             "The linked Appointment does not use the canonical COUNSELING Service."
@@ -346,9 +344,7 @@ def create_encounter(
         return _encounter_queryset().get(pk=encounter.pk)
 
     if normalized_entry == CounselingEntryMode.APPOINTMENT:
-        raise CounselingAppointmentInvalid(
-            "entry_mode APPOINTMENT requires an appointment_id."
-        )
+        raise CounselingAppointmentInvalid("entry_mode APPOINTMENT requires an appointment_id.")
     if student_id is None:
         raise InvalidCounselingInput("student_id is required without an Appointment.")
     if delivery_mode is None:
@@ -494,7 +490,9 @@ def update_encounter(
 
         if "appointment_id" in changes:
             proposed_appointment_id = changes["appointment_id"]
-            if proposed_appointment_id is not None and not isinstance(proposed_appointment_id, UUID):
+            if proposed_appointment_id is not None and not isinstance(
+                proposed_appointment_id, UUID
+            ):
                 raise InvalidCounselingInput("appointment_id must be a UUID or null")
         else:
             proposed_appointment_id = item.appointment_id
@@ -529,7 +527,9 @@ def update_encounter(
                 raise CounselingAppointmentInvalid(
                     "entry_mode APPOINTMENT requires an Appointment link."
                 )
-            if "delivery_mode" in changes and not service_supports_delivery_mode(service, next_mode):
+            if "delivery_mode" in changes and not service_supports_delivery_mode(
+                service, next_mode
+            ):
                 raise CounselingNotPermitted(
                     "The COUNSELING Service does not support the corrected delivery mode."
                 )

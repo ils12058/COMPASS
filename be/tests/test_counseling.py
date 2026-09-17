@@ -665,10 +665,16 @@ def test_api_assignment_privacy_student_lookup_and_no_idempotency_requirement():
     ]
     assert "email" not in students.content.decode().lower()
 
-    assert auth_client(other).get(f"/api/v1/counseling/encounters/{encounter_id}").status_code == 404
-    assert auth_client(student).get(f"/api/v1/counseling/encounters/{encounter_id}").status_code == 403
+    assert (
+        auth_client(other).get(f"/api/v1/counseling/encounters/{encounter_id}").status_code == 404
+    )
+    assert (
+        auth_client(student).get(f"/api/v1/counseling/encounters/{encounter_id}").status_code == 403
+    )
     assert auth_client(gss).get(f"/api/v1/counseling/encounters/{encounter_id}").status_code == 403
-    assert auth_client(admin).get(f"/api/v1/counseling/encounters/{encounter_id}").status_code == 403
+    assert (
+        auth_client(admin).get(f"/api/v1/counseling/encounters/{encounter_id}").status_code == 403
+    )
 
 
 @pytest.mark.django_db
