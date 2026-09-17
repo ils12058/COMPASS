@@ -28,6 +28,11 @@ ORGANIZATION_STAFF_SUPERVISION_REMOVED = "organization.staff_supervision.removed
 ORGANIZATION_STUDENT_AFFILIATION_ASSIGNED = "organization.student_affiliation.assigned"
 ORGANIZATION_STUDENT_AFFILIATION_CHANGED = "organization.student_affiliation.changed"
 ORGANIZATION_STUDENT_AFFILIATION_REMOVED = "organization.student_affiliation.removed"
+ACADEMIC_YEAR_CREATED = "academic_year.created"
+ACADEMIC_YEAR_CURRENT_CHANGED = "academic_year.current_changed"
+INSTITUTIONAL_FORM_REVISION_REGISTERED = "institutional_form.revision_registered"
+INSTITUTIONAL_FORM_REVISION_ACTIVATED = "institutional_form.revision_activated"
+INSTITUTIONAL_FORM_REVISION_DEACTIVATED = "institutional_form.revision_deactivated"
 SERVICE_CREATED = "service.created"
 SERVICE_UPDATED = "service.updated"
 SERVICE_ENABLED = "service.enabled"
@@ -42,6 +47,8 @@ APPOINTMENT_CREATED = "appointment.created"
 APPOINTMENT_CANCELLED = "appointment.cancelled"
 COUNSELING_ENCOUNTER_CREATED = "counseling.encounter.created"
 COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
+INVENTORY_CREATED = "inventory.created"
+INVENTORY_SUBMITTED = "inventory.submitted"
 
 __all__ = [
     "ACCOUNT_CREATED",
@@ -72,6 +79,11 @@ __all__ = [
     "ORGANIZATION_STUDENT_AFFILIATION_ASSIGNED",
     "ORGANIZATION_STUDENT_AFFILIATION_CHANGED",
     "ORGANIZATION_STUDENT_AFFILIATION_REMOVED",
+    "ACADEMIC_YEAR_CREATED",
+    "ACADEMIC_YEAR_CURRENT_CHANGED",
+    "INSTITUTIONAL_FORM_REVISION_REGISTERED",
+    "INSTITUTIONAL_FORM_REVISION_ACTIVATED",
+    "INSTITUTIONAL_FORM_REVISION_DEACTIVATED",
     "SERVICE_CREATED",
     "SERVICE_UPDATED",
     "SERVICE_ENABLED",
@@ -86,4 +98,6 @@ __all__ = [
     "APPOINTMENT_CANCELLED",
     "COUNSELING_ENCOUNTER_CREATED",
     "COUNSELING_ENCOUNTER_UPDATED",
+    "INVENTORY_CREATED",
+    "INVENTORY_SUBMITTED",
 ]
