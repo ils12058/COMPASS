@@ -223,11 +223,7 @@ def _context(request) -> AuditContext:
 
 def _require_student(request, capability: str) -> None:
     actor = request.auth_user
-    if (
-        not actor.is_active
-        or actor.role.code != "STUDENT"
-        or not actor.has_capability(capability)
-    ):
+    if not actor.is_active or actor.role.code != "STUDENT" or not actor.has_capability(capability):
         raise APIError(403, "permission_denied", "Student Routine Interview access is required.")
 
 

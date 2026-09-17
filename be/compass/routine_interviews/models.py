@@ -169,10 +169,7 @@ class RoutineInterview(models.Model):
                 models.CheckConstraint(
                     condition=(
                         models.Q(**{f"{field}__isnull": True})
-                        | (
-                            models.Q(**{f"{field}__gte": 1})
-                            & models.Q(**{f"{field}__lte": 10})
-                        )
+                        | (models.Q(**{f"{field}__gte": 1}) & models.Q(**{f"{field}__lte": 10}))
                     ),
                     name=f"routine_{prefix}_rating_range",
                 )

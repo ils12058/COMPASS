@@ -345,9 +345,8 @@ def create_direct(
     normalized_entry = _normalize_direct_entry_mode(entry_mode)
     normalized_delivery = _normalize_delivery_mode(delivery_mode)
     key = _validate_idempotency_key(idempotency_key)
-    if (
-        len(request_fingerprint) != 64
-        or any(char not in "0123456789abcdef" for char in request_fingerprint)
+    if len(request_fingerprint) != 64 or any(
+        char not in "0123456789abcdef" for char in request_fingerprint
     ):
         raise InvalidRoutineInterviewInput("The direct-create request fingerprint is invalid.")
     digest = _creation_digest(actor_id=counselor.pk, key=key)
@@ -520,7 +519,9 @@ def replace_my_intake(
                 )
             )
         except ValidationError as exc:
-            raise InvalidRoutineInterviewInput("The Student Intake contains invalid values.") from exc
+            raise InvalidRoutineInterviewInput(
+                "The Student Intake contains invalid values."
+            ) from exc
         item.save(update_fields=[*INTAKE_FIELDS, "updated_at"])
         return _queryset().get(pk=item.pk)
 
@@ -581,7 +582,9 @@ def replace_assigned_evaluation(
     _validate_counselor(counselor)
     unsupported = set(values) - set(EVALUATION_FIELDS)
     if unsupported:
-        raise InvalidRoutineInterviewInput("The Counselor Evaluation update contains unsupported fields.")
+        raise InvalidRoutineInterviewInput(
+            "The Counselor Evaluation update contains unsupported fields."
+        )
 
     with transaction.atomic():
         item = (
@@ -596,7 +599,9 @@ def replace_assigned_evaluation(
                 "Student Intake must be submitted before Counselor Evaluation can be saved."
             )
         if item.evaluation_finalized_at is not None:
-            raise RoutineInterviewEvaluationFinalized("The Counselor Evaluation is finalized and locked.")
+            raise RoutineInterviewEvaluationFinalized(
+                "The Counselor Evaluation is finalized and locked."
+            )
         for field in EVALUATION_FIELDS:
             if field in values:
                 setattr(item, field, values[field])
@@ -621,11 +626,11 @@ def replace_assigned_evaluation(
         return _queryset().get(pk=item.pk)
 
 
-def _validate_encounter_match(
-    *, item: RoutineInterview, encounter: CounselingEncounter
-) -> None:
+def _validate_encounter_match(*, item: RoutineInterview, encounter: CounselingEncounter) -> None:
     if encounter.student_id != item.student_id:
-        raise RoutineInterviewEncounterMismatch("The Counseling Encounter belongs to another Student.")
+        raise RoutineInterviewEncounterMismatch(
+            "The Counseling Encounter belongs to another Student."
+        )
     if encounter.counselor_id != item.counselor_id:
         raise RoutineInterviewEncounterMismatch(
             "The Counseling Encounter belongs to another Counselor."

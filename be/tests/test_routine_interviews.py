@@ -217,7 +217,9 @@ def test_appointment_ensure_derives_context_is_stable_and_keeps_bound_inventory_
     first_year = configure_year(admin)
     first_inventory = submit_inventory(student, student, course="BSIS", major="Information Systems")
     service = create_counseling_service(admin)
-    appointment = make_appointment(student=student, counselor=counselor, service=service, mode="ONLINE")
+    appointment = make_appointment(
+        student=student, counselor=counselor, service=service, mode="ONLINE"
+    )
 
     created = ensure_for_appointment(
         student=student,
@@ -403,7 +405,9 @@ def test_api_keeps_student_draft_private_and_never_returns_counselor_evaluation_
     assert submitted.status_code == 200
     counselor_after = counselor_client.get(f"/api/v1/routine-interviews/{item.pk}")
     assert counselor_after.status_code == 200
-    assert counselor_after.json()["intake"]["coping_with_college_challenges"] == "Private draft text"
+    assert (
+        counselor_after.json()["intake"]["coping_with_college_challenges"] == "Private draft text"
+    )
 
     evaluation = counselor_client.put(
         f"/api/v1/routine-interviews/{item.pk}/evaluation",
