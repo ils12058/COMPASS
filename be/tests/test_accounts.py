@@ -140,8 +140,8 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
         "DPO",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 27
-    assert DesignationCapability.objects.count() == 4
+    assert RoleCapability.objects.count() == 29
+    assert DesignationCapability.objects.count() == 8
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -152,9 +152,9 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 4
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 14
-    assert RoleCapability.objects.count() == 27
-    assert DesignationCapability.objects.count() == 4
+    assert Capability.objects.count() == 20
+    assert RoleCapability.objects.count() == 29
+    assert DesignationCapability.objects.count() == 8
 
 
 @pytest.mark.django_db
@@ -188,6 +188,10 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "accounts.manage",
         "organization.view",
         "organization.manage",
+        "academic_years.view",
+        "academic_years.manage",
+        "institutional_forms.view",
+        "institutional_forms.manage",
         "services.view",
         "services.manage",
         "availability.view",
@@ -211,6 +215,10 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     assert user.has_capability("accounts.view")
     assert user.has_capability("organization.view")
     assert user.has_capability("organization.manage")
+    assert user.has_capability("academic_years.view")
+    assert user.has_capability("academic_years.manage")
+    assert user.has_capability("institutional_forms.view")
+    assert user.has_capability("institutional_forms.manage")
     assert user.has_capability("services.view")
     assert user.has_capability("services.manage")
     assert user.has_capability("availability.view")
@@ -257,7 +265,6 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
 def test_override_requires_a_reason_and_known_capability():
     sync_policy()
     user = make_user()
-
     with pytest.raises(ValueError, match="reason is required"):
         set_user_capability_override(
             user=user,
