@@ -18,6 +18,11 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.availability.services import AvailabilityError, compute_base_availability
+from compass.inventory.services import (
+    CurrentAcademicYearNotConfigured,
+    InventoryStatus,
+    get_current_inventory_status,
+)
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.service_catalog.models import AppointmentPolicy, DeliveryMode, Service
 from compass.service_catalog.services import (
@@ -72,6 +77,14 @@ class AppointmentRoleTransitionConflict(AppointmentError):
 
 
 class AppointmentReferenceConflict(AppointmentError):
+    pass
+
+
+class AppointmentCurrentInventoryRequired(AppointmentError):
+    pass
+
+
+class AppointmentCurrentAcademicYearNotConfigured(AppointmentError):
     pass
 
 
@@ -253,6 +266,21 @@ def _validate_booking_service(service: Service, provider: User, delivery_mode: s
         raise AppointmentNotSchedulable("The selected Counselor is not eligible for this Service.")
 
 
+def _validate_inventory_prerequisite(service: Service, student: User) -> None:
+    if not service.requires_current_inventory:
+        return
+    try:
+        status = get_current_inventory_status(student)
+    except CurrentAcademicYearNotConfigured as exc:
+        raise AppointmentCurrentAcademicYearNotConfigured(
+            "No current Academic Year is configured for Inventory prerequisites."
+        ) from exc
+    if status.status != InventoryStatus.SUBMITTED:
+        raise AppointmentCurrentInventoryRequired(
+            "A submitted Individual Inventory for the current Academic Year is required."
+        )
+
+
 def _resolve_booking_provider(student: User, provider_id: UUID | None) -> User:
     if provider_id is not None:
         provider = User.objects.select_related("role").filter(pk=provider_id).first()
@@ -392,6 +420,7 @@ def create_student_appointment(
         if service is None:
             raise AppointmentNotSchedulable("The selected Service was not found.")
         _validate_booking_service(service, locked_provider, normalized_mode)
+        _validate_inventory_prerequisite(service, locked_student)
 
         ends_at = normalized_start + timedelta(minutes=service.default_duration_minutes)
         if not _interval_is_available(

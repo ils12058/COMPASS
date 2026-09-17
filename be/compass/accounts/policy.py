@@ -84,6 +84,26 @@ CAPABILITY_DEFINITIONS = (
         description="Manage organizational routing and responsibility configuration.",
     ),
     CapabilityDefinition(
+        code="academic_years.view",
+        name="View academic years",
+        description="View institution-wide Academic Year configuration.",
+    ),
+    CapabilityDefinition(
+        code="academic_years.manage",
+        name="Manage academic years",
+        description="Create and select the institution-wide current Academic Year.",
+    ),
+    CapabilityDefinition(
+        code="institutional_forms.view",
+        name="View institutional form metadata",
+        description="View recorded QMS-issued institutional Form Family and Revision metadata.",
+    ),
+    CapabilityDefinition(
+        code="institutional_forms.manage",
+        name="Manage institutional form metadata",
+        description="Register and activate QMS-issued institutional Form Revision metadata.",
+    ),
+    CapabilityDefinition(
         code="services.view",
         name="View service catalog",
         description="View the active Guidance and Counseling Office service catalog.",
@@ -135,6 +155,16 @@ CAPABILITY_DEFINITIONS = (
             "Create and correct Counseling Encounters assigned to the authenticated Counselor."
         ),
     ),
+    CapabilityDefinition(
+        code="inventory.view_self",
+        name="View own individual inventory",
+        description="View the authenticated Student's own annual Individual Inventory records.",
+    ),
+    CapabilityDefinition(
+        code="inventory.manage_self",
+        name="Manage own individual inventory",
+        description="Create, edit, and submit the authenticated Student's current Inventory.",
+    ),
 )
 
 # Account identity is visible to operational actors through future, scoped workflows. Account
@@ -182,6 +212,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "availability.view",
             "appointments.view_self",
             "appointments.manage_self",
+            "inventory.view_self",
+            "inventory.manage_self",
         }
     ),
 }
@@ -195,6 +227,10 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "services.manage",
             "availability.manage",
             "appointments.manage",
+            "academic_years.view",
+            "academic_years.manage",
+            "institutional_forms.view",
+            "institutional_forms.manage",
         }
     ),
     "DPO": frozenset(),

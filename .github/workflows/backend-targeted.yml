@@ -40,6 +40,8 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -74,6 +76,8 @@ jobs:
         working-directory: be
         run: >-
           uv run pytest
+          tests/test_institutional_forms.py
+          tests/test_inventory.py
           tests/test_counseling.py
           tests/test_appointments.py
           tests/test_accounts.py

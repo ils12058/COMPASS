@@ -39,6 +39,7 @@ class Service(models.Model):
         ],
     )
     cancellation_cutoff_minutes = models.PositiveIntegerField(null=True, blank=True)
+    requires_current_inventory = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
