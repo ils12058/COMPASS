@@ -51,16 +51,32 @@ jobs:
       - name: Install locked dependencies
         working-directory: be
         run: uv sync --frozen
-      - name: Canonical format Counseling files
+      - name: Apply final Counseling lint fixes
         working-directory: be
-        run: uv run ruff format compass/counseling/services.py tests/test_counseling.py
-      - name: Commit canonical formatting
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("tests/test_counseling.py")
+          text = path.read_text()
+          text = text.replace("from zoneinfo import ZoneInfo\n", "")
+          text = text.replace(
+              "    CounselingInvalidTime,\n    CounselingNotPermitted,\n",
+              "    CounselingInvalidTime,\n    CounselingNotFound,\n    CounselingNotPermitted,\n",
+          )
+          text = text.replace(
+              "    with pytest.raises(Exception):\n        update_encounter(",
+              "    with pytest.raises(CounselingNotFound):\n        update_encounter(",
+          )
+          path.write_text(text)
+          PY
+          uv run ruff format tests/test_counseling.py
+      - name: Commit final Counseling lint fixes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add be/compass/counseling/services.py be/tests/test_counseling.py
+          git add be/tests/test_counseling.py
           if ! git diff --cached --quiet; then
-            git commit -m "Format Counseling foundation"
+            git commit -m "Fix Counseling test lint"
             git push origin HEAD:${{ github.head_ref }}
           fi
       - name: Static and migration checks
