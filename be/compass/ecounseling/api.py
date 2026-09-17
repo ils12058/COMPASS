@@ -128,9 +128,13 @@ def _raise(exc: Exception) -> NoReturn:
     if isinstance(exc, ECounselingInvalidWebhook):
         raise APIError(400, "daily_webhook_invalid_payload", str(exc)) from exc
     if isinstance(exc, DailyWebhookSignatureInvalid):
-        raise APIError(403, "daily_webhook_signature_invalid", "Daily webhook signature is invalid.") from exc
+        raise APIError(
+            403, "daily_webhook_signature_invalid", "Daily webhook signature is invalid."
+        ) from exc
     if isinstance(exc, ECounselingError):
-        raise APIError(500, "internal_error", "The E-Counseling operation could not be completed.") from exc
+        raise APIError(
+            500, "internal_error", "The E-Counseling operation could not be completed."
+        ) from exc
     raise exc
 
 
