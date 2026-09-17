@@ -131,7 +131,9 @@ CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
         code="counseling.manage_assigned",
         name="Manage assigned counseling encounters",
-        description="Create and correct Counseling Encounters assigned to the authenticated Counselor.",
+        description=(
+            "Create and correct Counseling Encounters assigned to the authenticated Counselor."
+        ),
     ),
 )
 
