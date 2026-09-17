@@ -76,9 +76,7 @@ def _lock_assigned_encounter(*, encounter_id: UUID, counselor: User) -> Counseli
     return encounter
 
 
-def get_assigned_shared_summary(
-    *, encounter_id: UUID, counselor: User
-) -> CounselingSharedSummary:
+def get_assigned_shared_summary(*, encounter_id: UUID, counselor: User) -> CounselingSharedSummary:
     _validate_counselor(counselor)
     item = (
         _summary_queryset()
@@ -164,9 +162,7 @@ def list_my_shared_summaries(
         published_at__isnull=False,
     )
     offset = (page - 1) * page_size
-    rows = list(
-        queryset.order_by("-published_at", "id")[offset : offset + page_size + 1]
-    )
+    rows = list(queryset.order_by("-published_at", "id")[offset : offset + page_size + 1])
     return CounselingSharedSummaryPage(
         items=tuple(rows[:page_size]),
         page=page,
