@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   targeted-backend:
@@ -40,8 +40,6 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -51,34 +49,6 @@ jobs:
       - name: Install locked dependencies
         working-directory: be
         run: uv sync --frozen
-      - name: Apply final Counseling lint fixes
-        working-directory: be
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("tests/test_counseling.py")
-          text = path.read_text()
-          text = text.replace("from zoneinfo import ZoneInfo\n", "")
-          text = text.replace(
-              "    CounselingInvalidTime,\n    CounselingNotPermitted,\n",
-              "    CounselingInvalidTime,\n    CounselingNotFound,\n    CounselingNotPermitted,\n",
-          )
-          text = text.replace(
-              "    with pytest.raises(Exception):\n        update_encounter(",
-              "    with pytest.raises(CounselingNotFound):\n        update_encounter(",
-          )
-          path.write_text(text)
-          PY
-          uv run ruff format tests/test_counseling.py
-      - name: Commit final Counseling lint fixes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add be/tests/test_counseling.py
-          if ! git diff --cached --quiet; then
-            git commit -m "Fix Counseling test lint"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
       - name: Static and migration checks
         working-directory: be
         run: |
