@@ -34,7 +34,7 @@ Create the Daily webhook subscription as part of deployment configuration, not a
 Configure the public COMPASS endpoint:
 
 ```text
-POST https://<compass-host>/api/v1/e-counseling/webhooks/daily
+POST https://<compass-host>/api/v1/integrations/daily/webhook
 ```
 
 Subscribe only to:
