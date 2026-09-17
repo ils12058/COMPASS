@@ -151,7 +151,9 @@ def _raise(exc: AppointmentError) -> NoReturn:
         raise APIError(409, code, message) from exc
     if isinstance(exc, (AppointmentNotSchedulable, AppointmentReferenceConflict)):
         raise APIError(409, "appointment_not_schedulable", str(exc)) from exc
-    raise APIError(500, "internal_error", "The Appointment operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "The Appointment operation could not be completed."
+    ) from exc
 
 
 def _institutional(value: datetime | None) -> datetime | None:
