@@ -343,7 +343,9 @@ def replace_provider_weekly(
 
 def list_office_exceptions() -> tuple[OfficeUnavailability, ...]:
     return tuple(
-        OfficeUnavailability.objects.select_related("created_by").order_by("starts_at", "ends_at", "id")
+        OfficeUnavailability.objects.select_related("created_by").order_by(
+            "starts_at", "ends_at", "id"
+        )
     )
 
 
