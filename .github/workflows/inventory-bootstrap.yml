@@ -39,6 +39,11 @@ jobs:
 
           patch(
               "be/config/settings.py",
+              '    "django.contrib.contenttypes",\n',
+              '    "django.contrib.contenttypes",\n    "django.contrib.postgres",\n',
+          )
+          patch(
+              "be/config/settings.py",
               '    "compass.counseling",\n]',
               '    "compass.counseling",\n    "compass.institutional_forms",\n    "compass.inventory",\n]',
           )
