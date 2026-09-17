@@ -26,6 +26,8 @@ class CapturingDailyClient(DailyClient):
         self.calls.append((method, path, payload))
         if path == "/meeting-tokens":
             return {"token": "ephemeral-token"}
+        if path.endswith(("/recordings/start", "/recordings/stop", "/transcription/start", "/transcription/stop")):
+            return {"status": "sent"}
         return {
             "id": "provider-room-id",
             "name": "ec-opaque",
@@ -84,6 +86,58 @@ def test_daily_token_payload_is_room_scoped_least_privilege_and_ephemeral():
     assert properties["enable_screenshare"] is False
     assert properties["enable_live_captions_ui"] is False
     assert "api_key" not in json.dumps(payload).lower()
+
+
+def test_daily_media_control_payloads_match_documented_rest_boundary():
+    client = CapturingDailyClient()
+
+    client.update_room(
+        room_name="ec-opaque",
+        properties={"enable_recording": "cloud"},
+    )
+    assert client.calls[-1] == (
+        "POST",
+        "/rooms/ec-opaque",
+        {"properties": {"enable_recording": "cloud"}},
+    )
+
+    client.start_recording(room_name="ec-opaque", instance_id="recording-instance")
+    assert client.calls[-1] == (
+        "POST",
+        "/rooms/ec-opaque/recordings/start",
+        {"instanceId": "recording-instance", "type": "cloud"},
+    )
+
+    client.stop_recording(room_name="ec-opaque")
+    assert client.calls[-1] == (
+        "POST",
+        "/rooms/ec-opaque/recordings/stop",
+        None,
+    )
+
+    client.update_room(
+        room_name="ec-opaque",
+        properties={"enable_transcription_storage": True},
+    )
+    assert client.calls[-1] == (
+        "POST",
+        "/rooms/ec-opaque",
+        {"properties": {"enable_transcription_storage": True}},
+    )
+
+    client.start_transcription(room_name="ec-opaque", instance_id="transcription-instance")
+    assert client.calls[-1] == (
+        "POST",
+        "/rooms/ec-opaque/transcription/start",
+        {"instanceId": "transcription-instance"},
+    )
+
+    client.stop_transcription(room_name="ec-opaque", instance_id="transcription-instance")
+    assert client.calls[-1] == (
+        "POST",
+        "/rooms/ec-opaque/transcription/stop",
+        {"instanceId": "transcription-instance"},
+    )
 
 
 def test_daily_from_settings_refuses_disabled_or_missing_key():
