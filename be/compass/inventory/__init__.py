@@ -1,0 +1,1 @@
+"""Student Individual Inventory domain."""
