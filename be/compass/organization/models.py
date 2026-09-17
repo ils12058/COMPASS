@@ -12,6 +12,32 @@ def normalize_code(value: str) -> str:
     return value.strip().upper()
 
 
+class AcademicYear(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    label = models.CharField(max_length=32, unique=True)
+    is_current = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("-label",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("is_current",),
+                condition=models.Q(is_current=True),
+                name="organization_one_current_academic_year",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.label = self.label.strip()
+        return super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return self.label
+
+
 class Campus(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     code = models.CharField(max_length=32, unique=True)
