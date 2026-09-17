@@ -17,7 +17,6 @@ from compass.accounts.models import (
     UserDesignation,
 )
 from compass.audit.models import AuditEvent
-from compass.availability.models import ProviderAvailabilityWindow
 from compass.authentication.crypto import encrypt_totp_secret
 from compass.authentication.models import (
     AuthSession,
@@ -32,6 +31,7 @@ from compass.authentication.sessions import (
     create_login_challenge,
     create_trusted_session,
 )
+from compass.availability.models import ProviderAvailabilityWindow
 
 
 def sync_policy() -> None:
