@@ -637,12 +637,13 @@ def test_reference_counter_uses_local_booking_year_and_rolls_back_with_failed_tr
     start = future_local_start()
 
     booking_now = datetime(2026, 12, 31, 23, 30, tzinfo=ZoneInfo("Asia/Manila"))
+    scheduled_start = datetime(2027, 1, 4, 10, 0, tzinfo=ZoneInfo("Asia/Manila"))
     item = create_student_appointment(
         student=student,
         service_id=service.pk,
         provider_id=provider.pk,
         delivery_mode="IN_PERSON",
-        starts_at=start.replace(year=2027) if start.year < 2027 else start,
+        starts_at=scheduled_start,
         context=context(student),
         now=booking_now,
     )
