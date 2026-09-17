@@ -187,6 +187,26 @@ CAPABILITY_DEFINITIONS = (
         name="Manage assigned routine interviews",
         description="Create direct Routine Interviews and manage assigned Counselor Evaluations.",
     ),
+    CapabilityDefinition(
+        code="ecounseling.view_self",
+        name="View own E-Counseling workspace",
+        description="View the authenticated Student's own eligible E-Counseling workspace.",
+    ),
+    CapabilityDefinition(
+        code="ecounseling.join_self",
+        name="Join own E-Counseling session",
+        description="Receive a short-lived join credential for the Student's own eligible session.",
+    ),
+    CapabilityDefinition(
+        code="ecounseling.view_assigned",
+        name="View assigned E-Counseling workspace",
+        description="View E-Counseling workspaces assigned to the authenticated Counselor.",
+    ),
+    CapabilityDefinition(
+        code="ecounseling.join_assigned",
+        name="Join assigned E-Counseling session",
+        description="Receive a short-lived join credential for the Counselor's assigned session.",
+    ),
 )
 
 # Account identity is visible to operational actors through future, scoped workflows. Account
@@ -217,6 +237,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "counseling.manage_assigned",
             "routine_interviews.view_assigned",
             "routine_interviews.manage_assigned",
+            "ecounseling.view_assigned",
+            "ecounseling.join_assigned",
         }
     ),
     "GUIDANCE_SERVICES_STAFF": frozenset(
@@ -240,6 +262,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "inventory.manage_self",
             "routine_interviews.view_self",
             "routine_interviews.manage_self",
+            "ecounseling.view_self",
+            "ecounseling.join_self",
         }
     ),
 }
