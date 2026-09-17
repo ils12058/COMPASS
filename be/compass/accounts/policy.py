@@ -156,6 +156,21 @@ CAPABILITY_DEFINITIONS = (
         ),
     ),
     CapabilityDefinition(
+        code="shared_summaries.view_self",
+        name="View own shared counseling summaries",
+        description="View published Counseling Shared Summaries belonging to the Student.",
+    ),
+    CapabilityDefinition(
+        code="shared_summaries.view_assigned",
+        name="View assigned shared counseling summaries",
+        description="View Shared Summaries for Counseling Encounters assigned to the Counselor.",
+    ),
+    CapabilityDefinition(
+        code="shared_summaries.manage_assigned",
+        name="Manage assigned shared counseling summaries",
+        description="Draft and publish Shared Summaries for assigned Counseling Encounters.",
+    ),
+    CapabilityDefinition(
         code="inventory.view_self",
         name="View own individual inventory",
         description="View the authenticated Student's own annual Individual Inventory records.",
@@ -235,6 +250,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "appointments.view_self",
             "counseling.view_assigned",
             "counseling.manage_assigned",
+            "shared_summaries.view_assigned",
+            "shared_summaries.manage_assigned",
             "routine_interviews.view_assigned",
             "routine_interviews.manage_assigned",
             "ecounseling.view_assigned",
@@ -264,6 +281,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "routine_interviews.manage_self",
             "ecounseling.view_self",
             "ecounseling.join_self",
+            "shared_summaries.view_self",
         }
     ),
 }

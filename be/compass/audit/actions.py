@@ -47,6 +47,7 @@ APPOINTMENT_CREATED = "appointment.created"
 APPOINTMENT_CANCELLED = "appointment.cancelled"
 COUNSELING_ENCOUNTER_CREATED = "counseling.encounter.created"
 COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
+COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
 INVENTORY_CREATED = "inventory.created"
 INVENTORY_SUBMITTED = "inventory.submitted"
 ROUTINE_INTERVIEW_CREATED = "routine_interview.created"
@@ -103,6 +104,7 @@ __all__ = [
     "APPOINTMENT_CANCELLED",
     "COUNSELING_ENCOUNTER_CREATED",
     "COUNSELING_ENCOUNTER_UPDATED",
+    "COUNSELING_SHARED_SUMMARY_PUBLISHED",
     "INVENTORY_CREATED",
     "INVENTORY_SUBMITTED",
     "ROUTINE_INTERVIEW_CREATED",
