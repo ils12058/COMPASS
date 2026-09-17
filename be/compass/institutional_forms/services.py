@@ -22,6 +22,7 @@ from compass.institutional_forms.models import (
 
 SUPPORTED_SCHEMA_VERSIONS: dict[str, frozenset[int]] = {
     "individual_inventory": frozenset({1}),
+    "routine_interview": frozenset({1}),
 }
 
 
@@ -138,6 +139,16 @@ def _require_supported(revision: FormRevision) -> None:
         raise InstitutionalFormConflict(
             "This COMPASS version does not support the Form Revision's internal schema version."
         )
+
+
+def get_active_supported_form_revision(family_key: str) -> FormRevision | None:
+    """Return the active compatible revision, while allowing families with no active revision."""
+
+    revision = get_active_form_revision(family_key)
+    if revision is None:
+        return None
+    _require_supported(revision)
+    return revision
 
 
 def activate_form_revision(*, revision_id: UUID, context: AuditContext) -> FormRevision:
