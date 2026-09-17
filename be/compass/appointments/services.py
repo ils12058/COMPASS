@@ -349,7 +349,7 @@ def _allocate_reference(*, at: datetime) -> str:
             if number > MAX_REFERENCE_SEQUENCE:
                 raise AppointmentReferenceConflict(
                     "The Appointment reference sequence is exhausted for this year."
-                )
+                ) from None
             counter.next_value = number + 1
             counter.save(update_fields=["next_value"])
     else:
