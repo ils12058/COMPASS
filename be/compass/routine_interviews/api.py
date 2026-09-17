@@ -139,12 +139,12 @@ class RoutineFinalizeRequest(StrictSchema):
     encounter_id: UUID | None = None
 
 
-class AcademicYearSummary(StrictSchema):
+class RoutineAcademicYearSummary(StrictSchema):
     id: UUID
     label: str
 
 
-class FormRevisionSummary(StrictSchema):
+class RoutineFormRevisionSummary(StrictSchema):
     id: UUID
     official_code: str | None
     official_revision: str | None
@@ -158,7 +158,7 @@ class RoutinePersonSummary(StrictSchema):
 
 class RoutineInventoryContext(StrictSchema):
     id: UUID
-    academic_year: AcademicYearSummary
+    academic_year: RoutineAcademicYearSummary
     full_name: str
     course: str
     major: str
@@ -185,7 +185,7 @@ class StudentRoutineSummaryResponse(StrictSchema):
     delivery_mode: DeliveryMode
     intake_status: RoutineIntakeStatus
     intake_submitted_at: datetime | None
-    form_revision: FormRevisionSummary | None
+    form_revision: RoutineFormRevisionSummary | None
     appointment: RoutineAppointmentSummary | None
     counseling_encounter: RoutineEncounterSummary | None
     created_at: datetime
@@ -211,7 +211,7 @@ class CounselorRoutineDetailResponse(StrictSchema):
     evaluation_status: RoutineEvaluationStatus
     evaluation_finalized_at: datetime | None
     evaluation: RoutineEvaluationPayload
-    form_revision: FormRevisionSummary | None
+    form_revision: RoutineFormRevisionSummary | None
     appointment: RoutineAppointmentSummary | None
     counseling_encounter: RoutineEncounterSummary | None
     created_at: datetime
@@ -238,7 +238,11 @@ def _require_counselor(request, capability: str) -> None:
         or actor.role.code != "COUNSELOR"
         or not actor.has_capability(capability)
     ):
-        raise APIError(403, "permission_denied", "Assigned Counselor Routine Interview access is required.")
+        raise APIError(
+            403,
+            "permission_denied",
+            "Assigned Counselor Routine Interview access is required.",
+        )
 
 
 def _raise(exc: Exception) -> NoReturn:
