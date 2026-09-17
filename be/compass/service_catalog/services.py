@@ -121,6 +121,12 @@ def _normalize_cancellation_cutoff(value: int | None) -> int | None:
     return value
 
 
+def _normalize_inventory_requirement(value: bool) -> bool:
+    if type(value) is not bool:
+        raise InvalidServiceCatalogInput("requires_current_inventory must be a boolean")
+    return value
+
+
 def _normalize_modes(values: list[str] | tuple[str, ...] | None) -> frozenset[str]:
     if values is None:
         return frozenset()
@@ -243,6 +249,7 @@ def create_service(
     description: str | None = "",
     default_duration_minutes: int | None = None,
     cancellation_cutoff_minutes: int | None = None,
+    requires_current_inventory: bool = False,
     delivery_modes: list[str] | tuple[str, ...] | None = None,
     provider_roles: list[str] | tuple[str, ...] | None = None,
     context: AuditContext,
@@ -253,6 +260,7 @@ def create_service(
     normalized_policy = _normalize_policy(appointment_policy)
     normalized_duration = _normalize_duration(default_duration_minutes)
     normalized_cutoff = _normalize_cancellation_cutoff(cancellation_cutoff_minutes)
+    normalized_requirement = _normalize_inventory_requirement(requires_current_inventory)
     normalized_modes = _normalize_modes(delivery_modes)
     normalized_roles = _normalize_provider_roles(provider_roles)
 
@@ -266,6 +274,7 @@ def create_service(
                 appointment_policy=normalized_policy,
                 default_duration_minutes=normalized_duration,
                 cancellation_cutoff_minutes=normalized_cutoff,
+                requires_current_inventory=normalized_requirement,
                 is_active=False,
             )
         except IntegrityError as exc:
@@ -302,6 +311,7 @@ def update_service(
         "appointment_policy",
         "default_duration_minutes",
         "cancellation_cutoff_minutes",
+        "requires_current_inventory",
         "delivery_modes",
         "provider_roles",
     }
@@ -336,6 +346,11 @@ def update_service(
             if "cancellation_cutoff_minutes" in changes
             else service.cancellation_cutoff_minutes
         )
+        next_requirement = (
+            _normalize_inventory_requirement(changes["requires_current_inventory"])
+            if "requires_current_inventory" in changes
+            else service.requires_current_inventory
+        )
         next_modes = (
             _normalize_modes(changes["delivery_modes"])
             if "delivery_modes" in changes
@@ -364,6 +379,7 @@ def update_service(
             "appointment_policy": next_policy,
             "default_duration_minutes": next_duration,
             "cancellation_cutoff_minutes": next_cutoff,
+            "requires_current_inventory": next_requirement,
         }
         for field, value in scalar_values.items():
             if getattr(service, field) != value:
