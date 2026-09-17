@@ -62,6 +62,82 @@
         "title": "APIErrorResponse",
         "type": "object"
       },
+      "AcademicYearCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "title": "AcademicYearCreateRequest",
+        "type": "object"
+      },
+      "AcademicYearListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AcademicYearResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "AcademicYearListResponse",
+        "type": "object"
+      },
+      "AcademicYearResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "is_current"
+        ],
+        "title": "AcademicYearResponse",
+        "type": "object"
+      },
+      "AcademicYearSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "AcademicYearSummary",
+        "type": "object"
+      },
       "AccountCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -665,6 +741,8 @@
       },
       "CapabilityCode": {
         "enum": [
+          "academic_years.manage",
+          "academic_years.view",
           "accounts.manage",
           "accounts.view",
           "appointments.manage",
@@ -675,6 +753,10 @@
           "availability.view",
           "counseling.manage_assigned",
           "counseling.view_assigned",
+          "institutional_forms.manage",
+          "institutional_forms.view",
+          "inventory.manage_self",
+          "inventory.view_self",
           "organization.manage",
           "organization.view",
           "services.manage",
@@ -1247,6 +1329,18 @@
         "title": "CounselorResponsibilityResponse",
         "type": "object"
       },
+      "CourseChoiceReasonValue": {
+        "enum": [
+          "INTEREST_APTITUDE",
+          "MINIMAL_COST",
+          "FRIENDS",
+          "PARENT_CHOICE",
+          "JOB_OPPORTUNITIES",
+          "OTHER"
+        ],
+        "title": "CourseChoiceReasonValue",
+        "type": "string"
+      },
       "CurrentSessionResponse": {
         "properties": {
           "authenticated": {
@@ -1300,6 +1394,46 @@
         ],
         "title": "DesignationListResponse",
         "type": "object"
+      },
+      "EducationEntryPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "awards_received": {
+            "default": "",
+            "title": "Awards Received",
+            "type": "string"
+          },
+          "inclusive_years": {
+            "default": "",
+            "title": "Inclusive Years",
+            "type": "string"
+          },
+          "level": {
+            "$ref": "#/components/schemas/EducationLevelValue"
+          },
+          "school_attended_address": {
+            "default": "",
+            "title": "School Attended Address",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level"
+        ],
+        "title": "EducationEntryPayload",
+        "type": "object"
+      },
+      "EducationLevelValue": {
+        "enum": [
+          "PREPARATORY",
+          "ELEMENTARY",
+          "JUNIOR_HIGH",
+          "SENIOR_HIGH",
+          "TECHNICAL_VOCATIONAL",
+          "COLLEGIATE"
+        ],
+        "title": "EducationLevelValue",
+        "type": "string"
       },
       "Effect": {
         "enum": [
@@ -1507,6 +1641,313 @@
         "title": "ExceptionResponse",
         "type": "object"
       },
+      "FamilyMemberKindValue": {
+        "enum": [
+          "FATHER",
+          "MOTHER",
+          "SPOUSE"
+        ],
+        "title": "FamilyMemberKindValue",
+        "type": "string"
+      },
+      "FamilyMemberPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "annual_income_previous_year": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Income Previous Year"
+          },
+          "business_address": {
+            "default": "",
+            "title": "Business Address",
+            "type": "string"
+          },
+          "business_telephone": {
+            "default": "",
+            "title": "Business Telephone",
+            "type": "string"
+          },
+          "contact_number": {
+            "default": "",
+            "title": "Contact Number",
+            "type": "string"
+          },
+          "current_address": {
+            "default": "",
+            "title": "Current Address",
+            "type": "string"
+          },
+          "current_religion": {
+            "default": "",
+            "title": "Current Religion",
+            "type": "string"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "educational_attainment": {
+            "default": "",
+            "title": "Educational Attainment",
+            "type": "string"
+          },
+          "email_address": {
+            "default": "",
+            "title": "Email Address",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FamilyMemberKindValue"
+          },
+          "languages_spoken": {
+            "default": "",
+            "title": "Languages Spoken",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "occupation": {
+            "default": "",
+            "title": "Occupation",
+            "type": "string"
+          },
+          "permanent_address": {
+            "default": "",
+            "title": "Permanent Address",
+            "type": "string"
+          },
+          "place_of_birth": {
+            "default": "",
+            "title": "Place Of Birth",
+            "type": "string"
+          },
+          "religion_raised_with": {
+            "default": "",
+            "title": "Religion Raised With",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "FamilyMemberPayload",
+        "type": "object"
+      },
+      "FormFamilyListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FormFamilyResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "FormFamilyListResponse",
+        "type": "object"
+      },
+      "FormFamilyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "title"
+        ],
+        "title": "FormFamilyResponse",
+        "type": "object"
+      },
+      "FormRevisionListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FormRevisionResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "FormRevisionListResponse",
+        "type": "object"
+      },
+      "FormRevisionRegisterRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "internal_schema_version": {
+            "title": "Internal Schema Version",
+            "type": "integer"
+          },
+          "official_code": {
+            "title": "Official Code",
+            "type": "string"
+          },
+          "official_revision": {
+            "title": "Official Revision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "official_code",
+          "official_revision",
+          "internal_schema_version"
+        ],
+        "title": "FormRevisionRegisterRequest",
+        "type": "object"
+      },
+      "FormRevisionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "family_key": {
+            "title": "Family Key",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "internal_schema_version": {
+            "title": "Internal Schema Version",
+            "type": "integer"
+          },
+          "official_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Code"
+          },
+          "official_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Revision"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FormRevisionStatusValue"
+          }
+        },
+        "required": [
+          "id",
+          "family_key",
+          "official_code",
+          "official_revision",
+          "internal_schema_version",
+          "status"
+        ],
+        "title": "FormRevisionResponse",
+        "type": "object"
+      },
+      "FormRevisionStatusValue": {
+        "enum": [
+          "ACTIVE",
+          "INACTIVE"
+        ],
+        "title": "FormRevisionStatusValue",
+        "type": "string"
+      },
+      "FormRevisionSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "internal_schema_version": {
+            "title": "Internal Schema Version",
+            "type": "integer"
+          },
+          "official_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Code"
+          },
+          "official_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Revision"
+          }
+        },
+        "required": [
+          "id",
+          "official_code",
+          "official_revision",
+          "internal_schema_version"
+        ],
+        "title": "FormRevisionSummary",
+        "type": "object"
+      },
+      "HandednessValue": {
+        "enum": [
+          "RIGHT",
+          "LEFT"
+        ],
+        "title": "HandednessValue",
+        "type": "string"
+      },
       "HealthResponse": {
         "properties": {
           "checks": {
@@ -1527,6 +1968,16 @@
         ],
         "title": "HealthResponse",
         "type": "object"
+      },
+      "IdealAllowanceBandValue": {
+        "enum": [
+          "BELOW_100",
+          "FROM_100_TO_499",
+          "FROM_500_TO_1000",
+          "ABOVE_1000"
+        ],
+        "title": "IdealAllowanceBandValue",
+        "type": "string"
       },
       "IdentitySummaryResponse": {
         "additionalProperties": false,
@@ -1609,6 +2060,1339 @@
         },
         "title": "IdentityUpdateRequest",
         "type": "object"
+      },
+      "ImmunizationValue": {
+        "enum": [
+          "CHICKEN_POX",
+          "BOOSTER",
+          "MEASLES_MMR",
+          "HEPATITIS_B",
+          "MUMPS",
+          "INFLUENZA",
+          "SMALL_POX",
+          "OTHER"
+        ],
+        "title": "ImmunizationValue",
+        "type": "string"
+      },
+      "InterestValue": {
+        "enum": [
+          "PAINTING",
+          "SINGING",
+          "POEM_WRITING",
+          "PLAYING_INSTRUMENTS",
+          "PLANTING",
+          "DECLAMATION_ORATION",
+          "DANCING",
+          "COMPOSING",
+          "STAGE_ACT",
+          "COOKING"
+        ],
+        "title": "InterestValue",
+        "type": "string"
+      },
+      "InventoryHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InventorySummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "InventoryHistoryResponse",
+        "type": "object"
+      },
+      "InventoryPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "accidents_effect": {
+            "default": "",
+            "title": "Accidents Effect",
+            "type": "string"
+          },
+          "accidents_experienced": {
+            "default": "",
+            "title": "Accidents Experienced",
+            "type": "string"
+          },
+          "ambition_goal": {
+            "default": "",
+            "title": "Ambition Goal",
+            "type": "string"
+          },
+          "birth_order_among_siblings": {
+            "default": "",
+            "title": "Birth Order Among Siblings",
+            "type": "string"
+          },
+          "boarding_address": {
+            "default": "",
+            "title": "Boarding Address",
+            "type": "string"
+          },
+          "boarding_exclusive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boarding Exclusive"
+          },
+          "boarding_landlord_name": {
+            "default": "",
+            "title": "Boarding Landlord Name",
+            "type": "string"
+          },
+          "characteristics": {
+            "default": "",
+            "title": "Characteristics",
+            "type": "string"
+          },
+          "civil_status": {
+            "default": "",
+            "title": "Civil Status",
+            "type": "string"
+          },
+          "contact_number": {
+            "default": "",
+            "title": "Contact Number",
+            "type": "string"
+          },
+          "course_choice_other": {
+            "default": "",
+            "title": "Course Choice Other",
+            "type": "string"
+          },
+          "course_choice_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/CourseChoiceReasonValue"
+            },
+            "title": "Course Choice Reasons",
+            "type": "array"
+          },
+          "course_currently_enrolled": {
+            "default": "",
+            "title": "Course Currently Enrolled",
+            "type": "string"
+          },
+          "course_first_choice": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course First Choice"
+          },
+          "current_address": {
+            "default": "",
+            "title": "Current Address",
+            "type": "string"
+          },
+          "current_concerns": {
+            "default": "",
+            "title": "Current Concerns",
+            "type": "string"
+          },
+          "current_fears": {
+            "default": "",
+            "title": "Current Fears",
+            "type": "string"
+          },
+          "current_religion": {
+            "default": "",
+            "title": "Current Religion",
+            "type": "string"
+          },
+          "daily_hours_class": {
+            "anyOf": [
+              {
+                "maximum": 24.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Class"
+          },
+          "daily_hours_library": {
+            "anyOf": [
+              {
+                "maximum": 24.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Library"
+          },
+          "daily_hours_other": {
+            "anyOf": [
+              {
+                "maximum": 24.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Other"
+          },
+          "daily_hours_recreation": {
+            "anyOf": [
+              {
+                "maximum": 24.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Recreation"
+          },
+          "daily_hours_rest": {
+            "anyOf": [
+              {
+                "maximum": 24.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Rest"
+          },
+          "daily_hours_studying": {
+            "anyOf": [
+              {
+                "maximum": 24.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Studying"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "desired_extracurricular_activities": {
+            "default": "",
+            "title": "Desired Extracurricular Activities",
+            "type": "string"
+          },
+          "education_entries": {
+            "items": {
+              "$ref": "#/components/schemas/EducationEntryPayload"
+            },
+            "title": "Education Entries",
+            "type": "array"
+          },
+          "email_address": {
+            "default": "",
+            "title": "Email Address",
+            "type": "string"
+          },
+          "emergency_contact_name": {
+            "default": "",
+            "title": "Emergency Contact Name",
+            "type": "string"
+          },
+          "emergency_contact_number": {
+            "default": "",
+            "title": "Emergency Contact Number",
+            "type": "string"
+          },
+          "family_members": {
+            "items": {
+              "$ref": "#/components/schemas/FamilyMemberPayload"
+            },
+            "title": "Family Members",
+            "type": "array"
+          },
+          "friends_in_school": {
+            "default": "",
+            "title": "Friends In School",
+            "type": "string"
+          },
+          "friends_outside_school": {
+            "default": "",
+            "title": "Friends Outside School",
+            "type": "string"
+          },
+          "full_name": {
+            "default": "",
+            "title": "Full Name",
+            "type": "string"
+          },
+          "guardian_address": {
+            "default": "",
+            "title": "Guardian Address",
+            "type": "string"
+          },
+          "guardian_contact_number": {
+            "default": "",
+            "title": "Guardian Contact Number",
+            "type": "string"
+          },
+          "guardian_name": {
+            "default": "",
+            "title": "Guardian Name",
+            "type": "string"
+          },
+          "guardian_relationship": {
+            "default": "",
+            "title": "Guardian Relationship",
+            "type": "string"
+          },
+          "handedness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandednessValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "height": {
+            "default": "",
+            "title": "Height",
+            "type": "string"
+          },
+          "highest_subjects_grades": {
+            "default": "",
+            "title": "Highest Subjects Grades",
+            "type": "string"
+          },
+          "hobbies_recreation": {
+            "default": "",
+            "title": "Hobbies Recreation",
+            "type": "string"
+          },
+          "ideal_monthly_allowance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdealAllowanceBandValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "illness_this_year": {
+            "default": "",
+            "title": "Illness This Year",
+            "type": "string"
+          },
+          "immunization_other": {
+            "default": "",
+            "title": "Immunization Other",
+            "type": "string"
+          },
+          "immunizations": {
+            "items": {
+              "$ref": "#/components/schemas/ImmunizationValue"
+            },
+            "title": "Immunizations",
+            "type": "array"
+          },
+          "inclination_leadership": {
+            "default": "",
+            "title": "Inclination Leadership",
+            "type": "string"
+          },
+          "inclination_performing_arts": {
+            "default": "",
+            "title": "Inclination Performing Arts",
+            "type": "string"
+          },
+          "inclination_sports": {
+            "default": "",
+            "title": "Inclination Sports",
+            "type": "string"
+          },
+          "intended_work_field": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PostGraduationFieldValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "intended_work_other": {
+            "default": "",
+            "title": "Intended Work Other",
+            "type": "string"
+          },
+          "interests": {
+            "items": {
+              "$ref": "#/components/schemas/InterestValue"
+            },
+            "title": "Interests",
+            "type": "array"
+          },
+          "languages_most_fluent": {
+            "default": "",
+            "title": "Languages Most Fluent",
+            "type": "string"
+          },
+          "languages_spoken_at_home": {
+            "default": "",
+            "title": "Languages Spoken At Home",
+            "type": "string"
+          },
+          "living_arrangement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LivingArrangementValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lowest_subjects_grades": {
+            "default": "",
+            "title": "Lowest Subjects Grades",
+            "type": "string"
+          },
+          "major": {
+            "default": "",
+            "title": "Major",
+            "type": "string"
+          },
+          "nationality": {
+            "default": "",
+            "title": "Nationality",
+            "type": "string"
+          },
+          "nickname": {
+            "default": "",
+            "title": "Nickname",
+            "type": "string"
+          },
+          "operations_effect": {
+            "default": "",
+            "title": "Operations Effect",
+            "type": "string"
+          },
+          "operations_experienced": {
+            "default": "",
+            "title": "Operations Experienced",
+            "type": "string"
+          },
+          "organization_memberships": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationMembershipPayload"
+            },
+            "title": "Organization Memberships",
+            "type": "array"
+          },
+          "other_skills_hobbies": {
+            "default": "",
+            "title": "Other Skills Hobbies",
+            "type": "string"
+          },
+          "parent_statuses": {
+            "items": {
+              "$ref": "#/components/schemas/ParentStatusValue"
+            },
+            "title": "Parent Statuses",
+            "type": "array"
+          },
+          "permanent_address": {
+            "default": "",
+            "title": "Permanent Address",
+            "type": "string"
+          },
+          "physical_disadvantage": {
+            "default": "",
+            "title": "Physical Disadvantage",
+            "type": "string"
+          },
+          "place_of_birth": {
+            "default": "",
+            "title": "Place Of Birth",
+            "type": "string"
+          },
+          "present_place_people_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Present Place People Count"
+          },
+          "previous_illness": {
+            "default": "",
+            "title": "Previous Illness",
+            "type": "string"
+          },
+          "prior_counseling_experience": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prior Counseling Experience"
+          },
+          "prior_counseling_when": {
+            "default": "",
+            "title": "Prior Counseling When",
+            "type": "string"
+          },
+          "prior_counseling_where": {
+            "default": "",
+            "title": "Prior Counseling Where",
+            "type": "string"
+          },
+          "prior_counselor_name": {
+            "default": "",
+            "title": "Prior Counselor Name",
+            "type": "string"
+          },
+          "reading_preferences": {
+            "default": "",
+            "title": "Reading Preferences",
+            "type": "string"
+          },
+          "religion_from_birth": {
+            "default": "",
+            "title": "Religion From Birth",
+            "type": "string"
+          },
+          "room_sharing_people_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Sharing People Count"
+          },
+          "schedule_satisfaction_reason": {
+            "default": "",
+            "title": "Schedule Satisfaction Reason",
+            "type": "string"
+          },
+          "schedule_satisfied": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule Satisfied"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SexValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "siblings": {
+            "items": {
+              "$ref": "#/components/schemas/SiblingPayload"
+            },
+            "title": "Siblings",
+            "type": "array"
+          },
+          "special_interest": {
+            "default": "",
+            "title": "Special Interest",
+            "type": "string"
+          },
+          "special_skills_talents": {
+            "default": "",
+            "title": "Special Skills Talents",
+            "type": "string"
+          },
+          "student_number": {
+            "default": "",
+            "title": "Student Number",
+            "type": "string"
+          },
+          "transportation_entries": {
+            "items": {
+              "$ref": "#/components/schemas/TransportationEntryPayload"
+            },
+            "title": "Transportation Entries",
+            "type": "array"
+          },
+          "weight": {
+            "default": "",
+            "title": "Weight",
+            "type": "string"
+          }
+        },
+        "title": "InventoryPayload",
+        "type": "object"
+      },
+      "InventoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "accidents_effect": {
+            "default": "",
+            "title": "Accidents Effect",
+            "type": "string"
+          },
+          "accidents_experienced": {
+            "default": "",
+            "title": "Accidents Experienced",
+            "type": "string"
+          },
+          "ambition_goal": {
+            "default": "",
+            "title": "Ambition Goal",
+            "type": "string"
+          },
+          "birth_order_among_siblings": {
+            "default": "",
+            "title": "Birth Order Among Siblings",
+            "type": "string"
+          },
+          "boarding_address": {
+            "default": "",
+            "title": "Boarding Address",
+            "type": "string"
+          },
+          "boarding_exclusive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boarding Exclusive"
+          },
+          "boarding_landlord_name": {
+            "default": "",
+            "title": "Boarding Landlord Name",
+            "type": "string"
+          },
+          "characteristics": {
+            "default": "",
+            "title": "Characteristics",
+            "type": "string"
+          },
+          "civil_status": {
+            "default": "",
+            "title": "Civil Status",
+            "type": "string"
+          },
+          "contact_number": {
+            "default": "",
+            "title": "Contact Number",
+            "type": "string"
+          },
+          "course_choice_other": {
+            "default": "",
+            "title": "Course Choice Other",
+            "type": "string"
+          },
+          "course_choice_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/CourseChoiceReasonValue"
+            },
+            "title": "Course Choice Reasons",
+            "type": "array"
+          },
+          "course_currently_enrolled": {
+            "default": "",
+            "title": "Course Currently Enrolled",
+            "type": "string"
+          },
+          "course_first_choice": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course First Choice"
+          },
+          "current_address": {
+            "default": "",
+            "title": "Current Address",
+            "type": "string"
+          },
+          "current_concerns": {
+            "default": "",
+            "title": "Current Concerns",
+            "type": "string"
+          },
+          "current_fears": {
+            "default": "",
+            "title": "Current Fears",
+            "type": "string"
+          },
+          "current_religion": {
+            "default": "",
+            "title": "Current Religion",
+            "type": "string"
+          },
+          "daily_hours_class": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Class"
+          },
+          "daily_hours_library": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Library"
+          },
+          "daily_hours_other": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Other"
+          },
+          "daily_hours_recreation": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Recreation"
+          },
+          "daily_hours_rest": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Rest"
+          },
+          "daily_hours_studying": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Studying"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "desired_extracurricular_activities": {
+            "default": "",
+            "title": "Desired Extracurricular Activities",
+            "type": "string"
+          },
+          "education_entries": {
+            "items": {
+              "$ref": "#/components/schemas/EducationEntryPayload"
+            },
+            "title": "Education Entries",
+            "type": "array"
+          },
+          "email_address": {
+            "default": "",
+            "title": "Email Address",
+            "type": "string"
+          },
+          "emergency_contact_name": {
+            "default": "",
+            "title": "Emergency Contact Name",
+            "type": "string"
+          },
+          "emergency_contact_number": {
+            "default": "",
+            "title": "Emergency Contact Number",
+            "type": "string"
+          },
+          "family_members": {
+            "items": {
+              "$ref": "#/components/schemas/FamilyMemberPayload"
+            },
+            "title": "Family Members",
+            "type": "array"
+          },
+          "form_revision": {
+            "$ref": "#/components/schemas/FormRevisionSummary"
+          },
+          "friends_in_school": {
+            "default": "",
+            "title": "Friends In School",
+            "type": "string"
+          },
+          "friends_outside_school": {
+            "default": "",
+            "title": "Friends Outside School",
+            "type": "string"
+          },
+          "full_name": {
+            "default": "",
+            "title": "Full Name",
+            "type": "string"
+          },
+          "guardian_address": {
+            "default": "",
+            "title": "Guardian Address",
+            "type": "string"
+          },
+          "guardian_contact_number": {
+            "default": "",
+            "title": "Guardian Contact Number",
+            "type": "string"
+          },
+          "guardian_name": {
+            "default": "",
+            "title": "Guardian Name",
+            "type": "string"
+          },
+          "guardian_relationship": {
+            "default": "",
+            "title": "Guardian Relationship",
+            "type": "string"
+          },
+          "handedness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandednessValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "height": {
+            "default": "",
+            "title": "Height",
+            "type": "string"
+          },
+          "highest_subjects_grades": {
+            "default": "",
+            "title": "Highest Subjects Grades",
+            "type": "string"
+          },
+          "hobbies_recreation": {
+            "default": "",
+            "title": "Hobbies Recreation",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ideal_monthly_allowance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdealAllowanceBandValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "illness_this_year": {
+            "default": "",
+            "title": "Illness This Year",
+            "type": "string"
+          },
+          "immunization_other": {
+            "default": "",
+            "title": "Immunization Other",
+            "type": "string"
+          },
+          "immunizations": {
+            "items": {
+              "$ref": "#/components/schemas/ImmunizationValue"
+            },
+            "title": "Immunizations",
+            "type": "array"
+          },
+          "inclination_leadership": {
+            "default": "",
+            "title": "Inclination Leadership",
+            "type": "string"
+          },
+          "inclination_performing_arts": {
+            "default": "",
+            "title": "Inclination Performing Arts",
+            "type": "string"
+          },
+          "inclination_sports": {
+            "default": "",
+            "title": "Inclination Sports",
+            "type": "string"
+          },
+          "intended_work_field": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PostGraduationFieldValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "intended_work_other": {
+            "default": "",
+            "title": "Intended Work Other",
+            "type": "string"
+          },
+          "interests": {
+            "items": {
+              "$ref": "#/components/schemas/InterestValue"
+            },
+            "title": "Interests",
+            "type": "array"
+          },
+          "languages_most_fluent": {
+            "default": "",
+            "title": "Languages Most Fluent",
+            "type": "string"
+          },
+          "languages_spoken_at_home": {
+            "default": "",
+            "title": "Languages Spoken At Home",
+            "type": "string"
+          },
+          "living_arrangement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LivingArrangementValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lowest_subjects_grades": {
+            "default": "",
+            "title": "Lowest Subjects Grades",
+            "type": "string"
+          },
+          "major": {
+            "default": "",
+            "title": "Major",
+            "type": "string"
+          },
+          "nationality": {
+            "default": "",
+            "title": "Nationality",
+            "type": "string"
+          },
+          "nickname": {
+            "default": "",
+            "title": "Nickname",
+            "type": "string"
+          },
+          "operations_effect": {
+            "default": "",
+            "title": "Operations Effect",
+            "type": "string"
+          },
+          "operations_experienced": {
+            "default": "",
+            "title": "Operations Experienced",
+            "type": "string"
+          },
+          "organization_memberships": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationMembershipPayload"
+            },
+            "title": "Organization Memberships",
+            "type": "array"
+          },
+          "other_skills_hobbies": {
+            "default": "",
+            "title": "Other Skills Hobbies",
+            "type": "string"
+          },
+          "parent_statuses": {
+            "items": {
+              "$ref": "#/components/schemas/ParentStatusValue"
+            },
+            "title": "Parent Statuses",
+            "type": "array"
+          },
+          "permanent_address": {
+            "default": "",
+            "title": "Permanent Address",
+            "type": "string"
+          },
+          "physical_disadvantage": {
+            "default": "",
+            "title": "Physical Disadvantage",
+            "type": "string"
+          },
+          "place_of_birth": {
+            "default": "",
+            "title": "Place Of Birth",
+            "type": "string"
+          },
+          "present_place_people_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Present Place People Count"
+          },
+          "previous_illness": {
+            "default": "",
+            "title": "Previous Illness",
+            "type": "string"
+          },
+          "prior_counseling_experience": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prior Counseling Experience"
+          },
+          "prior_counseling_when": {
+            "default": "",
+            "title": "Prior Counseling When",
+            "type": "string"
+          },
+          "prior_counseling_where": {
+            "default": "",
+            "title": "Prior Counseling Where",
+            "type": "string"
+          },
+          "prior_counselor_name": {
+            "default": "",
+            "title": "Prior Counselor Name",
+            "type": "string"
+          },
+          "reading_preferences": {
+            "default": "",
+            "title": "Reading Preferences",
+            "type": "string"
+          },
+          "religion_from_birth": {
+            "default": "",
+            "title": "Religion From Birth",
+            "type": "string"
+          },
+          "room_sharing_people_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Sharing People Count"
+          },
+          "schedule_satisfaction_reason": {
+            "default": "",
+            "title": "Schedule Satisfaction Reason",
+            "type": "string"
+          },
+          "schedule_satisfied": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule Satisfied"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SexValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "siblings": {
+            "items": {
+              "$ref": "#/components/schemas/SiblingPayload"
+            },
+            "title": "Siblings",
+            "type": "array"
+          },
+          "special_interest": {
+            "default": "",
+            "title": "Special Interest",
+            "type": "string"
+          },
+          "special_skills_talents": {
+            "default": "",
+            "title": "Special Skills Talents",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InventoryStatusValue"
+          },
+          "student_number": {
+            "default": "",
+            "title": "Student Number",
+            "type": "string"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "transportation_entries": {
+            "items": {
+              "$ref": "#/components/schemas/TransportationEntryPayload"
+            },
+            "title": "Transportation Entries",
+            "type": "array"
+          },
+          "weight": {
+            "default": "",
+            "title": "Weight",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "academic_year",
+          "status",
+          "submitted_at",
+          "form_revision"
+        ],
+        "title": "InventoryResponse",
+        "type": "object"
+      },
+      "InventoryStatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "form_revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormRevisionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/InventoryStatusValue"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          }
+        },
+        "required": [
+          "academic_year",
+          "status",
+          "submitted_at",
+          "form_revision"
+        ],
+        "title": "InventoryStatusResponse",
+        "type": "object"
+      },
+      "InventoryStatusValue": {
+        "enum": [
+          "MISSING",
+          "DRAFT",
+          "SUBMITTED"
+        ],
+        "title": "InventoryStatusValue",
+        "type": "string"
+      },
+      "InventorySummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "form_revision": {
+            "$ref": "#/components/schemas/FormRevisionSummary"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InventoryStatusValue"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          }
+        },
+        "required": [
+          "id",
+          "academic_year",
+          "status",
+          "submitted_at",
+          "form_revision"
+        ],
+        "title": "InventorySummaryResponse",
+        "type": "object"
+      },
+      "LivingArrangementValue": {
+        "enum": [
+          "OWN_HOUSE",
+          "BOARDING_HOUSE",
+          "WITH_RELATIVES"
+        ],
+        "title": "LivingArrangementValue",
+        "type": "string"
       },
       "LoginMFARequest": {
         "properties": {
@@ -1811,6 +3595,35 @@
         "title": "OfficeWeeklyResponse",
         "type": "object"
       },
+      "OrganizationMembershipPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "organization_name": {
+            "default": "",
+            "title": "Organization Name",
+            "type": "string"
+          },
+          "position_title": {
+            "default": "",
+            "title": "Position Title",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/OrganizationScopeValue"
+          },
+          "sort_order": {
+            "minimum": 0,
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope",
+          "sort_order"
+        ],
+        "title": "OrganizationMembershipPayload",
+        "type": "object"
+      },
       "OrganizationRole": {
         "enum": [
           "COUNSELOR",
@@ -1818,6 +3631,14 @@
           "STUDENT"
         ],
         "title": "OrganizationRole",
+        "type": "string"
+      },
+      "OrganizationScopeValue": {
+        "enum": [
+          "INSIDE_SCHOOL",
+          "OUTSIDE_SCHOOL"
+        ],
+        "title": "OrganizationScopeValue",
         "type": "string"
       },
       "OverrideRemovalResponse": {
@@ -1833,6 +3654,20 @@
         ],
         "title": "OverrideRemovalResponse",
         "type": "object"
+      },
+      "ParentStatusValue": {
+        "enum": [
+          "MARRIED_ANNULLED_LEGALLY_SEPARATED",
+          "TEMPORARILY_SEPARATED",
+          "PERMANENTLY_SEPARATED",
+          "MOTHER_WITH_OTHER_PARTNER",
+          "FATHER_WITH_OTHER_PARTNER",
+          "WIDOW_WIDOWER_LIVING_TOGETHER",
+          "MOTHER_OFW",
+          "FATHER_OFW"
+        ],
+        "title": "ParentStatusValue",
+        "type": "string"
       },
       "PasswordAccessConfirmRequest": {
         "properties": {
@@ -1986,6 +3821,20 @@
         ],
         "title": "PersonSummary",
         "type": "object"
+      },
+      "PostGraduationFieldValue": {
+        "enum": [
+          "PROFESSIONAL",
+          "AGRICULTURE",
+          "BUSINESS",
+          "TECHNICAL",
+          "OVERSEAS_WORKER",
+          "RELIGIOUS",
+          "PUBLIC_SERVICE",
+          "OTHER"
+        ],
+        "title": "PostGraduationFieldValue",
+        "type": "string"
       },
       "ProviderExceptionListResponse": {
         "additionalProperties": false,
@@ -2206,6 +4055,11 @@
             },
             "title": "Provider Roles",
             "type": "array"
+          },
+          "requires_current_inventory": {
+            "default": false,
+            "title": "Requires Current Inventory",
+            "type": "boolean"
           }
         },
         "required": [
@@ -2316,6 +4170,10 @@
             "title": "Provider Roles",
             "type": "array"
           },
+          "requires_current_inventory": {
+            "title": "Requires Current Inventory",
+            "type": "boolean"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -2330,6 +4188,7 @@
           "appointment_policy",
           "default_duration_minutes",
           "cancellation_cutoff_minutes",
+          "requires_current_inventory",
           "delivery_modes",
           "provider_roles",
           "is_active",
@@ -2420,6 +4279,11 @@
             },
             "title": "Provider Roles",
             "type": "array"
+          },
+          "requires_current_inventory": {
+            "default": false,
+            "title": "Requires Current Inventory",
+            "type": "boolean"
           }
         },
         "title": "ServiceUpdateRequest",
@@ -2543,6 +4407,71 @@
           "is_current"
         ],
         "title": "SessionSummary",
+        "type": "object"
+      },
+      "SexValue": {
+        "enum": [
+          "MALE",
+          "FEMALE"
+        ],
+        "title": "SexValue",
+        "type": "string"
+      },
+      "SiblingPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "age": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          },
+          "educational_attainment": {
+            "default": "",
+            "title": "Educational Attainment",
+            "type": "string"
+          },
+          "is_self": {
+            "default": false,
+            "title": "Is Self",
+            "type": "boolean"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "occupation": {
+            "default": "",
+            "title": "Occupation",
+            "type": "string"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SexValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sort_order": {
+            "minimum": 0,
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sort_order"
+        ],
+        "title": "SiblingPayload",
         "type": "object"
       },
       "StaffSupervisionListResponse": {
@@ -2682,6 +4611,47 @@
         ],
         "title": "TOTPSetupResponse",
         "type": "object"
+      },
+      "TransportationEntryPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "fare": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fare"
+          },
+          "frequency": {
+            "default": "",
+            "title": "Frequency",
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/TransportationModeValue"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "TransportationEntryPayload",
+        "type": "object"
+      },
+      "TransportationModeValue": {
+        "enum": [
+          "TRICYCLE",
+          "BUS",
+          "JEEPNEY",
+          "VAN",
+          "BOAT"
+        ],
+        "title": "TransportationModeValue",
+        "type": "string"
       },
       "TrustedSessionListResponse": {
         "properties": {
@@ -2954,6 +4924,216 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/academic-years": {
+      "get": {
+        "operationId": "academicYearsList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicYearListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Academic Years List",
+        "tags": [
+          "academic-years"
+        ]
+      },
+      "post": {
+        "operationId": "academicYearsCreate",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcademicYearCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicYearResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Academic Years Create",
+        "tags": [
+          "academic-years"
+        ]
+      }
+    },
+    "/api/v1/academic-years/{academic_year_id}/set-current": {
+      "post": {
+        "operationId": "academicYearsSetCurrent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "academic_year_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Academic Year Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicYearResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Academic Years Set Current",
+        "tags": [
+          "academic-years"
+        ]
+      }
+    },
     "/api/v1/accounts": {
       "get": {
         "operationId": "accountsList",
@@ -3355,6 +5535,8 @@
             "required": true,
             "schema": {
               "enum": [
+                "academic_years.manage",
+                "academic_years.view",
                 "accounts.manage",
                 "accounts.view",
                 "appointments.manage",
@@ -3365,6 +5547,10 @@
                 "availability.view",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
+                "institutional_forms.manage",
+                "institutional_forms.view",
+                "inventory.manage_self",
+                "inventory.view_self",
                 "organization.manage",
                 "organization.view",
                 "services.manage",
@@ -3466,6 +5652,8 @@
             "required": true,
             "schema": {
               "enum": [
+                "academic_years.manage",
+                "academic_years.view",
                 "accounts.manage",
                 "accounts.view",
                 "appointments.manage",
@@ -3476,6 +5664,10 @@
                 "availability.view",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
+                "institutional_forms.manage",
+                "institutional_forms.view",
+                "inventory.manage_self",
+                "inventory.view_self",
                 "organization.manage",
                 "organization.view",
                 "services.manage",
@@ -8136,6 +10328,857 @@
         ]
       }
     },
+    "/api/v1/institutional-forms": {
+      "get": {
+        "operationId": "institutionalFormsList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormFamilyListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Institutional Forms List",
+        "tags": [
+          "institutional-forms"
+        ]
+      }
+    },
+    "/api/v1/institutional-forms/revisions/{revision_id}/activate": {
+      "post": {
+        "operationId": "institutionalFormsRevisionsActivate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Revision Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormRevisionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Institutional Form Revision Activate",
+        "tags": [
+          "institutional-forms"
+        ]
+      }
+    },
+    "/api/v1/institutional-forms/revisions/{revision_id}/deactivate": {
+      "post": {
+        "operationId": "institutionalFormsRevisionsDeactivate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Revision Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormRevisionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Institutional Form Revision Deactivate",
+        "tags": [
+          "institutional-forms"
+        ]
+      }
+    },
+    "/api/v1/institutional-forms/{family_key}/revisions": {
+      "get": {
+        "operationId": "institutionalFormsRevisionsList",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "family_key",
+            "required": true,
+            "schema": {
+              "title": "Family Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormRevisionListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Institutional Form Revisions List",
+        "tags": [
+          "institutional-forms"
+        ]
+      },
+      "post": {
+        "operationId": "institutionalFormsRevisionsRegister",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "family_key",
+            "required": true,
+            "schema": {
+              "title": "Family Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormRevisionRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormRevisionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Institutional Form Revisions Register",
+        "tags": [
+          "institutional-forms"
+        ]
+      }
+    },
+    "/api/v1/inventory/me/current": {
+      "get": {
+        "operationId": "inventoryGetMyCurrent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inventory Get My Current",
+        "tags": [
+          "inventory"
+        ]
+      },
+      "post": {
+        "operationId": "inventoryEnsureMyCurrent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inventory Ensure My Current",
+        "tags": [
+          "inventory"
+        ]
+      },
+      "put": {
+        "operationId": "inventoryUpdateMyCurrent",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InventoryPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inventory Update My Current",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/me/current/submit": {
+      "post": {
+        "operationId": "inventorySubmitMyCurrent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inventory Submit My Current",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/me/history": {
+      "get": {
+        "operationId": "inventoryListMyHistory",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inventory List My History",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/me/status": {
+      "get": {
+        "operationId": "inventoryGetMyStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryStatusResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inventory Get My Status",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/me/{inventory_id}": {
+      "get": {
+        "operationId": "inventoryGetMyHistoryItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "inventory_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Inventory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inventory Get My History Item",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
     "/api/v1/me/activity": {
       "get": {
         "operationId": "meListActivity",
@@ -10754,6 +13797,18 @@
     {
       "description": "Assigned records of actual Counseling encounters.",
       "name": "counseling"
+    },
+    {
+      "description": "Institution-wide current Academic Year configuration.",
+      "name": "academic-years"
+    },
+    {
+      "description": "QMS-approved controlled-form revision metadata used by COMPASS.",
+      "name": "institutional-forms"
+    },
+    {
+      "description": "Student annual Individual Inventory self-service.",
+      "name": "inventory"
     }
   ]
 }
