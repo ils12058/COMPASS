@@ -5,9 +5,9 @@ from ninja import NinjaAPI
 
 from compass.account_management.api import router as account_management_router
 from compass.activity.api import router as activity_router
-from compass.availability.api import router as availability_router
 from compass.api.v1.health import router as health_router
 from compass.authentication.api import router as authentication_router
+from compass.availability.api import router as availability_router
 from compass.common.errors import register_exception_handlers
 from compass.organization.api import router as organization_router
 from compass.service_catalog.api import router as service_catalog_router
