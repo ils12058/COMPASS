@@ -656,7 +656,13 @@ def compute_base_availability(
         ends_at = min(interval.ends_at, range_end)
         if starts_at < ends_at:
             clipped.append(Interval(starts_at, ends_at))
-    available = normalize_intervals(clipped)
+    available = tuple(
+        Interval(
+            interval.starts_at.astimezone(zone),
+            interval.ends_at.astimezone(zone),
+        )
+        for interval in normalize_intervals(clipped)
+    )
 
     if service.default_duration_minutes is not None:
         minimum = timedelta(minutes=service.default_duration_minutes)
