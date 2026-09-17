@@ -491,6 +491,67 @@ def test_withdrawal_persists_when_recording_stop_fails():
 
 
 @pytest.mark.django_db
+def test_transcript_storage_withdrawal_disables_storage_even_when_stop_fails():
+    _, student, counselor, appointment = setup_session()
+    fake = FakeMediaDailyClient(fail_stop=True)
+    requested = request_consents(
+        counselor=counselor,
+        appointment_id=appointment.pk,
+        scopes=[ConsentScope.LIVE_TRANSCRIPTION, ConsentScope.TRANSCRIPT_STORAGE],
+        context=context(counselor),
+    )
+    approved = {}
+    for item in requested:
+        decided = decide_my_consent(
+            student=student,
+            appointment_id=appointment.pk,
+            consent_id=item["id"],
+            decision=ConsentDecision.APPROVED,
+            context=context(student),
+        )
+        approved[decided["scope"]] = decided
+
+    with override_settings(DAILY_ENABLED=True):
+        create_join_credential(
+            actor=student,
+            appointment_id=appointment.pk,
+            context=context(student),
+            daily_client=fake,
+        )
+        capture = start_transcription(
+            counselor=counselor,
+            appointment_id=appointment.pk,
+            store_transcript=True,
+            context=context(counselor),
+            daily_client=fake,
+        )
+    capture.status = MediaCaptureStatus.ACTIVE
+    capture.save(update_fields=["status", "updated_at"])
+
+    with override_settings(DAILY_ENABLED=True):
+        with pytest.raises(ECounselingProviderUnavailable):
+            withdraw_my_consent(
+                student=student,
+                appointment_id=appointment.pk,
+                consent_id=approved[ConsentScope.TRANSCRIPT_STORAGE]["id"],
+                context=context(student),
+                daily_client=fake,
+            )
+
+    consent = ECounselingConsent.objects.get(
+        pk=approved[ConsentScope.TRANSCRIPT_STORAGE]["id"]
+    )
+    capture.refresh_from_db()
+    assert consent.withdrawn_at is not None
+    assert not consent.is_effectively_approved
+    assert capture.status == MediaCaptureStatus.STOP_REQUESTED
+    assert capture.error_code == "STOP_PROVIDER_FAILED"
+    assert capture.transcript_storage_enabled is False
+    assert fake.transcription_stops
+    assert fake.room_updates[-1][1] == {"enable_transcription_storage": False}
+
+
+@pytest.mark.django_db
 def test_recording_webhooks_reconcile_without_persisting_temporary_access_values():
     _, student, counselor, appointment = setup_session()
     fake = FakeMediaDailyClient()
