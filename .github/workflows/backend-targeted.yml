@@ -76,6 +76,20 @@ jobs:
               '                    "The Idempotency-Key was already used for a different "\n'
               '                    "Routine Interview request."',
           )
+          text = text.replace(
+              '            if concurrent.direct_request_fingerprint != request_fingerprint:\n'
+              '                raise RoutineInterviewCreationConflict(\n'
+              '                    "The Idempotency-Key was already used for a different "\n'
+              '                    "Routine Interview request."\n'
+              '                )\n'
+              '            return _queryset().get(pk=concurrent.pk)',
+              '            if concurrent.direct_request_fingerprint != request_fingerprint:\n'
+              '                raise RoutineInterviewCreationConflict(\n'
+              '                    "The Idempotency-Key was already used for a different "\n'
+              '                    "Routine Interview request."\n'
+              '                ) from None\n'
+              '            return _queryset().get(pk=concurrent.pk)',
+          )
           services.write_text(text)
           PY
           uv run ruff check --fix --unsafe-fixes . || true
