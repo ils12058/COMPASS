@@ -1,0 +1,120 @@
+name: Inventory branch bootstrap
+
+on:
+  push:
+    branches: [feature/student-inventory-foundation]
+    paths:
+      - ".github/workflows/inventory-bootstrap.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/student-inventory-foundation
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install locked dependencies
+        working-directory: be
+        run: uv sync --frozen
+      - name: Apply bounded cross-domain patches
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def patch(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"patch anchor missing in {path}: {old[:100]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          patch(
+              "be/config/settings.py",
+              '    "compass.counseling",\n]',
+              '    "compass.counseling",\n    "compass.institutional_forms",\n    "compass.inventory",\n]',
+          )
+
+          patch(
+              "be/compass/api/v1/router.py",
+              'from compass.counseling.api import router as counseling_router\nfrom compass.organization.api import router as organization_router',
+              'from compass.counseling.api import router as counseling_router\nfrom compass.institutional_forms.api import router as institutional_forms_router\nfrom compass.inventory.api import router as inventory_router\nfrom compass.organization.academic_years_api import router as academic_years_router\nfrom compass.organization.api import router as organization_router',
+          )
+          patch(
+              "be/compass/api/v1/router.py",
+              '            {\n                "name": "counseling",\n                "description": "Assigned records of actual Counseling encounters.",\n            },\n',
+              '            {\n                "name": "counseling",\n                "description": "Assigned records of actual Counseling encounters.",\n            },\n            {\n                "name": "academic-years",\n                "description": "Institution-wide current Academic Year configuration.",\n            },\n            {\n                "name": "institutional-forms",\n                "description": "QMS-approved controlled-form revision metadata used by COMPASS.",\n            },\n            {\n                "name": "inventory",\n                "description": "Student annual Individual Inventory self-service.",\n            },\n',
+          )
+          patch(
+              "be/compass/api/v1/router.py",
+              'api.add_router("/counseling", counseling_router)\nregister_exception_handlers(api)',
+              'api.add_router("/counseling", counseling_router)\napi.add_router("/academic-years", academic_years_router)\napi.add_router("/institutional-forms", institutional_forms_router)\napi.add_router("/inventory", inventory_router)\nregister_exception_handlers(api)',
+          )
+
+          patch(
+              "be/compass/api/contract.py",
+              '        "counseling",\n    }',
+              '        "counseling",\n        "academic-years",\n        "institutional-forms",\n        "inventory",\n    }',
+          )
+          patch(
+              "be/compass/api/contract.py",
+              '    "counseling": "counseling",\n}',
+              '    "counseling": "counseling",\n    "academic-years": "academicYears",\n    "institutional-forms": "institutionalForms",\n    "inventory": "inventory",\n}',
+          )
+
+          patch(
+              "be/compass/appointments/services.py",
+              'from compass.availability.services import AvailabilityError, compute_base_availability\nfrom compass.organization.services import resolve_default_counselor_for_student',
+              'from compass.availability.services import AvailabilityError, compute_base_availability\nfrom compass.inventory.services import (\n    CurrentAcademicYearNotConfigured,\n    InventoryStatus,\n    get_current_inventory_status,\n)\nfrom compass.organization.services import resolve_default_counselor_for_student',
+          )
+          patch(
+              "be/compass/appointments/services.py",
+              'class AppointmentReferenceConflict(AppointmentError):\n    pass\n\n\n@dataclass',
+              'class AppointmentReferenceConflict(AppointmentError):\n    pass\n\n\nclass AppointmentCurrentInventoryRequired(AppointmentError):\n    pass\n\n\nclass AppointmentCurrentAcademicYearNotConfigured(AppointmentError):\n    pass\n\n\n@dataclass',
+          )
+          patch(
+              "be/compass/appointments/services.py",
+              '    if not provider_role_eligible(service, provider):\n        raise AppointmentNotSchedulable("The selected Counselor is not eligible for this Service.")\n\n\ndef _resolve_booking_provider',
+              '    if not provider_role_eligible(service, provider):\n        raise AppointmentNotSchedulable("The selected Counselor is not eligible for this Service.")\n\n\ndef _validate_inventory_prerequisite(service: Service, student: User) -> None:\n    if not service.requires_current_inventory:\n        return\n    try:\n        status = get_current_inventory_status(student)\n    except CurrentAcademicYearNotConfigured as exc:\n        raise AppointmentCurrentAcademicYearNotConfigured(\n            "No current Academic Year is configured for Inventory prerequisites."\n        ) from exc\n    if status.status != InventoryStatus.SUBMITTED:\n        raise AppointmentCurrentInventoryRequired(\n            "A submitted Individual Inventory for the current Academic Year is required."\n        )\n\n\ndef _resolve_booking_provider',
+          )
+          patch(
+              "be/compass/appointments/services.py",
+              '        _validate_booking_service(service, locked_provider, normalized_mode)\n\n        ends_at = normalized_start',
+              '        _validate_booking_service(service, locked_provider, normalized_mode)\n        _validate_inventory_prerequisite(service, locked_student)\n\n        ends_at = normalized_start',
+          )
+
+          patch(
+              "be/compass/appointments/api.py",
+              '    AppointmentCancellationConflict,\n    AppointmentDefaultProviderUnresolved,',
+              '    AppointmentCancellationConflict,\n    AppointmentCurrentAcademicYearNotConfigured,\n    AppointmentCurrentInventoryRequired,\n    AppointmentDefaultProviderUnresolved,',
+          )
+          patch(
+              "be/compass/appointments/api.py",
+              'def _raise(exc: AppointmentError) -> NoReturn:\n    if isinstance(exc, AppointmentNotFound):',
+              'def _raise(exc: AppointmentError) -> NoReturn:\n    if isinstance(exc, AppointmentCurrentAcademicYearNotConfigured):\n        raise APIError(409, "current_academic_year_not_configured", str(exc)) from exc\n    if isinstance(exc, AppointmentCurrentInventoryRequired):\n        raise APIError(409, "current_inventory_required", str(exc)) from exc\n    if isinstance(exc, AppointmentNotFound):',
+          )
+          PY
+      - name: Format and generate migrations
+        working-directory: be
+        run: |
+          uv run ruff format compass
+          uv run ruff check --fix compass
+          uv run python manage.py makemigrations organization institutional_forms service_catalog inventory --settings=tests.settings
+          uv run python manage.py makemigrations --check --dry-run --settings=tests.settings
+      - name: Commit canonical branch edits
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/inventory-bootstrap.yml
+          git add -A
+          git diff --cached --check
+          git commit -m "Wire Inventory foundation integration"
+          git push origin HEAD:feature/student-inventory-foundation
