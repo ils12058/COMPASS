@@ -1,8 +1,8 @@
 """Reusable Redis boundary for idempotent state-changing operations.
 
 This layer reserves a request once, compares future requests by fingerprint, and stores the
-completed response for replay. It is intentionally not wired to any endpoint until a domain
-operation defines its actor identity and response semantics.
+completed response for replay. Domains remain responsible for actor scoping, response semantics,
+and authoritative database transactions.
 """
 
 from __future__ import annotations
@@ -27,6 +27,16 @@ record.status_code = tonumber(ARGV[2])
 record.content_type = ARGV[3]
 record.body_b64 = ARGV[4]
 redis.call('SET', KEYS[1], cjson.encode(record), 'EX', ARGV[5])
+return 1
+"""
+
+_ABANDON_SCRIPT = """
+local raw = redis.call('GET', KEYS[1])
+if not raw then return -1 end
+local record = cjson.decode(raw)
+if record.owner_token ~= ARGV[1] then return 0 end
+if record.state ~= 'in_progress' then return -2 end
+redis.call('DEL', KEYS[1])
 return 1
 """
 
@@ -193,3 +203,21 @@ class RedisIdempotencyStore:
             raise IdempotencyOwnershipError("idempotency reservation is owned by another request")
         if result != 1:
             raise IdempotencyUnavailable("idempotency reservation no longer exists")
+
+    def abandon(self, reservation: IdempotencyReservation) -> None:
+        """Release an owned in-progress reservation after a rolled-back domain operation."""
+        try:
+            result = int(
+                self.client.eval(
+                    _ABANDON_SCRIPT,
+                    1,
+                    reservation.redis_key,
+                    reservation.owner_token,
+                )
+            )
+        except redis.exceptions.RedisError as exc:
+            raise IdempotencyUnavailable("idempotency Redis is unavailable") from exc
+        if result == 0:
+            raise IdempotencyOwnershipError("idempotency reservation is owned by another request")
+        if result != 1:
+            raise IdempotencyUnavailable("idempotency reservation cannot be abandoned")
