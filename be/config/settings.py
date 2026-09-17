@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "compass.counseling",
     "compass.institutional_forms",
     "compass.inventory",
+    "compass.routine_interviews",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -101,7 +102,7 @@ TEMPLATES = [
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
-                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
             ],
         },
