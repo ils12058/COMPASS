@@ -140,7 +140,9 @@ def _appointment_queryset():
     )
 
 
-def _date_bounds(from_date: date | None, to_date: date | None) -> tuple[datetime | None, datetime | None]:
+def _date_bounds(
+    from_date: date | None, to_date: date | None
+) -> tuple[datetime | None, datetime | None]:
     if from_date is not None and not isinstance(from_date, date):
         raise InvalidAppointmentInput("from_date must be a date")
     if to_date is not None and not isinstance(to_date, date):
@@ -149,11 +151,7 @@ def _date_bounds(from_date: date | None, to_date: date | None) -> tuple[datetime
         raise InvalidAppointmentInput("from_date must not be after to_date")
     zone = _institution_zone()
     start = datetime.combine(from_date, time.min, tzinfo=zone) if from_date else None
-    end = (
-        datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=zone)
-        if to_date
-        else None
-    )
+    end = datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=zone) if to_date else None
     return start, end
 
 
@@ -210,7 +208,9 @@ def list_managed_appointments(
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> AppointmentPage:
     normalized_status = _normalized_status(status)
-    normalized_mode = _normalized_delivery_mode(delivery_mode) if delivery_mode is not None else None
+    normalized_mode = (
+        _normalized_delivery_mode(delivery_mode) if delivery_mode is not None else None
+    )
     qs = _appointment_queryset()
     if normalized_status is not None:
         qs = qs.filter(status=normalized_status)
@@ -316,7 +316,8 @@ def _interval_is_available(
     except AvailabilityError as exc:
         raise AppointmentTimeUnavailable("The requested time is not available.") from exc
     return any(
-        interval.starts_at <= starts_at and ends_at <= interval.ends_at for interval in result.windows
+        interval.starts_at <= starts_at and ends_at <= interval.ends_at
+        for interval in result.windows
     )
 
 
@@ -456,12 +457,7 @@ def cancel_appointment(
 ) -> Appointment:
     current = now or timezone.now()
     with transaction.atomic():
-        item = (
-            _appointment_queryset()
-            .select_for_update()
-            .filter(pk=appointment_id)
-            .first()
-        )
+        item = _appointment_queryset().select_for_update().filter(pk=appointment_id).first()
         if item is None:
             raise AppointmentNotFound("The requested Appointment was not found.")
         if administrative:
