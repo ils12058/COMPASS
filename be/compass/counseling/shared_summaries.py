@@ -142,7 +142,7 @@ def publish_assigned_shared_summary(
             context=context,
             action=COUNSELING_SHARED_SUMMARY_PUBLISHED,
             outcome=AuditOutcome.SUCCESS,
-            target_type="counseling.shared_summary",
+            target_type="counseling.sharedsummary",
             target_id=item.pk,
             metadata={"counseling_encounter_id": str(encounter.pk)},
         )
