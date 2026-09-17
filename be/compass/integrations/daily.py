@@ -72,7 +72,11 @@ class DailyClient:
         *,
         payload: dict[str, object] | None = None,
     ) -> dict[str, object]:
-        body = None if payload is None else json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        body = (
+            None
+            if payload is None
+            else json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        )
         request = Request(
             f"{self.base_url}{path}",
             data=body,
