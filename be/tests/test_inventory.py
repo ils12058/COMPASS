@@ -191,9 +191,7 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
                     "position_title": "Member",
                 }
             ],
-            "transportation_entries": [
-                {"mode": "TRICYCLE", "frequency": "Daily", "fare": "20.00"}
-            ],
+            "transportation_entries": [{"mode": "TRICYCLE", "frequency": "Daily", "fare": "20.00"}],
         },
     )
     assert updated.pk == item.pk
