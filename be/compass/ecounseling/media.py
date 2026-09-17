@@ -812,37 +812,50 @@ def withdraw_my_consent(
                     capture_to_stop = capture
 
     # Withdrawal is already durable before any provider call. Provider failure never rolls it back.
+    # Stop capture and disable transcript storage are independent mitigations: failure of one must
+    # not prevent the other from being attempted.
+    provider_error: ECounselingError | None = None
     if capture_to_stop is not None:
-        _execute_provider_stop(
-            capture=capture_to_stop,
-            room=room,
-            daily_client=daily_client,
-        )
-    if disable_storage and room.provisioned_at:
-        client = _daily_client(daily_client)
         try:
+            _execute_provider_stop(
+                capture=capture_to_stop,
+                room=room,
+                daily_client=daily_client,
+            )
+        except ECounselingError as exc:
+            provider_error = exc
+
+    if disable_storage and room.provisioned_at:
+        try:
+            client = _daily_client(daily_client)
             client.update_room(
                 room_name=room.daily_room_name,
                 properties={"enable_transcription_storage": False},
             )
+        except ECounselingError as exc:
+            if provider_error is None:
+                provider_error = exc
         except (
             DailyConfigurationError,
             DailyUnavailable,
             DailyHTTPError,
             DailyInvalidResponse,
         ) as exc:
-            if capture_to_stop is not None:
-                _mark_stop_failed(capture_to_stop.pk)
-            raise _provider_failure(exc) from exc
-        with transaction.atomic():
-            capture = (
-                ECounselingMediaCapture.objects.select_for_update()
-                .filter(room=room, kind=MediaCaptureKind.TRANSCRIPTION)
-                .first()
-            )
-            if capture is not None:
-                capture.transcript_storage_enabled = False
-                capture.save(update_fields=["transcript_storage_enabled", "updated_at"])
+            if provider_error is None:
+                provider_error = _provider_failure(exc)
+        else:
+            with transaction.atomic():
+                capture = (
+                    ECounselingMediaCapture.objects.select_for_update()
+                    .filter(room=room, kind=MediaCaptureKind.TRANSCRIPTION)
+                    .first()
+                )
+                if capture is not None:
+                    capture.transcript_storage_enabled = False
+                    capture.save(update_fields=["transcript_storage_enabled", "updated_at"])
+
+    if provider_error is not None:
+        raise provider_error
     return _consent_dict(ECounselingConsent.objects.get(pk=consent_id))
 
 
