@@ -538,9 +538,7 @@ def test_transcript_storage_withdrawal_disables_storage_even_when_stop_fails():
                 daily_client=fake,
             )
 
-    consent = ECounselingConsent.objects.get(
-        pk=approved[ConsentScope.TRANSCRIPT_STORAGE]["id"]
-    )
+    consent = ECounselingConsent.objects.get(pk=approved[ConsentScope.TRANSCRIPT_STORAGE]["id"])
     capture.refresh_from_db()
     assert consent.withdrawn_at is not None
     assert not consent.is_effectively_approved
