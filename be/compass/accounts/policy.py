@@ -165,6 +165,26 @@ CAPABILITY_DEFINITIONS = (
         name="Manage own individual inventory",
         description="Create, edit, and submit the authenticated Student's current Inventory.",
     ),
+    CapabilityDefinition(
+        code="routine_interviews.view_self",
+        name="View own routine interviews",
+        description="View the authenticated Student's own Routine Interview records.",
+    ),
+    CapabilityDefinition(
+        code="routine_interviews.manage_self",
+        name="Manage own routine interview intake",
+        description="Create, edit, and submit the authenticated Student's Routine Interview Intake.",
+    ),
+    CapabilityDefinition(
+        code="routine_interviews.view_assigned",
+        name="View assigned routine interviews",
+        description="View Routine Interviews assigned to the authenticated Counselor.",
+    ),
+    CapabilityDefinition(
+        code="routine_interviews.manage_assigned",
+        name="Manage assigned routine interviews",
+        description="Create direct Routine Interviews and manage assigned Counselor Evaluations.",
+    ),
 )
 
 # Account identity is visible to operational actors through future, scoped workflows. Account
@@ -193,6 +213,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "appointments.view_self",
             "counseling.view_assigned",
             "counseling.manage_assigned",
+            "routine_interviews.view_assigned",
+            "routine_interviews.manage_assigned",
         }
     ),
     "GUIDANCE_SERVICES_STAFF": frozenset(
@@ -214,6 +236,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "appointments.manage_self",
             "inventory.view_self",
             "inventory.manage_self",
+            "routine_interviews.view_self",
+            "routine_interviews.manage_self",
         }
     ),
 }
