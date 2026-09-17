@@ -367,9 +367,12 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _response_statuses(
         _operation(schema, "/api/v1/e-counseling/appointments/{appointment_id}/join", "post")
     ) >= {200, 401, 403, 404, 409, 502, 503}
-    assert _response_statuses(
-        _operation(schema, "/api/v1/integrations/daily/webhook", "post")
-    ) >= {200, 400, 403, 503}
+    assert _response_statuses(_operation(schema, "/api/v1/integrations/daily/webhook", "post")) >= {
+        200,
+        400,
+        403,
+        503,
+    }
 
     for method, path, operation in iter_operations(schema):
         for status, response in operation["responses"].items():
