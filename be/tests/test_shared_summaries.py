@@ -276,11 +276,12 @@ def test_authorization_requires_capability_and_actual_encounter_relationship():
         )
         assert response.status_code == 403
 
-    student_response = auth_client(student).put(
+    student_client = auth_client(student)
+    student_response = student_client.put(
         f"/api/v1/counseling/encounters/{encounter.pk}/shared-summary",
         data=json.dumps({"content": "not allowed"}),
         content_type="application/json",
-        **csrf(auth_client(student)),
+        **csrf(student_client),
     )
     assert student_response.status_code == 403
 
