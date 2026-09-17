@@ -331,7 +331,7 @@ def test_create_it_admin_bootstraps_hashed_password_and_is_safe_on_repeat():
         call_command(
             "create_it_admin",
             "--email",
-            "it-admin@example.edu",
+            "it.admin@example.edu",
             "--first-name",
             "Changed",
             "--last-name",
