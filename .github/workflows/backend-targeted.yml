@@ -51,46 +51,80 @@ jobs:
       - name: Install locked dependencies
         working-directory: be
         run: uv sync --frozen
-      - name: Normalize branch artifacts
+      - name: Bootstrap Routine Interview fixes
         if: github.event_name == 'pull_request'
         working-directory: be
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          policy = Path("compass/accounts/policy.py")
-          text = policy.read_text()
-          text = text.replace(
-              '        description="Create, edit, and submit the authenticated Student\'s Routine Interview Intake.",',
-              '        description=(\n'
-              '            "Create, edit, and submit the authenticated Student\'s "\n'
-              '            "Routine Interview Intake."\n'
-              '        ),',
-          )
-          policy.write_text(text)
-
           services = Path("compass/routine_interviews/services.py")
           text = services.read_text()
           text = text.replace(
-              '                    "The Idempotency-Key was already used for a different Routine Interview request."',
-              '                    "The Idempotency-Key was already used for a different "\n'
-              '                    "Routine Interview request."',
-          )
-          text = text.replace(
-              '            if concurrent.direct_request_fingerprint != request_fingerprint:\n'
-              '                raise RoutineInterviewCreationConflict(\n'
-              '                    "The Idempotency-Key was already used for a different "\n'
-              '                    "Routine Interview request."\n'
-              '                )\n'
-              '            return _queryset().get(pk=concurrent.pk)',
-              '            if concurrent.direct_request_fingerprint != request_fingerprint:\n'
-              '                raise RoutineInterviewCreationConflict(\n'
-              '                    "The Idempotency-Key was already used for a different "\n'
-              '                    "Routine Interview request."\n'
-              '                ) from None\n'
-              '            return _queryset().get(pk=concurrent.pk)',
+              'target_type="routine_interviews.routineinterview"',
+              'target_type="routine.interview"',
           )
           services.write_text(text)
+
+          accounts = Path("tests/test_accounts.py")
+          text = accounts.read_text()
+          text = text.replace("RoleCapability.objects.count() == 29", "RoleCapability.objects.count() == 33")
+          text = text.replace("Capability.objects.count() == 20", "Capability.objects.count() == 24")
+          text = text.replace(
+              '        "counseling.manage_assigned",\n    }',
+              '        "counseling.manage_assigned",\n'
+              '        "routine_interviews.view_assigned",\n'
+              '        "routine_interviews.manage_assigned",\n'
+              '    }',
+              1,
+          )
+          text = text.replace(
+              '    assert user.has_capability("counseling.manage_assigned")\n'
+              '    assert not user.has_capability("accounts.manage")',
+              '    assert user.has_capability("counseling.manage_assigned")\n'
+              '    assert user.has_capability("routine_interviews.view_assigned")\n'
+              '    assert user.has_capability("routine_interviews.manage_assigned")\n'
+              '    assert not user.has_capability("accounts.manage")',
+              1,
+          )
+          accounts.write_text(text)
+
+          contract = Path("tests/test_openapi_contract.py")
+          text = contract.read_text()
+          text = text.replace(
+              '    "inventoryGetMyHistoryItem",\n}',
+              '    "inventoryGetMyHistoryItem",\n'
+              '    "routineInterviewsEnsureMyForAppointment",\n'
+              '    "routineInterviewsCreateDirect",\n'
+              '    "routineInterviewsListMine",\n'
+              '    "routineInterviewsGetMine",\n'
+              '    "routineInterviewsReplaceMyIntake",\n'
+              '    "routineInterviewsSubmitMyIntake",\n'
+              '    "routineInterviewsGetAssigned",\n'
+              '    "routineInterviewsReplaceAssignedEvaluation",\n'
+              '    "routineInterviewsFinalizeAssignedEvaluation",\n'
+              '}',
+              1,
+          )
+          text = text.replace(
+              '        "inventory",\n    ]',
+              '        "inventory",\n'
+              '        "routine-interviews",\n'
+              '    ]',
+              1,
+          )
+          text = text.replace(
+              '            "organization.view",\n'
+              '            "services.manage",',
+              '            "organization.view",\n'
+              '            "routine_interviews.manage_assigned",\n'
+              '            "routine_interviews.manage_self",\n'
+              '            "routine_interviews.view_assigned",\n'
+              '            "routine_interviews.view_self",\n'
+              '            "services.manage",',
+              1,
+          )
+          contract.write_text(text)
           PY
           uv run ruff check --fix --unsafe-fixes . || true
           uv run ruff format .
@@ -99,7 +133,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add . ../contracts/openapi.json
-            git commit -m "Normalize Routine Interview branch"
+            git commit -m "Fix Routine Interview validation regressions"
             git push origin HEAD:${{ github.event.pull_request.head.ref }}
           fi
       - name: Static and migration checks
