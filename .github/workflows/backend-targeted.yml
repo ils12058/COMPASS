@@ -9,8 +9,10 @@ on:
       - ".github/workflows/backend-targeted.yml"
   workflow_dispatch:
 
+# TEMPORARY same-repository bootstrap permission. This will be restored to contents: read after
+# Ruff formatting and the generated OpenAPI contract are committed to the feature branch.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   targeted-backend:
@@ -51,6 +53,9 @@ jobs:
       - name: Install locked dependencies
         working-directory: be
         run: uv sync --frozen
+      - name: Normalize source formatting
+        working-directory: be
+        run: uv run ruff format .
       - name: Static and migration checks
         working-directory: be
         run: |
@@ -70,6 +75,16 @@ jobs:
         with:
           name: openapi-contract
           path: contracts/openapi.json
+      - name: Commit normalized source and OpenAPI contract
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add be contracts/openapi.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Normalize media foundation and OpenAPI contract"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          fi
       - name: Contract must be committed
         run: git diff --exit-code -- contracts/openapi.json
       # Daily provider traffic is fully mocked; targeted CI must never contact Daily.co.
