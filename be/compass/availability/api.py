@@ -177,7 +177,9 @@ def _raise(exc: AvailabilityError) -> NoReturn:
         raise APIError(409, "availability_not_applicable", str(exc)) from exc
     if isinstance(exc, AvailabilityConflict):
         raise APIError(409, "availability_conflict", str(exc)) from exc
-    raise APIError(500, "internal_error", "The Availability operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "The Availability operation could not be completed."
+    ) from exc
 
 
 def _window(item) -> dict[str, object]:
