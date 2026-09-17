@@ -113,6 +113,21 @@ EXPECTED_OPERATION_IDS = {
     "counselingGetEncounter",
     "counselingUpdateEncounter",
     "counselingListStudents",
+    "academicYearsList",
+    "academicYearsCreate",
+    "academicYearsSetCurrent",
+    "institutionalFormsList",
+    "institutionalFormsRevisionsList",
+    "institutionalFormsRevisionsRegister",
+    "institutionalFormsRevisionsActivate",
+    "institutionalFormsRevisionsDeactivate",
+    "inventoryGetMyStatus",
+    "inventoryGetMyCurrent",
+    "inventoryEnsureMyCurrent",
+    "inventoryUpdateMyCurrent",
+    "inventorySubmitMyCurrent",
+    "inventoryListMyHistory",
+    "inventoryGetMyHistoryItem",
 }
 
 
@@ -176,6 +191,9 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "availability",
         "appointments",
         "counseling",
+        "academic-years",
+        "institutional-forms",
+        "inventory",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -348,6 +366,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     assert schemas["CapabilityCode"]["enum"] == [
         "accounts.manage",
         "accounts.view",
+        "academic_years.manage",
+        "academic_years.view",
         "appointments.manage",
         "appointments.manage_self",
         "appointments.view_self",
@@ -356,6 +376,10 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "availability.view",
         "counseling.manage_assigned",
         "counseling.view_assigned",
+        "institutional_forms.manage",
+        "institutional_forms.view",
+        "inventory.manage_self",
+        "inventory.view_self",
         "organization.manage",
         "organization.view",
         "services.manage",
@@ -383,6 +407,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "REFERRED",
     ]
     assert "cancellation_cutoff_minutes" in schemas["ServiceResponse"]["properties"]
+    assert "requires_current_inventory" in schemas["ServiceResponse"]["properties"]
 
     response_schema_names = {
         "AccountSummaryResponse",
