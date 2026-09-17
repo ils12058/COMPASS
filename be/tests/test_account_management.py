@@ -16,6 +16,7 @@ from compass.accounts.models import (
     UserCapabilityOverride,
     UserDesignation,
 )
+from compass.appointments.models import Appointment
 from compass.audit.models import AuditEvent
 from compass.authentication.crypto import encrypt_totp_secret
 from compass.authentication.models import (
@@ -31,7 +32,6 @@ from compass.authentication.sessions import (
     create_login_challenge,
     create_trusted_session,
 )
-from compass.appointments.models import Appointment
 from compass.availability.models import ProviderAvailabilityWindow
 from compass.service_catalog.models import Service
 
