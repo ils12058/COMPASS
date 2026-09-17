@@ -5,8 +5,8 @@ Authentication / Account Security, self-activity projections, and purpose-built 
 It intentionally stops before broader business workflows: configuration, health, error handling,
 request correlation, rate-limit and idempotency primitives, external-service adapters, account
 identity, capability policy, server-managed authentication, administrative account management, and
-local/live-staging container wiring are included. Organization & Scope, Service Catalog, and the
-Availability foundation are included; Appointment and downstream service workflows remain deferred.
+local/live-staging container wiring are included. Organization & Scope, Service Catalog, Availability, and the Appointment foundation are included;
+downstream service-delivery and Counseling workflows remain deferred.
 
 ## Baseline
 
@@ -252,7 +252,8 @@ route, so it remains usable when `API_DOCS_ENABLED=false`. When enabled, local S
 `/api/v1/docs` and the raw schema is at `/api/v1/openapi.json`.
 
 Operation IDs are stable public identifiers (`health<Action>`, `auth<Action>`, `me<Action>`,
-`accounts<Action>`, `organization<Action>`, `services<Action>`, and `availability<Action>`), and tags are bounded domains rather than user roles. Intentional path, method,
+`accounts<Action>`, `organization<Action>`, `services<Action>`, `availability<Action>`, and
+`appointments<Action>`), and tags are bounded domains rather than user roles. Intentional path, method,
 operation ID, parameter, schema, status-code, enum, or security changes must update the artifact
 in the same change. Future frontend work should use relative `/api/` requests through a same-origin
 proxy or ingress, preserve browser cookie credentials and Django CSRF behavior, and never read or
@@ -321,8 +322,9 @@ the Compose services when deployment automation is introduced.
 - Redis rate limiting uses an atomic Lua `INCR`/`EXPIRE` operation, but no endpoint policy is
   invented here. Turnstile verification is a separate server-side adapter and is not a rate limit.
 - Idempotency is a reusable Redis reservation/replay boundary keyed by actor + method + route +
-  idempotency key and compared by request fingerprint. It is not a substitute for database
-  uniqueness constraints and is not attached to an endpoint yet.
+  idempotency key and compared by request fingerprint. Appointment booking is its first endpoint
+  consumer. It is not transactionally atomic with PostgreSQL and never replaces database locking
+  or conflict validation.
 - Storage and email calls go through app-facing adapters. Durable uploads are not written to the
   container filesystem.
 - Audit events are synchronous PostgreSQL writes through one explicit service. They carry the
@@ -447,3 +449,36 @@ Availability configuration is audited synchronously but is not projected into My
 Security Activity. Counseling's current one-hour norm remains Service configuration
 (`default_duration_minutes = 60`), not a maximum. The confirmed Counseling cancellation cutoff of
 30 minutes before Appointment start is explicitly deferred to the future Appointment domain.
+
+
+## Appointment foundation
+
+Appointments are shared reservation records, not Counseling encounters. Student self-booking
+derives the Student from the authenticated account, resolves either an explicitly selected active
+Counselor or the canonical Organization default Counselor, derives duration from the active
+Service, validates the entire proposed interval through Availability, and prevents overlapping
+SCHEDULED reservations for both Student and Provider.
+
+Booking locks Student and Provider accounts in deterministic UUID order and then locks the Service
+row. Human references use `APT-YYYY-NNNNNN`, where YYYY is the local booking year in
+`settings.TIME_ZONE`. Service cancellation cutoff is snapshotted into each Appointment so later
+catalog changes do not alter existing cancellation behavior.
+
+```text
+POST /api/v1/appointments
+GET  /api/v1/appointments/me
+GET  /api/v1/appointments
+GET  /api/v1/appointments/{appointment_id}
+POST /api/v1/appointments/{appointment_id}/cancel
+GET  /api/v1/appointments/booking/counselors
+```
+
+Student self-booking and self-cancellation use `appointments.manage_self`; assigned Students and
+Providers use `appointments.view_self`; operational management uses `appointments.manage` and
+administrative cancellation requires recent MFA. Head Guidance Counselor receives Appointment
+management through designation. IT Admin does not receive Appointment business-data authority by
+default.
+
+There is no Appointment PATCH/DELETE, slot table, rescheduling, completion/no-show state,
+replacement-provider automation, room scheduling, notification workflow, Call Slip integration, or
+Counseling/e-Counseling delivery in this foundation.

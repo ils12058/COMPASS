@@ -108,6 +108,21 @@ CAPABILITY_DEFINITIONS = (
         name="Manage own availability",
         description="Manage the authenticated Counselor's own provider Availability.",
     ),
+    CapabilityDefinition(
+        code="appointments.view_self",
+        name="View own appointments",
+        description="View Appointments assigned to the authenticated Student or Provider.",
+    ),
+    CapabilityDefinition(
+        code="appointments.manage_self",
+        name="Manage own appointments",
+        description="Create and cancel the authenticated Student's own Appointment reservations.",
+    ),
+    CapabilityDefinition(
+        code="appointments.manage",
+        name="Manage appointments",
+        description="Manage Guidance-office Appointment reservations operationally.",
+    ),
 )
 
 # Account identity is visible to operational actors through future, scoped workflows. Account
@@ -133,13 +148,27 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "services.view",
             "availability.view",
             "availability.manage_self",
+            "appointments.view_self",
         }
     ),
     "GUIDANCE_SERVICES_STAFF": frozenset(
-        {"accounts.view", "organization.view", "services.view", "availability.view"}
+        {
+            "accounts.view",
+            "organization.view",
+            "services.view",
+            "availability.view",
+            "appointments.view_self",
+        }
     ),
     "STUDENT": frozenset(
-        {"accounts.view", "organization.view", "services.view", "availability.view"}
+        {
+            "accounts.view",
+            "organization.view",
+            "services.view",
+            "availability.view",
+            "appointments.view_self",
+            "appointments.manage_self",
+        }
     ),
 }
 
@@ -148,7 +177,12 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
 # designation into a role.
 DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     "HEAD_GUIDANCE_COUNSELOR": frozenset(
-        {"organization.manage", "services.manage", "availability.manage"}
+        {
+            "organization.manage",
+            "services.manage",
+            "availability.manage",
+            "appointments.manage",
+        }
     ),
     "DPO": frozenset(),
 }

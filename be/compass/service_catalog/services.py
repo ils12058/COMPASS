@@ -111,6 +111,16 @@ def _normalize_duration(value: int | None) -> int | None:
     return value
 
 
+def _normalize_cancellation_cutoff(value: int | None) -> int | None:
+    if value is None:
+        return None
+    if type(value) is not int or value < 0:
+        raise InvalidServiceCatalogInput(
+            "cancellation_cutoff_minutes must be a non-negative integer or null"
+        )
+    return value
+
+
 def _normalize_modes(values: list[str] | tuple[str, ...] | None) -> frozenset[str]:
     if values is None:
         return frozenset()
@@ -150,12 +160,14 @@ def _validate_active_configuration(
     name: str,
     appointment_policy: str,
     default_duration_minutes: int | None,
+    cancellation_cutoff_minutes: int | None,
     delivery_modes: frozenset[str],
     provider_roles: frozenset[str],
 ) -> None:
     _normalize_name(name)
     policy = _normalize_policy(appointment_policy)
     duration = _normalize_duration(default_duration_minutes)
+    cutoff = _normalize_cancellation_cutoff(cancellation_cutoff_minutes)
     if not delivery_modes:
         raise ServiceCatalogConflict("An active Service must have at least one delivery mode.")
     if not provider_roles:
@@ -163,6 +175,10 @@ def _validate_active_configuration(
     if policy in {AppointmentPolicy.OPTIONAL, AppointmentPolicy.REQUIRED} and duration is None:
         raise ServiceCatalogConflict(
             "OPTIONAL and REQUIRED Services need a default schedulable duration before activation."
+        )
+    if policy == AppointmentPolicy.NONE and cutoff is not None:
+        raise ServiceCatalogConflict(
+            "A Service with appointment_policy NONE cannot configure a cancellation cutoff."
         )
 
 
@@ -226,6 +242,7 @@ def create_service(
     appointment_policy: str,
     description: str | None = "",
     default_duration_minutes: int | None = None,
+    cancellation_cutoff_minutes: int | None = None,
     delivery_modes: list[str] | tuple[str, ...] | None = None,
     provider_roles: list[str] | tuple[str, ...] | None = None,
     context: AuditContext,
@@ -235,6 +252,7 @@ def create_service(
     normalized_description = _normalize_description(description)
     normalized_policy = _normalize_policy(appointment_policy)
     normalized_duration = _normalize_duration(default_duration_minutes)
+    normalized_cutoff = _normalize_cancellation_cutoff(cancellation_cutoff_minutes)
     normalized_modes = _normalize_modes(delivery_modes)
     normalized_roles = _normalize_provider_roles(provider_roles)
 
@@ -247,6 +265,7 @@ def create_service(
                 description=normalized_description,
                 appointment_policy=normalized_policy,
                 default_duration_minutes=normalized_duration,
+                cancellation_cutoff_minutes=normalized_cutoff,
                 is_active=False,
             )
         except IntegrityError as exc:
@@ -282,6 +301,7 @@ def update_service(
         "description",
         "appointment_policy",
         "default_duration_minutes",
+        "cancellation_cutoff_minutes",
         "delivery_modes",
         "provider_roles",
     }
@@ -311,6 +331,11 @@ def update_service(
             if "default_duration_minutes" in changes
             else service.default_duration_minutes
         )
+        next_cutoff = (
+            _normalize_cancellation_cutoff(changes["cancellation_cutoff_minutes"])
+            if "cancellation_cutoff_minutes" in changes
+            else service.cancellation_cutoff_minutes
+        )
         next_modes = (
             _normalize_modes(changes["delivery_modes"])
             if "delivery_modes" in changes
@@ -327,6 +352,7 @@ def update_service(
                 name=next_name,
                 appointment_policy=next_policy,
                 default_duration_minutes=next_duration,
+                cancellation_cutoff_minutes=next_cutoff,
                 delivery_modes=next_modes,
                 provider_roles=next_roles,
             )
@@ -337,6 +363,7 @@ def update_service(
             "description": next_description,
             "appointment_policy": next_policy,
             "default_duration_minutes": next_duration,
+            "cancellation_cutoff_minutes": next_cutoff,
         }
         for field, value in scalar_values.items():
             if getattr(service, field) != value:
@@ -394,6 +421,7 @@ def set_service_active(
                 name=service.name,
                 appointment_policy=service.appointment_policy,
                 default_duration_minutes=service.default_duration_minutes,
+                cancellation_cutoff_minutes=service.cancellation_cutoff_minutes,
                 delivery_modes=_configured_modes(service.pk),
                 provider_roles=_configured_provider_roles(service.pk),
             )

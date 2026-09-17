@@ -99,6 +99,10 @@ class AvailabilityRelationshipConflict(AccountManagementError):
     """The role change would strand provider-specific Availability configuration."""
 
 
+class AppointmentRelationshipConflict(AccountManagementError):
+    """The role change would strand an active or future Appointment reservation."""
+
+
 @dataclass(frozen=True, slots=True)
 class AccountPage:
     items: tuple[User, ...]
@@ -624,6 +628,19 @@ def change_role(
             validate_availability_role_transition(user=target, new_role_code=role_code)
         except AvailabilityRoleTransitionConflict as exc:
             raise AvailabilityRelationshipConflict(str(exc)) from exc
+
+        from compass.appointments.services import (
+            AppointmentRoleTransitionConflict,
+        )
+        from compass.appointments.services import (
+            validate_role_transition as validate_appointment_role_transition,
+        )
+
+        try:
+            validate_appointment_role_transition(user=target, new_role_code=role_code)
+        except AppointmentRoleTransitionConflict as exc:
+            raise AppointmentRelationshipConflict(str(exc)) from exc
+
         from_role = target.role.code
         target.role = role_record
         target.save(update_fields=["role", "updated_at"])

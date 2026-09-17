@@ -38,6 +38,7 @@ class Service(models.Model):
             MaxValueValidator(MAX_SERVICE_DURATION_MINUTES),
         ],
     )
+    cancellation_cutoff_minutes = models.PositiveIntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -55,6 +56,13 @@ class Service(models.Model):
                     )
                 ),
                 name="service_catalog_duration_range",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(cancellation_cutoff_minutes__isnull=True)
+                    | models.Q(cancellation_cutoff_minutes__gte=0)
+                ),
+                name="service_catalog_cancellation_cutoff_nonnegative",
             ),
         ]
 

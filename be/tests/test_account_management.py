@@ -16,6 +16,7 @@ from compass.accounts.models import (
     UserCapabilityOverride,
     UserDesignation,
 )
+from compass.appointments.models import Appointment
 from compass.audit.models import AuditEvent
 from compass.authentication.crypto import encrypt_totp_secret
 from compass.authentication.models import (
@@ -32,6 +33,7 @@ from compass.authentication.sessions import (
     create_trusted_session,
 )
 from compass.availability.models import ProviderAvailabilityWindow
+from compass.service_catalog.models import Service
 
 
 def sync_policy() -> None:
@@ -573,3 +575,49 @@ def test_role_change_blocks_provider_availability_until_configuration_is_removed
     assert changed.status_code == 200
     provider.refresh_from_db()
     assert provider.role.code == "STUDENT"
+
+
+@pytest.mark.django_db
+def test_role_change_blocks_active_or_future_appointment_until_resolved():
+    sync_policy()
+    client, _admin, _session = make_admin_client()
+    student = make_user(email="appointment-student@example.edu", role="STUDENT")
+    provider = make_user(email="appointment-provider@example.edu", role="COUNSELOR")
+    service = Service.objects.create(
+        code="ROLE_CHANGE_APPOINTMENT",
+        name="Role change Appointment",
+        appointment_policy="NONE",
+    )
+    now = timezone.now()
+    appointment = Appointment.objects.create(
+        reference_code="APT-2099-000001",
+        student=student,
+        provider=provider,
+        service=service,
+        delivery_mode="IN_PERSON",
+        starts_at=now + timedelta(hours=1),
+        ends_at=now + timedelta(hours=2),
+        created_by=student,
+    )
+
+    blocked = client.put(
+        f"/api/v1/accounts/{provider.pk}/role",
+        data=json.dumps({"role": "STUDENT"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert blocked.status_code == 409
+    assert blocked.json()["error"]["code"] == "appointment_relationship_conflict"
+
+    appointment.status = "CANCELLED"
+    appointment.cancelled_at = now
+    appointment.cancelled_by = _admin
+    appointment.save(update_fields=["status", "cancelled_at", "cancelled_by", "updated_at"])
+
+    changed = client.put(
+        f"/api/v1/accounts/{provider.pk}/role",
+        data=json.dumps({"role": "STUDENT"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert changed.status_code == 200

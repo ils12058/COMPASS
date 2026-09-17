@@ -8,7 +8,16 @@ from typing import Any
 
 OPENAPI_VERSION = "3.1.0"
 CURRENT_API_TAGS = frozenset(
-    {"health", "auth", "activity", "accounts", "organization", "services", "availability"}
+    {
+        "health",
+        "auth",
+        "activity",
+        "accounts",
+        "organization",
+        "services",
+        "availability",
+        "appointments",
+    }
 )
 OPERATION_ID_PATTERN = re.compile(r"^[a-z][A-Za-z0-9]*$", re.ASCII)
 OPERATION_ID_PREFIXES = {
@@ -19,6 +28,7 @@ OPERATION_ID_PREFIXES = {
     "organization": "organization",
     "services": "services",
     "availability": "availability",
+    "appointments": "appointments",
 }
 HTTP_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch"})
 

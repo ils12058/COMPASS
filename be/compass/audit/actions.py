@@ -38,6 +38,8 @@ AVAILABILITY_OFFICE_EXCEPTION_REMOVED = "availability.office_exception.removed"
 AVAILABILITY_PROVIDER_SCHEDULE_UPDATED = "availability.provider_schedule.updated"
 AVAILABILITY_PROVIDER_EXCEPTION_CREATED = "availability.provider_exception.created"
 AVAILABILITY_PROVIDER_EXCEPTION_REMOVED = "availability.provider_exception.removed"
+APPOINTMENT_CREATED = "appointment.created"
+APPOINTMENT_CANCELLED = "appointment.cancelled"
 
 __all__ = [
     "ACCOUNT_CREATED",
@@ -78,4 +80,6 @@ __all__ = [
     "AVAILABILITY_PROVIDER_SCHEDULE_UPDATED",
     "AVAILABILITY_PROVIDER_EXCEPTION_CREATED",
     "AVAILABILITY_PROVIDER_EXCEPTION_REMOVED",
+    "APPOINTMENT_CREATED",
+    "APPOINTMENT_CANCELLED",
 ]

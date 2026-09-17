@@ -102,6 +102,12 @@ EXPECTED_OPERATION_IDS = {
     "availabilityCreateProviderException",
     "availabilityRemoveProviderException",
     "availabilityGetProviderEffective",
+    "appointmentsCreateMy",
+    "appointmentsListMy",
+    "appointmentsListManaged",
+    "appointmentsGet",
+    "appointmentsCancel",
+    "appointmentsListEligibleCounselors",
 }
 
 
@@ -163,6 +169,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "organization",
         "services",
         "availability",
+        "appointments",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -289,6 +296,17 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _response_statuses(
         _operation(schema, "/api/v1/availability/providers/{provider_id}/effective", "get")
     ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(_operation(schema, "/api/v1/appointments", "post")) >= {
+        201,
+        401,
+        403,
+        409,
+        422,
+        503,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/appointments/{appointment_id}/cancel", "post")
+    ) >= {200, 401, 403, 404, 409, 422}
 
     for method, path, operation in iter_operations(schema):
         for status, response in operation["responses"].items():
@@ -312,6 +330,9 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     assert schemas["CapabilityCode"]["enum"] == [
         "accounts.manage",
         "accounts.view",
+        "appointments.manage",
+        "appointments.manage_self",
+        "appointments.view_self",
         "availability.manage",
         "availability.manage_self",
         "availability.view",
@@ -334,6 +355,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "SUNDAY",
     ]
     assert schemas["AvailabilityModeScope"]["enum"] == ["ALL", "IN_PERSON", "ONLINE"]
+    assert schemas["AppointmentStatus"]["enum"] == ["SCHEDULED", "CANCELLED"]
+    assert "cancellation_cutoff_minutes" in schemas["ServiceResponse"]["properties"]
 
     response_schema_names = {
         "AccountSummaryResponse",

@@ -141,6 +141,7 @@ def test_create_normalizes_code_uses_uuid_and_starts_inactive():
     assert service.name == "Synthetic Service"
     assert not service.is_active
     assert service.default_duration_minutes is None
+    assert service.cancellation_cutoff_minutes is None
     assert list(service.delivery_mode_assignments.all()) == []
     assert list(service.provider_role_assignments.all()) == []
 
@@ -530,3 +531,65 @@ def test_strict_api_rejects_activation_and_code_fields_and_has_no_delete_endpoin
         **headers,
     )
     assert deleted.status_code == 405
+
+
+@pytest.mark.django_db
+def test_cancellation_cutoff_is_nonnegative_and_validated_with_active_appointment_policy():
+    sync_policy()
+    actor = make_user("cutoff-admin@example.edu", "IT_ADMIN")
+
+    with pytest.raises(InvalidServiceCatalogInput, match="non-negative"):
+        create_service(
+            code="NEGATIVE_CUTOFF",
+            name="Negative cutoff",
+            appointment_policy="OPTIONAL",
+            default_duration_minutes=60,
+            cancellation_cutoff_minutes=-1,
+            delivery_modes=["IN_PERSON"],
+            provider_roles=["COUNSELOR"],
+            context=context(actor),
+        )
+
+    draft_none = create_service(
+        code="DRAFT_NONE_CUTOFF",
+        name="Draft none cutoff",
+        appointment_policy="NONE",
+        cancellation_cutoff_minutes=30,
+        delivery_modes=["IN_PERSON"],
+        provider_roles=["COUNSELOR"],
+        context=context(actor),
+    )
+    with pytest.raises(ServiceCatalogConflict, match="cannot configure"):
+        set_service_active(service_id=draft_none.pk, is_active=True, context=context(actor))
+
+    service = create_service(
+        code="CUT_OFF_SERVICE",
+        name="Cutoff Service",
+        appointment_policy="OPTIONAL",
+        default_duration_minutes=60,
+        cancellation_cutoff_minutes=30,
+        delivery_modes=["IN_PERSON"],
+        provider_roles=["COUNSELOR"],
+        context=context(actor),
+    )
+    service = set_service_active(service_id=service.pk, is_active=True, context=context(actor))
+    assert service.cancellation_cutoff_minutes == 30
+
+    with pytest.raises(ServiceCatalogConflict, match="cannot configure"):
+        update_service(
+            service_id=service.pk,
+            changes={"appointment_policy": "NONE", "default_duration_minutes": None},
+            context=context(actor),
+        )
+
+    changed = update_service(
+        service_id=service.pk,
+        changes={
+            "appointment_policy": "NONE",
+            "default_duration_minutes": None,
+            "cancellation_cutoff_minutes": None,
+        },
+        context=context(actor),
+    )
+    assert changed.appointment_policy == "NONE"
+    assert changed.cancellation_cutoff_minutes is None
