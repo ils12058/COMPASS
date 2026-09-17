@@ -364,6 +364,15 @@
         "title": "AppointmentPolicy",
         "type": "string"
       },
+      "AvailabilityModeScope": {
+        "enum": [
+          "ALL",
+          "IN_PERSON",
+          "ONLINE"
+        ],
+        "title": "AvailabilityModeScope",
+        "type": "string"
+      },
       "CSRFResponse": {
         "properties": {
           "csrf_token": {
@@ -476,6 +485,9 @@
         "enum": [
           "accounts.manage",
           "accounts.view",
+          "availability.manage",
+          "availability.manage_self",
+          "availability.view",
           "organization.manage",
           "organization.view",
           "services.manage",
@@ -824,6 +836,162 @@
         "title": "Effect",
         "type": "string"
       },
+      "EffectiveAvailabilityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "provider_id": {
+            "format": "uuid",
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "service_id": {
+            "format": "uuid",
+            "title": "Service Id",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/EffectiveWindowResponse"
+            },
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "provider_id",
+          "service_id",
+          "delivery_mode",
+          "timezone",
+          "start_date",
+          "end_date",
+          "windows"
+        ],
+        "title": "EffectiveAvailabilityResponse",
+        "type": "object"
+      },
+      "EffectiveWindowResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "EffectiveWindowResponse",
+        "type": "object"
+      },
+      "ExceptionCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "mode_scope": {
+            "$ref": "#/components/schemas/AvailabilityModeScope"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "starts_at",
+          "ends_at",
+          "mode_scope"
+        ],
+        "title": "ExceptionCreateRequest",
+        "type": "object"
+      },
+      "ExceptionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode_scope": {
+            "$ref": "#/components/schemas/AvailabilityModeScope"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "starts_at",
+          "ends_at",
+          "mode_scope",
+          "reason",
+          "created_at",
+          "created_by"
+        ],
+        "title": "ExceptionResponse",
+        "type": "object"
+      },
       "HealthResponse": {
         "properties": {
           "checks": {
@@ -1074,6 +1242,40 @@
         "title": "MFAStatusResponse",
         "type": "object"
       },
+      "OfficeExceptionListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExceptionResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "OfficeExceptionListResponse",
+        "type": "object"
+      },
+      "OfficeWeeklyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/WeeklyWindowResponse"
+            },
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "windows"
+        ],
+        "title": "OfficeWeeklyResponse",
+        "type": "object"
+      },
       "OrganizationRole": {
         "enum": [
           "COUNSELOR",
@@ -1250,6 +1452,29 @@
         "title": "PersonSummary",
         "type": "object"
       },
+      "ProviderExceptionListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExceptionResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "provider_id": {
+            "format": "uuid",
+            "title": "Provider Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "items"
+        ],
+        "title": "ProviderExceptionListResponse",
+        "type": "object"
+      },
       "ProviderRoleCode": {
         "enum": [
           "COUNSELOR",
@@ -1257,6 +1482,43 @@
         ],
         "title": "ProviderRoleCode",
         "type": "string"
+      },
+      "ProviderWeeklyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "provider_id": {
+            "format": "uuid",
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/WeeklyWindowResponse"
+            },
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "provider_id",
+          "windows"
+        ],
+        "title": "ProviderWeeklyResponse",
+        "type": "object"
+      },
+      "RemovalResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "removed": {
+            "title": "Removed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "removed"
+        ],
+        "title": "RemovalResponse",
+        "type": "object"
       },
       "RemovedResponse": {
         "additionalProperties": false,
@@ -1969,6 +2231,97 @@
         ],
         "title": "ValidationIssue",
         "type": "object"
+      },
+      "Weekday": {
+        "enum": [
+          "MONDAY",
+          "TUESDAY",
+          "WEDNESDAY",
+          "THURSDAY",
+          "FRIDAY",
+          "SATURDAY",
+          "SUNDAY"
+        ],
+        "title": "Weekday",
+        "type": "string"
+      },
+      "WeeklyReplacementRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/WeeklyWindowRequest"
+            },
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "title": "WeeklyReplacementRequest",
+        "type": "object"
+      },
+      "WeeklyWindowRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "end_time": {
+            "format": "time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "mode_scope": {
+            "$ref": "#/components/schemas/AvailabilityModeScope"
+          },
+          "start_time": {
+            "format": "time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "weekday": {
+            "$ref": "#/components/schemas/Weekday"
+          }
+        },
+        "required": [
+          "weekday",
+          "start_time",
+          "end_time",
+          "mode_scope"
+        ],
+        "title": "WeeklyWindowRequest",
+        "type": "object"
+      },
+      "WeeklyWindowResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "end_time": {
+            "format": "time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode_scope": {
+            "$ref": "#/components/schemas/AvailabilityModeScope"
+          },
+          "start_time": {
+            "format": "time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "weekday": {
+            "$ref": "#/components/schemas/Weekday"
+          }
+        },
+        "required": [
+          "id",
+          "weekday",
+          "start_time",
+          "end_time",
+          "mode_scope"
+        ],
+        "title": "WeeklyWindowResponse",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -2390,6 +2743,9 @@
               "enum": [
                 "accounts.manage",
                 "accounts.view",
+                "availability.manage",
+                "availability.manage_self",
+                "availability.view",
                 "organization.manage",
                 "organization.view",
                 "services.manage",
@@ -2493,6 +2849,9 @@
               "enum": [
                 "accounts.manage",
                 "accounts.view",
+                "availability.manage",
+                "availability.manage_self",
+                "availability.view",
                 "organization.manage",
                 "organization.view",
                 "services.manage",
@@ -4683,6 +5042,1227 @@
         "summary": "Revoke one trusted browser session",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/availability/me/exceptions": {
+      "get": {
+        "operationId": "availabilityListMyExceptions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderExceptionListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "My Exceptions List",
+        "tags": [
+          "availability"
+        ]
+      },
+      "post": {
+        "operationId": "availabilityCreateMyException",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExceptionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "My Exception Create",
+        "tags": [
+          "availability"
+        ]
+      }
+    },
+    "/api/v1/availability/me/exceptions/{exception_id}": {
+      "delete": {
+        "operationId": "availabilityRemoveMyException",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "My Exception Remove",
+        "tags": [
+          "availability"
+        ]
+      }
+    },
+    "/api/v1/availability/me/weekly": {
+      "get": {
+        "operationId": "availabilityGetMyWeekly",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderWeeklyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "My Weekly Get",
+        "tags": [
+          "availability"
+        ]
+      },
+      "put": {
+        "operationId": "availabilityReplaceMyWeekly",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeeklyReplacementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderWeeklyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "My Weekly Replace",
+        "tags": [
+          "availability"
+        ]
+      }
+    },
+    "/api/v1/availability/office/exceptions": {
+      "get": {
+        "operationId": "availabilityListOfficeExceptions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfficeExceptionListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Office Exceptions List",
+        "tags": [
+          "availability"
+        ]
+      },
+      "post": {
+        "operationId": "availabilityCreateOfficeException",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExceptionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Office Exception Create",
+        "tags": [
+          "availability"
+        ]
+      }
+    },
+    "/api/v1/availability/office/exceptions/{exception_id}": {
+      "delete": {
+        "operationId": "availabilityRemoveOfficeException",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Office Exception Remove",
+        "tags": [
+          "availability"
+        ]
+      }
+    },
+    "/api/v1/availability/office/weekly": {
+      "get": {
+        "operationId": "availabilityGetOfficeWeekly",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfficeWeeklyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Office Weekly Get",
+        "tags": [
+          "availability"
+        ]
+      },
+      "put": {
+        "operationId": "availabilityReplaceOfficeWeekly",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeeklyReplacementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfficeWeeklyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Office Weekly Replace",
+        "tags": [
+          "availability"
+        ]
+      }
+    },
+    "/api/v1/availability/providers/{provider_id}/effective": {
+      "get": {
+        "operationId": "availabilityGetProviderEffective",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "service_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Service Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "delivery_mode",
+            "required": true,
+            "schema": {
+              "enum": [
+                "IN_PERSON",
+                "ONLINE"
+              ],
+              "title": "DeliveryMode",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectiveAvailabilityResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Provider Effective",
+        "tags": [
+          "availability"
+        ]
+      }
+    },
+    "/api/v1/availability/providers/{provider_id}/exceptions": {
+      "get": {
+        "operationId": "availabilityListProviderExceptions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderExceptionListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Provider Exceptions List",
+        "tags": [
+          "availability"
+        ]
+      },
+      "post": {
+        "operationId": "availabilityCreateProviderException",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExceptionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Provider Exception Create",
+        "tags": [
+          "availability"
+        ]
+      }
+    },
+    "/api/v1/availability/providers/{provider_id}/exceptions/{exception_id}": {
+      "delete": {
+        "operationId": "availabilityRemoveProviderException",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Provider Exception Remove",
+        "tags": [
+          "availability"
+        ]
+      }
+    },
+    "/api/v1/availability/providers/{provider_id}/weekly": {
+      "get": {
+        "operationId": "availabilityGetProviderWeekly",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderWeeklyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Provider Weekly Get",
+        "tags": [
+          "availability"
+        ]
+      },
+      "put": {
+        "operationId": "availabilityReplaceProviderWeekly",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeeklyReplacementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderWeeklyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Provider Weekly Replace",
+        "tags": [
+          "availability"
         ]
       }
     },
@@ -7346,6 +8926,10 @@
     {
       "description": "Guidance and Counseling Office service catalog configuration.",
       "name": "services"
+    },
+    {
+      "description": "Office and provider scheduling Availability configuration.",
+      "name": "availability"
     }
   ]
 }
