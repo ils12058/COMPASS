@@ -238,8 +238,8 @@ def test_submission_enforces_only_confirmed_conditional_consistency():
         student=student,
         values={
             "immunizations": [],
-            "prior_counseling_experience": False,
-            "prior_counselor_name": "Should be empty",
+            "prior_counseling_experience": None,
+            "prior_counselor_name": "",
             "family_members": [],
             "siblings": [],
             "education_entries": [],
@@ -248,7 +248,19 @@ def test_submission_enforces_only_confirmed_conditional_consistency():
         },
     )
     with pytest.raises(InvalidInventoryInput, match="Prior Counselor"):
-        submit_current_inventory(student=student, context=context(student))
+        replace_current_inventory(
+            student=student,
+            values={
+                "immunizations": [],
+                "prior_counseling_experience": False,
+                "prior_counselor_name": "Should be empty",
+                "family_members": [],
+                "siblings": [],
+                "education_entries": [],
+                "organization_memberships": [],
+                "transportation_entries": [],
+            },
+        )
 
 
 @pytest.mark.django_db
@@ -288,6 +300,11 @@ def test_inventory_api_is_student_self_service_only_and_does_not_require_idempot
     )
     assert ensured.status_code == 200
     assert ensured.json()["status"] == "DRAFT"
+    assert ensured.json()["sex"] is None
+    assert ensured.json()["living_arrangement"] is None
+    assert ensured.json()["handedness"] is None
+    assert ensured.json()["ideal_monthly_allowance"] is None
+    assert ensured.json()["intended_work_field"] is None
 
     status = client.get("/api/v1/inventory/me/status")
     assert status.status_code == 200
