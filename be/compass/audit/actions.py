@@ -52,6 +52,8 @@ INVENTORY_SUBMITTED = "inventory.submitted"
 ROUTINE_INTERVIEW_CREATED = "routine_interview.created"
 ROUTINE_INTERVIEW_INTAKE_SUBMITTED = "routine_interview.intake_submitted"
 ROUTINE_INTERVIEW_EVALUATION_FINALIZED = "routine_interview.evaluation_finalized"
+ECOUNSELING_ROOM_PROVISIONED = "ecounseling.room_provisioned"
+ECOUNSELING_JOIN_AUTHORIZED = "ecounseling.join_authorized"
 
 __all__ = [
     "ACCOUNT_CREATED",
@@ -106,4 +108,6 @@ __all__ = [
     "ROUTINE_INTERVIEW_CREATED",
     "ROUTINE_INTERVIEW_INTAKE_SUBMITTED",
     "ROUTINE_INTERVIEW_EVALUATION_FINALIZED",
+    "ECOUNSELING_ROOM_PROVISIONED",
+    "ECOUNSELING_JOIN_AUTHORIZED",
 ]
