@@ -286,9 +286,7 @@ def test_authorization_requires_capability_and_actual_encounter_relationship():
     assert student_response.status_code == 403
 
     counselor_client = auth_client(counselor)
-    assigned = counselor_client.get(
-        f"/api/v1/counseling/encounters/{encounter.pk}/shared-summary"
-    )
+    assigned = counselor_client.get(f"/api/v1/counseling/encounters/{encounter.pk}/shared-summary")
     assert assigned.status_code == 200
     assert assigned.json()["id"] == str(summary.pk)
 
