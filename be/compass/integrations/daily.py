@@ -117,6 +117,7 @@ class DailyClient:
                     "enable_chat": False,
                     "enable_screenshare": False,
                     "enable_live_captions_ui": False,
+                    "enable_transcription_storage": False,
                     "enforce_unique_user_ids": True,
                 },
             },
