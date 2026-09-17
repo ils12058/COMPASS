@@ -11,6 +11,8 @@ from compass.authentication.api import router as authentication_router
 from compass.availability.api import router as availability_router
 from compass.common.errors import register_exception_handlers
 from compass.counseling.api import router as counseling_router
+from compass.ecounseling.api import daily_router
+from compass.ecounseling.api import router as ecounseling_router
 from compass.institutional_forms.api import router as institutional_forms_router
 from compass.inventory.api import router as inventory_router
 from compass.organization.academic_years_api import router as academic_years_router
@@ -66,6 +68,10 @@ api = NinjaAPI(
                     "Interaction-specific Student Intake and assigned Counselor Evaluation."
                 ),
             },
+            {
+                "name": "e-counseling",
+                "description": "Secure ONLINE Counseling workspace and Daily provider boundary.",
+            },
         ]
     },
     openapi_url="/openapi.json" if settings.API_DOCS_ENABLED else None,
@@ -84,4 +90,6 @@ api.add_router("/academic-years", academic_years_router)
 api.add_router("/institutional-forms", institutional_forms_router)
 api.add_router("/inventory", inventory_router)
 api.add_router("/routine-interviews", routine_interviews_router)
+api.add_router("/e-counseling", ecounseling_router)
+api.add_router("/integrations/daily", daily_router)
 register_exception_handlers(api)

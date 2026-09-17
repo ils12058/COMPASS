@@ -622,6 +622,48 @@
         "title": "AppointmentStatus",
         "type": "string"
       },
+      "AppointmentWorkspaceSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_mode": {
+            "title": "Delivery Mode",
+            "type": "string"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "starts_at",
+          "ends_at",
+          "status",
+          "delivery_mode"
+        ],
+        "title": "AppointmentWorkspaceSummary",
+        "type": "object"
+      },
       "AvailabilityModeScope": {
         "enum": [
           "ALL",
@@ -753,6 +795,10 @@
           "availability.view",
           "counseling.manage_assigned",
           "counseling.view_assigned",
+          "ecounseling.join_assigned",
+          "ecounseling.join_self",
+          "ecounseling.view_assigned",
+          "ecounseling.view_self",
           "institutional_forms.manage",
           "institutional_forms.view",
           "inventory.manage_self",
@@ -1159,6 +1205,26 @@
         "title": "CounselingEncounterResponse",
         "type": "object"
       },
+      "CounselingEncounterWorkspaceSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "recorded": {
+            "title": "Recorded",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "recorded"
+        ],
+        "title": "CounselingEncounterWorkspaceSummary",
+        "type": "object"
+      },
       "CounselingEntryMode": {
         "enum": [
           "APPOINTMENT",
@@ -1450,6 +1516,74 @@
           "created_at"
         ],
         "title": "CounselorRoutineDetailResponse",
+        "type": "object"
+      },
+      "CounselorRoutineWorkspaceSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "evaluation_status": {
+            "title": "Evaluation Status",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intake_status": {
+            "title": "Intake Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "intake_status",
+          "evaluation_status"
+        ],
+        "title": "CounselorRoutineWorkspaceSummary",
+        "type": "object"
+      },
+      "CounselorWorkspaceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "$ref": "#/components/schemas/AppointmentWorkspaceSummary"
+          },
+          "counseling_encounter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselingEncounterWorkspaceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider_readiness": {
+            "$ref": "#/components/schemas/ProviderReadiness"
+          },
+          "routine_interview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorRoutineWorkspaceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "student": {
+            "$ref": "#/components/schemas/PersonWorkspaceSummary"
+          }
+        },
+        "required": [
+          "appointment",
+          "student",
+          "provider_readiness",
+          "routine_interview",
+          "counseling_encounter"
+        ],
+        "title": "CounselorWorkspaceResponse",
         "type": "object"
       },
       "CourseChoiceReasonValue": {
@@ -3517,6 +3651,48 @@
         "title": "InventorySummaryResponse",
         "type": "object"
       },
+      "JoinCredentialResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment_id": {
+            "format": "uuid",
+            "title": "Appointment Id",
+            "type": "string"
+          },
+          "meeting_token": {
+            "title": "Meeting Token",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "room_url": {
+            "title": "Room Url",
+            "type": "string"
+          },
+          "token_expires_at": {
+            "format": "date-time",
+            "title": "Token Expires At",
+            "type": "string"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "room_url",
+          "meeting_token",
+          "token_expires_at",
+          "appointment_id",
+          "workspace_id"
+        ],
+        "title": "JoinCredentialResponse",
+        "type": "object"
+      },
       "LivingArrangementValue": {
         "enum": [
           "OWN_HOUSE",
@@ -3954,6 +4130,26 @@
         "title": "PersonSummary",
         "type": "object"
       },
+      "PersonWorkspaceSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "PersonWorkspaceSummary",
+        "type": "object"
+      },
       "PostGraduationFieldValue": {
         "enum": [
           "PROFESSIONAL",
@@ -3989,6 +4185,30 @@
           "items"
         ],
         "title": "ProviderExceptionListResponse",
+        "type": "object"
+      },
+      "ProviderReadiness": {
+        "additionalProperties": false,
+        "properties": {
+          "daily_enabled": {
+            "title": "Daily Enabled",
+            "type": "boolean"
+          },
+          "join_allowed": {
+            "title": "Join Allowed",
+            "type": "boolean"
+          },
+          "room_provisioned": {
+            "title": "Room Provisioned",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "daily_enabled",
+          "room_provisioned",
+          "join_allowed"
+        ],
+        "title": "ProviderReadiness",
         "type": "object"
       },
       "ProviderRoleCode": {
@@ -5371,6 +5591,58 @@
         "title": "StudentRoutineSummaryResponse",
         "type": "object"
       },
+      "StudentRoutineWorkspaceSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intake_status": {
+            "title": "Intake Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "intake_status"
+        ],
+        "title": "StudentRoutineWorkspaceSummary",
+        "type": "object"
+      },
+      "StudentWorkspaceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "$ref": "#/components/schemas/AppointmentWorkspaceSummary"
+          },
+          "counselor": {
+            "$ref": "#/components/schemas/PersonWorkspaceSummary"
+          },
+          "provider_readiness": {
+            "$ref": "#/components/schemas/ProviderReadiness"
+          },
+          "routine_interview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudentRoutineWorkspaceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "appointment",
+          "counselor",
+          "provider_readiness",
+          "routine_interview"
+        ],
+        "title": "StudentWorkspaceResponse",
+        "type": "object"
+      },
       "TOTPConfirmationResponse": {
         "properties": {
           "enabled": {
@@ -5613,6 +5885,25 @@
           "type"
         ],
         "title": "ValidationIssue",
+        "type": "object"
+      },
+      "WebhookAckResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "duplicate": {
+            "default": false,
+            "title": "Duplicate",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "title": "WebhookAckResponse",
         "type": "object"
       },
       "Weekday": {
@@ -6346,6 +6637,10 @@
                 "availability.view",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
+                "ecounseling.join_assigned",
+                "ecounseling.join_self",
+                "ecounseling.view_assigned",
+                "ecounseling.view_self",
                 "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
@@ -6467,6 +6762,10 @@
                 "availability.view",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
+                "ecounseling.join_assigned",
+                "ecounseling.join_self",
+                "ecounseling.view_assigned",
+                "ecounseling.view_self",
                 "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
@@ -11081,6 +11380,260 @@
         ]
       }
     },
+    "/api/v1/e-counseling/appointments/{appointment_id}": {
+      "get": {
+        "operationId": "eCounselingGetAssignedWorkspace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselorWorkspaceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling Get Assigned Workspace",
+        "tags": [
+          "e-counseling"
+        ]
+      }
+    },
+    "/api/v1/e-counseling/appointments/{appointment_id}/join": {
+      "post": {
+        "operationId": "eCounselingCreateJoinCredential",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinCredentialResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling Create Join Credential",
+        "tags": [
+          "e-counseling"
+        ]
+      }
+    },
+    "/api/v1/e-counseling/me/appointments/{appointment_id}": {
+      "get": {
+        "operationId": "eCounselingGetMyWorkspace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentWorkspaceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling Get My Workspace",
+        "tags": [
+          "e-counseling"
+        ]
+      }
+    },
     "/api/v1/health/live": {
       "get": {
         "operationId": "healthLive",
@@ -11517,6 +12070,58 @@
         "summary": "Institutional Form Revisions Register",
         "tags": [
           "institutional-forms"
+        ]
+      }
+    },
+    "/api/v1/integrations/daily/webhook": {
+      "post": {
+        "operationId": "eCounselingDailyWebhook",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookAckResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Daily Webhook",
+        "tags": [
+          "e-counseling"
         ]
       }
     },
@@ -15377,6 +15982,10 @@
     {
       "description": "Interaction-specific Student Intake and assigned Counselor Evaluation.",
       "name": "routine-interviews"
+    },
+    {
+      "description": "Secure ONLINE Counseling workspace and Daily provider boundary.",
+      "name": "e-counseling"
     }
   ]
 }
