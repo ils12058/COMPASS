@@ -17,6 +17,7 @@ from compass.accounts.models import (
     UserDesignation,
 )
 from compass.audit.models import AuditEvent
+from compass.availability.models import ProviderAvailabilityWindow
 from compass.authentication.crypto import encrypt_totp_secret
 from compass.authentication.models import (
     AuthSession,
@@ -536,3 +537,39 @@ def test_effective_manage_override_authorizes_without_role_shortcut():
     client.cookies["compass_session"] = issued.token
     response = client.get("/api/v1/accounts")
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_role_change_blocks_provider_availability_until_configuration_is_removed():
+    sync_policy()
+    client, _admin, _session = make_admin_client()
+    provider = make_user(email="scheduled@example.edu", role="COUNSELOR")
+    ProviderAvailabilityWindow.objects.create(
+        provider=provider,
+        weekday="MONDAY",
+        start_time="08:00",
+        end_time="12:00",
+        mode_scope="ALL",
+    )
+
+    blocked = client.put(
+        f"/api/v1/accounts/{provider.pk}/role",
+        data=json.dumps({"role": "STUDENT"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert blocked.status_code == 409
+    assert blocked.json()["error"]["code"] == "availability_relationship_conflict"
+    provider.refresh_from_db()
+    assert provider.role.code == "COUNSELOR"
+
+    ProviderAvailabilityWindow.objects.filter(provider=provider).delete()
+    changed = client.put(
+        f"/api/v1/accounts/{provider.pk}/role",
+        data=json.dumps({"role": "STUDENT"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert changed.status_code == 200
+    provider.refresh_from_db()
+    assert provider.role.code == "STUDENT"
