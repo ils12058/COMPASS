@@ -202,8 +202,7 @@ def counseling_list_students(
         _raise(exc)
     return {
         "items": [
-            {"id": student.pk, "display_name": student.get_full_name()}
-            for student in result.items
+            {"id": student.pk, "display_name": student.get_full_name()} for student in result.items
         ],
         "page": result.page,
         "page_size": result.page_size,
