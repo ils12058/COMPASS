@@ -1,9 +1,9 @@
-"""Privacy-bounded E-Counseling workspace, join, and Daily webhook APIs."""
+"""Privacy-bounded E-Counseling workspace, consent, media, join, and Daily webhook APIs."""
 
 from __future__ import annotations
 
 from datetime import datetime
-from typing import NoReturn
+from typing import Literal, NoReturn
 from uuid import UUID
 
 from django.http import HttpResponse
@@ -16,6 +16,22 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.integrations.daily import DailyWebhookSignatureInvalid
 
+from .media import (
+    ECounselingConsentConflict,
+    ECounselingConsentNotApproved,
+    ECounselingConsentNotFound,
+    ECounselingMediaConflict,
+    ECounselingMediaStopPending,
+    decide_my_consent,
+    list_assigned_consents,
+    list_my_consents,
+    request_consents,
+    start_recording,
+    start_transcription,
+    stop_recording,
+    stop_transcription,
+    withdraw_my_consent,
+)
 from .services import (
     ECounselingAppointmentNotEligible,
     ECounselingError,
@@ -75,11 +91,29 @@ class CounselingEncounterWorkspaceSummary(StrictSchema):
     recorded: bool
 
 
+class RecordingWorkspaceState(StrictSchema):
+    consent_status: str
+    capture_status: str
+
+
+class TranscriptionWorkspaceState(StrictSchema):
+    consent_status: str
+    storage_consent_status: str
+    capture_status: str
+    storage_enabled: bool
+
+
+class MediaWorkspaceState(StrictSchema):
+    recording: RecordingWorkspaceState
+    transcription: TranscriptionWorkspaceState
+
+
 class StudentWorkspaceResponse(StrictSchema):
     appointment: AppointmentWorkspaceSummary
     counselor: PersonWorkspaceSummary
     provider_readiness: ProviderReadiness
     routine_interview: StudentRoutineWorkspaceSummary | None
+    media: MediaWorkspaceState
 
 
 class CounselorWorkspaceResponse(StrictSchema):
@@ -88,6 +122,7 @@ class CounselorWorkspaceResponse(StrictSchema):
     provider_readiness: ProviderReadiness
     routine_interview: CounselorRoutineWorkspaceSummary | None
     counseling_encounter: CounselingEncounterWorkspaceSummary | None
+    media: MediaWorkspaceState
 
 
 class JoinCredentialResponse(StrictSchema):
@@ -97,6 +132,38 @@ class JoinCredentialResponse(StrictSchema):
     token_expires_at: datetime
     appointment_id: UUID
     workspace_id: UUID
+
+
+class ConsentResponse(StrictSchema):
+    id: UUID
+    scope: str
+    decision: str
+    requested_at: datetime
+    decided_at: datetime | None
+    withdrawn_at: datetime | None
+    effective: bool
+
+
+class ConsentListResponse(StrictSchema):
+    items: list[ConsentResponse]
+
+
+class ConsentRequest(StrictSchema):
+    scopes: list[str]
+
+
+class ConsentDecisionRequest(StrictSchema):
+    decision: Literal["APPROVED", "DENIED"]
+
+
+class TranscriptionStartRequest(StrictSchema):
+    store_transcript: bool = False
+
+
+class MediaCaptureResponse(StrictSchema):
+    kind: str
+    status: str
+    storage_enabled: bool
 
 
 class WebhookAckResponse(StrictSchema):
@@ -109,6 +176,16 @@ def _context(request) -> AuditContext:
 
 
 def _raise(exc: Exception) -> NoReturn:
+    if isinstance(exc, ECounselingConsentNotFound):
+        raise APIError(404, "ecounseling_consent_not_found", str(exc)) from exc
+    if isinstance(exc, ECounselingConsentNotApproved):
+        raise APIError(409, "ecounseling_consent_not_approved", str(exc)) from exc
+    if isinstance(exc, ECounselingConsentConflict):
+        raise APIError(409, "ecounseling_consent_conflict", str(exc)) from exc
+    if isinstance(exc, ECounselingMediaStopPending):
+        raise APIError(409, "ecounseling_media_stop_pending", str(exc)) from exc
+    if isinstance(exc, ECounselingMediaConflict):
+        raise APIError(409, "ecounseling_media_conflict", str(exc)) from exc
     if isinstance(exc, ECounselingNotFound):
         raise APIError(404, "ecounseling_not_found", str(exc)) from exc
     if isinstance(exc, ECounselingNotPermitted):
@@ -138,6 +215,14 @@ def _raise(exc: Exception) -> NoReturn:
     raise exc
 
 
+def _media_response(capture) -> dict[str, object]:
+    return {
+        "kind": capture.kind,
+        "status": capture.status,
+        "storage_enabled": bool(capture.transcript_storage_enabled),
+    }
+
+
 @router.get(
     "/me/appointments/{appointment_id}",
     response=response_with_errors(StudentWorkspaceResponse, 401, 403, 404, 409),
@@ -160,6 +245,175 @@ def ecounseling_get_my_workspace(request, appointment_id: UUID):
 def ecounseling_get_assigned_workspace(request, appointment_id: UUID):
     try:
         return get_counselor_workspace(counselor=request.auth_user, appointment_id=appointment_id)
+    except ECounselingError as exc:
+        _raise(exc)
+
+
+@router.get(
+    "/me/appointments/{appointment_id}/consents",
+    response=response_with_errors(ConsentListResponse, 401, 403, 404, 409),
+    auth=session_auth,
+    operation_id="eCounselingListMyConsents",
+)
+def ecounseling_list_my_consents(request, appointment_id: UUID):
+    try:
+        return {"items": list_my_consents(student=request.auth_user, appointment_id=appointment_id)}
+    except ECounselingError as exc:
+        _raise(exc)
+
+
+@router.get(
+    "/appointments/{appointment_id}/consents",
+    response=response_with_errors(ConsentListResponse, 401, 403, 404, 409),
+    auth=session_auth,
+    operation_id="eCounselingListAssignedConsents",
+)
+def ecounseling_list_assigned_consents(request, appointment_id: UUID):
+    try:
+        return {
+            "items": list_assigned_consents(
+                counselor=request.auth_user,
+                appointment_id=appointment_id,
+            )
+        }
+    except ECounselingError as exc:
+        _raise(exc)
+
+
+@router.post(
+    "/appointments/{appointment_id}/consents",
+    response=response_with_errors(ConsentListResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="eCounselingRequestConsent",
+)
+def ecounseling_request_consent(request, appointment_id: UUID, payload: ConsentRequest):
+    try:
+        items = request_consents(
+            counselor=request.auth_user,
+            appointment_id=appointment_id,
+            scopes=payload.scopes,
+            context=_context(request),
+        )
+        return {"items": items}
+    except ECounselingError as exc:
+        _raise(exc)
+
+
+@router.post(
+    "/me/appointments/{appointment_id}/consents/{consent_id}/decision",
+    response=response_with_errors(ConsentResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="eCounselingDecideMyConsent",
+)
+def ecounseling_decide_my_consent(
+    request,
+    appointment_id: UUID,
+    consent_id: UUID,
+    payload: ConsentDecisionRequest,
+):
+    try:
+        return decide_my_consent(
+            student=request.auth_user,
+            appointment_id=appointment_id,
+            consent_id=consent_id,
+            decision=payload.decision,
+            context=_context(request),
+        )
+    except ECounselingError as exc:
+        _raise(exc)
+
+
+@router.post(
+    "/me/appointments/{appointment_id}/consents/{consent_id}/withdraw",
+    response=response_with_errors(ConsentResponse, 401, 403, 404, 409, 502, 503),
+    auth=session_auth,
+    operation_id="eCounselingWithdrawMyConsent",
+)
+def ecounseling_withdraw_my_consent(request, appointment_id: UUID, consent_id: UUID):
+    try:
+        return withdraw_my_consent(
+            student=request.auth_user,
+            appointment_id=appointment_id,
+            consent_id=consent_id,
+            context=_context(request),
+        )
+    except ECounselingError as exc:
+        _raise(exc)
+
+
+@router.post(
+    "/appointments/{appointment_id}/recording/start",
+    response=response_with_errors(MediaCaptureResponse, 401, 403, 404, 409, 502, 503),
+    auth=session_auth,
+    operation_id="eCounselingStartAssignedRecording",
+)
+def ecounseling_start_assigned_recording(request, appointment_id: UUID):
+    try:
+        capture = start_recording(
+            counselor=request.auth_user,
+            appointment_id=appointment_id,
+            context=_context(request),
+        )
+        return _media_response(capture)
+    except ECounselingError as exc:
+        _raise(exc)
+
+
+@router.post(
+    "/appointments/{appointment_id}/recording/stop",
+    response=response_with_errors(MediaCaptureResponse, 401, 403, 404, 409, 502, 503),
+    auth=session_auth,
+    operation_id="eCounselingStopAssignedRecording",
+)
+def ecounseling_stop_assigned_recording(request, appointment_id: UUID):
+    try:
+        capture = stop_recording(
+            counselor=request.auth_user,
+            appointment_id=appointment_id,
+            context=_context(request),
+        )
+        return _media_response(capture)
+    except ECounselingError as exc:
+        _raise(exc)
+
+
+@router.post(
+    "/appointments/{appointment_id}/transcription/start",
+    response=response_with_errors(MediaCaptureResponse, 401, 403, 404, 409, 422, 502, 503),
+    auth=session_auth,
+    operation_id="eCounselingStartAssignedTranscription",
+)
+def ecounseling_start_assigned_transcription(
+    request,
+    appointment_id: UUID,
+    payload: TranscriptionStartRequest,
+):
+    try:
+        capture = start_transcription(
+            counselor=request.auth_user,
+            appointment_id=appointment_id,
+            store_transcript=payload.store_transcript,
+            context=_context(request),
+        )
+        return _media_response(capture)
+    except ECounselingError as exc:
+        _raise(exc)
+
+
+@router.post(
+    "/appointments/{appointment_id}/transcription/stop",
+    response=response_with_errors(MediaCaptureResponse, 401, 403, 404, 409, 502, 503),
+    auth=session_auth,
+    operation_id="eCounselingStopAssignedTranscription",
+)
+def ecounseling_stop_assigned_transcription(request, appointment_id: UUID):
+    try:
+        capture = stop_transcription(
+            counselor=request.auth_user,
+            appointment_id=appointment_id,
+            context=_context(request),
+        )
+        return _media_response(capture)
     except ECounselingError as exc:
         _raise(exc)
 

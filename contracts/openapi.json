@@ -795,8 +795,10 @@
           "availability.view",
           "counseling.manage_assigned",
           "counseling.view_assigned",
+          "ecounseling.consent_self",
           "ecounseling.join_assigned",
           "ecounseling.join_self",
+          "ecounseling.manage_media_assigned",
           "ecounseling.view_assigned",
           "ecounseling.view_self",
           "institutional_forms.manage",
@@ -1045,6 +1047,120 @@
           }
         },
         "title": "CollegeUpdateRequest",
+        "type": "object"
+      },
+      "ConsentDecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "enum": [
+              "APPROVED",
+              "DENIED"
+            ],
+            "title": "Decision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "ConsentDecisionRequest",
+        "type": "object"
+      },
+      "ConsentListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConsentResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ConsentListResponse",
+        "type": "object"
+      },
+      "ConsentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "scopes"
+        ],
+        "title": "ConsentRequest",
+        "type": "object"
+      },
+      "ConsentResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          },
+          "effective": {
+            "title": "Effective",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn At"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "decision",
+          "requested_at",
+          "decided_at",
+          "withdrawn_at",
+          "effective"
+        ],
+        "title": "ConsentResponse",
         "type": "object"
       },
       "CounselingAssignedSharedSummaryResponse": {
@@ -1695,6 +1811,9 @@
               }
             ]
           },
+          "media": {
+            "$ref": "#/components/schemas/MediaWorkspaceState"
+          },
           "provider_readiness": {
             "$ref": "#/components/schemas/ProviderReadiness"
           },
@@ -1717,7 +1836,8 @@
           "student",
           "provider_readiness",
           "routine_interview",
-          "counseling_encounter"
+          "counseling_encounter",
+          "media"
         ],
         "title": "CounselorWorkspaceResponse",
         "type": "object"
@@ -4005,6 +4125,47 @@
         "title": "MFAStatusResponse",
         "type": "object"
       },
+      "MediaCaptureResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "storage_enabled": {
+            "title": "Storage Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "status",
+          "storage_enabled"
+        ],
+        "title": "MediaCaptureResponse",
+        "type": "object"
+      },
+      "MediaWorkspaceState": {
+        "additionalProperties": false,
+        "properties": {
+          "recording": {
+            "$ref": "#/components/schemas/RecordingWorkspaceState"
+          },
+          "transcription": {
+            "$ref": "#/components/schemas/TranscriptionWorkspaceState"
+          }
+        },
+        "required": [
+          "recording",
+          "transcription"
+        ],
+        "title": "MediaWorkspaceState",
+        "type": "object"
+      },
       "OfficeExceptionListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -4396,6 +4557,25 @@
           "windows"
         ],
         "title": "ProviderWeeklyResponse",
+        "type": "object"
+      },
+      "RecordingWorkspaceState": {
+        "additionalProperties": false,
+        "properties": {
+          "capture_status": {
+            "title": "Capture Status",
+            "type": "string"
+          },
+          "consent_status": {
+            "title": "Consent Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "consent_status",
+          "capture_status"
+        ],
+        "title": "RecordingWorkspaceState",
         "type": "object"
       },
       "RemovalResponse": {
@@ -5756,6 +5936,9 @@
           "counselor": {
             "$ref": "#/components/schemas/PersonWorkspaceSummary"
           },
+          "media": {
+            "$ref": "#/components/schemas/MediaWorkspaceState"
+          },
           "provider_readiness": {
             "$ref": "#/components/schemas/ProviderReadiness"
           },
@@ -5774,7 +5957,8 @@
           "appointment",
           "counselor",
           "provider_readiness",
-          "routine_interview"
+          "routine_interview",
+          "media"
         ],
         "title": "StudentWorkspaceResponse",
         "type": "object"
@@ -5817,6 +6001,47 @@
           "provisioning_uri"
         ],
         "title": "TOTPSetupResponse",
+        "type": "object"
+      },
+      "TranscriptionStartRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "store_transcript": {
+            "default": false,
+            "title": "Store Transcript",
+            "type": "boolean"
+          }
+        },
+        "title": "TranscriptionStartRequest",
+        "type": "object"
+      },
+      "TranscriptionWorkspaceState": {
+        "additionalProperties": false,
+        "properties": {
+          "capture_status": {
+            "title": "Capture Status",
+            "type": "string"
+          },
+          "consent_status": {
+            "title": "Consent Status",
+            "type": "string"
+          },
+          "storage_consent_status": {
+            "title": "Storage Consent Status",
+            "type": "string"
+          },
+          "storage_enabled": {
+            "title": "Storage Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "consent_status",
+          "storage_consent_status",
+          "capture_status",
+          "storage_enabled"
+        ],
+        "title": "TranscriptionWorkspaceState",
         "type": "object"
       },
       "TransportationEntryPayload": {
@@ -6773,8 +6998,10 @@
                 "availability.view",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
+                "ecounseling.consent_self",
                 "ecounseling.join_assigned",
                 "ecounseling.join_self",
+                "ecounseling.manage_media_assigned",
                 "ecounseling.view_assigned",
                 "ecounseling.view_self",
                 "institutional_forms.manage",
@@ -6901,8 +7128,10 @@
                 "availability.view",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
+                "ecounseling.consent_self",
                 "ecounseling.join_assigned",
                 "ecounseling.join_self",
+                "ecounseling.manage_media_assigned",
                 "ecounseling.view_assigned",
                 "ecounseling.view_self",
                 "institutional_forms.manage",
@@ -12018,6 +12247,180 @@
         ]
       }
     },
+    "/api/v1/e-counseling/appointments/{appointment_id}/consents": {
+      "get": {
+        "operationId": "eCounselingListAssignedConsents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling List Assigned Consents",
+        "tags": [
+          "e-counseling"
+        ]
+      },
+      "post": {
+        "operationId": "eCounselingRequestConsent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling Request Consent",
+        "tags": [
+          "e-counseling"
+        ]
+      }
+    },
     "/api/v1/e-counseling/appointments/{appointment_id}/join": {
       "post": {
         "operationId": "eCounselingCreateJoinCredential",
@@ -12116,6 +12519,418 @@
         ]
       }
     },
+    "/api/v1/e-counseling/appointments/{appointment_id}/recording/start": {
+      "post": {
+        "operationId": "eCounselingStartAssignedRecording",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCaptureResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling Start Assigned Recording",
+        "tags": [
+          "e-counseling"
+        ]
+      }
+    },
+    "/api/v1/e-counseling/appointments/{appointment_id}/recording/stop": {
+      "post": {
+        "operationId": "eCounselingStopAssignedRecording",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCaptureResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling Stop Assigned Recording",
+        "tags": [
+          "e-counseling"
+        ]
+      }
+    },
+    "/api/v1/e-counseling/appointments/{appointment_id}/transcription/start": {
+      "post": {
+        "operationId": "eCounselingStartAssignedTranscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptionStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCaptureResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling Start Assigned Transcription",
+        "tags": [
+          "e-counseling"
+        ]
+      }
+    },
+    "/api/v1/e-counseling/appointments/{appointment_id}/transcription/stop": {
+      "post": {
+        "operationId": "eCounselingStopAssignedTranscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCaptureResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling Stop Assigned Transcription",
+        "tags": [
+          "e-counseling"
+        ]
+      }
+    },
     "/api/v1/e-counseling/me/appointments/{appointment_id}": {
       "get": {
         "operationId": "eCounselingGetMyWorkspace",
@@ -12189,6 +13004,300 @@
           }
         ],
         "summary": "Ecounseling Get My Workspace",
+        "tags": [
+          "e-counseling"
+        ]
+      }
+    },
+    "/api/v1/e-counseling/me/appointments/{appointment_id}/consents": {
+      "get": {
+        "operationId": "eCounselingListMyConsents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling List My Consents",
+        "tags": [
+          "e-counseling"
+        ]
+      }
+    },
+    "/api/v1/e-counseling/me/appointments/{appointment_id}/consents/{consent_id}/decision": {
+      "post": {
+        "operationId": "eCounselingDecideMyConsent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "consent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Consent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling Decide My Consent",
+        "tags": [
+          "e-counseling"
+        ]
+      }
+    },
+    "/api/v1/e-counseling/me/appointments/{appointment_id}/consents/{consent_id}/withdraw": {
+      "post": {
+        "operationId": "eCounselingWithdrawMyConsent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "consent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Consent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling Withdraw My Consent",
         "tags": [
           "e-counseling"
         ]

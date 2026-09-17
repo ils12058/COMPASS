@@ -78,6 +78,7 @@ jobs:
         run: >-
           uv run pytest
           tests/test_ecounseling.py
+          tests/test_ecounseling_media.py
           tests/test_daily_integration.py
           tests/test_routine_interviews.py
           tests/test_institutional_forms.py

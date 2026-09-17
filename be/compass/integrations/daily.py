@@ -128,6 +128,46 @@ class DailyClient:
     def get_room(self, *, room_name: str) -> dict[str, object]:
         return self._request("GET", f"/rooms/{quote(room_name, safe='')}")
 
+    def update_room(
+        self,
+        *,
+        room_name: str,
+        properties: dict[str, object],
+    ) -> dict[str, object]:
+        return self._request(
+            "POST",
+            f"/rooms/{quote(room_name, safe='')}",
+            payload={"properties": properties},
+        )
+
+    def start_recording(self, *, room_name: str, instance_id: str) -> dict[str, object]:
+        return self._request(
+            "POST",
+            f"/rooms/{quote(room_name, safe='')}/recordings/start",
+            payload={"instanceId": instance_id, "type": "cloud"},
+        )
+
+    def stop_recording(self, *, room_name: str) -> dict[str, object]:
+        # Current Daily REST semantics stop the active room recording and accept no instanceId body.
+        return self._request(
+            "POST",
+            f"/rooms/{quote(room_name, safe='')}/recordings/stop",
+        )
+
+    def start_transcription(self, *, room_name: str, instance_id: str) -> dict[str, object]:
+        return self._request(
+            "POST",
+            f"/rooms/{quote(room_name, safe='')}/transcription/start",
+            payload={"instanceId": instance_id},
+        )
+
+    def stop_transcription(self, *, room_name: str, instance_id: str) -> dict[str, object]:
+        return self._request(
+            "POST",
+            f"/rooms/{quote(room_name, safe='')}/transcription/stop",
+            payload={"instanceId": instance_id},
+        )
+
     def create_meeting_token(
         self,
         *,

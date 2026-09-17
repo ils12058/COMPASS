@@ -144,6 +144,15 @@ EXPECTED_OPERATION_IDS = {
     "routineInterviewsFinalizeAssignedEvaluation",
     "eCounselingGetMyWorkspace",
     "eCounselingGetAssignedWorkspace",
+    "eCounselingListMyConsents",
+    "eCounselingListAssignedConsents",
+    "eCounselingRequestConsent",
+    "eCounselingDecideMyConsent",
+    "eCounselingWithdrawMyConsent",
+    "eCounselingStartAssignedRecording",
+    "eCounselingStopAssignedRecording",
+    "eCounselingStartAssignedTranscription",
+    "eCounselingStopAssignedTranscription",
     "eCounselingCreateJoinCredential",
     "eCounselingDailyWebhook",
 }
@@ -280,6 +289,10 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "CounselingStudentSharedSummaryPageResponse",
         "StudentWorkspaceResponse",
         "CounselorWorkspaceResponse",
+        "MediaWorkspaceState",
+        "ConsentResponse",
+        "ConsentListResponse",
+        "MediaCaptureResponse",
         "JoinCredentialResponse",
         "WebhookAckResponse",
     }
@@ -384,6 +397,21 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _response_statuses(
         _operation(schema, "/api/v1/e-counseling/appointments/{appointment_id}/join", "post")
     ) >= {200, 401, 403, 404, 409, 502, 503}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/e-counseling/appointments/{appointment_id}/consents", "post")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(
+            schema, "/api/v1/e-counseling/appointments/{appointment_id}/recording/start", "post"
+        )
+    ) >= {200, 401, 403, 404, 409, 502, 503}
+    assert _response_statuses(
+        _operation(
+            schema,
+            "/api/v1/e-counseling/appointments/{appointment_id}/transcription/start",
+            "post",
+        )
+    ) >= {200, 401, 403, 404, 409, 422, 502, 503}
     assert _response_statuses(_operation(schema, "/api/v1/integrations/daily/webhook", "post")) >= {
         200,
         400,
@@ -424,8 +452,10 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "availability.view",
             "counseling.manage_assigned",
             "counseling.view_assigned",
+            "ecounseling.consent_self",
             "ecounseling.join_assigned",
             "ecounseling.join_self",
+            "ecounseling.manage_media_assigned",
             "ecounseling.view_assigned",
             "ecounseling.view_self",
             "institutional_forms.manage",
@@ -480,6 +510,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "CounselingStudentSharedSummaryResponse",
         "StudentWorkspaceResponse",
         "CounselorWorkspaceResponse",
+        "ConsentResponse",
+        "MediaCaptureResponse",
     }
     forbidden_fields = {
         "password_hash",
@@ -491,6 +523,12 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "encryption_key",
         "daily_api_key",
         "daily_webhook_hmac",
+        "provider_instance_id",
+        "provider_artifact_id",
+        "provider_session_id",
+        "share_token",
+        "s3_key",
+        "transcript",
     }
     for schema_name in response_schema_names:
         assert forbidden_fields.isdisjoint(schemas[schema_name].get("properties", {}))
@@ -498,6 +536,6 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     serialized = json.dumps(schema).lower()
     assert not re.search(
         r"(?:password_hash|profile_photo_object_key|token_digest|encrypted_secret|code_hash|"
-        r"turnstile_secret|encryption_key|daily_api_key|daily_webhook_hmac)",
+        r"turnstile_secret|encryption_key|daily_api_key|daily_webhook_hmac|share_token|s3_key)",
         serialized,
     )

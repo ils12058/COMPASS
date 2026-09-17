@@ -213,6 +213,13 @@ CAPABILITY_DEFINITIONS = (
         description="Receive a short-lived join credential for the Student's own eligible session.",
     ),
     CapabilityDefinition(
+        code="ecounseling.consent_self",
+        name="Decide own E-Counseling media consent",
+        description=(
+            "View, decide, and withdraw the authenticated Student's session-specific media consent."
+        ),
+    ),
+    CapabilityDefinition(
         code="ecounseling.view_assigned",
         name="View assigned E-Counseling workspace",
         description="View E-Counseling workspaces assigned to the authenticated Counselor.",
@@ -221,6 +228,13 @@ CAPABILITY_DEFINITIONS = (
         code="ecounseling.join_assigned",
         name="Join assigned E-Counseling session",
         description="Receive a short-lived join credential for the Counselor's assigned session.",
+    ),
+    CapabilityDefinition(
+        code="ecounseling.manage_media_assigned",
+        name="Manage assigned E-Counseling media",
+        description=(
+            "Request consent and control provider media capture for assigned E-Counseling sessions."
+        ),
     ),
 )
 
@@ -256,6 +270,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "routine_interviews.manage_assigned",
             "ecounseling.view_assigned",
             "ecounseling.join_assigned",
+            "ecounseling.manage_media_assigned",
         }
     ),
     "GUIDANCE_SERVICES_STAFF": frozenset(
@@ -281,6 +296,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "routine_interviews.manage_self",
             "ecounseling.view_self",
             "ecounseling.join_self",
+            "ecounseling.consent_self",
             "shared_summaries.view_self",
         }
     ),
