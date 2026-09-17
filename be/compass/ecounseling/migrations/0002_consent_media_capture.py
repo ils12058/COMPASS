@@ -152,13 +152,13 @@ class Migration(migrations.Migration):
             constraint=models.CheckConstraint(
                 condition=(
                     models.Q(
-                        ("decision", "PENDING"),
                         ("decided_at__isnull", True),
+                        ("decision", "PENDING"),
                         ("withdrawn_at__isnull", True),
                     )
                     | models.Q(
-                        ("decision__in", ("APPROVED", "DENIED")),
                         ("decided_at__isnull", False),
+                        ("decision__in", ("APPROVED", "DENIED")),
                     )
                 ),
                 name="ec_consent_decision_time_ck",

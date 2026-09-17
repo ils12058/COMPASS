@@ -26,7 +26,6 @@ from compass.integrations.daily import (
     DailyHTTPError,
     DailyInvalidResponse,
     DailyUnavailable,
-    DailyWebhookSignatureInvalid,
     verify_daily_webhook,
 )
 from compass.routine_interviews.models import RoutineInterview

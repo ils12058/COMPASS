@@ -401,7 +401,9 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         _operation(schema, "/api/v1/e-counseling/appointments/{appointment_id}/consents", "post")
     ) >= {200, 401, 403, 404, 409, 422}
     assert _response_statuses(
-        _operation(schema, "/api/v1/e-counseling/appointments/{appointment_id}/recording/start", "post")
+        _operation(
+            schema, "/api/v1/e-counseling/appointments/{appointment_id}/recording/start", "post"
+        )
     ) >= {200, 401, 403, 404, 409, 502, 503}
     assert _response_statuses(
         _operation(

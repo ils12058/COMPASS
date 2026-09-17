@@ -357,9 +357,7 @@ def test_recording_requires_effective_consent_and_uses_deterministic_instance_id
     assert capture.status == MediaCaptureStatus.START_REQUESTED
     assert capture.provider_instance_id
     assert fake.room_updates[-1][1] == {"enable_recording": "cloud"}
-    assert fake.recording_starts == [
-        (capture.room.daily_room_name, capture.provider_instance_id)
-    ]
+    assert fake.recording_starts == [(capture.room.daily_room_name, capture.provider_instance_id)]
     assert AuditEvent.objects.filter(action="ecounseling.recording_start_requested").count() == 1
     with override_settings(DAILY_ENABLED=True):
         with pytest.raises(ECounselingMediaConflict):

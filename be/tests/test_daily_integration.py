@@ -26,7 +26,9 @@ class CapturingDailyClient(DailyClient):
         self.calls.append((method, path, payload))
         if path == "/meeting-tokens":
             return {"token": "ephemeral-token"}
-        if path.endswith(("/recordings/start", "/recordings/stop", "/transcription/start", "/transcription/stop")):
+        if path.endswith(
+            ("/recordings/start", "/recordings/stop", "/transcription/start", "/transcription/stop")
+        ):
             return {"status": "sent"}
         return {
             "id": "provider-room-id",

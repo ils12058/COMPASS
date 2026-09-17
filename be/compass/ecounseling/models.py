@@ -152,8 +152,7 @@ class ECounselingMediaCapture(models.Model):
             ),
             models.CheckConstraint(
                 condition=(
-                    Q(kind=MediaCaptureKind.TRANSCRIPTION)
-                    | Q(transcript_storage_enabled=False)
+                    Q(kind=MediaCaptureKind.TRANSCRIPTION) | Q(transcript_storage_enabled=False)
                 ),
                 name="ec_media_storage_transcription_ck",
             ),
