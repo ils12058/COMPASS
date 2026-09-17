@@ -251,7 +251,7 @@ def test_join_reuses_one_opaque_room_mints_fresh_tokens_and_never_checks_invento
 
 
 @pytest.mark.django_db
-def test_join_rejects_non_online_cancelled_wrong_relationship_and_provider_failure_preserves_truth():
+def test_join_rejections_and_provider_failure_preserve_truth():
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     student = make_user("student@example.edu", "STUDENT")
