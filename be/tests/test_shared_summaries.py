@@ -170,7 +170,7 @@ def test_publish_is_explicit_idempotent_immutable_and_audit_content_free():
     events = AuditEvent.objects.filter(action="counseling.shared_summary.published")
     assert events.count() == 1
     event = events.get()
-    assert event.target_type == "counseling.shared_summary"
+    assert event.target_type == "counseling.sharedsummary"
     assert event.target_id == str(published.pk)
     assert event.metadata == {"counseling_encounter_id": str(encounter.pk)}
     assert marker not in json.dumps(event.metadata)
