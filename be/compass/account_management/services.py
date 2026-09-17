@@ -615,6 +615,8 @@ def change_role(
             raise OrganizationRelationshipConflict(str(exc)) from exc
         from compass.availability.services import (
             AvailabilityRoleTransitionConflict,
+        )
+        from compass.availability.services import (
             validate_role_transition as validate_availability_role_transition,
         )
 
