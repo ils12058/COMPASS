@@ -11,7 +11,8 @@ from compass.authentication.api import router as authentication_router
 from compass.availability.api import router as availability_router
 from compass.common.errors import register_exception_handlers
 from compass.counseling.api import router as counseling_router
-from compass.ecounseling.api import daily_router, router as ecounseling_router
+from compass.ecounseling.api import daily_router
+from compass.ecounseling.api import router as ecounseling_router
 from compass.institutional_forms.api import router as institutional_forms_router
 from compass.inventory.api import router as inventory_router
 from compass.organization.academic_years_api import router as academic_years_router
