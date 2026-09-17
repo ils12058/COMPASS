@@ -122,8 +122,8 @@ def test_academic_year_switch_is_explicit_transactional_and_audited():
 
     event = AuditEvent.objects.filter(action="academic_year.current_changed").latest("occurred_at")
     assert event.metadata == {
-        "old_academic_year": "2026-2027",
-        "new_academic_year": "2027-2028",
+        "old_label": "2026-2027",
+        "new_label": "2027-2028",
     }
 
 
