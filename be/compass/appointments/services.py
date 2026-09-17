@@ -457,7 +457,7 @@ def cancel_appointment(
 ) -> Appointment:
     current = now or timezone.now()
     with transaction.atomic():
-        item = _appointment_queryset().select_for_update().filter(pk=appointment_id).first()
+        item = Appointment.objects.select_for_update().filter(pk=appointment_id).first()
         if item is None:
             raise AppointmentNotFound("The requested Appointment was not found.")
         if administrative:
@@ -493,7 +493,7 @@ def cancel_appointment(
                 "administrative": administrative,
             },
         )
-        return item
+        return _appointment_queryset().get(pk=item.pk)
 
 
 def list_eligible_counselors(
