@@ -91,8 +91,9 @@ def test_configuration_capabilities_keep_head_business_authority_explicit():
     assert head.has_capability("academic_years.manage")
     assert head.has_capability("institutional_forms.view")
     assert head.has_capability("institutional_forms.manage")
-    assert counselor.has_capability("academic_years.view")
+    assert not counselor.has_capability("academic_years.view")
     assert not counselor.has_capability("academic_years.manage")
+    assert not counselor.has_capability("institutional_forms.view")
     assert not counselor.has_capability("institutional_forms.manage")
     assert not admin.has_capability("academic_years.manage")
     assert not admin.has_capability("institutional_forms.manage")
@@ -119,7 +120,7 @@ def test_academic_year_switch_is_explicit_transactional_and_audited():
     assert second.is_current
     assert AcademicYear.objects.filter(is_current=True).count() == 1
 
-    event = AuditEvent.objects.filter(action="academic_year.current_changed").latest("created_at")
+    event = AuditEvent.objects.filter(action="academic_year.current_changed").latest("occurred_at")
     assert event.metadata == {
         "old_academic_year": "2026-2027",
         "new_academic_year": "2027-2028",
