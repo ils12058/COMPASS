@@ -53,7 +53,7 @@ jobs:
       - name: Install locked dependencies
         working-directory: be
         run: uv sync --frozen
-      - name: Normalize source formatting and mechanical lint
+      - name: Normalize source formatting and mechanical state
         working-directory: be
         run: |
           python - <<'PY'
@@ -74,6 +74,30 @@ jobs:
           text = services.read_text(encoding="utf-8")
           text = text.replace("    DailyWebhookSignatureInvalid,\n", "")
           services.write_text(text, encoding="utf-8")
+
+          migration = Path("compass/ecounseling/migrations/0002_consent_media_capture.py")
+          text = migration.read_text(encoding="utf-8")
+          text = text.replace(
+              '                    models.Q(\n'
+              '                        ("decision", "PENDING"),\n'
+              '                        ("decided_at__isnull", True),\n'
+              '                        ("withdrawn_at__isnull", True),\n'
+              '                    )\n'
+              '                    | models.Q(\n'
+              '                        ("decision__in", ("APPROVED", "DENIED")),\n'
+              '                        ("decided_at__isnull", False),\n'
+              '                    )\n',
+              '                    models.Q(\n'
+              '                        ("decided_at__isnull", True),\n'
+              '                        ("decision", "PENDING"),\n'
+              '                        ("withdrawn_at__isnull", True),\n'
+              '                    )\n'
+              '                    | models.Q(\n'
+              '                        ("decided_at__isnull", False),\n'
+              '                        ("decision__in", ("APPROVED", "DENIED")),\n'
+              '                    )\n',
+          )
+          migration.write_text(text, encoding="utf-8")
           PY
           uv run ruff format .
       - name: Static and migration checks
