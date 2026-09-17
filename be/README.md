@@ -5,8 +5,8 @@ Authentication / Account Security, self-activity projections, and purpose-built 
 It intentionally stops before broader business workflows: configuration, health, error handling,
 request correlation, rate-limit and idempotency primitives, external-service adapters, account
 identity, capability policy, server-managed authentication, administrative account management, and
-local/live-staging container wiring are included. Organizational scope and service domains remain
-deferred.
+local/live-staging container wiring are included. Organization & Scope, Service Catalog, and the
+Availability foundation are included; Appointment and downstream service workflows remain deferred.
 
 ## Baseline
 
@@ -251,8 +251,8 @@ The same commands can run with the normal backend environment by omitting the
 route, so it remains usable when `API_DOCS_ENABLED=false`. When enabled, local Swagger is at
 `/api/v1/docs` and the raw schema is at `/api/v1/openapi.json`.
 
-Operation IDs are stable public identifiers (`health<Action>`, `auth<Action>`, `me<Action>`, and
-`accounts<Action>`), and tags are bounded domains rather than user roles. Intentional path, method,
+Operation IDs are stable public identifiers (`health<Action>`, `auth<Action>`, `me<Action>`,
+`accounts<Action>`, `organization<Action>`, `services<Action>`, and `availability<Action>`), and tags are bounded domains rather than user roles. Intentional path, method,
 operation ID, parameter, schema, status-code, enum, or security changes must update the artifact
 in the same change. Future frontend work should use relative `/api/` requests through a same-origin
 proxy or ingress, preserve browser cookie credentials and Django CSRF behavior, and never read or
@@ -398,3 +398,52 @@ Service Catalog configuration emits `service.created`, `service.updated`, `servi
 and `service.disabled` Audit Trail events. These are deliberately not projected into My Activity
 or Security Activity. Availability, Appointment, ServiceDelivery, Counseling encounters, Good
 Moral, Exit Interview, Customer Feedback, and workflow-specific rules remain deferred.
+
+
+## Availability
+
+Availability models recurring weekly GCO Office hours, recurring weekly Provider hours, and dated
+unavailability exceptions. Weekly rows are local wall-clock values interpreted with
+`settings.TIME_ZONE`; exceptions are timezone-aware absolute datetime ranges. All interval
+calculation uses half-open `[start, end)` semantics. Empty schedules fail closed and semantic
+weekly overlaps are rejected for the same delivery-mode context.
+
+Provider and Office schedules are independent. A provider must be an active Counselor or Guidance
+Services Staff member to receive new schedule configuration; GSS never inherits a supervising
+Counselor's schedule. Counselors may manage only their own Provider Availability through the
+`/availability/me/...` API using `availability.manage_self`. Head Guidance Counselors remain
+Counselors and receive separate administrative `availability.manage` authority through their
+Head designation. GSS has no self-management grant by default. Administrative Availability
+mutations require recent MFA; routine Counselor self-service does not.
+
+Effective/base Availability is computed from Provider weekly Availability intersected with Office
+weekly Availability, minus applicable Office and Provider exceptions. Service Catalog remains the
+source of truth for active Service state, delivery-mode support, role-level provider eligibility,
+and normal default duration. Results shorter than the Service default duration are discarded, but
+longer intervals are returned whole; no slots are generated or persisted. Effective queries are
+bounded to 31 days and do not subtract Appointment reservations because the Appointment domain has
+not been introduced yet.
+
+```text
+GET    /api/v1/availability/office/weekly
+PUT    /api/v1/availability/office/weekly
+GET    /api/v1/availability/office/exceptions
+POST   /api/v1/availability/office/exceptions
+DELETE /api/v1/availability/office/exceptions/{exception_id}
+GET    /api/v1/availability/me/weekly
+PUT    /api/v1/availability/me/weekly
+GET    /api/v1/availability/me/exceptions
+POST   /api/v1/availability/me/exceptions
+DELETE /api/v1/availability/me/exceptions/{exception_id}
+GET    /api/v1/availability/providers/{provider_id}/weekly
+PUT    /api/v1/availability/providers/{provider_id}/weekly
+GET    /api/v1/availability/providers/{provider_id}/exceptions
+POST   /api/v1/availability/providers/{provider_id}/exceptions
+DELETE /api/v1/availability/providers/{provider_id}/exceptions/{exception_id}
+GET    /api/v1/availability/providers/{provider_id}/effective
+```
+
+Availability configuration is audited synchronously but is not projected into My Activity or
+Security Activity. Counseling's current one-hour norm remains Service configuration
+(`default_duration_minutes = 60`), not a maximum. The confirmed Counseling cancellation cutoff of
+30 minutes before Appointment start is explicitly deferred to the future Appointment domain.
