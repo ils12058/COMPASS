@@ -137,6 +137,10 @@ EXPECTED_OPERATION_IDS = {
     "routineInterviewsGetAssigned",
     "routineInterviewsReplaceAssignedEvaluation",
     "routineInterviewsFinalizeAssignedEvaluation",
+    "eCounselingGetMyWorkspace",
+    "eCounselingGetAssignedWorkspace",
+    "eCounselingCreateJoinCredential",
+    "eCounselingDailyWebhook",
 }
 
 
@@ -204,6 +208,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "institutional-forms",
         "inventory",
         "routine-interviews",
+        "e-counseling",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -234,6 +239,8 @@ def test_cookie_auth_and_public_csrf_contract_are_explicit() -> None:
 
     health_live = _operation(schema, "/api/v1/health/live", "get")
     assert "security" not in health_live
+    daily_webhook = _operation(schema, "/api/v1/integrations/daily/webhook", "post")
+    assert "security" not in daily_webhook
 
     secured_operations = [
         operation for _, _, operation in iter_operations(schema) if "security" in operation
@@ -264,6 +271,10 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "SessionListResponse",
         "CounselingEncounterResponse",
         "CounselingStudentPageResponse",
+        "StudentWorkspaceResponse",
+        "CounselorWorkspaceResponse",
+        "JoinCredentialResponse",
+        "WebhookAckResponse",
     }
     assert expected_schemas <= schemas.keys()
     assert schemas["AccountSummaryResponse"]["properties"]["id"]["format"] == "uuid"
@@ -353,10 +364,16 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _response_statuses(
         _operation(schema, "/api/v1/counseling/encounters/{encounter_id}", "patch")
     ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/e-counseling/appointments/{appointment_id}/join", "post")
+    ) >= {200, 401, 403, 404, 409, 502, 503}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/integrations/daily/webhook", "post")
+    ) >= {200, 400, 403, 503}
 
     for method, path, operation in iter_operations(schema):
         for status, response in operation["responses"].items():
-            if int(status) in {400, 401, 403, 404, 409, 422, 429, 503}:
+            if int(status) in {400, 401, 403, 404, 409, 422, 429, 502, 503}:
                 if method == "get" and path == "/api/v1/health/ready" and int(status) == 503:
                     continue
                 response_schema = response["content"]["application/json"]["schema"]
@@ -387,6 +404,10 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "availability.view",
             "counseling.manage_assigned",
             "counseling.view_assigned",
+            "ecounseling.join_assigned",
+            "ecounseling.join_self",
+            "ecounseling.view_assigned",
+            "ecounseling.view_self",
             "institutional_forms.manage",
             "institutional_forms.view",
             "inventory.manage_self",
@@ -432,6 +453,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "TrustedSessionSummary",
         "CounselingEncounterResponse",
         "CounselingStudentResponse",
+        "StudentWorkspaceResponse",
+        "CounselorWorkspaceResponse",
     }
     forbidden_fields = {
         "password_hash",
@@ -441,6 +464,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "code_hash",
         "turnstile_secret",
         "encryption_key",
+        "daily_api_key",
+        "daily_webhook_hmac",
     }
     for schema_name in response_schema_names:
         assert forbidden_fields.isdisjoint(schemas[schema_name].get("properties", {}))
@@ -448,6 +473,6 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     serialized = json.dumps(schema).lower()
     assert not re.search(
         r"(?:password_hash|profile_photo_object_key|token_digest|encrypted_secret|code_hash|"
-        r"turnstile_secret|encryption_key)",
+        r"turnstile_secret|encryption_key|daily_api_key|daily_webhook_hmac)",
         serialized,
     )
