@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   targeted-backend:
@@ -40,6 +40,8 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -62,6 +64,17 @@ jobs:
       - name: Generate OpenAPI contract
         working-directory: be
         run: uv run python manage.py export_openapi --settings=tests.settings
+      - name: Commit generated OpenAPI contract
+        if: github.event_name == 'pull_request'
+        run: |
+          git add contracts/openapi.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update generated OpenAPI contract"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
       - name: Upload generated OpenAPI
         if: always()
         uses: actions/upload-artifact@v4
