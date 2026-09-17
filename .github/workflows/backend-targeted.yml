@@ -72,6 +72,7 @@ jobs:
           path: contracts/openapi.json
       - name: Contract must be committed
         run: git diff --exit-code -- contracts/openapi.json
+      # Daily provider traffic is fully mocked; targeted CI must never contact Daily.co.
       - name: Targeted tests
         working-directory: be
         run: >-
