@@ -304,7 +304,7 @@ def ensure_for_appointment(
             context=context,
             action=ROUTINE_INTERVIEW_CREATED,
             outcome=AuditOutcome.SUCCESS,
-            target_type="routine_interviews.routineinterview",
+            target_type="routine.interview",
             target_id=item.pk,
             metadata=_safe_creation_metadata(
                 RoutineInterview.objects.select_related(
@@ -416,7 +416,7 @@ def create_direct(
             context=context,
             action=ROUTINE_INTERVIEW_CREATED,
             outcome=AuditOutcome.SUCCESS,
-            target_type="routine_interviews.routineinterview",
+            target_type="routine.interview",
             target_id=item.pk,
             metadata=_safe_creation_metadata(item_for_audit),
         )
@@ -557,7 +557,7 @@ def submit_my_intake(
             context=context,
             action=ROUTINE_INTERVIEW_INTAKE_SUBMITTED,
             outcome=AuditOutcome.SUCCESS,
-            target_type="routine_interviews.routineinterview",
+            target_type="routine.interview",
             target_id=item.pk,
             metadata={
                 "entry_mode": item.entry_mode,
@@ -746,7 +746,7 @@ def finalize_assigned_evaluation(
             context=context,
             action=ROUTINE_INTERVIEW_EVALUATION_FINALIZED,
             outcome=AuditOutcome.SUCCESS,
-            target_type="routine_interviews.routineinterview",
+            target_type="routine.interview",
             target_id=item.pk,
             metadata={
                 "entry_mode": item.entry_mode,
