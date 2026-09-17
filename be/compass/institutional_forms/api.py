@@ -126,7 +126,7 @@ def institutional_forms_list(request):
     "/{family_key}/revisions",
     response=response_with_errors(FormRevisionListResponse, 401, 403, 404),
     auth=session_auth,
-    operation_id="institutionalFormRevisionsList",
+    operation_id="institutionalFormsRevisionsList",
 )
 def institutional_form_revisions_list(request, family_key: str):
     _require(request, "institutional_forms.view")
@@ -143,7 +143,7 @@ def institutional_form_revisions_list(request, family_key: str):
         FormRevisionResponse, 401, 403, 404, 409, 422, success_status=201
     ),
     auth=session_auth,
-    operation_id="institutionalFormRevisionsRegister",
+    operation_id="institutionalFormsRevisionsRegister",
 )
 def institutional_form_revisions_register(
     request,
@@ -168,7 +168,7 @@ def institutional_form_revisions_register(
     "/revisions/{revision_id}/activate",
     response=response_with_errors(FormRevisionResponse, 401, 403, 404, 409, 422),
     auth=session_auth,
-    operation_id="institutionalFormRevisionsActivate",
+    operation_id="institutionalFormsRevisionsActivate",
 )
 def institutional_form_revision_activate(request, revision_id: UUID):
     _require(request, "institutional_forms.manage", recent_mfa=True)
@@ -182,7 +182,7 @@ def institutional_form_revision_activate(request, revision_id: UUID):
     "/revisions/{revision_id}/deactivate",
     response=response_with_errors(FormRevisionResponse, 401, 403, 404, 409, 422),
     auth=session_auth,
-    operation_id="institutionalFormRevisionsDeactivate",
+    operation_id="institutionalFormsRevisionsDeactivate",
 )
 def institutional_form_revision_deactivate(request, revision_id: UUID):
     _require(request, "institutional_forms.manage", recent_mfa=True)
