@@ -123,6 +123,16 @@ CAPABILITY_DEFINITIONS = (
         name="Manage appointments",
         description="Manage Guidance-office Appointment reservations operationally.",
     ),
+    CapabilityDefinition(
+        code="counseling.view_assigned",
+        name="View assigned counseling encounters",
+        description="View Counseling Encounters assigned to the authenticated Counselor.",
+    ),
+    CapabilityDefinition(
+        code="counseling.manage_assigned",
+        name="Manage assigned counseling encounters",
+        description="Create and correct Counseling Encounters assigned to the authenticated Counselor.",
+    ),
 )
 
 # Account identity is visible to operational actors through future, scoped workflows. Account
@@ -149,6 +159,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "availability.view",
             "availability.manage_self",
             "appointments.view_self",
+            "counseling.view_assigned",
+            "counseling.manage_assigned",
         }
     ),
     "GUIDANCE_SERVICES_STAFF": frozenset(
@@ -172,9 +184,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     ),
 }
 
-# No designation currently adds account-foundation authority. The relationship is still modeled
-# explicitly so later domain policy can grant designation-specific capabilities without turning a
-# designation into a role.
+# Designations add only the explicitly confirmed domain authorities below. Head Guidance remains
+# a Counselor for confidential Counseling records and receives no blanket Counseling-content grant.
 DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     "HEAD_GUIDANCE_COUNSELOR": frozenset(
         {
