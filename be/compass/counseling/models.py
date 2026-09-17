@@ -1,4 +1,4 @@
-"""Persistent records for completed Counseling encounters."""
+"""Persistent records for completed Counseling encounters and Student-visible summaries."""
 
 from __future__ import annotations
 
@@ -82,3 +82,22 @@ class CounselingEncounter(models.Model):
                 name="counseling_appointment_mode_requires_link",
             ),
         ]
+
+
+class CounselingSharedSummary(models.Model):
+    """Counselor-authored content deliberately published to the Encounter Student."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    encounter = models.OneToOneField(
+        CounselingEncounter,
+        on_delete=models.PROTECT,
+        related_name="shared_summary",
+    )
+    content = models.TextField(blank=True, default="")
+    published_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("-created_at", "id")
