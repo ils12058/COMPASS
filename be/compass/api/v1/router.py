@@ -15,6 +15,7 @@ from compass.institutional_forms.api import router as institutional_forms_router
 from compass.inventory.api import router as inventory_router
 from compass.organization.academic_years_api import router as academic_years_router
 from compass.organization.api import router as organization_router
+from compass.routine_interviews.api import router as routine_interviews_router
 from compass.service_catalog.api import router as service_catalog_router
 
 api = NinjaAPI(
@@ -59,6 +60,12 @@ api = NinjaAPI(
                 "name": "inventory",
                 "description": "Student annual Individual Inventory self-service.",
             },
+            {
+                "name": "routine-interviews",
+                "description": (
+                    "Interaction-specific Student Intake and assigned Counselor Evaluation."
+                ),
+            },
         ]
     },
     openapi_url="/openapi.json" if settings.API_DOCS_ENABLED else None,
@@ -76,4 +83,5 @@ api.add_router("/counseling", counseling_router)
 api.add_router("/academic-years", academic_years_router)
 api.add_router("/institutional-forms", institutional_forms_router)
 api.add_router("/inventory", inventory_router)
+api.add_router("/routine-interviews", routine_interviews_router)
 register_exception_handlers(api)
