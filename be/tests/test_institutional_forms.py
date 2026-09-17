@@ -13,10 +13,10 @@ from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.institutional_forms.models import FormFamily, FormRevision
 from compass.institutional_forms.services import (
-    UnsupportedFormSchemaVersion,
-    activate_revision,
-    deactivate_revision,
-    register_revision,
+    InstitutionalFormConflict,
+    activate_form_revision,
+    deactivate_form_revision,
+    register_form_revision,
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
 from compass.organization.models import AcademicYear
@@ -133,7 +133,7 @@ def test_form_revision_registration_is_append_only_and_activation_checks_code_su
     family = FormFamily.objects.get(key="individual_inventory")
     old = FormRevision.objects.get(family=family, internal_schema_version=1)
 
-    unsupported = register_revision(
+    unsupported = register_form_revision(
         family_key=family.key,
         official_code="CNSC-OP-GCO-01F5",
         official_revision="1",
@@ -141,10 +141,10 @@ def test_form_revision_registration_is_append_only_and_activation_checks_code_su
         context=context(head),
     )
     assert unsupported.status == "INACTIVE"
-    with pytest.raises(UnsupportedFormSchemaVersion):
-        activate_revision(revision_id=unsupported.pk, context=context(head))
+    with pytest.raises(InstitutionalFormConflict, match="does not support"):
+        activate_form_revision(revision_id=unsupported.pk, context=context(head))
 
-    deactivate_revision(revision_id=old.pk, context=context(head))
+    deactivate_form_revision(revision_id=old.pk, context=context(head))
     old.refresh_from_db()
     unsupported.refresh_from_db()
     assert old.status == "INACTIVE"
