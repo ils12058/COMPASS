@@ -634,7 +634,6 @@ def test_reference_counter_uses_local_booking_year_and_rolls_back_with_failed_tr
     provider = make_user("provider@example.edu", "COUNSELOR")
     service = active_service(actor)
     configure_availability(actor, provider)
-    start = future_local_start()
 
     booking_now = datetime(2026, 12, 31, 23, 30, tzinfo=ZoneInfo("Asia/Manila"))
     scheduled_start = datetime(2027, 1, 4, 10, 0, tzinfo=ZoneInfo("Asia/Manila"))
