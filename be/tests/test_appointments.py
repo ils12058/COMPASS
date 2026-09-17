@@ -130,10 +130,10 @@ def configure_availability(actor: User, provider: User) -> None:
 
 
 def create_affiliation(student: User, counselor: User):
-    campus = Campus.objects.create(code=f"C{Campus.objects.count()+1}", name="Campus")
+    campus = Campus.objects.create(code=f"C{Campus.objects.count() + 1}", name="Campus")
     college = College.objects.create(
         campus=campus,
-        code=f"COL{College.objects.count()+1}",
+        code=f"COL{College.objects.count() + 1}",
         name="College",
     )
     StudentAffiliation.objects.create(student=student, college=college)
