@@ -179,7 +179,11 @@ def _encounter_for_appointment(appointment: Appointment) -> CounselingEncounter 
 
 
 def _room_for_appointment(appointment: Appointment) -> ECounselingRoom | None:
-    return ECounselingRoom.objects.filter(appointment_id=appointment.pk).first()
+    return (
+        ECounselingRoom.objects.prefetch_related("consents", "media_captures")
+        .filter(appointment_id=appointment.pk)
+        .first()
+    )
 
 
 def _appointment_context(appointment: Appointment) -> dict[str, object]:
@@ -219,6 +223,8 @@ def get_student_workspace(*, student: User, appointment_id: UUID) -> dict[str, o
             "id": routine.pk,
             "intake_status": "SUBMITTED" if routine.intake_submitted_at else "DRAFT",
         }
+    from .media import get_media_projection
+
     return {
         "appointment": _appointment_context(appointment),
         "counselor": {
@@ -227,6 +233,7 @@ def get_student_workspace(*, student: User, appointment_id: UUID) -> dict[str, o
         },
         "provider_readiness": _provider_readiness(appointment, room),
         "routine_interview": routine_summary,
+        "media": get_media_projection(room),
     }
 
 
@@ -250,6 +257,8 @@ def get_counselor_workspace(*, counselor: User, appointment_id: UUID) -> dict[st
     encounter_summary = None
     if encounter is not None and encounter.counselor_id == counselor.pk:
         encounter_summary = {"id": encounter.pk, "recorded": True}
+    from .media import get_media_projection
+
     return {
         "appointment": _appointment_context(appointment),
         "student": {
@@ -259,6 +268,7 @@ def get_counselor_workspace(*, counselor: User, appointment_id: UUID) -> dict[st
         "provider_readiness": _provider_readiness(appointment, room),
         "routine_interview": routine_summary,
         "counseling_encounter": encounter_summary,
+        "media": get_media_projection(room),
     }
 
 
@@ -501,17 +511,14 @@ def process_daily_webhook(
 ) -> WebhookProcessingResult:
     if not settings.DAILY_ENABLED:
         raise ECounselingProviderDisabled("Daily E-Counseling is disabled.")
-    try:
-        verify_daily_webhook(
-            raw_body=raw_body,
-            signature=signature,
-            timestamp=timestamp,
-            secret_b64=settings.DAILY_WEBHOOK_HMAC,
-            max_age_seconds=settings.DAILY_WEBHOOK_MAX_AGE_SECONDS,
-            now_epoch=now_epoch,
-        )
-    except DailyWebhookSignatureInvalid:
-        raise
+    verify_daily_webhook(
+        raw_body=raw_body,
+        signature=signature,
+        timestamp=timestamp,
+        secret_b64=settings.DAILY_WEBHOOK_HMAC,
+        max_age_seconds=settings.DAILY_WEBHOOK_MAX_AGE_SECONDS,
+        now_epoch=now_epoch,
+    )
 
     try:
         event = json.loads(raw_body.decode("utf-8"))
@@ -525,7 +532,11 @@ def process_daily_webhook(
     event_type = event.get("type")
     if not isinstance(event_type, str) or not event_type:
         raise ECounselingInvalidWebhook("Daily webhook event type is missing.")
-    if event_type not in {"meeting.started", "meeting.ended"}:
+
+    from .media import MEDIA_WEBHOOK_TYPES, process_media_webhook_event
+
+    supported_types = {"meeting.started", "meeting.ended"} | set(MEDIA_WEBHOOK_TYPES)
+    if event_type not in supported_types:
         return WebhookProcessingResult(accepted=True)
 
     event_id = event.get("id")
@@ -534,6 +545,15 @@ def process_daily_webhook(
         raise ECounselingInvalidWebhook("Daily webhook event ID is invalid.")
     if not isinstance(payload, dict):
         raise ECounselingInvalidWebhook("Daily webhook event payload is invalid.")
+
+    if event_type in MEDIA_WEBHOOK_TYPES:
+        return process_media_webhook_event(
+            event_type=event_type,
+            event_id=event_id,
+            event_ts=event.get("event_ts"),
+            payload=payload,
+        )
+
     room_name = payload.get("room")
     meeting_id = payload.get("meeting_id")
     if not isinstance(room_name, str) or not room_name or len(room_name) > 128:
