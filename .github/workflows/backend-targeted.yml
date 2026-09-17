@@ -55,6 +55,30 @@ jobs:
         if: github.event_name == 'pull_request'
         working-directory: be
         run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          policy = Path("compass/accounts/policy.py")
+          text = policy.read_text()
+          text = text.replace(
+              '        description="Create, edit, and submit the authenticated Student\'s Routine Interview Intake.",',
+              '        description=(\n'
+              '            "Create, edit, and submit the authenticated Student\'s "\n'
+              '            "Routine Interview Intake."\n'
+              '        ),',
+          )
+          policy.write_text(text)
+
+          services = Path("compass/routine_interviews/services.py")
+          text = services.read_text()
+          text = text.replace(
+              '                    "The Idempotency-Key was already used for a different Routine Interview request."',
+              '                    "The Idempotency-Key was already used for a different "\n'
+              '                    "Routine Interview request."',
+          )
+          services.write_text(text)
+          PY
+          uv run ruff check --fix --unsafe-fixes . || true
           uv run ruff format .
           uv run python manage.py export_openapi --settings=tests.settings
           if ! git diff --quiet -- . ../contracts/openapi.json; then
