@@ -132,14 +132,18 @@ def _load_eligible_appointment(appointment_id: UUID) -> Appointment:
     return appointment
 
 
-def _require_student_relationship(*, actor: User, appointment: Appointment, capability: str) -> None:
+def _require_student_relationship(
+    *, actor: User, appointment: Appointment, capability: str
+) -> None:
     if (
         not actor.is_active
         or actor.role.code != "STUDENT"
         or actor.pk != appointment.student_id
         or not actor.has_capability(capability)
     ):
-        raise ECounselingNotPermitted("This E-Counseling workspace is not available to this Student.")
+        raise ECounselingNotPermitted(
+            "This E-Counseling workspace is not available to this Student."
+        )
 
 
 def _require_counselor_relationship(
@@ -189,7 +193,9 @@ def _appointment_context(appointment: Appointment) -> dict[str, object]:
     }
 
 
-def _provider_readiness(appointment: Appointment, room: ECounselingRoom | None) -> dict[str, object]:
+def _provider_readiness(
+    appointment: Appointment, room: ECounselingRoom | None
+) -> dict[str, object]:
     enabled = bool(settings.DAILY_ENABLED)
     return {
         "daily_enabled": enabled,
@@ -286,7 +292,9 @@ def _normalize_provider_room(
             "Daily returned room metadata that does not match the expected private room."
         )
     if payload.get("api_created") is False:
-        raise ECounselingInvalidProviderResponse("Daily returned a room not created through the API.")
+        raise ECounselingInvalidProviderResponse(
+            "Daily returned a room not created through the API."
+        )
     room_url = payload.get("url")
     room_id = payload.get("id")
     config = payload.get("config")
