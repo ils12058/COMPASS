@@ -223,11 +223,23 @@ def test_provider_configuration_accepts_operational_roles_and_allows_inactive_cl
     other_admin = make_user("a2@example.edu", "IT_ADMIN")
     inactive = make_user("inactive@example.edu", "COUNSELOR", active=False)
 
-    assert len(replace_provider_weekly(provider_id=counselor.pk, windows=[weekly()], context=context(actor))) == 1
-    assert len(replace_provider_weekly(provider_id=gss.pk, windows=[weekly()], context=context(actor))) == 1
+    assert (
+        len(
+            replace_provider_weekly(
+                provider_id=counselor.pk, windows=[weekly()], context=context(actor)
+            )
+        )
+        == 1
+    )
+    assert (
+        len(replace_provider_weekly(provider_id=gss.pk, windows=[weekly()], context=context(actor)))
+        == 1
+    )
     for provider in (student, other_admin, inactive):
         with pytest.raises(AvailabilityNotApplicable):
-            replace_provider_weekly(provider_id=provider.pk, windows=[weekly()], context=context(actor))
+            replace_provider_weekly(
+                provider_id=provider.pk, windows=[weekly()], context=context(actor)
+            )
 
     ProviderAvailabilityWindow.objects.create(
         provider=inactive,
@@ -316,7 +328,10 @@ def test_effective_availability_intersects_office_provider_and_subtracts_provide
         end_date=date(2026, 9, 22),
     )
     assert result.timezone_name == "Asia/Manila"
-    assert [(item.starts_at.hour, item.ends_at.hour) for item in result.windows] == [(9, 12), (13, 17)]
+    assert [(item.starts_at.hour, item.ends_at.hour) for item in result.windows] == [
+        (9, 12),
+        (13, 17),
+    ]
     assert all(item.starts_at.utcoffset() == timedelta(hours=8) for item in result.windows)
 
 
@@ -480,7 +495,9 @@ def test_provider_exception_cleanup_can_remove_inactive_provider_data():
     )
     provider.is_active = False
     provider.save(update_fields=["is_active", "updated_at"])
-    assert remove_provider_exception(exception_id=item.pk, provider_id=provider.pk, context=context(actor))
+    assert remove_provider_exception(
+        exception_id=item.pk, provider_id=provider.pk, context=context(actor)
+    )
     assert not ProviderUnavailability.objects.filter(pk=item.pk).exists()
 
 
@@ -625,7 +642,9 @@ def test_self_exception_delete_cannot_target_another_provider_and_reason_is_not_
     )
     assert response.status_code == 404
     assert ProviderUnavailability.objects.filter(pk=item.pk).exists()
-    event = AuditEvent.objects.get(action="availability.provider_exception.created", target_id=str(item.pk))
+    event = AuditEvent.objects.get(
+        action="availability.provider_exception.created", target_id=str(item.pk)
+    )
     assert "reason" not in event.metadata
     assert "Internal operational note" not in str(event.metadata)
 
