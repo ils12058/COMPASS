@@ -42,7 +42,6 @@ jobs:
               '    "compass.counseling",\n]',
               '    "compass.counseling",\n    "compass.institutional_forms",\n    "compass.inventory",\n]',
           )
-
           patch(
               "be/compass/api/v1/router.py",
               'from compass.counseling.api import router as counseling_router\nfrom compass.organization.api import router as organization_router',
@@ -58,7 +57,6 @@ jobs:
               'api.add_router("/counseling", counseling_router)\nregister_exception_handlers(api)',
               'api.add_router("/counseling", counseling_router)\napi.add_router("/academic-years", academic_years_router)\napi.add_router("/institutional-forms", institutional_forms_router)\napi.add_router("/inventory", inventory_router)\nregister_exception_handlers(api)',
           )
-
           patch(
               "be/compass/api/contract.py",
               '        "counseling",\n    }',
@@ -69,7 +67,6 @@ jobs:
               '    "counseling": "counseling",\n}',
               '    "counseling": "counseling",\n    "academic-years": "academicYears",\n    "institutional-forms": "institutionalForms",\n    "inventory": "inventory",\n}',
           )
-
           patch(
               "be/compass/appointments/services.py",
               'from compass.availability.services import AvailabilityError, compute_base_availability\nfrom compass.organization.services import resolve_default_counselor_for_student',
@@ -90,7 +87,6 @@ jobs:
               '        _validate_booking_service(service, locked_provider, normalized_mode)\n\n        ends_at = normalized_start',
               '        _validate_booking_service(service, locked_provider, normalized_mode)\n        _validate_inventory_prerequisite(service, locked_student)\n\n        ends_at = normalized_start',
           )
-
           patch(
               "be/compass/appointments/api.py",
               '    AppointmentCancellationConflict,\n    AppointmentDefaultProviderUnresolved,',
@@ -100,6 +96,11 @@ jobs:
               "be/compass/appointments/api.py",
               'def _raise(exc: AppointmentError) -> NoReturn:\n    if isinstance(exc, AppointmentNotFound):',
               'def _raise(exc: AppointmentError) -> NoReturn:\n    if isinstance(exc, AppointmentCurrentAcademicYearNotConfigured):\n        raise APIError(409, "current_academic_year_not_configured", str(exc)) from exc\n    if isinstance(exc, AppointmentCurrentInventoryRequired):\n        raise APIError(409, "current_inventory_required", str(exc)) from exc\n    if isinstance(exc, AppointmentNotFound):',
+          )
+          patch(
+              "be/compass/inventory/services.py",
+              '                    "The current Individual Inventory could not be created safely; retry the request."\n',
+              '                    "The current Individual Inventory could not be created safely; "\n                    "retry the request."\n',
           )
           PY
       - name: Format and generate migrations
