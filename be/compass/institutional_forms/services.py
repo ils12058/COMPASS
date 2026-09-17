@@ -115,7 +115,7 @@ def register_form_revision(
             )
         except IntegrityError as exc:
             raise InstitutionalFormConflict(
-                "A Form Revision with this official identity or schema version already exists."
+                "A Form Revision with this official identity already exists."
             ) from exc
         record_event(
             context=context,
