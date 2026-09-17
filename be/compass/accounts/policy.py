@@ -173,7 +173,9 @@ CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
         code="routine_interviews.manage_self",
         name="Manage own routine interview intake",
-        description="Create, edit, and submit the authenticated Student's Routine Interview Intake.",
+        description=(
+            "Create, edit, and submit the authenticated Student's Routine Interview Intake."
+        ),
     ),
     CapabilityDefinition(
         code="routine_interviews.view_assigned",

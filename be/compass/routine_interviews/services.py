@@ -360,7 +360,8 @@ def create_direct(
         if existing is not None:
             if existing.direct_request_fingerprint != request_fingerprint:
                 raise RoutineInterviewCreationConflict(
-                    "The Idempotency-Key was already used for a different Routine Interview request."
+                    "The Idempotency-Key was already used for a different "
+                    "Routine Interview request."
                 )
             return _queryset().get(pk=existing.pk)
 
@@ -403,7 +404,8 @@ def create_direct(
                 ) from None
             if concurrent.direct_request_fingerprint != request_fingerprint:
                 raise RoutineInterviewCreationConflict(
-                    "The Idempotency-Key was already used for a different Routine Interview request."
+                    "The Idempotency-Key was already used for a different "
+                    "Routine Interview request."
                 )
             return _queryset().get(pk=concurrent.pk)
 

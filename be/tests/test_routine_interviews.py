@@ -98,7 +98,7 @@ def create_counseling_service(actor: User, *, modes: list[str] | None = None):
 
 
 def submit_inventory(student: User, actor: User, *, course: str = "BSIS", major: str = ""):
-    item = ensure_current_inventory(student=student, context=context(student))
+    ensure_current_inventory(student=student, context=context(student))
     replace_current_inventory(
         student=student,
         values={
@@ -552,7 +552,7 @@ def test_finalization_rejects_direct_entry_mode_mismatch_and_appointment_nonappo
         values={"career_goals": "Submitted career goal"},
     )
     submit_my_intake(student=student, routine_interview_id=scheduled.pk, context=context(student))
-    wrong_appointment = CounselingEncounter.objects.create(
+    CounselingEncounter.objects.create(
         student=student,
         counselor=counselor,
         service=service,

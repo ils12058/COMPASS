@@ -13,8 +13,8 @@ from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.institutional_forms.models import FormFamily, FormRevision
 from compass.institutional_forms.services import (
-    InstitutionalFormConflict,
     SUPPORTED_SCHEMA_VERSIONS,
+    InstitutionalFormConflict,
     activate_form_revision,
     deactivate_form_revision,
     register_form_revision,
