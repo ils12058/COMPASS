@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from enum import StrEnum
-from json import dumps
 from typing import NoReturn
 from uuid import UUID
 
