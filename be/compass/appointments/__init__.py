@@ -1,0 +1,1 @@
+"""COMPASS Appointment reservation domain."""
