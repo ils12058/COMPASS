@@ -427,3 +427,11 @@ def provider_role_eligible(service: Service, user: User) -> bool:
     if role_code not in ELIGIBLE_PROVIDER_ROLE_CODES:
         return False
     return service_allows_provider_role(service, role_code)
+
+
+def service_supports_delivery_mode(service: Service, mode: str | DeliveryMode) -> bool:
+    """Return whether a saved Service supports one canonical delivery mode."""
+    normalized = mode.value if isinstance(mode, DeliveryMode) else mode
+    if not getattr(service, "pk", None) or normalized not in DeliveryMode.values:
+        return False
+    return ServiceDeliveryMode.objects.filter(service_id=service.pk, mode=normalized).exists()

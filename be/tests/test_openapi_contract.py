@@ -86,6 +86,22 @@ EXPECTED_OPERATION_IDS = {
     "servicesUpdate",
     "servicesEnable",
     "servicesDisable",
+    "availabilityGetOfficeWeekly",
+    "availabilityReplaceOfficeWeekly",
+    "availabilityListOfficeExceptions",
+    "availabilityCreateOfficeException",
+    "availabilityRemoveOfficeException",
+    "availabilityGetMyWeekly",
+    "availabilityReplaceMyWeekly",
+    "availabilityListMyExceptions",
+    "availabilityCreateMyException",
+    "availabilityRemoveMyException",
+    "availabilityGetProviderWeekly",
+    "availabilityReplaceProviderWeekly",
+    "availabilityListProviderExceptions",
+    "availabilityCreateProviderException",
+    "availabilityRemoveProviderException",
+    "availabilityGetProviderEffective",
 }
 
 
@@ -146,6 +162,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "accounts",
         "organization",
         "services",
+        "availability",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -269,6 +286,9 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         422,
     }
     assert _response_statuses(_operation(schema, "/api/v1/health/ready", "get")) == {200, 503}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/availability/providers/{provider_id}/effective", "get")
+    ) >= {200, 401, 403, 404, 409, 422}
 
     for method, path, operation in iter_operations(schema):
         for status, response in operation["responses"].items():
@@ -292,6 +312,9 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     assert schemas["CapabilityCode"]["enum"] == [
         "accounts.manage",
         "accounts.view",
+        "availability.manage",
+        "availability.manage_self",
+        "availability.view",
         "organization.manage",
         "organization.view",
         "services.manage",
@@ -301,6 +324,16 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     assert schemas["AppointmentPolicy"]["enum"] == ["NONE", "OPTIONAL", "REQUIRED"]
     assert schemas["DeliveryMode"]["enum"] == ["IN_PERSON", "ONLINE"]
     assert schemas["ProviderRoleCode"]["enum"] == ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]
+    assert schemas["Weekday"]["enum"] == [
+        "MONDAY",
+        "TUESDAY",
+        "WEDNESDAY",
+        "THURSDAY",
+        "FRIDAY",
+        "SATURDAY",
+        "SUNDAY",
+    ]
+    assert schemas["AvailabilityModeScope"]["enum"] == ["ALL", "IN_PERSON", "ONLINE"]
 
     response_schema_names = {
         "AccountSummaryResponse",

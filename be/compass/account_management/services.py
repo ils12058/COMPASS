@@ -95,6 +95,10 @@ class OrganizationRelationshipConflict(AccountManagementError):
     """The role change would invalidate an Organization relationship."""
 
 
+class AvailabilityRelationshipConflict(AccountManagementError):
+    """The role change would strand provider-specific Availability configuration."""
+
+
 @dataclass(frozen=True, slots=True)
 class AccountPage:
     items: tuple[User, ...]
@@ -609,6 +613,17 @@ def change_role(
             validate_role_transition(user=target, new_role_code=role_code)
         except OrganizationRoleTransitionConflict as exc:
             raise OrganizationRelationshipConflict(str(exc)) from exc
+        from compass.availability.services import (
+            AvailabilityRoleTransitionConflict,
+        )
+        from compass.availability.services import (
+            validate_role_transition as validate_availability_role_transition,
+        )
+
+        try:
+            validate_availability_role_transition(user=target, new_role_code=role_code)
+        except AvailabilityRoleTransitionConflict as exc:
+            raise AvailabilityRelationshipConflict(str(exc)) from exc
         from_role = target.role.code
         target.role = role_record
         target.save(update_fields=["role", "updated_at"])

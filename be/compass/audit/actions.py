@@ -32,6 +32,12 @@ SERVICE_CREATED = "service.created"
 SERVICE_UPDATED = "service.updated"
 SERVICE_ENABLED = "service.enabled"
 SERVICE_DISABLED = "service.disabled"
+AVAILABILITY_OFFICE_SCHEDULE_UPDATED = "availability.office_schedule.updated"
+AVAILABILITY_OFFICE_EXCEPTION_CREATED = "availability.office_exception.created"
+AVAILABILITY_OFFICE_EXCEPTION_REMOVED = "availability.office_exception.removed"
+AVAILABILITY_PROVIDER_SCHEDULE_UPDATED = "availability.provider_schedule.updated"
+AVAILABILITY_PROVIDER_EXCEPTION_CREATED = "availability.provider_exception.created"
+AVAILABILITY_PROVIDER_EXCEPTION_REMOVED = "availability.provider_exception.removed"
 
 __all__ = [
     "ACCOUNT_CREATED",
@@ -66,4 +72,10 @@ __all__ = [
     "SERVICE_UPDATED",
     "SERVICE_ENABLED",
     "SERVICE_DISABLED",
+    "AVAILABILITY_OFFICE_SCHEDULE_UPDATED",
+    "AVAILABILITY_OFFICE_EXCEPTION_CREATED",
+    "AVAILABILITY_OFFICE_EXCEPTION_REMOVED",
+    "AVAILABILITY_PROVIDER_SCHEDULE_UPDATED",
+    "AVAILABILITY_PROVIDER_EXCEPTION_CREATED",
+    "AVAILABILITY_PROVIDER_EXCEPTION_REMOVED",
 ]

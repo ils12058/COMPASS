@@ -27,6 +27,7 @@ from compass.service_catalog.services import (
     create_service,
     provider_role_eligible,
     service_allows_provider_role,
+    service_supports_delivery_mode,
     set_service_active,
     update_service,
 )
@@ -381,6 +382,8 @@ def test_provider_role_eligibility_is_only_active_user_plus_primary_role_configu
     )
 
     assert service_allows_provider_role(service, "COUNSELOR")
+    assert service_supports_delivery_mode(service, "ONLINE")
+    assert not service_supports_delivery_mode(service, "FAX")
     assert provider_role_eligible(service, counselor)
     assert provider_role_eligible(service, staff)
     assert provider_role_eligible(service, head)

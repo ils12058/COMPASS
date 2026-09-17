@@ -22,6 +22,7 @@ from .services import (
     DEFAULT_PAGE_SIZE,
     AccountManagementError,
     AccountNotFound,
+    AvailabilityRelationshipConflict,
     DuplicateEmail,
     InvalidManagementInput,
     LastAccountManagerError,
@@ -187,6 +188,12 @@ def _raise_management_error(exc: AccountManagementError) -> NoReturn:
         raise APIError(
             409,
             "organization_relationship_conflict",
+            str(exc),
+        ) from exc
+    if isinstance(exc, AvailabilityRelationshipConflict):
+        raise APIError(
+            409,
+            "availability_relationship_conflict",
             str(exc),
         ) from exc
     if isinstance(exc, SelfTargetForbidden):

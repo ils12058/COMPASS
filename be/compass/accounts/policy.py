@@ -93,6 +93,21 @@ CAPABILITY_DEFINITIONS = (
         name="Manage service catalog",
         description="Manage Guidance and Counseling Office service catalog configuration.",
     ),
+    CapabilityDefinition(
+        code="availability.view",
+        name="View availability",
+        description="View effective provider Availability through authorized workflows.",
+    ),
+    CapabilityDefinition(
+        code="availability.manage",
+        name="Manage availability",
+        description="Administratively manage Office and provider Availability configuration.",
+    ),
+    CapabilityDefinition(
+        code="availability.manage_self",
+        name="Manage own availability",
+        description="Manage the authenticated Counselor's own provider Availability.",
+    ),
 )
 
 # Account identity is visible to operational actors through future, scoped workflows. Account
@@ -107,18 +122,34 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "organization.manage",
             "services.view",
             "services.manage",
+            "availability.view",
+            "availability.manage",
         }
     ),
-    "COUNSELOR": frozenset({"accounts.view", "organization.view", "services.view"}),
-    "GUIDANCE_SERVICES_STAFF": frozenset({"accounts.view", "organization.view", "services.view"}),
-    "STUDENT": frozenset({"accounts.view", "organization.view", "services.view"}),
+    "COUNSELOR": frozenset(
+        {
+            "accounts.view",
+            "organization.view",
+            "services.view",
+            "availability.view",
+            "availability.manage_self",
+        }
+    ),
+    "GUIDANCE_SERVICES_STAFF": frozenset(
+        {"accounts.view", "organization.view", "services.view", "availability.view"}
+    ),
+    "STUDENT": frozenset(
+        {"accounts.view", "organization.view", "services.view", "availability.view"}
+    ),
 }
 
 # No designation currently adds account-foundation authority. The relationship is still modeled
 # explicitly so later domain policy can grant designation-specific capabilities without turning a
 # designation into a role.
 DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
-    "HEAD_GUIDANCE_COUNSELOR": frozenset({"organization.manage", "services.manage"}),
+    "HEAD_GUIDANCE_COUNSELOR": frozenset(
+        {"organization.manage", "services.manage", "availability.manage"}
+    ),
     "DPO": frozenset(),
 }
 

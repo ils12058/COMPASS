@@ -7,6 +7,7 @@ from compass.account_management.api import router as account_management_router
 from compass.activity.api import router as activity_router
 from compass.api.v1.health import router as health_router
 from compass.authentication.api import router as authentication_router
+from compass.availability.api import router as availability_router
 from compass.common.errors import register_exception_handlers
 from compass.organization.api import router as organization_router
 from compass.service_catalog.api import router as service_catalog_router
@@ -29,6 +30,10 @@ api = NinjaAPI(
                 "name": "services",
                 "description": "Guidance and Counseling Office service catalog configuration.",
             },
+            {
+                "name": "availability",
+                "description": "Office and provider scheduling Availability configuration.",
+            },
         ]
     },
     openapi_url="/openapi.json" if settings.API_DOCS_ENABLED else None,
@@ -40,4 +45,5 @@ api.add_router("/me", activity_router)
 api.add_router("/accounts", account_management_router)
 api.add_router("/organization", organization_router)
 api.add_router("/services", service_catalog_router)
+api.add_router("/availability", availability_router)
 register_exception_handlers(api)
