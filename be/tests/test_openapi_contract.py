@@ -128,6 +128,15 @@ EXPECTED_OPERATION_IDS = {
     "inventorySubmitMyCurrent",
     "inventoryListMyHistory",
     "inventoryGetMyHistoryItem",
+    "routineInterviewsEnsureMyForAppointment",
+    "routineInterviewsCreateDirect",
+    "routineInterviewsListMine",
+    "routineInterviewsGetMine",
+    "routineInterviewsReplaceMyIntake",
+    "routineInterviewsSubmitMyIntake",
+    "routineInterviewsGetAssigned",
+    "routineInterviewsReplaceAssignedEvaluation",
+    "routineInterviewsFinalizeAssignedEvaluation",
 }
 
 
@@ -194,6 +203,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "academic-years",
         "institutional-forms",
         "inventory",
+        "routine-interviews",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -383,6 +393,10 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "inventory.view_self",
             "organization.manage",
             "organization.view",
+            "routine_interviews.manage_assigned",
+            "routine_interviews.manage_self",
+            "routine_interviews.view_assigned",
+            "routine_interviews.view_self",
             "services.manage",
             "services.view",
         ]

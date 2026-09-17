@@ -76,6 +76,7 @@ jobs:
         working-directory: be
         run: >-
           uv run pytest
+          tests/test_routine_interviews.py
           tests/test_institutional_forms.py
           tests/test_inventory.py
           tests/test_counseling.py

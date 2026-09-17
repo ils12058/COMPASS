@@ -50,10 +50,6 @@ class FormRevision(models.Model):
         ordering = ("family__key", "internal_schema_version", "id")
         constraints = [
             models.UniqueConstraint(
-                fields=("family", "internal_schema_version"),
-                name="institutional_forms_family_schema_version_uniq",
-            ),
-            models.UniqueConstraint(
                 fields=("family", "official_code", "official_revision"),
                 condition=(
                     models.Q(official_code__isnull=False)

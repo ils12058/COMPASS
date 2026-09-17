@@ -49,6 +49,9 @@ COUNSELING_ENCOUNTER_CREATED = "counseling.encounter.created"
 COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
 INVENTORY_CREATED = "inventory.created"
 INVENTORY_SUBMITTED = "inventory.submitted"
+ROUTINE_INTERVIEW_CREATED = "routine_interview.created"
+ROUTINE_INTERVIEW_INTAKE_SUBMITTED = "routine_interview.intake_submitted"
+ROUTINE_INTERVIEW_EVALUATION_FINALIZED = "routine_interview.evaluation_finalized"
 
 __all__ = [
     "ACCOUNT_CREATED",
@@ -100,4 +103,7 @@ __all__ = [
     "COUNSELING_ENCOUNTER_UPDATED",
     "INVENTORY_CREATED",
     "INVENTORY_SUBMITTED",
+    "ROUTINE_INTERVIEW_CREATED",
+    "ROUTINE_INTERVIEW_INTAKE_SUBMITTED",
+    "ROUTINE_INTERVIEW_EVALUATION_FINALIZED",
 ]

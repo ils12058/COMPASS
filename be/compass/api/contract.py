@@ -21,6 +21,7 @@ CURRENT_API_TAGS = frozenset(
         "academic-years",
         "institutional-forms",
         "inventory",
+        "routine-interviews",
     }
 )
 OPERATION_ID_PATTERN = re.compile(r"^[a-z][A-Za-z0-9]*$", re.ASCII)
@@ -37,6 +38,7 @@ OPERATION_ID_PREFIXES = {
     "academic-years": "academicYears",
     "institutional-forms": "institutionalForms",
     "inventory": "inventory",
+    "routine-interviews": "routineInterviews",
 }
 HTTP_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch"})
 

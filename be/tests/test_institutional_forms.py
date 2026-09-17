@@ -13,6 +13,7 @@ from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.institutional_forms.models import FormFamily, FormRevision
 from compass.institutional_forms.services import (
+    SUPPORTED_SCHEMA_VERSIONS,
     InstitutionalFormConflict,
     activate_form_revision,
     deactivate_form_revision,
@@ -76,7 +77,12 @@ def test_initial_inventory_revision_preserves_confirmed_qms_identity():
     assert revision.official_code == "CNSC-OP-GCO-01F5"
     assert revision.official_revision == "0"
     assert revision.status == "ACTIVE"
-    assert FormFamily.objects.count() == 1
+    assert FormFamily.objects.count() == 2
+
+    routine_family = FormFamily.objects.get(key="routine_interview")
+    assert routine_family.title == "Routine Interview Form"
+    assert not FormRevision.objects.filter(family=routine_family).exists()
+    assert SUPPORTED_SCHEMA_VERSIONS["routine_interview"] == frozenset({1})
 
 
 @pytest.mark.django_db
@@ -198,4 +204,7 @@ def test_operational_configuration_mutations_require_head_capability_and_recent_
 
     listed = client.get("/api/v1/institutional-forms")
     assert listed.status_code == 200
-    assert listed.json()["items"][0]["key"] == "individual_inventory"
+    assert [item["key"] for item in listed.json()["items"]] == [
+        "individual_inventory",
+        "routine_interview",
+    ]

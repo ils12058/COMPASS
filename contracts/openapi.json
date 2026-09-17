@@ -759,6 +759,10 @@
           "inventory.view_self",
           "organization.manage",
           "organization.view",
+          "routine_interviews.manage_assigned",
+          "routine_interviews.manage_self",
+          "routine_interviews.view_assigned",
+          "routine_interviews.view_self",
           "services.manage",
           "services.view"
         ],
@@ -1329,6 +1333,125 @@
         "title": "CounselorResponsibilityResponse",
         "type": "object"
       },
+      "CounselorRoutineDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineAppointmentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "counseling_encounter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineEncounterSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "entry_mode": {
+            "$ref": "#/components/schemas/RoutineEntryMode"
+          },
+          "evaluation": {
+            "$ref": "#/components/schemas/RoutineEvaluationPayload"
+          },
+          "evaluation_finalized_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Finalized At"
+          },
+          "evaluation_status": {
+            "$ref": "#/components/schemas/RoutineEvaluationStatus"
+          },
+          "form_revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineFormRevisionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intake": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineIntakePayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "intake_status": {
+            "$ref": "#/components/schemas/RoutineIntakeStatus"
+          },
+          "intake_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intake Submitted At"
+          },
+          "inventory_context": {
+            "$ref": "#/components/schemas/RoutineInventoryContext"
+          },
+          "student": {
+            "$ref": "#/components/schemas/RoutinePersonSummary"
+          }
+        },
+        "required": [
+          "id",
+          "student",
+          "inventory_context",
+          "entry_mode",
+          "delivery_mode",
+          "intake_status",
+          "intake_submitted_at",
+          "intake",
+          "evaluation_status",
+          "evaluation_finalized_at",
+          "evaluation",
+          "form_revision",
+          "appointment",
+          "counseling_encounter",
+          "created_at"
+        ],
+        "title": "CounselorRoutineDetailResponse",
+        "type": "object"
+      },
       "CourseChoiceReasonValue": {
         "enum": [
           "INTEREST_APTITUDE",
@@ -1394,6 +1517,15 @@
         ],
         "title": "DesignationListResponse",
         "type": "object"
+      },
+      "DirectRoutineEntryMode": {
+        "enum": [
+          "WALK_IN",
+          "CALLED_IN",
+          "REFERRED"
+        ],
+        "title": "DirectRoutineEntryMode",
+        "type": "string"
       },
       "EducationEntryPayload": {
         "additionalProperties": false,
@@ -4001,6 +4133,478 @@
         "title": "RoleUpdateRequest",
         "type": "object"
       },
+      "RoutineAcademicYearSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "RoutineAcademicYearSummary",
+        "type": "object"
+      },
+      "RoutineAppointmentEnsureRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment_id": {
+            "format": "uuid",
+            "title": "Appointment Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id"
+        ],
+        "title": "RoutineAppointmentEnsureRequest",
+        "type": "object"
+      },
+      "RoutineAppointmentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "RoutineAppointmentSummary",
+        "type": "object"
+      },
+      "RoutineConcernValue": {
+        "enum": [
+          "FAMILY",
+          "FINANCIAL",
+          "ACADEMIC",
+          "FRIENDS",
+          "CLASSMATES",
+          "VICES",
+          "LOVE_LIFE",
+          "SLEEPING_PROBLEMS",
+          "SUICIDAL_THOUGHT_TENDENCY",
+          "DORM_BOARDING_HOUSE",
+          "PAST_PAINFUL_EXPERIENCE",
+          "OTHER"
+        ],
+        "title": "RoutineConcernValue",
+        "type": "string"
+      },
+      "RoutineDirectCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "entry_mode": {
+            "$ref": "#/components/schemas/DirectRoutineEntryMode"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student_id",
+          "entry_mode",
+          "delivery_mode"
+        ],
+        "title": "RoutineDirectCreateRequest",
+        "type": "object"
+      },
+      "RoutineEncounterSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "started_at",
+          "ended_at"
+        ],
+        "title": "RoutineEncounterSummary",
+        "type": "object"
+      },
+      "RoutineEntryMode": {
+        "enum": [
+          "APPOINTMENT",
+          "WALK_IN",
+          "CALLED_IN",
+          "REFERRED"
+        ],
+        "title": "RoutineEntryMode",
+        "type": "string"
+      },
+      "RoutineEvaluationPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Adjustment Rating"
+          },
+          "emotional_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emotional Adjustment Rating"
+          },
+          "financial_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Financial Adjustment Rating"
+          },
+          "other_adjustment": {
+            "default": "",
+            "title": "Other Adjustment",
+            "type": "string"
+          },
+          "physical_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Physical Adjustment Rating"
+          },
+          "recommendations": {
+            "default": "",
+            "title": "Recommendations",
+            "type": "string"
+          },
+          "social_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Social Adjustment Rating"
+          },
+          "special_concern": {
+            "default": "",
+            "title": "Special Concern",
+            "type": "string"
+          },
+          "spiritual_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spiritual Adjustment Rating"
+          }
+        },
+        "title": "RoutineEvaluationPayload",
+        "type": "object"
+      },
+      "RoutineEvaluationStatus": {
+        "enum": [
+          "DRAFT",
+          "FINALIZED"
+        ],
+        "title": "RoutineEvaluationStatus",
+        "type": "string"
+      },
+      "RoutineFinalizeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "encounter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encounter Id"
+          }
+        },
+        "title": "RoutineFinalizeRequest",
+        "type": "object"
+      },
+      "RoutineFormRevisionSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "internal_schema_version": {
+            "title": "Internal Schema Version",
+            "type": "integer"
+          },
+          "official_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Code"
+          },
+          "official_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Revision"
+          }
+        },
+        "required": [
+          "id",
+          "official_code",
+          "official_revision",
+          "internal_schema_version"
+        ],
+        "title": "RoutineFormRevisionSummary",
+        "type": "object"
+      },
+      "RoutineIntakePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_goals": {
+            "default": "",
+            "title": "Academic Goals",
+            "type": "string"
+          },
+          "career_goals": {
+            "default": "",
+            "title": "Career Goals",
+            "type": "string"
+          },
+          "college_adjustment_and_peer_group": {
+            "default": "",
+            "title": "College Adjustment And Peer Group",
+            "type": "string"
+          },
+          "college_experience": {
+            "default": "",
+            "title": "College Experience",
+            "type": "string"
+          },
+          "concerns": {
+            "items": {
+              "$ref": "#/components/schemas/RoutineConcernValue"
+            },
+            "title": "Concerns",
+            "type": "array"
+          },
+          "concerns_explanation": {
+            "default": "",
+            "title": "Concerns Explanation",
+            "type": "string"
+          },
+          "coping_remarks": {
+            "default": "",
+            "title": "Coping Remarks",
+            "type": "string"
+          },
+          "coping_with_college_challenges": {
+            "default": "",
+            "title": "Coping With College Challenges",
+            "type": "string"
+          },
+          "difficulties_encountered": {
+            "default": "",
+            "title": "Difficulties Encountered",
+            "type": "string"
+          },
+          "family_description": {
+            "default": "",
+            "title": "Family Description",
+            "type": "string"
+          },
+          "other_concern_specification": {
+            "default": "",
+            "title": "Other Concern Specification",
+            "type": "string"
+          },
+          "reason_for_choosing_institution": {
+            "default": "",
+            "title": "Reason For Choosing Institution",
+            "type": "string"
+          },
+          "stress_anxiety_causes": {
+            "default": "",
+            "title": "Stress Anxiety Causes",
+            "type": "string"
+          },
+          "stress_anxiety_management": {
+            "default": "",
+            "title": "Stress Anxiety Management",
+            "type": "string"
+          }
+        },
+        "title": "RoutineIntakePayload",
+        "type": "object"
+      },
+      "RoutineIntakeStatus": {
+        "enum": [
+          "DRAFT",
+          "SUBMITTED"
+        ],
+        "title": "RoutineIntakeStatus",
+        "type": "string"
+      },
+      "RoutineInventoryContext": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/RoutineAcademicYearSummary"
+          },
+          "course": {
+            "title": "Course",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "major": {
+            "title": "Major",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "academic_year",
+          "full_name",
+          "course",
+          "major"
+        ],
+        "title": "RoutineInventoryContext",
+        "type": "object"
+      },
+      "RoutinePersonSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "RoutinePersonSummary",
+        "type": "object"
+      },
+      "RoutineReferenceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "RoutineReferenceResponse",
+        "type": "object"
+      },
       "ServiceCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -4570,6 +5174,201 @@
           "college"
         ],
         "title": "StudentAffiliationResponse",
+        "type": "object"
+      },
+      "StudentRoutineDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineAppointmentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "counseling_encounter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineEncounterSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "counselor": {
+            "$ref": "#/components/schemas/RoutinePersonSummary"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "entry_mode": {
+            "$ref": "#/components/schemas/RoutineEntryMode"
+          },
+          "form_revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineFormRevisionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intake": {
+            "$ref": "#/components/schemas/RoutineIntakePayload"
+          },
+          "intake_status": {
+            "$ref": "#/components/schemas/RoutineIntakeStatus"
+          },
+          "intake_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intake Submitted At"
+          },
+          "inventory_context": {
+            "$ref": "#/components/schemas/RoutineInventoryContext"
+          }
+        },
+        "required": [
+          "id",
+          "counselor",
+          "inventory_context",
+          "entry_mode",
+          "delivery_mode",
+          "intake_status",
+          "intake_submitted_at",
+          "form_revision",
+          "appointment",
+          "counseling_encounter",
+          "created_at",
+          "intake"
+        ],
+        "title": "StudentRoutineDetailResponse",
+        "type": "object"
+      },
+      "StudentRoutineListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StudentRoutineSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "StudentRoutineListResponse",
+        "type": "object"
+      },
+      "StudentRoutineSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineAppointmentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "counseling_encounter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineEncounterSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "counselor": {
+            "$ref": "#/components/schemas/RoutinePersonSummary"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "entry_mode": {
+            "$ref": "#/components/schemas/RoutineEntryMode"
+          },
+          "form_revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineFormRevisionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intake_status": {
+            "$ref": "#/components/schemas/RoutineIntakeStatus"
+          },
+          "intake_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intake Submitted At"
+          },
+          "inventory_context": {
+            "$ref": "#/components/schemas/RoutineInventoryContext"
+          }
+        },
+        "required": [
+          "id",
+          "counselor",
+          "inventory_context",
+          "entry_mode",
+          "delivery_mode",
+          "intake_status",
+          "intake_submitted_at",
+          "form_revision",
+          "appointment",
+          "counseling_encounter",
+          "created_at"
+        ],
+        "title": "StudentRoutineSummaryResponse",
         "type": "object"
       },
       "TOTPConfirmationResponse": {
@@ -5553,6 +6352,10 @@
                 "inventory.view_self",
                 "organization.manage",
                 "organization.view",
+                "routine_interviews.manage_assigned",
+                "routine_interviews.manage_self",
+                "routine_interviews.view_assigned",
+                "routine_interviews.view_self",
                 "services.manage",
                 "services.view"
               ],
@@ -5670,6 +6473,10 @@
                 "inventory.view_self",
                 "organization.manage",
                 "organization.view",
+                "routine_interviews.manage_assigned",
+                "routine_interviews.manage_self",
+                "routine_interviews.view_assigned",
+                "routine_interviews.view_self",
                 "services.manage",
                 "services.view"
               ],
@@ -13215,6 +14022,763 @@
         ]
       }
     },
+    "/api/v1/routine-interviews": {
+      "post": {
+        "operationId": "routineInterviewsCreateDirect",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutineDirectCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineReferenceResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews Create Direct",
+        "tags": [
+          "routine-interviews"
+        ]
+      }
+    },
+    "/api/v1/routine-interviews/me": {
+      "get": {
+        "operationId": "routineInterviewsListMine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentRoutineListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews List Mine",
+        "tags": [
+          "routine-interviews"
+        ]
+      },
+      "post": {
+        "operationId": "routineInterviewsEnsureMyForAppointment",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutineAppointmentEnsureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentRoutineDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews Ensure My For Appointment",
+        "tags": [
+          "routine-interviews"
+        ]
+      }
+    },
+    "/api/v1/routine-interviews/me/{routine_interview_id}": {
+      "get": {
+        "operationId": "routineInterviewsGetMine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "routine_interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Routine Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentRoutineDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews Get Mine",
+        "tags": [
+          "routine-interviews"
+        ]
+      }
+    },
+    "/api/v1/routine-interviews/me/{routine_interview_id}/intake": {
+      "put": {
+        "operationId": "routineInterviewsReplaceMyIntake",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "routine_interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Routine Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutineIntakePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentRoutineDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews Replace My Intake",
+        "tags": [
+          "routine-interviews"
+        ]
+      }
+    },
+    "/api/v1/routine-interviews/me/{routine_interview_id}/submit": {
+      "post": {
+        "operationId": "routineInterviewsSubmitMyIntake",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "routine_interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Routine Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentRoutineDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews Submit My Intake",
+        "tags": [
+          "routine-interviews"
+        ]
+      }
+    },
+    "/api/v1/routine-interviews/{routine_interview_id}": {
+      "get": {
+        "operationId": "routineInterviewsGetAssigned",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "routine_interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Routine Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselorRoutineDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews Get Assigned",
+        "tags": [
+          "routine-interviews"
+        ]
+      }
+    },
+    "/api/v1/routine-interviews/{routine_interview_id}/evaluation": {
+      "put": {
+        "operationId": "routineInterviewsReplaceAssignedEvaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "routine_interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Routine Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutineEvaluationPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselorRoutineDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews Replace Assigned Evaluation",
+        "tags": [
+          "routine-interviews"
+        ]
+      }
+    },
+    "/api/v1/routine-interviews/{routine_interview_id}/evaluation/finalize": {
+      "post": {
+        "operationId": "routineInterviewsFinalizeAssignedEvaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "routine_interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Routine Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutineFinalizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselorRoutineDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews Finalize Assigned Evaluation",
+        "tags": [
+          "routine-interviews"
+        ]
+      }
+    },
     "/api/v1/services": {
       "get": {
         "operationId": "servicesList",
@@ -13809,6 +15373,10 @@
     {
       "description": "Student annual Individual Inventory self-service.",
       "name": "inventory"
+    },
+    {
+      "description": "Interaction-specific Student Intake and assigned Counselor Evaluation.",
+      "name": "routine-interviews"
     }
   ]
 }
