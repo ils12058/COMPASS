@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "compass.service_catalog",
     "compass.availability",
     "compass.appointments",
+    "compass.counseling",
 ]
 
 AUTH_USER_MODEL = "accounts.User"

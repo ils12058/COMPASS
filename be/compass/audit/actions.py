@@ -40,6 +40,8 @@ AVAILABILITY_PROVIDER_EXCEPTION_CREATED = "availability.provider_exception.creat
 AVAILABILITY_PROVIDER_EXCEPTION_REMOVED = "availability.provider_exception.removed"
 APPOINTMENT_CREATED = "appointment.created"
 APPOINTMENT_CANCELLED = "appointment.cancelled"
+COUNSELING_ENCOUNTER_CREATED = "counseling.encounter.created"
+COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
 
 __all__ = [
     "ACCOUNT_CREATED",
@@ -82,4 +84,6 @@ __all__ = [
     "AVAILABILITY_PROVIDER_EXCEPTION_REMOVED",
     "APPOINTMENT_CREATED",
     "APPOINTMENT_CANCELLED",
+    "COUNSELING_ENCOUNTER_CREATED",
+    "COUNSELING_ENCOUNTER_UPDATED",
 ]
