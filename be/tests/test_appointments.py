@@ -903,7 +903,7 @@ def test_non_current_student_cannot_book_but_can_read_and_cancel_existing(status
             delivery_mode="IN_PERSON",
         )
 
-    assert existing.pk in {row.pk for row in list_my_appointments(user=student)}
+    assert existing.pk in {row.pk for row in list_my_appointments(actor=student).items}
     assert get_appointment_for_actor(appointment_id=existing.pk, actor=student).pk == existing.pk
     cancelled = cancel_appointment(
         appointment_id=existing.pk,
