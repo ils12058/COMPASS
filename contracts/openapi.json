@@ -4881,6 +4881,153 @@
         "title": "MediaWorkspaceState",
         "type": "object"
       },
+      "MyProfileResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "civil_status": {
+            "title": "Civil Status",
+            "type": "string"
+          },
+          "contact_number": {
+            "title": "Contact Number",
+            "type": "string"
+          },
+          "current_address": {
+            "title": "Current Address",
+            "type": "string"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_name": {
+            "title": "Middle Name",
+            "type": "string"
+          },
+          "permanent_address": {
+            "title": "Permanent Address",
+            "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "suffix": {
+            "title": "Suffix",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "first_name",
+          "middle_name",
+          "last_name",
+          "suffix",
+          "full_name",
+          "role",
+          "date_of_birth",
+          "civil_status",
+          "contact_number",
+          "current_address",
+          "permanent_address",
+          "profile_photo_url",
+          "profile_photo_updated_at"
+        ],
+        "title": "MyProfileResponse",
+        "type": "object"
+      },
+      "MyProfileUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "civil_status": {
+            "default": "",
+            "title": "Civil Status",
+            "type": "string"
+          },
+          "contact_number": {
+            "default": "",
+            "title": "Contact Number",
+            "type": "string"
+          },
+          "current_address": {
+            "default": "",
+            "title": "Current Address",
+            "type": "string"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "permanent_address": {
+            "default": "",
+            "title": "Permanent Address",
+            "type": "string"
+          }
+        },
+        "title": "MyProfileUpdateRequest",
+        "type": "object"
+      },
       "OfficeExceptionListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -16211,6 +16358,118 @@
         ]
       }
     },
+    "/api/v1/me/profile": {
+      "get": {
+        "operationId": "profileGetMyProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfileResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "View my profile",
+        "tags": [
+          "profile"
+        ]
+      },
+      "patch": {
+        "operationId": "profileUpdateMyProfile",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MyProfileUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfileResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Update my profile",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
     "/api/v1/me/security-activity": {
       "get": {
         "operationId": "meListSecurityActivity",
@@ -19988,6 +20247,10 @@
     {
       "description": "Authenticated self-activity projections.",
       "name": "activity"
+    },
+    {
+      "description": "Authenticated current account personal/contact profile.",
+      "name": "profile"
     },
     {
       "description": "Capability-authorized account management.",
