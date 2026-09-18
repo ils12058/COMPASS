@@ -217,6 +217,25 @@ CAPABILITY_DEFINITIONS = (
         ),
     ),
     CapabilityDefinition(
+        code="call_slips.view",
+        name="View scoped Call Slips",
+        description=(
+            "View Call Slip records within the authenticated Guidance actor's resource scope."
+        ),
+    ),
+    CapabilityDefinition(
+        code="call_slips.manage",
+        name="Manage scoped Call Slips",
+        description=(
+            "Create and complete Call Slip records within the Guidance actor's resource scope."
+        ),
+    ),
+    CapabilityDefinition(
+        code="call_slips.view_self",
+        name="View own Call Slips",
+        description="View the authenticated Student's own Call Slip records.",
+    ),
+    CapabilityDefinition(
         code="ecounseling.view_self",
         name="View own E-Counseling workspace",
         description="View the authenticated Student's own eligible E-Counseling workspace.",
@@ -284,6 +303,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "routine_interviews.manage_assigned",
             "referrals.view",
             "referrals.manage",
+            "call_slips.view",
+            "call_slips.manage",
             "ecounseling.view_assigned",
             "ecounseling.join_assigned",
             "ecounseling.manage_media_assigned",
@@ -298,6 +319,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "appointments.view_self",
             "referrals.view",
             "referrals.manage",
+            "call_slips.view",
+            "call_slips.manage",
         }
     ),
     "STUDENT": frozenset(
@@ -316,6 +339,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "ecounseling.join_self",
             "ecounseling.consent_self",
             "shared_summaries.view_self",
+            "call_slips.view_self",
         }
     ),
 }
