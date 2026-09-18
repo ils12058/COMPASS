@@ -337,6 +337,10 @@ def _active_call_slip_revision():
     try:
         return require_active_supported_form_revision(CALL_SLIP_FORM_FAMILY_KEY)
     except InstitutionalFormConflict as exc:
+        if "does not support" in str(exc):
+            raise CallSlipConfigurationConflict(
+                "The active Call Slip Form Revision is not supported by this COMPASS version."
+            ) from exc
         raise CallSlipConfigurationConflict(
             "No active supported Call Slip Form Revision is configured."
         ) from exc
