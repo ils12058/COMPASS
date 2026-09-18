@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 from django.apps import apps
 from django.core.management import call_command
-from django.db import close_old_connections
+from django.db import IntegrityError, close_old_connections, transaction
 from django.test import Client
 from django.utils import timezone
 
@@ -918,15 +918,17 @@ def test_database_constraints_protect_rating_ranges_and_item_codes():
     make_inventory(student, current)
     item = ensure_my_current(student=student, context=AuditContext.user(student))
 
-    with pytest.raises(Exception):
-        ExitInterviewSelfAssessmentRating.objects.create(
-            exit_interview=item,
-            item_code="INVENTED",
-            rating=5,
-        )
-    with pytest.raises(Exception):
-        ExitInterviewCollegeFeedbackRating.objects.create(
-            exit_interview=item,
-            item_code=CollegeFeedbackItem.DEAN_AVAILABILITY,
-            rating=6,
-        )
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            ExitInterviewSelfAssessmentRating.objects.create(
+                exit_interview=item,
+                item_code="INVENTED",
+                rating=5,
+            )
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            ExitInterviewCollegeFeedbackRating.objects.create(
+                exit_interview=item,
+                item_code=CollegeFeedbackItem.DEAN_AVAILABILITY,
+                rating=6,
+            )
