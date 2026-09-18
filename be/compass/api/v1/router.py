@@ -4,6 +4,7 @@ from django.conf import settings
 from ninja import NinjaAPI
 
 from compass.account_management.api import router as account_management_router
+from compass.accounts.profile_api import router as profile_router
 from compass.activity.api import router as activity_router
 from compass.api.v1.health import router as health_router
 from compass.appointments.api import router as appointments_router
@@ -32,6 +33,10 @@ api = NinjaAPI(
             {"name": "health", "description": "Process liveness and dependency readiness."},
             {"name": "auth", "description": "Cookie-based authentication and account security."},
             {"name": "activity", "description": "Authenticated self-activity projections."},
+            {
+                "name": "profile",
+                "description": "Authenticated current account personal/contact profile.",
+            },
             {"name": "accounts", "description": "Capability-authorized account management."},
             {
                 "name": "organization",
@@ -95,6 +100,7 @@ api = NinjaAPI(
 api.add_router("/health", health_router)
 api.add_router("/auth", authentication_router)
 api.add_router("/me", activity_router)
+api.add_router("/me", profile_router)
 api.add_router("/accounts", account_management_router)
 api.add_router("/organization", organization_router)
 api.add_router("/services", service_catalog_router)
