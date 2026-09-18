@@ -695,6 +695,332 @@
         "title": "AvailabilityModeScope",
         "type": "string"
       },
+      "CSMCC1Value": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "title": "CSMCC1Value",
+        "type": "integer"
+      },
+      "CSMCC2Value": {
+        "enum": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "title": "CSMCC2Value",
+        "type": "integer"
+      },
+      "CSMCC3Value": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "title": "CSMCC3Value",
+        "type": "integer"
+      },
+      "CSMClientTypeValue": {
+        "enum": [
+          "CITIZEN",
+          "BUSINESS",
+          "GOVERNMENT"
+        ],
+        "title": "CSMClientTypeValue",
+        "type": "string"
+      },
+      "CSMDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "age": {
+            "title": "Age",
+            "type": "integer"
+          },
+          "cc1": {
+            "$ref": "#/components/schemas/CSMCC1Value"
+          },
+          "cc2": {
+            "$ref": "#/components/schemas/CSMCC2Value"
+          },
+          "cc3": {
+            "$ref": "#/components/schemas/CSMCC3Value"
+          },
+          "client_type": {
+            "$ref": "#/components/schemas/CSMClientTypeValue"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "instrument_schema_version": {
+            "title": "Instrument Schema Version",
+            "type": "integer"
+          },
+          "region_of_residence": {
+            "title": "Region Of Residence",
+            "type": "string"
+          },
+          "service_availed": {
+            "title": "Service Availed",
+            "type": "string"
+          },
+          "sex": {
+            "$ref": "#/components/schemas/CSMSexValue"
+          },
+          "sqd0": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd1": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd2": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd3": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd4": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd5": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd6": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd7": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd8": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          },
+          "suggestions": {
+            "title": "Suggestions",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "submitted_at",
+          "instrument_schema_version",
+          "client_type",
+          "service_availed",
+          "sex",
+          "age",
+          "region_of_residence",
+          "cc1",
+          "cc2",
+          "cc3",
+          "sqd0",
+          "sqd1",
+          "sqd2",
+          "sqd3",
+          "sqd4",
+          "sqd5",
+          "sqd6",
+          "sqd7",
+          "sqd8",
+          "suggestions",
+          "email"
+        ],
+        "title": "CSMDetailResponse",
+        "type": "object"
+      },
+      "CSMPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CSMSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CSMPageResponse",
+        "type": "object"
+      },
+      "CSMRatingValue": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "title": "CSMRatingValue",
+        "type": "integer"
+      },
+      "CSMSexValue": {
+        "enum": [
+          "MALE",
+          "FEMALE"
+        ],
+        "title": "CSMSexValue",
+        "type": "string"
+      },
+      "CSMSubmitRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "age": {
+            "maximum": 150,
+            "minimum": 0,
+            "title": "Age",
+            "type": "integer"
+          },
+          "cc1": {
+            "$ref": "#/components/schemas/CSMCC1Value"
+          },
+          "cc2": {
+            "$ref": "#/components/schemas/CSMCC2Value"
+          },
+          "cc3": {
+            "$ref": "#/components/schemas/CSMCC3Value"
+          },
+          "client_type": {
+            "$ref": "#/components/schemas/CSMClientTypeValue"
+          },
+          "email": {
+            "default": "",
+            "title": "Email",
+            "type": "string"
+          },
+          "region_of_residence": {
+            "title": "Region Of Residence",
+            "type": "string"
+          },
+          "service_availed": {
+            "title": "Service Availed",
+            "type": "string"
+          },
+          "sex": {
+            "$ref": "#/components/schemas/CSMSexValue"
+          },
+          "sqd0": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd1": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd2": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd3": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd4": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd5": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd6": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd7": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "sqd8": {
+            "$ref": "#/components/schemas/CSMRatingValue"
+          },
+          "suggestions": {
+            "default": "",
+            "title": "Suggestions",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_type",
+          "sex",
+          "age",
+          "region_of_residence",
+          "service_availed",
+          "cc1",
+          "cc2",
+          "cc3",
+          "sqd0",
+          "sqd1",
+          "sqd2",
+          "sqd3",
+          "sqd4",
+          "sqd5",
+          "sqd6",
+          "sqd7",
+          "sqd8"
+        ],
+        "title": "CSMSubmitRequest",
+        "type": "object"
+      },
+      "CSMSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "client_type": {
+            "$ref": "#/components/schemas/CSMClientTypeValue"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "instrument_schema_version": {
+            "title": "Instrument Schema Version",
+            "type": "integer"
+          },
+          "service_availed": {
+            "title": "Service Availed",
+            "type": "string"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "submitted_at",
+          "instrument_schema_version",
+          "client_type",
+          "service_availed"
+        ],
+        "title": "CSMSummaryResponse",
+        "type": "object"
+      },
       "CSRFResponse": {
         "properties": {
           "csrf_token": {
@@ -1230,6 +1556,10 @@
           "exit_interviews.reopen",
           "exit_interviews.view",
           "exit_interviews.view_self",
+          "feedback.submit_csm",
+          "feedback.submit_customer_feedback",
+          "feedback.view_csm",
+          "feedback.view_customer_feedback",
           "good_moral.issue",
           "good_moral.manage",
           "good_moral.request_self",
@@ -2418,6 +2748,373 @@
           "semester"
         ],
         "title": "CurrentStudentRequestPayload",
+        "type": "object"
+      },
+      "CustomerFeedbackAccommodatedByValue": {
+        "enum": [
+          "STUDENT_ASSISTANT",
+          "CLERK_PERSONNEL"
+        ],
+        "title": "CustomerFeedbackAccommodatedByValue",
+        "type": "string"
+      },
+      "CustomerFeedbackDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accommodated_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerFeedbackAccommodatedByValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "additional_feedback": {
+            "title": "Additional Feedback",
+            "type": "string"
+          },
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "course_year": {
+            "title": "Course Year",
+            "type": "string"
+          },
+          "form_revision": {
+            "$ref": "#/components/schemas/FormRevisionSummary"
+          },
+          "future_service_improvement": {
+            "title": "Future Service Improvement",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mobile_number": {
+            "title": "Mobile Number",
+            "type": "string"
+          },
+          "office_cleanliness_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "office_environment_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "office_hours_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "office_location_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "office_visit_count": {
+            "title": "Office Visit Count",
+            "type": "integer"
+          },
+          "other_service": {
+            "title": "Other Service",
+            "type": "string"
+          },
+          "overall_satisfaction_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_accommodating_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_appearance_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_availability_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_commitment_delivery_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_flexibility_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_information_accuracy_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_job_knowledge_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "respondent_name": {
+            "title": "Respondent Name",
+            "type": "string"
+          },
+          "services_received": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerFeedbackServiceValue"
+            },
+            "title": "Services Received",
+            "type": "array"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          },
+          "talked_to_guidance_counselor": {
+            "title": "Talked To Guidance Counselor",
+            "type": "boolean"
+          },
+          "transaction_duration": {
+            "title": "Transaction Duration",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "submitted_at",
+          "respondent_name",
+          "services_received",
+          "form_revision",
+          "other_service",
+          "talked_to_guidance_counselor",
+          "accommodated_by",
+          "office_visit_count",
+          "personnel_accommodating_rating",
+          "personnel_job_knowledge_rating",
+          "personnel_flexibility_rating",
+          "personnel_information_accuracy_rating",
+          "personnel_appearance_rating",
+          "personnel_commitment_delivery_rating",
+          "transaction_duration",
+          "office_location_rating",
+          "office_cleanliness_rating",
+          "office_environment_rating",
+          "office_hours_rating",
+          "personnel_availability_rating",
+          "overall_satisfaction_rating",
+          "additional_feedback",
+          "future_service_improvement",
+          "course_year",
+          "address",
+          "mobile_number"
+        ],
+        "title": "CustomerFeedbackDetailResponse",
+        "type": "object"
+      },
+      "CustomerFeedbackPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerFeedbackSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CustomerFeedbackPageResponse",
+        "type": "object"
+      },
+      "CustomerFeedbackRatingValue": {
+        "enum": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "title": "CustomerFeedbackRatingValue",
+        "type": "integer"
+      },
+      "CustomerFeedbackServiceValue": {
+        "enum": [
+          "COUNSELING",
+          "ADMISSION",
+          "TESTING",
+          "EDUCATIONAL_INFORMATION",
+          "REQUEST_FOR_CERTIFICATION",
+          "APPLICATION_FOR_ADMISSION_TEST",
+          "OTHER"
+        ],
+        "title": "CustomerFeedbackServiceValue",
+        "type": "string"
+      },
+      "CustomerFeedbackSubmitRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "accommodated_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerFeedbackAccommodatedByValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "additional_feedback": {
+            "default": "",
+            "title": "Additional Feedback",
+            "type": "string"
+          },
+          "address": {
+            "default": "",
+            "title": "Address",
+            "type": "string"
+          },
+          "course_year": {
+            "title": "Course Year",
+            "type": "string"
+          },
+          "future_service_improvement": {
+            "default": "",
+            "title": "Future Service Improvement",
+            "type": "string"
+          },
+          "mobile_number": {
+            "default": "",
+            "title": "Mobile Number",
+            "type": "string"
+          },
+          "office_cleanliness_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "office_environment_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "office_hours_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "office_location_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "office_visit_count": {
+            "maximum": 10000,
+            "minimum": 1,
+            "title": "Office Visit Count",
+            "type": "integer"
+          },
+          "other_service": {
+            "default": "",
+            "title": "Other Service",
+            "type": "string"
+          },
+          "overall_satisfaction_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_accommodating_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_appearance_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_availability_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_commitment_delivery_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_flexibility_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_information_accuracy_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "personnel_job_knowledge_rating": {
+            "$ref": "#/components/schemas/CustomerFeedbackRatingValue"
+          },
+          "respondent_name": {
+            "default": "",
+            "title": "Respondent Name",
+            "type": "string"
+          },
+          "services_received": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerFeedbackServiceValue"
+            },
+            "title": "Services Received",
+            "type": "array"
+          },
+          "talked_to_guidance_counselor": {
+            "title": "Talked To Guidance Counselor",
+            "type": "boolean"
+          },
+          "transaction_duration": {
+            "title": "Transaction Duration",
+            "type": "string"
+          }
+        },
+        "required": [
+          "services_received",
+          "talked_to_guidance_counselor",
+          "office_visit_count",
+          "personnel_accommodating_rating",
+          "personnel_job_knowledge_rating",
+          "personnel_flexibility_rating",
+          "personnel_information_accuracy_rating",
+          "personnel_appearance_rating",
+          "personnel_commitment_delivery_rating",
+          "transaction_duration",
+          "office_location_rating",
+          "office_cleanliness_rating",
+          "office_environment_rating",
+          "office_hours_rating",
+          "personnel_availability_rating",
+          "overall_satisfaction_rating",
+          "course_year"
+        ],
+        "title": "CustomerFeedbackSubmitRequest",
+        "type": "object"
+      },
+      "CustomerFeedbackSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "respondent_name": {
+            "title": "Respondent Name",
+            "type": "string"
+          },
+          "services_received": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerFeedbackServiceValue"
+            },
+            "title": "Services Received",
+            "type": "array"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "submitted_at",
+          "respondent_name",
+          "services_received"
+        ],
+        "title": "CustomerFeedbackSummaryResponse",
         "type": "object"
       },
       "DelayReasonValue": {
@@ -3691,6 +4388,32 @@
         "title": "FamilyMemberPayload",
         "type": "object"
       },
+      "FeedbackSubmissionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "submitted": {
+            "title": "Submitted",
+            "type": "boolean"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "submitted_at",
+          "submitted"
+        ],
+        "title": "FeedbackSubmissionResponse",
+        "type": "object"
+      },
       "FormFamilyListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -3852,26 +4575,12 @@
             "type": "integer"
           },
           "official_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Official Code"
+            "title": "Official Code",
+            "type": "string"
           },
           "official_revision": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Official Revision"
+            "title": "Official Revision",
+            "type": "string"
           }
         },
         "required": [
@@ -9638,6 +10347,10 @@
                 "exit_interviews.reopen",
                 "exit_interviews.view",
                 "exit_interviews.view_self",
+                "feedback.submit_csm",
+                "feedback.submit_customer_feedback",
+                "feedback.view_csm",
+                "feedback.view_customer_feedback",
                 "good_moral.issue",
                 "good_moral.manage",
                 "good_moral.request_self",
@@ -9784,6 +10497,10 @@
                 "exit_interviews.reopen",
                 "exit_interviews.view",
                 "exit_interviews.view_self",
+                "feedback.submit_csm",
+                "feedback.submit_customer_feedback",
+                "feedback.view_csm",
+                "feedback.view_customer_feedback",
                 "good_moral.issue",
                 "good_moral.manage",
                 "good_moral.request_self",
@@ -17534,6 +18251,477 @@
         ]
       }
     },
+    "/api/v1/feedback/csm": {
+      "post": {
+        "operationId": "feedbackSubmitCsm",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CSMSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackSubmissionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Feedback Submit Csm",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/feedback/csm/responses": {
+      "get": {
+        "operationId": "feedbackListCsmResponses",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "client_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CSMClientTypeValue"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CSMPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Feedback List Csm Responses",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/feedback/csm/responses/{response_id}": {
+      "get": {
+        "operationId": "feedbackGetCsmResponse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "response_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Response Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CSMDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Feedback Get Csm Response",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/feedback/customer-feedback": {
+      "post": {
+        "operationId": "feedbackSubmitCustomerFeedback",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerFeedbackSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackSubmissionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Feedback Submit Customer Feedback",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/feedback/customer-feedback/responses": {
+      "get": {
+        "operationId": "feedbackListCustomerFeedbackResponses",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerFeedbackPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Feedback List Customer Feedback Responses",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/feedback/customer-feedback/responses/{response_id}": {
+      "get": {
+        "operationId": "feedbackGetCustomerFeedbackResponse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "response_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Response Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerFeedbackDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Feedback Get Customer Feedback Response",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
     "/api/v1/good-moral/me": {
       "get": {
         "operationId": "goodMoralListMyRequests",
@@ -23283,6 +24471,10 @@
     {
       "description": "Student Good Moral requests, Counselor issuance, and certificate PDFs.",
       "name": "good-moral"
+    },
+    {
+      "description": "Customer Feedback and Client Satisfaction Measurement submissions and review.",
+      "name": "feedback"
     },
     {
       "description": "Student graduating Exit Interview survey, self-assessment, institutional feedback, and controlled correction lifecycle.",
