@@ -126,8 +126,10 @@ def classify_parent_annual_income(combined: CombinedParentIncome) -> ParentIncom
 
 
 def derive_age_on(*, date_of_birth: date, on_date: date) -> int:
-    return on_date.year - date_of_birth.year - (
-        (on_date.month, on_date.day) < (date_of_birth.month, date_of_birth.day)
+    return (
+        on_date.year
+        - date_of_birth.year
+        - ((on_date.month, on_date.day) < (date_of_birth.month, date_of_birth.day))
     )
 
 
@@ -414,9 +416,10 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
             if occupation_category not in OccupationCategory.values:
                 raise InvalidInventoryInput("Unsupported occupation_category.")
             row["occupation_category"] = occupation_category
-            if occupation_category == OccupationCategory.OTHER and not str(
-                row.get("occupation", "")
-            ).strip():
+            if (
+                occupation_category == OccupationCategory.OTHER
+                and not str(row.get("occupation", "")).strip()
+            ):
                 raise InvalidInventoryInput(
                     "occupation detail is required when occupation_category is OTHER."
                 )
@@ -769,9 +772,7 @@ def _replace_children(item: StudentInventory, values: dict[str, object]) -> None
     sibling_rows = values.get("siblings", [])
     education_rows = values.get("education_entries", [])
     organization_rows = values.get("organization_memberships", [])
-    transportation_rows = _normalize_transportation_rows(
-        values.get("transportation_entries", [])
-    )
+    transportation_rows = _normalize_transportation_rows(values.get("transportation_entries", []))
     geographic_rows = _normalize_geographic_rows(
         values.get("geographic_locations", [])
     )
