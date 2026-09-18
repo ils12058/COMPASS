@@ -269,6 +269,8 @@ class InventoryPayload(StrictSchema):
     illness_this_year: str = ""
     previous_illness: str = ""
     education_entries: list[EducationEntryPayload] = Field(default_factory=list)
+    program_id: UUID | None = None
+    year_level: int | None = Field(default=None, ge=1, le=10)
     course_currently_enrolled: str = ""
     major: str = ""
     schedule_satisfied: bool | None = None
@@ -310,6 +312,13 @@ class AcademicYearSummary(StrictSchema):
     label: str
 
 
+class InventoryProgramSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+    college_id: UUID
+
+
 class FormRevisionSummary(StrictSchema):
     id: UUID
     official_code: str | None
@@ -335,6 +344,7 @@ class InventorySummaryResponse(StrictSchema):
 class InventoryResponse(InventoryPayload):
     id: UUID
     academic_year: AcademicYearSummary
+    program: InventoryProgramSummary | None
     status: InventoryStatusValue
     submitted_at: datetime | None
     form_revision: FormRevisionSummary
@@ -458,6 +468,7 @@ def _inventory(item) -> dict[str, object]:
         "physical_disadvantage",
         "illness_this_year",
         "previous_illness",
+        "year_level",
         "course_currently_enrolled",
         "major",
         "schedule_satisfied",
@@ -492,6 +503,17 @@ def _inventory(item) -> dict[str, object]:
         "current_fears",
     ):
         data[field] = getattr(item, field)
+    data["program_id"] = item.program_id
+    data["program"] = (
+        {
+            "id": item.program.pk,
+            "code": item.program.code,
+            "name": item.program.name,
+            "college_id": item.program.college_id,
+        }
+        if item.program is not None
+        else None
+    )
     for field in (
         "sex",
         "living_arrangement",

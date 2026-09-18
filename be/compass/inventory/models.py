@@ -10,7 +10,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from compass.institutional_forms.models import FormRevision
-from compass.organization.models import AcademicYear
+from compass.organization.models import AcademicYear, Program
 
 
 class Sex(models.TextChoices):
@@ -141,6 +141,18 @@ class StudentInventory(models.Model):
         FormRevision,
         on_delete=models.PROTECT,
         related_name="student_inventories",
+    )
+    program = models.ForeignKey(
+        Program,
+        on_delete=models.PROTECT,
+        related_name="student_inventories",
+        null=True,
+        blank=True,
+    )
+    year_level = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
     )
     submitted_at = models.DateTimeField(null=True, blank=True)
 
@@ -307,6 +319,13 @@ class StudentInventory(models.Model):
             models.UniqueConstraint(
                 fields=("student", "academic_year"),
                 name="inventory_student_academic_year_uniq",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(year_level__isnull=True)
+                    | (models.Q(year_level__gte=1) & models.Q(year_level__lte=10))
+                ),
+                name="inventory_year_level_range",
             ),
         ]
 

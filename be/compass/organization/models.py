@@ -86,6 +86,34 @@ class College(models.Model):
         return f"{self.campus.code}/{self.code}"
 
 
+class Program(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    college = models.ForeignKey(College, on_delete=models.PROTECT, related_name="programs")
+    code = models.CharField(max_length=32)
+    name = models.CharField(max_length=160)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("college__campus__code", "college__code", "code")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("college", "code"),
+                name="organization_program_code_uniq",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.code = normalize_code(self.code)
+        self.name = self.name.strip()
+        return super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.college}/{self.code}"
+
+
 class StudentAffiliation(models.Model):
     student = models.OneToOneField(
         settings.AUTH_USER_MODEL,

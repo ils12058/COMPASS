@@ -29,6 +29,7 @@ from compass.inventory.services import (
     submit_current_inventory,
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
+from compass.organization.models import Campus, College, Program
 from compass.service_catalog.services import create_service, set_service_active
 
 
@@ -66,6 +67,26 @@ def csrf(client: Client) -> dict[str, str]:
 def configure_year(actor: User, label: str = "2026-2027"):
     year = create_academic_year(label=label, context=context(actor))
     return set_current_academic_year(academic_year_id=year.pk, context=context(actor))
+
+
+def configure_program(*, code: str = "BSIS", name: str = "BS Information Systems") -> Program:
+    campus = Campus.objects.create(code=f"CAMP-{code}", name="Main Campus")
+    college = College.objects.create(campus=campus, code=f"COL-{code}", name="Test College")
+    return Program.objects.create(college=college, code=code, name=name)
+
+
+def set_inventory_context(
+    student: User,
+    *,
+    program: Program | None = None,
+    year_level: int = 1,
+) -> Program:
+    selected = program or configure_program()
+    replace_current_inventory(
+        student=student,
+        values={"program_id": selected.pk, "year_level": year_level},
+    )
+    return selected
 
 
 def active_service(actor: User, *, requires_inventory: bool):
@@ -145,6 +166,7 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
     actor = make_user("actor@example.edu", "IT_ADMIN")
     configure_year(actor)
     item = ensure_current_inventory(student=student, context=context(student))
+    program = configure_program()
 
     updated = replace_current_inventory(
         student=student,
@@ -152,6 +174,9 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
             "full_name_snapshot": "Student Snapshot",
             "nickname": "Stu",
             "student_number": "2026-001",
+            "program_id": program.pk,
+            "year_level": 1,
+            "course_currently_enrolled": "Client should not win",
             "parent_statuses": ["MOTHER_OFW"],
             "living_arrangement": "BOARDING_HOUSE",
             "boarding_exclusive": True,
@@ -199,6 +224,9 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
     )
     assert updated.pk == item.pk
     assert updated.full_name_snapshot == "Student Snapshot"
+    assert updated.program_id == program.pk
+    assert updated.year_level == 1
+    assert updated.course_currently_enrolled == program.name
     assert updated.family_members.get().kind == "MOTHER"
     assert updated.siblings.get().is_self
     assert updated.education_entries.get().level == "SENIOR_HIGH"
@@ -221,6 +249,7 @@ def test_submission_enforces_only_confirmed_conditional_consistency():
     actor = make_user("actor@example.edu", "IT_ADMIN")
     configure_year(actor)
     ensure_current_inventory(student=student, context=context(student))
+    set_inventory_context(student)
 
     replace_current_inventory(
         student=student,
@@ -273,6 +302,7 @@ def test_new_academic_year_creates_new_snapshot_without_moving_history():
     actor = make_user("actor@example.edu", "IT_ADMIN")
     first_year = configure_year(actor, "2026-2027")
     first = ensure_current_inventory(student=student, context=context(student))
+    set_inventory_context(student)
     submit_current_inventory(student=student, context=context(student))
 
     second_year = create_academic_year(label="2027-2028", context=context(actor))
@@ -364,6 +394,7 @@ def test_appointment_prerequisite_blocks_before_reference_then_allows_submitted_
     assert AppointmentReferenceCounter.objects.count() == 0
     assert not AuditEvent.objects.filter(action="appointment.created").exists()
 
+    set_inventory_context(student)
     submit_current_inventory(student=student, context=context(student))
     draft.refresh_from_db()
     assert draft.submitted_at is not None

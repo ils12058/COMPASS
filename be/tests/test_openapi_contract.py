@@ -73,6 +73,12 @@ EXPECTED_OPERATION_IDS = {
     "organizationUpdateCollege",
     "organizationEnableCollege",
     "organizationDisableCollege",
+    "organizationListPrograms",
+    "organizationCreateProgram",
+    "organizationGetProgram",
+    "organizationUpdateProgram",
+    "organizationEnableProgram",
+    "organizationDisableProgram",
     "organizationListCounselorResponsibilities",
     "organizationSetCollegeCounselor",
     "organizationRemoveCollegeCounselor",
@@ -367,6 +373,11 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "GraduateTracerEducationPayload",
         "GraduateTracerProfessionalExamPayload",
         "GraduateTracerTrainingPayload",
+        "ProgramSummary",
+        "ProgramListResponse",
+        "ProgramCreateRequest",
+        "ProgramUpdateRequest",
+        "InventoryProgramSummary",
     }
     assert expected_schemas <= schemas.keys()
     assert schemas["AccountSummaryResponse"]["properties"]["id"]["format"] == "uuid"
@@ -427,6 +438,24 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert "first_name" not in profile_update
     assert "role" not in profile_update
     assert "profile_photo_object_key" not in profile_update
+
+    program_summary = schemas["ProgramSummary"]["properties"]
+    assert {"id", "code", "name", "college", "is_active"} == set(program_summary)
+    program_create = schemas["ProgramCreateRequest"]["properties"]
+    assert {"college_id", "code", "name"} == set(program_create)
+    program_update = schemas["ProgramUpdateRequest"]["properties"]
+    assert {"code", "name"} == set(program_update)
+
+    inventory_payload = schemas["InventoryPayload"]["properties"]
+    assert {"program_id", "year_level", "course_currently_enrolled", "major"} <= set(
+        inventory_payload
+    )
+    assert inventory_payload["program_id"]["anyOf"][0]["format"] == "uuid"
+    assert inventory_payload["year_level"]["anyOf"][0]["minimum"] == 1
+    assert inventory_payload["year_level"]["anyOf"][0]["maximum"] == 10
+    inventory_response = schemas["InventoryResponse"]["properties"]
+    assert "program" in inventory_response
+    assert inventory_response["program"]["anyOf"][0]["$ref"].endswith("/InventoryProgramSummary")
 
     exit_draft = schemas["ExitInterviewDraftPayload"]["properties"]
     assert {
@@ -558,6 +587,33 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         403,
         422,
     }
+
+    assert _response_statuses(_operation(schema, "/api/v1/organization/programs", "get")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/organization/programs", "post")) >= {
+        201,
+        401,
+        403,
+        404,
+        409,
+        422,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/organization/programs/{program_id}", "get")
+    ) >= {200, 401, 403, 404, 422}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/organization/programs/{program_id}", "patch")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/organization/programs/{program_id}/enable", "post")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/organization/programs/{program_id}/disable", "post")
+    ) >= {200, 401, 403, 404, 409, 422}
 
     assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/me", "post")) >= {
         200,
