@@ -508,8 +508,6 @@ class InventoryFamilyMember(models.Model):
         ]
 
 
-
-
 class InventoryGeographicLocation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     inventory = models.ForeignKey(
