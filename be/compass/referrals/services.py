@@ -156,8 +156,7 @@ def _validate_student(student: User | None) -> User:
 
 def _is_head(actor: User) -> bool:
     return (
-        actor.role.code == "COUNSELOR"
-        and actor.designations.filter(code=HEAD_DESIGNATION).exists()
+        actor.role.code == "COUNSELOR" and actor.designations.filter(code=HEAD_DESIGNATION).exists()
     )
 
 
