@@ -147,6 +147,12 @@ EXPECTED_OPERATION_IDS = {
     "referralsGet",
     "referralsUpdateStatus",
     "referralsRecordAction",
+    "callSlipsCreate",
+    "callSlipsList",
+    "callSlipsGet",
+    "callSlipsListMy",
+    "callSlipsGetMy",
+    "callSlipsRecordInterviewEnded",
     "eCounselingGetMyWorkspace",
     "eCounselingGetAssignedWorkspace",
     "eCounselingListMyConsents",
@@ -228,6 +234,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "inventory",
         "routine-interviews",
         "referrals",
+        "call-slips",
         "e-counseling",
     ]
     assert all(
@@ -425,6 +432,30 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         503,
     }
 
+    assert _response_statuses(_operation(schema, "/api/v1/call-slips", "post")) >= {
+        201,
+        401,
+        403,
+        404,
+        409,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/call-slips", "get")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/call-slips/me", "get")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/call-slips/{call_slip_id}/interview-ended", "patch")
+    ) >= {200, 401, 403, 404, 409, 422}
+
     for method, path, operation in iter_operations(schema):
         for status, response in operation["responses"].items():
             if int(status) in {400, 401, 403, 404, 409, 422, 429, 502, 503}:
@@ -456,6 +487,9 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "availability.manage",
             "availability.manage_self",
             "availability.view",
+            "call_slips.manage",
+            "call_slips.view",
+            "call_slips.view_self",
             "counseling.manage_assigned",
             "counseling.view_assigned",
             "ecounseling.consent_self",
@@ -522,6 +556,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "MediaCaptureResponse",
         "ReferralDetailResponse",
         "ReferralActionResponse",
+        "CallSlipOperationalResponse",
+        "CallSlipStudentResponse",
     }
     forbidden_fields = {
         "password_hash",
