@@ -177,7 +177,10 @@ class Migration(migrations.Migration):
                 ("region_psgc_code", models.CharField(blank=True, default="", max_length=32)),
                 ("region_name_snapshot", models.CharField(blank=True, default="", max_length=160)),
                 ("province_psgc_code", models.CharField(blank=True, default="", max_length=32)),
-                ("province_name_snapshot", models.CharField(blank=True, default="", max_length=160)),
+                (
+                    "province_name_snapshot",
+                    models.CharField(blank=True, default="", max_length=160),
+                ),
                 (
                     "city_municipality_psgc_code",
                     models.CharField(blank=True, default="", max_length=32),
@@ -187,7 +190,10 @@ class Migration(migrations.Migration):
                     models.CharField(blank=True, default="", max_length=160),
                 ),
                 ("barangay_psgc_code", models.CharField(blank=True, default="", max_length=32)),
-                ("barangay_name_snapshot", models.CharField(blank=True, default="", max_length=160)),
+                (
+                    "barangay_name_snapshot",
+                    models.CharField(blank=True, default="", max_length=160),
+                ),
                 (
                     "inventory",
                     models.ForeignKey(
