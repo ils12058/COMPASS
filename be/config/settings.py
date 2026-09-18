@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "compass.institutional_forms",
     "compass.inventory",
     "compass.routine_interviews",
+    "compass.referrals",
     "compass.ecounseling",
 ]
 

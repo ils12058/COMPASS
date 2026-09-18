@@ -142,6 +142,11 @@ EXPECTED_OPERATION_IDS = {
     "routineInterviewsGetAssigned",
     "routineInterviewsReplaceAssignedEvaluation",
     "routineInterviewsFinalizeAssignedEvaluation",
+    "referralsCreate",
+    "referralsList",
+    "referralsGet",
+    "referralsUpdateStatus",
+    "referralsRecordAction",
     "eCounselingGetMyWorkspace",
     "eCounselingGetAssignedWorkspace",
     "eCounselingListMyConsents",
@@ -222,6 +227,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "institutional-forms",
         "inventory",
         "routine-interviews",
+        "referrals",
         "e-counseling",
     ]
     assert all(
@@ -464,6 +470,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "inventory.view_self",
             "organization.manage",
             "organization.view",
+            "referrals.manage",
+            "referrals.view",
             "routine_interviews.manage_assigned",
             "routine_interviews.manage_self",
             "routine_interviews.view_assigned",
@@ -512,6 +520,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "CounselorWorkspaceResponse",
         "ConsentResponse",
         "MediaCaptureResponse",
+        "ReferralDetailResponse",
+        "ReferralActionResponse",
     }
     forbidden_fields = {
         "password_hash",
