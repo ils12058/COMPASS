@@ -153,6 +153,8 @@ EXPECTED_OPERATION_IDS = {
     "callSlipsListMy",
     "callSlipsGetMy",
     "callSlipsRecordInterviewEnded",
+    "documentBrandingGetProfile",
+    "documentBrandingUpdateProfile",
     "eCounselingGetMyWorkspace",
     "eCounselingGetAssignedWorkspace",
     "eCounselingListMyConsents",
@@ -235,6 +237,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "routine-interviews",
         "referrals",
         "call-slips",
+        "document-branding",
         "e-counseling",
     ]
     assert all(
@@ -308,6 +311,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "MediaCaptureResponse",
         "JoinCredentialResponse",
         "WebhookAckResponse",
+        "DocumentBrandingProfileResponse",
     }
     assert expected_schemas <= schemas.keys()
     assert schemas["AccountSummaryResponse"]["properties"]["id"]["format"] == "uuid"
@@ -455,6 +459,19 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _response_statuses(
         _operation(schema, "/api/v1/call-slips/{call_slip_id}/interview-ended", "patch")
     ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(_operation(schema, "/api/v1/document-branding/profile", "get")) >= {
+        200,
+        401,
+        403,
+        503,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/document-branding/profile", "patch")) >= {
+        200,
+        401,
+        403,
+        422,
+        503,
+    }
 
     for method, path, operation in iter_operations(schema):
         for status, response in operation["responses"].items():
@@ -492,6 +509,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "call_slips.view_self",
             "counseling.manage_assigned",
             "counseling.view_assigned",
+            "document_branding.manage",
+            "document_branding.view",
             "ecounseling.consent_self",
             "ecounseling.join_assigned",
             "ecounseling.join_self",
@@ -558,6 +577,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "ReferralActionResponse",
         "CallSlipOperationalResponse",
         "CallSlipStudentResponse",
+        "DocumentBrandingProfileResponse",
     }
     forbidden_fields = {
         "password_hash",

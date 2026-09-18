@@ -12,6 +12,7 @@ from compass.availability.api import router as availability_router
 from compass.call_slips.api import router as call_slips_router
 from compass.common.errors import register_exception_handlers
 from compass.counseling.api import router as counseling_router
+from compass.documents.api import router as document_branding_router
 from compass.ecounseling.api import daily_router
 from compass.ecounseling.api import router as ecounseling_router
 from compass.institutional_forms.api import router as institutional_forms_router
@@ -79,6 +80,10 @@ api = NinjaAPI(
                 "description": "Student reporting permits / Guidance Call Slip records.",
             },
             {
+                "name": "document-branding",
+                "description": "Approved institutional and GCO document identity configuration.",
+            },
+            {
                 "name": "e-counseling",
                 "description": "Secure ONLINE Counseling workspace and Daily provider boundary.",
             },
@@ -102,6 +107,7 @@ api.add_router("/inventory", inventory_router)
 api.add_router("/routine-interviews", routine_interviews_router)
 api.add_router("/referrals", referrals_router)
 api.add_router("/call-slips", call_slips_router)
+api.add_router("/document-branding", document_branding_router)
 api.add_router("/e-counseling", ecounseling_router)
 api.add_router("/integrations/daily", daily_router)
 register_exception_handlers(api)

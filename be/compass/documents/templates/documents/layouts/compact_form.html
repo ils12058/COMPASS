@@ -1,0 +1,11 @@
+{% extends "documents/base.html" %}
+{% block document %}
+  <div class="compact-form">
+    {% include "documents/partials/institution_masthead.html" %}
+    {% include "documents/partials/office_heading.html" %}
+    <main class="document-body compact-form-body">
+      {% block body %}{% endblock %}
+    </main>
+    {% include "documents/partials/controlled_form_metadata.html" %}
+  </div>
+{% endblock %}

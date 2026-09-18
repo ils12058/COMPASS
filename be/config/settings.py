@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "compass.appointments",
     "compass.counseling",
     "compass.institutional_forms",
+    "compass.documents",
     "compass.inventory",
     "compass.routine_interviews",
     "compass.referrals",
@@ -323,6 +324,11 @@ AUTH_TURNSTILE_EMAIL_OTP_REQUIRED = env_bool(
 
 IDEMPOTENCY_TTL_SECONDS = env_int("IDEMPOTENCY_TTL_SECONDS", 86_400)
 IDEMPOTENCY_MAX_RESPONSE_BYTES = env_int("IDEMPOTENCY_MAX_RESPONSE_BYTES", 1_048_576)
+
+DOCUMENT_RENDER_TIMEOUT_SECONDS = env_int("DOCUMENT_RENDER_TIMEOUT_SECONDS", 30)
+if not 1 <= DOCUMENT_RENDER_TIMEOUT_SECONDS <= 120:
+    raise ValueError("DOCUMENT_RENDER_TIMEOUT_SECONDS must be between 1 and 120")
+
 API_DOCS_ENABLED = env_bool("API_DOCS_ENABLED", IS_LOCAL_STAGING)
 CADDY_MAX_REQUEST_BODY_SIZE = env("CADDY_MAX_REQUEST_BODY_SIZE", "10MB")
 
