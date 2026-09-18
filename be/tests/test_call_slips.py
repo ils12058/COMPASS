@@ -228,6 +228,39 @@ def test_gss_requires_current_active_counselor_supervisor():
 
 
 @pytest.mark.django_db
+def test_create_requires_meaningful_course_year_and_active_student_target():
+    sync_policy()
+    head = make_head()
+    student = make_user("student@example.edu", "STUDENT")
+    admin = make_user("admin@example.edu", "IT_ADMIN")
+
+    with pytest.raises(InvalidCallSlipInput, match="course_year is required"):
+        create_for(
+            head,
+            student,
+            key="blank-course",
+            fingerprint="a" * 64,
+            course_year="   ",
+        )
+    with pytest.raises(InvalidCallSlipInput, match="active Student"):
+        create_for(
+            head,
+            admin,
+            key="non-student",
+            fingerprint="b" * 64,
+        )
+    student.is_active = False
+    student.save(update_fields=["is_active", "updated_at"])
+    with pytest.raises(InvalidCallSlipInput, match="active Student"):
+        create_for(
+            head,
+            student,
+            key="inactive-student",
+            fingerprint="c" * 64,
+        )
+
+
+@pytest.mark.django_db
 def test_destination_rules_report_at_history_and_snapshots_are_source_faithful():
     sync_policy()
     head = make_head()
