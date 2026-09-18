@@ -35,6 +35,7 @@ from .services import (
     CurrentAcademicYearNotConfigured,
     InvalidInventoryInput,
     InventoryConflict,
+    InventoryCurrentStudentRequired,
     InventoryError,
     InventoryFormRevisionNotConfigured,
     InventoryNotFound,
@@ -356,6 +357,8 @@ def _require_student(request, capability: str) -> None:
 
 
 def _raise(exc: InventoryError) -> NoReturn:
+    if isinstance(exc, InventoryCurrentStudentRequired):
+        raise APIError(409, "current_student_required", str(exc)) from exc
     if isinstance(exc, InventoryNotFound):
         raise APIError(404, "inventory_not_found", str(exc)) from exc
     if isinstance(exc, CurrentAcademicYearNotConfigured):
