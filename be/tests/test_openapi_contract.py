@@ -135,6 +135,15 @@ EXPECTED_OPERATION_IDS = {
     "inventorySubmitMyCurrent",
     "inventoryListMyHistory",
     "inventoryGetMyHistoryItem",
+    "exitInterviewsEnsureMyCurrent",
+    "exitInterviewsGetMyCurrent",
+    "exitInterviewsUpdateMyCurrent",
+    "exitInterviewsSubmitMyCurrent",
+    "exitInterviewsListMine",
+    "exitInterviewsGetMine",
+    "exitInterviewsList",
+    "exitInterviewsGet",
+    "exitInterviewsReopen",
     "routineInterviewsEnsureMyForAppointment",
     "routineInterviewsCreateDirect",
     "routineInterviewsListMine",
@@ -237,6 +246,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "academic-years",
         "institutional-forms",
         "inventory",
+        "exit-interviews",
         "routine-interviews",
         "referrals",
         "call-slips",
@@ -317,6 +327,13 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "JoinCredentialResponse",
         "WebhookAckResponse",
         "DocumentBrandingProfileResponse",
+        "ExitInterviewDraftPayload",
+        "ExitInterviewDetailResponse",
+        "ExitInterviewSummaryResponse",
+        "ExitInterviewPageResponse",
+        "SelfAssessmentRatingPayload",
+        "CollegeFeedbackRatingPayload",
+        "ReopenRequest",
     }
     assert expected_schemas <= schemas.keys()
     assert schemas["AccountSummaryResponse"]["properties"]["id"]["format"] == "uuid"
@@ -368,6 +385,54 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert "role" not in profile_update
     assert "profile_photo_object_key" not in profile_update
 
+    exit_draft = schemas["ExitInterviewDraftPayload"]["properties"]
+    assert {
+        "student_name",
+        "age",
+        "civil_status",
+        "course",
+        "major",
+        "email_address",
+        "home_address",
+        "contact_number",
+        "program_completion",
+        "extra_terms_count",
+        "delay_reasons",
+        "delay_other",
+        "significant_learning_experiences",
+        "significant_learning_other",
+        "career_modes",
+        "work_choices",
+        "study_choices",
+        "self_assessment_ratings",
+        "college_feedback_ratings",
+        "dean_comments",
+        "program_chair_comments",
+        "faculty_comments",
+        "curriculum_comments",
+        "guidance_counselor_comments",
+        "office_staff_comments",
+        "facilities_comments",
+        "suggestions_recommendations",
+    } == set(exit_draft)
+    assert {
+        "student_id",
+        "academic_year_id",
+        "inventory_id",
+        "form_revision_id",
+        "status",
+        "created_at",
+        "first_submitted_at",
+        "last_submitted_at",
+        "reopened_by",
+    }.isdisjoint(exit_draft)
+    assert schemas["SelfAssessmentRatingPayload"]["properties"]["rating"]["minimum"] == 1
+    assert schemas["SelfAssessmentRatingPayload"]["properties"]["rating"]["maximum"] == 5
+    assert schemas["CollegeFeedbackRatingPayload"]["properties"]["rating"]["minimum"] == 0
+    assert schemas["CollegeFeedbackRatingPayload"]["properties"]["rating"]["maximum"] == 5
+    assert len(schemas["SelfAssessmentItemValue"]["enum"]) == 15
+    assert len(schemas["CollegeFeedbackItemValue"]["enum"]) == 26
+
     assert "password" not in schemas["AccountCreateRequest"]["properties"]
     assert {"email", "first_name", "last_name", "role"} <= set(
         schemas["AccountCreateRequest"]["required"]
@@ -409,6 +474,33 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         403,
         422,
     }
+
+    assert _response_statuses(
+        _operation(schema, "/api/v1/exit-interviews/me/current", "post")
+    ) >= {200, 401, 403, 409, 422}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/exit-interviews/me/current", "get")
+    ) >= {200, 401, 403, 404, 409}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/exit-interviews/me/current", "put")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/exit-interviews/me/current/submit", "post")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(_operation(schema, "/api/v1/exit-interviews/me", "get")) >= {
+        200,
+        401,
+        403,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/exit-interviews", "get")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/exit-interviews/{exit_interview_id}/reopen", "post")
+    ) >= {200, 401, 403, 404, 409, 422}
     assert _response_statuses(_operation(schema, "/api/v1/accounts", "post")) >= {
         201,
         401,
@@ -565,6 +657,10 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "ecounseling.manage_media_assigned",
             "ecounseling.view_assigned",
             "ecounseling.view_self",
+            "exit_interviews.manage_self",
+            "exit_interviews.reopen",
+            "exit_interviews.view",
+            "exit_interviews.view_self",
             "institutional_forms.manage",
             "institutional_forms.view",
             "inventory.manage_self",
@@ -627,6 +723,9 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "CallSlipOperationalResponse",
         "CallSlipStudentResponse",
         "DocumentBrandingProfileResponse",
+        "ExitInterviewDetailResponse",
+        "ExitInterviewSummaryResponse",
+        "ExitInterviewPageResponse",
     }
     forbidden_fields = {
         "password_hash",
