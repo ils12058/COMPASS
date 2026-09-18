@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <style>{{ document_print_css }}</style>
+  <title>{% block title %}Institutional Document{% endblock %}</title>
+</head>
+<body class="document layout-{{ document_layout_family|lower }}">
+  {% block document %}{% endblock %}
+</body>
+</html>
