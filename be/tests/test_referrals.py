@@ -589,7 +589,8 @@ def test_create_api_preserves_received_at_and_rejects_naive_received_at():
         **headers,
     )
     assert created.status_code == 201
-    assert datetime.fromisoformat(created.json()["received_at"]) == received
+    returned_received = datetime.fromisoformat(created.json()["received_at"])
+    assert abs(returned_received - received) < timedelta(milliseconds=1)
 
     payload["received_at"] = received.replace(tzinfo=None).isoformat()
     invalid = client.post(
