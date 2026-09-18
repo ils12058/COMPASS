@@ -42,7 +42,6 @@ from .models import (
     LivingArrangement,
     OccupationCategory,
     ParentLifeStatus,
-    ParentStatusCategory,
     PhysicalDisadvantageStatus,
     PostGraduationField,
     StudentInventory,
