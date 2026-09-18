@@ -1,0 +1,51 @@
+{% extends "documents/layouts/certificate.html" %}
+{% block title %}Good Moral Character{% endblock %}
+{% block body %}
+<section class="good-moral-certificate">
+  <h1>GOOD MORAL CHARACTER</h1>
+  <p>
+    THIS IS TO CERTIFY THAT
+    <span class="good-moral-field good-moral-field-wide">{{ certificate.applicant_name }}</span>,
+    graduated with the degree of
+    <span class="good-moral-field good-moral-field-wide">{{ certificate.degree }}</span>,
+    major in <span class="good-moral-field">{{ certificate.major }}</span> on
+    <span class="good-moral-field">{{ certificate.graduation_date|date:"F j, Y" }}</span>.
+  </p>
+  <p>
+    During his/her stay in this College he/she had shown good moral character and never been
+    subjected to any disciplinary action.
+  </p>
+  <p>
+    Issued upon request of the party concerned this
+    <span class="good-moral-field">{{ certificate.issued_on|date:"j" }}</span> day of
+    <span class="good-moral-field">{{ certificate.issued_on|date:"F" }}</span>,
+    <span class="good-moral-field">{{ certificate.issued_on|date:"Y" }}</span> for whatever legal
+    purpose it may serve.
+  </p>
+
+  <div class="good-moral-signature">
+    <div class="good-moral-signature-name">{{ certificate.issuer_name }}</div>
+    <div>Guidance Counselor</div>
+  </div>
+
+  <div class="good-moral-receipt">
+    <div>Official Receipt No.: {{ certificate.official_receipt_number }}</div>
+    <div>
+      Date:
+      {% if certificate.official_receipt_date %}
+        {{ certificate.official_receipt_date|date:"F j, Y" }}
+      {% endif %}
+    </div>
+    <div>
+      Amount:
+      {% if certificate.official_receipt_amount != None %}
+        {{ certificate.official_receipt_amount|floatformat:2 }}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="good-moral-controlled-footer">
+    {% include "documents/partials/controlled_form_metadata.html" %}
+  </div>
+</section>
+{% endblock %}
