@@ -538,10 +538,13 @@ def test_f4_issue_rechecks_current_lifecycle_and_duplicate_issue_is_idempotent()
         repeated.document_template_key,
         repeated.document_template_version,
     ) == first_state
-    assert AuditEvent.objects.filter(
-        action="good_moral.issued",
-        target_id=str(item.pk),
-    ).count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action="good_moral.issued",
+            target_id=str(item.pk),
+        ).count()
+        == 1
+    )
 
 
 @pytest.mark.django_db
@@ -705,9 +708,7 @@ def test_pdf_endpoints_require_issued_state_and_use_safe_pdf_response(monkeypatc
     assert response.status_code == 200
     assert response["Content-Type"] == "application/pdf"
     assert response.content == fake_pdf
-    assert response["Content-Disposition"] == (
-        f'attachment; filename="good-moral-{issued.pk}.pdf"'
-    )
+    assert response["Content-Disposition"] == (f'attachment; filename="good-moral-{issued.pk}.pdf"')
 
 
 @pytest.mark.django_db
