@@ -105,9 +105,7 @@ def _normalize_date_of_birth(value: object) -> date | None:
 def _normalize_changes(changes: dict[str, object]) -> dict[str, object]:
     unknown = set(changes) - PROFILE_EDITABLE_FIELDS
     if unknown:
-        raise InvalidProfileInput(
-            f"Unsupported profile fields: {', '.join(sorted(unknown))}."
-        )
+        raise InvalidProfileInput(f"Unsupported profile fields: {', '.join(sorted(unknown))}.")
 
     normalized: dict[str, object] = {}
     for field_name, value in changes.items():
