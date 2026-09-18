@@ -12,6 +12,7 @@ from compass.accounts.models import (
     Capability,
     Designation,
     Role,
+    StudentLifecycleStatus,
     User,
     UserCapabilityOverride,
     UserDesignation,
@@ -621,3 +622,194 @@ def test_role_change_blocks_active_or_future_appointment_until_resolved():
         **csrf_headers(client),
     )
     assert changed.status_code == 200
+
+
+@pytest.mark.django_db
+def test_student_lifecycle_management_is_recent_mfa_guarded_audited_and_session_preserving():
+    sync_policy()
+    client, admin, _admin_session = make_admin_client()
+    student = make_user(email="managed-lifecycle@example.edu")
+    student_session = create_auth_session(student, now=timezone.now()).session
+    path = f"/api/v1/accounts/{student.pk}/student-lifecycle"
+
+    response = client.put(
+        path,
+        data=json.dumps({"status": "GRADUATED"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert response.status_code == 200
+    student.refresh_from_db()
+    student_session.refresh_from_db()
+    assert student.student_lifecycle_status == StudentLifecycleStatus.GRADUATED
+    assert student.is_active is True
+    assert student_session.revoked_at is None
+
+    event = AuditEvent.objects.get(
+        action="account.student_lifecycle.changed",
+        target_id=str(student.pk),
+    )
+    assert event.actor_user_id == admin.pk
+    assert event.metadata == {
+        "from_status": "CURRENT",
+        "to_status": "GRADUATED",
+    }
+
+    event_count = AuditEvent.objects.filter(
+        action="account.student_lifecycle.changed",
+        target_id=str(student.pk),
+    ).count()
+    same = client.put(
+        path,
+        data=json.dumps({"status": "GRADUATED"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert same.status_code == 200
+    assert (
+        AuditEvent.objects.filter(
+            action="account.student_lifecycle.changed",
+            target_id=str(student.pk),
+        ).count()
+        == event_count
+    )
+
+    former = client.put(
+        path,
+        data=json.dumps({"status": "FORMER"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert former.status_code == 200
+    current = client.put(
+        path,
+        data=json.dumps({"status": "CURRENT"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert current.status_code == 200
+
+    invalid = client.put(
+        path,
+        data=json.dumps({"status": "NOT_A_STATUS"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert invalid.status_code == 422
+
+    counselor = make_user(email="lifecycle-nonstudent@example.edu", role="COUNSELOR")
+    nonstudent = client.put(
+        f"/api/v1/accounts/{counselor.pk}/student-lifecycle",
+        data=json.dumps({"status": "FORMER"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert nonstudent.status_code == 409
+    assert nonstudent.json()["error"]["code"] == "student_lifecycle_conflict"
+
+
+@pytest.mark.django_db
+def test_student_lifecycle_authority_and_role_transition_preservation():
+    sync_policy()
+    client, admin, _session = make_admin_client()
+    student = make_user(email="role-preserve-student@example.edu")
+    lifecycle_path = f"/api/v1/accounts/{student.pk}/student-lifecycle"
+
+    changed = client.put(
+        lifecycle_path,
+        data=json.dumps({"status": "GRADUATED"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert changed.status_code == 200
+
+    away = client.put(
+        f"/api/v1/accounts/{student.pk}/role",
+        data=json.dumps({"role": "GUIDANCE_SERVICES_STAFF"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert away.status_code == 200
+    assert away.json()["student_lifecycle_status"] == "GRADUATED"
+
+    admin = User.objects.get(pk=admin.pk)
+    admin_session = create_auth_session(
+        admin,
+        mfa_verified_at=timezone.now(),
+        now=timezone.now(),
+    )
+    client.cookies["compass_session"] = admin_session.token
+    back = client.put(
+        f"/api/v1/accounts/{student.pk}/role",
+        data=json.dumps({"role": "STUDENT"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert back.status_code == 200
+    assert back.json()["student_lifecycle_status"] == "GRADUATED"
+
+    new_student = make_user(
+        email="role-init-student@example.edu",
+        role="COUNSELOR",
+    )
+    assert new_student.student_lifecycle_status is None
+    into_student = client.put(
+        f"/api/v1/accounts/{new_student.pk}/role",
+        data=json.dumps({"role": "STUDENT"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert into_student.status_code == 200
+    assert into_student.json()["student_lifecycle_status"] == "CURRENT"
+
+    stale = create_auth_session(admin, now=timezone.now())
+    stale_client = Client()
+    stale_client.cookies["compass_session"] = stale.token
+    stale_response = stale_client.put(
+        f"/api/v1/accounts/{new_student.pk}/student-lifecycle",
+        data=json.dumps({"status": "FORMER"}),
+        content_type="application/json",
+        **csrf_headers(stale_client),
+    )
+    assert stale_response.status_code == 403
+    assert stale_response.json()["error"]["code"] == "recent_mfa_required"
+
+    for role_code in ("STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF"):
+        actor = make_user(
+            email=f"unauthorized-{role_code.lower()}@example.edu",
+            role=role_code,
+        )
+        actor_session = create_auth_session(
+            actor,
+            mfa_verified_at=timezone.now(),
+            now=timezone.now(),
+        )
+        actor_client = Client()
+        actor_client.cookies["compass_session"] = actor_session.token
+        denied = actor_client.put(
+            f"/api/v1/accounts/{new_student.pk}/student-lifecycle",
+            data=json.dumps({"status": "FORMER"}),
+            content_type="application/json",
+            **csrf_headers(actor_client),
+        )
+        assert denied.status_code == 403
+
+    dpo = make_user(email="dpo-lifecycle@example.edu", role="COUNSELOR")
+    UserDesignation.objects.create(
+        user=dpo,
+        designation=Designation.objects.get(code="DPO"),
+    )
+    dpo_session = create_auth_session(
+        dpo,
+        mfa_verified_at=timezone.now(),
+        now=timezone.now(),
+    )
+    dpo_client = Client()
+    dpo_client.cookies["compass_session"] = dpo_session.token
+    dpo_denied = dpo_client.put(
+        f"/api/v1/accounts/{new_student.pk}/student-lifecycle",
+        data=json.dumps({"status": "FORMER"}),
+        content_type="application/json",
+        **csrf_headers(dpo_client),
+    )
+    assert dpo_denied.status_code == 403
