@@ -863,6 +863,7 @@ def test_database_constraints_preserve_local_appointment_invariants():
 
 
 @pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
 @pytest.mark.parametrize(
     "status",
     [StudentLifecycleStatus.GRADUATED, StudentLifecycleStatus.FORMER],
@@ -883,6 +884,7 @@ def test_non_current_student_cannot_book_but_can_read_and_cancel_existing(status
         delivery_mode="IN_PERSON",
         starts_at=start,
         context=context(student),
+        now=start - timedelta(days=1),
     )
     student.student_lifecycle_status = status
     student.save(update_fields=["student_lifecycle_status", "updated_at"])
@@ -895,6 +897,7 @@ def test_non_current_student_cannot_book_but_can_read_and_cancel_existing(status
             delivery_mode="IN_PERSON",
             starts_at=start + timedelta(hours=2),
             context=context(student),
+            now=start - timedelta(days=1),
         )
     with pytest.raises(AppointmentCurrentStudentRequired):
         list_eligible_counselors(
