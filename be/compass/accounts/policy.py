@@ -305,6 +305,23 @@ CAPABILITY_DEFINITIONS = (
         ),
     ),
     CapabilityDefinition(
+        code="graduate_tracer.view_self",
+        name="View own Graduate Tracer response",
+        description="View the authenticated Student's own Graduate Tracer response.",
+    ),
+    CapabilityDefinition(
+        code="graduate_tracer.manage_self",
+        name="Manage own Graduate Tracer response",
+        description=(
+            "Create, edit, and submit the eligible Graduate's own Graduate Tracer response."
+        ),
+    ),
+    CapabilityDefinition(
+        code="graduate_tracer.view",
+        name="View Graduate Tracer responses",
+        description="View submitted Graduate Tracer responses for Head Guidance oversight.",
+    ),
+    CapabilityDefinition(
         code="document_branding.view",
         name="View document branding",
         description="View the approved institutional and GCO document identity configuration.",
@@ -428,6 +445,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "good_moral.request_self",
             "feedback.submit_customer_feedback",
             "feedback.submit_csm",
+            "graduate_tracer.view_self",
+            "graduate_tracer.manage_self",
         }
     ),
 }
@@ -451,6 +470,7 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "exit_interviews.reopen",
             "feedback.view_customer_feedback",
             "feedback.view_csm",
+            "graduate_tracer.view",
         }
     ),
     "DPO": frozenset(),
