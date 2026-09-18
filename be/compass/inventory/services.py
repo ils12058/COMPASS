@@ -97,7 +97,9 @@ def combine_parent_annual_income(
         if status == AnnualIncomeStatus.NONE:
             continue
         if status != AnnualIncomeStatus.REPORTED or amount is None or amount <= 0:
-            raise InvalidInventoryInput("Parent annual-income values are not internally consistent.")
+            raise InvalidInventoryInput(
+                "Parent annual-income values are not internally consistent."
+            )
         total += amount
     return CombinedParentIncome(CombinedParentIncomeStatus.REPORTED, total)
 
@@ -327,7 +329,9 @@ def _normalize_snapshot_categories(values: dict[str, object]) -> dict[str, objec
         normalized["civil_status_category"] = civil
         if civil == CivilStatusCategory.OTHER:
             if not str(normalized.get("civil_status", "")).strip():
-                raise InvalidInventoryInput("civil_status detail is required when category is OTHER.")
+                raise InvalidInventoryInput(
+                    "civil_status detail is required when category is OTHER."
+                )
         elif civil == CivilStatusCategory.NOT_SPECIFIED:
             normalized["civil_status"] = ""
         else:
