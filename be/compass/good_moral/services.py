@@ -598,7 +598,9 @@ def issue_request(
         return _queryset().get(pk=item.pk)
 
 
-def render_certificate_pdf(item: GoodMoralRequest) -> bytes:
+def build_certificate_render_context(item: GoodMoralRequest) -> dict[str, object]:
+    """Build an issued certificate only from frozen request/QMS provenance."""
+
     if item.status != GoodMoralStatus.ISSUED:
         raise GoodMoralConflict("Only an issued Good Moral request has a final certificate PDF.")
     if (
@@ -610,7 +612,7 @@ def render_certificate_pdf(item: GoodMoralRequest) -> bytes:
     ):
         raise GoodMoralConfigurationConflict("Issued Good Moral provenance is incomplete.")
 
-    context = {
+    return {
         "certificate": {
             "applicant_name": item.applicant_name_snapshot,
             "year_level": item.year_level_snapshot,
@@ -633,6 +635,10 @@ def render_certificate_pdf(item: GoodMoralRequest) -> bytes:
             "page_label": "Page 1 of 1",
         },
     }
+
+
+def render_certificate_pdf(item: GoodMoralRequest) -> bytes:
+    context = build_certificate_render_context(item)
     try:
         result = render_document_pdf(
             item.document_template_key,
