@@ -1196,6 +1196,8 @@
           "call_slips.view_self",
           "counseling.manage_assigned",
           "counseling.view_assigned",
+          "document_branding.manage",
+          "document_branding.view",
           "ecounseling.consent_self",
           "ecounseling.join_assigned",
           "ecounseling.join_self",
@@ -2319,6 +2321,316 @@
         ],
         "title": "DirectRoutineEntryMode",
         "type": "string"
+      },
+      "DocumentBrandingProfileResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "country_line": {
+            "title": "Country Line",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "former_institution_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Former Institution Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institution_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Address"
+          },
+          "institution_contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Contact Email"
+          },
+          "institution_name": {
+            "title": "Institution Name",
+            "type": "string"
+          },
+          "institution_short_name": {
+            "title": "Institution Short Name",
+            "type": "string"
+          },
+          "institution_social_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Social Url"
+          },
+          "institution_website_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Website Url"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "office_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Email"
+          },
+          "office_location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Location"
+          },
+          "office_name": {
+            "title": "Office Name",
+            "type": "string"
+          },
+          "office_parent_unit_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Parent Unit Name"
+          },
+          "office_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Phone"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "country_line",
+          "institution_name",
+          "institution_short_name",
+          "former_institution_name",
+          "institution_address",
+          "institution_website_url",
+          "institution_contact_email",
+          "institution_social_url",
+          "office_parent_unit_name",
+          "office_name",
+          "office_email",
+          "office_phone",
+          "office_location",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DocumentBrandingProfileResponse",
+        "type": "object"
+      },
+      "DocumentBrandingUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "country_line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Line"
+          },
+          "former_institution_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Former Institution Name"
+          },
+          "institution_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Address"
+          },
+          "institution_contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Contact Email"
+          },
+          "institution_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Name"
+          },
+          "institution_short_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Short Name"
+          },
+          "institution_social_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Social Url"
+          },
+          "institution_website_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Website Url"
+          },
+          "office_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Email"
+          },
+          "office_location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Location"
+          },
+          "office_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Name"
+          },
+          "office_parent_unit_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Parent Unit Name"
+          },
+          "office_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Phone"
+          }
+        },
+        "title": "DocumentBrandingUpdateRequest",
+        "type": "object"
       },
       "EducationEntryPayload": {
         "additionalProperties": false,
@@ -7787,6 +8099,8 @@
                 "call_slips.view_self",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
+                "document_branding.manage",
+                "document_branding.view",
                 "ecounseling.consent_self",
                 "ecounseling.join_assigned",
                 "ecounseling.join_self",
@@ -7922,6 +8236,8 @@
                 "call_slips.view_self",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
+                "document_branding.manage",
+                "document_branding.view",
                 "ecounseling.consent_self",
                 "ecounseling.join_assigned",
                 "ecounseling.join_self",
@@ -13601,6 +13917,138 @@
         "summary": "Counseling List Students",
         "tags": [
           "counseling"
+        ]
+      }
+    },
+    "/api/v1/document-branding/profile": {
+      "get": {
+        "operationId": "documentBrandingGetProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentBrandingProfileResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Document Branding Get Profile",
+        "tags": [
+          "document-branding"
+        ]
+      },
+      "patch": {
+        "operationId": "documentBrandingUpdateProfile",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentBrandingUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentBrandingProfileResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Document Branding Update Profile",
+        "tags": [
+          "document-branding"
         ]
       }
     },
@@ -19588,6 +20036,10 @@
     {
       "description": "Student reporting permits / Guidance Call Slip records.",
       "name": "call-slips"
+    },
+    {
+      "description": "Approved institutional and GCO document identity configuration.",
+      "name": "document-branding"
     },
     {
       "description": "Secure ONLINE Counseling workspace and Daily provider boundary.",
