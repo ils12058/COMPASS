@@ -380,9 +380,18 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
         if kind in seen:
             raise InvalidInventoryInput("Only one family-member row per kind is allowed.")
         seen.add(kind)
+        life_status = row.get("life_status")
+        if life_status is not None:
+            life_status = str(life_status)
+            if life_status not in ParentLifeStatus.values:
+                raise InvalidInventoryInput("Unsupported parent life_status.")
+            row["life_status"] = life_status
+
         status = row.get("annual_income_status")
         if status is not None:
             status = str(status)
+            if status not in AnnualIncomeStatus.values:
+                raise InvalidInventoryInput("Unsupported annual_income_status.")
             row["annual_income_status"] = status
             amount = row.get("annual_income_previous_year")
             if status == AnnualIncomeStatus.REPORTED:
@@ -398,6 +407,8 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
         occupation_category = row.get("occupation_category")
         if occupation_category is not None:
             occupation_category = str(occupation_category)
+            if occupation_category not in OccupationCategory.values:
+                raise InvalidInventoryInput("Unsupported occupation_category.")
             row["occupation_category"] = occupation_category
             if occupation_category == OccupationCategory.OTHER and not str(
                 row.get("occupation", "")
@@ -411,9 +422,6 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
             }:
                 row["occupation"] = ""
 
-        life_status = row.get("life_status")
-        if life_status is not None:
-            row["life_status"] = str(life_status)
         normalized.append(row)
     return normalized
 
@@ -425,6 +433,8 @@ def _pair(code: str, name: str, label: str, *, required: bool) -> tuple[str, str
         raise InvalidInventoryInput(f"{label} PSGC code and name must be supplied together.")
     if required and not code:
         raise InvalidInventoryInput(f"{label} PSGC code and name are required.")
+    if len(code) > 32 or len(name) > 160:
+        raise InvalidInventoryInput(f"{label} PSGC code or display name is too long.")
     return code, name
 
 
@@ -483,6 +493,8 @@ def _normalize_transportation_rows(rows: object) -> list[dict[str, object]]:
         category = row.get("frequency_category")
         if category is not None:
             category = str(category)
+            if category not in TransportationFrequencyCategory.values:
+                raise InvalidInventoryInput("Unsupported transportation frequency_category.")
             row["frequency_category"] = category
             detail = str(row.get("frequency", "")).strip()
             if category == TransportationFrequencyCategory.OTHER:
@@ -495,6 +507,9 @@ def _normalize_transportation_rows(rows: object) -> list[dict[str, object]]:
                 row["frequency"] = ""
             else:
                 row["frequency"] = _choice_label(TransportationFrequencyCategory, category)
+        fare = row.get("fare")
+        if fare is not None and Decimal(fare) < 0:
+            raise InvalidInventoryInput("Transportation fare must be non-negative.")
         normalized.append(row)
     return normalized
 
@@ -628,6 +643,24 @@ def _validate_submission(item: StudentInventory) -> None:
             "Inventory submission requires normalized fields: " + ", ".join(missing) + "."
         )
 
+    normalized_root = _normalize_snapshot_categories(
+        {
+            "civil_status_category": item.civil_status_category,
+            "civil_status": item.civil_status,
+            "current_religion_category": item.current_religion_category,
+            "current_religion": item.current_religion,
+            "physical_disadvantage_status": item.physical_disadvantage_status,
+            "physical_disadvantage": item.physical_disadvantage,
+            "parent_status_category": item.parent_status_category,
+        }
+    )
+    for field in (
+        "civil_status",
+        "current_religion",
+        "physical_disadvantage",
+    ):
+        setattr(item, field, normalized_root[field])
+
     current_location = next(
         (
             row
@@ -680,6 +713,22 @@ def _validate_submission(item: StudentInventory) -> None:
                 }
             ]
         )
+    for row in item.transportation_entries.all():
+        if row.frequency_category in {None, ""}:
+            raise InvalidInventoryInput(
+                "Each transportation entry requires a frequency_category before submission."
+            )
+        _normalize_transportation_rows(
+            [
+                {
+                    "mode": row.mode,
+                    "frequency": row.frequency,
+                    "frequency_category": row.frequency_category,
+                    "fare": row.fare,
+                }
+            ]
+        )
+
     if ImmunizationType.OTHER in item.immunizations and not item.immunization_other.strip():
         raise InvalidInventoryInput(
             "immunization_other is required when OTHER immunization is selected."
@@ -808,6 +857,9 @@ def submit_current_inventory(
         item.save(
             update_fields=[
                 "course_currently_enrolled",
+                "civil_status",
+                "current_religion",
+                "physical_disadvantage",
                 "submitted_at",
                 "updated_at",
             ]
