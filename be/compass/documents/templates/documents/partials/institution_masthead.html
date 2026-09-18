@@ -1,0 +1,26 @@
+<header class="institution-masthead">
+  <div class="masthead-logo masthead-logo-left">
+    <img src="{{ document_assets.ucn_logo }}" alt="{{ document_branding.institution_short_name }} logo">
+  </div>
+  <div class="masthead-copy">
+    <div class="country-line">{{ document_branding.country_line }}</div>
+    <div class="institution-name">{{ document_branding.institution_name }}</div>
+    {% if document_branding.former_institution_name %}
+      <div class="former-institution-name">(formerly {{ document_branding.former_institution_name }})</div>
+    {% endif %}
+    {% if document_branding.institution_address %}
+      <div class="institution-address">{{ document_branding.institution_address }}</div>
+    {% endif %}
+    {% if document_branding.institution_website_url or document_branding.institution_contact_email %}
+      <div class="institution-contact">
+        {% if document_branding.institution_website_url %}{{ document_branding.institution_website_url }}{% endif %}
+        {% if document_branding.institution_website_url and document_branding.institution_contact_email %} · {% endif %}
+        {% if document_branding.institution_contact_email %}{{ document_branding.institution_contact_email }}{% endif %}
+      </div>
+    {% endif %}
+  </div>
+  <div class="masthead-logo masthead-logo-right">
+    <img src="{{ document_assets.bagong_pilipinas_logo }}" alt="Bagong Pilipinas">
+  </div>
+</header>
+<div class="institution-separator"></div>
