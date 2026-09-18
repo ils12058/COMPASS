@@ -453,6 +453,15 @@
         "title": "ActivityPageResponse",
         "type": "object"
       },
+      "AnnualIncomeStatusValue": {
+        "enum": [
+          "REPORTED",
+          "NONE",
+          "NOT_SPECIFIED"
+        ],
+        "title": "AnnualIncomeStatusValue",
+        "type": "string"
+      },
       "AppointmentCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1721,6 +1730,17 @@
         "title": "CareerModeValue",
         "type": "string"
       },
+      "CivilStatusCategoryValue": {
+        "enum": [
+          "SINGLE",
+          "MARRIED",
+          "SOLO_PARENT",
+          "OTHER",
+          "NOT_SPECIFIED"
+        ],
+        "title": "CivilStatusCategoryValue",
+        "type": "string"
+      },
       "CollegeCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -2711,6 +2731,26 @@
           "OTHER"
         ],
         "title": "CourseChoiceReasonValue",
+        "type": "string"
+      },
+      "CurrentReligionCategoryValue": {
+        "enum": [
+          "ROMAN_CATHOLIC",
+          "BORN_AGAIN",
+          "IGLESIA_NI_CRISTO",
+          "MORMON",
+          "JEHOVAHS_WITNESS",
+          "SEVENTH_DAY_ADVENTIST",
+          "CHURCH_OF_CHRIST",
+          "EVANGELICAL_CHRISTIAN",
+          "MGCI",
+          "BAPTIST",
+          "PMCC",
+          "NONE",
+          "OTHER",
+          "NOT_SPECIFIED"
+        ],
+        "title": "CurrentReligionCategoryValue",
         "type": "string"
       },
       "CurrentSessionResponse": {
@@ -4304,6 +4344,16 @@
             ],
             "title": "Annual Income Previous Year"
           },
+          "annual_income_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnnualIncomeStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "business_address": {
             "default": "",
             "title": "Business Address",
@@ -4359,6 +4409,16 @@
             "title": "Languages Spoken",
             "type": "string"
           },
+          "life_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParentLifeStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "default": "",
             "title": "Name",
@@ -4368,6 +4428,16 @@
             "default": "",
             "title": "Occupation",
             "type": "string"
+          },
+          "occupation_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OccupationCategoryValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "permanent_address": {
             "default": "",
@@ -4824,6 +4894,72 @@
         ],
         "title": "GTSUsefulCompetencyValue",
         "type": "string"
+      },
+      "GeographicLocationKindValue": {
+        "enum": [
+          "CURRENT",
+          "PERMANENT"
+        ],
+        "title": "GeographicLocationKindValue",
+        "type": "string"
+      },
+      "GeographicLocationPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "barangay_name_snapshot": {
+            "default": "",
+            "title": "Barangay Name Snapshot",
+            "type": "string"
+          },
+          "barangay_psgc_code": {
+            "default": "",
+            "title": "Barangay Psgc Code",
+            "type": "string"
+          },
+          "city_municipality_name_snapshot": {
+            "default": "",
+            "title": "City Municipality Name Snapshot",
+            "type": "string"
+          },
+          "city_municipality_psgc_code": {
+            "default": "",
+            "title": "City Municipality Psgc Code",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/GeographicLocationKindValue"
+          },
+          "not_specified": {
+            "default": false,
+            "title": "Not Specified",
+            "type": "boolean"
+          },
+          "province_name_snapshot": {
+            "default": "",
+            "title": "Province Name Snapshot",
+            "type": "string"
+          },
+          "province_psgc_code": {
+            "default": "",
+            "title": "Province Psgc Code",
+            "type": "string"
+          },
+          "region_name_snapshot": {
+            "default": "",
+            "title": "Region Name Snapshot",
+            "type": "string"
+          },
+          "region_psgc_code": {
+            "default": "",
+            "title": "Region Psgc Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "GeographicLocationPayload",
+        "type": "object"
       },
       "GoodMoralCorrectionPayload": {
         "additionalProperties": false,
@@ -6472,6 +6608,16 @@
             "title": "Civil Status",
             "type": "string"
           },
+          "civil_status_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CivilStatusCategoryValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "contact_number": {
             "default": "",
             "title": "Contact Number",
@@ -6524,6 +6670,16 @@
             "default": "",
             "title": "Current Religion",
             "type": "string"
+          },
+          "current_religion_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentReligionCategoryValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "daily_hours_class": {
             "anyOf": [
@@ -6687,6 +6843,13 @@
             "default": "",
             "title": "Full Name",
             "type": "string"
+          },
+          "geographic_locations": {
+            "items": {
+              "$ref": "#/components/schemas/GeographicLocationPayload"
+            },
+            "title": "Geographic Locations",
+            "type": "array"
           },
           "guardian_address": {
             "default": "",
@@ -6859,6 +7022,16 @@
             "title": "Other Skills Hobbies",
             "type": "string"
           },
+          "parent_status_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParentStatusCategoryValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "parent_statuses": {
             "items": {
               "$ref": "#/components/schemas/ParentStatusValue"
@@ -6875,6 +7048,16 @@
             "default": "",
             "title": "Physical Disadvantage",
             "type": "string"
+          },
+          "physical_disadvantage_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhysicalDisadvantageStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "place_of_birth": {
             "default": "",
@@ -7123,6 +7306,16 @@
             "title": "Civil Status",
             "type": "string"
           },
+          "civil_status_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CivilStatusCategoryValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "contact_number": {
             "default": "",
             "title": "Contact Number",
@@ -7175,6 +7368,16 @@
             "default": "",
             "title": "Current Religion",
             "type": "string"
+          },
+          "current_religion_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentReligionCategoryValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "daily_hours_class": {
             "anyOf": [
@@ -7311,6 +7514,13 @@
             "default": "",
             "title": "Full Name",
             "type": "string"
+          },
+          "geographic_locations": {
+            "items": {
+              "$ref": "#/components/schemas/GeographicLocationPayload"
+            },
+            "title": "Geographic Locations",
+            "type": "array"
           },
           "guardian_address": {
             "default": "",
@@ -7488,6 +7698,16 @@
             "title": "Other Skills Hobbies",
             "type": "string"
           },
+          "parent_status_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParentStatusCategoryValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "parent_statuses": {
             "items": {
               "$ref": "#/components/schemas/ParentStatusValue"
@@ -7504,6 +7724,16 @@
             "default": "",
             "title": "Physical Disadvantage",
             "type": "string"
+          },
+          "physical_disadvantage_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhysicalDisadvantageStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "place_of_birth": {
             "default": "",
@@ -8193,6 +8423,21 @@
         "title": "MyProfileUpdateRequest",
         "type": "object"
       },
+      "OccupationCategoryValue": {
+        "enum": [
+          "GOVERNMENT_EMPLOYEE",
+          "PRIVATE_EMPLOYEE",
+          "LABORER",
+          "FARMER",
+          "SELF_EMPLOYED",
+          "OFW",
+          "NONE",
+          "OTHER",
+          "NOT_SPECIFIED"
+        ],
+        "title": "OccupationCategoryValue",
+        "type": "string"
+      },
       "OfficeExceptionListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -8286,6 +8531,34 @@
         ],
         "title": "OverrideRemovalResponse",
         "type": "object"
+      },
+      "ParentLifeStatusValue": {
+        "enum": [
+          "LIVING",
+          "DECEASED",
+          "NOT_SPECIFIED"
+        ],
+        "title": "ParentLifeStatusValue",
+        "type": "string"
+      },
+      "ParentStatusCategoryValue": {
+        "enum": [
+          "MARRIED",
+          "ANNULLED",
+          "LEGALLY_SEPARATED",
+          "TEMPORARILY_SEPARATED",
+          "PERMANENTLY_SEPARATED",
+          "LIVING_TOGETHER",
+          "WIDOWED",
+          "MOTHER_WITH_OTHER_PARTNER",
+          "FATHER_WITH_OTHER_PARTNER",
+          "MOTHER_OFW",
+          "FATHER_OFW",
+          "OTHER",
+          "NOT_SPECIFIED"
+        ],
+        "title": "ParentStatusCategoryValue",
+        "type": "string"
       },
       "ParentStatusValue": {
         "enum": [
@@ -8458,6 +8731,15 @@
         ],
         "title": "PersonWorkspaceSummary",
         "type": "object"
+      },
+      "PhysicalDisadvantageStatusValue": {
+        "enum": [
+          "NONE",
+          "HAS_PHYSICAL_DISADVANTAGE",
+          "NOT_SPECIFIED"
+        ],
+        "title": "PhysicalDisadvantageStatusValue",
+        "type": "string"
       },
       "PostGraduationFieldValue": {
         "enum": [
@@ -10745,6 +11027,16 @@
             "title": "Frequency",
             "type": "string"
           },
+          "frequency_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportationFrequencyCategoryValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "mode": {
             "$ref": "#/components/schemas/TransportationModeValue"
           }
@@ -10754,6 +11046,18 @@
         ],
         "title": "TransportationEntryPayload",
         "type": "object"
+      },
+      "TransportationFrequencyCategoryValue": {
+        "enum": [
+          "DAILY",
+          "SEVERAL_TIMES_A_WEEK",
+          "WEEKLY",
+          "OCCASIONAL",
+          "OTHER",
+          "NOT_SPECIFIED"
+        ],
+        "title": "TransportationFrequencyCategoryValue",
+        "type": "string"
       },
       "TransportationModeValue": {
         "enum": [
