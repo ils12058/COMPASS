@@ -11,8 +11,8 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from compass.accounts.models import User
-from compass.accounts.services import is_current_student
 from compass.accounts.profiles import get_person_profile_context
+from compass.accounts.services import is_current_student
 from compass.audit.actions import (
     EXIT_INTERVIEW_CREATED,
     EXIT_INTERVIEW_REOPENED,
