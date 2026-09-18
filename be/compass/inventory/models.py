@@ -13,6 +13,94 @@ from compass.institutional_forms.models import FormRevision
 from compass.organization.models import AcademicYear, Program
 
 
+class CivilStatusCategory(models.TextChoices):
+    SINGLE = "SINGLE", "Single"
+    MARRIED = "MARRIED", "Married"
+    SOLO_PARENT = "SOLO_PARENT", "Solo Parent"
+    OTHER = "OTHER", "Other"
+    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
+
+
+class CurrentReligionCategory(models.TextChoices):
+    ROMAN_CATHOLIC = "ROMAN_CATHOLIC", "Roman Catholic"
+    BORN_AGAIN = "BORN_AGAIN", "Born Again"
+    IGLESIA_NI_CRISTO = "IGLESIA_NI_CRISTO", "Iglesia Ni Cristo"
+    MORMON = "MORMON", "Mormon"
+    JEHOVAHS_WITNESS = "JEHOVAHS_WITNESS", "Jehovah's Witness"
+    SEVENTH_DAY_ADVENTIST = "SEVENTH_DAY_ADVENTIST", "Seventh Day Adventist"
+    CHURCH_OF_CHRIST = "CHURCH_OF_CHRIST", "Church Of Christ"
+    EVANGELICAL_CHRISTIAN = "EVANGELICAL_CHRISTIAN", "Evangelical Christian"
+    MGCI = "MGCI", "MGCI"
+    BAPTIST = "BAPTIST", "Baptist"
+    PMCC = "PMCC", "PMCC"
+    NONE = "NONE", "None"
+    OTHER = "OTHER", "Other"
+    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
+
+
+class PhysicalDisadvantageStatus(models.TextChoices):
+    NONE = "NONE", "None"
+    HAS_PHYSICAL_DISADVANTAGE = (
+        "HAS_PHYSICAL_DISADVANTAGE",
+        "Has physical disadvantage",
+    )
+    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
+
+
+class ParentLifeStatus(models.TextChoices):
+    LIVING = "LIVING", "Living"
+    DECEASED = "DECEASED", "Deceased"
+    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
+
+
+class ParentStatusCategory(models.TextChoices):
+    MARRIED = "MARRIED", "Married"
+    ANNULLED = "ANNULLED", "Annulled"
+    LEGALLY_SEPARATED = "LEGALLY_SEPARATED", "Legally Separated"
+    TEMPORARILY_SEPARATED = "TEMPORARILY_SEPARATED", "Temporarily Separated"
+    PERMANENTLY_SEPARATED = "PERMANENTLY_SEPARATED", "Permanently Separated"
+    LIVING_TOGETHER = "LIVING_TOGETHER", "Living Together"
+    WIDOWED = "WIDOWED", "Widowed"
+    MOTHER_WITH_OTHER_PARTNER = "MOTHER_WITH_OTHER_PARTNER", "Mother with other partner"
+    FATHER_WITH_OTHER_PARTNER = "FATHER_WITH_OTHER_PARTNER", "Father with other partner"
+    MOTHER_OFW = "MOTHER_OFW", "Mother OFW"
+    FATHER_OFW = "FATHER_OFW", "Father OFW"
+    OTHER = "OTHER", "Other"
+    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
+
+
+class OccupationCategory(models.TextChoices):
+    GOVERNMENT_EMPLOYEE = "GOVERNMENT_EMPLOYEE", "Government Employee"
+    PRIVATE_EMPLOYEE = "PRIVATE_EMPLOYEE", "Private Employee"
+    LABORER = "LABORER", "Laborer"
+    FARMER = "FARMER", "Farmer"
+    SELF_EMPLOYED = "SELF_EMPLOYED", "Self Employed"
+    OFW = "OFW", "OFW"
+    NONE = "NONE", "None"
+    OTHER = "OTHER", "Other"
+    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
+
+
+class AnnualIncomeStatus(models.TextChoices):
+    REPORTED = "REPORTED", "Reported"
+    NONE = "NONE", "None"
+    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
+
+
+class GeographicLocationKind(models.TextChoices):
+    CURRENT = "CURRENT", "Current"
+    PERMANENT = "PERMANENT", "Permanent"
+
+
+class TransportationFrequencyCategory(models.TextChoices):
+    DAILY = "DAILY", "Daily"
+    SEVERAL_TIMES_A_WEEK = "SEVERAL_TIMES_A_WEEK", "Several times a week"
+    WEEKLY = "WEEKLY", "Weekly"
+    OCCASIONAL = "OCCASIONAL", "Occasional"
+    OTHER = "OTHER", "Other"
+    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
+
+
 class Sex(models.TextChoices):
     MALE = "MALE", "Male"
     FEMALE = "FEMALE", "Female"
@@ -166,6 +254,12 @@ class StudentInventory(models.Model):
     sex = models.CharField(max_length=16, choices=Sex.choices, blank=True, default="")
     birth_order_among_siblings = models.CharField(max_length=64, blank=True, default="")
     civil_status = models.CharField(max_length=80, blank=True, default="")
+    civil_status_category = models.CharField(
+        max_length=32,
+        choices=CivilStatusCategory.choices,
+        null=True,
+        blank=True,
+    )
     current_address = models.TextField(blank=True, default="")
     permanent_address = models.TextField(blank=True, default="")
     contact_number = models.CharField(max_length=64, blank=True, default="")
@@ -174,9 +268,21 @@ class StudentInventory(models.Model):
     languages_most_fluent = models.TextField(blank=True, default="")
     religion_from_birth = models.CharField(max_length=120, blank=True, default="")
     current_religion = models.CharField(max_length=120, blank=True, default="")
+    current_religion_category = models.CharField(
+        max_length=40,
+        choices=CurrentReligionCategory.choices,
+        null=True,
+        blank=True,
+    )
     parent_statuses = ArrayField(
         models.CharField(max_length=48, choices=ParentStatus.choices),
         default=list,
+        blank=True,
+    )
+    parent_status_category = models.CharField(
+        max_length=40,
+        choices=ParentStatusCategory.choices,
+        null=True,
         blank=True,
     )
     guardian_name = models.CharField(max_length=160, blank=True, default="")
@@ -218,6 +324,12 @@ class StudentInventory(models.Model):
     height = models.CharField(max_length=64, blank=True, default="")
     weight = models.CharField(max_length=64, blank=True, default="")
     physical_disadvantage = models.TextField(blank=True, default="")
+    physical_disadvantage_status = models.CharField(
+        max_length=32,
+        choices=PhysicalDisadvantageStatus.choices,
+        null=True,
+        blank=True,
+    )
     illness_this_year = models.TextField(blank=True, default="")
     previous_illness = models.TextField(blank=True, default="")
     course_currently_enrolled = models.CharField(max_length=180, blank=True, default="")
@@ -347,6 +459,18 @@ class InventoryFamilyMember(models.Model):
     email_address = models.EmailField(blank=True, default="")
     educational_attainment = models.CharField(max_length=160, blank=True, default="")
     occupation = models.CharField(max_length=160, blank=True, default="")
+    life_status = models.CharField(
+        max_length=24,
+        choices=ParentLifeStatus.choices,
+        null=True,
+        blank=True,
+    )
+    occupation_category = models.CharField(
+        max_length=32,
+        choices=OccupationCategory.choices,
+        null=True,
+        blank=True,
+    )
     business_address = models.TextField(blank=True, default="")
     business_telephone = models.CharField(max_length=64, blank=True, default="")
     annual_income_previous_year = models.DecimalField(
@@ -355,6 +479,12 @@ class InventoryFamilyMember(models.Model):
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
+    )
+    annual_income_status = models.CharField(
+        max_length=24,
+        choices=AnnualIncomeStatus.choices,
+        null=True,
+        blank=True,
     )
     languages_spoken = models.TextField(blank=True, default="")
     religion_raised_with = models.CharField(max_length=120, blank=True, default="")
@@ -367,6 +497,44 @@ class InventoryFamilyMember(models.Model):
             models.UniqueConstraint(
                 fields=("inventory", "kind"),
                 name="inventory_family_member_kind_uniq",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(annual_income_previous_year__isnull=True)
+                    | models.Q(annual_income_previous_year__gte=0)
+                ),
+                name="inventory_family_income_nonnegative",
+            ),
+        ]
+
+
+
+
+class InventoryGeographicLocation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    inventory = models.ForeignKey(
+        StudentInventory,
+        on_delete=models.CASCADE,
+        related_name="geographic_locations",
+    )
+    kind = models.CharField(max_length=16, choices=GeographicLocationKind.choices)
+    not_specified = models.BooleanField(default=False)
+    region_psgc_code = models.CharField(max_length=32, blank=True, default="")
+    region_name_snapshot = models.CharField(max_length=160, blank=True, default="")
+    province_psgc_code = models.CharField(max_length=32, blank=True, default="")
+    province_name_snapshot = models.CharField(max_length=160, blank=True, default="")
+    city_municipality_psgc_code = models.CharField(max_length=32, blank=True, default="")
+    city_municipality_name_snapshot = models.CharField(max_length=160, blank=True, default="")
+    barangay_psgc_code = models.CharField(max_length=32, blank=True, default="")
+    barangay_name_snapshot = models.CharField(max_length=160, blank=True, default="")
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("kind", "id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("inventory", "kind"),
+                name="inventory_geographic_location_kind_uniq",
             ),
         ]
 
@@ -450,6 +618,12 @@ class InventoryTransportationEntry(models.Model):
     )
     mode = models.CharField(max_length=16, choices=TransportationMode.choices)
     frequency = models.CharField(max_length=100, blank=True, default="")
+    frequency_category = models.CharField(
+        max_length=32,
+        choices=TransportationFrequencyCategory.choices,
+        null=True,
+        blank=True,
+    )
     fare = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -465,5 +639,9 @@ class InventoryTransportationEntry(models.Model):
             models.UniqueConstraint(
                 fields=("inventory", "mode"),
                 name="inventory_transport_mode_uniq",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(fare__isnull=True) | models.Q(fare__gte=0),
+                name="inventory_transport_fare_nonnegative",
             ),
         ]
