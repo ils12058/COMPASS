@@ -13,6 +13,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from compass.accounts.models import User
+from compass.accounts.services import is_current_student
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.audit.actions import ECOUNSELING_JOIN_AUTHORIZED, ECOUNSELING_ROOM_PROVISIONED
 from compass.audit.context import AuditContext
@@ -52,6 +53,10 @@ class ECounselingAppointmentNotEligible(ECounselingError):
 
 
 class ECounselingJoinNotAvailable(ECounselingError):
+    pass
+
+
+class ECounselingCurrentStudentRequired(ECounselingError):
     pass
 
 
@@ -418,6 +423,10 @@ def create_join_credential(
             appointment=appointment,
             capability="ecounseling.join_self",
         )
+        if not is_current_student(actor):
+            raise ECounselingCurrentStudentRequired(
+                "Current Student lifecycle is required to join E-Counseling."
+            )
         participant_type = "STUDENT"
     elif actor.role.code == "COUNSELOR":
         _require_counselor_relationship(
