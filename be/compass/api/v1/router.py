@@ -17,6 +17,7 @@ from compass.institutional_forms.api import router as institutional_forms_router
 from compass.inventory.api import router as inventory_router
 from compass.organization.academic_years_api import router as academic_years_router
 from compass.organization.api import router as organization_router
+from compass.referrals.api import router as referrals_router
 from compass.routine_interviews.api import router as routine_interviews_router
 from compass.service_catalog.api import router as service_catalog_router
 
@@ -69,6 +70,10 @@ api = NinjaAPI(
                 ),
             },
             {
+                "name": "referrals",
+                "description": "Formal Student Referral intake and Guidance action records.",
+            },
+            {
                 "name": "e-counseling",
                 "description": "Secure ONLINE Counseling workspace and Daily provider boundary.",
             },
@@ -90,6 +95,7 @@ api.add_router("/academic-years", academic_years_router)
 api.add_router("/institutional-forms", institutional_forms_router)
 api.add_router("/inventory", inventory_router)
 api.add_router("/routine-interviews", routine_interviews_router)
+api.add_router("/referrals", referrals_router)
 api.add_router("/e-counseling", ecounseling_router)
 api.add_router("/integrations/daily", daily_router)
 register_exception_handlers(api)
