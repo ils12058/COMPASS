@@ -66,14 +66,10 @@ def render_document_html(
     spec = _safe_template_spec(template_key, template_version)
     try:
         branding = get_branding_profile()
-        assets = get_document_assets(
-            include_accreditation_footer=spec.include_accreditation_footer
-        )
+        assets = get_document_assets(include_accreditation_footer=spec.include_accreditation_footer)
         print_css = get_print_css()
     except (DocumentBrandingConfigurationError, DocumentAssetError) as exc:
-        raise DocumentTemplateError(
-            "Document presentation resources are not configured."
-        ) from exc
+        raise DocumentTemplateError("Document presentation resources are not configured.") from exc
 
     caller_context = dict(context or {})
     reserved = {
@@ -154,9 +150,7 @@ def render_document_pdf(
                 raise DocumentRenderError("Document HTML could not be rendered.") from exc
 
             if blocked_urls:
-                raise DocumentRenderError(
-                    "Document rendering attempted to load a remote resource."
-                )
+                raise DocumentRenderError("Document rendering attempted to load a remote resource.")
 
             try:
                 pdf_bytes = page.pdf(
@@ -166,9 +160,7 @@ def render_document_pdf(
                     display_header_footer=spec.show_page_numbers,
                     header_template="<span></span>",
                     footer_template=(
-                        _page_footer_template()
-                        if spec.show_page_numbers
-                        else "<span></span>"
+                        _page_footer_template() if spec.show_page_numbers else "<span></span>"
                     ),
                 )
             except PlaywrightError as exc:
