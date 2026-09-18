@@ -13,7 +13,11 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from compass.accounts.models import User
-from compass.audit.actions import REFERRAL_ACTION_RECORDED, REFERRAL_CREATED, REFERRAL_STATUS_UPDATED
+from compass.audit.actions import (
+    REFERRAL_ACTION_RECORDED,
+    REFERRAL_CREATED,
+    REFERRAL_STATUS_UPDATED,
+)
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
@@ -21,7 +25,11 @@ from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     get_active_supported_form_revision,
 )
-from compass.organization.models import CounselorResponsibility, StaffSupervision, StudentAffiliation
+from compass.organization.models import (
+    CounselorResponsibility,
+    StaffSupervision,
+    StudentAffiliation,
+)
 
 from .models import Referral, ReferralAction, ReferralActionType, ReferralReferenceCounter
 
@@ -147,9 +155,10 @@ def _validate_student(student: User | None) -> User:
 
 
 def _is_head(actor: User) -> bool:
-    return actor.role.code == "COUNSELOR" and actor.designations.filter(
-        code=HEAD_DESIGNATION
-    ).exists()
+    return (
+        actor.role.code == "COUNSELOR"
+        and actor.designations.filter(code=HEAD_DESIGNATION).exists()
+    )
 
 
 def _counselor_college_ids(counselor_id: UUID) -> tuple[UUID, ...]:
@@ -382,12 +391,7 @@ def create_referral(
             raise ReferralNotPermitted("The authenticated Guidance actor no longer exists.")
         _validate_operational_actor(locked_actor)
 
-        existing = (
-            _detail_queryset()
-            .select_for_update()
-            .filter(creation_key_digest=digest)
-            .first()
-        )
+        existing = _detail_queryset().select_for_update().filter(creation_key_digest=digest).first()
         if existing is not None:
             if existing.creation_request_fingerprint != fingerprint:
                 raise ReferralCreationConflict(
@@ -398,10 +402,7 @@ def create_referral(
             return existing
 
         student = (
-            User.objects.select_for_update()
-            .select_related("role")
-            .filter(pk=student_id)
-            .first()
+            User.objects.select_for_update().select_related("role").filter(pk=student_id).first()
         )
         student = _validate_student(student)
         if not _student_in_scope(locked_actor, student.pk):
@@ -523,7 +524,9 @@ def record_action(
     now: datetime | None = None,
 ) -> ReferralAction:
     _validate_operational_actor(actor)
-    normalized_type = action_type.value if isinstance(action_type, ReferralActionType) else action_type
+    normalized_type = (
+        action_type.value if isinstance(action_type, ReferralActionType) else action_type
+    )
     if normalized_type not in ReferralActionType.values:
         raise InvalidReferralInput("action_type is not supported.")
     cleaned_remarks = _clean_optional(remarks, "remarks", MAX_REMARKS_LENGTH)
