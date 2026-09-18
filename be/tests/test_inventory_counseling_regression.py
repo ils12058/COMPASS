@@ -4,7 +4,7 @@ import pytest
 from django.core.management import call_command
 from django.utils import timezone
 
-from compass.accounts.models import Role, User
+from compass.accounts.models import Role, StudentLifecycleStatus, User
 from compass.audit.context import AuditContext
 from compass.counseling.services import create_encounter
 from compass.service_catalog.services import create_service, set_service_active
@@ -29,7 +29,11 @@ def context(actor: User) -> AuditContext:
 
 
 @pytest.mark.django_db
-def test_walk_in_counseling_remains_recordable_without_current_inventory():
+@pytest.mark.parametrize(
+    "status",
+    [StudentLifecycleStatus.GRADUATED, StudentLifecycleStatus.FORMER],
+)
+def test_walk_in_counseling_remains_recordable_without_current_inventory(status):
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
@@ -46,6 +50,8 @@ def test_walk_in_counseling_remains_recordable_without_current_inventory():
         context=context(admin),
     )
     set_service_active(service_id=service.pk, is_active=True, context=context(admin))
+    student.student_lifecycle_status = status
+    student.save(update_fields=["student_lifecycle_status", "updated_at"])
     ended_at = timezone.now() - timedelta(minutes=1)
 
     item = create_encounter(
