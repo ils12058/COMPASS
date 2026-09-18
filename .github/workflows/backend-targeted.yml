@@ -83,6 +83,7 @@ jobs:
           tests/test_routine_interviews.py
           tests/test_institutional_forms.py
           tests/test_referrals.py
+          tests/test_call_slips.py
           tests/test_inventory.py
           tests/test_counseling.py
           tests/test_shared_summaries.py
