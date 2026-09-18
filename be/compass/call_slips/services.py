@@ -255,7 +255,13 @@ def _pagination(page: int, page_size: int) -> tuple[int, int]:
 def _normalize_destination_type(
     destination_type: str | CallSlipDestinationType,
 ) -> str:
-    normalized = _normalize_destination_type(destination_type)
+    normalized = (
+        destination_type.value
+        if isinstance(destination_type, CallSlipDestinationType)
+        else destination_type
+    )
+    if normalized not in CallSlipDestinationType.values:
+        raise InvalidCallSlipInput("destination_type is not supported.")
     return normalized
 
 
