@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -96,6 +96,7 @@ jobs:
           tests/test_shared_summaries.py
           tests/test_appointments.py
           tests/test_accounts.py
+          tests/test_authentication.py
           tests/test_account_management.py
           tests/test_organization.py
           tests/test_service_catalog.py
