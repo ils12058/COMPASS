@@ -1,0 +1,11 @@
+{% extends "documents/base.html" %}
+{% block document %}
+  <div class="certificate-layout">
+    {% include "documents/partials/institution_masthead.html" %}
+    {% include "documents/partials/office_heading.html" %}
+    <main class="document-body certificate-body">
+      {% block body %}{% endblock %}
+    </main>
+    {% include "documents/partials/accreditation_footer.html" %}
+  </div>
+{% endblock %}
