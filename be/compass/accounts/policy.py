@@ -283,6 +283,28 @@ CAPABILITY_DEFINITIONS = (
         description="Issue source-controlled Good Moral certificates as an authorized Counselor.",
     ),
     CapabilityDefinition(
+        code="feedback.submit_customer_feedback",
+        name="Submit Customer Feedback",
+        description="Submit the authenticated Student's Customer Feedback Form response.",
+    ),
+    CapabilityDefinition(
+        code="feedback.view_customer_feedback",
+        name="View Customer Feedback",
+        description="View identifiable Customer Feedback responses for Head Guidance oversight.",
+    ),
+    CapabilityDefinition(
+        code="feedback.submit_csm",
+        name="Submit Client Satisfaction Measurement",
+        description="Submit the authenticated Student's Client Satisfaction Measurement response.",
+    ),
+    CapabilityDefinition(
+        code="feedback.view_csm",
+        name="View Client Satisfaction Measurement",
+        description=(
+            "View raw Client Satisfaction Measurement responses for Head Guidance oversight."
+        ),
+    ),
+    CapabilityDefinition(
         code="document_branding.view",
         name="View document branding",
         description="View the approved institutional and GCO document identity configuration.",
@@ -404,6 +426,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "call_slips.view_self",
             "good_moral.view_self",
             "good_moral.request_self",
+            "feedback.submit_customer_feedback",
+            "feedback.submit_csm",
         }
     ),
 }
@@ -425,6 +449,8 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "document_branding.manage",
             "exit_interviews.view",
             "exit_interviews.reopen",
+            "feedback.view_customer_feedback",
+            "feedback.view_csm",
         }
     ),
     "DPO": frozenset(),

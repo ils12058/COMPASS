@@ -87,7 +87,7 @@ def test_initial_inventory_revision_preserves_confirmed_qms_identity():
     assert revision.official_code == "CNSC-OP-GCO-01F5"
     assert revision.official_revision == "0"
     assert revision.status == "ACTIVE"
-    assert FormFamily.objects.count() == 6
+    assert FormFamily.objects.count() == 7
 
     routine_family = FormFamily.objects.get(key="routine_interview")
     assert routine_family.title == "Routine Interview Form"
@@ -126,6 +126,17 @@ def test_initial_inventory_revision_preserves_confirmed_qms_identity():
     assert current_revision.internal_schema_version == 1
     assert current_revision.status == "ACTIVE"
     assert SUPPORTED_SCHEMA_VERSIONS["good_moral_current_student"] == frozenset({1})
+
+    customer_feedback = FormFamily.objects.get(key="customer_feedback")
+    customer_feedback_revision = FormRevision.objects.get(
+        family=customer_feedback,
+        official_code="CNSC-OP-GTA-01F14",
+        official_revision="0",
+    )
+    assert customer_feedback.title == "Customer Feedback Form"
+    assert customer_feedback_revision.internal_schema_version == 1
+    assert customer_feedback_revision.status == "ACTIVE"
+    assert SUPPORTED_SCHEMA_VERSIONS["customer_feedback"] == frozenset({1})
 
     graduate_good_moral = FormFamily.objects.get(key="good_moral_graduate")
     graduate_revision = FormRevision.objects.get(
@@ -281,6 +292,7 @@ def test_operational_configuration_mutations_require_head_capability_and_recent_
     assert listed.status_code == 200
     assert [item["key"] for item in listed.json()["items"]] == [
         "call_slip",
+        "customer_feedback",
         "good_moral_current_student",
         "good_moral_graduate",
         "individual_inventory",
