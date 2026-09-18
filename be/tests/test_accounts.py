@@ -139,7 +139,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
         "DPO",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 46
+    assert RoleCapability.objects.count() == 51
     assert DesignationCapability.objects.count() == 8
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
@@ -151,8 +151,8 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 4
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 35
-    assert RoleCapability.objects.count() == 46
+    assert Capability.objects.count() == 38
+    assert RoleCapability.objects.count() == 51
     assert DesignationCapability.objects.count() == 8
 
 
@@ -206,6 +206,8 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "routine_interviews.manage_assigned",
         "referrals.view",
         "referrals.manage",
+        "call_slips.view",
+        "call_slips.manage",
         "ecounseling.view_assigned",
         "ecounseling.join_assigned",
         "ecounseling.manage_media_assigned",
@@ -242,6 +244,8 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     assert user.has_capability("routine_interviews.manage_assigned")
     assert user.has_capability("referrals.view")
     assert user.has_capability("referrals.manage")
+    assert user.has_capability("call_slips.view")
+    assert user.has_capability("call_slips.manage")
     assert user.has_capability("ecounseling.view_assigned")
     assert user.has_capability("ecounseling.join_assigned")
     assert user.has_capability("ecounseling.manage_media_assigned")
@@ -283,6 +287,9 @@ def test_student_media_consent_capability_is_explicit():
     sync_policy()
     student = make_user(role="STUDENT")
     assert student.has_capability("ecounseling.consent_self")
+    assert student.has_capability("call_slips.view_self")
+    assert not student.has_capability("call_slips.view")
+    assert not student.has_capability("call_slips.manage")
     assert not student.has_capability("ecounseling.manage_media_assigned")
 
 
