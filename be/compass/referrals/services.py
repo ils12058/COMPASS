@@ -390,7 +390,9 @@ def create_referral(
             raise ReferralNotPermitted("The authenticated Guidance actor no longer exists.")
         _validate_operational_actor(locked_actor)
 
-        existing = _detail_queryset().select_for_update().filter(creation_key_digest=digest).first()
+        existing = (
+            Referral.objects.select_for_update().filter(creation_key_digest=digest).first()
+        )
         if existing is not None:
             if existing.creation_request_fingerprint != fingerprint:
                 raise ReferralCreationConflict(
@@ -398,7 +400,7 @@ def create_referral(
                 )
             if not _student_in_scope(locked_actor, existing.student_id):
                 raise ReferralNotFound("The requested Referral was not found.")
-            return existing
+            return _detail_queryset().get(pk=existing.pk)
 
         student = (
             User.objects.select_for_update().select_related("role").filter(pk=student_id).first()
@@ -480,7 +482,7 @@ def get_referral(*, actor: User, referral_id: UUID) -> Referral:
 
 
 def _lock_scoped_referral(*, actor: User, referral_id: UUID) -> Referral:
-    item = _queryset().select_for_update().filter(pk=referral_id).first()
+    item = Referral.objects.select_for_update().filter(pk=referral_id).first()
     if item is None or not _student_in_scope(actor, item.student_id):
         raise ReferralNotFound("The requested Referral was not found.")
     return item
