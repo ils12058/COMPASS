@@ -23,7 +23,7 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
-    get_active_supported_form_revision,
+    require_active_supported_form_revision,
 )
 from compass.organization.models import (
     CounselorResponsibility,
@@ -295,16 +295,11 @@ def _normalize_occurred_at(
 
 def _active_referral_revision():
     try:
-        revision = get_active_supported_form_revision(REFERRAL_FORM_FAMILY_KEY)
+        return require_active_supported_form_revision(REFERRAL_FORM_FAMILY_KEY)
     except InstitutionalFormConflict as exc:
         raise ReferralConfigurationConflict(
-            "The active Referral Slip Form Revision is not supported by this COMPASS version."
-        ) from exc
-    if revision is None:
-        raise ReferralConfigurationConflict(
             "No active supported Referral Slip Form Revision is configured."
-        )
-    return revision
+        ) from exc
 
 
 def _reference_year(at: datetime) -> int:

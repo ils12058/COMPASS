@@ -25,6 +25,8 @@ SUPPORTED_SCHEMA_VERSIONS: dict[str, frozenset[int]] = {
     "routine_interview": frozenset({1}),
     "referral_slip": frozenset({1}),
     "call_slip": frozenset({1}),
+    "good_moral_current_student": frozenset({1}),
+    "good_moral_graduate": frozenset({1}),
 }
 
 
@@ -150,6 +152,17 @@ def get_active_supported_form_revision(family_key: str) -> FormRevision | None:
     if revision is None:
         return None
     _require_supported(revision)
+    return revision
+
+
+def require_active_supported_form_revision(family_key: str) -> FormRevision:
+    """Return the required active Form Revision only when this COMPASS version supports it."""
+
+    revision = get_active_supported_form_revision(family_key)
+    if revision is None:
+        raise InstitutionalFormConflict(
+            f"No active supported Form Revision is configured for {family_key}."
+        )
     return revision
 
 

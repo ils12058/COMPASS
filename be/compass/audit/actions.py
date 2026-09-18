@@ -52,6 +52,9 @@ COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
 COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
 INVENTORY_CREATED = "inventory.created"
 INVENTORY_SUBMITTED = "inventory.submitted"
+GOOD_MORAL_REQUEST_CREATED = "good_moral.request_created"
+GOOD_MORAL_REQUEST_UPDATED = "good_moral.request_updated"
+GOOD_MORAL_ISSUED = "good_moral.issued"
 EXIT_INTERVIEW_CREATED = "exit_interview.created"
 EXIT_INTERVIEW_SUBMITTED = "exit_interview.submitted"
 EXIT_INTERVIEW_REOPENED = "exit_interview.reopened"
@@ -129,6 +132,9 @@ __all__ = [
     "COUNSELING_SHARED_SUMMARY_PUBLISHED",
     "INVENTORY_CREATED",
     "INVENTORY_SUBMITTED",
+    "GOOD_MORAL_REQUEST_CREATED",
+    "GOOD_MORAL_REQUEST_UPDATED",
+    "GOOD_MORAL_ISSUED",
     "EXIT_INTERVIEW_CREATED",
     "EXIT_INTERVIEW_SUBMITTED",
     "EXIT_INTERVIEW_REOPENED",

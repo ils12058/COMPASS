@@ -19,7 +19,7 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
-    get_active_supported_form_revision,
+    require_active_supported_form_revision,
 )
 from compass.organization.models import (
     CounselorResponsibility,
@@ -335,16 +335,11 @@ def _page(queryset, *, page: int, page_size: int) -> CallSlipPage:
 
 def _active_call_slip_revision():
     try:
-        revision = get_active_supported_form_revision(CALL_SLIP_FORM_FAMILY_KEY)
+        return require_active_supported_form_revision(CALL_SLIP_FORM_FAMILY_KEY)
     except InstitutionalFormConflict as exc:
         raise CallSlipConfigurationConflict(
-            "The active Call Slip Form Revision is not supported by this COMPASS version."
-        ) from exc
-    if revision is None:
-        raise CallSlipConfigurationConflict(
             "No active supported Call Slip Form Revision is configured."
-        )
-    return revision
+        ) from exc
 
 
 def _resolve_issuer_locked(actor: User) -> User:
