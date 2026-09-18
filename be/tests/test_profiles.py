@@ -200,12 +200,15 @@ def test_dpo_designation_has_self_profile_only_and_no_generic_profile_directory(
     assert own.json()["user_id"] == str(dpo.pk)
 
     assert client.get(f"/api/v1/accounts/{other.pk}/profile").status_code == 404
-    assert client.patch(
-        f"/api/v1/accounts/{other.pk}/profile",
-        data=json.dumps({"civil_status": "Single"}),
-        content_type="application/json",
-        **csrf_headers(client),
-    ).status_code == 404
+    assert (
+        client.patch(
+            f"/api/v1/accounts/{other.pk}/profile",
+            data=json.dumps({"civil_status": "Single"}),
+            content_type="application/json",
+            **csrf_headers(client),
+        ).status_code
+        == 404
+    )
 
 
 @pytest.mark.django_db
