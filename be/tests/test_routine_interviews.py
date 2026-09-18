@@ -217,7 +217,7 @@ def test_inventory_prerequisite_applies_to_appointment_and_direct_creation():
     program = configure_program()
     replace_current_inventory(
         student=student,
-        values={"program_id": program.pk, "year_level": 1},
+        values=minimum_normalized_inventory_values(program_id=program.pk),
     )
     submit_current_inventory(student=student, context=context(student))
     scheduled = ensure_for_appointment(
