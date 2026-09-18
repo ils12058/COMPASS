@@ -328,8 +328,6 @@ class GeographicLocationPayload(StrictSchema):
     barangay_name_snapshot: str = ""
 
 
-
-
 class InventoryPayload(StrictSchema):
     full_name: str = ""
     nickname: str = ""
