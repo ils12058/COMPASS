@@ -140,6 +140,7 @@ jobs:
           tests/test_account_management.py
           tests/test_organization.py
           tests/test_program_inventory_academic_context.py
+          tests/test_inventory_profiling_normalization.py
           tests/test_service_catalog.py
           tests/test_availability.py
           tests/test_idempotency.py
