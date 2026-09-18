@@ -74,7 +74,9 @@ api = NinjaAPI(
             },
             {
                 "name": "good-moral",
-                "description": "Student Good Moral requests, Counselor issuance, and certificate PDFs.",
+                "description": (
+                    "Student Good Moral requests, Counselor issuance, and certificate PDFs."
+                ),
             },
             {
                 "name": "exit-interviews",
