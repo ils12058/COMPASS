@@ -59,6 +59,12 @@ class Capability(models.Model):
         return self.code
 
 
+class StudentLifecycleStatus(models.TextChoices):
+    CURRENT = "CURRENT", "Current"
+    GRADUATED = "GRADUATED", "Graduated"
+    FORMER = "FORMER", "Former"
+
+
 class UserManager(BaseUserManager):
     """Create users with an explicit primary role and Django password hashing."""
 
@@ -113,9 +119,13 @@ class UserManager(BaseUserManager):
             raise ValueError("first_name and last_name are required")
         if password == "":
             raise ValueError("password must not be blank")
+        resolved_role = self._resolve_role(role)
         user = self.model(
             email=self.clean_email(email),
-            role=self._resolve_role(role),
+            role=resolved_role,
+            student_lifecycle_status=(
+                StudentLifecycleStatus.CURRENT if resolved_role.code == "STUDENT" else None
+            ),
             first_name=first_name,
             middle_name=middle_name,
             last_name=last_name,
@@ -149,6 +159,12 @@ class User(AbstractBaseUser):
         on_delete=models.PROTECT,
         related_name="users",
     )
+    student_lifecycle_status = models.CharField(
+        max_length=16,
+        choices=StudentLifecycleStatus.choices,
+        blank=True,
+        null=True,
+    )
     is_active = models.BooleanField(default=True)
     profile_photo_object_key = models.CharField(
         max_length=512,
@@ -177,6 +193,13 @@ class User(AbstractBaseUser):
             models.UniqueConstraint(
                 Lower("email"),
                 name="accounts_user_email_ci_uniq",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(student_lifecycle_status__isnull=True)
+                    | models.Q(student_lifecycle_status__in=StudentLifecycleStatus.values)
+                ),
+                name="accounts_user_student_lifecycle_valid",
             ),
         ]
         ordering = ("-created_at",)
