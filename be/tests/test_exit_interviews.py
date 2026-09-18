@@ -640,7 +640,7 @@ def test_only_head_may_read_all_and_reopen_with_required_reason():
     current = make_year()
     make_inventory(student, current)
     student_client = auth_client(student)
-    created = ensure_api(student_client)
+    assert ensure_api(student_client).status_code == 200
     assert put_api(student_client, valid_payload()).status_code == 200
     submitted = submit_api(student_client)
     exit_id = submitted.json()["id"]
