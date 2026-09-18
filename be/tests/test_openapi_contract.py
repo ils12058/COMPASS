@@ -42,6 +42,8 @@ EXPECTED_OPERATION_IDS = {
     "authRevokeTrustedSession",
     "meListActivity",
     "meListSecurityActivity",
+    "profileGetMyProfile",
+    "profileUpdateMyProfile",
     "accountsList",
     "accountsCreate",
     "accountsGet",
@@ -225,6 +227,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "health",
         "auth",
         "activity",
+        "profile",
         "accounts",
         "organization",
         "services",
@@ -292,6 +295,8 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "AccountDetailResponse",
         "AccountListResponse",
         "ActivityPageResponse",
+        "MyProfileResponse",
+        "MyProfileUpdateRequest",
         "PasswordAccessRequest",
         "PasswordAccessRequestResponse",
         "PasswordAccessConfirmRequest",
@@ -331,6 +336,38 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _operation(schema, "/api/v1/auth/password/confirm", "post")["requestBody"]["content"][
         "application/json"
     ]["schema"]["$ref"].endswith("/PasswordAccessConfirmRequest")
+    profile_response = schemas["MyProfileResponse"]["properties"]
+    assert {
+        "user_id",
+        "email",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "suffix",
+        "full_name",
+        "role",
+        "date_of_birth",
+        "civil_status",
+        "contact_number",
+        "current_address",
+        "permanent_address",
+        "profile_photo_url",
+        "profile_photo_updated_at",
+    } <= set(profile_response)
+    assert "profile_photo_object_key" not in profile_response
+    profile_update = schemas["MyProfileUpdateRequest"]["properties"]
+    assert set(profile_update) == {
+        "date_of_birth",
+        "civil_status",
+        "contact_number",
+        "current_address",
+        "permanent_address",
+    }
+    assert "email" not in profile_update
+    assert "first_name" not in profile_update
+    assert "role" not in profile_update
+    assert "profile_photo_object_key" not in profile_update
+
     assert "password" not in schemas["AccountCreateRequest"]["properties"]
     assert {"email", "first_name", "last_name", "role"} <= set(
         schemas["AccountCreateRequest"]["required"]
@@ -360,6 +397,17 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         422,
         429,
         503,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/me/profile", "get")) >= {
+        200,
+        401,
+        403,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/me/profile", "patch")) >= {
+        200,
+        401,
+        403,
+        422,
     }
     assert _response_statuses(_operation(schema, "/api/v1/accounts", "post")) >= {
         201,
@@ -562,6 +610,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     response_schema_names = {
         "AccountSummaryResponse",
         "AccountDetailResponse",
+        "MyProfileResponse",
         "CapabilityOverrideResponse",
         "SessionSummary",
         "TrustedSessionSummary",
