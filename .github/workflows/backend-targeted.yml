@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   targeted-backend:
@@ -73,17 +73,6 @@ jobs:
         with:
           name: openapi-contract
           path: contracts/openapi.json
-      - name: Commit generated Exit Interview OpenAPI
-        if: github.event_name == 'pull_request'
-        run: |
-          if git diff --quiet -- contracts/openapi.json; then
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add contracts/openapi.json
-          git commit -m "Update generated Exit Interview OpenAPI contract"
-          git push origin HEAD:${{ github.head_ref }}
       - name: Contract must be committed
         run: git diff --exit-code -- contracts/openapi.json
       # Daily provider traffic is fully mocked; targeted CI must never contact Daily.co.
