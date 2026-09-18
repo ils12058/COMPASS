@@ -8,7 +8,13 @@ from django.core.management import call_command
 from django.test import override_settings
 from django.utils import timezone
 
-from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.accounts.models import (
+    Designation,
+    Role,
+    StudentLifecycleStatus,
+    User,
+    UserDesignation,
+)
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
@@ -34,6 +40,7 @@ from compass.ecounseling.models import (
     MediaCaptureStatus,
 )
 from compass.ecounseling.services import (
+    ECounselingCurrentStudentRequired,
     ECounselingNotPermitted,
     ECounselingProviderUnavailable,
     create_join_credential,
@@ -679,3 +686,60 @@ def test_consent_audit_contains_state_not_counseling_content():
     assert "APPROVED" in serialized
     assert "transcript text" not in serialized.lower()
     assert "recording_url" not in serialized.lower()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "status",
+    [StudentLifecycleStatus.GRADUATED, StudentLifecycleStatus.FORMER],
+)
+def test_non_current_student_cannot_approve_new_consent_but_can_deny_and_withdraw(status):
+    _admin, student, counselor, appointment = setup_session()
+    requested = request_consents(
+        counselor=counselor,
+        appointment_id=appointment.pk,
+        scopes=[
+            ConsentScope.AUDIO_VIDEO_RECORDING,
+            ConsentScope.LIVE_TRANSCRIPTION,
+        ],
+        context=context(counselor),
+    )
+    by_scope = {item["scope"]: item for item in requested}
+
+    approved = decide_my_consent(
+        student=student,
+        appointment_id=appointment.pk,
+        consent_id=by_scope[ConsentScope.AUDIO_VIDEO_RECORDING]["id"],
+        decision=ConsentDecision.APPROVED,
+        context=context(student),
+    )
+    assert approved["decision"] == ConsentDecision.APPROVED
+
+    student.student_lifecycle_status = status
+    student.save(update_fields=["student_lifecycle_status", "updated_at"])
+
+    with pytest.raises(ECounselingCurrentStudentRequired):
+        decide_my_consent(
+            student=student,
+            appointment_id=appointment.pk,
+            consent_id=by_scope[ConsentScope.LIVE_TRANSCRIPTION]["id"],
+            decision=ConsentDecision.APPROVED,
+            context=context(student),
+        )
+
+    denied = decide_my_consent(
+        student=student,
+        appointment_id=appointment.pk,
+        consent_id=by_scope[ConsentScope.LIVE_TRANSCRIPTION]["id"],
+        decision=ConsentDecision.DENIED,
+        context=context(student),
+    )
+    assert denied["decision"] == ConsentDecision.DENIED
+
+    withdrawn = withdraw_my_consent(
+        student=student,
+        appointment_id=appointment.pk,
+        consent_id=by_scope[ConsentScope.AUDIO_VIDEO_RECORDING]["id"],
+        context=context(student),
+    )
+    assert withdrawn["withdrawn_at"] is not None
