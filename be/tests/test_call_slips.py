@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone as dt_timezone
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -26,7 +26,6 @@ from compass.call_slips.services import (
     CallSlipReferralConflict,
     InvalidCallSlipInput,
     create_call_slip,
-    get_call_slip,
     list_call_slips,
     record_interview_ended,
 )
@@ -582,7 +581,7 @@ def test_interview_end_is_aware_nonfuture_immutable_and_instant_idempotent():
     )
     assert first.interview_ended_at == ended
 
-    same_instant_utc = ended.astimezone(dt_timezone.utc)
+    same_instant_utc = ended.astimezone(UTC)
     retry = record_interview_ended(
         actor=head,
         call_slip_id=item.pk,
