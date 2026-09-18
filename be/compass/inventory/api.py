@@ -17,18 +17,27 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
 from .models import (
+    AnnualIncomeStatus,
+    CivilStatusCategory,
     CourseChoiceReason,
+    CurrentReligionCategory,
     EducationLevel,
     FamilyMemberKind,
+    GeographicLocationKind,
     Handedness,
     IdealAllowanceBand,
     ImmunizationType,
     InterestType,
     LivingArrangement,
+    OccupationCategory,
     OrganizationScope,
+    ParentLifeStatus,
+    ParentStatusCategory,
+    PhysicalDisadvantageStatus,
     ParentStatus,
     PostGraduationField,
     Sex,
+    TransportationFrequencyCategory,
     TransportationMode,
 )
 from .services import (
@@ -59,6 +68,91 @@ class StrictSchema(Schema):
 class SexValue(StrEnum):
     MALE = Sex.MALE
     FEMALE = Sex.FEMALE
+
+
+class CivilStatusCategoryValue(StrEnum):
+    SINGLE = CivilStatusCategory.SINGLE
+    MARRIED = CivilStatusCategory.MARRIED
+    SOLO_PARENT = CivilStatusCategory.SOLO_PARENT
+    OTHER = CivilStatusCategory.OTHER
+    NOT_SPECIFIED = CivilStatusCategory.NOT_SPECIFIED
+
+
+class CurrentReligionCategoryValue(StrEnum):
+    ROMAN_CATHOLIC = CurrentReligionCategory.ROMAN_CATHOLIC
+    BORN_AGAIN = CurrentReligionCategory.BORN_AGAIN
+    IGLESIA_NI_CRISTO = CurrentReligionCategory.IGLESIA_NI_CRISTO
+    MORMON = CurrentReligionCategory.MORMON
+    JEHOVAHS_WITNESS = CurrentReligionCategory.JEHOVAHS_WITNESS
+    SEVENTH_DAY_ADVENTIST = CurrentReligionCategory.SEVENTH_DAY_ADVENTIST
+    CHURCH_OF_CHRIST = CurrentReligionCategory.CHURCH_OF_CHRIST
+    EVANGELICAL_CHRISTIAN = CurrentReligionCategory.EVANGELICAL_CHRISTIAN
+    MGCI = CurrentReligionCategory.MGCI
+    BAPTIST = CurrentReligionCategory.BAPTIST
+    PMCC = CurrentReligionCategory.PMCC
+    NONE = CurrentReligionCategory.NONE
+    OTHER = CurrentReligionCategory.OTHER
+    NOT_SPECIFIED = CurrentReligionCategory.NOT_SPECIFIED
+
+
+class PhysicalDisadvantageStatusValue(StrEnum):
+    NONE = PhysicalDisadvantageStatus.NONE
+    HAS_PHYSICAL_DISADVANTAGE = PhysicalDisadvantageStatus.HAS_PHYSICAL_DISADVANTAGE
+    NOT_SPECIFIED = PhysicalDisadvantageStatus.NOT_SPECIFIED
+
+
+class ParentLifeStatusValue(StrEnum):
+    LIVING = ParentLifeStatus.LIVING
+    DECEASED = ParentLifeStatus.DECEASED
+    NOT_SPECIFIED = ParentLifeStatus.NOT_SPECIFIED
+
+
+class ParentStatusCategoryValue(StrEnum):
+    MARRIED = ParentStatusCategory.MARRIED
+    ANNULLED = ParentStatusCategory.ANNULLED
+    LEGALLY_SEPARATED = ParentStatusCategory.LEGALLY_SEPARATED
+    TEMPORARILY_SEPARATED = ParentStatusCategory.TEMPORARILY_SEPARATED
+    PERMANENTLY_SEPARATED = ParentStatusCategory.PERMANENTLY_SEPARATED
+    LIVING_TOGETHER = ParentStatusCategory.LIVING_TOGETHER
+    WIDOWED = ParentStatusCategory.WIDOWED
+    MOTHER_WITH_OTHER_PARTNER = ParentStatusCategory.MOTHER_WITH_OTHER_PARTNER
+    FATHER_WITH_OTHER_PARTNER = ParentStatusCategory.FATHER_WITH_OTHER_PARTNER
+    MOTHER_OFW = ParentStatusCategory.MOTHER_OFW
+    FATHER_OFW = ParentStatusCategory.FATHER_OFW
+    OTHER = ParentStatusCategory.OTHER
+    NOT_SPECIFIED = ParentStatusCategory.NOT_SPECIFIED
+
+
+class OccupationCategoryValue(StrEnum):
+    GOVERNMENT_EMPLOYEE = OccupationCategory.GOVERNMENT_EMPLOYEE
+    PRIVATE_EMPLOYEE = OccupationCategory.PRIVATE_EMPLOYEE
+    LABORER = OccupationCategory.LABORER
+    FARMER = OccupationCategory.FARMER
+    SELF_EMPLOYED = OccupationCategory.SELF_EMPLOYED
+    OFW = OccupationCategory.OFW
+    NONE = OccupationCategory.NONE
+    OTHER = OccupationCategory.OTHER
+    NOT_SPECIFIED = OccupationCategory.NOT_SPECIFIED
+
+
+class AnnualIncomeStatusValue(StrEnum):
+    REPORTED = AnnualIncomeStatus.REPORTED
+    NONE = AnnualIncomeStatus.NONE
+    NOT_SPECIFIED = AnnualIncomeStatus.NOT_SPECIFIED
+
+
+class GeographicLocationKindValue(StrEnum):
+    CURRENT = GeographicLocationKind.CURRENT
+    PERMANENT = GeographicLocationKind.PERMANENT
+
+
+class TransportationFrequencyCategoryValue(StrEnum):
+    DAILY = TransportationFrequencyCategory.DAILY
+    SEVERAL_TIMES_A_WEEK = TransportationFrequencyCategory.SEVERAL_TIMES_A_WEEK
+    WEEKLY = TransportationFrequencyCategory.WEEKLY
+    OCCASIONAL = TransportationFrequencyCategory.OCCASIONAL
+    OTHER = TransportationFrequencyCategory.OTHER
+    NOT_SPECIFIED = TransportationFrequencyCategory.NOT_SPECIFIED
 
 
 class FamilyMemberKindValue(StrEnum):
@@ -170,6 +264,7 @@ class InventoryStatusValue(StrEnum):
 
 class FamilyMemberPayload(StrictSchema):
     kind: FamilyMemberKindValue
+    life_status: ParentLifeStatusValue | None = None
     name: str = ""
     date_of_birth: date | None = None
     place_of_birth: str = ""
@@ -179,9 +274,11 @@ class FamilyMemberPayload(StrictSchema):
     email_address: str = ""
     educational_attainment: str = ""
     occupation: str = ""
+    occupation_category: OccupationCategoryValue | None = None
     business_address: str = ""
     business_telephone: str = ""
     annual_income_previous_year: Decimal | None = Field(default=None, ge=0)
+    annual_income_status: AnnualIncomeStatusValue | None = None
     languages_spoken: str = ""
     religion_raised_with: str = ""
     current_religion: str = ""
@@ -214,7 +311,23 @@ class OrganizationMembershipPayload(StrictSchema):
 class TransportationEntryPayload(StrictSchema):
     mode: TransportationModeValue
     frequency: str = ""
+    frequency_category: TransportationFrequencyCategoryValue | None = None
     fare: Decimal | None = Field(default=None, ge=0)
+
+
+class GeographicLocationPayload(StrictSchema):
+    kind: GeographicLocationKindValue
+    not_specified: bool = False
+    region_psgc_code: str = ""
+    region_name_snapshot: str = ""
+    province_psgc_code: str = ""
+    province_name_snapshot: str = ""
+    city_municipality_psgc_code: str = ""
+    city_municipality_name_snapshot: str = ""
+    barangay_psgc_code: str = ""
+    barangay_name_snapshot: str = ""
+
+
 
 
 class InventoryPayload(StrictSchema):
@@ -227,6 +340,7 @@ class InventoryPayload(StrictSchema):
     sex: SexValue | None = None
     birth_order_among_siblings: str = ""
     civil_status: str = ""
+    civil_status_category: CivilStatusCategoryValue | None = None
     current_address: str = ""
     permanent_address: str = ""
     contact_number: str = ""
@@ -235,7 +349,9 @@ class InventoryPayload(StrictSchema):
     languages_most_fluent: str = ""
     religion_from_birth: str = ""
     current_religion: str = ""
+    current_religion_category: CurrentReligionCategoryValue | None = None
     parent_statuses: list[ParentStatusValue] = Field(default_factory=list)
+    parent_status_category: ParentStatusCategoryValue | None = None
     family_members: list[FamilyMemberPayload] = Field(default_factory=list)
     guardian_name: str = ""
     guardian_relationship: str = ""
@@ -266,6 +382,7 @@ class InventoryPayload(StrictSchema):
     height: str = ""
     weight: str = ""
     physical_disadvantage: str = ""
+    physical_disadvantage_status: PhysicalDisadvantageStatusValue | None = None
     illness_this_year: str = ""
     previous_illness: str = ""
     education_entries: list[EducationEntryPayload] = Field(default_factory=list)
@@ -296,6 +413,7 @@ class InventoryPayload(StrictSchema):
     daily_hours_other: Decimal | None = Field(default=None, ge=0, le=24)
     organization_memberships: list[OrganizationMembershipPayload] = Field(default_factory=list)
     transportation_entries: list[TransportationEntryPayload] = Field(default_factory=list)
+    geographic_locations: list[GeographicLocationPayload] = Field(default_factory=list)
     ideal_monthly_allowance: IdealAllowanceBandValue | None = None
     intended_work_field: PostGraduationFieldValue | None = None
     intended_work_other: str = ""
@@ -429,6 +547,7 @@ def _inventory(item) -> dict[str, object]:
         "sex",
         "birth_order_among_siblings",
         "civil_status",
+        "civil_status_category",
         "current_address",
         "permanent_address",
         "contact_number",
@@ -437,7 +556,9 @@ def _inventory(item) -> dict[str, object]:
         "languages_most_fluent",
         "religion_from_birth",
         "current_religion",
+        "current_religion_category",
         "parent_statuses",
+        "parent_status_category",
         "guardian_name",
         "guardian_relationship",
         "guardian_address",
@@ -466,6 +587,7 @@ def _inventory(item) -> dict[str, object]:
         "height",
         "weight",
         "physical_disadvantage",
+        "physical_disadvantage_status",
         "illness_this_year",
         "previous_illness",
         "year_level",
@@ -520,6 +642,10 @@ def _inventory(item) -> dict[str, object]:
         "handedness",
         "ideal_monthly_allowance",
         "intended_work_field",
+        "civil_status_category",
+        "current_religion_category",
+        "physical_disadvantage_status",
+        "parent_status_category",
     ):
         data[field] = _optional_choice(data[field])
     data["family_members"] = _child_rows(
@@ -527,6 +653,7 @@ def _inventory(item) -> dict[str, object]:
         "family_members",
         (
             "kind",
+            "life_status",
             "name",
             "date_of_birth",
             "place_of_birth",
@@ -536,9 +663,11 @@ def _inventory(item) -> dict[str, object]:
             "email_address",
             "educational_attainment",
             "occupation",
+            "occupation_category",
             "business_address",
             "business_telephone",
             "annual_income_previous_year",
+            "annual_income_status",
             "languages_spoken",
             "religion_raised_with",
             "current_religion",
@@ -562,7 +691,23 @@ def _inventory(item) -> dict[str, object]:
     data["transportation_entries"] = _child_rows(
         item,
         "transportation_entries",
-        ("mode", "frequency", "fare"),
+        ("mode", "frequency", "frequency_category", "fare"),
+    )
+    data["geographic_locations"] = _child_rows(
+        item,
+        "geographic_locations",
+        (
+            "kind",
+            "not_specified",
+            "region_psgc_code",
+            "region_name_snapshot",
+            "province_psgc_code",
+            "province_name_snapshot",
+            "city_municipality_psgc_code",
+            "city_municipality_name_snapshot",
+            "barangay_psgc_code",
+            "barangay_name_snapshot",
+        ),
     )
     return data
 
