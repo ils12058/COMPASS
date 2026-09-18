@@ -686,6 +686,404 @@
         "title": "CSRFResponse",
         "type": "object"
       },
+      "CallSlipCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "course_year": {
+            "title": "Course Year",
+            "type": "string"
+          },
+          "destination_type": {
+            "$ref": "#/components/schemas/CallSlipDestinationTypeValue"
+          },
+          "other_destination": {
+            "default": "",
+            "title": "Other Destination",
+            "type": "string"
+          },
+          "referral_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Id"
+          },
+          "report_at": {
+            "format": "date-time",
+            "title": "Report At",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student_id",
+          "course_year",
+          "destination_type",
+          "report_at"
+        ],
+        "title": "CallSlipCreateRequest",
+        "type": "object"
+      },
+      "CallSlipDestinationTypeValue": {
+        "enum": [
+          "GUIDANCE_OFFICE",
+          "OTHER"
+        ],
+        "title": "CallSlipDestinationTypeValue",
+        "type": "string"
+      },
+      "CallSlipFormRevisionSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "internal_schema_version": {
+            "title": "Internal Schema Version",
+            "type": "integer"
+          },
+          "official_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Code"
+          },
+          "official_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Revision"
+          }
+        },
+        "required": [
+          "id",
+          "official_code",
+          "official_revision",
+          "internal_schema_version"
+        ],
+        "title": "CallSlipFormRevisionSummary",
+        "type": "object"
+      },
+      "CallSlipInterviewEndedRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "interview_ended_at": {
+            "format": "date-time",
+            "title": "Interview Ended At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "interview_ended_at"
+        ],
+        "title": "CallSlipInterviewEndedRequest",
+        "type": "object"
+      },
+      "CallSlipOperationalPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CallSlipOperationalResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CallSlipOperationalPageResponse",
+        "type": "object"
+      },
+      "CallSlipOperationalResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "course_year_snapshot": {
+            "title": "Course Year Snapshot",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "destination_type": {
+            "$ref": "#/components/schemas/CallSlipDestinationTypeValue"
+          },
+          "form_revision": {
+            "$ref": "#/components/schemas/CallSlipFormRevisionSummary"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interview_ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Ended At"
+          },
+          "issued_by": {
+            "$ref": "#/components/schemas/CallSlipPersonSummary"
+          },
+          "issued_by_name_snapshot": {
+            "title": "Issued By Name Snapshot",
+            "type": "string"
+          },
+          "other_destination": {
+            "title": "Other Destination",
+            "type": "string"
+          },
+          "recorded_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallSlipPersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "referral": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallSlipReferralSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "report_at": {
+            "format": "date-time",
+            "title": "Report At",
+            "type": "string"
+          },
+          "student": {
+            "$ref": "#/components/schemas/CallSlipPersonSummary"
+          },
+          "student_name_snapshot": {
+            "title": "Student Name Snapshot",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "student",
+          "student_name_snapshot",
+          "course_year_snapshot",
+          "destination_type",
+          "other_destination",
+          "report_at",
+          "issued_by",
+          "issued_by_name_snapshot",
+          "form_revision",
+          "interview_ended_at",
+          "created_at",
+          "referral",
+          "recorded_by",
+          "updated_at"
+        ],
+        "title": "CallSlipOperationalResponse",
+        "type": "object"
+      },
+      "CallSlipPersonSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "CallSlipPersonSummary",
+        "type": "object"
+      },
+      "CallSlipReferralSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code"
+        ],
+        "title": "CallSlipReferralSummary",
+        "type": "object"
+      },
+      "CallSlipStudentPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CallSlipStudentResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CallSlipStudentPageResponse",
+        "type": "object"
+      },
+      "CallSlipStudentResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "course_year_snapshot": {
+            "title": "Course Year Snapshot",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "destination_type": {
+            "$ref": "#/components/schemas/CallSlipDestinationTypeValue"
+          },
+          "form_revision": {
+            "$ref": "#/components/schemas/CallSlipFormRevisionSummary"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interview_ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Ended At"
+          },
+          "issued_by": {
+            "$ref": "#/components/schemas/CallSlipPersonSummary"
+          },
+          "issued_by_name_snapshot": {
+            "title": "Issued By Name Snapshot",
+            "type": "string"
+          },
+          "other_destination": {
+            "title": "Other Destination",
+            "type": "string"
+          },
+          "report_at": {
+            "format": "date-time",
+            "title": "Report At",
+            "type": "string"
+          },
+          "student": {
+            "$ref": "#/components/schemas/CallSlipPersonSummary"
+          },
+          "student_name_snapshot": {
+            "title": "Student Name Snapshot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "student",
+          "student_name_snapshot",
+          "course_year_snapshot",
+          "destination_type",
+          "other_destination",
+          "report_at",
+          "issued_by",
+          "issued_by_name_snapshot",
+          "form_revision",
+          "interview_ended_at",
+          "created_at"
+        ],
+        "title": "CallSlipStudentResponse",
+        "type": "object"
+      },
       "CampusCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -793,6 +1191,9 @@
           "availability.manage",
           "availability.manage_self",
           "availability.view",
+          "call_slips.manage",
+          "call_slips.view",
+          "call_slips.view_self",
           "counseling.manage_assigned",
           "counseling.view_assigned",
           "ecounseling.consent_self",
@@ -7381,6 +7782,9 @@
                 "availability.manage",
                 "availability.manage_self",
                 "availability.view",
+                "call_slips.manage",
+                "call_slips.view",
+                "call_slips.view_self",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
                 "ecounseling.consent_self",
@@ -7513,6 +7917,9 @@
                 "availability.manage",
                 "availability.manage_self",
                 "availability.view",
+                "call_slips.manage",
+                "call_slips.view",
+                "call_slips.view_self",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
                 "ecounseling.consent_self",
@@ -11633,6 +12040,645 @@
         "summary": "Provider Weekly Replace",
         "tags": [
           "availability"
+        ]
+      }
+    },
+    "/api/v1/call-slips": {
+      "get": {
+        "operationId": "callSlipsList",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "student_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Student Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issued_by_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issued By Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "destination_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CallSlipDestinationTypeValue"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "referral_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Referral Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips List",
+        "tags": [
+          "call-slips"
+        ]
+      },
+      "post": {
+        "operationId": "callSlipsCreate",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CallSlipCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Create",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
+    "/api/v1/call-slips/me": {
+      "get": {
+        "operationId": "callSlipsListMy",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipStudentPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips List My",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
+    "/api/v1/call-slips/me/{call_slip_id}": {
+      "get": {
+        "operationId": "callSlipsGetMy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_slip_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Slip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipStudentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Get My",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
+    "/api/v1/call-slips/{call_slip_id}": {
+      "get": {
+        "operationId": "callSlipsGet",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_slip_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Slip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Get",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
+    "/api/v1/call-slips/{call_slip_id}/interview-ended": {
+      "patch": {
+        "operationId": "callSlipsRecordInterviewEnded",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_slip_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Slip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CallSlipInterviewEndedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Record Interview Ended",
+        "tags": [
+          "call-slips"
         ]
       }
     },
@@ -18538,6 +19584,10 @@
     {
       "description": "Formal Student Referral intake and Guidance action records.",
       "name": "referrals"
+    },
+    {
+      "description": "Student reporting permits / Guidance Call Slip records.",
+      "name": "call-slips"
     },
     {
       "description": "Secure ONLINE Counseling workspace and Daily provider boundary.",

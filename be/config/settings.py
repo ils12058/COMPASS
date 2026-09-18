@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "compass.inventory",
     "compass.routine_interviews",
     "compass.referrals",
+    "compass.call_slips",
     "compass.ecounseling",
 ]
 

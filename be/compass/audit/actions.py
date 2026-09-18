@@ -56,6 +56,8 @@ ROUTINE_INTERVIEW_EVALUATION_FINALIZED = "routine_interview.evaluation_finalized
 REFERRAL_CREATED = "referral.created"
 REFERRAL_ACTION_RECORDED = "referral.action_recorded"
 REFERRAL_STATUS_UPDATED = "referral.status_updated"
+CALL_SLIP_CREATED = "call_slip.created"
+CALL_SLIP_INTERVIEW_ENDED = "call_slip.interview_ended"
 ECOUNSELING_ROOM_PROVISIONED = "ecounseling.room_provisioned"
 ECOUNSELING_JOIN_AUTHORIZED = "ecounseling.join_authorized"
 ECOUNSELING_CONSENT_REQUESTED = "ecounseling.consent_requested"
@@ -124,6 +126,8 @@ __all__ = [
     "REFERRAL_CREATED",
     "REFERRAL_ACTION_RECORDED",
     "REFERRAL_STATUS_UPDATED",
+    "CALL_SLIP_CREATED",
+    "CALL_SLIP_INTERVIEW_ENDED",
     "ECOUNSELING_ROOM_PROVISIONED",
     "ECOUNSELING_JOIN_AUTHORIZED",
     "ECOUNSELING_CONSENT_REQUESTED",

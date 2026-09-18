@@ -24,6 +24,7 @@ SUPPORTED_SCHEMA_VERSIONS: dict[str, frozenset[int]] = {
     "individual_inventory": frozenset({1}),
     "routine_interview": frozenset({1}),
     "referral_slip": frozenset({1}),
+    "call_slip": frozenset({1}),
 }
 
 
