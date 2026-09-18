@@ -77,12 +77,23 @@ def test_initial_inventory_revision_preserves_confirmed_qms_identity():
     assert revision.official_code == "CNSC-OP-GCO-01F5"
     assert revision.official_revision == "0"
     assert revision.status == "ACTIVE"
-    assert FormFamily.objects.count() == 2
+    assert FormFamily.objects.count() == 3
 
     routine_family = FormFamily.objects.get(key="routine_interview")
     assert routine_family.title == "Routine Interview Form"
     assert not FormRevision.objects.filter(family=routine_family).exists()
     assert SUPPORTED_SCHEMA_VERSIONS["routine_interview"] == frozenset({1})
+
+    referral_family = FormFamily.objects.get(key="referral_slip")
+    referral_revision = FormRevision.objects.get(
+        family=referral_family,
+        official_code="CNSC-OP-GTA-01F9",
+        official_revision="1",
+    )
+    assert referral_family.title == "Referral Slip"
+    assert referral_revision.internal_schema_version == 1
+    assert referral_revision.status == "ACTIVE"
+    assert SUPPORTED_SCHEMA_VERSIONS["referral_slip"] == frozenset({1})
 
 
 @pytest.mark.django_db
@@ -206,5 +217,6 @@ def test_operational_configuration_mutations_require_head_capability_and_recent_
     assert listed.status_code == 200
     assert [item["key"] for item in listed.json()["items"]] == [
         "individual_inventory",
+        "referral_slip",
         "routine_interview",
     ]
