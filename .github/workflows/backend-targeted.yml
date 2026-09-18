@@ -54,20 +54,6 @@ jobs:
       - name: Install Chromium for document rendering
         working-directory: be
         run: uv run playwright install --with-deps --only-shell chromium
-      - name: Format Exit Interview feature files
-        if: github.event_name == 'pull_request'
-        working-directory: be
-        run: |
-          uv run ruff format compass/exit_interviews tests/test_exit_interviews.py tests/test_openapi_contract.py tests/test_accounts.py
-          uv run ruff check --fix compass/exit_interviews tests/test_exit_interviews.py tests/test_openapi_contract.py tests/test_accounts.py
-          if git diff --quiet -- compass/exit_interviews tests/test_exit_interviews.py tests/test_openapi_contract.py tests/test_accounts.py; then
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add compass/exit_interviews tests/test_exit_interviews.py tests/test_openapi_contract.py tests/test_accounts.py
-          git commit -m "Format Exit Interview foundation"
-          git push origin HEAD:${{ github.head_ref }}
       - name: Static and migration checks
         working-directory: be
         run: |
@@ -87,6 +73,17 @@ jobs:
         with:
           name: openapi-contract
           path: contracts/openapi.json
+      - name: Commit generated Exit Interview OpenAPI
+        if: github.event_name == 'pull_request'
+        run: |
+          if git diff --quiet -- contracts/openapi.json; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add contracts/openapi.json
+          git commit -m "Update generated Exit Interview OpenAPI contract"
+          git push origin HEAD:${{ github.head_ref }}
       - name: Contract must be committed
         run: git diff --exit-code -- contracts/openapi.json
       # Daily provider traffic is fully mocked; targeted CI must never contact Daily.co.
