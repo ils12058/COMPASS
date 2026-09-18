@@ -381,7 +381,7 @@ def replace_current_inventory(
     student: User,
     values: dict[str, object],
 ) -> StudentInventory:
-    _require_active_student(student)
+    _require_current_student(student)
     unsupported = set(values) - set(SCALAR_FIELDS) - set(CHILD_COLLECTIONS)
     if unsupported:
         raise InvalidInventoryInput("The Inventory update contains unsupported fields.")
@@ -407,7 +407,7 @@ def submit_current_inventory(
     student: User,
     context: AuditContext,
 ) -> StudentInventory:
-    _require_active_student(student)
+    _require_current_student(student)
     with transaction.atomic():
         current = _current_year()
         item = (
