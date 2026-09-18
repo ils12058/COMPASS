@@ -33,6 +33,7 @@ from compass.inventory.services import (
     submit_current_inventory,
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
+from compass.organization.models import Campus, College, Program
 from compass.routine_interviews.models import RoutineInterview
 from compass.routine_interviews.services import (
     InvalidRoutineInterviewInput,
@@ -91,6 +92,16 @@ def configure_year(actor: User, label: str = "2026-2027"):
     return set_current_academic_year(academic_year_id=year.pk, context=context(actor))
 
 
+def configure_program() -> Program:
+    campus = Campus.objects.create(code="MAIN", name="Main Campus")
+    college = College.objects.create(campus=campus, code="CCMS", name="CCMS")
+    return Program.objects.create(
+        college=college,
+        code="BSIS",
+        name="BS Information Systems",
+    )
+
+
 def create_counseling_service(actor: User, *, modes: list[str] | None = None):
     service = create_service(
         code="COUNSELING",
@@ -107,10 +118,13 @@ def create_counseling_service(actor: User, *, modes: list[str] | None = None):
 
 def submit_inventory(student: User, actor: User, *, course: str = "BSIS", major: str = ""):
     ensure_current_inventory(student=student, context=context(student))
+    program = configure_program()
     replace_current_inventory(
         student=student,
         values={
             "full_name_snapshot": student.get_full_name(),
+            "program_id": program.pk,
+            "year_level": 1,
             "course_currently_enrolled": course,
             "major": major,
             "family_members": [],
@@ -205,6 +219,11 @@ def test_inventory_prerequisite_applies_to_appointment_and_direct_creation():
             context=context(student),
         )
 
+    program = configure_program()
+    replace_current_inventory(
+        student=student,
+        values={"program_id": program.pk, "year_level": 1},
+    )
     submit_current_inventory(student=student, context=context(student))
     scheduled = ensure_for_appointment(
         student=student,

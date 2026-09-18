@@ -21,6 +21,10 @@ from compass.audit.actions import (
     ORGANIZATION_COUNSELOR_RESPONSIBILITY_ASSIGNED,
     ORGANIZATION_COUNSELOR_RESPONSIBILITY_CHANGED,
     ORGANIZATION_COUNSELOR_RESPONSIBILITY_REMOVED,
+    ORGANIZATION_PROGRAM_CREATED,
+    ORGANIZATION_PROGRAM_DISABLED,
+    ORGANIZATION_PROGRAM_ENABLED,
+    ORGANIZATION_PROGRAM_UPDATED,
     ORGANIZATION_STAFF_SUPERVISION_ASSIGNED,
     ORGANIZATION_STAFF_SUPERVISION_CHANGED,
     ORGANIZATION_STAFF_SUPERVISION_REMOVED,
@@ -35,6 +39,7 @@ from compass.organization.models import (
     Campus,
     College,
     CounselorResponsibility,
+    Program,
     StaffSupervision,
     StudentAffiliation,
     normalize_code,
@@ -310,6 +315,147 @@ def get_college(college_id: UUID) -> College:
     return college
 
 
+def list_programs(
+    *,
+    college_id: UUID | None = None,
+    is_active: bool | None = None,
+    search: str | None = None,
+) -> tuple[Program, ...]:
+    qs = Program.objects.select_related("college__campus").order_by(
+        "college__campus__code", "college__code", "code"
+    )
+    if college_id is not None:
+        qs = qs.filter(college_id=college_id)
+    if is_active is not None:
+        qs = qs.filter(is_active=is_active)
+    if search and search.strip():
+        term = search.strip()[:160]
+        qs = qs.filter(Q(code__icontains=term) | Q(name__icontains=term))
+    return tuple(qs)
+
+
+def get_program(program_id: UUID) -> Program:
+    program = Program.objects.select_related("college__campus").filter(pk=program_id).first()
+    if program is None:
+        raise OrganizationNotFound("The requested program was not found.")
+    return program
+
+
+def create_program(
+    *,
+    college_id: UUID,
+    code: str,
+    name: str,
+    context: AuditContext,
+) -> Program:
+    with transaction.atomic():
+        college = (
+            College.objects.select_for_update()
+            .select_related("campus")
+            .filter(pk=college_id)
+            .first()
+        )
+        if college is None:
+            raise OrganizationNotFound("The requested college was not found.")
+        if not college.is_active or not college.campus.is_active:
+            raise OrganizationConflict(
+                "A Program can only be created under an active College and Campus."
+            )
+        try:
+            program = Program.objects.create(
+                college=college,
+                code=_clean_code(code),
+                name=_clean_name(name),
+            )
+        except IntegrityError as exc:
+            raise OrganizationConflict(
+                "A Program with this code already exists in the College."
+            ) from exc
+        record_event(
+            context=context,
+            action=ORGANIZATION_PROGRAM_CREATED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="organization.program",
+            target_id=program.pk,
+            metadata={
+                "college_id": str(college.pk),
+                "code": program.code,
+            },
+        )
+        return program
+
+
+def update_program(
+    *, program_id: UUID, changes: dict[str, object], context: AuditContext
+) -> Program:
+    with transaction.atomic():
+        program = (
+            Program.objects.select_for_update()
+            .select_related("college__campus")
+            .filter(pk=program_id)
+            .first()
+        )
+        if program is None:
+            raise OrganizationNotFound("The requested program was not found.")
+        normalized: dict[str, object] = {}
+        if "code" in changes:
+            normalized["code"] = _clean_code(changes["code"])
+        if "name" in changes:
+            normalized["name"] = _clean_name(changes["name"])
+        changed = [key for key, value in normalized.items() if getattr(program, key) != value]
+        if not changed:
+            return program
+        for key in changed:
+            setattr(program, key, normalized[key])
+        try:
+            program.save(update_fields=[*changed, "updated_at"])
+        except IntegrityError as exc:
+            raise OrganizationConflict(
+                "A Program with this code already exists in the College."
+            ) from exc
+        record_event(
+            context=context,
+            action=ORGANIZATION_PROGRAM_UPDATED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="organization.program",
+            target_id=program.pk,
+            metadata={"changed_fields": changed},
+        )
+        return program
+
+
+def set_program_active(*, program_id: UUID, is_active: bool, context: AuditContext) -> Program:
+    with transaction.atomic():
+        program = (
+            Program.objects.select_for_update()
+            .select_related("college__campus")
+            .filter(pk=program_id)
+            .first()
+        )
+        if program is None:
+            raise OrganizationNotFound("The requested program was not found.")
+        if program.is_active == is_active:
+            return program
+        if is_active and (not program.college.is_active or not program.college.campus.is_active):
+            raise OrganizationConflict(
+                "Enable the parent College and Campus before enabling this Program."
+            )
+        program.is_active = is_active
+        program.save(update_fields=["is_active", "updated_at"])
+        record_event(
+            context=context,
+            action=ORGANIZATION_PROGRAM_ENABLED if is_active else ORGANIZATION_PROGRAM_DISABLED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="organization.program",
+            target_id=program.pk,
+            metadata={
+                "college_id": str(program.college_id),
+                "code": program.code,
+            },
+        )
+        return program
+
+
 def create_college(*, campus_id: UUID, code: str, name: str, context: AuditContext) -> College:
     with transaction.atomic():
         campus = Campus.objects.select_for_update().filter(pk=campus_id).first()
@@ -394,6 +540,7 @@ def set_college_active(*, college_id: UUID, is_active: bool, context: AuditConte
         if not is_active and (
             StudentAffiliation.objects.filter(college_id=college.pk).exists()
             or CounselorResponsibility.objects.filter(college_id=college.pk).exists()
+            or Program.objects.filter(college_id=college.pk, is_active=True).exists()
         ):
             raise OrganizationConflict(
                 "Remove or reassign current organizational relationships "

@@ -21,7 +21,7 @@ from compass.institutional_forms.services import (
     require_active_supported_form_revision,
 )
 from compass.organization.academic_years import get_current_academic_year
-from compass.organization.models import AcademicYear
+from compass.organization.models import AcademicYear, Program
 
 from .models import (
     CourseChoiceReason,
@@ -130,6 +130,7 @@ SCALAR_FIELDS = (
     "illness_this_year",
     "previous_illness",
     "course_currently_enrolled",
+    "year_level",
     "major",
     "schedule_satisfied",
     "schedule_satisfaction_reason",
@@ -177,6 +178,9 @@ def _inventory_queryset():
         "student",
         "student__role",
         "academic_year",
+        "program",
+        "program__college",
+        "program__college__campus",
         "form_revision",
         "form_revision__family",
     ).prefetch_related(
@@ -200,6 +204,24 @@ def _current_year() -> AcademicYear:
     if current is None:
         raise CurrentAcademicYearNotConfigured("No current Academic Year is configured.")
     return current
+
+
+def _require_active_program(program_id: UUID) -> Program:
+    program = (
+        Program.objects.select_for_update()
+        .select_related("college__campus")
+        .filter(pk=program_id)
+        .first()
+    )
+    if program is None:
+        raise InvalidInventoryInput("The selected Program was not found.")
+    if (
+        not program.is_active
+        or not program.college.is_active
+        or not program.college.campus.is_active
+    ):
+        raise InventoryConflict("The selected Program, College, and Campus must all be active.")
+    return program
 
 
 def _active_inventory_revision():
@@ -382,7 +404,7 @@ def replace_current_inventory(
     values: dict[str, object],
 ) -> StudentInventory:
     _require_current_student(student)
-    unsupported = set(values) - set(SCALAR_FIELDS) - set(CHILD_COLLECTIONS)
+    unsupported = set(values) - set(SCALAR_FIELDS) - set(CHILD_COLLECTIONS) - {"program_id"}
     if unsupported:
         raise InvalidInventoryInput("The Inventory update contains unsupported fields.")
     with transaction.atomic():
@@ -396,9 +418,16 @@ def replace_current_inventory(
             raise InventoryNotFound("The current academic-year Individual Inventory was not found.")
         if item.submitted_at is not None:
             raise InventoryConflict("A submitted Individual Inventory is locked.")
-        _apply_scalar_values(item, values)
-        item.save(update_fields=[*SCALAR_FIELDS, "updated_at"])
-        _replace_children(item, values)
+        normalized_values = dict(values)
+        if "program_id" in normalized_values:
+            program_id = normalized_values.pop("program_id")
+            item.program = None if program_id is None else _require_active_program(program_id)
+        if item.program_id is not None:
+            item.program = _require_active_program(item.program_id)
+            normalized_values["course_currently_enrolled"] = item.program.name
+        _apply_scalar_values(item, normalized_values)
+        item.save(update_fields=["program", *SCALAR_FIELDS, "updated_at"])
+        _replace_children(item, normalized_values)
         return _inventory_queryset().get(pk=item.pk)
 
 
@@ -419,9 +448,21 @@ def submit_current_inventory(
             raise InventoryNotFound("The current academic-year Individual Inventory was not found.")
         if item.submitted_at is not None:
             return _inventory_queryset().get(pk=item.pk)
+        if item.program_id is None:
+            raise InventoryConflict("Program is required before Inventory submission.")
+        if item.year_level is None:
+            raise InventoryConflict("Year Level is required before Inventory submission.")
+        item.program = _require_active_program(item.program_id)
+        item.course_currently_enrolled = item.program.name
         _validate_submission(item)
         item.submitted_at = timezone.now()
-        item.save(update_fields=["submitted_at", "updated_at"])
+        item.save(
+            update_fields=[
+                "course_currently_enrolled",
+                "submitted_at",
+                "updated_at",
+            ]
+        )
         record_event(
             context=context,
             action=INVENTORY_SUBMITTED,

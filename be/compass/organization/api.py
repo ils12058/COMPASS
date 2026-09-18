@@ -27,21 +27,26 @@ from compass.organization.services import (
     OrganizationNotFound,
     create_campus,
     create_college,
+    create_program,
     get_campus,
     get_college,
+    get_program,
     list_campuses,
     list_colleges,
     list_people,
+    list_programs,
     remove_counselor_responsibility,
     remove_staff_supervisor,
     remove_student_affiliation,
     set_campus_active,
     set_college_active,
     set_counselor_responsibility,
+    set_program_active,
     set_staff_supervisor,
     set_student_affiliation,
     update_campus,
     update_college,
+    update_program,
 )
 
 router = Router(tags=["organization"])
@@ -91,6 +96,29 @@ class CollegeCreateRequest(StrictSchema):
 
 
 class CollegeUpdateRequest(StrictSchema):
+    code: str | None = None
+    name: str | None = None
+
+
+class ProgramSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+    college: CollegeSummary
+    is_active: bool
+
+
+class ProgramListResponse(StrictSchema):
+    items: list[ProgramSummary]
+
+
+class ProgramCreateRequest(StrictSchema):
+    college_id: UUID
+    code: str
+    name: str
+
+
+class ProgramUpdateRequest(StrictSchema):
     code: str | None = None
     name: str | None = None
 
@@ -201,6 +229,16 @@ def _college(college) -> dict[str, object]:
         "name": college.name,
         "campus": _campus(college.campus),
         "is_active": college.is_active,
+    }
+
+
+def _program(program) -> dict[str, object]:
+    return {
+        "id": program.pk,
+        "code": program.code,
+        "name": program.name,
+        "college": _college(program.college),
+        "is_active": program.is_active,
     }
 
 
@@ -405,6 +443,125 @@ def college_disable(request, college_id: UUID):
     try:
         return _college(
             set_college_active(college_id=college_id, is_active=False, context=_context(request))
+        )
+    except OrganizationError as exc:
+        _raise(exc)
+
+
+@router.get(
+    "/programs",
+    response=response_with_errors(ProgramListResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="organizationListPrograms",
+)
+def programs(
+    request,
+    college_id: UUID | None = None,
+    is_active: bool | None = None,
+    search: str | None = None,
+):
+    _require(request, "organization.view")
+    return {
+        "items": [
+            _program(item)
+            for item in list_programs(
+                college_id=college_id,
+                is_active=is_active,
+                search=search,
+            )
+        ]
+    }
+
+
+@router.post(
+    "/programs",
+    response=response_with_errors(ProgramSummary, 401, 403, 404, 409, 422, success_status=201),
+    auth=session_auth,
+    operation_id="organizationCreateProgram",
+)
+def program_create(request, payload: ProgramCreateRequest):
+    _require(request, "organization.manage", recent_mfa=True)
+    try:
+        program = create_program(
+            college_id=payload.college_id,
+            code=payload.code,
+            name=payload.name,
+            context=_context(request),
+        )
+    except OrganizationError as exc:
+        _raise(exc)
+    return Status(201, _program(program))
+
+
+@router.get(
+    "/programs/{program_id}",
+    response=response_with_errors(ProgramSummary, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="organizationGetProgram",
+)
+def program_get(request, program_id: UUID):
+    _require(request, "organization.view")
+    try:
+        return _program(get_program(program_id))
+    except OrganizationError as exc:
+        _raise(exc)
+
+
+@router.patch(
+    "/programs/{program_id}",
+    response=response_with_errors(ProgramSummary, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="organizationUpdateProgram",
+)
+def program_update(request, program_id: UUID, payload: ProgramUpdateRequest):
+    _require(request, "organization.manage", recent_mfa=True)
+    try:
+        return _program(
+            update_program(
+                program_id=program_id,
+                changes=payload.model_dump(exclude_unset=True),
+                context=_context(request),
+            )
+        )
+    except OrganizationError as exc:
+        _raise(exc)
+
+
+@router.post(
+    "/programs/{program_id}/enable",
+    response=response_with_errors(ProgramSummary, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="organizationEnableProgram",
+)
+def program_enable(request, program_id: UUID):
+    _require(request, "organization.manage", recent_mfa=True)
+    try:
+        return _program(
+            set_program_active(
+                program_id=program_id,
+                is_active=True,
+                context=_context(request),
+            )
+        )
+    except OrganizationError as exc:
+        _raise(exc)
+
+
+@router.post(
+    "/programs/{program_id}/disable",
+    response=response_with_errors(ProgramSummary, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="organizationDisableProgram",
+)
+def program_disable(request, program_id: UUID):
+    _require(request, "organization.manage", recent_mfa=True)
+    try:
+        return _program(
+            set_program_active(
+                program_id=program_id,
+                is_active=False,
+                context=_context(request),
+            )
         )
     except OrganizationError as exc:
         _raise(exc)
