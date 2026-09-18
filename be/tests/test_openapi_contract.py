@@ -459,12 +459,19 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _response_statuses(
         _operation(schema, "/api/v1/call-slips/{call_slip_id}/interview-ended", "patch")
     ) >= {200, 401, 403, 404, 409, 422}
-    assert _response_statuses(
-        _operation(schema, "/api/v1/document-branding/profile", "get")
-    ) >= {200, 401, 403, 503}
-    assert _response_statuses(
-        _operation(schema, "/api/v1/document-branding/profile", "patch")
-    ) >= {200, 401, 403, 422, 503}
+    assert _response_statuses(_operation(schema, "/api/v1/document-branding/profile", "get")) >= {
+        200,
+        401,
+        403,
+        503,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/document-branding/profile", "patch")) >= {
+        200,
+        401,
+        403,
+        422,
+        503,
+    }
 
     for method, path, operation in iter_operations(schema):
         for status, response in operation["responses"].items():
