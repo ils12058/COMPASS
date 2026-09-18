@@ -236,6 +236,16 @@ CAPABILITY_DEFINITIONS = (
         description="View the authenticated Student's own Call Slip records.",
     ),
     CapabilityDefinition(
+        code="document_branding.view",
+        name="View document branding",
+        description="View the approved institutional and GCO document identity configuration.",
+    ),
+    CapabilityDefinition(
+        code="document_branding.manage",
+        name="Manage document branding",
+        description="Manage the approved institutional and GCO document identity configuration.",
+    ),
+    CapabilityDefinition(
         code="ecounseling.view_self",
         name="View own E-Counseling workspace",
         description="View the authenticated Student's own eligible E-Counseling workspace.",
@@ -357,6 +367,8 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "academic_years.manage",
             "institutional_forms.view",
             "institutional_forms.manage",
+            "document_branding.view",
+            "document_branding.manage",
         }
     ),
     "DPO": frozenset(),
