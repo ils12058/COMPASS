@@ -36,6 +36,7 @@ from compass.routine_interviews.services import (
     submit_my_intake,
 )
 from compass.service_catalog.services import create_service, set_service_active
+from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
 def sync_policy() -> None:
@@ -355,7 +356,7 @@ def test_student_response_never_copies_routine_private_content():
     )
     replace_current_inventory(
         student=student,
-        values={"program_id": program.pk, "year_level": 1},
+        values=minimum_normalized_inventory_values(program_id=program.pk),
     )
     submit_current_inventory(student=student, context=context(student))
     create_counseling_service(admin)
