@@ -51,6 +51,9 @@ jobs:
       - name: Install locked dependencies
         working-directory: be
         run: uv sync --frozen
+      - name: Install Chromium for document rendering
+        working-directory: be
+        run: uv run playwright install --with-deps --only-shell chromium
       - name: Static and migration checks
         working-directory: be
         run: |
@@ -84,6 +87,7 @@ jobs:
           tests/test_institutional_forms.py
           tests/test_referrals.py
           tests/test_call_slips.py
+          tests/test_documents.py
           tests/test_inventory.py
           tests/test_counseling.py
           tests/test_shared_summaries.py
