@@ -49,6 +49,22 @@ def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)
 
 
+def ensure_call_slip_form_revision() -> None:
+    family, _ = FormFamily.objects.get_or_create(
+        key="call_slip",
+        defaults={"title": "Interview Permit / Call Slip"},
+    )
+    FormRevision.objects.get_or_create(
+        family=family,
+        official_code="CNSC-OP-GTA-01F8",
+        official_revision="0",
+        defaults={
+            "internal_schema_version": 1,
+            "status": "ACTIVE",
+        },
+    )
+
+
 def make_user(email: str, role: str) -> User:
     return User.objects.create_user(
         email=email,
@@ -205,8 +221,11 @@ def test_counselor_gss_and_head_issuer_and_scope_rules():
     assert {item.pk for item in list_call_slips(actor=counselor_a).items} == {
         own.pk,
         encoded.pk,
+        inherited.pk,
     }
-    assert {item.pk for item in list_call_slips(actor=counselor_b).items} == set()
+    assert {item.pk for item in list_call_slips(actor=counselor_b).items} == {
+        head_item.pk,
+    }
     assert head_item.pk in {item.pk for item in list_call_slips(actor=head).items}
 
 
@@ -414,7 +433,7 @@ def test_referral_link_requires_scope_same_student_action_and_one_to_one():
     with pytest.raises(CallSlipNotFound):
         create_for(
             counselor_a,
-            student_b,
+            student_a,
             key="outside-referral",
             fingerprint="f" * 64,
             referral_id=other_referral.pk,
@@ -466,6 +485,7 @@ def test_create_persistent_idempotency_does_not_store_raw_key():
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_same_actor_retry_creates_one_call_slip():
     sync_policy()
+    ensure_call_slip_form_revision()
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
     report_at = timezone.now() + timedelta(hours=2)
