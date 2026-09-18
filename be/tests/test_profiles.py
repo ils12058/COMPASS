@@ -38,7 +38,6 @@ from compass.organization.api import _person
 from compass.organization.models import AcademicYear
 from compass.referrals.models import Referral
 
-
 PROFILE_FIELDS = {
     "date_of_birth",
     "civil_status",
