@@ -411,7 +411,6 @@ def replace_current_inventory(
         current = _current_year()
         item = (
             StudentInventory.objects.select_for_update()
-            .select_related("program__college__campus")
             .filter(student_id=student.pk, academic_year_id=current.pk)
             .first()
         )
@@ -442,7 +441,6 @@ def submit_current_inventory(
         current = _current_year()
         item = (
             StudentInventory.objects.select_for_update()
-            .select_related("program__college__campus")
             .filter(student_id=student.pk, academic_year_id=current.pk)
             .first()
         )
