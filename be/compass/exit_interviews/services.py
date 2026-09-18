@@ -11,6 +11,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from compass.accounts.models import User
+from compass.accounts.services import is_current_student
 from compass.accounts.profiles import get_person_profile_context
 from compass.audit.actions import (
     EXIT_INTERVIEW_CREATED,
@@ -100,6 +101,10 @@ class ExitInterviewNotPermitted(ExitInterviewError):
 
 
 class ExitInterviewInventoryRequired(ExitInterviewError):
+    pass
+
+
+class ExitInterviewCurrentStudentRequired(ExitInterviewError):
     pass
 
 
@@ -477,6 +482,10 @@ def ensure_my_current(
         if locked_student is None:
             raise ExitInterviewNotFound("The Student account was not found.")
         _validate_student(locked_student)
+        if not is_current_student(locked_student):
+            raise ExitInterviewCurrentStudentRequired(
+                "Current Student lifecycle is required to initiate an Exit Interview."
+            )
 
         # Domain prerequisite: this is intentionally independent of Service Catalog.
         inventory = _require_submitted_current_inventory(locked_student)
@@ -554,6 +563,10 @@ def get_mine(*, student: User, exit_interview_id: UUID) -> ExitInterview:
 
 def replace_my_current(*, student: User, values: dict[str, object]) -> ExitInterview:
     _validate_student(student)
+    if not is_current_student(student):
+        raise ExitInterviewCurrentStudentRequired(
+            "Current Student lifecycle is required to edit an Exit Interview."
+        )
     current = _current_year()
     normalized = _normalized_root(values)
 
@@ -615,6 +628,10 @@ def submit_my_current(
     now: datetime | None = None,
 ) -> ExitInterview:
     _validate_student(student)
+    if not is_current_student(student):
+        raise ExitInterviewCurrentStudentRequired(
+            "Current Student lifecycle is required to submit an Exit Interview."
+        )
     current = _current_year()
     submitted_at = now or timezone.now()
     if timezone.is_naive(submitted_at):
@@ -716,7 +733,7 @@ def reopen_for_correction(
     with transaction.atomic():
         item = (
             ExitInterview.objects.select_for_update()
-            .select_related("academic_year")
+            .select_related("academic_year", "student__role")
             .filter(pk=exit_interview_id)
             .first()
         )
@@ -724,6 +741,10 @@ def reopen_for_correction(
             raise ExitInterviewNotFound("The requested Exit Interview was not found.")
         if item.status != ExitInterviewStatus.SUBMITTED:
             raise ExitInterviewConflict("Only a submitted Exit Interview may be reopened.")
+        if not is_current_student(item.student):
+            raise ExitInterviewCurrentStudentRequired(
+                "Current Student lifecycle is required before reopening for Student correction."
+            )
 
         event = ExitInterviewReopenEvent.objects.create(
             exit_interview=item,
