@@ -17,6 +17,7 @@ from compass.documents.api import router as document_branding_router
 from compass.ecounseling.api import daily_router
 from compass.ecounseling.api import router as ecounseling_router
 from compass.exit_interviews.api import router as exit_interviews_router
+from compass.feedback.api import router as feedback_router
 from compass.good_moral.api import router as good_moral_router
 from compass.institutional_forms.api import router as institutional_forms_router
 from compass.inventory.api import router as inventory_router
@@ -79,6 +80,12 @@ api = NinjaAPI(
                 ),
             },
             {
+                "name": "feedback",
+                "description": (
+                    "Customer Feedback and Client Satisfaction Measurement submissions and review."
+                ),
+            },
+            {
                 "name": "exit-interviews",
                 "description": (
                     "Student graduating Exit Interview survey, self-assessment, "
@@ -126,6 +133,7 @@ api.add_router("/academic-years", academic_years_router)
 api.add_router("/institutional-forms", institutional_forms_router)
 api.add_router("/inventory", inventory_router)
 api.add_router("/good-moral", good_moral_router)
+api.add_router("/feedback", feedback_router)
 api.add_router("/exit-interviews", exit_interviews_router)
 api.add_router("/routine-interviews", routine_interviews_router)
 api.add_router("/referrals", referrals_router)

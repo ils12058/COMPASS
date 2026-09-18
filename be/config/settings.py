@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "compass.documents",
     "compass.inventory",
     "compass.good_moral",
+    "compass.feedback",
     "compass.exit_interviews",
     "compass.routine_interviews",
     "compass.referrals",

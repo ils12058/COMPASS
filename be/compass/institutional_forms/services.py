@@ -27,6 +27,7 @@ SUPPORTED_SCHEMA_VERSIONS: dict[str, frozenset[int]] = {
     "call_slip": frozenset({1}),
     "good_moral_current_student": frozenset({1}),
     "good_moral_graduate": frozenset({1}),
+    "customer_feedback": frozenset({1}),
 }
 
 
