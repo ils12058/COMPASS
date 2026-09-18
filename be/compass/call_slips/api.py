@@ -154,7 +154,9 @@ def _raise(exc: CallSlipError) -> NoReturn:
         ),
     ):
         raise APIError(409, "call_slip_conflict", str(exc)) from exc
-    raise APIError(500, "internal_error", "The Call Slip operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "The Call Slip operation could not be completed."
+    ) from exc
 
 
 def _person(user) -> dict[str, object]:
