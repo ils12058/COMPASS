@@ -91,6 +91,7 @@ jobs:
           tests/test_profiles.py
           tests/test_profile_photos.py
           tests/test_inventory.py
+          tests/test_inventory_counseling_regression.py
           tests/test_exit_interviews.py
           tests/test_counseling.py
           tests/test_shared_summaries.py
