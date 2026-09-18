@@ -51,6 +51,10 @@ COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
 COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
 INVENTORY_CREATED = "inventory.created"
 INVENTORY_SUBMITTED = "inventory.submitted"
+EXIT_INTERVIEW_CREATED = "exit_interview.created"
+EXIT_INTERVIEW_SUBMITTED = "exit_interview.submitted"
+EXIT_INTERVIEW_REOPENED = "exit_interview.reopened"
+EXIT_INTERVIEW_RESUBMITTED = "exit_interview.resubmitted"
 ROUTINE_INTERVIEW_CREATED = "routine_interview.created"
 ROUTINE_INTERVIEW_INTAKE_SUBMITTED = "routine_interview.intake_submitted"
 ROUTINE_INTERVIEW_EVALUATION_FINALIZED = "routine_interview.evaluation_finalized"
@@ -123,6 +127,10 @@ __all__ = [
     "COUNSELING_SHARED_SUMMARY_PUBLISHED",
     "INVENTORY_CREATED",
     "INVENTORY_SUBMITTED",
+    "EXIT_INTERVIEW_CREATED",
+    "EXIT_INTERVIEW_SUBMITTED",
+    "EXIT_INTERVIEW_REOPENED",
+    "EXIT_INTERVIEW_RESUBMITTED",
     "ROUTINE_INTERVIEW_CREATED",
     "ROUTINE_INTERVIEW_INTAKE_SUBMITTED",
     "ROUTINE_INTERVIEW_EVALUATION_FINALIZED",

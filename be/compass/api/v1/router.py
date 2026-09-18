@@ -16,6 +16,7 @@ from compass.counseling.api import router as counseling_router
 from compass.documents.api import router as document_branding_router
 from compass.ecounseling.api import daily_router
 from compass.ecounseling.api import router as ecounseling_router
+from compass.exit_interviews.api import router as exit_interviews_router
 from compass.institutional_forms.api import router as institutional_forms_router
 from compass.inventory.api import router as inventory_router
 from compass.organization.academic_years_api import router as academic_years_router
@@ -71,6 +72,13 @@ api = NinjaAPI(
                 "description": "Student annual Individual Inventory self-service.",
             },
             {
+                "name": "exit-interviews",
+                "description": (
+                    "Student graduating Exit Interview survey, self-assessment, "
+                    "institutional feedback, and controlled correction lifecycle."
+                ),
+            },
+            {
                 "name": "routine-interviews",
                 "description": (
                     "Interaction-specific Student Intake and assigned Counselor Evaluation."
@@ -110,6 +118,7 @@ api.add_router("/counseling", counseling_router)
 api.add_router("/academic-years", academic_years_router)
 api.add_router("/institutional-forms", institutional_forms_router)
 api.add_router("/inventory", inventory_router)
+api.add_router("/exit-interviews", exit_interviews_router)
 api.add_router("/routine-interviews", routine_interviews_router)
 api.add_router("/referrals", referrals_router)
 api.add_router("/call-slips", call_slips_router)

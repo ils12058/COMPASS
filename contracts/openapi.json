@@ -1204,6 +1204,10 @@
           "ecounseling.manage_media_assigned",
           "ecounseling.view_assigned",
           "ecounseling.view_self",
+          "exit_interviews.manage_self",
+          "exit_interviews.reopen",
+          "exit_interviews.view",
+          "exit_interviews.view_self",
           "institutional_forms.manage",
           "institutional_forms.view",
           "inventory.manage_self",
@@ -1349,6 +1353,14 @@
         "title": "CapabilityOverrideResponse",
         "type": "object"
       },
+      "CareerModeValue": {
+        "enum": [
+          "WORK",
+          "STUDY"
+        ],
+        "title": "CareerModeValue",
+        "type": "string"
+      },
       "CollegeCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1372,6 +1384,88 @@
           "name"
         ],
         "title": "CollegeCreateRequest",
+        "type": "object"
+      },
+      "CollegeFeedbackItemValue": {
+        "enum": [
+          "DEAN_AVAILABILITY",
+          "DEAN_OPEN_MINDEDNESS",
+          "DEAN_CONCERN_FOR_STUDENTS",
+          "DEAN_COMMITMENT",
+          "DEAN_APPROACHABILITY",
+          "PROGRAM_CHAIR_AVAILABILITY",
+          "PROGRAM_CHAIR_APPROACHABILITY",
+          "PROGRAM_CHAIR_CONCERN_FOR_STUDENTS",
+          "FACULTY_AVAILABILITY",
+          "FACULTY_APPROACHABILITY",
+          "FACULTY_KNOWLEDGE_SUBJECT_MATTER",
+          "FACULTY_TEACHING_SKILLS",
+          "CURRICULUM_RELEVANCE_SUBJECTS",
+          "CURRICULUM_SYSTEMATIC_SEQUENCING",
+          "CURRICULUM_COMPLETENESS",
+          "GUIDANCE_COUNSELOR_AVAILABILITY",
+          "GUIDANCE_COUNSELOR_APPROACHABILITY",
+          "GUIDANCE_COUNSELOR_CONCERN_FOR_STUDENTS",
+          "GUIDANCE_COUNSELOR_EFFICIENCY",
+          "OFFICE_STAFF_SERVICE_ORIENTED",
+          "OFFICE_STAFF_AVAILABILITY",
+          "OFFICE_STAFF_CONCERN_FOR_STUDENTS",
+          "OFFICE_STAFF_APPROACHABILITY",
+          "FACILITIES_MAINTENANCE_CONDITION",
+          "FACILITIES_AVAILABILITY",
+          "FACILITIES_COMPLETENESS"
+        ],
+        "title": "CollegeFeedbackItemValue",
+        "type": "string"
+      },
+      "CollegeFeedbackRatingPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "item_code": {
+            "$ref": "#/components/schemas/CollegeFeedbackItemValue"
+          },
+          "rating": {
+            "description": "Source Page 2 visibly permits numeric 0; the source does not define its meaning.",
+            "maximum": 5,
+            "minimum": 0,
+            "title": "Rating",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "item_code",
+          "rating"
+        ],
+        "title": "CollegeFeedbackRatingPayload",
+        "type": "object"
+      },
+      "CollegeFeedbackRatingResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "item_code": {
+            "$ref": "#/components/schemas/CollegeFeedbackItemValue"
+          },
+          "item_label": {
+            "title": "Item Label",
+            "type": "string"
+          },
+          "rating": {
+            "description": "Numeric source response. Value 0 is preserved without a fabricated semantic label.",
+            "title": "Rating",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "item_code",
+          "item_label",
+          "category",
+          "rating"
+        ],
+        "title": "CollegeFeedbackRatingResponse",
         "type": "object"
       },
       "CollegeListResponse": {
@@ -2280,6 +2374,15 @@
         "title": "CurrentSessionResponse",
         "type": "object"
       },
+      "DelayReasonValue": {
+        "enum": [
+          "TRANSFEREE",
+          "ACADEMIC_FAILURES",
+          "OTHER"
+        ],
+        "title": "DelayReasonValue",
+        "type": "string"
+      },
       "DeliveryMode": {
         "enum": [
           "IN_PERSON",
@@ -2876,6 +2979,559 @@
           "created_by"
         ],
         "title": "ExceptionResponse",
+        "type": "object"
+      },
+      "ExitInterviewDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "age": {
+            "anyOf": [
+              {
+                "maximum": 150,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          },
+          "career_modes": {
+            "items": {
+              "$ref": "#/components/schemas/CareerModeValue"
+            },
+            "title": "Career Modes",
+            "type": "array"
+          },
+          "civil_status": {
+            "default": "",
+            "title": "Civil Status",
+            "type": "string"
+          },
+          "college_feedback_ratings": {
+            "items": {
+              "$ref": "#/components/schemas/CollegeFeedbackRatingResponse"
+            },
+            "title": "College Feedback Ratings",
+            "type": "array"
+          },
+          "contact_number": {
+            "default": "",
+            "title": "Contact Number",
+            "type": "string"
+          },
+          "course": {
+            "default": "",
+            "title": "Course",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "curriculum_comments": {
+            "default": "",
+            "title": "Curriculum Comments",
+            "type": "string"
+          },
+          "dean_comments": {
+            "default": "",
+            "title": "Dean Comments",
+            "type": "string"
+          },
+          "delay_other": {
+            "default": "",
+            "title": "Delay Other",
+            "type": "string"
+          },
+          "delay_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/DelayReasonValue"
+            },
+            "title": "Delay Reasons",
+            "type": "array"
+          },
+          "email_address": {
+            "default": "",
+            "title": "Email Address",
+            "type": "string"
+          },
+          "extra_terms_count": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Terms Count"
+          },
+          "facilities_comments": {
+            "default": "",
+            "title": "Facilities Comments",
+            "type": "string"
+          },
+          "faculty_comments": {
+            "default": "",
+            "title": "Faculty Comments",
+            "type": "string"
+          },
+          "first_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Submitted At"
+          },
+          "guidance_counselor_comments": {
+            "default": "",
+            "title": "Guidance Counselor Comments",
+            "type": "string"
+          },
+          "home_address": {
+            "default": "",
+            "title": "Home Address",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inventory_id": {
+            "format": "uuid",
+            "title": "Inventory Id",
+            "type": "string"
+          },
+          "last_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Submitted At"
+          },
+          "major": {
+            "default": "",
+            "title": "Major",
+            "type": "string"
+          },
+          "office_staff_comments": {
+            "default": "",
+            "title": "Office Staff Comments",
+            "type": "string"
+          },
+          "program_chair_comments": {
+            "default": "",
+            "title": "Program Chair Comments",
+            "type": "string"
+          },
+          "program_completion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProgramCompletionValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reopen_events": {
+            "items": {
+              "$ref": "#/components/schemas/ReopenEventResponse"
+            },
+            "title": "Reopen Events",
+            "type": "array"
+          },
+          "self_assessment_ratings": {
+            "items": {
+              "$ref": "#/components/schemas/SelfAssessmentRatingResponse"
+            },
+            "title": "Self Assessment Ratings",
+            "type": "array"
+          },
+          "significant_learning_experiences": {
+            "items": {
+              "$ref": "#/components/schemas/SignificantLearningValue"
+            },
+            "title": "Significant Learning Experiences",
+            "type": "array"
+          },
+          "significant_learning_other": {
+            "default": "",
+            "title": "Significant Learning Other",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExitInterviewStatusValue"
+          },
+          "student": {
+            "$ref": "#/components/schemas/StudentSummary"
+          },
+          "student_name": {
+            "default": "",
+            "title": "Student Name",
+            "type": "string"
+          },
+          "study_choices": {
+            "items": {
+              "$ref": "#/components/schemas/StudyCareerChoiceValue"
+            },
+            "title": "Study Choices",
+            "type": "array"
+          },
+          "suggestions_recommendations": {
+            "default": "",
+            "title": "Suggestions Recommendations",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "work_choices": {
+            "items": {
+              "$ref": "#/components/schemas/WorkCareerChoiceValue"
+            },
+            "title": "Work Choices",
+            "type": "array"
+          }
+        },
+        "required": [
+          "self_assessment_ratings",
+          "college_feedback_ratings",
+          "id",
+          "student",
+          "academic_year",
+          "inventory_id",
+          "status",
+          "first_submitted_at",
+          "last_submitted_at",
+          "reopen_events",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ExitInterviewDetailResponse",
+        "type": "object"
+      },
+      "ExitInterviewDraftPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "age": {
+            "anyOf": [
+              {
+                "maximum": 150,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          },
+          "career_modes": {
+            "items": {
+              "$ref": "#/components/schemas/CareerModeValue"
+            },
+            "title": "Career Modes",
+            "type": "array"
+          },
+          "civil_status": {
+            "default": "",
+            "title": "Civil Status",
+            "type": "string"
+          },
+          "college_feedback_ratings": {
+            "items": {
+              "$ref": "#/components/schemas/CollegeFeedbackRatingPayload"
+            },
+            "title": "College Feedback Ratings",
+            "type": "array"
+          },
+          "contact_number": {
+            "default": "",
+            "title": "Contact Number",
+            "type": "string"
+          },
+          "course": {
+            "default": "",
+            "title": "Course",
+            "type": "string"
+          },
+          "curriculum_comments": {
+            "default": "",
+            "title": "Curriculum Comments",
+            "type": "string"
+          },
+          "dean_comments": {
+            "default": "",
+            "title": "Dean Comments",
+            "type": "string"
+          },
+          "delay_other": {
+            "default": "",
+            "title": "Delay Other",
+            "type": "string"
+          },
+          "delay_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/DelayReasonValue"
+            },
+            "title": "Delay Reasons",
+            "type": "array"
+          },
+          "email_address": {
+            "default": "",
+            "title": "Email Address",
+            "type": "string"
+          },
+          "extra_terms_count": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Terms Count"
+          },
+          "facilities_comments": {
+            "default": "",
+            "title": "Facilities Comments",
+            "type": "string"
+          },
+          "faculty_comments": {
+            "default": "",
+            "title": "Faculty Comments",
+            "type": "string"
+          },
+          "guidance_counselor_comments": {
+            "default": "",
+            "title": "Guidance Counselor Comments",
+            "type": "string"
+          },
+          "home_address": {
+            "default": "",
+            "title": "Home Address",
+            "type": "string"
+          },
+          "major": {
+            "default": "",
+            "title": "Major",
+            "type": "string"
+          },
+          "office_staff_comments": {
+            "default": "",
+            "title": "Office Staff Comments",
+            "type": "string"
+          },
+          "program_chair_comments": {
+            "default": "",
+            "title": "Program Chair Comments",
+            "type": "string"
+          },
+          "program_completion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProgramCompletionValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "self_assessment_ratings": {
+            "items": {
+              "$ref": "#/components/schemas/SelfAssessmentRatingPayload"
+            },
+            "title": "Self Assessment Ratings",
+            "type": "array"
+          },
+          "significant_learning_experiences": {
+            "items": {
+              "$ref": "#/components/schemas/SignificantLearningValue"
+            },
+            "title": "Significant Learning Experiences",
+            "type": "array"
+          },
+          "significant_learning_other": {
+            "default": "",
+            "title": "Significant Learning Other",
+            "type": "string"
+          },
+          "student_name": {
+            "default": "",
+            "title": "Student Name",
+            "type": "string"
+          },
+          "study_choices": {
+            "items": {
+              "$ref": "#/components/schemas/StudyCareerChoiceValue"
+            },
+            "title": "Study Choices",
+            "type": "array"
+          },
+          "suggestions_recommendations": {
+            "default": "",
+            "title": "Suggestions Recommendations",
+            "type": "string"
+          },
+          "work_choices": {
+            "items": {
+              "$ref": "#/components/schemas/WorkCareerChoiceValue"
+            },
+            "title": "Work Choices",
+            "type": "array"
+          }
+        },
+        "title": "ExitInterviewDraftPayload",
+        "type": "object"
+      },
+      "ExitInterviewHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExitInterviewSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ExitInterviewHistoryResponse",
+        "type": "object"
+      },
+      "ExitInterviewPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExitInterviewSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "ExitInterviewPageResponse",
+        "type": "object"
+      },
+      "ExitInterviewStatusValue": {
+        "enum": [
+          "DRAFT",
+          "SUBMITTED"
+        ],
+        "title": "ExitInterviewStatusValue",
+        "type": "string"
+      },
+      "ExitInterviewSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "first_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Submitted At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Submitted At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExitInterviewStatusValue"
+          },
+          "student": {
+            "$ref": "#/components/schemas/StudentSummary"
+          },
+          "student_name": {
+            "title": "Student Name",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "student",
+          "student_name",
+          "academic_year",
+          "status",
+          "first_submitted_at",
+          "last_submitted_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ExitInterviewSummaryResponse",
         "type": "object"
       },
       "FamilyMemberKindValue": {
@@ -5323,6 +5979,14 @@
         "title": "PostGraduationFieldValue",
         "type": "string"
       },
+      "ProgramCompletionValue": {
+        "enum": [
+          "ACCORDING_TO_SCHEDULE",
+          "WITH_SOME_DELAY"
+        ],
+        "title": "ProgramCompletionValue",
+        "type": "string"
+      },
       "ProviderExceptionListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -5849,6 +6513,50 @@
           "removed"
         ],
         "title": "RemovedResponse",
+        "type": "object"
+      },
+      "ReopenEventResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "reopened_at": {
+            "format": "date-time",
+            "title": "Reopened At",
+            "type": "string"
+          },
+          "reopened_by": {
+            "$ref": "#/components/schemas/StudentSummary"
+          }
+        },
+        "required": [
+          "id",
+          "reopened_at",
+          "reopened_by",
+          "reason"
+        ],
+        "title": "ReopenEventResponse",
+        "type": "object"
+      },
+      "ReopenRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ReopenRequest",
         "type": "object"
       },
       "RevocationResponse": {
@@ -6386,6 +7094,70 @@
         "title": "RoutineReferenceResponse",
         "type": "object"
       },
+      "SelfAssessmentItemValue": {
+        "enum": [
+          "PRIDE_CONFIDENCE_CNSC",
+          "ACADEMIC_RECREATION_BALANCE",
+          "HOLISTIC_PERSONAL_WELL_BEING",
+          "INTEGRATE_KNOWLEDGE_EXPERIENCE",
+          "CAREER_GOAL_CLARITY",
+          "SELF_ESTEEM",
+          "SELF_AWARENESS",
+          "COPE_WITH_PRESSURES",
+          "DEAL_WITH_DIFFERENT_WALKS",
+          "LEADERSHIP",
+          "COMMUNICATION_SKILLS",
+          "CIVIC_MINDEDNESS",
+          "INITIATIVE",
+          "DECISION_MAKING",
+          "RELATIONSHIP_WITH_GOD"
+        ],
+        "title": "SelfAssessmentItemValue",
+        "type": "string"
+      },
+      "SelfAssessmentRatingPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "item_code": {
+            "$ref": "#/components/schemas/SelfAssessmentItemValue"
+          },
+          "rating": {
+            "maximum": 5,
+            "minimum": 1,
+            "title": "Rating",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "item_code",
+          "rating"
+        ],
+        "title": "SelfAssessmentRatingPayload",
+        "type": "object"
+      },
+      "SelfAssessmentRatingResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "item_code": {
+            "$ref": "#/components/schemas/SelfAssessmentItemValue"
+          },
+          "item_label": {
+            "title": "Item Label",
+            "type": "string"
+          },
+          "rating": {
+            "title": "Rating",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "item_code",
+          "item_label",
+          "rating"
+        ],
+        "title": "SelfAssessmentRatingResponse",
+        "type": "object"
+      },
       "ServiceCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -6859,6 +7631,21 @@
         "title": "SiblingPayload",
         "type": "object"
       },
+      "SignificantLearningValue": {
+        "enum": [
+          "INDEPENDENCE",
+          "INTERPERSONAL_RELATIONS",
+          "INTELLECTUAL_GROWTH",
+          "SPIRITUAL_GROWTH",
+          "RESPONSIBILITY",
+          "WORKING_UNDER_PRESSURE",
+          "TIME_MANAGEMENT",
+          "SETTING_PRIORITIES",
+          "OTHER"
+        ],
+        "title": "SignificantLearningValue",
+        "type": "string"
+      },
       "StaffSupervisionListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -7172,6 +7959,26 @@
         "title": "StudentRoutineWorkspaceSummary",
         "type": "object"
       },
+      "StudentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "StudentSummary",
+        "type": "object"
+      },
       "StudentWorkspaceResponse": {
         "additionalProperties": false,
         "properties": {
@@ -7207,6 +8014,14 @@
         ],
         "title": "StudentWorkspaceResponse",
         "type": "object"
+      },
+      "StudyCareerChoiceValue": {
+        "enum": [
+          "RELATED_FIELD",
+          "UNRELATED_FIELD"
+        ],
+        "title": "StudyCareerChoiceValue",
+        "type": "string"
       },
       "TOTPConfirmationResponse": {
         "properties": {
@@ -7602,6 +8417,18 @@
         ],
         "title": "WeeklyWindowResponse",
         "type": "object"
+      },
+      "WorkCareerChoiceValue": {
+        "enum": [
+          "RELATED_FIELD",
+          "UNRELATED_FIELD",
+          "FAMILY_BUSINESS",
+          "OWN_BUSINESS",
+          "WORK_ABROAD",
+          "NO_DEFINITE_PLAN"
+        ],
+        "title": "WorkCareerChoiceValue",
+        "type": "string"
       }
     },
     "securitySchemes": {
@@ -8254,6 +9081,10 @@
                 "ecounseling.manage_media_assigned",
                 "ecounseling.view_assigned",
                 "ecounseling.view_self",
+                "exit_interviews.manage_self",
+                "exit_interviews.reopen",
+                "exit_interviews.view",
+                "exit_interviews.view_self",
                 "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
@@ -8391,6 +9222,10 @@
                 "ecounseling.manage_media_assigned",
                 "ecounseling.view_assigned",
                 "ecounseling.view_self",
+                "exit_interviews.manage_self",
+                "exit_interviews.reopen",
+                "exit_interviews.view",
+                "exit_interviews.view_self",
                 "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
@@ -15333,6 +16168,711 @@
         ]
       }
     },
+    "/api/v1/exit-interviews": {
+      "get": {
+        "operationId": "exitInterviewsList",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "academic_year_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Academic Year Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ExitInterviewStatusValue"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews List",
+        "tags": [
+          "exit-interviews"
+        ]
+      }
+    },
+    "/api/v1/exit-interviews/me": {
+      "get": {
+        "operationId": "exitInterviewsListMine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews List Mine",
+        "tags": [
+          "exit-interviews"
+        ]
+      }
+    },
+    "/api/v1/exit-interviews/me/current": {
+      "get": {
+        "operationId": "exitInterviewsGetMyCurrent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews Get My Current",
+        "tags": [
+          "exit-interviews"
+        ]
+      },
+      "post": {
+        "operationId": "exitInterviewsEnsureMyCurrent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews Ensure My Current",
+        "tags": [
+          "exit-interviews"
+        ]
+      },
+      "put": {
+        "operationId": "exitInterviewsUpdateMyCurrent",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExitInterviewDraftPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews Update My Current",
+        "tags": [
+          "exit-interviews"
+        ]
+      }
+    },
+    "/api/v1/exit-interviews/me/current/submit": {
+      "post": {
+        "operationId": "exitInterviewsSubmitMyCurrent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews Submit My Current",
+        "tags": [
+          "exit-interviews"
+        ]
+      }
+    },
+    "/api/v1/exit-interviews/me/{exit_interview_id}": {
+      "get": {
+        "operationId": "exitInterviewsGetMine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exit_interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exit Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews Get Mine",
+        "tags": [
+          "exit-interviews"
+        ]
+      }
+    },
+    "/api/v1/exit-interviews/{exit_interview_id}": {
+      "get": {
+        "operationId": "exitInterviewsGet",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exit_interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exit Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews Get",
+        "tags": [
+          "exit-interviews"
+        ]
+      }
+    },
+    "/api/v1/exit-interviews/{exit_interview_id}/reopen": {
+      "post": {
+        "operationId": "exitInterviewsReopen",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exit_interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exit Interview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReopenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews Reopen",
+        "tags": [
+          "exit-interviews"
+        ]
+      }
+    },
     "/api/v1/health/live": {
       "get": {
         "operationId": "healthLive",
@@ -20287,6 +21827,10 @@
     {
       "description": "Student annual Individual Inventory self-service.",
       "name": "inventory"
+    },
+    {
+      "description": "Student graduating Exit Interview survey, self-assessment, institutional feedback, and controlled correction lifecycle.",
+      "name": "exit-interviews"
     },
     {
       "description": "Interaction-specific Student Intake and assigned Counselor Evaluation.",

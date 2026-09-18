@@ -129,9 +129,9 @@ def test_user_directly_owns_minimal_reusable_profile_fields_without_personalprof
 @pytest.mark.django_db
 def test_profile_foundation_does_not_change_capability_policy_counts():
     sync_policy()
-    assert Capability.objects.count() == 40
-    assert RoleCapability.objects.count() == 51
-    assert DesignationCapability.objects.count() == 10
+    assert Capability.objects.count() == 44
+    assert RoleCapability.objects.count() == 53
+    assert DesignationCapability.objects.count() == 12
     assert not Capability.objects.filter(code__startswith="profile.").exists()
 
 
