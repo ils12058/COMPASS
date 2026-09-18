@@ -203,6 +203,16 @@ CAPABILITY_DEFINITIONS = (
         description="Create direct Routine Interviews and manage assigned Counselor Evaluations.",
     ),
     CapabilityDefinition(
+        code="referrals.view",
+        name="View scoped referrals",
+        description="View Referral records within the authenticated Guidance actor's resource scope.",
+    ),
+    CapabilityDefinition(
+        code="referrals.manage",
+        name="Manage scoped referrals",
+        description="Create and manage Referral records within the Guidance actor's resource scope.",
+    ),
+    CapabilityDefinition(
         code="ecounseling.view_self",
         name="View own E-Counseling workspace",
         description="View the authenticated Student's own eligible E-Counseling workspace.",
@@ -268,6 +278,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "shared_summaries.manage_assigned",
             "routine_interviews.view_assigned",
             "routine_interviews.manage_assigned",
+            "referrals.view",
+            "referrals.manage",
             "ecounseling.view_assigned",
             "ecounseling.join_assigned",
             "ecounseling.manage_media_assigned",
@@ -280,6 +292,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "services.view",
             "availability.view",
             "appointments.view_self",
+            "referrals.view",
+            "referrals.manage",
         }
     ),
     "STUDENT": frozenset(
