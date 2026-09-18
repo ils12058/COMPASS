@@ -140,7 +140,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
     assert RoleCapability.objects.count() == 51
-    assert DesignationCapability.objects.count() == 8
+    assert DesignationCapability.objects.count() == 10
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -151,9 +151,9 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 4
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 38
+    assert Capability.objects.count() == 40
     assert RoleCapability.objects.count() == 51
-    assert DesignationCapability.objects.count() == 8
+    assert DesignationCapability.objects.count() == 10
 
 
 @pytest.mark.django_db
@@ -191,6 +191,8 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "academic_years.manage",
         "institutional_forms.view",
         "institutional_forms.manage",
+        "document_branding.view",
+        "document_branding.manage",
         "services.view",
         "services.manage",
         "availability.view",
@@ -229,6 +231,8 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     assert user.has_capability("academic_years.manage")
     assert user.has_capability("institutional_forms.view")
     assert user.has_capability("institutional_forms.manage")
+    assert user.has_capability("document_branding.view")
+    assert user.has_capability("document_branding.manage")
     assert user.has_capability("services.view")
     assert user.has_capability("services.manage")
     assert user.has_capability("availability.view")
