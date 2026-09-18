@@ -10,6 +10,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from compass.accounts.models import User
+from compass.accounts.services import is_current_student
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.audit.actions import (
     ROUTINE_INTERVIEW_CREATED,
@@ -103,6 +104,10 @@ class RoutineInterviewInventoryRequired(RoutineInterviewError):
     pass
 
 
+class RoutineInterviewCurrentStudentRequired(RoutineInterviewError):
+    pass
+
+
 class RoutineInterviewIntakeSubmitted(RoutineInterviewError):
     pass
 
@@ -166,6 +171,13 @@ def _lock_users(*user_ids: UUID) -> dict[UUID, User]:
 def _validate_student(student: User) -> None:
     if not student.is_active or student.role.code != "STUDENT":
         raise RoutineInterviewNotPermitted("An active Student account is required.")
+
+
+def _require_current_student(student: User) -> None:
+    if not is_current_student(student):
+        raise RoutineInterviewCurrentStudentRequired(
+            "Current Student lifecycle is required for this Routine Interview action."
+        )
 
 
 def _validate_counselor(counselor: User) -> None:
@@ -261,6 +273,7 @@ def ensure_for_appointment(
                 )
             return _queryset().get(pk=existing.pk)
 
+        _require_current_student(student)
         if appointment.status != AppointmentStatus.SCHEDULED:
             raise RoutineInterviewAppointmentInvalid("The Appointment must be SCHEDULED.")
         counselor = appointment.provider
@@ -369,6 +382,7 @@ def create_direct(
         student = locked[student_id]
         locked_counselor = locked[counselor.pk]
         _validate_student(student)
+        _require_current_student(student)
         _validate_counselor(locked_counselor)
 
         try:
@@ -483,6 +497,7 @@ def replace_my_intake(
     values: dict[str, object],
 ) -> RoutineInterview:
     _validate_student(student)
+    _require_current_student(student)
     unsupported = set(values) - set(INTAKE_FIELDS)
     if unsupported:
         raise InvalidRoutineInterviewInput("The Student Intake update contains unsupported fields.")
@@ -535,6 +550,7 @@ def submit_my_intake(
     context: AuditContext,
 ) -> RoutineInterview:
     _validate_student(student)
+    _require_current_student(student)
     with transaction.atomic():
         item = (
             RoutineInterview.objects.select_for_update()
