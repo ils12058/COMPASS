@@ -63,9 +63,7 @@ def _code_enum(name: str, codes: frozenset[str]) -> type[Enum]:
 RoleCode = _code_enum("RoleCode", ROLE_CODES)
 DesignationCode = _code_enum("DesignationCode", DESIGNATION_CODES)
 CapabilityCode = _code_enum("CapabilityCode", CAPABILITY_CODES)
-StudentLifecycleCode = _code_enum(
-    "StudentLifecycleCode", frozenset(StudentLifecycleStatus.values)
-)
+StudentLifecycleCode = _code_enum("StudentLifecycleCode", frozenset(StudentLifecycleStatus.values))
 
 
 class StrictSchema(Schema):
