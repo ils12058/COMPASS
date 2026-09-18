@@ -1,0 +1,29 @@
+{% extends "documents/layouts/report.html" %}
+{% block title %}Document Foundation Test{% endblock %}
+{% block body %}
+  <h1>{{ title }}</h1>
+  <p id="sample-body">{{ sample_body }}</p>
+
+  {% if controlled_form %}
+    {% include "documents/partials/controlled_form_metadata.html" %}
+  {% endif %}
+
+  {% if test_remote_asset %}
+    <img src="https://example.invalid/blocked-render-asset.png" alt="Blocked remote resource">
+  {% endif %}
+
+  <table class="report-table">
+    <thead>
+      <tr><th>No.</th><th>Label</th><th>Value</th></tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ row.label }}</td>
+          <td>{{ row.value }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
