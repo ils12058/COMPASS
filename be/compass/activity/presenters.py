@@ -20,6 +20,7 @@ from compass.audit.actions import (
     ACCOUNT_MFA_RESET,
     ACCOUNT_ROLE_CHANGED,
     ACCOUNT_UPDATED,
+    PROFILE_UPDATED,
 )
 from compass.audit.models import AuditEvent, AuditOutcome
 from compass.authentication.actions import (
@@ -128,6 +129,12 @@ MY_ACTIVITY_PRESENTERS: dict[str, ActivityPresenter] = {
         description="Your COMPASS account information was updated.",
         target_type=ACCOUNT_TARGET,
         actor_scope="target_user",
+    ),
+    PROFILE_UPDATED: _presenter(
+        item_type="profile.updated",
+        title="Your profile information was updated",
+        description="Your COMPASS profile information was updated.",
+        target_type=ACCOUNT_TARGET,
     ),
     ACCOUNT_DISABLED: _presenter(
         item_type="account.disabled",
@@ -241,7 +248,7 @@ MY_ACTIVITY_PRESENTERS: dict[str, ActivityPresenter] = {
 SECURITY_ACTIVITY_PRESENTERS: dict[str, ActivityPresenter] = {
     action: presenter
     for action, presenter in MY_ACTIVITY_PRESENTERS.items()
-    if action != ACCOUNT_CREATED
+    if action not in {ACCOUNT_CREATED, PROFILE_UPDATED}
 }
 SECURITY_ACTIVITY_PRESENTERS.update(
     {
