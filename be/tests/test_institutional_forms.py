@@ -77,7 +77,7 @@ def test_initial_inventory_revision_preserves_confirmed_qms_identity():
     assert revision.official_code == "CNSC-OP-GCO-01F5"
     assert revision.official_revision == "0"
     assert revision.status == "ACTIVE"
-    assert FormFamily.objects.count() == 3
+    assert FormFamily.objects.count() == 4
 
     routine_family = FormFamily.objects.get(key="routine_interview")
     assert routine_family.title == "Routine Interview Form"
@@ -94,6 +94,17 @@ def test_initial_inventory_revision_preserves_confirmed_qms_identity():
     assert referral_revision.internal_schema_version == 1
     assert referral_revision.status == "ACTIVE"
     assert SUPPORTED_SCHEMA_VERSIONS["referral_slip"] == frozenset({1})
+
+    call_slip_family = FormFamily.objects.get(key="call_slip")
+    call_slip_revision = FormRevision.objects.get(
+        family=call_slip_family,
+        official_code="CNSC-OP-GTA-01F8",
+        official_revision="0",
+    )
+    assert call_slip_family.title == "Interview Permit / Call Slip"
+    assert call_slip_revision.internal_schema_version == 1
+    assert call_slip_revision.status == "ACTIVE"
+    assert SUPPORTED_SCHEMA_VERSIONS["call_slip"] == frozenset({1})
 
 
 @pytest.mark.django_db
@@ -216,6 +227,7 @@ def test_operational_configuration_mutations_require_head_capability_and_recent_
     listed = client.get("/api/v1/institutional-forms")
     assert listed.status_code == 200
     assert [item["key"] for item in listed.json()["items"]] == [
+        "call_slip",
         "individual_inventory",
         "referral_slip",
         "routine_interview",
