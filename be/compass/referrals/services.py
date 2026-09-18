@@ -390,9 +390,7 @@ def create_referral(
             raise ReferralNotPermitted("The authenticated Guidance actor no longer exists.")
         _validate_operational_actor(locked_actor)
 
-        existing = (
-            Referral.objects.select_for_update().filter(creation_key_digest=digest).first()
-        )
+        existing = Referral.objects.select_for_update().filter(creation_key_digest=digest).first()
         if existing is not None:
             if existing.creation_request_fingerprint != fingerprint:
                 raise ReferralCreationConflict(
