@@ -807,6 +807,8 @@
           "inventory.view_self",
           "organization.manage",
           "organization.view",
+          "referrals.manage",
+          "referrals.view",
           "routine_interviews.manage_assigned",
           "routine_interviews.manage_self",
           "routine_interviews.view_assigned",
@@ -4578,6 +4580,389 @@
         "title": "RecordingWorkspaceState",
         "type": "object"
       },
+      "ReferralActionCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action_type": {
+            "$ref": "#/components/schemas/ReferralActionTypeValue"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "remarks": {
+            "default": "",
+            "title": "Remarks",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_type",
+          "occurred_at"
+        ],
+        "title": "ReferralActionCreateRequest",
+        "type": "object"
+      },
+      "ReferralActionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "action_type": {
+            "$ref": "#/components/schemas/ReferralActionTypeValue"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "remarks": {
+            "title": "Remarks",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "action_type",
+          "occurred_at",
+          "remarks",
+          "created_at"
+        ],
+        "title": "ReferralActionResponse",
+        "type": "object"
+      },
+      "ReferralActionTypeValue": {
+        "enum": [
+          "CALL_PARENT_GUARDIAN",
+          "SEND_PARENT_NOTIFICATION_LETTER",
+          "SEND_CALL_SLIP_INTERVIEW_PERMIT"
+        ],
+        "title": "ReferralActionTypeValue",
+        "type": "string"
+      },
+      "ReferralCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "course_year_block": {
+            "title": "Course Year Block",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "referred_on": {
+            "format": "date",
+            "title": "Referred On",
+            "type": "string"
+          },
+          "referrer_name": {
+            "title": "Referrer Name",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student_id",
+          "course_year_block",
+          "reason",
+          "referrer_name",
+          "referred_on"
+        ],
+        "title": "ReferralCreateRequest",
+        "type": "object"
+      },
+      "ReferralDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/ReferralActionResponse"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "course_year_block_snapshot": {
+            "title": "Course Year Block Snapshot",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "form_revision": {
+            "$ref": "#/components/schemas/ReferralFormRevisionSummary"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "referred_on": {
+            "format": "date",
+            "title": "Referred On",
+            "type": "string"
+          },
+          "referrer_name": {
+            "title": "Referrer Name",
+            "type": "string"
+          },
+          "status_note": {
+            "title": "Status Note",
+            "type": "string"
+          },
+          "student": {
+            "$ref": "#/components/schemas/ReferralPersonSummary"
+          },
+          "student_name_snapshot": {
+            "title": "Student Name Snapshot",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "student",
+          "student_name_snapshot",
+          "course_year_block_snapshot",
+          "referred_on",
+          "received_at",
+          "status_note",
+          "created_at",
+          "reason",
+          "referrer_name",
+          "form_revision",
+          "actions",
+          "updated_at"
+        ],
+        "title": "ReferralDetailResponse",
+        "type": "object"
+      },
+      "ReferralFormRevisionSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "internal_schema_version": {
+            "title": "Internal Schema Version",
+            "type": "integer"
+          },
+          "official_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Code"
+          },
+          "official_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Revision"
+          }
+        },
+        "required": [
+          "id",
+          "official_code",
+          "official_revision",
+          "internal_schema_version"
+        ],
+        "title": "ReferralFormRevisionSummary",
+        "type": "object"
+      },
+      "ReferralPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReferralSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "ReferralPageResponse",
+        "type": "object"
+      },
+      "ReferralPersonSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "ReferralPersonSummary",
+        "type": "object"
+      },
+      "ReferralStatusUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "status_note": {
+            "title": "Status Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_note"
+        ],
+        "title": "ReferralStatusUpdateRequest",
+        "type": "object"
+      },
+      "ReferralSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "course_year_block_snapshot": {
+            "title": "Course Year Block Snapshot",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "referred_on": {
+            "format": "date",
+            "title": "Referred On",
+            "type": "string"
+          },
+          "status_note": {
+            "title": "Status Note",
+            "type": "string"
+          },
+          "student": {
+            "$ref": "#/components/schemas/ReferralPersonSummary"
+          },
+          "student_name_snapshot": {
+            "title": "Student Name Snapshot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "student",
+          "student_name_snapshot",
+          "course_year_block_snapshot",
+          "referred_on",
+          "received_at",
+          "status_note",
+          "created_at"
+        ],
+        "title": "ReferralSummaryResponse",
+        "type": "object"
+      },
       "RemovalResponse": {
         "additionalProperties": false,
         "properties": {
@@ -7010,6 +7395,8 @@
                 "inventory.view_self",
                 "organization.manage",
                 "organization.view",
+                "referrals.manage",
+                "referrals.view",
                 "routine_interviews.manage_assigned",
                 "routine_interviews.manage_self",
                 "routine_interviews.view_assigned",
@@ -7140,6 +7527,8 @@
                 "inventory.view_self",
                 "organization.manage",
                 "organization.view",
+                "referrals.manage",
+                "referrals.view",
                 "routine_interviews.manage_assigned",
                 "routine_interviews.manage_self",
                 "routine_interviews.view_assigned",
@@ -16296,6 +16685,500 @@
         ]
       }
     },
+    "/api/v1/referrals": {
+      "get": {
+        "operationId": "referralsList",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "student_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Student Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Referrals List",
+        "tags": [
+          "referrals"
+        ]
+      },
+      "post": {
+        "operationId": "referralsCreate",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferralCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralDetailResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Referrals Create",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/referrals/{referral_id}": {
+      "get": {
+        "operationId": "referralsGet",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Referrals Get",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/referrals/{referral_id}/actions": {
+      "post": {
+        "operationId": "referralsRecordAction",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferralActionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralActionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Referrals Record Action",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/referrals/{referral_id}/status": {
+      "patch": {
+        "operationId": "referralsUpdateStatus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferralStatusUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Referrals Update Status",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
     "/api/v1/routine-interviews": {
       "post": {
         "operationId": "routineInterviewsCreateDirect",
@@ -17651,6 +18534,10 @@
     {
       "description": "Interaction-specific Student Intake and assigned Counselor Evaluation.",
       "name": "routine-interviews"
+    },
+    {
+      "description": "Formal Student Referral intake and Guidance action records.",
+      "name": "referrals"
     },
     {
       "description": "Secure ONLINE Counseling workspace and Daily provider boundary.",
