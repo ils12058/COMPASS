@@ -8,6 +8,10 @@ from django.test import Client
 from django.utils import timezone
 
 from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.call_slips.services import (
+    CallSlipConfigurationConflict,
+    _active_call_slip_revision,
+)
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
@@ -19,7 +23,13 @@ from compass.institutional_forms.services import (
     deactivate_form_revision,
     register_form_revision,
 )
+from compass.inventory.services import (
+    InventoryFormRevisionNotConfigured,
+    _active_inventory_revision,
+)
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
+from compass.referrals.services import ReferralConfigurationConflict, _active_referral_revision
+from compass.routine_interviews.services import _optional_form_revision
 from compass.organization.models import AcademicYear
 
 
@@ -77,7 +87,7 @@ def test_initial_inventory_revision_preserves_confirmed_qms_identity():
     assert revision.official_code == "CNSC-OP-GCO-01F5"
     assert revision.official_revision == "0"
     assert revision.status == "ACTIVE"
-    assert FormFamily.objects.count() == 4
+    assert FormFamily.objects.count() == 6
 
     routine_family = FormFamily.objects.get(key="routine_interview")
     assert routine_family.title == "Routine Interview Form"
@@ -105,6 +115,49 @@ def test_initial_inventory_revision_preserves_confirmed_qms_identity():
     assert call_slip_revision.internal_schema_version == 1
     assert call_slip_revision.status == "ACTIVE"
     assert SUPPORTED_SCHEMA_VERSIONS["call_slip"] == frozenset({1})
+
+    current_good_moral = FormFamily.objects.get(key="good_moral_current_student")
+    current_revision = FormRevision.objects.get(
+        family=current_good_moral,
+        official_code="CNSC-OP-GCO-01F4",
+        official_revision="0",
+    )
+    assert current_good_moral.title == "Good Moral Character — Current Student"
+    assert current_revision.internal_schema_version == 1
+    assert current_revision.status == "ACTIVE"
+    assert SUPPORTED_SCHEMA_VERSIONS["good_moral_current_student"] == frozenset({1})
+
+    graduate_good_moral = FormFamily.objects.get(key="good_moral_graduate")
+    graduate_revision = FormRevision.objects.get(
+        family=graduate_good_moral,
+        official_code="CNSC-OP-GCO-01F6",
+        official_revision="0",
+    )
+    assert graduate_good_moral.title == "Good Moral Character — Graduate"
+    assert graduate_revision.internal_schema_version == 1
+    assert graduate_revision.status == "ACTIVE"
+    assert SUPPORTED_SCHEMA_VERSIONS["good_moral_graduate"] == frozenset({1})
+
+
+@pytest.mark.django_db
+def test_required_form_consumers_reject_unsupported_active_revision_and_routine_is_optional():
+    assert _optional_form_revision() is None
+
+    cases = (
+        (
+            "individual_inventory",
+            _active_inventory_revision,
+            InventoryFormRevisionNotConfigured,
+        ),
+        ("referral_slip", _active_referral_revision, ReferralConfigurationConflict),
+        ("call_slip", _active_call_slip_revision, CallSlipConfigurationConflict),
+    )
+    for family_key, resolver, expected_error in cases:
+        revision = FormRevision.objects.get(family__key=family_key, status="ACTIVE")
+        FormRevision.objects.filter(pk=revision.pk).update(internal_schema_version=999)
+        with pytest.raises(expected_error):
+            resolver()
+        FormRevision.objects.filter(pk=revision.pk).update(internal_schema_version=1)
 
 
 @pytest.mark.django_db
@@ -228,6 +281,8 @@ def test_operational_configuration_mutations_require_head_capability_and_recent_
     assert listed.status_code == 200
     assert [item["key"] for item in listed.json()["items"]] == [
         "call_slip",
+        "good_moral_current_student",
+        "good_moral_graduate",
         "individual_inventory",
         "referral_slip",
         "routine_interview",
