@@ -22,8 +22,13 @@ from compass.counseling.shared_summaries import (
     publish_assigned_shared_summary,
     put_assigned_shared_summary,
 )
-from compass.inventory.services import ensure_current_inventory, submit_current_inventory
+from compass.inventory.services import (
+    ensure_current_inventory,
+    replace_current_inventory,
+    submit_current_inventory,
+)
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
+from compass.organization.models import Campus, College, Program
 from compass.routine_interviews.services import (
     create_direct,
     replace_assigned_evaluation,
@@ -341,6 +346,17 @@ def test_student_response_never_copies_routine_private_content():
     year = create_academic_year(label="2026-2027", context=context(admin))
     set_current_academic_year(academic_year_id=year.pk, context=context(admin))
     ensure_current_inventory(student=student, context=context(student))
+    campus = Campus.objects.create(code="MAIN", name="Main Campus")
+    college = College.objects.create(campus=campus, code="CCMS", name="CCMS")
+    program = Program.objects.create(
+        college=college,
+        code="TEST-IS",
+        name="Test Information Systems Program",
+    )
+    replace_current_inventory(
+        student=student,
+        values={"program_id": program.pk, "year_level": 1},
+    )
     submit_current_inventory(student=student, context=context(student))
     create_counseling_service(admin)
 
