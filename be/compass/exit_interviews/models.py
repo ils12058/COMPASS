@@ -282,8 +282,7 @@ class ExitInterview(models.Model):
             ),
             models.CheckConstraint(
                 condition=(
-                    models.Q(extra_terms_count__isnull=True)
-                    | models.Q(extra_terms_count__gte=1)
+                    models.Q(extra_terms_count__isnull=True) | models.Q(extra_terms_count__gte=1)
                 ),
                 name="exit_interview_extra_terms_positive",
             ),

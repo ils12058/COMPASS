@@ -282,18 +282,16 @@ def _context(request) -> AuditContext:
 
 def _require_student(request, capability: str) -> None:
     user = request.auth_user
-    if (
-        not user.is_active
-        or user.role.code != "STUDENT"
-        or not user.has_capability(capability)
-    ):
+    if not user.is_active or user.role.code != "STUDENT" or not user.has_capability(capability):
         raise APIError(403, "permission_denied", "Student Exit Interview access is required.")
 
 
 def _require_head(request, capability: str) -> None:
     user = request.auth_user
     if not user.is_active or not user.has_capability(capability):
-        raise APIError(403, "permission_denied", "Head Guidance Exit Interview authority is required.")
+        raise APIError(
+            403, "permission_denied", "Head Guidance Exit Interview authority is required."
+        )
 
 
 def _raise(exc: ExitInterviewError) -> NoReturn:

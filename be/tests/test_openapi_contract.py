@@ -475,15 +475,28 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         422,
     }
 
-    assert _response_statuses(
-        _operation(schema, "/api/v1/exit-interviews/me/current", "post")
-    ) >= {200, 401, 403, 409, 422}
-    assert _response_statuses(
-        _operation(schema, "/api/v1/exit-interviews/me/current", "get")
-    ) >= {200, 401, 403, 404, 409}
-    assert _response_statuses(
-        _operation(schema, "/api/v1/exit-interviews/me/current", "put")
-    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(_operation(schema, "/api/v1/exit-interviews/me/current", "post")) >= {
+        200,
+        401,
+        403,
+        409,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/exit-interviews/me/current", "get")) >= {
+        200,
+        401,
+        403,
+        404,
+        409,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/exit-interviews/me/current", "put")) >= {
+        200,
+        401,
+        403,
+        404,
+        409,
+        422,
+    }
     assert _response_statuses(
         _operation(schema, "/api/v1/exit-interviews/me/current/submit", "post")
     ) >= {200, 401, 403, 404, 409, 422}

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
-from datetime import date, timedelta
 import json
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date
 from unittest.mock import patch
 
 import pytest
@@ -34,7 +34,6 @@ from compass.exit_interviews.models import (
     ExitInterviewCollegeFeedbackRating,
     ExitInterviewReopenEvent,
     ExitInterviewSelfAssessmentRating,
-    ExitInterviewStatus,
     ProgramCompletion,
     SelfAssessmentItem,
     SignificantLearningExperience,
@@ -388,9 +387,12 @@ def test_ensure_uses_profile_and_inventory_prefill_once_and_is_idempotent():
     assert ExitInterview.objects.filter(student=student, academic_year=current).count() == 1
 
     body = first.json()
-    expected_age = timezone.localdate().year - birthday.year - int(
-        (timezone.localdate().month, timezone.localdate().day)
-        < (birthday.month, birthday.day)
+    expected_age = (
+        timezone.localdate().year
+        - birthday.year
+        - int(
+            (timezone.localdate().month, timezone.localdate().day) < (birthday.month, birthday.day)
+        )
     )
     assert body["student_name"] == "Current Person"
     assert body["age"] == expected_age
@@ -402,10 +404,13 @@ def test_ensure_uses_profile_and_inventory_prefill_once_and_is_idempotent():
     assert body["contact_number"] == "09170000000"
     assert body["inventory_id"] == str(inventory.pk)
 
-    assert AuditEvent.objects.filter(
-        action="exit_interview.created",
-        target_id=body["id"],
-    ).count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action="exit_interview.created",
+            target_id=body["id"],
+        ).count()
+        == 1
+    )
     assert not Service.objects.filter(code="EXIT_INTERVIEW").exists()
 
 
@@ -573,9 +578,9 @@ def test_ratings_reject_unknown_duplicate_and_out_of_range_values_but_feedback_z
     assert put_api(client, unknown).status_code == 422
 
     duplicate = valid_payload()
-    duplicate["self_assessment_ratings"][1]["item_code"] = duplicate[
-        "self_assessment_ratings"
-    ][0]["item_code"]
+    duplicate["self_assessment_ratings"][1]["item_code"] = duplicate["self_assessment_ratings"][0][
+        "item_code"
+    ]
     assert put_api(client, duplicate).status_code == 422
 
 
@@ -607,14 +612,20 @@ def test_submission_requires_complete_fixed_rating_grids_and_is_idempotent():
     assert second.status_code == 200
     assert second.json()["first_submitted_at"] == body["first_submitted_at"]
     assert second.json()["last_submitted_at"] == body["last_submitted_at"]
-    assert AuditEvent.objects.filter(
-        action="exit_interview.submitted",
-        target_id=body["id"],
-    ).count() == 1
-    assert AuditEvent.objects.filter(
-        action="exit_interview.resubmitted",
-        target_id=body["id"],
-    ).count() == 0
+    assert (
+        AuditEvent.objects.filter(
+            action="exit_interview.submitted",
+            target_id=body["id"],
+        ).count()
+        == 1
+    )
+    assert (
+        AuditEvent.objects.filter(
+            action="exit_interview.resubmitted",
+            target_id=body["id"],
+        ).count()
+        == 0
+    )
 
 
 @pytest.mark.django_db
@@ -656,12 +667,15 @@ def test_only_head_may_read_all_and_reopen_with_required_reason():
     for actor in (student, counselor, staff, admin, dpo):
         client = auth_client(actor)
         assert client.get("/api/v1/exit-interviews").status_code == 403
-        assert client.post(
-            f"/api/v1/exit-interviews/{exit_id}/reopen",
-            data=json.dumps({"reason": "Correction requested"}),
-            content_type="application/json",
-            **csrf(client),
-        ).status_code == 403
+        assert (
+            client.post(
+                f"/api/v1/exit-interviews/{exit_id}/reopen",
+                data=json.dumps({"reason": "Correction requested"}),
+                content_type="application/json",
+                **csrf(client),
+            ).status_code
+            == 403
+        )
 
     head = make_head()
     head_client = auth_client(head)
@@ -712,12 +726,15 @@ def test_reopen_and_resubmit_preserve_first_submission_and_append_correction_his
     head = make_head()
     head_client = auth_client(head)
     exit_id = first["id"]
-    assert head_client.post(
-        f"/api/v1/exit-interviews/{exit_id}/reopen",
-        data=json.dumps({"reason": "First correction"}),
-        content_type="application/json",
-        **csrf(head_client),
-    ).status_code == 200
+    assert (
+        head_client.post(
+            f"/api/v1/exit-interviews/{exit_id}/reopen",
+            data=json.dumps({"reason": "First correction"}),
+            content_type="application/json",
+            **csrf(head_client),
+        ).status_code
+        == 200
+    )
 
     corrected = valid_payload()
     corrected["suggestions_recommendations"] = "Corrected historical response"
@@ -728,17 +745,23 @@ def test_reopen_and_resubmit_preserve_first_submission_and_append_correction_his
     assert second["first_submitted_at"] == first_submitted_at
     assert second["last_submitted_at"] >= first_last_submitted_at
     assert second["suggestions_recommendations"] == "Corrected historical response"
-    assert AuditEvent.objects.filter(
-        action="exit_interview.resubmitted",
-        target_id=exit_id,
-    ).count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action="exit_interview.resubmitted",
+            target_id=exit_id,
+        ).count()
+        == 1
+    )
 
-    assert head_client.post(
-        f"/api/v1/exit-interviews/{exit_id}/reopen",
-        data=json.dumps({"reason": "Second correction"}),
-        content_type="application/json",
-        **csrf(head_client),
-    ).status_code == 200
+    assert (
+        head_client.post(
+            f"/api/v1/exit-interviews/{exit_id}/reopen",
+            data=json.dumps({"reason": "Second correction"}),
+            content_type="application/json",
+            **csrf(head_client),
+        ).status_code
+        == 200
+    )
     history = student_client.get(f"/api/v1/exit-interviews/me/{exit_id}")
     assert history.status_code == 200
     assert [event["reason"] for event in history.json()["reopen_events"]] == [
@@ -829,12 +852,15 @@ def test_audit_metadata_excludes_answers_ratings_comments_contact_and_reopen_rea
     assert submit_api(client).status_code == 200
 
     head_client = auth_client(make_head())
-    assert head_client.post(
-        f"/api/v1/exit-interviews/{exit_id}/reopen",
-        data=json.dumps({"reason": "Sensitive correction reason"}),
-        content_type="application/json",
-        **csrf(head_client),
-    ).status_code == 200
+    assert (
+        head_client.post(
+            f"/api/v1/exit-interviews/{exit_id}/reopen",
+            data=json.dumps({"reason": "Sensitive correction reason"}),
+            content_type="application/json",
+            **csrf(head_client),
+        ).status_code
+        == 200
+    )
 
     events = AuditEvent.objects.filter(
         action__in=[

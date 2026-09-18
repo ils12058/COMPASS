@@ -120,30 +120,25 @@ class ExitInterviewPage:
 
 
 def _queryset():
-    return (
-        ExitInterview.objects.select_related(
-            "student",
-            "student__role",
-            "academic_year",
-            "inventory",
-            "inventory__academic_year",
-        )
-        .prefetch_related(
-            "self_assessment_ratings",
-            "college_feedback_ratings",
-            "reopen_events",
-            "reopen_events__reopened_by",
-        )
+    return ExitInterview.objects.select_related(
+        "student",
+        "student__role",
+        "academic_year",
+        "inventory",
+        "inventory__academic_year",
+    ).prefetch_related(
+        "self_assessment_ratings",
+        "college_feedback_ratings",
+        "reopen_events",
+        "reopen_events__reopened_by",
     )
 
 
 def _validate_student(student: User) -> None:
-    if (
-        not getattr(student, "pk", None)
-        or not student.is_active
-        or student.role.code != "STUDENT"
-    ):
-        raise ExitInterviewNotPermitted("Only an active Student may use Exit Interview self-service.")
+    if not getattr(student, "pk", None) or not student.is_active or student.role.code != "STUDENT":
+        raise ExitInterviewNotPermitted(
+            "Only an active Student may use Exit Interview self-service."
+        )
 
 
 def _validate_head(actor: User, capability: str) -> None:
@@ -226,7 +221,9 @@ def _normalize_extra_terms(value: object) -> int | None:
     if value is None:
         return None
     if type(value) is not int or value < 1:
-        raise InvalidExitInterviewInput("extra_terms_count must be a positive integer when supplied.")
+        raise InvalidExitInterviewInput(
+            "extra_terms_count must be a positive integer when supplied."
+        )
     return value
 
 
@@ -475,10 +472,7 @@ def ensure_my_current(
     _validate_student(student)
     with transaction.atomic():
         locked_student = (
-            User.objects.select_for_update()
-            .select_related("role")
-            .filter(pk=student.pk)
-            .first()
+            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
         )
         if locked_student is None:
             raise ExitInterviewNotFound("The Student account was not found.")
@@ -572,14 +566,18 @@ def replace_my_current(*, student: User, values: dict[str, object]) -> ExitInter
         if item is None:
             raise ExitInterviewNotFound("The current Academic Year Exit Interview was not found.")
         if item.status != ExitInterviewStatus.DRAFT:
-            raise ExitInterviewConflict("A submitted Exit Interview is locked against Student edits.")
+            raise ExitInterviewConflict(
+                "A submitted Exit Interview is locked against Student edits."
+            )
 
         for field_name, value in normalized.items():
             setattr(item, field_name, value)
         try:
             item.full_clean(exclude=("student", "academic_year", "inventory"))
         except ValidationError as exc:
-            raise InvalidExitInterviewInput("The Exit Interview contains invalid typed values.") from exc
+            raise InvalidExitInterviewInput(
+                "The Exit Interview contains invalid typed values."
+            ) from exc
         item.save(update_fields=[*normalized.keys(), "updated_at"])
         _replace_ratings(item, values)
         return _queryset().get(pk=item.pk)
@@ -664,9 +662,7 @@ def _pagination(page: int, page_size: int) -> tuple[int, int]:
     if type(page) is not int or page < 1:
         raise InvalidExitInterviewInput("page must be at least 1.")
     if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
-        raise InvalidExitInterviewInput(
-            f"page_size must be between 1 and {MAX_PAGE_SIZE}."
-        )
+        raise InvalidExitInterviewInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}.")
     return page, page_size
 
 
