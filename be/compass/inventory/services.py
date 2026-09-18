@@ -11,6 +11,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from compass.accounts.models import User
+from compass.accounts.services import is_current_student
 from compass.audit.actions import INVENTORY_CREATED, INVENTORY_SUBMITTED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
@@ -53,6 +54,10 @@ class InventoryNotFound(InventoryError):
 
 
 class InventoryConflict(InventoryError):
+    pass
+
+
+class InventoryCurrentStudentRequired(InventoryError):
     pass
 
 
@@ -183,9 +188,11 @@ def _inventory_queryset():
     )
 
 
-def _require_active_student(student: User) -> None:
-    if not getattr(student, "pk", None) or not student.is_active or student.role.code != "STUDENT":
-        raise InventoryConflict("Only an active Student may initiate or change an Inventory.")
+def _require_current_student(student: User) -> None:
+    if not is_current_student(student):
+        raise InventoryCurrentStudentRequired(
+            "Current Student lifecycle is required to initiate or change an Inventory."
+        )
 
 
 def _current_year() -> AcademicYear:
@@ -236,14 +243,14 @@ def get_current_inventory(student: User) -> StudentInventory:
 
 
 def ensure_current_inventory(*, student: User, context: AuditContext) -> StudentInventory:
-    _require_active_student(student)
+    _require_current_student(student)
     with transaction.atomic():
         locked_student = (
             User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
         )
         if locked_student is None:
             raise InventoryNotFound("The Student account was not found.")
-        _require_active_student(locked_student)
+        _require_current_student(locked_student)
         current = _current_year()
         existing = StudentInventory.objects.filter(
             student_id=locked_student.pk,
