@@ -181,6 +181,26 @@ CAPABILITY_DEFINITIONS = (
         description="Create, edit, and submit the authenticated Student's current Inventory.",
     ),
     CapabilityDefinition(
+        code="exit_interviews.view_self",
+        name="View own Exit Interviews",
+        description="View the authenticated Student's own Exit Interview records.",
+    ),
+    CapabilityDefinition(
+        code="exit_interviews.manage_self",
+        name="Manage own Exit Interview",
+        description="Create, edit, and submit the authenticated Student's Exit Interview.",
+    ),
+    CapabilityDefinition(
+        code="exit_interviews.view",
+        name="View Exit Interviews",
+        description="View identifiable Exit Interview records for Head Guidance oversight.",
+    ),
+    CapabilityDefinition(
+        code="exit_interviews.reopen",
+        name="Reopen Exit Interviews",
+        description="Reopen a submitted Exit Interview for controlled Student correction.",
+    ),
+    CapabilityDefinition(
         code="routine_interviews.view_self",
         name="View own routine interviews",
         description="View the authenticated Student's own Routine Interview records.",
@@ -343,6 +363,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "appointments.manage_self",
             "inventory.view_self",
             "inventory.manage_self",
+            "exit_interviews.view_self",
+            "exit_interviews.manage_self",
             "routine_interviews.view_self",
             "routine_interviews.manage_self",
             "ecounseling.view_self",
@@ -369,6 +391,8 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "institutional_forms.manage",
             "document_branding.view",
             "document_branding.manage",
+            "exit_interviews.view",
+            "exit_interviews.reopen",
         }
     ),
     "DPO": frozenset(),
