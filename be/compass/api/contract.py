@@ -22,6 +22,7 @@ CURRENT_API_TAGS = frozenset(
         "institutional-forms",
         "inventory",
         "routine-interviews",
+        "referrals",
         "e-counseling",
     }
 )
@@ -40,6 +41,7 @@ OPERATION_ID_PREFIXES = {
     "institutional-forms": "institutionalForms",
     "inventory": "inventory",
     "routine-interviews": "routineInterviews",
+    "referrals": "referrals",
     "e-counseling": "eCounseling",
 }
 HTTP_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch"})
