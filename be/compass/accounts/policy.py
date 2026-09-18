@@ -205,12 +205,16 @@ CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
         code="referrals.view",
         name="View scoped referrals",
-        description="View Referral records within the authenticated Guidance actor's resource scope.",
+        description=(
+            "View Referral records within the authenticated Guidance actor's resource scope."
+        ),
     ),
     CapabilityDefinition(
         code="referrals.manage",
         name="Manage scoped referrals",
-        description="Create and manage Referral records within the Guidance actor's resource scope.",
+        description=(
+            "Create and manage Referral records within the Guidance actor's resource scope."
+        ),
     ),
     CapabilityDefinition(
         code="ecounseling.view_self",
