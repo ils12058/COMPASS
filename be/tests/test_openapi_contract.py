@@ -152,6 +152,12 @@ EXPECTED_OPERATION_IDS = {
     "feedbackSubmitCsm",
     "feedbackListCsmResponses",
     "feedbackGetCsmResponse",
+    "graduateTracerEnsureMyResponse",
+    "graduateTracerGetMyResponse",
+    "graduateTracerReplaceMyDraft",
+    "graduateTracerSubmitMyResponse",
+    "graduateTracerListResponses",
+    "graduateTracerGetResponse",
     "exitInterviewsEnsureMyCurrent",
     "exitInterviewsGetMyCurrent",
     "exitInterviewsUpdateMyCurrent",
@@ -265,6 +271,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "inventory",
         "good-moral",
         "feedback",
+        "graduate-tracer",
         "exit-interviews",
         "routine-interviews",
         "referrals",
@@ -353,6 +360,13 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "SelfAssessmentRatingPayload",
         "CollegeFeedbackRatingPayload",
         "ReopenRequest",
+        "GraduateTracerDraftPayload",
+        "GraduateTracerDetailResponse",
+        "GraduateTracerSummaryResponse",
+        "GraduateTracerPageResponse",
+        "GraduateTracerEducationPayload",
+        "GraduateTracerProfessionalExamPayload",
+        "GraduateTracerTrainingPayload",
     }
     assert expected_schemas <= schemas.keys()
     assert schemas["AccountSummaryResponse"]["properties"]["id"]["format"] == "uuid"
@@ -455,6 +469,47 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "last_submitted_at",
         "reopened_by",
     }.isdisjoint(exit_draft)
+
+    graduate_tracer_draft = schemas["GraduateTracerDraftPayload"]["properties"]
+    assert {
+        "name",
+        "permanent_address",
+        "email",
+        "telephone_contact_numbers",
+        "mobile_number",
+        "civil_status",
+        "sex",
+        "birth_date",
+        "region_of_origin",
+        "province",
+        "residence_location",
+        "education",
+        "professional_exams",
+        "undergraduate_degree_reasons",
+        "graduate_study_reasons",
+        "degree_other_reason",
+        "trainings",
+        "advanced_study_reasons",
+        "advanced_study_other_reason",
+        "current_employment_state",
+        "unemployment_reasons",
+        "unemployment_other_reason",
+        "present_employment_status",
+        "present_occupation",
+        "employer_business_line",
+        "place_of_work",
+        "first_job_after_college",
+        "time_to_first_job",
+        "curriculum_improvement_suggestions",
+    } <= set(graduate_tracer_draft)
+    assert {
+        "student_id",
+        "instrument_schema_version",
+        "status",
+        "submitted_at",
+        "created_at",
+        "updated_at",
+    }.isdisjoint(graduate_tracer_draft)
     assert schemas["SelfAssessmentRatingPayload"]["properties"]["rating"]["minimum"] == 1
     assert schemas["SelfAssessmentRatingPayload"]["properties"]["rating"]["maximum"] == 5
     assert schemas["CollegeFeedbackRatingPayload"]["properties"]["rating"]["minimum"] == 0
@@ -503,6 +558,45 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         403,
         422,
     }
+
+    assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/me", "post")) >= {
+        200,
+        401,
+        403,
+        409,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/me", "get")) >= {
+        200,
+        401,
+        403,
+        404,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/me", "put")) >= {
+        200,
+        401,
+        403,
+        404,
+        409,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/me/submit", "post")) >= {
+        200,
+        401,
+        403,
+        404,
+        409,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/responses", "get")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/graduate-tracer/responses/{response_id}", "get")
+    ) >= {200, 401, 403, 404, 422}
 
     assert _response_statuses(_operation(schema, "/api/v1/exit-interviews/me/current", "post")) >= {
         200,
@@ -712,6 +806,9 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "good_moral.request_self",
             "good_moral.view",
             "good_moral.view_self",
+            "graduate_tracer.manage_self",
+            "graduate_tracer.view",
+            "graduate_tracer.view_self",
             "institutional_forms.manage",
             "institutional_forms.view",
             "inventory.manage_self",
@@ -777,6 +874,9 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "ExitInterviewDetailResponse",
         "ExitInterviewSummaryResponse",
         "ExitInterviewPageResponse",
+        "GraduateTracerDetailResponse",
+        "GraduateTracerSummaryResponse",
+        "GraduateTracerPageResponse",
     }
     forbidden_fields = {
         "password_hash",

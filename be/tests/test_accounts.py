@@ -143,8 +143,8 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
         "DPO",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 60
-    assert DesignationCapability.objects.count() == 14
+    assert RoleCapability.objects.count() == 62
+    assert DesignationCapability.objects.count() == 15
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -155,9 +155,9 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 4
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 53
-    assert RoleCapability.objects.count() == 60
-    assert DesignationCapability.objects.count() == 14
+    assert Capability.objects.count() == 56
+    assert RoleCapability.objects.count() == 62
+    assert DesignationCapability.objects.count() == 15
 
 
 @pytest.mark.django_db
@@ -221,6 +221,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "good_moral.issue",
         "feedback.view_customer_feedback",
         "feedback.view_csm",
+        "graduate_tracer.view",
         "ecounseling.view_assigned",
         "ecounseling.join_assigned",
         "ecounseling.manage_media_assigned",
@@ -264,6 +265,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     assert user.has_capability("good_moral.view")
     assert user.has_capability("good_moral.manage")
     assert user.has_capability("good_moral.issue")
+    assert user.has_capability("graduate_tracer.view")
     assert user.has_capability("ecounseling.view_assigned")
     assert user.has_capability("ecounseling.join_assigned")
     assert user.has_capability("ecounseling.manage_media_assigned")
@@ -310,6 +312,9 @@ def test_student_media_consent_capability_is_explicit():
     assert student.has_capability("good_moral.request_self")
     assert student.has_capability("feedback.submit_customer_feedback")
     assert student.has_capability("feedback.submit_csm")
+    assert student.has_capability("graduate_tracer.view_self")
+    assert student.has_capability("graduate_tracer.manage_self")
+    assert not student.has_capability("graduate_tracer.view")
     assert not student.has_capability("feedback.view_customer_feedback")
     assert not student.has_capability("feedback.view_csm")
     assert not student.has_capability("good_moral.view")

@@ -57,6 +57,8 @@ GOOD_MORAL_REQUEST_UPDATED = "good_moral.request_updated"
 GOOD_MORAL_ISSUED = "good_moral.issued"
 CUSTOMER_FEEDBACK_SUBMITTED = "feedback.customer_feedback_submitted"
 CSM_SUBMITTED = "feedback.csm_submitted"
+GRADUATE_TRACER_DRAFT_CREATED = "graduate_tracer.draft_created"
+GRADUATE_TRACER_SUBMITTED = "graduate_tracer.submitted"
 EXIT_INTERVIEW_CREATED = "exit_interview.created"
 EXIT_INTERVIEW_SUBMITTED = "exit_interview.submitted"
 EXIT_INTERVIEW_REOPENED = "exit_interview.reopened"
@@ -139,6 +141,8 @@ __all__ = [
     "GOOD_MORAL_ISSUED",
     "CUSTOMER_FEEDBACK_SUBMITTED",
     "CSM_SUBMITTED",
+    "GRADUATE_TRACER_DRAFT_CREATED",
+    "GRADUATE_TRACER_SUBMITTED",
     "EXIT_INTERVIEW_CREATED",
     "EXIT_INTERVIEW_SUBMITTED",
     "EXIT_INTERVIEW_REOPENED",
