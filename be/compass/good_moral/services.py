@@ -22,7 +22,11 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
-from compass.documents.template_specs import LayoutFamily, UnknownDocumentTemplate, get_template_spec
+from compass.documents.template_specs import (
+    LayoutFamily,
+    UnknownDocumentTemplate,
+    get_template_spec,
+)
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
@@ -440,9 +444,7 @@ def update_request(
             )
 
         normalized = {name: _normalize_update(name, value) for name, value in changes.items()}
-        changed = sorted(
-            name for name, value in normalized.items() if getattr(item, name) != value
-        )
+        changed = sorted(name for name, value in normalized.items() if getattr(item, name) != value)
         if not changed:
             return _queryset().get(pk=item.pk)
 
