@@ -139,8 +139,8 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
         "DPO",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 51
-    assert DesignationCapability.objects.count() == 10
+    assert RoleCapability.objects.count() == 53
+    assert DesignationCapability.objects.count() == 12
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -151,9 +151,9 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 4
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 40
-    assert RoleCapability.objects.count() == 51
-    assert DesignationCapability.objects.count() == 10
+    assert Capability.objects.count() == 44
+    assert RoleCapability.objects.count() == 53
+    assert DesignationCapability.objects.count() == 12
 
 
 @pytest.mark.django_db
@@ -193,6 +193,8 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "institutional_forms.manage",
         "document_branding.view",
         "document_branding.manage",
+        "exit_interviews.view",
+        "exit_interviews.reopen",
         "services.view",
         "services.manage",
         "availability.view",
