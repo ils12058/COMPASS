@@ -10,7 +10,7 @@ from uuid import UUID
 from ninja import Router, Schema, Status
 from pydantic import ConfigDict
 
-from compass.accounts.models import UserCapabilityOverride
+from compass.accounts.models import StudentLifecycleStatus, UserCapabilityOverride
 from compass.accounts.policy import CAPABILITY_CODES, DESIGNATION_CODES, ROLE_CODES
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
@@ -32,6 +32,7 @@ from .services import (
     OrganizationRelationshipConflict,
     PaginationError,
     SelfTargetForbidden,
+    StudentLifecycleConflict,
     assign_designation,
     change_role,
     create_account,
@@ -47,6 +48,7 @@ from .services import (
     serialize_account,
     set_account_active,
     set_capability_override,
+    set_student_lifecycle,
     update_identity,
 )
 
@@ -61,6 +63,9 @@ def _code_enum(name: str, codes: frozenset[str]) -> type[Enum]:
 RoleCode = _code_enum("RoleCode", ROLE_CODES)
 DesignationCode = _code_enum("DesignationCode", DESIGNATION_CODES)
 CapabilityCode = _code_enum("CapabilityCode", CAPABILITY_CODES)
+StudentLifecycleCode = _code_enum(
+    "StudentLifecycleCode", frozenset(StudentLifecycleStatus.values)
+)
 
 
 class StrictSchema(Schema):
@@ -76,6 +81,7 @@ class AccountSummaryResponse(StrictSchema):
     suffix: str
     full_name: str
     role: RoleCode
+    student_lifecycle_status: StudentLifecycleCode | None
     designations: list[DesignationCode]
     is_active: bool
     created_at: datetime
@@ -114,6 +120,10 @@ class IdentityUpdateRequest(StrictSchema):
 
 class RoleUpdateRequest(StrictSchema):
     role: RoleCode
+
+
+class StudentLifecycleUpdateRequest(StrictSchema):
+    status: StudentLifecycleCode
 
 
 class DesignationListResponse(StrictSchema):
@@ -203,6 +213,8 @@ def _raise_management_error(exc: AccountManagementError) -> NoReturn:
             "appointment_relationship_conflict",
             str(exc),
         ) from exc
+    if isinstance(exc, StudentLifecycleConflict):
+        raise APIError(409, "student_lifecycle_conflict", str(exc)) from exc
     if isinstance(exc, SelfTargetForbidden):
         raise APIError(
             403,
@@ -395,6 +407,34 @@ def account_role(request, user_id: UUID, payload: RoleUpdateRequest):
             target_id=user_id,
             context=_context(request),
             role=payload.role.value,
+        )
+    except RecentMFARequired as exc:
+        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+    except AccountManagementError as exc:
+        _raise_management_error(exc)
+    return _detail(user_id)
+
+
+@router.put(
+    "/{user_id}/student-lifecycle",
+    response=response_with_errors(AccountDetailResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="accountsUpdateStudentLifecycle",
+    summary="Update managed Student lifecycle",
+)
+def account_student_lifecycle(
+    request,
+    user_id: UUID,
+    payload: StudentLifecycleUpdateRequest,
+):
+    _require_management(request, recent_mfa=True)
+    try:
+        set_student_lifecycle(
+            actor=request.auth_user,
+            actor_session=request.auth_session,
+            target_id=user_id,
+            context=_context(request),
+            status=payload.status.value,
         )
     except RecentMFARequired as exc:
         raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
