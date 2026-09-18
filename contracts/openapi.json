@@ -1565,6 +1565,9 @@
           "good_moral.request_self",
           "good_moral.view",
           "good_moral.view_self",
+          "graduate_tracer.manage_self",
+          "graduate_tracer.view",
+          "graduate_tracer.view_self",
           "institutional_forms.manage",
           "institutional_forms.view",
           "inventory.manage_self",
@@ -4593,6 +4596,235 @@
         "title": "FormRevisionSummary",
         "type": "object"
       },
+      "GTSAdvancedStudyReasonValue": {
+        "enum": [
+          "PROMOTION",
+          "PROFESSIONAL_DEVELOPMENT",
+          "OTHER"
+        ],
+        "title": "GTSAdvancedStudyReasonValue",
+        "type": "string"
+      },
+      "GTSBusinessLineValue": {
+        "enum": [
+          "AGRICULTURE_HUNTING_FORESTRY",
+          "FISHING",
+          "MINING_QUARRYING",
+          "MANUFACTURING",
+          "ELECTRICITY_GAS_WATER",
+          "CONSTRUCTION",
+          "WHOLESALE_RETAIL_REPAIR",
+          "HOTELS_RESTAURANTS",
+          "TRANSPORT_STORAGE_COMMUNICATION",
+          "FINANCIAL_INTERMEDIATION",
+          "REAL_ESTATE_RENTING_BUSINESS",
+          "PUBLIC_ADMIN_DEFENSE_SOCIAL_SECURITY",
+          "EDUCATION",
+          "HEALTH_SOCIAL_WORK",
+          "OTHER_COMMUNITY_SOCIAL_PERSONAL",
+          "PRIVATE_HOUSEHOLDS_EMPLOYED_PERSONS",
+          "EXTRA_TERRITORIAL_ORGANIZATIONS"
+        ],
+        "title": "GTSBusinessLineValue",
+        "type": "string"
+      },
+      "GTSCivilStatusValue": {
+        "enum": [
+          "SINGLE",
+          "SEPARATED",
+          "WIDOW_WIDOWER",
+          "MARRIED",
+          "SINGLE_PARENT"
+        ],
+        "title": "GTSCivilStatusValue",
+        "type": "string"
+      },
+      "GTSDegreeReasonValue": {
+        "enum": [
+          "HIGH_GRADES_RELATED_COURSE",
+          "GOOD_GRADES_HIGH_SCHOOL",
+          "PARENTS_RELATIVES",
+          "PEER_INFLUENCE",
+          "ROLE_MODEL",
+          "PASSION_PROFESSION",
+          "IMMEDIATE_EMPLOYMENT",
+          "STATUS_PRESTIGE",
+          "COURSE_AVAILABILITY",
+          "CAREER_ADVANCEMENT",
+          "AFFORDABLE",
+          "ATTRACTIVE_COMPENSATION",
+          "EMPLOYMENT_ABROAD",
+          "NO_PARTICULAR_CHOICE"
+        ],
+        "title": "GTSDegreeReasonValue",
+        "type": "string"
+      },
+      "GTSEarningBracketValue": {
+        "enum": [
+          "BELOW_5000",
+          "FROM_5000_TO_LT_10000",
+          "FROM_10000_TO_LT_15000",
+          "FROM_15000_TO_LT_20000",
+          "FROM_20000_TO_LT_25000",
+          "FROM_25000_UP"
+        ],
+        "title": "GTSEarningBracketValue",
+        "type": "string"
+      },
+      "GTSEmploymentStateValue": {
+        "enum": [
+          "EMPLOYED",
+          "NOT_EMPLOYED",
+          "NEVER_EMPLOYED"
+        ],
+        "title": "GTSEmploymentStateValue",
+        "type": "string"
+      },
+      "GTSFirstJobDurationValue": {
+        "enum": [
+          "LESS_THAN_MONTH",
+          "ONE_TO_SIX_MONTHS",
+          "SEVEN_TO_ELEVEN_MONTHS",
+          "ONE_TO_LT_TWO_YEARS",
+          "TWO_TO_LT_THREE_YEARS",
+          "THREE_TO_LT_FOUR_YEARS",
+          "OTHER"
+        ],
+        "title": "GTSFirstJobDurationValue",
+        "type": "string"
+      },
+      "GTSFirstJobSourceValue": {
+        "enum": [
+          "ADVERTISEMENT",
+          "WALK_IN",
+          "RECOMMENDED",
+          "FRIENDS",
+          "SCHOOL_PLACEMENT",
+          "FAMILY_BUSINESS",
+          "JOB_FAIR_PESO",
+          "OTHER"
+        ],
+        "title": "GTSFirstJobSourceValue",
+        "type": "string"
+      },
+      "GTSJobLevelValue": {
+        "enum": [
+          "RANK_CLERICAL",
+          "PROFESSIONAL_TECHNICAL_SUPERVISORY",
+          "MANAGERIAL_EXECUTIVE",
+          "SELF_EMPLOYED"
+        ],
+        "title": "GTSJobLevelValue",
+        "type": "string"
+      },
+      "GTSJobReasonValue": {
+        "enum": [
+          "SALARIES_BENEFITS",
+          "CAREER_CHALLENGE",
+          "RELATED_SPECIAL_SKILLS",
+          "PROXIMITY_RESIDENCE",
+          "OTHER"
+        ],
+        "title": "GTSJobReasonValue",
+        "type": "string"
+      },
+      "GTSPlaceOfWorkValue": {
+        "enum": [
+          "LOCAL",
+          "ABROAD"
+        ],
+        "title": "GTSPlaceOfWorkValue",
+        "type": "string"
+      },
+      "GTSPresentEmploymentStatusValue": {
+        "enum": [
+          "REGULAR_PERMANENT",
+          "TEMPORARY",
+          "CASUAL",
+          "CONTRACTUAL",
+          "SELF_EMPLOYED"
+        ],
+        "title": "GTSPresentEmploymentStatusValue",
+        "type": "string"
+      },
+      "GTSRegionOfOriginValue": {
+        "enum": [
+          "REGION_1",
+          "REGION_2",
+          "REGION_3",
+          "REGION_4",
+          "REGION_5",
+          "REGION_6",
+          "REGION_7",
+          "REGION_8",
+          "REGION_9",
+          "REGION_10",
+          "REGION_11",
+          "REGION_12",
+          "NCR",
+          "CAR",
+          "ARMM",
+          "CARAGA"
+        ],
+        "title": "GTSRegionOfOriginValue",
+        "type": "string"
+      },
+      "GTSResidenceLocationValue": {
+        "enum": [
+          "CITY",
+          "MUNICIPALITY"
+        ],
+        "title": "GTSResidenceLocationValue",
+        "type": "string"
+      },
+      "GTSSexValue": {
+        "enum": [
+          "MALE",
+          "FEMALE"
+        ],
+        "title": "GTSSexValue",
+        "type": "string"
+      },
+      "GTSStayingReasonValue": {
+        "enum": [
+          "SALARIES_BENEFITS",
+          "CAREER_CHALLENGE",
+          "RELATED_SPECIAL_SKILL",
+          "RELATED_COURSE",
+          "PROXIMITY_RESIDENCE",
+          "PEER_INFLUENCE",
+          "FAMILY_INFLUENCE",
+          "OTHER"
+        ],
+        "title": "GTSStayingReasonValue",
+        "type": "string"
+      },
+      "GTSUnemploymentReasonValue": {
+        "enum": [
+          "ADVANCE_STUDY",
+          "FAMILY_CONCERN",
+          "HEALTH_RELATED",
+          "LACK_WORK_EXPERIENCE",
+          "NO_JOB_OPPORTUNITY",
+          "DID_NOT_LOOK",
+          "OTHER"
+        ],
+        "title": "GTSUnemploymentReasonValue",
+        "type": "string"
+      },
+      "GTSUsefulCompetencyValue": {
+        "enum": [
+          "COMMUNICATION",
+          "HUMAN_RELATIONS",
+          "ENTREPRENEURIAL",
+          "INFORMATION_TECHNOLOGY",
+          "PROBLEM_SOLVING",
+          "CRITICAL_THINKING",
+          "OTHER"
+        ],
+        "title": "GTSUsefulCompetencyValue",
+        "type": "string"
+      },
       "GoodMoralCorrectionPayload": {
         "additionalProperties": false,
         "properties": {
@@ -5074,6 +5306,948 @@
           "graduation_date"
         ],
         "title": "GraduateRequestPayload",
+        "type": "object"
+      },
+      "GraduateTracerDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "advanced_study_other_reason": {
+            "default": "",
+            "title": "Advanced Study Other Reason",
+            "type": "string"
+          },
+          "advanced_study_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/GTSAdvancedStudyReasonValue"
+            },
+            "title": "Advanced Study Reasons",
+            "type": "array"
+          },
+          "birth_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "civil_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSCivilStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_employment_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSEmploymentStateValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "current_job_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSJobLevelValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "curriculum_improvement_suggestions": {
+            "default": "",
+            "title": "Curriculum Improvement Suggestions",
+            "type": "string"
+          },
+          "curriculum_relevant_to_first_job": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curriculum Relevant To First Job"
+          },
+          "degree_other_reason": {
+            "default": "",
+            "title": "Degree Other Reason",
+            "type": "string"
+          },
+          "education": {
+            "items": {
+              "$ref": "#/components/schemas/GraduateTracerEducationPayload"
+            },
+            "title": "Education",
+            "type": "array"
+          },
+          "email": {
+            "default": "",
+            "title": "Email",
+            "type": "string"
+          },
+          "employer_business_line": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSBusinessLineValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_job_after_college": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Job After College"
+          },
+          "first_job_duration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSFirstJobDurationValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_job_duration_other": {
+            "default": "",
+            "title": "First Job Duration Other",
+            "type": "string"
+          },
+          "first_job_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSJobLevelValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_job_related_to_course": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Job Related To Course"
+          },
+          "first_job_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSFirstJobSourceValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_job_source_other": {
+            "default": "",
+            "title": "First Job Source Other",
+            "type": "string"
+          },
+          "graduate_study_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/GTSDegreeReasonValue"
+            },
+            "title": "Graduate Study Reasons",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "initial_gross_monthly_earning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSEarningBracketValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "instrument_schema_version": {
+            "title": "Instrument Schema Version",
+            "type": "integer"
+          },
+          "mobile_number": {
+            "default": "",
+            "title": "Mobile Number",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "permanent_address": {
+            "default": "",
+            "title": "Permanent Address",
+            "type": "string"
+          },
+          "place_of_work": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSPlaceOfWorkValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "present_employment_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSPresentEmploymentStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "present_occupation": {
+            "default": "",
+            "title": "Present Occupation",
+            "type": "string"
+          },
+          "professional_exams": {
+            "items": {
+              "$ref": "#/components/schemas/GraduateTracerProfessionalExamPayload"
+            },
+            "title": "Professional Exams",
+            "type": "array"
+          },
+          "province": {
+            "default": "",
+            "title": "Province",
+            "type": "string"
+          },
+          "reasons_for_accepting_first_job": {
+            "items": {
+              "$ref": "#/components/schemas/GTSJobReasonValue"
+            },
+            "title": "Reasons For Accepting First Job",
+            "type": "array"
+          },
+          "reasons_for_accepting_other": {
+            "default": "",
+            "title": "Reasons For Accepting Other",
+            "type": "string"
+          },
+          "reasons_for_changing_job": {
+            "items": {
+              "$ref": "#/components/schemas/GTSJobReasonValue"
+            },
+            "title": "Reasons For Changing Job",
+            "type": "array"
+          },
+          "reasons_for_changing_other": {
+            "default": "",
+            "title": "Reasons For Changing Other",
+            "type": "string"
+          },
+          "reasons_for_staying_on_job": {
+            "items": {
+              "$ref": "#/components/schemas/GTSStayingReasonValue"
+            },
+            "title": "Reasons For Staying On Job",
+            "type": "array"
+          },
+          "reasons_for_staying_other": {
+            "default": "",
+            "title": "Reasons For Staying Other",
+            "type": "string"
+          },
+          "region_of_origin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSRegionOfOriginValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "residence_location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSResidenceLocationValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "self_employed_college_skills": {
+            "default": "",
+            "title": "Self Employed College Skills",
+            "type": "string"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSSexValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/GraduateTracerStatusValue"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "telephone_contact_numbers": {
+            "default": "",
+            "title": "Telephone Contact Numbers",
+            "type": "string"
+          },
+          "time_to_first_job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSFirstJobDurationValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "time_to_first_job_other": {
+            "default": "",
+            "title": "Time To First Job Other",
+            "type": "string"
+          },
+          "trainings": {
+            "items": {
+              "$ref": "#/components/schemas/GraduateTracerTrainingPayload"
+            },
+            "title": "Trainings",
+            "type": "array"
+          },
+          "undergraduate_degree_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/GTSDegreeReasonValue"
+            },
+            "title": "Undergraduate Degree Reasons",
+            "type": "array"
+          },
+          "unemployment_other_reason": {
+            "default": "",
+            "title": "Unemployment Other Reason",
+            "type": "string"
+          },
+          "unemployment_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/GTSUnemploymentReasonValue"
+            },
+            "title": "Unemployment Reasons",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "useful_competencies": {
+            "items": {
+              "$ref": "#/components/schemas/GTSUsefulCompetencyValue"
+            },
+            "title": "Useful Competencies",
+            "type": "array"
+          },
+          "useful_competencies_other": {
+            "default": "",
+            "title": "Useful Competencies Other",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "student_id",
+          "instrument_schema_version",
+          "status",
+          "submitted_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "GraduateTracerDetailResponse",
+        "type": "object"
+      },
+      "GraduateTracerDraftPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "advanced_study_other_reason": {
+            "default": "",
+            "title": "Advanced Study Other Reason",
+            "type": "string"
+          },
+          "advanced_study_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/GTSAdvancedStudyReasonValue"
+            },
+            "title": "Advanced Study Reasons",
+            "type": "array"
+          },
+          "birth_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "civil_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSCivilStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "current_employment_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSEmploymentStateValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "current_job_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSJobLevelValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "curriculum_improvement_suggestions": {
+            "default": "",
+            "title": "Curriculum Improvement Suggestions",
+            "type": "string"
+          },
+          "curriculum_relevant_to_first_job": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curriculum Relevant To First Job"
+          },
+          "degree_other_reason": {
+            "default": "",
+            "title": "Degree Other Reason",
+            "type": "string"
+          },
+          "education": {
+            "items": {
+              "$ref": "#/components/schemas/GraduateTracerEducationPayload"
+            },
+            "title": "Education",
+            "type": "array"
+          },
+          "email": {
+            "default": "",
+            "title": "Email",
+            "type": "string"
+          },
+          "employer_business_line": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSBusinessLineValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_job_after_college": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Job After College"
+          },
+          "first_job_duration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSFirstJobDurationValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_job_duration_other": {
+            "default": "",
+            "title": "First Job Duration Other",
+            "type": "string"
+          },
+          "first_job_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSJobLevelValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_job_related_to_course": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Job Related To Course"
+          },
+          "first_job_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSFirstJobSourceValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_job_source_other": {
+            "default": "",
+            "title": "First Job Source Other",
+            "type": "string"
+          },
+          "graduate_study_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/GTSDegreeReasonValue"
+            },
+            "title": "Graduate Study Reasons",
+            "type": "array"
+          },
+          "initial_gross_monthly_earning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSEarningBracketValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mobile_number": {
+            "default": "",
+            "title": "Mobile Number",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "permanent_address": {
+            "default": "",
+            "title": "Permanent Address",
+            "type": "string"
+          },
+          "place_of_work": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSPlaceOfWorkValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "present_employment_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSPresentEmploymentStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "present_occupation": {
+            "default": "",
+            "title": "Present Occupation",
+            "type": "string"
+          },
+          "professional_exams": {
+            "items": {
+              "$ref": "#/components/schemas/GraduateTracerProfessionalExamPayload"
+            },
+            "title": "Professional Exams",
+            "type": "array"
+          },
+          "province": {
+            "default": "",
+            "title": "Province",
+            "type": "string"
+          },
+          "reasons_for_accepting_first_job": {
+            "items": {
+              "$ref": "#/components/schemas/GTSJobReasonValue"
+            },
+            "title": "Reasons For Accepting First Job",
+            "type": "array"
+          },
+          "reasons_for_accepting_other": {
+            "default": "",
+            "title": "Reasons For Accepting Other",
+            "type": "string"
+          },
+          "reasons_for_changing_job": {
+            "items": {
+              "$ref": "#/components/schemas/GTSJobReasonValue"
+            },
+            "title": "Reasons For Changing Job",
+            "type": "array"
+          },
+          "reasons_for_changing_other": {
+            "default": "",
+            "title": "Reasons For Changing Other",
+            "type": "string"
+          },
+          "reasons_for_staying_on_job": {
+            "items": {
+              "$ref": "#/components/schemas/GTSStayingReasonValue"
+            },
+            "title": "Reasons For Staying On Job",
+            "type": "array"
+          },
+          "reasons_for_staying_other": {
+            "default": "",
+            "title": "Reasons For Staying Other",
+            "type": "string"
+          },
+          "region_of_origin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSRegionOfOriginValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "residence_location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSResidenceLocationValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "self_employed_college_skills": {
+            "default": "",
+            "title": "Self Employed College Skills",
+            "type": "string"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSSexValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "telephone_contact_numbers": {
+            "default": "",
+            "title": "Telephone Contact Numbers",
+            "type": "string"
+          },
+          "time_to_first_job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSFirstJobDurationValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "time_to_first_job_other": {
+            "default": "",
+            "title": "Time To First Job Other",
+            "type": "string"
+          },
+          "trainings": {
+            "items": {
+              "$ref": "#/components/schemas/GraduateTracerTrainingPayload"
+            },
+            "title": "Trainings",
+            "type": "array"
+          },
+          "undergraduate_degree_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/GTSDegreeReasonValue"
+            },
+            "title": "Undergraduate Degree Reasons",
+            "type": "array"
+          },
+          "unemployment_other_reason": {
+            "default": "",
+            "title": "Unemployment Other Reason",
+            "type": "string"
+          },
+          "unemployment_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/GTSUnemploymentReasonValue"
+            },
+            "title": "Unemployment Reasons",
+            "type": "array"
+          },
+          "useful_competencies": {
+            "items": {
+              "$ref": "#/components/schemas/GTSUsefulCompetencyValue"
+            },
+            "title": "Useful Competencies",
+            "type": "array"
+          },
+          "useful_competencies_other": {
+            "default": "",
+            "title": "Useful Competencies Other",
+            "type": "string"
+          }
+        },
+        "title": "GraduateTracerDraftPayload",
+        "type": "object"
+      },
+      "GraduateTracerEducationPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "college_or_university": {
+            "title": "College Or University",
+            "type": "string"
+          },
+          "degree_and_specialization": {
+            "title": "Degree And Specialization",
+            "type": "string"
+          },
+          "honors_or_awards": {
+            "default": "",
+            "title": "Honors Or Awards",
+            "type": "string"
+          },
+          "year_graduated": {
+            "minimum": 1900,
+            "title": "Year Graduated",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "degree_and_specialization",
+          "college_or_university",
+          "year_graduated"
+        ],
+        "title": "GraduateTracerEducationPayload",
+        "type": "object"
+      },
+      "GraduateTracerPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GraduateTracerSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "GraduateTracerPageResponse",
+        "type": "object"
+      },
+      "GraduateTracerProfessionalExamPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "date_taken": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Taken"
+          },
+          "examination_name": {
+            "title": "Examination Name",
+            "type": "string"
+          },
+          "rating": {
+            "default": "",
+            "title": "Rating",
+            "type": "string"
+          }
+        },
+        "required": [
+          "examination_name"
+        ],
+        "title": "GraduateTracerProfessionalExamPayload",
+        "type": "object"
+      },
+      "GraduateTracerStatusValue": {
+        "enum": [
+          "DRAFT",
+          "SUBMITTED"
+        ],
+        "title": "GraduateTracerStatusValue",
+        "type": "string"
+      },
+      "GraduateTracerSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "current_employment_state": {
+            "$ref": "#/components/schemas/GTSEmploymentStateValue"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "instrument_schema_version": {
+            "title": "Instrument Schema Version",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "student_id",
+          "name",
+          "current_employment_state",
+          "instrument_schema_version",
+          "submitted_at"
+        ],
+        "title": "GraduateTracerSummaryResponse",
+        "type": "object"
+      },
+      "GraduateTracerTrainingPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "duration_and_credits": {
+            "default": "",
+            "title": "Duration And Credits",
+            "type": "string"
+          },
+          "institution": {
+            "default": "",
+            "title": "Institution",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "GraduateTracerTrainingPayload",
         "type": "object"
       },
       "HandednessValue": {
@@ -10356,6 +11530,9 @@
                 "good_moral.request_self",
                 "good_moral.view",
                 "good_moral.view_self",
+                "graduate_tracer.manage_self",
+                "graduate_tracer.view",
+                "graduate_tracer.view_self",
                 "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
@@ -10506,6 +11683,9 @@
                 "good_moral.request_self",
                 "good_moral.view",
                 "good_moral.view_self",
+                "graduate_tracer.manage_self",
+                "graduate_tracer.view",
+                "graduate_tracer.view_self",
                 "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
@@ -19513,6 +20693,446 @@
         ]
       }
     },
+    "/api/v1/graduate-tracer/me": {
+      "get": {
+        "operationId": "graduateTracerGetMyResponse",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraduateTracerDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Graduate Tracer Get My Response",
+        "tags": [
+          "graduate-tracer"
+        ]
+      },
+      "post": {
+        "operationId": "graduateTracerEnsureMyResponse",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraduateTracerDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Graduate Tracer Ensure My Response",
+        "tags": [
+          "graduate-tracer"
+        ]
+      },
+      "put": {
+        "operationId": "graduateTracerReplaceMyDraft",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraduateTracerDraftPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraduateTracerDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Graduate Tracer Replace My Draft",
+        "tags": [
+          "graduate-tracer"
+        ]
+      }
+    },
+    "/api/v1/graduate-tracer/me/submit": {
+      "post": {
+        "operationId": "graduateTracerSubmitMyResponse",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraduateTracerDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Graduate Tracer Submit My Response",
+        "tags": [
+          "graduate-tracer"
+        ]
+      }
+    },
+    "/api/v1/graduate-tracer/responses": {
+      "get": {
+        "operationId": "graduateTracerListResponses",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraduateTracerPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Graduate Tracer List Responses",
+        "tags": [
+          "graduate-tracer"
+        ]
+      }
+    },
+    "/api/v1/graduate-tracer/responses/{response_id}": {
+      "get": {
+        "operationId": "graduateTracerGetResponse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "response_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Response Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraduateTracerDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Graduate Tracer Get Response",
+        "tags": [
+          "graduate-tracer"
+        ]
+      }
+    },
     "/api/v1/health/live": {
       "get": {
         "operationId": "healthLive",
@@ -24475,6 +26095,10 @@
     {
       "description": "Customer Feedback and Client Satisfaction Measurement submissions and review.",
       "name": "feedback"
+    },
+    {
+      "description": "Graduate outcome survey draft, submission, and restricted review.",
+      "name": "graduate-tracer"
     },
     {
       "description": "Student graduating Exit Interview survey, self-assessment, institutional feedback, and controlled correction lifecycle.",
