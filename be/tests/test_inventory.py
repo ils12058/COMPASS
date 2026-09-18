@@ -172,14 +172,14 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
     item = ensure_current_inventory(student=student, context=context(student))
     program = configure_program()
 
+    baseline = minimum_normalized_inventory_values(program_id=program.pk)
     updated = replace_current_inventory(
         student=student,
         values={
+            **baseline,
             "full_name_snapshot": "Student Snapshot",
             "nickname": "Stu",
             "student_number": "2026-001",
-            "program_id": program.pk,
-            "year_level": 1,
             "course_currently_enrolled": "Client should not win",
             "parent_statuses": ["MOTHER_OFW"],
             "living_arrangement": "BOARDING_HOUSE",
@@ -193,10 +193,19 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
             "prior_counseling_experience": False,
             "family_members": [
                 {
+                    "kind": "FATHER",
+                    "life_status": "NOT_SPECIFIED",
+                    "occupation_category": "NOT_SPECIFIED",
+                    "annual_income_status": "NOT_SPECIFIED",
+                },
+                {
                     "kind": "MOTHER",
+                    "life_status": "LIVING",
                     "name": "Parent Snapshot",
                     "occupation": "Teacher",
-                }
+                    "occupation_category": "GOVERNMENT_EMPLOYEE",
+                    "annual_income_status": "NOT_SPECIFIED",
+                },
             ],
             "siblings": [
                 {
@@ -223,7 +232,14 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
                     "position_title": "Member",
                 }
             ],
-            "transportation_entries": [{"mode": "TRICYCLE", "frequency": "Daily", "fare": "20.00"}],
+            "transportation_entries": [
+                {
+                    "mode": "TRICYCLE",
+                    "frequency_category": "DAILY",
+                    "frequency": "Daily",
+                    "fare": "20.00",
+                }
+            ],
         },
     )
     assert updated.pk == item.pk
@@ -231,7 +247,7 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
     assert updated.program_id == program.pk
     assert updated.year_level == 1
     assert updated.course_currently_enrolled == program.name
-    assert updated.family_members.get().kind == "MOTHER"
+    assert updated.family_members.get(kind="MOTHER").name == "Parent Snapshot"
     assert updated.siblings.get().is_self
     assert updated.education_entries.get().level == "SENIOR_HIGH"
     assert updated.organization_memberships.get().scope == "INSIDE_SCHOOL"
@@ -253,18 +269,14 @@ def test_submission_enforces_only_confirmed_conditional_consistency():
     actor = make_user("actor@example.edu", "IT_ADMIN")
     configure_year(actor)
     ensure_current_inventory(student=student, context=context(student))
-    set_inventory_context(student)
+    program = set_inventory_context(student)
 
     replace_current_inventory(
         student=student,
         values={
+            **minimum_normalized_inventory_values(program_id=program.pk),
             "immunizations": ["OTHER"],
             "immunization_other": "",
-            "family_members": [],
-            "siblings": [],
-            "education_entries": [],
-            "organization_memberships": [],
-            "transportation_entries": [],
         },
     )
     with pytest.raises(InvalidInventoryInput, match="immunization_other"):
@@ -273,28 +285,20 @@ def test_submission_enforces_only_confirmed_conditional_consistency():
     replace_current_inventory(
         student=student,
         values={
+            **minimum_normalized_inventory_values(program_id=program.pk),
             "immunizations": [],
             "prior_counseling_experience": None,
             "prior_counselor_name": "",
-            "family_members": [],
-            "siblings": [],
-            "education_entries": [],
-            "organization_memberships": [],
-            "transportation_entries": [],
         },
     )
     with pytest.raises(InvalidInventoryInput, match="Prior Counselor"):
         replace_current_inventory(
             student=student,
             values={
+                **minimum_normalized_inventory_values(program_id=program.pk),
                 "immunizations": [],
                 "prior_counseling_experience": False,
                 "prior_counselor_name": "Should be empty",
-                "family_members": [],
-                "siblings": [],
-                "education_entries": [],
-                "organization_memberships": [],
-                "transportation_entries": [],
             },
         )
 
