@@ -123,7 +123,10 @@ def test_civil_status_other_requires_detail_and_not_specified_does_not_invent_te
 
     other = replace_current_inventory(
         student=student,
-        values={"civil_status_category": CivilStatusCategory.OTHER, "civil_status": "Custom status"},
+        values={
+            "civil_status_category": CivilStatusCategory.OTHER,
+            "civil_status": "Custom status",
+        },
     )
     assert other.civil_status == "Custom status"
 
