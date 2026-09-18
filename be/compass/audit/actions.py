@@ -10,6 +10,7 @@ ACCOUNT_DESIGNATION_REMOVED = "account.designation.removed"
 ACCOUNT_CAPABILITY_OVERRIDE_SET = "account.capability.override.set"
 ACCOUNT_CAPABILITY_OVERRIDE_REMOVED = "account.capability.override.removed"
 ACCOUNT_MFA_RESET = "account.mfa.reset"
+PROFILE_UPDATED = "profile.updated"
 IDENTITY_POLICY_SYNCED = "identity.policy.synced"
 ORGANIZATION_CAMPUS_CREATED = "organization.campus.created"
 ORGANIZATION_CAMPUS_UPDATED = "organization.campus.updated"
@@ -81,6 +82,7 @@ __all__ = [
     "ACCOUNT_CAPABILITY_OVERRIDE_SET",
     "ACCOUNT_CAPABILITY_OVERRIDE_REMOVED",
     "ACCOUNT_MFA_RESET",
+    "PROFILE_UPDATED",
     "IDENTITY_POLICY_SYNCED",
     "ORGANIZATION_CAMPUS_CREATED",
     "ORGANIZATION_CAMPUS_UPDATED",
