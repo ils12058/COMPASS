@@ -460,7 +460,8 @@ def create_call_slip(
         student = _validate_student(student)
         if not _student_in_scope(locked_actor, student.pk):
             raise CallSlipNotPermitted(
-                "The selected Student is outside the authenticated Guidance actor's Call Slip scope."
+                "The selected Student is outside the authenticated Guidance actor's "
+                "Call Slip scope."
             )
 
         referral = None
