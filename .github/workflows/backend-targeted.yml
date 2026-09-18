@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   targeted-backend:
@@ -64,17 +64,6 @@ jobs:
       - name: Generate OpenAPI contract
         working-directory: be
         run: uv run python manage.py export_openapi --settings=tests.settings
-      - name: Commit generated OpenAPI
-        if: github.event_name == 'pull_request'
-        run: |
-          if git diff --quiet -- contracts/openapi.json; then
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add contracts/openapi.json
-          git commit -m "Update generated OpenAPI contract"
-          git push origin HEAD:${{ github.head_ref }}
       - name: Upload generated OpenAPI
         if: always()
         uses: actions/upload-artifact@v4
