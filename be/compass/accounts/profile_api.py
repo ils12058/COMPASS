@@ -49,10 +49,10 @@ class MyProfileResponse(StrictSchema):
 
 class MyProfileUpdateRequest(StrictSchema):
     date_of_birth: date | None = None
-    civil_status: str | None = None
-    contact_number: str | None = None
-    current_address: str | None = None
-    permanent_address: str | None = None
+    civil_status: str = ""
+    contact_number: str = ""
+    current_address: str = ""
+    permanent_address: str = ""
 
 
 def _serialize(user) -> dict[str, object]:
@@ -105,20 +105,6 @@ def get_my_profile(request):
 )
 def patch_my_profile(request, payload: MyProfileUpdateRequest):
     changes = payload.model_dump(exclude_unset=True)
-    # Keep the string-field contract explicit: empty string clears; null is only valid for DOB.
-    for field_name in (
-        "civil_status",
-        "contact_number",
-        "current_address",
-        "permanent_address",
-    ):
-        if field_name in changes and changes[field_name] is None:
-            raise APIError(
-                422,
-                "invalid_profile_request",
-                f"{field_name} must be text.",
-            )
-
     try:
         result = update_my_profile(
             user=request.auth_user,
