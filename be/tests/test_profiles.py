@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 from datetime import timedelta
+import json
 from unittest.mock import patch
 
 import pytest
