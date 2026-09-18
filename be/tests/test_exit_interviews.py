@@ -970,7 +970,7 @@ def test_non_current_student_keeps_exit_history_but_cannot_mutate_or_be_reopened
     sync_policy()
     student = make_user(f"exit-{status.lower()}@example.edu")
     head = make_head(f"head-{status.lower()}@example.edu")
-    current = make_year(label=f"209{8 if status == StudentLifecycleStatus.GRADUATED else 7}-2099")
+    current = make_year(label="2099-2100")
     make_inventory(student, current, submitted=True)
     student_client = auth_client(student)
 
