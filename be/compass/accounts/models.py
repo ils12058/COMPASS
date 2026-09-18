@@ -139,6 +139,11 @@ class User(AbstractBaseUser):
     middle_name = models.CharField(max_length=150, blank=True, default="")
     last_name = models.CharField(max_length=150)
     suffix = models.CharField(max_length=32, blank=True, default="")
+    date_of_birth = models.DateField(blank=True, null=True)
+    civil_status = models.CharField(max_length=80, blank=True, default="")
+    contact_number = models.CharField(max_length=64, blank=True, default="")
+    current_address = models.TextField(blank=True, default="")
+    permanent_address = models.TextField(blank=True, default="")
     role = models.ForeignKey(
         Role,
         on_delete=models.PROTECT,
