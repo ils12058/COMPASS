@@ -694,9 +694,7 @@ def set_student_lifecycle(
     ) as (_locked_actor, target):
         assert target is not None
         if target.pk == actor.pk:
-            raise SelfTargetForbidden(
-                "an administrator cannot change their own Student lifecycle"
-            )
+            raise SelfTargetForbidden("an administrator cannot change their own Student lifecycle")
         if target.role.code != "STUDENT":
             raise StudentLifecycleConflict(
                 "Student lifecycle can only be changed for a STUDENT-role account."
