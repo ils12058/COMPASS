@@ -46,9 +46,7 @@ def get_document_assets(*, include_accreditation_footer: bool) -> dict[str, str 
         "ucn_logo": get_asset_data_uri("ucn_logo"),
         "bagong_pilipinas_logo": get_asset_data_uri("bagong_pilipinas_logo"),
         "accreditation_footer": (
-            get_asset_data_uri("accreditation_footer")
-            if include_accreditation_footer
-            else None
+            get_asset_data_uri("accreditation_footer") if include_accreditation_footer else None
         ),
     }
 
