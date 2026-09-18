@@ -40,6 +40,7 @@ from compass.organization.services import (
     set_program_active,
     update_program,
 )
+from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
 def sync_policy() -> None:
@@ -336,8 +337,7 @@ def test_inventory_submission_requires_structured_program_and_year_level():
     replace_current_inventory(
         student=student,
         values={
-            "program_id": program.pk,
-            "year_level": 1,
+            **minimum_normalized_inventory_values(program_id=program.pk),
             "course_currently_enrolled": "Wrong input",
         },
     )
@@ -388,7 +388,10 @@ def test_submitted_inventory_snapshot_survives_program_rename_and_deactivation()
     ensure_current_inventory(student=student, context=context(student))
     replace_current_inventory(
         student=student,
-        values={"program_id": program.pk, "year_level": 4},
+        values=minimum_normalized_inventory_values(
+            program_id=program.pk,
+            year_level=4,
+        ),
     )
     submitted = submit_current_inventory(student=student, context=context(student))
     frozen_course = submitted.course_currently_enrolled
@@ -436,7 +439,10 @@ def test_inventory_program_does_not_mutate_guidance_student_affiliation():
     ensure_current_inventory(student=student, context=context(student))
     replace_current_inventory(
         student=student,
-        values={"program_id": program_b.pk, "year_level": 2},
+        values=minimum_normalized_inventory_values(
+            program_id=program_b.pk,
+            year_level=2,
+        ),
     )
     submitted = submit_current_inventory(student=student, context=context(student))
 
