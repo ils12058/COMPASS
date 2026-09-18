@@ -1,0 +1,9 @@
+{% if controlled_form %}
+<footer class="controlled-form-metadata">
+  <div>
+    {% if controlled_form.official_code %}<span>{{ controlled_form.official_code }}</span>{% endif %}
+    {% if controlled_form.official_revision %}<span>Revision: {{ controlled_form.official_revision }}</span>{% endif %}
+  </div>
+  {% if controlled_form.page_label %}<div>{{ controlled_form.page_label }}</div>{% endif %}
+</footer>
+{% endif %}
