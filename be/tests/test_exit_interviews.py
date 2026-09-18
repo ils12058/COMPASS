@@ -18,6 +18,7 @@ from compass.accounts.models import (
     DesignationCapability,
     Role,
     RoleCapability,
+    StudentLifecycleStatus,
     User,
     UserDesignation,
 )
@@ -958,3 +959,56 @@ def test_database_constraints_protect_rating_ranges_and_item_codes():
                 item_code=CollegeFeedbackItem.DEAN_AVAILABILITY,
                 rating=6,
             )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "status",
+    [StudentLifecycleStatus.GRADUATED, StudentLifecycleStatus.FORMER],
+)
+def test_non_current_student_keeps_exit_history_but_cannot_mutate_or_be_reopened(status):
+    sync_policy()
+    student = make_user(f"exit-{status.lower()}@example.edu")
+    head = make_head(f"head-{status.lower()}@example.edu")
+    current = make_year(label="2099-2100")
+    make_inventory(student, current, submitted=True)
+    student_client = auth_client(student)
+
+    ensured = ensure_api(student_client)
+    assert ensured.status_code == 200
+    exit_id = ensured.json()["id"]
+    assert put_api(student_client, valid_payload()).status_code == 200
+    assert submit_api(student_client).status_code == 200
+
+    student.student_lifecycle_status = status
+    student.save(update_fields=["student_lifecycle_status", "updated_at"])
+
+    current_read = student_client.get("/api/v1/exit-interviews/me/current")
+    assert current_read.status_code == 200
+    listing = student_client.get("/api/v1/exit-interviews/me")
+    assert listing.status_code == 200
+    detail = student_client.get(f"/api/v1/exit-interviews/me/{exit_id}")
+    assert detail.status_code == 200
+
+    blocked_ensure = ensure_api(student_client)
+    assert blocked_ensure.status_code == 409
+    assert blocked_ensure.json()["error"]["code"] == "current_student_required"
+    blocked_edit = put_api(student_client, valid_payload())
+    assert blocked_edit.status_code == 409
+    assert blocked_edit.json()["error"]["code"] == "current_student_required"
+    blocked_submit = submit_api(student_client)
+    assert blocked_submit.status_code == 409
+    assert blocked_submit.json()["error"]["code"] == "current_student_required"
+
+    head_client = auth_client(head)
+    reopen = head_client.post(
+        f"/api/v1/exit-interviews/{exit_id}/reopen",
+        data=json.dumps({"reason": "Administrative correction request"}),
+        content_type="application/json",
+        **csrf(head_client),
+    )
+    assert reopen.status_code == 409
+    assert reopen.json()["error"]["code"] == "current_student_required"
+    row = ExitInterview.objects.get(pk=exit_id)
+    assert row.status == "SUBMITTED"
+    assert not ExitInterviewReopenEvent.objects.filter(exit_interview=row).exists()

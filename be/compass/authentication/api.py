@@ -68,6 +68,7 @@ class UserSummary(Schema):
     first_name: str
     last_name: str
     role: str
+    student_lifecycle_status: str | None
 
 
 class CSRFResponse(Schema):
@@ -228,6 +229,7 @@ def _user_summary(user) -> dict[str, object]:
         "first_name": user.first_name,
         "last_name": user.last_name,
         "role": user.role.code,
+        "student_lifecycle_status": user.student_lifecycle_status,
     }
 
 

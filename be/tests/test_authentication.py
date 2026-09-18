@@ -11,7 +11,7 @@ from django.db import transaction
 from django.test import Client, override_settings
 from django.utils import timezone
 
-from compass.accounts.models import Role, User
+from compass.accounts.models import Role, StudentLifecycleStatus, User
 from compass.audit.models import AuditEvent
 from compass.authentication.abuse import (
     AuthenticationRateLimited,
@@ -600,3 +600,45 @@ def test_turnstile_required_login_uses_server_side_verifier_without_persisting_t
             )
             assert accepted.status == "success"
     assert not EmailOTPChallenge.objects.filter(email="valid-token").exists()
+
+
+@pytest.mark.django_db
+def test_authenticated_user_summary_exposes_lifecycle_without_blocking_former_login():
+    student = make_user(email="lifecycle-auth@example.edu")
+    client = Client()
+
+    current = login(client, email=student.email, password="correct-password")
+    assert current.status_code == 200
+    assert current.json()["user"]["student_lifecycle_status"] == "CURRENT"
+    session = client.get("/api/v1/auth/session")
+    assert session.status_code == 200
+    assert session.json()["user"]["student_lifecycle_status"] == "CURRENT"
+
+    for status in (
+        StudentLifecycleStatus.GRADUATED,
+        StudentLifecycleStatus.FORMER,
+    ):
+        student.student_lifecycle_status = status
+        student.save(update_fields=["student_lifecycle_status", "updated_at"])
+        another_client = Client()
+        response = login(
+            another_client,
+            email=student.email,
+            password="correct-password",
+        )
+        assert response.status_code == 200
+        assert response.json()["authenticated"] is True
+        assert response.json()["user"]["student_lifecycle_status"] == status
+
+    counselor = make_user(
+        email="nonstudent-lifecycle-auth@example.edu",
+        role_code="COUNSELOR",
+    )
+    counselor_client = Client()
+    counselor_login = login(
+        counselor_client,
+        email=counselor.email,
+        password="correct-password",
+    )
+    assert counselor_login.status_code == 200
+    assert counselor_login.json()["user"]["student_lifecycle_status"] is None

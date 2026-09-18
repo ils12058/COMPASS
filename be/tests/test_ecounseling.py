@@ -11,7 +11,13 @@ from django.core.management import call_command
 from django.test import Client, override_settings
 from django.utils import timezone
 
-from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.accounts.models import (
+    Designation,
+    Role,
+    StudentLifecycleStatus,
+    User,
+    UserDesignation,
+)
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
@@ -20,6 +26,7 @@ from compass.counseling.models import CounselingEncounter
 from compass.ecounseling.models import DailyWebhookReceipt, ECounselingRoom
 from compass.ecounseling.services import (
     ECounselingAppointmentNotEligible,
+    ECounselingCurrentStudentRequired,
     ECounselingNotPermitted,
     ECounselingProviderUnavailable,
     create_join_credential,
@@ -403,3 +410,42 @@ def test_join_api_is_no_store_and_returns_token_separately_from_room_url():
         )
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "ecounseling_provider_disabled"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "status",
+    [StudentLifecycleStatus.GRADUATED, StudentLifecycleStatus.FORMER],
+)
+def test_non_current_student_can_read_ecounseling_workspace_but_cannot_join(status):
+    sync_policy()
+    admin = make_user(f"ec-admin-{status.lower()}@example.edu", "IT_ADMIN")
+    student = make_user(f"ec-student-{status.lower()}@example.edu", "STUDENT")
+    counselor = make_user(f"ec-counselor-{status.lower()}@example.edu", "COUNSELOR")
+    service = create_counseling_service(admin)
+    appointment = make_appointment(
+        student=student,
+        counselor=counselor,
+        service=service,
+    )
+    student.student_lifecycle_status = status
+    student.save(update_fields=["student_lifecycle_status", "updated_at"])
+
+    student_workspace = get_student_workspace(
+        student=student,
+        appointment_id=appointment.pk,
+    )
+    counselor_workspace = get_counselor_workspace(
+        counselor=counselor,
+        appointment_id=appointment.pk,
+    )
+    assert student_workspace["appointment"]["id"] == appointment.pk
+    assert counselor_workspace["appointment"]["id"] == appointment.pk
+
+    with pytest.raises(ECounselingCurrentStudentRequired):
+        create_join_credential(
+            actor=student,
+            appointment_id=appointment.pk,
+            context=context(student),
+            daily_client=FakeDailyClient(),
+        )

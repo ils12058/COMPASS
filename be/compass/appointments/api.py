@@ -32,6 +32,7 @@ from .services import (
     AppointmentCancellationConflict,
     AppointmentCurrentAcademicYearNotConfigured,
     AppointmentCurrentInventoryRequired,
+    AppointmentCurrentStudentRequired,
     AppointmentDefaultProviderUnresolved,
     AppointmentError,
     AppointmentNotFound,
@@ -133,6 +134,8 @@ def _require_student_self_management(request) -> None:
 
 
 def _raise(exc: AppointmentError) -> NoReturn:
+    if isinstance(exc, AppointmentCurrentStudentRequired):
+        raise APIError(409, "current_student_required", str(exc)) from exc
     if isinstance(exc, AppointmentCurrentAcademicYearNotConfigured):
         raise APIError(409, "current_academic_year_not_configured", str(exc)) from exc
     if isinstance(exc, AppointmentCurrentInventoryRequired):

@@ -51,6 +51,7 @@ EXPECTED_OPERATION_IDS = {
     "accountsDisable",
     "accountsEnable",
     "accountsChangeRole",
+    "accountsUpdateStudentLifecycle",
     "accountsListDesignations",
     "accountsAssignDesignation",
     "accountsRemoveDesignation",
@@ -338,6 +339,16 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert expected_schemas <= schemas.keys()
     assert schemas["AccountSummaryResponse"]["properties"]["id"]["format"] == "uuid"
     assert schemas["AccountSummaryResponse"]["properties"]["created_at"]["format"] == "date-time"
+    assert "student_lifecycle_status" in schemas["AccountSummaryResponse"]["properties"]
+    assert "student_lifecycle_status" in schemas["UserSummary"]["properties"]
+    assert (
+        _operation(
+            schema,
+            "/api/v1/accounts/{user_id}/student-lifecycle",
+            "put",
+        )["operationId"]
+        == "accountsUpdateStudentLifecycle"
+    )
     assert schemas["AccountListResponse"]["properties"]["items"]["type"] == "array"
     assert schemas["APIErrorResponse"]["properties"]["error"]["$ref"].endswith("/APIErrorDetail")
     assert schemas["APIErrorDetail"]["properties"]["details"]["anyOf"]

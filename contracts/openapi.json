@@ -236,6 +236,16 @@
           "role": {
             "$ref": "#/components/schemas/RoleCode"
           },
+          "student_lifecycle_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudentLifecycleCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "suffix": {
             "title": "Suffix",
             "type": "string"
@@ -255,6 +265,7 @@
           "suffix",
           "full_name",
           "role",
+          "student_lifecycle_status",
           "designations",
           "is_active",
           "created_at",
@@ -344,6 +355,16 @@
           "role": {
             "$ref": "#/components/schemas/RoleCode"
           },
+          "student_lifecycle_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudentLifecycleCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "suffix": {
             "title": "Suffix",
             "type": "string"
@@ -358,6 +379,7 @@
           "suffix",
           "full_name",
           "role",
+          "student_lifecycle_status",
           "designations",
           "is_active",
           "created_at"
@@ -7744,6 +7766,28 @@
         "title": "StudentAffiliationResponse",
         "type": "object"
       },
+      "StudentLifecycleCode": {
+        "enum": [
+          "CURRENT",
+          "FORMER",
+          "GRADUATED"
+        ],
+        "title": "StudentLifecycleCode",
+        "type": "string"
+      },
+      "StudentLifecycleUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/StudentLifecycleCode"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "StudentLifecycleUpdateRequest",
+        "type": "object"
+      },
       "StudentRoutineDetailResponse": {
         "additionalProperties": false,
         "properties": {
@@ -8269,6 +8313,17 @@
           "role": {
             "title": "Role",
             "type": "string"
+          },
+          "student_lifecycle_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Lifecycle Status"
           }
         },
         "required": [
@@ -8276,7 +8331,8 @@
           "email",
           "first_name",
           "last_name",
-          "role"
+          "role",
+          "student_lifecycle_status"
         ],
         "title": "UserSummary",
         "type": "object"
@@ -10221,6 +10277,104 @@
           }
         ],
         "summary": "Revoke all trusted sessions for a managed account",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/v1/accounts/{user_id}/student-lifecycle": {
+      "put": {
+        "operationId": "accountsUpdateStudentLifecycle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentLifecycleUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Update managed Student lifecycle",
         "tags": [
           "accounts"
         ]

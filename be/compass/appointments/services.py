@@ -13,6 +13,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
+from compass.accounts.services import is_current_student
 from compass.audit.actions import APPOINTMENT_CANCELLED, APPOINTMENT_CREATED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
@@ -81,6 +82,10 @@ class AppointmentReferenceConflict(AppointmentError):
 
 
 class AppointmentCurrentInventoryRequired(AppointmentError):
+    pass
+
+
+class AppointmentCurrentStudentRequired(AppointmentError):
     pass
 
 
@@ -401,6 +406,10 @@ def create_student_appointment(
     context: AuditContext,
     now: datetime | None = None,
 ) -> Appointment:
+    if not is_current_student(student):
+        raise AppointmentCurrentStudentRequired(
+            "Current Student lifecycle is required to create a new Appointment."
+        )
     normalized_mode = _normalized_delivery_mode(delivery_mode)
     normalized_start = _aware_start(starts_at)
     current = now or timezone.now()
@@ -413,6 +422,10 @@ def create_student_appointment(
         locked_student = locked[student.pk]
         locked_provider = locked[initially_resolved_provider.pk]
         _validate_booking_users(locked_student, locked_provider)
+        if not is_current_student(locked_student):
+            raise AppointmentCurrentStudentRequired(
+                "Current Student lifecycle is required to create a new Appointment."
+            )
         if provider_id is None:
             _validate_default_provider_still_current(locked_student, locked_provider)
 
@@ -529,8 +542,10 @@ def list_eligible_counselors(
     *, student: User, service_id: UUID, delivery_mode: str
 ) -> tuple[EligibleCounselor, ...]:
     normalized_mode = _normalized_delivery_mode(delivery_mode)
-    if not student.is_active or student.role.code != "STUDENT":
-        raise AppointmentNotSchedulable("Only an active Student can discover booking Counselors.")
+    if not is_current_student(student):
+        raise AppointmentCurrentStudentRequired(
+            "Current Student lifecycle is required to discover booking Counselors."
+        )
     service = Service.objects.filter(pk=service_id).first()
     if service is None or not service.is_active:
         raise AppointmentNotSchedulable("The selected Service is not bookable.")

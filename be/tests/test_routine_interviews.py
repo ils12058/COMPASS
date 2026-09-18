@@ -8,7 +8,13 @@ from django.core.management import call_command
 from django.test import Client
 from django.utils import timezone
 
-from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.accounts.models import (
+    Designation,
+    Role,
+    StudentLifecycleStatus,
+    User,
+    UserDesignation,
+)
 from compass.appointments.models import Appointment
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
@@ -31,6 +37,7 @@ from compass.routine_interviews.models import RoutineInterview
 from compass.routine_interviews.services import (
     InvalidRoutineInterviewInput,
     RoutineInterviewCreationConflict,
+    RoutineInterviewCurrentStudentRequired,
     RoutineInterviewEncounterMismatch,
     RoutineInterviewEvaluationFinalized,
     RoutineInterviewIntakeRequired,
@@ -39,6 +46,7 @@ from compass.routine_interviews.services import (
     create_direct,
     ensure_for_appointment,
     finalize_assigned_evaluation,
+    get_mine,
     replace_assigned_evaluation,
     replace_my_intake,
     submit_my_intake,
@@ -685,3 +693,95 @@ def test_counseling_occurrence_remains_recordable_without_inventory_or_routine_i
     )
     assert encounter.pk is not None
     assert RoutineInterview.objects.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "status",
+    [StudentLifecycleStatus.GRADUATED, StudentLifecycleStatus.FORMER],
+)
+def test_non_current_student_routine_is_read_only_while_counselor_can_finish_existing(status):
+    sync_policy()
+    admin = make_user(f"routine-admin-{status.lower()}@example.edu", "IT_ADMIN")
+    student = make_user(f"routine-student-{status.lower()}@example.edu", "STUDENT")
+    counselor = make_user(f"routine-counselor-{status.lower()}@example.edu", "COUNSELOR")
+    configure_year(admin)
+    submit_inventory(student, student)
+    service = create_counseling_service(admin)
+    item = direct_routine(
+        counselor=counselor,
+        student=student,
+        key=f"existing-{status.lower()}",
+    )
+    replace_my_intake(
+        student=student,
+        routine_interview_id=item.pk,
+        values={"college_experience": "Submitted before lifecycle change."},
+    )
+    submit_my_intake(
+        student=student,
+        routine_interview_id=item.pk,
+        context=context(student),
+    )
+
+    student.student_lifecycle_status = status
+    student.save(update_fields=["student_lifecycle_status", "updated_at"])
+
+    assert get_mine(student=student, routine_interview_id=item.pk).pk == item.pk
+    with pytest.raises(RoutineInterviewCurrentStudentRequired):
+        replace_my_intake(
+            student=student,
+            routine_interview_id=item.pk,
+            values={"college_experience": "Blocked edit"},
+        )
+    with pytest.raises(RoutineInterviewCurrentStudentRequired):
+        submit_my_intake(
+            student=student,
+            routine_interview_id=item.pk,
+            context=context(student),
+        )
+    with pytest.raises(RoutineInterviewCurrentStudentRequired):
+        direct_routine(
+            counselor=counselor,
+            student=student,
+            key=f"new-{status.lower()}",
+        )
+
+    appointment = make_appointment(
+        student=student,
+        counselor=counselor,
+        service=service,
+    )
+    with pytest.raises(RoutineInterviewCurrentStudentRequired):
+        ensure_for_appointment(
+            student=student,
+            appointment_id=appointment.pk,
+            context=context(student),
+        )
+
+    saved = replace_assigned_evaluation(
+        counselor=counselor,
+        routine_interview_id=item.pk,
+        values={"academic_adjustment_rating": 7},
+    )
+    assert saved.academic_adjustment_rating == 7
+
+    end = timezone.now() - timedelta(minutes=5)
+    encounter = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        appointment=None,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=end - timedelta(minutes=45),
+        ended_at=end,
+        created_by=counselor,
+    )
+    finalized = finalize_assigned_evaluation(
+        counselor=counselor,
+        routine_interview_id=item.pk,
+        encounter_id=encounter.pk,
+        context=context(counselor),
+    )
+    assert finalized.evaluation_finalized_at is not None

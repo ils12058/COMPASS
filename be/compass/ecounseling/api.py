@@ -34,6 +34,7 @@ from .media import (
 )
 from .services import (
     ECounselingAppointmentNotEligible,
+    ECounselingCurrentStudentRequired,
     ECounselingError,
     ECounselingInvalidProviderResponse,
     ECounselingInvalidWebhook,
@@ -176,6 +177,8 @@ def _context(request) -> AuditContext:
 
 
 def _raise(exc: Exception) -> NoReturn:
+    if isinstance(exc, ECounselingCurrentStudentRequired):
+        raise APIError(409, "current_student_required", str(exc)) from exc
     if isinstance(exc, ECounselingConsentNotFound):
         raise APIError(404, "ecounseling_consent_not_found", str(exc)) from exc
     if isinstance(exc, ECounselingConsentNotApproved):

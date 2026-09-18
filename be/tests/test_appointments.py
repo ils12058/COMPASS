@@ -14,6 +14,7 @@ from compass.accounts.models import (
     Capability,
     Designation,
     Role,
+    StudentLifecycleStatus,
     User,
     UserCapabilityOverride,
     UserDesignation,
@@ -21,13 +22,16 @@ from compass.accounts.models import (
 from compass.appointments.models import Appointment, AppointmentReferenceCounter
 from compass.appointments.services import (
     AppointmentCancellationConflict,
+    AppointmentCurrentStudentRequired,
     AppointmentDefaultProviderUnresolved,
     AppointmentNotSchedulable,
     AppointmentTimeConflict,
     AppointmentTimeUnavailable,
     cancel_appointment,
     create_student_appointment,
+    get_appointment_for_actor,
     list_eligible_counselors,
+    list_my_appointments,
 )
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
@@ -856,3 +860,58 @@ def test_database_constraints_preserve_local_appointment_invariants():
                 starts_at=now,
                 ends_at=now,
             )
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
+@pytest.mark.parametrize(
+    "status",
+    [StudentLifecycleStatus.GRADUATED, StudentLifecycleStatus.FORMER],
+)
+def test_non_current_student_cannot_book_but_can_read_and_cancel_existing(status):
+    sync_policy()
+    admin = make_user(f"booking-admin-{status.lower()}@example.edu", "IT_ADMIN")
+    student = make_user(f"booking-student-{status.lower()}@example.edu", "STUDENT")
+    counselor = make_user(f"booking-counselor-{status.lower()}@example.edu", "COUNSELOR")
+    service = active_service(admin)
+    configure_availability(admin, counselor)
+    start = future_local_start()
+
+    existing = create_student_appointment(
+        student=student,
+        service_id=service.pk,
+        provider_id=counselor.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=start,
+        context=context(student),
+        now=start - timedelta(days=1),
+    )
+    student.student_lifecycle_status = status
+    student.save(update_fields=["student_lifecycle_status", "updated_at"])
+
+    with pytest.raises(AppointmentCurrentStudentRequired):
+        create_student_appointment(
+            student=student,
+            service_id=service.pk,
+            provider_id=counselor.pk,
+            delivery_mode="IN_PERSON",
+            starts_at=start + timedelta(hours=2),
+            context=context(student),
+            now=start - timedelta(days=1),
+        )
+    with pytest.raises(AppointmentCurrentStudentRequired):
+        list_eligible_counselors(
+            student=student,
+            service_id=service.pk,
+            delivery_mode="IN_PERSON",
+        )
+
+    assert existing.pk in {row.pk for row in list_my_appointments(actor=student).items}
+    assert get_appointment_for_actor(appointment_id=existing.pk, actor=student).pk == existing.pk
+    cancelled = cancel_appointment(
+        appointment_id=existing.pk,
+        actor=student,
+        administrative=False,
+        context=context(student),
+    )
+    assert cancelled.status == "CANCELLED"

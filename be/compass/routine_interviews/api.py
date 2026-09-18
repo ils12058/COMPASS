@@ -25,6 +25,7 @@ from .services import (
     InvalidRoutineInterviewInput,
     RoutineInterviewAppointmentInvalid,
     RoutineInterviewCreationConflict,
+    RoutineInterviewCurrentStudentRequired,
     RoutineInterviewEncounterMismatch,
     RoutineInterviewEncounterRequired,
     RoutineInterviewError,
@@ -244,6 +245,8 @@ def _require_counselor(request, capability: str) -> None:
 def _raise(exc: Exception) -> NoReturn:
     if isinstance(exc, CurrentAcademicYearNotConfigured):
         raise APIError(409, "current_academic_year_not_configured", str(exc)) from exc
+    if isinstance(exc, RoutineInterviewCurrentStudentRequired):
+        raise APIError(409, "current_student_required", str(exc)) from exc
     if isinstance(exc, RoutineInterviewNotFound):
         raise APIError(404, "routine_interview_not_found", str(exc)) from exc
     if isinstance(exc, RoutineInterviewNotPermitted):

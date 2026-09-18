@@ -12,6 +12,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from compass.accounts.models import User
+from compass.accounts.services import is_current_student
 from compass.appointments.models import Appointment
 from compass.audit.actions import (
     ECOUNSELING_CONSENT_APPROVED,
@@ -47,6 +48,7 @@ from .models import (
 )
 from .services import (
     ECounselingAppointmentNotEligible,
+    ECounselingCurrentStudentRequired,
     ECounselingError,
     ECounselingNotFound,
     ECounselingProviderDisabled,
@@ -296,6 +298,10 @@ def decide_my_consent(
         appointment=appointment,
         capability="ecounseling.consent_self",
     )
+    if decision == ConsentDecision.APPROVED and not is_current_student(student):
+        raise ECounselingCurrentStudentRequired(
+            "Current Student lifecycle is required to approve E-Counseling consent."
+        )
     room = _require_room_for_appointment(appointment)
 
     with transaction.atomic():
