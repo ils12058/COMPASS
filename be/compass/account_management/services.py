@@ -16,6 +16,7 @@ from compass.accounts.models import (
     Capability,
     Designation,
     Role,
+    StudentLifecycleStatus,
     User,
     UserCapabilityOverride,
     UserDesignation,
@@ -32,6 +33,7 @@ from compass.audit.actions import (
     ACCOUNT_ENABLED,
     ACCOUNT_MFA_RESET,
     ACCOUNT_ROLE_CHANGED,
+    ACCOUNT_STUDENT_LIFECYCLE_CHANGED,
     ACCOUNT_UPDATED,
 )
 from compass.audit.context import AuditContext
@@ -73,6 +75,10 @@ class DuplicateEmail(AccountManagementError):
 
 class InvalidManagementInput(AccountManagementError):
     """The request asks for a noncanonical or otherwise invalid management state."""
+
+
+class StudentLifecycleConflict(AccountManagementError):
+    """The requested Student lifecycle mutation is not valid for the target account."""
 
 
 class ManagementConfigurationError(AccountManagementError):
@@ -293,6 +299,7 @@ def serialize_account(user: User, *, detail: bool = False) -> dict[str, object]:
         "suffix": user.suffix,
         "full_name": user.get_full_name(),
         "role": user.role.code,
+        "student_lifecycle_status": user.student_lifecycle_status,
         "designations": _account_designation_codes(user),
         "is_active": user.is_active,
         "created_at": user.created_at,
@@ -643,7 +650,11 @@ def change_role(
 
         from_role = target.role.code
         target.role = role_record
-        target.save(update_fields=["role", "updated_at"])
+        update_fields = ["role", "updated_at"]
+        if role_code == "STUDENT" and target.student_lifecycle_status is None:
+            target.student_lifecycle_status = StudentLifecycleStatus.CURRENT
+            update_fields.append("student_lifecycle_status")
+        target.save(update_fields=update_fields)
         if target.pk == actor.pk and not user_has_capability(target, ACCOUNT_MANAGE_CAPABILITY):
             raise SelfTargetForbidden(
                 "an administrator cannot remove their own management authority"
@@ -661,6 +672,47 @@ def change_role(
             target_type="accounts.user",
             target_id=target.pk,
             metadata={"from_role": from_role, "to_role": role_code},
+        )
+        return MutationResult(user=target, changed=True)
+
+
+def set_student_lifecycle(
+    *,
+    actor: User,
+    actor_session,
+    target_id,
+    context: AuditContext,
+    status: str,
+) -> MutationResult:
+    if status not in StudentLifecycleStatus.values:
+        raise InvalidManagementInput("student lifecycle status is not supported")
+    with _admin_mutation(
+        actor=actor,
+        actor_session=actor_session,
+        target_id=target_id,
+        authority_change=False,
+    ) as (_locked_actor, target):
+        assert target is not None
+        if target.pk == actor.pk:
+            raise SelfTargetForbidden(
+                "an administrator cannot change their own Student lifecycle"
+            )
+        if target.role.code != "STUDENT":
+            raise StudentLifecycleConflict(
+                "Student lifecycle can only be changed for a STUDENT-role account."
+            )
+        if target.student_lifecycle_status == status:
+            return MutationResult(user=target, changed=False)
+        from_status = target.student_lifecycle_status
+        target.student_lifecycle_status = status
+        target.save(update_fields=["student_lifecycle_status", "updated_at"])
+        record_event(
+            context=context,
+            action=ACCOUNT_STUDENT_LIFECYCLE_CHANGED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="accounts.user",
+            target_id=target.pk,
+            metadata={"from_status": from_status, "to_status": status},
         )
         return MutationResult(user=target, changed=True)
 
