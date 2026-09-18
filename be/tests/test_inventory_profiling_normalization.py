@@ -204,9 +204,7 @@ def test_physical_disadvantage_status_is_source_neutral_and_requires_detail_only
     reported = replace_current_inventory(
         student=student,
         values={
-            "physical_disadvantage_status": (
-                PhysicalDisadvantageStatus.HAS_PHYSICAL_DISADVANTAGE
-            ),
+            "physical_disadvantage_status": (PhysicalDisadvantageStatus.HAS_PHYSICAL_DISADVANTAGE),
             "physical_disadvantage": "Mobility limitation",
         },
     )
