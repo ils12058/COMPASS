@@ -11,6 +11,7 @@ from compass.accounts.models import (
     Capability,
     DesignationCapability,
     RoleCapability,
+    StudentLifecycleStatus,
     User,
     UserCapabilityOverride,
 )
@@ -58,6 +59,18 @@ def effective_capabilities(user: User, *, at: datetime | None = None) -> frozens
             granted.add(code)
 
     return frozenset(((capability_codes | granted) & CAPABILITY_CODES) - revoked)
+
+
+def is_current_student(user: User) -> bool:
+    """Return whether this account currently has active Student workflow access."""
+
+    return bool(
+        getattr(user, "pk", None)
+        and getattr(user, "is_active", False)
+        and getattr(user, "role_id", None)
+        and user.role.code == "STUDENT"
+        and user.student_lifecycle_status == StudentLifecycleStatus.CURRENT
+    )
 
 
 def user_has_capability(
