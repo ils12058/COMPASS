@@ -144,11 +144,7 @@ def _validate_operational_actor(actor: User) -> None:
 
 
 def _validate_student_actor(actor: User) -> None:
-    if (
-        not getattr(actor, "pk", None)
-        or not actor.is_active
-        or actor.role.code != "STUDENT"
-    ):
+    if not getattr(actor, "pk", None) or not actor.is_active or actor.role.code != "STUDENT":
         raise CallSlipNotPermitted("Active Student self-service access is required.")
 
 
@@ -160,8 +156,7 @@ def _validate_student(student: User | None) -> User:
 
 def _is_head(actor: User) -> bool:
     return (
-        actor.role.code == "COUNSELOR"
-        and actor.designations.filter(code=HEAD_DESIGNATION).exists()
+        actor.role.code == "COUNSELOR" and actor.designations.filter(code=HEAD_DESIGNATION).exists()
     )
 
 
@@ -283,9 +278,7 @@ def _normalize_destination(
     )
     if normalized == CallSlipDestinationType.GUIDANCE_OFFICE:
         if cleaned_other:
-            raise InvalidCallSlipInput(
-                "other_destination must be empty for GUIDANCE_OFFICE."
-            )
+            raise InvalidCallSlipInput("other_destination must be empty for GUIDANCE_OFFICE.")
         return normalized, ""
     if not cleaned_other:
         raise InvalidCallSlipInput("other_destination is required for OTHER.")
@@ -300,9 +293,7 @@ def _normalize_report_at(value: datetime) -> datetime:
 
 def _normalize_interview_ended_at(value: datetime, *, now: datetime) -> datetime:
     if not isinstance(value, datetime) or timezone.is_naive(value):
-        raise InvalidCallSlipInput(
-            "interview_ended_at must be a timezone-aware datetime."
-        )
+        raise InvalidCallSlipInput("interview_ended_at must be a timezone-aware datetime.")
     normalized = value.astimezone(_institution_zone())
     current = now.astimezone(_institution_zone())
     if normalized > current:
@@ -322,11 +313,7 @@ def _date_bounds(
         raise InvalidCallSlipInput("from_date must not be after to_date.")
     zone = _institution_zone()
     start = datetime.combine(from_date, time.min, tzinfo=zone) if from_date else None
-    end = (
-        datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=zone)
-        if to_date
-        else None
-    )
+    end = datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=zone) if to_date else None
     return start, end
 
 
@@ -366,11 +353,7 @@ def _resolve_issuer_locked(actor: User) -> User:
     if actor.role.code != "GUIDANCE_SERVICES_STAFF":
         raise CallSlipNotPermitted("Only Guidance operational actors may issue Call Slips.")
 
-    supervision = (
-        StaffSupervision.objects.select_for_update()
-        .filter(staff_id=actor.pk)
-        .first()
-    )
+    supervision = StaffSupervision.objects.select_for_update().filter(staff_id=actor.pk).first()
     if supervision is None:
         raise CallSlipNotPermitted(
             "Guidance Services Staff requires a current supervising Counselor."
@@ -381,11 +364,7 @@ def _resolve_issuer_locked(actor: User) -> User:
         .filter(pk=supervision.supervisor_id)
         .first()
     )
-    if (
-        supervisor is None
-        or not supervisor.is_active
-        or supervisor.role.code != "COUNSELOR"
-    ):
+    if supervisor is None or not supervisor.is_active or supervisor.role.code != "COUNSELOR":
         raise CallSlipNotPermitted(
             "Guidance Services Staff requires an active supervising Counselor."
         )
@@ -402,9 +381,7 @@ def _lock_linked_referral(
     if referral is None or not _student_in_scope(actor, referral.student_id):
         raise CallSlipNotFound("The linked Referral was not found.")
     if referral.student_id != student_id:
-        raise CallSlipReferralConflict(
-            "The linked Referral belongs to a different Student."
-        )
+        raise CallSlipReferralConflict("The linked Referral belongs to a different Student.")
     if not ReferralAction.objects.filter(
         referral_id=referral.pk,
         action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT,
@@ -460,22 +437,13 @@ def create_call_slip(
 
     with transaction.atomic():
         locked_actor = (
-            User.objects.select_for_update()
-            .select_related("role")
-            .filter(pk=actor.pk)
-            .first()
+            User.objects.select_for_update().select_related("role").filter(pk=actor.pk).first()
         )
         if locked_actor is None:
-            raise CallSlipNotPermitted(
-                "The authenticated Guidance actor no longer exists."
-            )
+            raise CallSlipNotPermitted("The authenticated Guidance actor no longer exists.")
         _validate_operational_actor(locked_actor)
 
-        existing = (
-            CallSlip.objects.select_for_update()
-            .filter(creation_key_digest=digest)
-            .first()
-        )
+        existing = CallSlip.objects.select_for_update().filter(creation_key_digest=digest).first()
         if existing is not None:
             if existing.creation_request_fingerprint != fingerprint:
                 raise CallSlipCreationConflict(
@@ -487,10 +455,7 @@ def create_call_slip(
 
         issuer = _resolve_issuer_locked(locked_actor)
         student = (
-            User.objects.select_for_update()
-            .select_related("role")
-            .filter(pk=student_id)
-            .first()
+            User.objects.select_for_update().select_related("role").filter(pk=student_id).first()
         )
         student = _validate_student(student)
         if not _student_in_scope(locked_actor, student.pk):
@@ -525,9 +490,7 @@ def create_call_slip(
                     creation_request_fingerprint=fingerprint,
                 )
         except IntegrityError as exc:
-            if referral is not None and CallSlip.objects.filter(
-                referral_id=referral.pk
-            ).exists():
+            if referral is not None and CallSlip.objects.filter(referral_id=referral.pk).exists():
                 raise CallSlipReferralConflict(
                     "The linked Referral already has a Call Slip in this foundation."
                 ) from exc
@@ -635,9 +598,7 @@ def record_interview_ended(
         if item.interview_ended_at is not None:
             if item.interview_ended_at == normalized:
                 return _queryset().get(pk=item.pk)
-            raise CallSlipInterviewEndConflict(
-                "interview_ended_at is immutable once recorded."
-            )
+            raise CallSlipInterviewEndConflict("interview_ended_at is immutable once recorded.")
 
         item.interview_ended_at = normalized
         item.save(update_fields=["interview_ended_at", "updated_at"])
