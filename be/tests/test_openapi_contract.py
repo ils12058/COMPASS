@@ -378,6 +378,16 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "ProgramCreateRequest",
         "ProgramUpdateRequest",
         "InventoryProgramSummary",
+        "CivilStatusCategoryValue",
+        "CurrentReligionCategoryValue",
+        "PhysicalDisadvantageStatusValue",
+        "ParentLifeStatusValue",
+        "ParentStatusCategoryValue",
+        "OccupationCategoryValue",
+        "AnnualIncomeStatusValue",
+        "GeographicLocationKindValue",
+        "TransportationFrequencyCategoryValue",
+        "GeographicLocationPayload",
     }
     assert expected_schemas <= schemas.keys()
     assert schemas["AccountSummaryResponse"]["properties"]["id"]["format"] == "uuid"
@@ -447,15 +457,40 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert {"code", "name"} == set(program_update)
 
     inventory_payload = schemas["InventoryPayload"]["properties"]
-    assert {"program_id", "year_level", "course_currently_enrolled", "major"} <= set(
-        inventory_payload
-    )
+    assert {
+        "program_id",
+        "year_level",
+        "course_currently_enrolled",
+        "major",
+        "civil_status_category",
+        "current_religion_category",
+        "physical_disadvantage_status",
+        "parent_status_category",
+        "geographic_locations",
+    } <= set(inventory_payload)
     assert inventory_payload["program_id"]["anyOf"][0]["format"] == "uuid"
     assert inventory_payload["year_level"]["anyOf"][0]["minimum"] == 1
     assert inventory_payload["year_level"]["anyOf"][0]["maximum"] == 10
     inventory_response = schemas["InventoryResponse"]["properties"]
     assert "program" in inventory_response
     assert inventory_response["program"]["anyOf"][0]["$ref"].endswith("/InventoryProgramSummary")
+    family_member = schemas["FamilyMemberPayload"]["properties"]
+    assert {"life_status", "occupation_category", "annual_income_status"} <= set(family_member)
+    transport = schemas["TransportationEntryPayload"]["properties"]
+    assert "frequency_category" in transport
+    location = schemas["GeographicLocationPayload"]["properties"]
+    assert {
+        "kind",
+        "not_specified",
+        "region_psgc_code",
+        "region_name_snapshot",
+        "province_psgc_code",
+        "province_name_snapshot",
+        "city_municipality_psgc_code",
+        "city_municipality_name_snapshot",
+        "barangay_psgc_code",
+        "barangay_name_snapshot",
+    } == set(location)
 
     exit_draft = schemas["ExitInterviewDraftPayload"]["properties"]
     assert {
