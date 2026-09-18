@@ -515,12 +515,7 @@ def issue_request(
         raise InvalidGoodMoralInput("The issuance time must be timezone-aware.")
 
     with transaction.atomic():
-        item = (
-            GoodMoralRequest.objects.select_for_update()
-            .select_related("student__role", "inventory", "academic_year")
-            .filter(pk=request_id)
-            .first()
-        )
+        item = GoodMoralRequest.objects.select_for_update().filter(pk=request_id).first()
         if item is None:
             raise GoodMoralNotFound("The requested Good Moral record was not found.")
         if item.status == GoodMoralStatus.ISSUED:
