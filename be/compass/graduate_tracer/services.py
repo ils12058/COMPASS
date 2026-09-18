@@ -290,7 +290,7 @@ def ensure_my_response(
             context=context,
             action=GRADUATE_TRACER_DRAFT_CREATED,
             outcome=AuditOutcome.SUCCESS,
-            target_type="graduate_tracer.response",
+            target_type="graduatetracer.response",
             target_id=item.pk,
             metadata={
                 "instrument_schema_version": GTS_SCHEMA_VERSION,
@@ -814,7 +814,7 @@ def submit_my_response(
             context=context,
             action=GRADUATE_TRACER_SUBMITTED,
             outcome=AuditOutcome.SUCCESS,
-            target_type="graduate_tracer.response",
+            target_type="graduatetracer.response",
             target_id=item.pk,
             metadata={
                 "instrument_schema_version": GTS_SCHEMA_VERSION,
