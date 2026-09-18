@@ -18,7 +18,7 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
-    require_active_form_revision,
+    require_active_supported_form_revision,
 )
 from compass.organization.academic_years import get_current_academic_year
 from compass.organization.models import AcademicYear
@@ -204,7 +204,7 @@ def _current_year() -> AcademicYear:
 
 def _active_inventory_revision():
     try:
-        return require_active_form_revision(INVENTORY_FAMILY_KEY)
+        return require_active_supported_form_revision(INVENTORY_FAMILY_KEY)
     except InstitutionalFormConflict as exc:
         raise InventoryFormRevisionNotConfigured(
             "No active supported Individual Inventory Form Revision is configured."

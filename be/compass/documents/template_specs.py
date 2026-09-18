@@ -28,6 +28,22 @@ class UnknownDocumentTemplate(RuntimeError):
 
 
 _TEMPLATE_SPECS = {
+    ("good_moral_current_student", 1): DocumentTemplateSpec(
+        key="good_moral_current_student",
+        version=1,
+        template_name="documents/good_moral/current_student.html",
+        layout_family=LayoutFamily.CERTIFICATE,
+        include_accreditation_footer=False,
+        show_page_numbers=False,
+    ),
+    ("good_moral_graduate", 1): DocumentTemplateSpec(
+        key="good_moral_graduate",
+        version=1,
+        template_name="documents/good_moral/graduate.html",
+        layout_family=LayoutFamily.CERTIFICATE,
+        include_accreditation_footer=False,
+        show_page_numbers=False,
+    ),
     ("foundation_test", 1): DocumentTemplateSpec(
         key="foundation_test",
         version=1,

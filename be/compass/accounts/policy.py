@@ -256,6 +256,33 @@ CAPABILITY_DEFINITIONS = (
         description="View the authenticated Student's own Call Slip records.",
     ),
     CapabilityDefinition(
+        code="good_moral.view_self",
+        name="View own Good Moral requests",
+        description=(
+            "View the authenticated Student's own Good Moral requests and issued certificates."
+        ),
+    ),
+    CapabilityDefinition(
+        code="good_moral.request_self",
+        name="Request own Good Moral certificate",
+        description="Initiate an eligible Good Moral request for the authenticated Student.",
+    ),
+    CapabilityDefinition(
+        code="good_moral.view",
+        name="View Good Moral requests",
+        description="View identifiable Good Moral requests in the GCO operational queue.",
+    ),
+    CapabilityDefinition(
+        code="good_moral.manage",
+        name="Manage Good Moral requests",
+        description="Correct certificate-local Good Moral request facts before issuance.",
+    ),
+    CapabilityDefinition(
+        code="good_moral.issue",
+        name="Issue Good Moral certificates",
+        description="Issue source-controlled Good Moral certificates as an authorized Counselor.",
+    ),
+    CapabilityDefinition(
         code="document_branding.view",
         name="View document branding",
         description="View the approved institutional and GCO document identity configuration.",
@@ -335,6 +362,9 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "referrals.manage",
             "call_slips.view",
             "call_slips.manage",
+            "good_moral.view",
+            "good_moral.manage",
+            "good_moral.issue",
             "ecounseling.view_assigned",
             "ecounseling.join_assigned",
             "ecounseling.manage_media_assigned",
@@ -372,6 +402,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "ecounseling.consent_self",
             "shared_summaries.view_self",
             "call_slips.view_self",
+            "good_moral.view_self",
+            "good_moral.request_self",
         }
     ),
 }

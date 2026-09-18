@@ -1230,6 +1230,11 @@
           "exit_interviews.reopen",
           "exit_interviews.view",
           "exit_interviews.view_self",
+          "good_moral.issue",
+          "good_moral.manage",
+          "good_moral.request_self",
+          "good_moral.view",
+          "good_moral.view_self",
           "institutional_forms.manage",
           "institutional_forms.view",
           "inventory.manage_self",
@@ -2394,6 +2399,25 @@
           "session"
         ],
         "title": "CurrentSessionResponse",
+        "type": "object"
+      },
+      "CurrentStudentRequestPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "semester": {
+            "title": "Semester",
+            "type": "string"
+          },
+          "year_level": {
+            "title": "Year Level",
+            "type": "string"
+          }
+        },
+        "required": [
+          "year_level",
+          "semester"
+        ],
+        "title": "CurrentStudentRequestPayload",
         "type": "object"
       },
       "DelayReasonValue": {
@@ -3814,6 +3838,10 @@
       "FormRevisionSummary": {
         "additionalProperties": false,
         "properties": {
+          "family_key": {
+            "title": "Family Key",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -3848,11 +3876,495 @@
         },
         "required": [
           "id",
+          "family_key",
           "official_code",
           "official_revision",
           "internal_schema_version"
         ],
         "title": "FormRevisionSummary",
+        "type": "object"
+      },
+      "GoodMoralCorrectionPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "applicant_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicant Name"
+          },
+          "college": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "College"
+          },
+          "course": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course"
+          },
+          "degree": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degree"
+          },
+          "graduation_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Date"
+          },
+          "major": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Major"
+          },
+          "official_receipt_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Receipt Amount"
+          },
+          "official_receipt_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Receipt Date"
+          },
+          "official_receipt_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Receipt Number"
+          },
+          "semester": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semester"
+          },
+          "year_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
+          }
+        },
+        "title": "GoodMoralCorrectionPayload",
+        "type": "object"
+      },
+      "GoodMoralDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicYearSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applicant_name": {
+            "title": "Applicant Name",
+            "type": "string"
+          },
+          "college": {
+            "title": "College",
+            "type": "string"
+          },
+          "course": {
+            "title": "Course",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "degree": {
+            "title": "Degree",
+            "type": "string"
+          },
+          "document_template_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Template Key"
+          },
+          "document_template_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Template Version"
+          },
+          "form_revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormRevisionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graduation_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inventory_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inventory Id"
+          },
+          "issued_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued At"
+          },
+          "issued_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issued_by_name_snapshot": {
+            "title": "Issued By Name Snapshot",
+            "type": "string"
+          },
+          "major": {
+            "title": "Major",
+            "type": "string"
+          },
+          "official_receipt_amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Receipt Amount"
+          },
+          "official_receipt_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Receipt Date"
+          },
+          "official_receipt_number": {
+            "title": "Official Receipt Number",
+            "type": "string"
+          },
+          "semester": {
+            "title": "Semester",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GoodMoralStatusValue"
+          },
+          "student": {
+            "$ref": "#/components/schemas/PersonSummary"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "variant": {
+            "$ref": "#/components/schemas/GoodMoralVariantValue"
+          },
+          "year_level": {
+            "title": "Year Level",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "variant",
+          "status",
+          "applicant_name",
+          "issued_at",
+          "created_at",
+          "updated_at",
+          "student",
+          "inventory_id",
+          "academic_year",
+          "major",
+          "year_level",
+          "college",
+          "course",
+          "semester",
+          "degree",
+          "graduation_date",
+          "official_receipt_number",
+          "official_receipt_date",
+          "official_receipt_amount",
+          "form_revision",
+          "document_template_key",
+          "document_template_version",
+          "issued_by",
+          "issued_by_name_snapshot"
+        ],
+        "title": "GoodMoralDetailResponse",
+        "type": "object"
+      },
+      "GoodMoralHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GoodMoralSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "GoodMoralHistoryResponse",
+        "type": "object"
+      },
+      "GoodMoralPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GoodMoralSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "GoodMoralPageResponse",
+        "type": "object"
+      },
+      "GoodMoralStatusValue": {
+        "enum": [
+          "REQUESTED",
+          "ISSUED"
+        ],
+        "title": "GoodMoralStatusValue",
+        "type": "string"
+      },
+      "GoodMoralSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "applicant_name": {
+            "title": "Applicant Name",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issued_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GoodMoralStatusValue"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "variant": {
+            "$ref": "#/components/schemas/GoodMoralVariantValue"
+          }
+        },
+        "required": [
+          "id",
+          "variant",
+          "status",
+          "applicant_name",
+          "issued_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "GoodMoralSummaryResponse",
+        "type": "object"
+      },
+      "GoodMoralVariantValue": {
+        "enum": [
+          "CURRENT_STUDENT",
+          "GRADUATE"
+        ],
+        "title": "GoodMoralVariantValue",
+        "type": "string"
+      },
+      "GraduateRequestPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "degree": {
+            "title": "Degree",
+            "type": "string"
+          },
+          "graduation_date": {
+            "format": "date",
+            "title": "Graduation Date",
+            "type": "string"
+          },
+          "major": {
+            "default": "",
+            "title": "Major",
+            "type": "string"
+          }
+        },
+        "required": [
+          "degree",
+          "graduation_date"
+        ],
+        "title": "GraduateRequestPayload",
         "type": "object"
       },
       "HandednessValue": {
@@ -5935,34 +6447,19 @@
       "PersonSummary": {
         "additionalProperties": false,
         "properties": {
-          "email": {
-            "title": "Email",
-            "type": "string"
-          },
-          "full_name": {
-            "title": "Full Name",
+          "display_name": {
+            "title": "Display Name",
             "type": "string"
           },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
-          },
-          "is_active": {
-            "title": "Is Active",
-            "type": "boolean"
-          },
-          "role": {
-            "title": "Role",
-            "type": "string"
           }
         },
         "required": [
           "id",
-          "full_name",
-          "email",
-          "role",
-          "is_active"
+          "display_name"
         ],
         "title": "PersonSummary",
         "type": "object"
@@ -9141,6 +9638,11 @@
                 "exit_interviews.reopen",
                 "exit_interviews.view",
                 "exit_interviews.view_self",
+                "good_moral.issue",
+                "good_moral.manage",
+                "good_moral.request_self",
+                "good_moral.view",
+                "good_moral.view_self",
                 "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
@@ -9282,6 +9784,11 @@
                 "exit_interviews.reopen",
                 "exit_interviews.view",
                 "exit_interviews.view_self",
+                "good_moral.issue",
+                "good_moral.manage",
+                "good_moral.request_self",
+                "good_moral.view",
+                "good_moral.view_self",
                 "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
@@ -17027,6 +17534,797 @@
         ]
       }
     },
+    "/api/v1/good-moral/me": {
+      "get": {
+        "operationId": "goodMoralListMyRequests",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral List My",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/me/requests/current-student": {
+      "post": {
+        "operationId": "goodMoralCreateMyCurrentStudentRequest",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurrentStudentRequestPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralDetailResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral Create My Current Student",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/me/requests/graduate": {
+      "post": {
+        "operationId": "goodMoralCreateMyGraduateRequest",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraduateRequestPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralDetailResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral Create My Graduate",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/me/{request_id}": {
+      "get": {
+        "operationId": "goodMoralGetMyRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral Get My",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/me/{request_id}/pdf": {
+      "get": {
+        "operationId": "goodMoralDownloadMyCertificate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral Download My",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/requests": {
+      "get": {
+        "operationId": "goodMoralListRequests",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "variant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/GoodMoralVariantValue"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/GoodMoralStatusValue"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral List Requests",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/requests/{request_id}": {
+      "get": {
+        "operationId": "goodMoralGetRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral Get",
+        "tags": [
+          "good-moral"
+        ]
+      },
+      "patch": {
+        "operationId": "goodMoralUpdateRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoodMoralCorrectionPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral Update",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/requests/{request_id}/issue": {
+      "post": {
+        "operationId": "goodMoralIssueRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral Issue",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/requests/{request_id}/pdf": {
+      "get": {
+        "operationId": "goodMoralDownloadCertificate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral Download",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
     "/api/v1/health/live": {
       "get": {
         "operationId": "healthLive",
@@ -21981,6 +23279,10 @@
     {
       "description": "Student annual Individual Inventory self-service.",
       "name": "inventory"
+    },
+    {
+      "description": "Student Good Moral requests, Counselor issuance, and certificate PDFs.",
+      "name": "good-moral"
     },
     {
       "description": "Student graduating Exit Interview survey, self-assessment, institutional feedback, and controlled correction lifecycle.",
