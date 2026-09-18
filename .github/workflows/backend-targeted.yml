@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   targeted-backend:
@@ -48,19 +48,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - name: Bootstrap Playwright lock
-        if: github.event_name == 'pull_request'
-        working-directory: be
-        run: |
-          uv lock
-          if git diff --quiet -- uv.lock; then
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add uv.lock
-          git commit -m "Lock Playwright rendering dependency"
-          git push origin HEAD:${{ github.head_ref }}
       - name: Install locked dependencies
         working-directory: be
         run: uv sync --frozen
