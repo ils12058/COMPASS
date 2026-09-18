@@ -8,13 +8,13 @@ from django.test import Client
 from django.utils import timezone
 
 from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.audit.context import AuditContext
+from compass.audit.models import AuditEvent
+from compass.authentication.sessions import create_auth_session
 from compass.call_slips.services import (
     CallSlipConfigurationConflict,
     _active_call_slip_revision,
 )
-from compass.audit.context import AuditContext
-from compass.audit.models import AuditEvent
-from compass.authentication.sessions import create_auth_session
 from compass.institutional_forms.models import FormFamily, FormRevision
 from compass.institutional_forms.services import (
     SUPPORTED_SCHEMA_VERSIONS,
@@ -28,9 +28,9 @@ from compass.inventory.services import (
     _active_inventory_revision,
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
+from compass.organization.models import AcademicYear
 from compass.referrals.services import ReferralConfigurationConflict, _active_referral_revision
 from compass.routine_interviews.services import _optional_form_revision
-from compass.organization.models import AcademicYear
 
 
 def sync_policy() -> None:
