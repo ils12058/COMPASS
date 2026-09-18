@@ -639,5 +639,5 @@ def test_concurrent_head_creations_allocate_unique_referral_references():
             )
         )
 
-    assert set(refs) == {"REF-%04d-000001" % now.year, "REF-%04d-000002" % now.year}
+    assert set(refs) == {f"REF-{now.year:04d}-000001", f"REF-{now.year:04d}-000002"}
     assert len(set(refs)) == 2
