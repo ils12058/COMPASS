@@ -258,7 +258,9 @@ CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
         code="good_moral.view_self",
         name="View own Good Moral requests",
-        description="View the authenticated Student's own Good Moral requests and issued certificates.",
+        description=(
+            "View the authenticated Student's own Good Moral requests and issued certificates."
+        ),
     ),
     CapabilityDefinition(
         code="good_moral.request_self",
