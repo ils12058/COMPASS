@@ -151,21 +151,13 @@ def _context(request) -> AuditContext:
 
 def _require_student(request, capability: str) -> None:
     user = request.auth_user
-    if (
-        not user.is_active
-        or user.role.code != "STUDENT"
-        or not user.has_capability(capability)
-    ):
+    if not user.is_active or user.role.code != "STUDENT" or not user.has_capability(capability):
         raise APIError(403, "permission_denied", "Student Good Moral access is required.")
 
 
 def _require_counselor(request, capability: str, *, recent_mfa: bool = False) -> None:
     user = request.auth_user
-    if (
-        not user.is_active
-        or user.role.code != "COUNSELOR"
-        or not user.has_capability(capability)
-    ):
+    if not user.is_active or user.role.code != "COUNSELOR" or not user.has_capability(capability):
         raise APIError(403, "permission_denied", f"The {capability} capability is required.")
     if recent_mfa:
         try:
@@ -195,7 +187,9 @@ def _raise(exc: GoodMoralError) -> NoReturn:
         raise APIError(503, "good_moral_document_unavailable", str(exc)) from exc
     if isinstance(exc, InvalidGoodMoralInput):
         raise APIError(422, "invalid_good_moral_request", str(exc)) from exc
-    raise APIError(500, "internal_error", "The Good Moral operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "The Good Moral operation could not be completed."
+    ) from exc
 
 
 def _person(user) -> dict[str, object]:
