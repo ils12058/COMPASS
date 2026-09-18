@@ -421,9 +421,7 @@ def test_student_lifecycle_migration_backfills_only_existing_students():
     counselor = make_user(role="COUNSELOR", email="legacy-counselor@example.edu")
     User.objects.filter(pk=student.pk).update(student_lifecycle_status=None)
 
-    migration = import_module(
-        "compass.accounts.migrations.0003_user_student_lifecycle_status"
-    )
+    migration = import_module("compass.accounts.migrations.0003_user_student_lifecycle_status")
     migration.backfill_student_lifecycle_status(apps, None)
 
     student.refresh_from_db()
