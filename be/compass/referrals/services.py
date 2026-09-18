@@ -297,6 +297,10 @@ def _active_referral_revision():
     try:
         return require_active_supported_form_revision(REFERRAL_FORM_FAMILY_KEY)
     except InstitutionalFormConflict as exc:
+        if "does not support" in str(exc):
+            raise ReferralConfigurationConflict(
+                "The active Referral Slip Form Revision is not supported by this COMPASS version."
+            ) from exc
         raise ReferralConfigurationConflict(
             "No active supported Referral Slip Form Revision is configured."
         ) from exc
