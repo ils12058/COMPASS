@@ -252,6 +252,13 @@ def _pagination(page: int, page_size: int) -> tuple[int, int]:
     return page, page_size
 
 
+def _normalize_destination_type(
+    destination_type: str | CallSlipDestinationType,
+) -> str:
+    normalized = _normalize_destination_type(destination_type)
+    return normalized
+
+
 def _normalize_destination(
     destination_type: str | CallSlipDestinationType,
     other_destination: str,
@@ -553,11 +560,7 @@ def list_call_slips(
     if issued_by_id is not None:
         qs = qs.filter(issued_by_id=issued_by_id)
     if destination_type is not None:
-        normalized, _ = _normalize_destination(
-            destination_type,
-            "" if str(destination_type) != str(CallSlipDestinationType.OTHER) else "placeholder",
-        )
-        qs = qs.filter(destination_type=normalized)
+        qs = qs.filter(destination_type=_normalize_destination_type(destination_type))
     if referral_id is not None:
         qs = qs.filter(referral_id=referral_id)
     qs = _apply_date_filters(qs, from_date=from_date, to_date=to_date)
