@@ -53,6 +53,7 @@ from compass.routine_interviews.services import (
     submit_my_intake,
 )
 from compass.service_catalog.services import create_service, set_service_active
+from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
 def sync_policy() -> None:
@@ -122,16 +123,10 @@ def submit_inventory(student: User, actor: User, *, course: str = "BSIS", major:
     replace_current_inventory(
         student=student,
         values={
+            **minimum_normalized_inventory_values(program_id=program.pk),
             "full_name_snapshot": student.get_full_name(),
-            "program_id": program.pk,
-            "year_level": 1,
             "course_currently_enrolled": course,
             "major": major,
-            "family_members": [],
-            "siblings": [],
-            "education_entries": [],
-            "organization_memberships": [],
-            "transportation_entries": [],
         },
     )
     return submit_current_inventory(student=student, context=context(actor))
