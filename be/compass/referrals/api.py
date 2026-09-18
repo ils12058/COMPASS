@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
-from ninja import Header, Router, Schema
+from ninja import Header, Router, Schema, Status
 from pydantic import ConfigDict
 
 from compass.audit.context import AuditContext
@@ -236,7 +236,7 @@ def referrals_create(
         )
     except ReferralError as exc:
         _raise(exc)
-    return 201, _detail(item)
+    return Status(201, _detail(item))
 
 
 @router.get(
@@ -345,4 +345,4 @@ def referrals_record_action(
         )
     except ReferralError as exc:
         _raise(exc)
-    return 201, _action(action)
+    return Status(201, _action(action))
