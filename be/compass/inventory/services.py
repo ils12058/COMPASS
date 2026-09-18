@@ -772,7 +772,9 @@ def _replace_children(item: StudentInventory, values: dict[str, object]) -> None
     transportation_rows = _normalize_transportation_rows(
         values.get("transportation_entries", [])
     )
-    geographic_rows = _normalize_geographic_rows(values.get("geographic_locations", []))
+    geographic_rows = _normalize_geographic_rows(
+        values.get("geographic_locations", [])
+    )
 
     item.family_members.all().delete()
     InventoryFamilyMember.objects.bulk_create(
