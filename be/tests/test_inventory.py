@@ -31,6 +31,7 @@ from compass.inventory.services import (
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
 from compass.organization.models import Campus, College, Program
 from compass.service_catalog.services import create_service, set_service_active
+from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
 def sync_policy() -> None:
@@ -84,7 +85,10 @@ def set_inventory_context(
     selected = program or configure_program()
     replace_current_inventory(
         student=student,
-        values={"program_id": selected.pk, "year_level": year_level},
+        values=minimum_normalized_inventory_values(
+            program_id=selected.pk,
+            year_level=year_level,
+        ),
     )
     return selected
 
