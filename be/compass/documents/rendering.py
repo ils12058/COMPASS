@@ -101,75 +101,75 @@ def render_document_pdf(
     )
     timeout_ms = int(settings.DOCUMENT_RENDER_TIMEOUT_SECONDS * 1000)
     blocked_urls: list[str] = []
-    browser = None
 
-    try:
-        with sync_playwright() as playwright:
-            try:
-                browser = playwright.chromium.launch(
-                    headless=True,
-                    timeout=timeout_ms,
-                )
-            except PlaywrightTimeoutError as exc:
-                raise DocumentRenderUnavailable(
-                    "Chromium did not become available before the render timeout."
-                ) from exc
-            except PlaywrightError as exc:
-                raise DocumentRenderUnavailable(
-                    "Chromium is unavailable for document rendering."
-                ) from exc
+    with sync_playwright() as playwright:
+        try:
+            browser = playwright.chromium.launch(
+                headless=True,
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError as exc:
+            raise DocumentRenderUnavailable(
+                "Chromium did not become available before the render timeout."
+            ) from exc
+        except PlaywrightError as exc:
+            raise DocumentRenderUnavailable(
+                "Chromium is unavailable for document rendering."
+            ) from exc
 
+        try:
             browser_context = browser.new_context(
                 java_script_enabled=False,
                 service_workers="block",
             )
-            page = browser_context.new_page()
-            page.set_default_timeout(timeout_ms)
-            page.set_default_navigation_timeout(timeout_ms)
-
-            def _route(request_route):
-                request_url = request_route.request.url
-                if request_url.startswith(("http://", "https://")):
-                    blocked_urls.append(request_url)
-                    request_route.abort()
-                    return
-                request_route.continue_()
-
-            page.route("**/*", _route)
             try:
-                page.set_content(
-                    html,
-                    wait_until="load",
-                    timeout=timeout_ms,
-                )
-            except PlaywrightTimeoutError as exc:
-                raise DocumentRenderError(
-                    "Document HTML did not load before the render timeout."
-                ) from exc
-            except PlaywrightError as exc:
-                raise DocumentRenderError("Document HTML could not be rendered.") from exc
+                page = browser_context.new_page()
+                page.set_default_timeout(timeout_ms)
+                page.set_default_navigation_timeout(timeout_ms)
 
-            if blocked_urls:
-                raise DocumentRenderError("Document rendering attempted to load a remote resource.")
+                def _route(request_route):
+                    request_url = request_route.request.url
+                    if request_url.startswith(("http://", "https://")):
+                        blocked_urls.append(request_url)
+                        request_route.abort()
+                        return
+                    request_route.continue_()
 
-            try:
-                pdf_bytes = page.pdf(
-                    format="A4",
-                    print_background=True,
-                    prefer_css_page_size=True,
-                    display_header_footer=spec.show_page_numbers,
-                    header_template="<span></span>",
-                    footer_template=(
-                        _page_footer_template() if spec.show_page_numbers else "<span></span>"
-                    ),
-                )
-            except PlaywrightError as exc:
-                raise DocumentRenderError("Chromium could not generate the PDF.") from exc
+                page.route("**/*", _route)
+                try:
+                    page.set_content(
+                        html,
+                        wait_until="load",
+                        timeout=timeout_ms,
+                    )
+                except PlaywrightTimeoutError as exc:
+                    raise DocumentRenderError(
+                        "Document HTML did not load before the render timeout."
+                    ) from exc
+                except PlaywrightError as exc:
+                    raise DocumentRenderError("Document HTML could not be rendered.") from exc
+
+                if blocked_urls:
+                    raise DocumentRenderError(
+                        "Document rendering attempted to load a remote resource."
+                    )
+
+                try:
+                    pdf_bytes = page.pdf(
+                        format="A4",
+                        print_background=True,
+                        prefer_css_page_size=True,
+                        display_header_footer=spec.show_page_numbers,
+                        header_template="<span></span>",
+                        footer_template=(
+                            _page_footer_template() if spec.show_page_numbers else "<span></span>"
+                        ),
+                    )
+                except PlaywrightError as exc:
+                    raise DocumentRenderError("Chromium could not generate the PDF.") from exc
             finally:
                 browser_context.close()
-
-    finally:
-        if browser is not None and browser.is_connected():
+        finally:
             browser.close()
 
     if not pdf_bytes.startswith(b"%PDF-") or len(pdf_bytes) < 1024:
