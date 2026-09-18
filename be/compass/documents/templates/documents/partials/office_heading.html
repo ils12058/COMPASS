@@ -1,0 +1,9 @@
+<section class="office-heading">
+  {% if document_branding.office_parent_unit_name %}
+    <div class="office-parent-unit">{{ document_branding.office_parent_unit_name }}</div>
+  {% endif %}
+  <div class="office-name">{{ document_branding.office_name }}</div>
+  {% if document_branding.office_email %}<div>{{ document_branding.office_email }}</div>{% endif %}
+  {% if document_branding.office_phone %}<div>{{ document_branding.office_phone }}</div>{% endif %}
+  {% if document_branding.office_location %}<div>{{ document_branding.office_location }}</div>{% endif %}
+</section>
