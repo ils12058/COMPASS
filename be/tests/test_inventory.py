@@ -9,7 +9,7 @@ from django.core.management import call_command
 from django.test import Client, override_settings
 from django.utils import timezone
 
-from compass.accounts.models import Role, User
+from compass.accounts.models import Role, StudentLifecycleStatus, User
 from compass.appointments.models import Appointment, AppointmentReferenceCounter
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
@@ -19,9 +19,12 @@ from compass.inventory.services import (
     CurrentAcademicYearNotConfigured,
     InvalidInventoryInput,
     InventoryConflict,
+    InventoryCurrentStudentRequired,
     InventoryStatus,
     ensure_current_inventory,
     get_current_inventory_status,
+    get_my_inventory_history_item,
+    list_my_inventory_history,
     replace_current_inventory,
     submit_current_inventory,
 )
@@ -404,3 +407,30 @@ def test_service_without_inventory_prerequisite_preserves_existing_booking_behav
         **csrf(client),
     )
     assert response.status_code == 201
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "status",
+    [StudentLifecycleStatus.GRADUATED, StudentLifecycleStatus.FORMER],
+)
+def test_non_current_students_keep_inventory_history_but_cannot_mutate_current(status):
+    sync_policy()
+    student = make_user(f"inventory-{status.lower()}@example.edu", "STUDENT")
+    actor = make_user(f"inventory-admin-{status.lower()}@example.edu", "IT_ADMIN")
+    configure_year(actor)
+    item = ensure_current_inventory(student=student, context=context(student))
+
+    student.student_lifecycle_status = status
+    student.save(update_fields=["student_lifecycle_status", "updated_at"])
+
+    with pytest.raises(InventoryCurrentStudentRequired):
+        ensure_current_inventory(student=student, context=context(student))
+    with pytest.raises(InventoryCurrentStudentRequired):
+        replace_current_inventory(student=student, values={})
+    with pytest.raises(InventoryCurrentStudentRequired):
+        submit_current_inventory(student=student, context=context(student))
+
+    history = list_my_inventory_history(student)
+    assert [row.pk for row in history] == [item.pk]
+    assert get_my_inventory_history_item(student=student, inventory_id=item.pk).pk == item.pk
