@@ -1,8 +1,10 @@
 from datetime import timedelta
+from importlib import import_module
 from io import StringIO
 from unittest.mock import patch
 
 import pytest
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
@@ -19,12 +21,14 @@ from compass.accounts.models import (
     DesignationCapability,
     Role,
     RoleCapability,
+    StudentLifecycleStatus,
     UserCapabilityOverride,
     UserDesignation,
 )
 from compass.accounts.policy import CAPABILITY_CODES
 from compass.accounts.services import (
     effective_capabilities,
+    is_current_student,
     set_user_capability_override,
 )
 
@@ -388,3 +392,41 @@ def test_create_it_admin_requires_policy_sync():
 def test_django_admin_route_remains_unavailable(client):
     response = client.get("/admin/")
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_student_lifecycle_defaults_constraint_and_current_student_predicate():
+    sync_policy()
+    student = make_user(role="STUDENT", email="lifecycle-student@example.edu")
+    counselor = make_user(role="COUNSELOR", email="lifecycle-counselor@example.edu")
+
+    assert student.student_lifecycle_status == StudentLifecycleStatus.CURRENT
+    assert counselor.student_lifecycle_status is None
+    assert is_current_student(student)
+    assert not is_current_student(counselor)
+
+    student.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
+    student.save(update_fields=["student_lifecycle_status", "updated_at"])
+    assert not is_current_student(student)
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            User.objects.filter(pk=student.pk).update(student_lifecycle_status="NOT_VALID")
+
+
+@pytest.mark.django_db
+def test_student_lifecycle_migration_backfills_only_existing_students():
+    sync_policy()
+    student = make_user(role="STUDENT", email="legacy-student@example.edu")
+    counselor = make_user(role="COUNSELOR", email="legacy-counselor@example.edu")
+    User.objects.filter(pk=student.pk).update(student_lifecycle_status=None)
+
+    migration = import_module(
+        "compass.accounts.migrations.0003_user_student_lifecycle_status"
+    )
+    migration.backfill_student_lifecycle_status(apps, None)
+
+    student.refresh_from_db()
+    counselor.refresh_from_db()
+    assert student.student_lifecycle_status == StudentLifecycleStatus.CURRENT
+    assert counselor.student_lifecycle_status is None
