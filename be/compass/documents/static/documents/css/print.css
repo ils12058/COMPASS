@@ -172,3 +172,60 @@ body {
     text-decoration: none;
   }
 }
+
+
+.good-moral-certificate {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11pt;
+  line-height: 1.65;
+}
+
+.good-moral-certificate h1 {
+  margin: 2mm 0 12mm;
+  text-align: center;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15pt;
+  letter-spacing: 0.3mm;
+}
+
+.good-moral-certificate p {
+  margin: 0 0 7mm;
+  text-align: justify;
+  text-indent: 10mm;
+}
+
+.good-moral-field {
+  display: inline-block;
+  min-width: 28mm;
+  padding: 0 1mm;
+  border-bottom: 0.25mm solid #111;
+  text-align: center;
+  text-indent: 0;
+}
+
+.good-moral-field-wide {
+  min-width: 58mm;
+}
+
+.good-moral-signature {
+  width: 70mm;
+  margin: 15mm 0 7mm auto;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.good-moral-signature-name {
+  min-height: 6mm;
+  border-bottom: 0.25mm solid #111;
+  font-weight: 700;
+}
+
+.good-moral-receipt {
+  width: 72mm;
+  margin-top: 8mm;
+  line-height: 1.5;
+}
+
+.good-moral-controlled-footer {
+  margin-top: 10mm;
+}
