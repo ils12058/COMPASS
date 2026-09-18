@@ -245,18 +245,21 @@ def test_atomic_parent_family_status_categories_do_not_rewrite_legacy_grouped_va
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["FATHER", "MOTHER"])
 @pytest.mark.parametrize(
     "life_status",
     [ParentLifeStatus.LIVING, ParentLifeStatus.DECEASED, ParentLifeStatus.NOT_SPECIFIED],
 )
-def test_parent_life_status_is_explicit_and_not_inferred_from_other_parent_fields(life_status):
-    student, _, _ = make_draft(f"parent-life-{life_status.lower()}@example.edu")
+def test_parent_life_status_is_explicit_and_not_inferred_from_other_parent_fields(
+    kind, life_status
+):
+    student, _, _ = make_draft(f"parent-life-{kind.lower()}-{life_status.lower()}@example.edu")
     item = replace_current_inventory(
         student=student,
         values={
             "family_members": [
                 {
-                    "kind": "FATHER",
+                    "kind": kind,
                     "life_status": life_status,
                     "name": "",
                     "occupation": "",
@@ -265,8 +268,8 @@ def test_parent_life_status_is_explicit_and_not_inferred_from_other_parent_field
             ]
         },
     )
-    father = item.family_members.get(kind="FATHER")
-    assert father.life_status == life_status
+    parent = item.family_members.get(kind=kind)
+    assert parent.life_status == life_status
 
 
 @pytest.mark.django_db
@@ -611,6 +614,23 @@ def test_transportation_frequency_fixed_categories_normalize_legacy_snapshot(
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("living_arrangement", ["OWN_HOUSE", "WITH_RELATIVES", "BOARDING_HOUSE"])
+def test_living_arrangement_reuses_existing_controlled_f5_choices(living_arrangement):
+    student, _, _ = make_draft(f"living-{living_arrangement.lower()}@example.edu")
+    values = {"living_arrangement": living_arrangement}
+    if living_arrangement == "BOARDING_HOUSE":
+        values.update(
+            {
+                "boarding_exclusive": True,
+                "boarding_landlord_name": "Landlord",
+                "boarding_address": "Boarding address",
+            }
+        )
+    item = replace_current_inventory(student=student, values=values)
+    assert item.living_arrangement == living_arrangement
+
+
+@pytest.mark.django_db
 def test_transportation_frequency_other_requires_detail_and_fare_is_not_an_enum():
     student, _, _ = make_draft("transport-other@example.edu")
     with pytest.raises(InvalidInventoryInput, match="frequency detail"):
@@ -705,6 +725,22 @@ def test_new_submission_requires_current_location_and_both_parent_rows_with_expl
     values["family_members"][0]["occupation_category"] = None
     replace_current_inventory(student=student, values=values)
     with pytest.raises(InvalidInventoryInput, match="Father occupation_category"):
+        submit_current_inventory(student=student, context=context(student))
+
+
+@pytest.mark.django_db
+def test_existing_transportation_entry_requires_explicit_frequency_category_at_submission():
+    student, program, _ = make_draft("transport-submit@example.edu")
+    values = minimum_normalized_inventory_values(program_id=program.pk)
+    values["transportation_entries"] = [
+        {
+            "mode": "BUS",
+            "frequency": "legacy-style draft text",
+            "fare": Decimal("20"),
+        }
+    ]
+    replace_current_inventory(student=student, values=values)
+    with pytest.raises(InvalidInventoryInput, match="frequency_category"):
         submit_current_inventory(student=student, context=context(student))
 
 
