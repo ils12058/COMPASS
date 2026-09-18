@@ -30,6 +30,7 @@ from .services import (
     DEFAULT_PAGE_SIZE,
     ExitInterviewConflict,
     ExitInterviewCurrentAcademicYearNotConfigured,
+    ExitInterviewCurrentStudentRequired,
     ExitInterviewError,
     ExitInterviewInventoryRequired,
     ExitInterviewNotFound,
@@ -295,6 +296,8 @@ def _require_head(request, capability: str) -> None:
 
 
 def _raise(exc: ExitInterviewError) -> NoReturn:
+    if isinstance(exc, ExitInterviewCurrentStudentRequired):
+        raise APIError(409, "current_student_required", str(exc)) from exc
     if isinstance(exc, ExitInterviewNotFound):
         raise APIError(404, "exit_interview_not_found", str(exc)) from exc
     if isinstance(exc, ExitInterviewNotPermitted):
