@@ -524,8 +524,9 @@ def test_referral_audit_metadata_excludes_sensitive_source_text():
 
     serialized = json.dumps(
         list(
-            AuditEvent.objects.filter(action__startswith="referral.")
-            .values_list("metadata", flat=True)
+            AuditEvent.objects.filter(action__startswith="referral.").values_list(
+                "metadata", flat=True
+            )
         )
     )
     for marker in (
