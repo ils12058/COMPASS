@@ -338,9 +338,9 @@ def confirm_email_change(
     *,
     user: User,
     session,
-    request_id,
-    challenge_id,
     code: str,
+    request_id=None,
+    challenge_id=None,
     context: AuditContext,
     request,
     now: datetime | None = None,
@@ -351,19 +351,25 @@ def confirm_email_change(
 
     with transaction.atomic():
         locked_user = User.objects.select_for_update().select_related("role").get(pk=user.pk)
-        pending = (
+        pending_query = (
             EmailChangeRequest.objects.select_for_update()
             .select_related("requested_by", "email_otp_challenge")
-            .filter(pk=request_id, user_id=locked_user.pk)
-            .first()
+            .filter(
+                user_id=locked_user.pk,
+                confirmed_at__isnull=True,
+                cancelled_at__isnull=True,
+            )
         )
+        if request_id is not None:
+            pending_query = pending_query.filter(pk=request_id)
+        pending = pending_query.first()
         if pending is None:
             raise EmailChangeNotFound("the pending email change was not found")
+        if pending.expires_at <= current:
+            raise EmailChangeInvalid("the pending email change is unavailable")
         if (
-            pending.confirmed_at is not None
-            or pending.cancelled_at is not None
-            or pending.expires_at <= current
-            or pending.email_otp_challenge_id != challenge_id
+            challenge_id is not None
+            and pending.email_otp_challenge_id != challenge_id
         ):
             raise EmailChangeInvalid("the pending email change is unavailable")
         if not locked_user.is_active:
