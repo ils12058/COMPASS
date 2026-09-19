@@ -160,9 +160,7 @@ def _report_release(event: AuditEvent) -> PrivacyActivityItem | None:
         event,
         category=PrivacyActivityCategory.DATA_RELEASE,
         title=f"Student Profiling {artifact_format} released",
-        description=(
-            "COMPASS authorized and prepared a Student Profiling artifact response."
-        ),
+        description=("COMPASS authorized and prepared a Student Profiling artifact response."),
         artifact_type="student_profiling",
         artifact_format=str(artifact_format),
         scope="; ".join(scope_parts),
@@ -210,7 +208,10 @@ def _access_control(event: AuditEvent) -> PrivacyActivityItem | None:
     elif event.action == ACCOUNT_DISABLED:
         title, description = "Account disabled", "An account was disabled."
     elif event.action == ACCOUNT_MFA_RESET:
-        title, description = "Account MFA reset", "Administrative MFA state was reset for an account."
+        title, description = (
+            "Account MFA reset",
+            "Administrative MFA state was reset for an account.",
+        )
     elif event.action == ACCOUNT_ROLE_CHANGED:
         from_role = metadata.get("from_role")
         to_role = metadata.get("to_role")
@@ -223,7 +224,11 @@ def _access_control(event: AuditEvent) -> PrivacyActivityItem | None:
         if designation not in DESIGNATION_CODES:
             return None
         assigned = event.action == ACCOUNT_DESIGNATION_ASSIGNED
-        title = "Institutional designation assigned" if assigned else "Institutional designation removed"
+        title = (
+            "Institutional designation assigned"
+            if assigned
+            else "Institutional designation removed"
+        )
         verb = "assigned to" if assigned else "removed from"
         description = f"{designation} was {verb} an account."
     elif event.action in {
