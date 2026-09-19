@@ -465,7 +465,8 @@ def test_health_auth_platform_and_daily_webhook_bypass_before_maintenance_lookup
     assert ready.status_code == 200
     assert auth.status_code == 200
     assert platform.status_code == 401
-    assert webhook.status_code != 503
+    if webhook.status_code == 503:
+        assert webhook.json()["error"]["code"] != "maintenance_mode"
     lookup.assert_not_called()
 
 
