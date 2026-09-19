@@ -204,8 +204,8 @@ class PrivacyIncidentCreateRequest(StrictSchema):
     summary: str
     affected_area: str
     personal_data_categories: list[str]
+    discovered_at: datetime
     occurred_at: datetime | None = None
-    discovered_at: datetime | None = None
     estimated_affected_subjects: int | None = None
     assessment_summary: str = ""
     containment_summary: str = ""
