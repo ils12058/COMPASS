@@ -506,6 +506,26 @@
         "title": "ActivityPageResponse",
         "type": "object"
       },
+      "ActorSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "ActorSummary",
+        "type": "object"
+      },
       "AnnualIncomeStatusValue": {
         "enum": [
           "REPORTED",
@@ -1644,6 +1664,8 @@
           "organization.view",
           "platform_operations.manage",
           "platform_operations.view",
+          "privacy_governance.manage",
+          "privacy_governance.view",
           "referrals.manage",
           "referrals.view",
           "reports.view",
@@ -7214,6 +7236,16 @@
         "title": "ImmunizationValue",
         "type": "string"
       },
+      "IncidentStatusValue": {
+        "enum": [
+          "OPEN",
+          "ASSESSING",
+          "CONTAINED",
+          "RESOLVED"
+        ],
+        "title": "IncidentStatusValue",
+        "type": "string"
+      },
       "InterestValue": {
         "enum": [
           "PAINTING",
@@ -9340,6 +9372,16 @@
         "title": "MyProfileUpdateRequest",
         "type": "object"
       },
+      "NotificationAssessmentValue": {
+        "enum": [
+          "NOT_ASSESSED",
+          "NOT_REQUIRED",
+          "REQUIRED",
+          "COMPLETED"
+        ],
+        "title": "NotificationAssessmentValue",
+        "type": "string"
+      },
       "NotificationPageResponse": {
         "additionalProperties": false,
         "properties": {
@@ -9894,6 +9936,996 @@
         ],
         "title": "PostGraduationFieldValue",
         "type": "string"
+      },
+      "PrivacyActivityCategory": {
+        "enum": [
+          "DATA_RELEASE",
+          "ACCESS_CONTROL",
+          "ACCOUNT_SECURITY",
+          "PRIVACY_GOVERNANCE"
+        ],
+        "title": "PrivacyActivityCategory",
+        "type": "string"
+      },
+      "PrivacyActivityItemResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Display Name"
+          },
+          "artifact_format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Format"
+          },
+          "artifact_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Type"
+          },
+          "category": {
+            "$ref": "#/components/schemas/PrivacyActivityCategory"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "resource_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Reference"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "type",
+          "title",
+          "description",
+          "occurred_at",
+          "actor_display_name",
+          "artifact_type",
+          "artifact_format",
+          "scope",
+          "resource_reference"
+        ],
+        "title": "PrivacyActivityItemResponse",
+        "type": "object"
+      },
+      "PrivacyActivityPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PrivacyActivityItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "PrivacyActivityPageResponse",
+        "type": "object"
+      },
+      "PrivacyIncidentCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "affected_area": {
+            "title": "Affected Area",
+            "type": "string"
+          },
+          "assessment_summary": {
+            "default": "",
+            "title": "Assessment Summary",
+            "type": "string"
+          },
+          "containment_summary": {
+            "default": "",
+            "title": "Containment Summary",
+            "type": "string"
+          },
+          "discovered_at": {
+            "format": "date-time",
+            "title": "Discovered At",
+            "type": "string"
+          },
+          "estimated_affected_subjects": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Affected Subjects"
+          },
+          "notification_assessment": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationAssessmentValue"
+              }
+            ],
+            "default": "NOT_ASSESSED"
+          },
+          "notification_reference": {
+            "default": "",
+            "title": "Notification Reference",
+            "type": "string"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "personal_data_categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Personal Data Categories",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "summary",
+          "affected_area",
+          "personal_data_categories",
+          "discovered_at"
+        ],
+        "title": "PrivacyIncidentCreateRequest",
+        "type": "object"
+      },
+      "PrivacyIncidentPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PrivacyIncidentResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "PrivacyIncidentPageResponse",
+        "type": "object"
+      },
+      "PrivacyIncidentResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "affected_area": {
+            "title": "Affected Area",
+            "type": "string"
+          },
+          "assessment_summary": {
+            "title": "Assessment Summary",
+            "type": "string"
+          },
+          "containment_summary": {
+            "title": "Containment Summary",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "discovered_at": {
+            "format": "date-time",
+            "title": "Discovered At",
+            "type": "string"
+          },
+          "estimated_affected_subjects": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Affected Subjects"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "notification_assessment": {
+            "$ref": "#/components/schemas/NotificationAssessmentValue"
+          },
+          "notification_reference": {
+            "title": "Notification Reference",
+            "type": "string"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "personal_data_categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Personal Data Categories",
+            "type": "array"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IncidentStatusValue"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "title",
+          "summary",
+          "affected_area",
+          "personal_data_categories",
+          "status",
+          "occurred_at",
+          "discovered_at",
+          "estimated_affected_subjects",
+          "assessment_summary",
+          "containment_summary",
+          "notification_assessment",
+          "notification_reference",
+          "created_at",
+          "updated_at",
+          "resolved_at"
+        ],
+        "title": "PrivacyIncidentResponse",
+        "type": "object"
+      },
+      "PrivacyIncidentUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "affected_area": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Affected Area"
+          },
+          "assessment_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment Summary"
+          },
+          "containment_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Containment Summary"
+          },
+          "discovered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discovered At"
+          },
+          "estimated_affected_subjects": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Affected Subjects"
+          },
+          "notification_assessment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NotificationAssessmentValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notification_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notification Reference"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "personal_data_categories": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personal Data Categories"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IncidentStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "PrivacyIncidentUpdateRequest",
+        "type": "object"
+      },
+      "PrivacyReviewCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "findings_summary": {
+            "default": "",
+            "title": "Findings Summary",
+            "type": "string"
+          },
+          "recommendations_summary": {
+            "default": "",
+            "title": "Recommendations Summary",
+            "type": "string"
+          },
+          "review_type": {
+            "$ref": "#/components/schemas/ReviewTypeValue"
+          },
+          "scope_summary": {
+            "title": "Scope Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_type",
+          "scope_summary"
+        ],
+        "title": "PrivacyReviewCreateRequest",
+        "type": "object"
+      },
+      "PrivacyReviewPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PrivacyReviewResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "PrivacyReviewPageResponse",
+        "type": "object"
+      },
+      "PrivacyReviewResolveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "resolution_summary": {
+            "title": "Resolution Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolution_summary"
+        ],
+        "title": "PrivacyReviewResolveRequest",
+        "type": "object"
+      },
+      "PrivacyReviewResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "findings_summary": {
+            "title": "Findings Summary",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "processing_activity_id": {
+            "format": "uuid",
+            "title": "Processing Activity Id",
+            "type": "string"
+          },
+          "recommendations_summary": {
+            "title": "Recommendations Summary",
+            "type": "string"
+          },
+          "resolution_summary": {
+            "title": "Resolution Summary",
+            "type": "string"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "review_type": {
+            "$ref": "#/components/schemas/ReviewTypeValue"
+          },
+          "reviewed_by": {
+            "$ref": "#/components/schemas/ActorSummary"
+          },
+          "scope_summary": {
+            "title": "Scope Summary",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReviewStatusValue"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "processing_activity_id",
+          "review_type",
+          "status",
+          "scope_summary",
+          "findings_summary",
+          "recommendations_summary",
+          "resolution_summary",
+          "reviewed_by",
+          "created_at",
+          "updated_at",
+          "resolved_at"
+        ],
+        "title": "PrivacyReviewResponse",
+        "type": "object"
+      },
+      "PrivacyReviewUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "findings_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Findings Summary"
+          },
+          "recommendations_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendations Summary"
+          },
+          "scope_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Summary"
+          }
+        },
+        "title": "PrivacyReviewUpdateRequest",
+        "type": "object"
+      },
+      "ProcessingActivityCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "authorized_access_summary": {
+            "title": "Authorized Access Summary",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "data_subject_categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Data Subject Categories",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "personal_data_categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Personal Data Categories",
+            "type": "array"
+          },
+          "policy_basis_reference": {
+            "default": "",
+            "title": "Policy Basis Reference",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "retention_policy_reference": {
+            "default": "",
+            "title": "Retention Policy Reference",
+            "type": "string"
+          },
+          "safeguards_summary": {
+            "title": "Safeguards Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "purpose",
+          "data_subject_categories",
+          "personal_data_categories",
+          "authorized_access_summary",
+          "safeguards_summary"
+        ],
+        "title": "ProcessingActivityCreateRequest",
+        "type": "object"
+      },
+      "ProcessingActivityPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProcessingActivityResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "ProcessingActivityPageResponse",
+        "type": "object"
+      },
+      "ProcessingActivityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "authorized_access_summary": {
+            "title": "Authorized Access Summary",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "data_subject_categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Data Subject Categories",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "personal_data_categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Personal Data Categories",
+            "type": "array"
+          },
+          "policy_basis_reference": {
+            "title": "Policy Basis Reference",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "retention_policy_reference": {
+            "title": "Retention Policy Reference",
+            "type": "string"
+          },
+          "safeguards_summary": {
+            "title": "Safeguards Summary",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "purpose",
+          "data_subject_categories",
+          "personal_data_categories",
+          "authorized_access_summary",
+          "safeguards_summary",
+          "retention_policy_reference",
+          "policy_basis_reference",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ProcessingActivityResponse",
+        "type": "object"
+      },
+      "ProcessingActivityUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "authorized_access_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authorized Access Summary"
+          },
+          "data_subject_categories": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Subject Categories"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "personal_data_categories": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personal Data Categories"
+          },
+          "policy_basis_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Basis Reference"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
+          },
+          "retention_policy_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Policy Reference"
+          },
+          "safeguards_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safeguards Summary"
+          }
+        },
+        "title": "ProcessingActivityUpdateRequest",
+        "type": "object"
       },
       "ProgramColumn": {
         "additionalProperties": false,
@@ -10750,6 +11782,22 @@
         ],
         "title": "ReportContext",
         "type": "object"
+      },
+      "ReviewStatusValue": {
+        "enum": [
+          "OPEN",
+          "RESOLVED"
+        ],
+        "title": "ReviewStatusValue",
+        "type": "string"
+      },
+      "ReviewTypeValue": {
+        "enum": [
+          "PRIVACY_REVIEW",
+          "PIA"
+        ],
+        "title": "ReviewTypeValue",
+        "type": "string"
       },
       "RevocationResponse": {
         "additionalProperties": false,
@@ -13673,6 +14721,8 @@
                 "organization.view",
                 "platform_operations.manage",
                 "platform_operations.view",
+                "privacy_governance.manage",
+                "privacy_governance.view",
                 "referrals.manage",
                 "referrals.view",
                 "reports.view",
@@ -13830,6 +14880,8 @@
                 "organization.view",
                 "platform_operations.manage",
                 "platform_operations.view",
+                "privacy_governance.manage",
+                "privacy_governance.view",
                 "referrals.manage",
                 "referrals.view",
                 "reports.view",
@@ -27915,6 +28967,1356 @@
         ]
       }
     },
+    "/api/v1/privacy/activity": {
+      "get": {
+        "operationId": "privacyGovernanceListActivity",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PrivacyActivityCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyActivityPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Privacy Activity",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/incidents": {
+      "get": {
+        "operationId": "privacyGovernanceListIncidents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/IncidentStatusValue"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyIncidentPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Incident List",
+        "tags": [
+          "privacy-governance"
+        ]
+      },
+      "post": {
+        "operationId": "privacyGovernanceCreateIncident",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacyIncidentCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyIncidentResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Incident Create",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/incidents/{incident_id}": {
+      "get": {
+        "operationId": "privacyGovernanceGetIncident",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyIncidentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Incident Get",
+        "tags": [
+          "privacy-governance"
+        ]
+      },
+      "patch": {
+        "operationId": "privacyGovernanceUpdateIncident",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacyIncidentUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyIncidentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Incident Update",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/incidents/{incident_id}/resolve": {
+      "post": {
+        "operationId": "privacyGovernanceResolveIncident",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyIncidentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Incident Resolve",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/processing-activities": {
+      "get": {
+        "operationId": "privacyGovernanceListProcessingActivities",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "is_active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessingActivityPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Processing List",
+        "tags": [
+          "privacy-governance"
+        ]
+      },
+      "post": {
+        "operationId": "privacyGovernanceCreateProcessingActivity",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcessingActivityCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessingActivityResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Processing Create",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/processing-activities/{processing_id}": {
+      "get": {
+        "operationId": "privacyGovernanceGetProcessingActivity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "processing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Processing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessingActivityResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Processing Get",
+        "tags": [
+          "privacy-governance"
+        ]
+      },
+      "patch": {
+        "operationId": "privacyGovernanceUpdateProcessingActivity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "processing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Processing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcessingActivityUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessingActivityResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Processing Update",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/processing-activities/{processing_id}/retire": {
+      "post": {
+        "operationId": "privacyGovernanceRetireProcessingActivity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "processing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Processing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessingActivityResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Processing Retire",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/processing-activities/{processing_id}/reviews": {
+      "get": {
+        "operationId": "privacyGovernanceListReviews",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "processing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Processing Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyReviewPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Review List",
+        "tags": [
+          "privacy-governance"
+        ]
+      },
+      "post": {
+        "operationId": "privacyGovernanceCreateReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "processing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Processing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacyReviewCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyReviewResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Review Create",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/reviews/{review_id}": {
+      "get": {
+        "operationId": "privacyGovernanceGetReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "review_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Review Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyReviewResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Review Get",
+        "tags": [
+          "privacy-governance"
+        ]
+      },
+      "patch": {
+        "operationId": "privacyGovernanceUpdateReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "review_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Review Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacyReviewUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyReviewResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Review Update",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/reviews/{review_id}/resolve": {
+      "post": {
+        "operationId": "privacyGovernanceResolveReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "review_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Review Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacyReviewResolveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyReviewResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Review Resolve",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
     "/api/v1/referrals": {
       "get": {
         "operationId": "referralsList",
@@ -30304,6 +32706,10 @@
     {
       "description": "Capability-authorized COMPASS platform health, configuration diagnostics, and operator guidance.",
       "name": "platform-operations"
+    },
+    {
+      "description": "DPO privacy-governance records and curated privacy/security oversight.",
+      "name": "privacy-governance"
     }
   ]
 }
