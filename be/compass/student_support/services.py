@@ -110,9 +110,7 @@ def _indicator_rows(
         if profile.father_life_status == ParentLifeStatus.DECEASED:
             active.add("FATHER_DECEASED")
     return tuple(
-        SupportIndicator(code=code, label=label)
-        for code, label in _INDICATORS
-        if code in active
+        SupportIndicator(code=code, label=label) for code, label in _INDICATORS if code in active
     )
 
 

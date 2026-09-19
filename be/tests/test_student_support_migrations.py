@@ -65,9 +65,7 @@ def test_student_support_migration_preserves_legacy_pwd_and_parent_life_status()
             form_revision_id=revision.pk,
             physical_disadvantage_status=legacy_pwd,
             physical_disadvantage=(
-                "Legacy narrative"
-                if legacy_pwd == "HAS_PHYSICAL_DISADVANTAGE"
-                else ""
+                "Legacy narrative" if legacy_pwd == "HAS_PHYSICAL_DISADVANTAGE" else ""
             ),
         )
         if father_status is not None:
@@ -82,13 +80,9 @@ def test_student_support_migration_preserves_legacy_pwd_and_parent_life_status()
                 kind="MOTHER",
                 life_status=mother_status,
             )
-        inventory_ids.append(
-            (inventory.pk, expected_pwd, father_status, mother_status)
-        )
+        inventory_ids.append((inventory.pk, expected_pwd, father_status, mother_status))
 
-    support_migration = import_module(
-        "compass.student_support.migrations.0001_initial"
-    )
+    support_migration = import_module("compass.student_support.migrations.0001_initial")
     support_migration.copy_legacy_parent_life_status(old_apps, None)
 
     LegacySupportProfile = old_apps.get_model(
@@ -112,9 +106,7 @@ def test_student_support_migration_preserves_legacy_pwd_and_parent_life_status()
     )
     NewFamilyMember = new_apps.get_model("inventory", "InventoryFamilyMember")
 
-    assert "life_status" not in {
-        field.name for field in NewFamilyMember._meta.get_fields()
-    }
+    assert "life_status" not in {field.name for field in NewFamilyMember._meta.get_fields()}
     for inventory_id, expected_pwd, father_status, mother_status in inventory_ids:
         inventory = NewInventory.objects.get(pk=inventory_id)
         profile = NewSupportProfile.objects.get(inventory_id=inventory_id)

@@ -96,7 +96,6 @@ def student_support_get_context(request, student_id: UUID):
         "inventory_status": context.inventory_status,
         "available": context.available,
         "indicators": [
-            {"code": indicator.code, "label": indicator.label}
-            for indicator in context.indicators
+            {"code": indicator.code, "label": indicator.label} for indicator in context.indicators
         ],
     }

@@ -461,11 +461,7 @@ def _normalize_support_profile(values: object) -> dict[str, object]:
 
 
 def _lock_or_create_support_profile(item: StudentInventory) -> StudentSupportProfile:
-    profile = (
-        StudentSupportProfile.objects.select_for_update()
-        .filter(inventory_id=item.pk)
-        .first()
-    )
+    profile = StudentSupportProfile.objects.select_for_update().filter(inventory_id=item.pk).first()
     if profile is None:
         profile = StudentSupportProfile.objects.create(inventory=item)
     return profile
@@ -732,9 +728,7 @@ def _validate_submission(
         ("mother_life_status", profile.mother_life_status),
         ("father_life_status", profile.father_life_status),
     )
-    missing_support = [
-        name for name, value in required_support if value in {None, ""}
-    ]
+    missing_support = [name for name, value in required_support if value in {None, ""}]
     if missing_support:
         raise InvalidInventoryInput(
             "Inventory submission requires Student Support fields: "
@@ -900,9 +894,7 @@ def replace_current_inventory(
         normalized_values = _normalize_snapshot_categories(values)
         support_values = None
         if "support_profile" in normalized_values:
-            support_values = _normalize_support_profile(
-                normalized_values.pop("support_profile")
-            )
+            support_values = _normalize_support_profile(normalized_values.pop("support_profile"))
         profile = _lock_or_create_support_profile(item)
         if "program_id" in normalized_values:
             program_id = normalized_values.pop("program_id")

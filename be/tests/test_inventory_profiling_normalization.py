@@ -194,9 +194,7 @@ def test_pwd_status_requires_detail_only_when_pwd_and_clears_non_pwd_detail():
         replace_current_inventory(
             student=student,
             values={
-                "pwd_status": (
-                    PWDStatus.PWD
-                ),
+                "pwd_status": (PWDStatus.PWD),
                 "physical_disadvantage": "",
             },
         )
