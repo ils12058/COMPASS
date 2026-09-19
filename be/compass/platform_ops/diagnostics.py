@@ -14,10 +14,13 @@ from django.utils import timezone
 
 from compass.integrations.mail import Mailer
 from compass.integrations.storage import ObjectStorage
+from compass.tasks import infrastructure_noop
 
 logger = logging.getLogger("compass.platform_ops")
 
 _STORAGE_DIAGNOSTIC_KEY = "__compass_diagnostics__/reserved-read-only-probe"
+WORKER_SMOKE_DEFAULT_TIMEOUT_SECONDS = 5.0
+WORKER_SMOKE_MAX_TIMEOUT_SECONDS = 10.0
 
 
 class DiagnosticStatus(StrEnum):
@@ -194,6 +197,32 @@ def probe_smtp() -> DiagnosticCheck:
         label=label,
         status=DiagnosticStatus.HEALTHY,
         summary="SMTP connection and authentication completed without sending a message.",
+    )
+
+
+def run_worker_smoke(
+    *, timeout_seconds: float = WORKER_SMOKE_DEFAULT_TIMEOUT_SECONDS
+) -> DiagnosticCheck:
+    if not 0 < timeout_seconds <= WORKER_SMOKE_MAX_TIMEOUT_SECONDS:
+        raise ValueError(
+            f"worker smoke timeout must be greater than zero and at most "
+            f"{WORKER_SMOKE_MAX_TIMEOUT_SECONDS:g} seconds"
+        )
+    code = "celery_worker_smoke"
+    label = "Celery worker smoke"
+    try:
+        result = infrastructure_noop.delay()
+        payload = result.get(timeout=timeout_seconds)
+    except Exception as exc:
+        _log_probe_failure(code=code, exc=exc)
+        return _unavailable(code, label)
+    if not isinstance(payload, dict) or payload.get("status") != "ok":
+        return _unavailable(code, label)
+    return DiagnosticCheck(
+        code=code,
+        label=label,
+        status=DiagnosticStatus.HEALTHY,
+        summary="A harmless diagnostic task was executed and its result was received.",
     )
 
 
@@ -522,4 +551,7 @@ __all__ = [
     "probe_redis_idempotency",
     "probe_redis_rate_limit",
     "probe_smtp",
+    "run_worker_smoke",
+    "WORKER_SMOKE_DEFAULT_TIMEOUT_SECONDS",
+    "WORKER_SMOKE_MAX_TIMEOUT_SECONDS",
 ]
