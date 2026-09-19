@@ -116,9 +116,7 @@ def _as_decimal(value: object) -> Decimal:
         return value
     if isinstance(value, int | float):
         return Decimal(str(value))
-    raise GraduateTracerWorkbookUnavailable(
-        "A Graduate Tracer percentage value is invalid."
-    )
+    raise GraduateTracerWorkbookUnavailable("A Graduate Tracer percentage value is invalid.")
 
 
 def _date_text(value: object) -> str:
@@ -126,9 +124,7 @@ def _date_text(value: object) -> str:
         return "All"
     if isinstance(value, date):
         return value.isoformat()
-    raise GraduateTracerWorkbookUnavailable(
-        "A Graduate Tracer submission-period value is invalid."
-    )
+    raise GraduateTracerWorkbookUnavailable("A Graduate Tracer submission-period value is invalid.")
 
 
 def _generated_at_text(value: object) -> str:
@@ -302,9 +298,7 @@ def render_graduate_tracer_xlsx(
             "The Graduate Tracer report context is unavailable."
         )
     if not isinstance(methodology, dict):
-        raise GraduateTracerWorkbookUnavailable(
-            "The Graduate Tracer methodology is unavailable."
-        )
+        raise GraduateTracerWorkbookUnavailable("The Graduate Tracer methodology is unavailable.")
     if not isinstance(sections, dict):
         raise GraduateTracerWorkbookUnavailable(
             "The Graduate Tracer report sections are unavailable."
