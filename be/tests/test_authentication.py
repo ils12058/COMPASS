@@ -33,6 +33,7 @@ from compass.authentication.sessions import (
     resolve_trusted_session,
 )
 from compass.common.rate_limit import RateLimitResult
+from compass.notifications.models import EmailDelivery, Notification
 
 
 def make_user(*, email="student@example.edu", password="correct-password", role_code="STUDENT"):
@@ -424,6 +425,8 @@ def test_email_otp_is_hash_only_bounded_single_use_and_resendable(
     challenge = EmailOTPChallenge.objects.get(pk=issue.challenge.pk)
     assert first_code not in challenge.code_hash
     assert challenge.consumed_at is None
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
 
     consumed = consume_email_otp(
         challenge_id=challenge.pk,
