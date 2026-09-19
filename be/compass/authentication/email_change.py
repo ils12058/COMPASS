@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -34,7 +35,7 @@ from compass.authentication.security import (
     AuthStateInvalidation,
     invalidate_auth_state_after_authority_change,
 )
-from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
+from compass.authentication.sessions import require_recent_mfa
 
 logger = logging.getLogger("compass.authentication.email_change")
 
@@ -214,11 +215,7 @@ def request_self_email_change(
     # accounting must commit independently instead of being rolled back with staging.
     role = getattr(user, "role", None)
     role_code = getattr(role, "code", None)
-    required_by_role = role_code in getattr(
-        __import__("django.conf", fromlist=["settings"]).settings,
-        "AUTH_MFA_REQUIRED_ROLE_CODES",
-        (),
-    )
+    required_by_role = role_code in settings.AUTH_MFA_REQUIRED_ROLE_CODES
     has_totp = has_active_totp_factor(user.pk)
     if not has_totp and not required_by_role:
         if current_email_challenge_id is None or current_email_code is None:
