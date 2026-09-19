@@ -264,6 +264,50 @@ def test_consent_request_creates_only_local_room_binding_and_is_idempotent():
 
 
 @pytest.mark.django_db
+def test_multi_scope_consent_request_batches_notification_and_later_new_scope_gets_new_one():
+    _, student, counselor, appointment = setup_session()
+
+    first_batch = request_consents(
+        counselor=counselor,
+        appointment_id=appointment.pk,
+        scopes=[ConsentScope.LIVE_TRANSCRIPTION, ConsentScope.TRANSCRIPT_STORAGE],
+        context=context(counselor),
+    )
+    first_notifications = Notification.objects.filter(
+        recipient=student,
+        event_code="ecounseling.consent.requested",
+    )
+    assert len(first_batch) == 2
+    assert first_notifications.count() == 1
+    first_notification = first_notifications.get()
+    assert first_notification.source_id == first_batch[0]["id"]
+    assert EmailDelivery.objects.filter(notification=first_notification).count() == 1
+
+    repeated = request_consents(
+        counselor=counselor,
+        appointment_id=appointment.pk,
+        scopes=[ConsentScope.LIVE_TRANSCRIPTION, ConsentScope.TRANSCRIPT_STORAGE],
+        context=context(counselor),
+    )
+    assert repeated == first_batch
+    assert first_notifications.count() == 1
+
+    later = request_consents(
+        counselor=counselor,
+        appointment_id=appointment.pk,
+        scopes=[ConsentScope.AUDIO_VIDEO_RECORDING],
+        context=context(counselor),
+    )
+    all_notifications = Notification.objects.filter(
+        recipient=student,
+        event_code="ecounseling.consent.requested",
+    )
+    assert all_notifications.count() == 2
+    assert later[0]["id"] in set(all_notifications.values_list("source_id", flat=True))
+    assert EmailDelivery.objects.filter(notification__in=all_notifications).count() == 2
+
+
+@pytest.mark.django_db
 def test_consent_request_rejects_duplicates_terminal_rerequest_and_storage_without_live_request():
     _, student, counselor, appointment = setup_session()
     with pytest.raises(ECounselingConsentConflict, match="Duplicate"):
