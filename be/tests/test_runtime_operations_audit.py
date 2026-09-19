@@ -12,8 +12,8 @@ from compass.audit.actions import (
     NOTIFICATION_EMAIL_RETRY_REQUESTED,
     PLATFORM_MAINTENANCE_DISABLED,
     PLATFORM_MAINTENANCE_ENABLED,
-    PLATFORM_MAINTENANCE_SCHEDULE_CANCELLED,
     PLATFORM_MAINTENANCE_SCHEDULED,
+    PLATFORM_MAINTENANCE_SCHEDULE_CANCELLED,
 )
 from compass.audit.context import AuditContext
 from compass.audit.metadata import validate_metadata
