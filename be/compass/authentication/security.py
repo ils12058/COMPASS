@@ -98,6 +98,7 @@ def invalidate_auth_state_after_authority_change(
             EmailOTPPurpose.SECURITY_CHALLENGE,
             EmailOTPPurpose.RECOVERY,
             EmailOTPPurpose.EMAIL_VERIFICATION,
+            EmailOTPPurpose.EMAIL_CHANGE,
         )
         if invalidate_email_security_challenges
         else None
