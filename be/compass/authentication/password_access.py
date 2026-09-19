@@ -142,7 +142,7 @@ def request_password_access(
     turnstile_token: str | None = None,
     now: datetime | None = None,
 ) -> PasswordAccessRequestResult:
-    """Issue one real or decoy recovery challenge without account enumeration."""
+    """Issue one real or decoy password-access challenge without account enumeration."""
 
     normalized_email = _normalize_email(email)
     current = now or timezone.now()
@@ -181,7 +181,7 @@ def confirm_password_access(
     limiter=None,
     now: datetime | None = None,
 ) -> PasswordAccessConfirmResult:
-    """Atomically verify one recovery OTP and establish or replace the user password."""
+    """Atomically verify one password-access OTP and establish or replace the password."""
 
     current = now or timezone.now()
     try:
