@@ -307,3 +307,28 @@ def test_manager_api_uses_capability_and_recent_mfa_not_role_shortcut():
         **csrf(fresh),
     )
     assert denied.status_code == 403
+
+
+
+@pytest.mark.django_db
+def test_dpo_institutional_officer_is_never_head_guidance_fallback():
+    sync_policy()
+    campus = Campus.objects.create(code="DPO-FALLBACK", name="DPO Fallback")
+    college = College.objects.create(campus=campus, code="DPO-COL", name="DPO College")
+    student = make_user("dpo-routing-student@example.edu", "STUDENT")
+    officer = make_user("dpo-routing-officer@example.edu", "INSTITUTIONAL_OFFICER")
+    UserDesignation.objects.create(
+        user=officer,
+        designation=Designation.objects.get(code="DPO"),
+    )
+    set_student_affiliation(
+        student_id=student.pk,
+        college_id=college.pk,
+        context=context(officer),
+    )
+
+    result = resolve_default_counselor_for_student(student)
+
+    assert result.counselor is None
+    assert result.reason == "NO_HEAD_FALLBACK"
+    assert effective_responsibility_colleges(officer) == ()
