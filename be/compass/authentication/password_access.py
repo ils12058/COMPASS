@@ -27,6 +27,8 @@ from compass.authentication.email_otp import (
 )
 from compass.authentication.models import EmailOTPChallenge, EmailOTPPurpose
 from compass.authentication.security import invalidate_reusable_auth_state
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 
 User = get_user_model()
 
@@ -275,7 +277,7 @@ def confirm_password_access(
                     email_challenge_purposes=tuple(PASSWORD_ACCESS_PURPOSES),
                     email_challenge_email=user.email,
                 )
-                record_event(
+                audit_event = record_event(
                     context=context,
                     action=action,
                     outcome="SUCCESS",
@@ -283,6 +285,15 @@ def confirm_password_access(
                     target_id=user.pk,
                     metadata={"method": PASSWORD_ACCESS_METHOD},
                 )
+                if action == AUTH_PASSWORD_RESET:
+                    create_notification_for_event(
+                        recipient=user,
+                        event=NotificationEvent.SECURITY_PASSWORD_RESET,
+                        source_type="audit_event",
+                        source_id=audit_event.pk,
+                        target_type="ACCOUNT_SECURITY",
+                        target_id=user.pk,
+                    )
                 result = PasswordAccessConfirmResult(password_set=True, action=action)
 
     if invalid or result is None:
