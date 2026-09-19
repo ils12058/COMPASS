@@ -19,6 +19,7 @@ from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.platform_ops.models import MaintenanceConfiguration
 from compass.platform_ops.services import (
+    InvalidMaintenanceWindow,
     MaintenanceAlreadyEnabled,
     MaintenanceScheduleConflict,
     MaintenanceState,
@@ -237,7 +238,7 @@ def test_schedule_validation_and_effective_timestamp_rules_need_no_celery():
     start = now + timedelta(hours=1)
     end = now + timedelta(hours=2)
 
-    with pytest.raises(Exception, match="scheduled end must be after"):
+    with pytest.raises(InvalidMaintenanceWindow, match="scheduled end must be after"):
         schedule_maintenance(
             message="Bad order",
             starts_at=end,
@@ -245,7 +246,7 @@ def test_schedule_validation_and_effective_timestamp_rules_need_no_celery():
             context=AuditContext.system(),
             now=now,
         )
-    with pytest.raises(Exception, match="scheduled start must be in the future"):
+    with pytest.raises(InvalidMaintenanceWindow, match="scheduled start must be in the future"):
         schedule_maintenance(
             message="Past start",
             starts_at=now - timedelta(seconds=1),
