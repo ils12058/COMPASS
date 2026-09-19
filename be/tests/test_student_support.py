@@ -374,7 +374,7 @@ def test_support_context_is_privacy_minimized_and_has_no_scores_or_narratives():
     _, college, program = make_org("PRIVATE")
     student = make_user("support-private@example.edu")
     affiliate(student, college, counselor=counselor)
-    make_inventory(
+    item = make_inventory(
         student=student,
         year=year,
         program=program,
@@ -454,7 +454,7 @@ def test_support_profile_draft_fields_may_be_null_but_submission_requires_explic
     student = make_user("support-submit-student@example.edu")
     AcademicYear.objects.create(label="2026-2027", is_current=True)
     _, _, program = make_org("SUBMIT")
-    item = make_inventory(
+    make_inventory(
         student=student,
         year=AcademicYear.objects.get(is_current=True),
         program=program,
