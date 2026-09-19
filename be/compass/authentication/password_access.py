@@ -31,7 +31,12 @@ from compass.authentication.security import invalidate_reusable_auth_state
 User = get_user_model()
 
 PASSWORD_ACCESS_METHOD = "email_otp"
-PASSWORD_ACCESS_PURPOSE = EmailOTPPurpose.RECOVERY
+PASSWORD_ACCESS_PURPOSES = frozenset(
+    {
+        EmailOTPPurpose.EMAIL_VERIFICATION,
+        EmailOTPPurpose.RECOVERY,
+    }
+)
 PASSWORD_ACCESS_MESSAGE = "If the account is eligible, a security code has been sent."
 PASSWORD_CHALLENGE_INVALID_MESSAGE = (
     "The security code could not be verified or is no longer valid."
@@ -144,9 +149,14 @@ def request_password_access(
     with transaction.atomic():
         user = User.objects.select_for_update().filter(email=normalized_email).first()
         eligible = user is not None and user.is_active
+        purpose = (
+            EmailOTPPurpose.EMAIL_VERIFICATION
+            if eligible and not user.has_usable_password()
+            else EmailOTPPurpose.RECOVERY
+        )
         issue = issue_email_otp(
             email=normalized_email,
-            purpose=PASSWORD_ACCESS_PURPOSE,
+            purpose=purpose,
             user=user if eligible else None,
             request=request,
             limiter=limiter,
@@ -202,21 +212,33 @@ def confirm_password_access(
             challenge.user = locked_user
         if challenge is None:
             invalid = True
+        elif challenge.purpose not in PASSWORD_ACCESS_PURPOSES:
+            invalid = True
         elif not _verify_email_otp_locked(
             challenge=challenge,
             code=code,
             request=request,
             current=current,
-            expected_purpose=PASSWORD_ACCESS_PURPOSE,
+            expected_purpose=challenge.purpose,
         ):
             invalid = True
         else:
             user = locked_user
+            purpose_state_invalid = (
+                challenge.purpose == EmailOTPPurpose.EMAIL_VERIFICATION
+                and user is not None
+                and user.has_usable_password()
+            ) or (
+                challenge.purpose == EmailOTPPurpose.RECOVERY
+                and user is not None
+                and not user.has_usable_password()
+            )
             if (
                 user is None
                 or challenge.user_id != user.pk
                 or not user.is_active
                 or challenge.email != user.email
+                or purpose_state_invalid
             ):
                 _consume_email_otp_locked(
                     challenge=challenge,
@@ -228,7 +250,11 @@ def confirm_password_access(
                 _validate_new_password(user=user, new_password=new_password)
                 initial_password = not user.has_usable_password()
                 user.set_password(new_password)
-                user.save(update_fields=["password", "updated_at"])
+                update_fields = ["password", "updated_at"]
+                if user.email_verified_at is None:
+                    user.email_verified_at = current
+                    update_fields.append("email_verified_at")
+                user.save(update_fields=update_fields)
                 _consume_email_otp_locked(
                     challenge=challenge,
                     request=request,
@@ -246,7 +272,7 @@ def confirm_password_access(
                     context=context,
                     reason=reason,
                     now=current,
-                    email_challenge_purposes=(PASSWORD_ACCESS_PURPOSE,),
+                    email_challenge_purposes=tuple(PASSWORD_ACCESS_PURPOSES),
                     email_challenge_email=user.email,
                 )
                 record_event(
