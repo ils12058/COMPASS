@@ -55,12 +55,30 @@ from compass.authentication.sessions import (
     revoke_all_auth_sessions,
     revoke_all_trusted_sessions,
 )
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 
 ACCOUNT_MANAGE_CAPABILITY = "accounts.manage"
 INSTITUTIONAL_DESIGNATION_MANAGE_CAPABILITY = "institutional_designations.manage"
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_PAGE_NUMBER = 100_000
+
+
+def _create_account_security_notification(
+    *,
+    target: User,
+    audit_event,
+    event: NotificationEvent,
+) -> None:
+    create_notification_for_event(
+        recipient=target,
+        event=event,
+        source_type="audit_event",
+        source_id=audit_event.pk,
+        target_type="ACCOUNT_SECURITY",
+        target_id=target.pk,
+    )
 
 
 class AccountManagementError(RuntimeError):
@@ -717,13 +735,18 @@ def change_role(
             context=context,
             reason="role_changed",
         )
-        record_event(
+        audit_event = record_event(
             context=context,
             action=ACCOUNT_ROLE_CHANGED,
             outcome=AuditOutcome.SUCCESS,
             target_type="accounts.user",
             target_id=target.pk,
             metadata={"from_role": from_role, "to_role": role_code},
+        )
+        _create_account_security_notification(
+            target=target,
+            audit_event=audit_event,
+            event=NotificationEvent.SECURITY_ACCOUNT_ACCESS_CHANGED,
         )
         return MutationResult(user=target, changed=True)
 
@@ -816,13 +839,18 @@ def assign_designation(
             context=context,
             reason="designation_assigned",
         )
-        record_event(
+        audit_event = record_event(
             context=context,
             action=ACCOUNT_DESIGNATION_ASSIGNED,
             outcome=AuditOutcome.SUCCESS,
             target_type="accounts.user",
             target_id=target.pk,
             metadata={"designation": designation_code},
+        )
+        _create_account_security_notification(
+            target=target,
+            audit_event=audit_event,
+            event=NotificationEvent.SECURITY_ACCOUNT_ACCESS_CHANGED,
         )
         return MutationResult(user=target, changed=True)
 
@@ -869,13 +897,18 @@ def remove_designation(
             context=context,
             reason="designation_removed",
         )
-        record_event(
+        audit_event = record_event(
             context=context,
             action=ACCOUNT_DESIGNATION_REMOVED,
             outcome=AuditOutcome.SUCCESS,
             target_type="accounts.user",
             target_id=target.pk,
             metadata={"designation": designation_code},
+        )
+        _create_account_security_notification(
+            target=target,
+            audit_event=audit_event,
+            event=NotificationEvent.SECURITY_ACCOUNT_ACCESS_CHANGED,
         )
         return MutationResult(user=target, changed=True)
 
@@ -950,7 +983,7 @@ def set_capability_override(
             context=context,
             reason="capability_override_changed",
         )
-        record_event(
+        audit_event = record_event(
             context=context,
             action=ACCOUNT_CAPABILITY_OVERRIDE_SET,
             outcome=AuditOutcome.SUCCESS,
@@ -961,6 +994,11 @@ def set_capability_override(
                 "effect": effect_value,
                 "has_expiry": cleaned_expiry is not None,
             },
+        )
+        _create_account_security_notification(
+            target=target,
+            audit_event=audit_event,
+            event=NotificationEvent.SECURITY_ACCOUNT_ACCESS_CHANGED,
         )
         return OverrideMutationResult(override=override, changed=True)
 
@@ -1008,13 +1046,18 @@ def remove_capability_override(
             context=context,
             reason="capability_override_removed",
         )
-        record_event(
+        audit_event = record_event(
             context=context,
             action=ACCOUNT_CAPABILITY_OVERRIDE_REMOVED,
             outcome=AuditOutcome.SUCCESS,
             target_type="accounts.user",
             target_id=target.pk,
             metadata={"capability": capability_code},
+        )
+        _create_account_security_notification(
+            target=target,
+            audit_event=audit_event,
+            event=NotificationEvent.SECURITY_ACCOUNT_ACCESS_CHANGED,
         )
         return OverrideMutationResult(override=override, changed=True)
 
@@ -1092,13 +1135,18 @@ def reset_account_mfa(
             reason="admin_mfa_reset",
         )
         if mfa_result.changed:
-            record_event(
+            audit_event = record_event(
                 context=context,
                 action=ACCOUNT_MFA_RESET,
                 outcome=AuditOutcome.SUCCESS,
                 target_type="accounts.user",
                 target_id=target.pk,
                 metadata={},
+            )
+            _create_account_security_notification(
+                target=target,
+                audit_event=audit_event,
+                event=NotificationEvent.SECURITY_MFA_ADMIN_RESET,
             )
         return MFAResetMutationResult(
             reset=mfa_result.changed,
