@@ -260,6 +260,66 @@ def test_totp_enrollment_is_pending_then_returns_one_time_recovery_codes():
 
 
 @pytest.mark.django_db
+def test_mfa_recovery_regeneration_and_disable_create_mandatory_security_notifications():
+    user = make_user(email="mfa-security-events@example.edu")
+    client = Client()
+    assert login(client, email=user.email, password="correct-password").status_code == 200
+
+    setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {}, headers=csrf_headers(client))
+    parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
+    confirmed = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/confirm",
+        {"code": parsed.now()},
+        headers=csrf_headers(client),
+    )
+    assert confirmed.status_code == 200
+
+    regenerated = post_json(
+        client,
+        "/api/v1/auth/mfa/recovery-codes/regenerate",
+        {},
+        headers=csrf_headers(client),
+    )
+    assert regenerated.status_code == 200
+    generated_codes = regenerated.json()["recovery_codes"]
+    regen_audit = AuditEvent.objects.get(
+        action="auth.mfa.recovery_codes.regenerated",
+        actor_user=user,
+    )
+    regen_notification = Notification.objects.get(
+        recipient=user,
+        event_code="security.recovery_codes.regenerated",
+        source_type="audit_event",
+        source_id=regen_audit.pk,
+    )
+    assert regen_notification.policy == "MANDATORY_SECURITY"
+    assert EmailDelivery.objects.filter(notification=regen_notification).exists()
+    assert all(code not in regen_notification.message for code in generated_codes)
+
+    disabled = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/disable",
+        {},
+        headers=csrf_headers(client),
+    )
+    assert disabled.status_code == 200
+    disable_audit = AuditEvent.objects.get(
+        action="auth.mfa.totp.disabled",
+        actor_user=user,
+    )
+    disable_notification = Notification.objects.get(
+        recipient=user,
+        event_code="security.mfa.disabled",
+        source_type="audit_event",
+        source_id=disable_audit.pk,
+    )
+    assert disable_notification.policy == "MANDATORY_SECURITY"
+    assert EmailDelivery.objects.filter(notification=disable_notification).exists()
+    assert str(TOTPFactor.objects.get(user=user).pk) not in disable_notification.message
+
+
+@pytest.mark.django_db
 def test_mfa_login_requires_challenge_and_consumes_recovery_code_once():
     user = make_user(email="challenge@example.edu")
     client = Client()
