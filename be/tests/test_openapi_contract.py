@@ -34,6 +34,22 @@ EXPECTED_OPERATION_IDS = {
     "platformOperationsListEmailDeliveries",
     "platformOperationsRetryEmailDelivery",
     "platformOperationsListActivity",
+    "privacyGovernanceListProcessingActivities",
+    "privacyGovernanceGetProcessingActivity",
+    "privacyGovernanceCreateProcessingActivity",
+    "privacyGovernanceUpdateProcessingActivity",
+    "privacyGovernanceRetireProcessingActivity",
+    "privacyGovernanceListReviews",
+    "privacyGovernanceCreateReview",
+    "privacyGovernanceGetReview",
+    "privacyGovernanceUpdateReview",
+    "privacyGovernanceResolveReview",
+    "privacyGovernanceListIncidents",
+    "privacyGovernanceCreateIncident",
+    "privacyGovernanceGetIncident",
+    "privacyGovernanceUpdateIncident",
+    "privacyGovernanceResolveIncident",
+    "privacyGovernanceListActivity",
     "authGetCsrf",
     "authLogin",
     "authRequestPasswordAccess",
@@ -308,6 +324,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "document-branding",
         "e-counseling",
         "platform-operations",
+        "privacy-governance",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -1032,6 +1049,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "organization.view",
             "platform_operations.manage",
             "platform_operations.view",
+            "privacy_governance.manage",
+            "privacy_governance.view",
             "reports.view",
             "referrals.manage",
             "referrals.view",
@@ -1212,5 +1231,117 @@ def test_platform_operations_openapi_runtime_surface_and_secret_safety() -> None
         "email_body",
         "rendered_html",
         "metadata",
+    ):
+        assert forbidden not in serialized
+
+
+
+def test_privacy_governance_openapi_is_purpose_built_and_has_no_delete_or_global_audit() -> None:
+    schema = _generated_schema()
+
+    read_operations = {
+        ("/api/v1/privacy/processing-activities", "get"): (
+            "privacyGovernanceListProcessingActivities",
+            {200, 401, 403, 422},
+        ),
+        ("/api/v1/privacy/processing-activities/{processing_id}", "get"): (
+            "privacyGovernanceGetProcessingActivity",
+            {200, 401, 403, 404},
+        ),
+        ("/api/v1/privacy/processing-activities/{processing_id}/reviews", "get"): (
+            "privacyGovernanceListReviews",
+            {200, 401, 403, 404, 422},
+        ),
+        ("/api/v1/privacy/reviews/{review_id}", "get"): (
+            "privacyGovernanceGetReview",
+            {200, 401, 403, 404},
+        ),
+        ("/api/v1/privacy/incidents", "get"): (
+            "privacyGovernanceListIncidents",
+            {200, 401, 403, 422},
+        ),
+        ("/api/v1/privacy/incidents/{incident_id}", "get"): (
+            "privacyGovernanceGetIncident",
+            {200, 401, 403, 404},
+        ),
+        ("/api/v1/privacy/activity", "get"): (
+            "privacyGovernanceListActivity",
+            {200, 401, 403, 422},
+        ),
+    }
+    for (path, method), (operation_id, statuses) in read_operations.items():
+        operation = _operation(schema, path, method)
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["privacy-governance"]
+        assert _response_statuses(operation) >= statuses
+
+    mutation_operations = {
+        ("/api/v1/privacy/processing-activities", "post"): "privacyGovernanceCreateProcessingActivity",
+        (
+            "/api/v1/privacy/processing-activities/{processing_id}",
+            "patch",
+        ): "privacyGovernanceUpdateProcessingActivity",
+        (
+            "/api/v1/privacy/processing-activities/{processing_id}/retire",
+            "post",
+        ): "privacyGovernanceRetireProcessingActivity",
+        (
+            "/api/v1/privacy/processing-activities/{processing_id}/reviews",
+            "post",
+        ): "privacyGovernanceCreateReview",
+        ("/api/v1/privacy/reviews/{review_id}", "patch"): "privacyGovernanceUpdateReview",
+        (
+            "/api/v1/privacy/reviews/{review_id}/resolve",
+            "post",
+        ): "privacyGovernanceResolveReview",
+        ("/api/v1/privacy/incidents", "post"): "privacyGovernanceCreateIncident",
+        (
+            "/api/v1/privacy/incidents/{incident_id}",
+            "patch",
+        ): "privacyGovernanceUpdateIncident",
+        (
+            "/api/v1/privacy/incidents/{incident_id}/resolve",
+            "post",
+        ): "privacyGovernanceResolveIncident",
+    }
+    for (path, method), operation_id in mutation_operations.items():
+        operation = _operation(schema, path, method)
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["privacy-governance"]
+        assert {401, 403} <= _response_statuses(operation)
+
+    for path in (
+        "/api/v1/privacy/processing-activities/{processing_id}",
+        "/api/v1/privacy/reviews/{review_id}",
+        "/api/v1/privacy/incidents/{incident_id}",
+    ):
+        assert "delete" not in schema["paths"][path]
+
+    assert "/api/v1/privacy/audit-events" not in schema["paths"]
+
+    privacy_schemas = {
+        name: value
+        for name, value in schema["components"]["schemas"].items()
+        if name.startswith(
+            (
+                "ProcessingActivity",
+                "PrivacyReview",
+                "PrivacyIncident",
+                "PrivacyActivity",
+            )
+        )
+    }
+    serialized = json.dumps(privacy_schemas).lower()
+    for forbidden in (
+        "is_compliant",
+        "attachment",
+        "upload",
+        "file_bytes",
+        "raw_metadata",
+        "ip_address",
+        "user_agent",
+        "password",
+        "otp",
+        "session_token",
     ):
         assert forbidden not in serialized
