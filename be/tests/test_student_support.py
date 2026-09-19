@@ -145,6 +145,7 @@ def make_head(email: str = "head.student.support@example.edu") -> User:
     )
     return head
 
+
 @pytest.mark.django_db
 def test_student_support_capability_is_counselor_only_by_default_and_head_inherits():
     sync_policy()
@@ -164,6 +165,7 @@ def test_student_support_capability_is_counselor_only_by_default_and_head_inheri
     for denied in (staff, student, admin, dpo):
         assert not denied.has_capability("student_support.view")
 
+
 @pytest.mark.django_db
 def test_unsupported_role_override_still_cannot_access_support_context():
     sync_policy()
@@ -178,6 +180,7 @@ def test_unsupported_role_override_still_cannot_access_support_context():
 
     response = auth_client(admin).get(f"/api/v1/student-support/students/{uuid4()}/context")
     assert response.status_code == 403
+
 
 @pytest.mark.django_db
 def test_head_can_view_any_current_submitted_student_support_context():
@@ -215,6 +218,7 @@ def test_head_can_view_any_current_submitted_student_support_context():
         "FATHER_DECEASED",
     ]
 
+
 @pytest.mark.django_db
 def test_ordinary_counselor_scope_is_current_affiliation_and_responsibility_only():
     sync_policy()
@@ -249,6 +253,7 @@ def test_ordinary_counselor_scope_is_current_affiliation_and_responsibility_only
     assert concealed.status_code == 404
     assert str(out_student.pk) not in concealed.content.decode()
 
+
 @pytest.mark.django_db
 def test_counselor_without_responsibility_and_inactive_org_get_no_support_data():
     sync_policy()
@@ -272,6 +277,7 @@ def test_counselor_without_responsibility_and_inactive_org_get_no_support_data()
     campus.is_active = False
     campus.save(update_fields=["is_active", "updated_at"])
     assert client.get(f"/api/v1/student-support/students/{student.pk}/context").status_code == 404
+
 
 @pytest.mark.django_db
 def test_missing_draft_and_historical_inventory_never_expose_positive_current_indicators():
@@ -319,6 +325,7 @@ def test_missing_draft_and_historical_inventory_never_expose_positive_current_in
         assert body["available"] is False
         assert body["indicators"] == []
 
+
 @pytest.mark.django_db
 def test_no_current_academic_year_is_safe_configuration_error():
     sync_policy()
@@ -331,6 +338,7 @@ def test_no_current_academic_year_is_safe_configuration_error():
 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "current_academic_year_not_configured"
+
 
 @pytest.mark.django_db
 def test_negative_and_unknown_states_create_no_positive_support_badges():
@@ -356,6 +364,7 @@ def test_negative_and_unknown_states_create_no_positive_support_badges():
     response = auth_client(counselor).get(f"/api/v1/student-support/students/{student.pk}/context")
     assert response.status_code == 200
     assert response.json()["indicators"] == []
+
 
 @pytest.mark.django_db
 def test_support_context_is_privacy_minimized_and_has_no_scores_or_narratives():
@@ -397,6 +406,7 @@ def test_support_context_is_privacy_minimized_and_has_no_scores_or_narratives():
     ):
         assert forbidden not in serialized
 
+
 @pytest.mark.django_db
 def test_support_profile_is_nested_in_inventory_and_family_rows_have_no_life_status():
     sync_policy()
@@ -436,6 +446,7 @@ def test_support_profile_is_nested_in_inventory_and_family_rows_have_no_life_sta
     assert all("life_status" not in row for row in body["family_members"])
     item.refresh_from_db()
     assert item.support_profile.four_ps_status == FourPsStatus.BENEFICIARY
+
 
 @pytest.mark.django_db
 def test_support_profile_draft_fields_may_be_null_but_submission_requires_explicit_values():
@@ -483,6 +494,7 @@ def test_support_profile_draft_fields_may_be_null_but_submission_requires_explic
     assert submitted.submitted_at is not None
     assert submitted.support_profile.four_ps_status == FourPsStatus.NOT_SPECIFIED
 
+
 @pytest.mark.django_db
 def test_submitted_historical_null_support_profile_remains_readable_and_immutable():
     sync_policy()
@@ -522,6 +534,7 @@ def test_submitted_historical_null_support_profile_remains_readable_and_immutabl
     assert old.nickname == ""
     assert current_item.nickname == "Current only"
 
+
 @pytest.mark.django_db
 def test_support_profile_failure_rolls_back_inventory_root_and_children(monkeypatch):
     sync_policy()
@@ -553,6 +566,7 @@ def test_support_profile_failure_rolls_back_inventory_root_and_children(monkeypa
     item = StudentInventory.objects.get(student=student, academic_year=year)
     assert item.nickname == ""
     assert not item.family_members.filter(name="Must Roll Back Parent").exists()
+
 
 @pytest.mark.django_db
 def test_inventory_audit_metadata_never_contains_support_or_pwd_values():
