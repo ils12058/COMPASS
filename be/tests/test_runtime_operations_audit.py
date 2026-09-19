@@ -12,8 +12,8 @@ from compass.audit.actions import (
     NOTIFICATION_EMAIL_RETRY_REQUESTED,
     PLATFORM_MAINTENANCE_DISABLED,
     PLATFORM_MAINTENANCE_ENABLED,
-    PLATFORM_MAINTENANCE_SCHEDULED,
     PLATFORM_MAINTENANCE_SCHEDULE_CANCELLED,
+    PLATFORM_MAINTENANCE_SCHEDULED,
 )
 from compass.audit.context import AuditContext
 from compass.audit.metadata import validate_metadata
@@ -22,7 +22,6 @@ from compass.notifications.models import EmailDelivery, EmailDeliveryStatus, Not
 from compass.notifications.policy import NotificationPolicy
 from compass.platform_ops.email_operations import retry_email_delivery
 from compass.platform_ops.services import enable_manual_maintenance
-
 
 RUNTIME_ACTIONS = (
     PLATFORM_MAINTENANCE_ENABLED,
