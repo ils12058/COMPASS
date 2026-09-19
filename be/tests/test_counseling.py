@@ -23,6 +23,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.counseling.models import CounselingEncounter
+from compass.notifications.models import EmailDelivery, Notification
 from compass.counseling.services import (
     CounselingAppointmentAlreadyUsed,
     CounselingAppointmentInvalid,
@@ -185,6 +186,16 @@ def test_direct_encounter_records_actual_completed_time_without_fake_appointment
     assert item.entry_mode == entry_mode
     assert item.ended_at - item.started_at == timedelta(minutes=75)
     assert AuditEvent.objects.filter(action="counseling.encounter.created").count() == 1
+    invitation = Notification.objects.get(
+        recipient=student,
+        event_code="feedback.invitation",
+        source_type="counseling_encounter",
+        source_id=item.pk,
+    )
+    assert invitation.policy == "OPTIONAL_INFORMATIONAL"
+    assert invitation.target_type == "FEEDBACK"
+    assert invitation.target_id is None
+    assert EmailDelivery.objects.filter(notification=invitation).exists()
 
 
 @pytest.mark.django_db
@@ -223,6 +234,14 @@ def test_appointment_origin_derives_identity_service_and_mode_but_keeps_actual_t
     assert item.ended_at == ended_at
     appointment.refresh_from_db()
     assert appointment.status == "SCHEDULED"
+    invitation = Notification.objects.get(
+        recipient=student,
+        event_code="feedback.invitation",
+        source_type="counseling_encounter",
+        source_id=item.pk,
+    )
+    assert invitation.policy == "OPTIONAL_INFORMATIONAL"
+    assert EmailDelivery.objects.filter(notification=invitation).exists()
 
 
 @pytest.mark.django_db
