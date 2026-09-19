@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
 from django.db import OperationalError
 
 
@@ -35,6 +36,7 @@ def test_ready_endpoint_returns_503_when_postgres_is_unavailable(client):
     }
 
 
+@pytest.mark.django_db
 def test_unknown_api_route_uses_safe_error_envelope(client):
     response = client.get("/api/v1/does-not-exist")
 
