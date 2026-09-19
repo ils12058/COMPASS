@@ -419,6 +419,49 @@ def test_explicit_cross_scope_counselor_is_allowed_and_gss_is_not_student_select
 
 @pytest.mark.django_db
 @override_settings(TIME_ZONE="Asia/Manila")
+def test_booking_rolls_back_domain_and_audit_when_mandatory_notification_persistence_fails(
+    monkeypatch,
+):
+    sync_policy()
+    actor = make_user("rollback-admin@example.edu", "IT_ADMIN")
+    student = make_user("rollback-student@example.edu", "STUDENT")
+    provider = make_user("rollback-provider@example.edu", "COUNSELOR")
+    service = active_service(actor)
+    configure_availability(actor, provider)
+    start = future_local_start()
+
+    def fail_notification(**_kwargs):
+        raise RuntimeError("synthetic notification persistence failure")
+
+    monkeypatch.setattr(
+        "compass.appointments.services.create_notification_for_event",
+        fail_notification,
+    )
+
+    with pytest.raises(RuntimeError, match="synthetic notification persistence failure"):
+        create_student_appointment(
+            student=student,
+            service_id=service.pk,
+            provider_id=provider.pk,
+            delivery_mode="IN_PERSON",
+            starts_at=start,
+            context=context(student),
+            now=start - timedelta(days=1),
+        )
+
+    assert not Appointment.objects.filter(student=student, provider=provider).exists()
+    assert not AuditEvent.objects.filter(
+        action="appointment.created",
+        actor_user=student,
+    ).exists()
+    assert not Notification.objects.filter(
+        recipient__in=(student, provider),
+        event_code="appointment.scheduled",
+    ).exists()
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
 def test_full_interval_must_fit_base_availability():
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
