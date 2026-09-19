@@ -81,6 +81,17 @@ PLATFORM_MAINTENANCE_DISABLED = "platform.maintenance.disabled"
 PLATFORM_MAINTENANCE_SCHEDULED = "platform.maintenance.scheduled"
 PLATFORM_MAINTENANCE_SCHEDULE_CANCELLED = "platform.maintenance.schedule_cancelled"
 NOTIFICATION_EMAIL_RETRY_REQUESTED = "notification.email.retry_requested"
+PRIVACY_PROCESSING_CREATED = "privacy.processing.created"
+PRIVACY_PROCESSING_UPDATED = "privacy.processing.updated"
+PRIVACY_PROCESSING_RETIRED = "privacy.processing.retired"
+PRIVACY_REVIEW_CREATED = "privacy.review.created"
+PRIVACY_REVIEW_UPDATED = "privacy.review.updated"
+PRIVACY_REVIEW_RESOLVED = "privacy.review.resolved"
+PRIVACY_INCIDENT_CREATED = "privacy.incident.created"
+PRIVACY_INCIDENT_UPDATED = "privacy.incident.updated"
+PRIVACY_INCIDENT_RESOLVED = "privacy.incident.resolved"
+REPORT_EXPORT_RELEASED = "report.export_released"
+DOCUMENT_DOWNLOAD_RELEASED = "document.download_released"
 CALL_SLIP_INTERVIEW_ENDED = "call_slip.interview_ended"
 ECOUNSELING_ROOM_PROVISIONED = "ecounseling.room_provisioned"
 ECOUNSELING_JOIN_AUTHORIZED = "ecounseling.join_authorized"
@@ -175,6 +186,17 @@ __all__ = [
     "PLATFORM_MAINTENANCE_SCHEDULED",
     "PLATFORM_MAINTENANCE_SCHEDULE_CANCELLED",
     "NOTIFICATION_EMAIL_RETRY_REQUESTED",
+    "PRIVACY_PROCESSING_CREATED",
+    "PRIVACY_PROCESSING_UPDATED",
+    "PRIVACY_PROCESSING_RETIRED",
+    "PRIVACY_REVIEW_CREATED",
+    "PRIVACY_REVIEW_UPDATED",
+    "PRIVACY_REVIEW_RESOLVED",
+    "PRIVACY_INCIDENT_CREATED",
+    "PRIVACY_INCIDENT_UPDATED",
+    "PRIVACY_INCIDENT_RESOLVED",
+    "REPORT_EXPORT_RELEASED",
+    "DOCUMENT_DOWNLOAD_RELEASED",
     "CALL_SLIP_INTERVIEW_ENDED",
     "ECOUNSELING_ROOM_PROVISIONED",
     "ECOUNSELING_JOIN_AUTHORIZED",
