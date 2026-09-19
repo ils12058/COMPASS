@@ -14,6 +14,7 @@ from django.test import Client
 from django.utils import timezone
 
 from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.accounts.services import set_user_capability_override
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
@@ -134,6 +135,28 @@ def test_maintenance_read_and_mutations_use_view_manage_and_recent_mfa():
 
     viewed = admin_client.get("/api/v1/platform/maintenance")
     assert viewed.status_code == 200
+
+
+@pytest.mark.django_db
+def test_manage_authorization_uses_effective_capability_not_role_name():
+    sync_policy()
+    counselor = make_user("delegated-runtime-manager@example.edu", "COUNSELOR")
+    set_user_capability_override(
+        user=counselor,
+        capability="platform_operations.manage",
+        effect="GRANT",
+        reason="Temporary runtime operations delegation",
+    )
+    client = auth_client(counselor, recent_mfa=True)
+
+    enabled = post_json(
+        client,
+        "/api/v1/platform/maintenance/enable",
+        {"message": "Delegated maintenance operation"},
+    )
+
+    assert enabled.status_code == 200
+    assert enabled.json()["state"] == "MAINTENANCE"
 
 
 @pytest.mark.django_db
