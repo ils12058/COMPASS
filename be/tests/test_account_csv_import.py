@@ -178,7 +178,9 @@ def test_csv_commit_creates_multiple_unverified_unpassworded_accounts_and_studen
         ),
     ],
 )
-def test_csv_rejects_password_designation_capability_state_unknown_and_missing_headers(header, code):
+def test_csv_rejects_password_designation_capability_state_unknown_and_missing_headers(
+    header, code
+):
     sync_policy()
     client, _admin = admin_client()
 
@@ -234,9 +236,7 @@ def test_csv_dry_run_reports_invalid_rows_and_commit_rejects_them_without_writes
     committed = upload(client, invalid, dry_run=False)
     assert committed.status_code == 422
     assert committed.json()["error"]["code"] == "csv_import_invalid_rows"
-    assert not User.objects.filter(
-        email__in=["not-an-email", "valid@example.edu"]
-    ).exists()
+    assert not User.objects.filter(email__in=["not-an-email", "valid@example.edu"]).exists()
 
 
 @pytest.mark.django_db
@@ -294,7 +294,12 @@ def test_csv_existing_identical_active_account_is_skip_and_reimport_is_idempoten
     "existing_kwargs",
     [
         {"role": "COUNSELOR", "first_name": "Different", "last_name": "User", "active": True},
-        {"role": "GUIDANCE_SERVICES_STAFF", "first_name": "Same", "last_name": "User", "active": True},
+        {
+            "role": "GUIDANCE_SERVICES_STAFF",
+            "first_name": "Same",
+            "last_name": "User",
+            "active": True,
+        },
         {"role": "COUNSELOR", "first_name": "Same", "last_name": "User", "active": False},
     ],
 )
@@ -400,10 +405,7 @@ def test_csv_row_limit_is_enforced_without_persisting_any_rows():
     sync_policy()
     client, _admin = admin_client()
     rows = ["email,first_name,last_name,role"]
-    rows.extend(
-        f"user{index}@example.edu,User,{index},STUDENT"
-        for index in range(1001)
-    )
+    rows.extend(f"user{index}@example.edu,User,{index},STUDENT" for index in range(1001))
     content = ("\n".join(rows) + "\n").encode()
 
     response = upload(client, content, dry_run=False)
