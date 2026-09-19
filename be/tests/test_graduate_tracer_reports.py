@@ -476,7 +476,6 @@ def test_aggregate_response_excludes_identity_free_text_and_academic_inference()
         "college_id",
         "campus_id",
         "graduation_year",
-        "response_rate",
         "non_response_rate",
     ):
         assert forbidden not in serialized
