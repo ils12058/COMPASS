@@ -51,6 +51,9 @@ EXPECTED_OPERATION_IDS = {
     "privacyGovernanceResolveIncident",
     "privacyGovernanceListActivity",
     "authGetCsrf",
+    "authRequestEmailChangeSecurityChallenge",
+    "authRequestEmailChange",
+    "authConfirmEmailChange",
     "authLogin",
     "authRequestPasswordAccess",
     "authConfirmPasswordAccess",
@@ -77,6 +80,7 @@ EXPECTED_OPERATION_IDS = {
     "accountsImportCsv",
     "accountsGet",
     "accountsUpdateIdentity",
+    "accountsRequestEmailChange",
     "accountsDisable",
     "accountsEnable",
     "accountsChangeRole",
@@ -381,6 +385,14 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "AccountCreateRequest",
         "AccountDetailResponse",
         "AccountListResponse",
+        "EmailChangeSecurityChallengeRequest",
+        "EmailChangeSecurityChallengeResponse",
+        "EmailChangeRequest",
+        "EmailChangeRequestResponse",
+        "EmailChangeConfirmRequest",
+        "EmailChangeConfirmResponse",
+        "ManagedEmailChangeRequest",
+        "ManagedEmailChangeResponse",
         "ActivityPageResponse",
         "MyProfileResponse",
         "MyProfileUpdateRequest",
@@ -481,6 +493,26 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     csv_import_operation = _operation(schema, "/api/v1/accounts/imports/csv", "post")
     assert csv_import_operation["operationId"] == "accountsImportCsv"
     assert "multipart/form-data" in csv_import_operation["requestBody"]["content"]
+    assert _operation(
+        schema,
+        "/api/v1/auth/email-change/security-challenge",
+        "post",
+    )["operationId"] == "authRequestEmailChangeSecurityChallenge"
+    assert _operation(
+        schema,
+        "/api/v1/auth/email-change/request",
+        "post",
+    )["operationId"] == "authRequestEmailChange"
+    assert _operation(
+        schema,
+        "/api/v1/auth/email-change/confirm",
+        "post",
+    )["operationId"] == "authConfirmEmailChange"
+    assert _operation(
+        schema,
+        "/api/v1/accounts/{user_id}/email-change",
+        "post",
+    )["operationId"] == "accountsRequestEmailChange"
     assert _operation(schema, "/api/v1/auth/login", "post")["requestBody"]["content"][
         "application/json"
     ]["schema"]["$ref"].endswith("/LoginRequest")
@@ -493,6 +525,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     profile_response = schemas["MyProfileResponse"]["properties"]
     assert {
         "user_id",
+        "institutional_id",
         "email",
         "first_name",
         "middle_name",
@@ -736,9 +769,12 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert len(schemas["CollegeFeedbackItemValue"]["enum"]) == 26
 
     assert "password" not in schemas["AccountCreateRequest"]["properties"]
-    assert {"email", "first_name", "last_name", "role"} <= set(
+    assert {"institutional_id", "email", "first_name", "last_name", "role"} <= set(
         schemas["AccountCreateRequest"]["required"]
     )
+    assert "institutional_id" in schemas["AccountSummaryResponse"]["properties"]
+    assert "email" not in schemas["IdentityUpdateRequest"]["properties"]
+    assert "institutional_id" in schemas["IdentityUpdateRequest"]["properties"]
     assert schemas["LoginResponse"]["properties"]["session_id"]["anyOf"][-1] == {"type": "null"}
 
     assert _response_statuses(_operation(schema, "/api/v1/auth/login", "post")) >= {
