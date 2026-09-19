@@ -34,6 +34,13 @@ from compass.authentication.sessions import (
     create_trusted_session,
 )
 from compass.availability.models import ProviderAvailabilityWindow
+from compass.organization.models import (
+    Campus,
+    College,
+    CounselorResponsibility,
+    StaffSupervision,
+    StudentAffiliation,
+)
 from compass.service_catalog.models import Service
 
 
