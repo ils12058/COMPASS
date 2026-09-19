@@ -52,7 +52,7 @@ class CsvImportTooLarge(CsvImportError):
 class CsvImportInvalidRows(CsvImportError):
     """One or more rows contain invalid account-provisioning values."""
 
-    def __init__(self, issues: tuple["CsvImportIssue", ...]) -> None:
+    def __init__(self, issues: tuple[CsvImportIssue, ...]) -> None:
         super().__init__("one or more CSV rows are invalid")
         self.issues = issues
 
@@ -64,7 +64,7 @@ class CsvImportDuplicateIdentity(CsvImportInvalidRows):
 class CsvImportConflict(CsvImportError):
     """One or more rows conflict with existing institutional account state."""
 
-    def __init__(self, rows: tuple["CsvImportRowResult", ...]) -> None:
+    def __init__(self, rows: tuple[CsvImportRowResult, ...]) -> None:
         super().__init__("one or more CSV rows conflict with existing account state")
         self.rows = rows
 
