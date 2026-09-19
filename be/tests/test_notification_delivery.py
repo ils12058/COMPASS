@@ -213,7 +213,9 @@ def test_enqueue_failure_keeps_durable_intent_and_recovery_can_send(monkeypatch)
 
 
 @pytest.mark.django_db
-def test_post_commit_kick_passes_only_delivery_identifier(monkeypatch, django_capture_on_commit_callbacks):
+def test_post_commit_kick_passes_only_delivery_identifier(
+    monkeypatch, django_capture_on_commit_callbacks
+):
     user = make_user("task-args@example.edu")
     captured = []
 
