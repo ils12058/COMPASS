@@ -567,16 +567,22 @@ def test_f4_issue_rechecks_current_lifecycle_and_duplicate_issue_is_idempotent()
         ).count()
         == 1
     )
-    assert Notification.objects.filter(
-        recipient=student,
-        event_code="good_moral.issued",
-        source_id=item.pk,
-    ).count() == 1
-    assert Notification.objects.filter(
-        recipient=student,
-        event_code="feedback.invitation",
-        source_id=item.pk,
-    ).count() == 1
+    assert (
+        Notification.objects.filter(
+            recipient=student,
+            event_code="good_moral.issued",
+            source_id=item.pk,
+        ).count()
+        == 1
+    )
+    assert (
+        Notification.objects.filter(
+            recipient=student,
+            event_code="feedback.invitation",
+            source_id=item.pk,
+        ).count()
+        == 1
+    )
 
 
 @pytest.mark.django_db
