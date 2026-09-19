@@ -227,8 +227,7 @@ def _coverage_view(coverage: dict[str, object]) -> dict[str, object]:
         )
 
     ignored_labels = [
-        FILTER_LABELS.get(str(name), str(name))
-        for name in coverage.get("ignored_filters", [])
+        FILTER_LABELS.get(str(name), str(name)) for name in coverage.get("ignored_filters", [])
     ]
     ignored_note = None
     if ignored_labels:
@@ -255,7 +254,9 @@ def build_student_profiling_print_context(report: dict[str, object]) -> dict[str
     raw_sections = report["sections"]
 
     if not isinstance(report_context, dict):
-        raise StudentProfilingDocumentUnavailable("The Student Profiling report context is invalid.")
+        raise StudentProfilingDocumentUnavailable(
+            "The Student Profiling report context is invalid."
+        )
     if not isinstance(methodology, dict) or not isinstance(coverage, dict):
         raise StudentProfilingDocumentUnavailable(
             "The Student Profiling methodology or coverage is invalid."
