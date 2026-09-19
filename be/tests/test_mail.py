@@ -39,7 +39,6 @@ def test_mailer_can_add_html_alternative_without_losing_plain_text():
     assert message.alternatives[0].mimetype == "text/html"
 
 
-
 def test_mailer_connection_probe_opens_and_closes_without_sending():
     backend = MagicMock()
     with patch("compass.integrations.mail.mail.mailers", {"default": backend}):
