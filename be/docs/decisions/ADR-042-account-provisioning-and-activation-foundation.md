@@ -286,6 +286,9 @@ Availability and active/future Appointment blockers likewise remain authoritativ
 No relationship row is automatically deleted and no GCO scope is inferred from
 INSTITUTIONAL_OFFICER or DPO.
 
+The generated OpenAPI contract remains committed source and exact-head CI must validate the
+contract together with the implementation before merge.
+
 ## OTP boundary
 
 Email OTP remains the dedicated security flow introduced before the durable Notification system.
