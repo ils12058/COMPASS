@@ -200,6 +200,50 @@ def test_direct_encounter_records_actual_completed_time_without_fake_appointment
 
 @pytest.mark.django_db
 @override_settings(TIME_ZONE="Asia/Manila")
+def test_encounter_creation_rolls_back_when_feedback_notification_persistence_fails(monkeypatch):
+    sync_policy()
+    admin = make_user("rollback-admin@example.edu", "IT_ADMIN")
+    counselor = make_user("rollback-counselor@example.edu", "COUNSELOR")
+    student = make_user("rollback-student@example.edu", "STUDENT")
+    create_counseling_service(admin)
+    started_at, ended_at = actual_times(minutes=45)
+
+    def fail_notification(**_kwargs):
+        raise RuntimeError("synthetic notification persistence failure")
+
+    monkeypatch.setattr(
+        "compass.counseling.services.create_notification_for_event",
+        fail_notification,
+    )
+
+    with pytest.raises(RuntimeError, match="synthetic notification persistence failure"):
+        create_encounter(
+            counselor=counselor,
+            student_id=student.pk,
+            entry_mode="WALK_IN",
+            delivery_mode="IN_PERSON",
+            appointment_id=None,
+            started_at=started_at,
+            ended_at=ended_at,
+            context=context(counselor),
+        )
+
+    assert not CounselingEncounter.objects.filter(
+        counselor=counselor,
+        student=student,
+    ).exists()
+    assert not AuditEvent.objects.filter(
+        action="counseling.encounter.created",
+        actor_user=counselor,
+    ).exists()
+    assert not Notification.objects.filter(
+        recipient=student,
+        event_code="feedback.invitation",
+    ).exists()
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
 def test_appointment_origin_derives_identity_service_and_mode_but_keeps_actual_time():
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
