@@ -12,6 +12,9 @@ from compass.audit.services import record_event
 
 logger = logging.getLogger("compass.privacy_governance")
 
+STUDENT_PROFILING_TARGET_TYPE = "reports.studentprofiling"
+GOOD_MORAL_TARGET_TYPE = "goodmoral.request"
+
 
 class ReleaseAuditUnavailable(RuntimeError):
     """A required sensitive-release AuditEvent could not be appended."""
@@ -74,7 +77,7 @@ def record_student_profiling_release(
     _record_release(
         context=context,
         action=REPORT_EXPORT_RELEASED,
-        target_type="report.student_profiling",
+        target_type=STUDENT_PROFILING_TARGET_TYPE,
         target_id=release_context.get("academic_year_id"),
         metadata=metadata,
     )
@@ -93,7 +96,7 @@ def record_good_moral_release(
     _record_release(
         context=context,
         action=DOCUMENT_DOWNLOAD_RELEASED,
-        target_type="goodmoral.request",
+        target_type=GOOD_MORAL_TARGET_TYPE,
         target_id=request_id,
         metadata={
             "document_type": "good_moral_certificate",
@@ -104,7 +107,9 @@ def record_good_moral_release(
 
 
 __all__ = [
+    "GOOD_MORAL_TARGET_TYPE",
     "ReleaseAuditUnavailable",
+    "STUDENT_PROFILING_TARGET_TYPE",
     "record_good_moral_release",
     "record_student_profiling_release",
 ]
