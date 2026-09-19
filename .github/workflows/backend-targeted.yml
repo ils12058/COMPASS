@@ -160,6 +160,8 @@ jobs:
           tests/test_organization.py
           tests/test_program_inventory_academic_context.py
           tests/test_inventory_profiling_normalization.py
+          tests/test_student_support.py
+          tests/test_student_support_migrations.py
           tests/test_student_profiling_reports.py
           tests/test_student_profiling_report_aggregates.py
           tests/test_student_profiling_report_coverage.py
