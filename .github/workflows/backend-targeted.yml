@@ -123,6 +123,8 @@ jobs:
           tests/test_institutional_forms.py
           tests/test_referrals.py
           tests/test_call_slips.py
+          tests/test_notifications.py
+          tests/test_notification_delivery.py
           tests/test_documents.py
           tests/test_profiles.py
           tests/test_profile_photos.py
