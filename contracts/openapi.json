@@ -93,6 +93,31 @@
         "title": "AcademicYearListResponse",
         "type": "object"
       },
+      "AcademicYearReference": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "is_current"
+        ],
+        "title": "AcademicYearReference",
+        "type": "object"
+      },
       "AcademicYearResponse": {
         "additionalProperties": false,
         "properties": {
@@ -1585,6 +1610,7 @@
           "organization.view",
           "referrals.manage",
           "referrals.view",
+          "reports.view",
           "routine_interviews.manage_assigned",
           "routine_interviews.manage_self",
           "routine_interviews.view_assigned",
@@ -2733,6 +2759,14 @@
         "title": "CourseChoiceReasonValue",
         "type": "string"
       },
+      "CoverageModeValue": {
+        "enum": [
+          "CURRENT",
+          "HISTORICAL_LIMITED"
+        ],
+        "title": "CoverageModeValue",
+        "type": "string"
+      },
       "CurrentReligionCategoryValue": {
         "enum": [
           "ROMAN_CATHOLIC",
@@ -3210,6 +3244,75 @@
         ],
         "title": "DirectRoutineEntryMode",
         "type": "string"
+      },
+      "DistributionRow": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "percentage": {
+            "title": "Percentage",
+            "type": "number"
+          },
+          "program_counts": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramCount"
+            },
+            "title": "Program Counts",
+            "type": "array"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "total_count",
+          "percentage",
+          "program_counts"
+        ],
+        "title": "DistributionRow",
+        "type": "object"
+      },
+      "DistributionSection": {
+        "additionalProperties": false,
+        "properties": {
+          "denominator": {
+            "title": "Denominator",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/DistributionRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "denominator",
+          "rows"
+        ],
+        "title": "DistributionSection",
+        "type": "object"
       },
       "DocumentBrandingProfileResponse": {
         "additionalProperties": false,
@@ -4895,6 +4998,135 @@
         "title": "GTSUsefulCompetencyValue",
         "type": "string"
       },
+      "GeographicDistributionRow": {
+        "additionalProperties": false,
+        "properties": {
+          "city_municipality_psgc_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Municipality Psgc Code"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "percentage": {
+            "title": "Percentage",
+            "type": "number"
+          },
+          "program_counts": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramCount"
+            },
+            "title": "Program Counts",
+            "type": "array"
+          },
+          "province_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Province Name"
+          },
+          "province_psgc_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Province Psgc Code"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
+          },
+          "region_psgc_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Psgc Code"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "total_count",
+          "percentage",
+          "program_counts",
+          "city_municipality_psgc_code",
+          "province_psgc_code",
+          "province_name",
+          "region_psgc_code",
+          "region_name"
+        ],
+        "title": "GeographicDistributionRow",
+        "type": "object"
+      },
+      "GeographicDistributionSection": {
+        "additionalProperties": false,
+        "properties": {
+          "denominator": {
+            "title": "Denominator",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GeographicDistributionRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "denominator",
+          "rows"
+        ],
+        "title": "GeographicDistributionSection",
+        "type": "object"
+      },
       "GeographicLocationKindValue": {
         "enum": [
           "CURRENT",
@@ -6536,6 +6768,74 @@
         ],
         "title": "InterestValue",
         "type": "string"
+      },
+      "InventoryCoverage": {
+        "additionalProperties": false,
+        "properties": {
+          "applied_filters": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Applied Filters",
+            "type": "array"
+          },
+          "draft_count": {
+            "title": "Draft Count",
+            "type": "integer"
+          },
+          "eligible_student_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eligible Student Count"
+          },
+          "ignored_filters": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ignored Filters",
+            "type": "array"
+          },
+          "missing_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Count"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/CoverageModeValue"
+          },
+          "scope_note": {
+            "title": "Scope Note",
+            "type": "string"
+          },
+          "submitted_count": {
+            "title": "Submitted Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mode",
+          "eligible_student_count",
+          "submitted_count",
+          "draft_count",
+          "missing_count",
+          "applied_filters",
+          "ignored_filters",
+          "scope_note"
+        ],
+        "title": "InventoryCoverage",
+        "type": "object"
       },
       "InventoryHistoryResponse": {
         "additionalProperties": false,
@@ -8276,6 +8576,37 @@
         "title": "MediaWorkspaceState",
         "type": "object"
       },
+      "Methodology": {
+        "additionalProperties": false,
+        "properties": {
+          "coverage_note": {
+            "title": "Coverage Note",
+            "type": "string"
+          },
+          "historical_coverage_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Historical Coverage Note"
+          },
+          "profile_population_note": {
+            "title": "Profile Population Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_population_note",
+          "coverage_note",
+          "historical_coverage_note"
+        ],
+        "title": "Methodology",
+        "type": "object"
+      },
       "MyProfileResponse": {
         "additionalProperties": false,
         "properties": {
@@ -8499,6 +8830,31 @@
           "sort_order"
         ],
         "title": "OrganizationMembershipPayload",
+        "type": "object"
+      },
+      "OrganizationReference": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "OrganizationReference",
         "type": "object"
       },
       "OrganizationRole": {
@@ -8755,6 +9111,77 @@
         "title": "PostGraduationFieldValue",
         "type": "string"
       },
+      "ProgramColumn": {
+        "additionalProperties": false,
+        "properties": {
+          "campus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrganizationReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrganizationReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_legacy": {
+            "title": "Is Legacy",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "program_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Id"
+          }
+        },
+        "required": [
+          "key",
+          "program_id",
+          "code",
+          "name",
+          "college",
+          "campus",
+          "is_legacy"
+        ],
+        "title": "ProgramColumn",
+        "type": "object"
+      },
       "ProgramCompletionValue": {
         "enum": [
           "ACCORDING_TO_SCHEDULE",
@@ -8762,6 +9189,25 @@
         ],
         "title": "ProgramCompletionValue",
         "type": "string"
+      },
+      "ProgramCount": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "program_key": {
+            "title": "Program Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "program_key",
+          "count"
+        ],
+        "title": "ProgramCount",
+        "type": "object"
       },
       "ProgramCreateRequest": {
         "additionalProperties": false,
@@ -9438,6 +9884,87 @@
           "reason"
         ],
         "title": "ReopenRequest",
+        "type": "object"
+      },
+      "ReportContext": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearReference"
+          },
+          "campus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrganizationReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrganizationReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "program": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrganizationReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "submitted_inventory_count": {
+            "title": "Submitted Inventory Count",
+            "type": "integer"
+          },
+          "year_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
+          },
+          "year_level_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level Label"
+          }
+        },
+        "required": [
+          "academic_year",
+          "campus",
+          "college",
+          "program",
+          "year_level",
+          "year_level_label",
+          "submitted_inventory_count",
+          "generated_at"
+        ],
+        "title": "ReportContext",
         "type": "object"
       },
       "RevocationResponse": {
@@ -10645,6 +11172,100 @@
           "status"
         ],
         "title": "StudentLifecycleUpdateRequest",
+        "type": "object"
+      },
+      "StudentProfilingReportResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "inventory_coverage": {
+            "$ref": "#/components/schemas/InventoryCoverage"
+          },
+          "methodology": {
+            "$ref": "#/components/schemas/Methodology"
+          },
+          "program_columns": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramColumn"
+            },
+            "title": "Program Columns",
+            "type": "array"
+          },
+          "report_context": {
+            "$ref": "#/components/schemas/ReportContext"
+          },
+          "sections": {
+            "$ref": "#/components/schemas/StudentProfilingSections"
+          }
+        },
+        "required": [
+          "report_context",
+          "methodology",
+          "program_columns",
+          "inventory_coverage",
+          "sections"
+        ],
+        "title": "StudentProfilingReportResponse",
+        "type": "object"
+      },
+      "StudentProfilingSections": {
+        "additionalProperties": false,
+        "properties": {
+          "age": {
+            "$ref": "#/components/schemas/DistributionSection"
+          },
+          "city_municipality": {
+            "$ref": "#/components/schemas/GeographicDistributionSection"
+          },
+          "civil_status": {
+            "$ref": "#/components/schemas/DistributionSection"
+          },
+          "current_religion": {
+            "$ref": "#/components/schemas/DistributionSection"
+          },
+          "father_life_status": {
+            "$ref": "#/components/schemas/DistributionSection"
+          },
+          "father_occupation": {
+            "$ref": "#/components/schemas/DistributionSection"
+          },
+          "living_condition": {
+            "$ref": "#/components/schemas/DistributionSection"
+          },
+          "mother_life_status": {
+            "$ref": "#/components/schemas/DistributionSection"
+          },
+          "mother_occupation": {
+            "$ref": "#/components/schemas/DistributionSection"
+          },
+          "parent_annual_income": {
+            "$ref": "#/components/schemas/DistributionSection"
+          },
+          "parent_family_status": {
+            "$ref": "#/components/schemas/DistributionSection"
+          },
+          "physical_disadvantage": {
+            "$ref": "#/components/schemas/DistributionSection"
+          },
+          "sex": {
+            "$ref": "#/components/schemas/DistributionSection"
+          }
+        },
+        "required": [
+          "sex",
+          "age",
+          "civil_status",
+          "physical_disadvantage",
+          "current_religion",
+          "mother_life_status",
+          "father_life_status",
+          "parent_family_status",
+          "city_municipality",
+          "parent_annual_income",
+          "mother_occupation",
+          "father_occupation",
+          "living_condition"
+        ],
+        "title": "StudentProfilingSections",
         "type": "object"
       },
       "StudentRoutineDetailResponse": {
@@ -12042,6 +12663,7 @@
                 "organization.view",
                 "referrals.manage",
                 "referrals.view",
+                "reports.view",
                 "routine_interviews.manage_assigned",
                 "routine_interviews.manage_self",
                 "routine_interviews.view_assigned",
@@ -12195,6 +12817,7 @@
                 "organization.view",
                 "referrals.manage",
                 "referrals.view",
+                "reports.view",
                 "routine_interviews.manage_assigned",
                 "routine_interviews.manage_self",
                 "routine_interviews.view_assigned",
@@ -25775,6 +26398,168 @@
         ]
       }
     },
+    "/api/v1/reports/student-profile": {
+      "get": {
+        "operationId": "reportsGetStudentProfile",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "academic_year_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Academic Year Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "campus_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Campus Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "college_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "College Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "program_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Program Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "year_level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year Level"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentProfilingReportResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Student Profile",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
     "/api/v1/routine-interviews": {
       "post": {
         "operationId": "routineInterviewsCreateDirect",
@@ -27130,6 +27915,10 @@
     {
       "description": "Student annual Individual Inventory self-service.",
       "name": "inventory"
+    },
+    {
+      "description": "Restricted aggregate Guidance and Counseling Office reports.",
+      "name": "reports"
     },
     {
       "description": "Student Good Moral requests, Counselor issuance, and certificate PDFs.",
