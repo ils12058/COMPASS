@@ -60,10 +60,7 @@ class MaintenanceModeMiddleware:
             message=snapshot.message,
             details=details,
         )
-        if (
-            snapshot.source == MaintenanceSource.SCHEDULED
-            and snapshot.scheduled_end_at is not None
-        ):
+        if snapshot.source == MaintenanceSource.SCHEDULED and snapshot.scheduled_end_at is not None:
             remaining = math.ceil((snapshot.scheduled_end_at - current).total_seconds())
             response["Retry-After"] = str(max(1, remaining))
         return response
