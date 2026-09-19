@@ -288,8 +288,7 @@ def test_graduate_tracer_xlsx_release_records_only_safe_report_context(monkeypat
     )
 
     response = auth_client(head).get(
-        "/api/v1/reports/graduate-tracer/xlsx"
-        "?submitted_from=2026-01-01&submitted_to=2026-12-31"
+        "/api/v1/reports/graduate-tracer/xlsx?submitted_from=2026-01-01&submitted_to=2026-12-31"
     )
 
     assert response.status_code == 200
