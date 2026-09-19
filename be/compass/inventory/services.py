@@ -632,6 +632,7 @@ def ensure_current_inventory(*, student: User, context: AuditContext) -> Student
                 student=locked_student,
                 academic_year=current,
                 form_revision=revision,
+                student_number=locked_student.institutional_id or "",
             )
             StudentSupportProfile.objects.create(inventory=item)
         except IntegrityError:
@@ -902,6 +903,11 @@ def replace_current_inventory(
         if item.program_id is not None:
             item.program = _require_active_program(item.program_id)
             normalized_values["course_currently_enrolled"] = item.program.name
+        canonical_institutional_id = (
+            User.objects.only("institutional_id").get(pk=student.pk).institutional_id
+        )
+        if canonical_institutional_id is not None:
+            normalized_values["student_number"] = canonical_institutional_id
         _apply_scalar_values(item, normalized_values)
         item.save(update_fields=["program", *SCALAR_FIELDS, "updated_at"])
         _replace_children(item, normalized_values)
