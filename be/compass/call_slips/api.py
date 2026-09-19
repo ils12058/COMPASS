@@ -55,6 +55,7 @@ class CallSlipCreateRequest(StrictSchema):
     other_destination: str = ""
     report_at: datetime
     referral_id: UUID | None = None
+    notify_student: bool = True
 
 
 class CallSlipInterviewEndedRequest(StrictSchema):
@@ -284,6 +285,7 @@ def call_slips_create(
             other_destination=payload.other_destination,
             report_at=payload.report_at,
             referral_id=payload.referral_id,
+            notify_student=payload.notify_student,
             idempotency_key=idempotency_key,
             request_fingerprint=fingerprint,
             context=_context(request),
