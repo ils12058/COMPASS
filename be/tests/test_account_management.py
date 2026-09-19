@@ -987,3 +987,67 @@ def test_account_listing_exposes_and_filters_safe_verification_state():
     assert detail.status_code == 200
     assert detail.json()["email_verified"] is True
     assert detail.json()["email_verified_at"] is not None
+
+
+
+@pytest.mark.django_db
+def test_institutional_officer_transition_does_not_bypass_organization_relationships():
+    sync_policy()
+    client, _admin, _session = make_admin_client()
+    campus = Campus.objects.create(code="OFFICER", name="Officer Transition")
+    counselor_college = College.objects.create(
+        campus=campus,
+        code="COUNSELOR",
+        name="Counselor Relationship",
+    )
+    student_college = College.objects.create(
+        campus=campus,
+        code="STUDENT",
+        name="Student Relationship",
+    )
+    counselor = make_user(email="related-counselor@example.edu", role="COUNSELOR")
+    staff = make_user(email="related-staff@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    student = make_user(email="related-student@example.edu", role="STUDENT")
+    CounselorResponsibility.objects.create(college=counselor_college, counselor=counselor)
+    StaffSupervision.objects.create(staff=staff, supervisor=counselor)
+    StudentAffiliation.objects.create(student=student, college=student_college)
+
+    for target in (counselor, staff, student):
+        response = client.put(
+            f"/api/v1/accounts/{target.pk}/role",
+            data=json.dumps({"role": "INSTITUTIONAL_OFFICER"}),
+            content_type="application/json",
+            **csrf_headers(client),
+        )
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "organization_relationship_conflict"
+
+    counselor.refresh_from_db()
+    staff.refresh_from_db()
+    student.refresh_from_db()
+    assert counselor.role.code == "COUNSELOR"
+    assert staff.role.code == "GUIDANCE_SERVICES_STAFF"
+    assert student.role.code == "STUDENT"
+    assert CounselorResponsibility.objects.filter(counselor=counselor).exists()
+    assert StaffSupervision.objects.filter(staff=staff).exists()
+    assert StudentAffiliation.objects.filter(student=student).exists()
+
+
+@pytest.mark.django_db
+def test_clean_institutional_officer_can_change_role_without_inferred_gco_relationships():
+    sync_policy()
+    client, _admin, _session = make_admin_client()
+    officer = make_user(email="clean-officer@example.edu", role="INSTITUTIONAL_OFFICER")
+
+    response = client.put(
+        f"/api/v1/accounts/{officer.pk}/role",
+        data=json.dumps({"role": "COUNSELOR"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+
+    assert response.status_code == 200
+    officer.refresh_from_db()
+    assert officer.role.code == "COUNSELOR"
+    assert not CounselorResponsibility.objects.filter(counselor=officer).exists()
+    assert not StaffSupervision.objects.filter(supervisor=officer).exists()
