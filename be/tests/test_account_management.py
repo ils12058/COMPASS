@@ -941,6 +941,21 @@ def test_designation_mutation_requires_dedicated_capability_recent_mfa_and_is_ne
     assert denied.status_code == 403
     assert denied.json()["error"]["code"] == "institutional_designation_permission_denied"
 
+    UserDesignation.objects.create(
+        user=officer,
+        designation=Designation.objects.get(code="DPO"),
+    )
+    remove_denied = client.delete(
+        f"/api/v1/accounts/{officer.pk}/designations/DPO",
+        **csrf_headers(client),
+    )
+    assert remove_denied.status_code == 403
+    assert (
+        remove_denied.json()["error"]["code"]
+        == "institutional_designation_permission_denied"
+    )
+    assert officer.designations.filter(code="DPO").exists()
+
     admin_client, admin, _session = make_admin_client(email="designation-admin@example.edu")
     no_step_up = create_auth_session(admin)
     admin_client.cookies["compass_session"] = no_step_up.token
