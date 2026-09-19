@@ -15,7 +15,11 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from .filenames import safe_report_filename_part
-from .services import ReportError, build_student_profiling_report
+from .services import (
+    ReportError,
+    build_student_profiling_report,
+    student_profiling_release_context,
+)
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 MAX_EXCEL_COLUMNS = 16_384
@@ -67,6 +71,7 @@ class StudentProfilingWorkbookUnavailable(ReportError):
 class StudentProfilingXlsxResult:
     xlsx_bytes: bytes
     filename: str
+    release_context: dict[str, object]
 
 
 def _require_dict(value: object, label: str) -> dict[str, object]:
@@ -607,4 +612,8 @@ def render_student_profiling_xlsx(
             "The Student Profiling report XLSX is temporarily unavailable."
         ) from exc
 
-    return StudentProfilingXlsxResult(xlsx_bytes=payload, filename=filename)
+    return StudentProfilingXlsxResult(
+        xlsx_bytes=payload,
+        filename=filename,
+        release_context=student_profiling_release_context(report),
+    )
