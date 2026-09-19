@@ -15,6 +15,7 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 
 from .services import (
+    InvalidManagementInput,
     ManagementConfigurationError,
     _assert_manager,
     _assert_recent_mfa,
@@ -40,6 +41,10 @@ class CsvImportMalformed(CsvImportError):
     """The uploaded CSV is structurally invalid or uses unsupported input."""
 
 
+class CsvImportUnsupportedHeaders(CsvImportMalformed):
+    """The CSV header contract is missing required fields or contains unsupported fields."""
+
+
 class CsvImportTooLarge(CsvImportError):
     """The uploaded CSV exceeds the bounded provisioning limits."""
 
@@ -50,6 +55,10 @@ class CsvImportInvalidRows(CsvImportError):
     def __init__(self, issues: tuple["CsvImportIssue", ...]) -> None:
         super().__init__("one or more CSV rows are invalid")
         self.issues = issues
+
+
+class CsvImportDuplicateIdentity(CsvImportInvalidRows):
+    """The same normalized email occurs more than once in the submitted CSV."""
 
 
 class CsvImportConflict(CsvImportError):
@@ -64,6 +73,7 @@ class CsvImportConflict(CsvImportError):
 class CsvImportIssue:
     row_number: int
     email: str
+    code: str
     message: str
 
 
@@ -126,13 +136,17 @@ def _headers(raw_headers: list[str]) -> tuple[str, ...]:
     if not headers or not any(headers):
         raise CsvImportMalformed("CSV header row is required")
     if len(set(headers)) != len(headers):
-        raise CsvImportMalformed("CSV contains duplicate headers")
+        raise CsvImportUnsupportedHeaders("CSV contains duplicate headers")
     missing = sorted(REQUIRED_HEADERS - set(headers))
     if missing:
-        raise CsvImportMalformed("CSV is missing required headers: " + ", ".join(missing))
+        raise CsvImportUnsupportedHeaders(
+            "CSV is missing required headers: " + ", ".join(missing)
+        )
     unknown = sorted(set(headers) - ALLOWED_HEADERS)
     if unknown:
-        raise CsvImportMalformed("CSV contains unsupported headers: " + ", ".join(unknown))
+        raise CsvImportUnsupportedHeaders(
+            "CSV contains unsupported headers: " + ", ".join(unknown)
+        )
     return headers
 
 
@@ -180,15 +194,12 @@ def _parse_csv(data: bytes) -> ParsedCsv:
                     "suffix", raw.get("suffix", ""), allow_none=True
                 )
                 role = _canonical_role_code(raw.get("role", ""))
-            except Exception as exc:
-                from .services import InvalidManagementInput
-
-                if not isinstance(exc, InvalidManagementInput):
-                    raise
+            except InvalidManagementInput as exc:
                 issues.append(
                     CsvImportIssue(
                         row_number=physical_row_number,
                         email=raw_email,
+                        code="invalid_row",
                         message=str(exc),
                     )
                 )
@@ -200,6 +211,7 @@ def _parse_csv(data: bytes) -> ParsedCsv:
                     CsvImportIssue(
                         row_number=physical_row_number,
                         email=email,
+                        code="duplicate_identity",
                         message=(
                             "duplicate email in CSV; first occurrence is row "
                             f"{duplicate_of}"
@@ -344,6 +356,8 @@ def provision_accounts_from_csv(
         return _report(parsed, classified, committed=False)
 
     if parsed.issues:
+        if any(issue.code == "duplicate_identity" for issue in parsed.issues):
+            raise CsvImportDuplicateIdentity(parsed.issues)
         raise CsvImportInvalidRows(parsed.issues)
 
     with transaction.atomic():
@@ -357,16 +371,11 @@ def provision_accounts_from_csv(
         if conflicts:
             raise CsvImportConflict(conflicts)
 
+        classification_by_row = {item.row_number: item for item in classified}
         create_rows = {
-            item.row_number: row
-            for item, row in (
-                (
-                    next(result for result in classified if result.row_number == row.row_number),
-                    row,
-                )
-                for row in parsed.rows
-            )
-            if item.action == "CREATE"
+            row.row_number: row
+            for row in parsed.rows
+            if classification_by_row[row.row_number].action == "CREATE"
         }
         requested_roles = {row.role for row in create_rows.values()}
         role_records = {
@@ -428,6 +437,7 @@ def provision_accounts_from_csv(
 __all__ = [
     "ALLOWED_HEADERS",
     "CsvImportConflict",
+    "CsvImportDuplicateIdentity",
     "CsvImportError",
     "CsvImportInvalidRows",
     "CsvImportIssue",
@@ -435,6 +445,7 @@ __all__ = [
     "CsvImportReport",
     "CsvImportRowResult",
     "CsvImportTooLarge",
+    "CsvImportUnsupportedHeaders",
     "MAX_CSV_BYTES",
     "MAX_CSV_ROWS",
     "OPTIONAL_HEADERS",
