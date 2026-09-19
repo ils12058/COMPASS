@@ -14,7 +14,17 @@ from pydantic import ConfigDict
 from compass.accounts.models import StudentLifecycleStatus, UserCapabilityOverride
 from compass.accounts.policy import CAPABILITY_CODES, DESIGNATION_CODES, ROLE_CODES
 from compass.audit.context import AuditContext
+from compass.authentication.abuse import AuthenticationRateLimited
 from compass.authentication.api import session_auth
+from compass.authentication.email_change import (
+    EmailChangeConflict,
+    EmailChangeError,
+    EmailChangeInvalid,
+    EmailChangeNotFound,
+    EmailChangePermissionDenied,
+    request_administrative_email_change,
+)
+from compass.authentication.email_otp import EmailOTPInvalid, EmailOTPSecurityUnavailable
 from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
@@ -133,6 +143,17 @@ class IdentityUpdateRequest(StrictSchema):
     middle_name: str | None = None
     last_name: str | None = None
     suffix: str | None = None
+
+
+class ManagedEmailChangeRequest(StrictSchema):
+    new_email: str
+    turnstile_token: str | None = None
+
+
+class ManagedEmailChangeResponse(StrictSchema):
+    request_id: UUID
+    challenge_id: UUID
+    expires_at: datetime
 
 
 class RoleUpdateRequest(StrictSchema):
@@ -507,6 +528,72 @@ def account_identity(request, user_id: UUID, payload: IdentityUpdateRequest):
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
+
+
+@router.post(
+    "/{user_id}/email-change",
+    response=response_with_errors(
+        ManagedEmailChangeResponse,
+        401,
+        403,
+        404,
+        409,
+        422,
+        429,
+        503,
+    ),
+    auth=session_auth,
+    operation_id="accountsRequestEmailChange",
+    summary="Stage a managed account email change",
+)
+def account_email_change(request, user_id: UUID, payload: ManagedEmailChangeRequest):
+    _require_management(request, recent_mfa=True)
+    try:
+        pending = request_administrative_email_change(
+            actor=request.auth_user,
+            actor_session=request.auth_session,
+            target_id=user_id,
+            new_email=payload.new_email,
+            context=_context(request),
+            request=request,
+            turnstile_token=payload.turnstile_token,
+        )
+    except AuthenticationRateLimited as exc:
+        raise APIError(
+            429,
+            "rate_limited",
+            "Too many authentication attempts. Please try again later.",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    except EmailOTPSecurityUnavailable as exc:
+        raise APIError(
+            503,
+            "security_unavailable",
+            "Authentication is temporarily unavailable.",
+        ) from exc
+    except EmailChangePermissionDenied as exc:
+        raise APIError(403, "permission_denied", "The accounts.manage capability is required.") from exc
+    except EmailChangeNotFound as exc:
+        raise APIError(404, "account_not_found", "The requested account was not found.") from exc
+    except EmailChangeConflict as exc:
+        raise APIError(409, "email_change_conflict", str(exc)) from exc
+    except (EmailChangeInvalid, EmailOTPInvalid) as exc:
+        raise APIError(
+            422,
+            "invalid_email_change_request",
+            "The email change request could not be staged.",
+        ) from exc
+    except EmailChangeError as exc:
+        raise APIError(
+            500,
+            "internal_error",
+            "The email change operation could not be completed.",
+        ) from exc
+    return {
+        "request_id": pending.request_id,
+        "challenge_id": pending.challenge_id,
+        "expires_at": pending.expires_at,
+    }
 
 
 @router.post(
