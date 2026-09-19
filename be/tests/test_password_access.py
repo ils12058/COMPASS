@@ -552,7 +552,6 @@ def test_same_valid_otp_can_mutate_password_at_most_once_concurrently():
     assert EmailOTPChallenge.objects.get(pk=challenge.pk).consumed_at is not None
 
 
-
 @pytest.mark.django_db(transaction=True)
 def test_recovery_preserves_existing_email_verification_timestamp():
     verified_at = timezone.now() - timedelta(days=2)
