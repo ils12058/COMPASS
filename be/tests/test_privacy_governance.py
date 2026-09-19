@@ -429,6 +429,7 @@ def test_incident_lifecycle_reference_human_notification_assessment_and_no_attac
             "summary": "Governance summary only; no leaked dataset is stored here.",
             "affected_area": "Account security",
             "personal_data_categories": ["Account identity"],
+            "discovered_at": timezone.now(),
             "estimated_affected_subjects": 3,
             "notification_assessment": "REQUIRED",
             "notification_reference": "Human-entered institutional reference",
@@ -497,6 +498,7 @@ def test_incident_lifecycle_reference_human_notification_assessment_and_no_attac
             "summary": "Synthetic",
             "affected_area": "Synthetic",
             "personal_data_categories": [],
+            "discovered_at": timezone.now(),
             "estimated_affected_subjects": -1,
         },
     )
@@ -510,6 +512,7 @@ def test_incident_lifecycle_reference_human_notification_assessment_and_no_attac
             "summary": "Synthetic",
             "affected_area": "Synthetic",
             "personal_data_categories": [],
+            "discovered_at": timezone.now(),
             "attachment": "data:application/pdf;base64,forbidden",
         },
     )
@@ -558,6 +561,7 @@ def test_privacy_mutation_audit_metadata_never_copies_governance_narratives():
         summary=sentinel,
         affected_area="Synthetic",
         personal_data_categories=["Identity"],
+        discovered_at=timezone.now(),
         assessment_summary=sentinel,
         notification_assessment=PrivacyNotificationAssessment.NOT_ASSESSED,
     )
