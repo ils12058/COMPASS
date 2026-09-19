@@ -133,6 +133,8 @@ def test_password_login_is_generic_and_stores_only_a_session_digest():
     assert unknown_email.json()["error"]["code"] == "authentication_failed"
     assert AuditEvent.objects.filter(action="auth.login.failed", actor_user=user).exists()
     assert AuditEvent.objects.filter(action="auth.login.failed", actor_user__isnull=True).exists()
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -343,6 +345,17 @@ def test_mfa_login_requires_challenge_and_consumes_recovery_code_once():
     assert client.cookies["compass_login_challenge"]["httponly"] is True
     assert AuthSession.objects.filter(user=user, revoked_at__isnull=True).count() == 0
 
+    failed_totp = post_json(
+        client,
+        "/api/v1/auth/mfa/verify",
+        {"method": "totp", "code": "000000"},
+        headers=csrf_headers(client),
+    )
+    assert failed_totp.status_code == 400
+    assert failed_totp.json()["error"]["code"] == "mfa_failed"
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
+
     completed = post_json(
         client,
         "/api/v1/auth/mfa/verify",
@@ -365,6 +378,8 @@ def test_mfa_login_requires_challenge_and_consumes_recovery_code_once():
     )
     assert reused.status_code == 400
     assert reused.json()["error"]["code"] == "mfa_failed"
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -416,6 +431,31 @@ def test_trusted_browser_satisfies_mfa_only_after_password_and_can_be_used_then_
     assert revoke.status_code == 200
     assert trusted.__class__.objects.get(pk=trusted.pk).revoked_at is not None
     assert resolve_trusted_session(trusted_raw) is None
+
+
+@pytest.mark.django_db
+def test_failed_step_up_totp_does_not_create_notification_or_email():
+    user = make_user(email="failed-step-up@example.edu")
+    client = Client()
+    assert login(client, email=user.email, password="correct-password").status_code == 200
+    setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {}, headers=csrf_headers(client))
+    parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
+    assert post_json(
+        client,
+        "/api/v1/auth/mfa/totp/confirm",
+        {"code": parsed.now()},
+        headers=csrf_headers(client),
+    ).status_code == 200
+
+    failed = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/verify",
+        {"code": "000000"},
+        headers=csrf_headers(client),
+    )
+    assert failed.status_code == 400
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -606,6 +646,7 @@ def test_recovery_code_invalidation_primitive_only_marks_usable_codes():
     assert usable.invalidated_at == now + timedelta(seconds=1)
 
 
+@pytest.mark.django_db
 def test_authentication_rate_limits_use_shared_redis_limiter_shapes():
     limiter = AllowLimiter()
     check_auth_rate_limit(
@@ -627,6 +668,8 @@ def test_authentication_rate_limits_use_shared_redis_limiter_shapes():
             user_id="user-id",
             limiter=AllowLimiter(blocked=True),
         )
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
 
 
 @pytest.mark.django_db
