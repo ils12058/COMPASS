@@ -285,8 +285,7 @@ def turnstile_passive_status() -> DiagnosticCheck:
 
 def derive_overall_status(checks: tuple[DiagnosticCheck, ...]) -> DiagnosticStatus:
     if any(
-        item.required
-        and item.status in {DiagnosticStatus.UNAVAILABLE, DiagnosticStatus.DEGRADED}
+        item.required and item.status in {DiagnosticStatus.UNAVAILABLE, DiagnosticStatus.DEGRADED}
         for item in checks
     ):
         return DiagnosticStatus.DEGRADED
@@ -311,9 +310,7 @@ def collect_platform_health() -> PlatformHealth:
         ("object_storage", "Object storage", probe_object_storage),
         ("smtp", "SMTP", probe_smtp),
     )
-    checked = tuple(
-        _safe_probe(probe, code=code, label=label) for code, label, probe in probes
-    )
+    checked = tuple(_safe_probe(probe, code=code, label=label) for code, label, probe in probes)
     checks = checked + (
         celery_worker_passive_status(),
         celery_beat_passive_status(),
