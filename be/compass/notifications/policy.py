@@ -23,6 +23,18 @@ class NotificationChannel(StrEnum):
 
 class NotificationEvent(StrEnum):
     CALL_SLIP_ISSUED = "call_slip.issued"
+    APPOINTMENT_SCHEDULED = "appointment.scheduled"
+    APPOINTMENT_CANCELLED = "appointment.cancelled"
+    GOOD_MORAL_ISSUED = "good_moral.issued"
+    EXIT_INTERVIEW_REOPENED = "exit_interview.reopened"
+    COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
+    ECOUNSELING_CONSENT_REQUESTED = "ecounseling.consent.requested"
+    FEEDBACK_INVITATION = "feedback.invitation"
+    SECURITY_PASSWORD_RESET = "security.password.reset"
+    SECURITY_MFA_DISABLED = "security.mfa.disabled"
+    SECURITY_RECOVERY_CODES_REGENERATED = "security.recovery_codes.regenerated"
+    SECURITY_MFA_ADMIN_RESET = "security.mfa.admin_reset"
+    SECURITY_ACCOUNT_ACCESS_CHANGED = "security.account_access.changed"
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,15 +48,126 @@ class NotificationEventDefinition:
     email_template: str
 
 
+_EMAIL_CHANNELS = frozenset({NotificationChannel.IN_APP, NotificationChannel.EMAIL})
+
+
 _EVENT_CATALOG = {
     NotificationEvent.CALL_SLIP_ISSUED: NotificationEventDefinition(
         event=NotificationEvent.CALL_SLIP_ISSUED,
         policy=NotificationPolicy.MANDATORY_OPERATIONAL,
-        channels=frozenset({NotificationChannel.IN_APP, NotificationChannel.EMAIL}),
+        channels=_EMAIL_CHANNELS,
         title="New Call Slip",
         message="A Call Slip has been issued to you. Open COMPASS to review the details.",
         email_subject="New COMPASS Call Slip",
         email_template="call_slip_issued",
+    ),
+    NotificationEvent.APPOINTMENT_SCHEDULED: NotificationEventDefinition(
+        event=NotificationEvent.APPOINTMENT_SCHEDULED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Appointment Scheduled",
+        message="A COMPASS Appointment has been scheduled. Sign in to COMPASS to review the details.",
+        email_subject="COMPASS Appointment Scheduled",
+        email_template="appointment_scheduled",
+    ),
+    NotificationEvent.APPOINTMENT_CANCELLED: NotificationEventDefinition(
+        event=NotificationEvent.APPOINTMENT_CANCELLED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Appointment Cancelled",
+        message="A COMPASS Appointment has been cancelled. Sign in to COMPASS to review the details.",
+        email_subject="COMPASS Appointment Cancelled",
+        email_template="appointment_cancelled",
+    ),
+    NotificationEvent.GOOD_MORAL_ISSUED: NotificationEventDefinition(
+        event=NotificationEvent.GOOD_MORAL_ISSUED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Good Moral Certificate Issued",
+        message="Your Good Moral certificate has been issued in COMPASS. Sign in to COMPASS to review it.",
+        email_subject="COMPASS Good Moral Certificate Issued",
+        email_template="good_moral_issued",
+    ),
+    NotificationEvent.EXIT_INTERVIEW_REOPENED: NotificationEventDefinition(
+        event=NotificationEvent.EXIT_INTERVIEW_REOPENED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Exit Interview Reopened",
+        message="Your Exit Interview has been reopened for correction. Sign in to COMPASS to review it.",
+        email_subject="COMPASS Exit Interview Reopened",
+        email_template="exit_interview_reopened",
+    ),
+    NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED: NotificationEventDefinition(
+        event=NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Counseling Shared Summary Available",
+        message="A Counseling Shared Summary is now available in COMPASS. Sign in to review it.",
+        email_subject="COMPASS Counseling Shared Summary Available",
+        email_template="counseling_shared_summary_published",
+    ),
+    NotificationEvent.ECOUNSELING_CONSENT_REQUESTED: NotificationEventDefinition(
+        event=NotificationEvent.ECOUNSELING_CONSENT_REQUESTED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="E-Counseling Consent Review Required",
+        message="One or more E-Counseling consent decisions require your review in COMPASS.",
+        email_subject="COMPASS E-Counseling Consent Review Required",
+        email_template="ecounseling_consent_requested",
+    ),
+    NotificationEvent.FEEDBACK_INVITATION: NotificationEventDefinition(
+        event=NotificationEvent.FEEDBACK_INVITATION,
+        policy=NotificationPolicy.OPTIONAL_INFORMATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Feedback Invitation",
+        message="Your recent GCO service has been completed. You may submit the appropriate Feedback/CSM form in COMPASS.",
+        email_subject="COMPASS Feedback Invitation",
+        email_template="feedback_invitation",
+    ),
+    NotificationEvent.SECURITY_PASSWORD_RESET: NotificationEventDefinition(
+        event=NotificationEvent.SECURITY_PASSWORD_RESET,
+        policy=NotificationPolicy.MANDATORY_SECURITY,
+        channels=_EMAIL_CHANNELS,
+        title="Password Reset",
+        message="Your COMPASS password was reset. If you did not perform this action, contact the appropriate university office immediately.",
+        email_subject="COMPASS Password Reset",
+        email_template="security_password_reset",
+    ),
+    NotificationEvent.SECURITY_MFA_DISABLED: NotificationEventDefinition(
+        event=NotificationEvent.SECURITY_MFA_DISABLED,
+        policy=NotificationPolicy.MANDATORY_SECURITY,
+        channels=_EMAIL_CHANNELS,
+        title="Multi-Factor Authentication Disabled",
+        message="Multi-factor authentication was disabled on your COMPASS account. If you did not perform this action, contact the appropriate university office immediately.",
+        email_subject="COMPASS Multi-Factor Authentication Disabled",
+        email_template="security_mfa_disabled",
+    ),
+    NotificationEvent.SECURITY_RECOVERY_CODES_REGENERATED: NotificationEventDefinition(
+        event=NotificationEvent.SECURITY_RECOVERY_CODES_REGENERATED,
+        policy=NotificationPolicy.MANDATORY_SECURITY,
+        channels=_EMAIL_CHANNELS,
+        title="MFA Recovery Codes Regenerated",
+        message="New MFA recovery codes were generated for your COMPASS account. If you did not perform this action, review your account security.",
+        email_subject="COMPASS MFA Recovery Codes Regenerated",
+        email_template="security_recovery_codes_regenerated",
+    ),
+    NotificationEvent.SECURITY_MFA_ADMIN_RESET: NotificationEventDefinition(
+        event=NotificationEvent.SECURITY_MFA_ADMIN_RESET,
+        policy=NotificationPolicy.MANDATORY_SECURITY,
+        channels=_EMAIL_CHANNELS,
+        title="Multi-Factor Authentication Reset",
+        message="Multi-factor authentication was reset for your COMPASS account by an administrator. You may need to configure MFA again.",
+        email_subject="COMPASS Multi-Factor Authentication Reset",
+        email_template="security_mfa_admin_reset",
+    ),
+    NotificationEvent.SECURITY_ACCOUNT_ACCESS_CHANGED: NotificationEventDefinition(
+        event=NotificationEvent.SECURITY_ACCOUNT_ACCESS_CHANGED,
+        policy=NotificationPolicy.MANDATORY_SECURITY,
+        channels=_EMAIL_CHANNELS,
+        title="Account Access Changed",
+        message="Your COMPASS account access or permissions were changed by an administrator. Sign in to review your account and contact the appropriate office if this change is unexpected.",
+        email_subject="COMPASS Account Access Changed",
+        email_template="security_account_access_changed",
     ),
 }
 
