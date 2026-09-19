@@ -882,10 +882,19 @@ def replace_current_inventory(
     if unsupported:
         raise InvalidInventoryInput("The Inventory update contains unsupported fields.")
     with transaction.atomic():
+        locked_student = (
+            User.objects.select_for_update()
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
+        )
+        if locked_student is None:
+            raise InventoryNotFound("The Student account was not found.")
+        _require_current_student(locked_student)
         current = _current_year()
         item = (
             StudentInventory.objects.select_for_update()
-            .filter(student_id=student.pk, academic_year_id=current.pk)
+            .filter(student_id=locked_student.pk, academic_year_id=current.pk)
             .first()
         )
         if item is None:
@@ -903,9 +912,7 @@ def replace_current_inventory(
         if item.program_id is not None:
             item.program = _require_active_program(item.program_id)
             normalized_values["course_currently_enrolled"] = item.program.name
-        canonical_institutional_id = (
-            User.objects.only("institutional_id").get(pk=student.pk).institutional_id
-        )
+        canonical_institutional_id = locked_student.institutional_id
         if canonical_institutional_id is not None:
             normalized_values["student_number"] = canonical_institutional_id
         _apply_scalar_values(item, normalized_values)
