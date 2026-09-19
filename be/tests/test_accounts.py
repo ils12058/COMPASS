@@ -25,7 +25,7 @@ from compass.accounts.models import (
     UserCapabilityOverride,
     UserDesignation,
 )
-from compass.accounts.policy import CAPABILITY_CODES
+from compass.accounts.policy import CAPABILITY_CODES, designation_role_compatible
 from compass.accounts.services import (
     effective_capabilities,
     is_current_student,
@@ -475,3 +475,23 @@ def test_institutional_officer_is_neutral_and_dpo_adds_no_capabilities():
     assert not officer.has_capability("institutional_designations.manage")
     assert not officer.has_capability("organization.manage")
     assert not officer.has_capability("reports.view")
+
+
+
+def test_designation_role_compatibility_fails_closed_for_unknown_codes():
+    assert designation_role_compatible(
+        designation_code="DPO",
+        role_code="INSTITUTIONAL_OFFICER",
+    )
+    assert not designation_role_compatible(
+        designation_code="DPO",
+        role_code="IT_ADMIN",
+    )
+    assert not designation_role_compatible(
+        designation_code="UNKNOWN_DESIGNATION",
+        role_code="INSTITUTIONAL_OFFICER",
+    )
+    assert not designation_role_compatible(
+        designation_code="DPO",
+        role_code="UNKNOWN_ROLE",
+    )
