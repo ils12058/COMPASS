@@ -181,6 +181,11 @@ CAPABILITY_DEFINITIONS = (
         description="Create, edit, and submit the authenticated Student's current Inventory.",
     ),
     CapabilityDefinition(
+        code="reports.view",
+        name="View aggregate reports",
+        description="View privacy-bounded aggregate Guidance and Counseling Office reports.",
+    ),
+    CapabilityDefinition(
         code="exit_interviews.view_self",
         name="View own Exit Interviews",
         description="View the authenticated Student's own Exit Interview records.",
@@ -471,6 +476,7 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "feedback.view_customer_feedback",
             "feedback.view_csm",
             "graduate_tracer.view",
+            "reports.view",
         }
     ),
     "DPO": frozenset(),

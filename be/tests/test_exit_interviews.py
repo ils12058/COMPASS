@@ -260,9 +260,9 @@ def test_exit_interview_models_are_domain_specific_and_have_no_qms_or_generic_en
 def test_exit_interview_policy_is_student_self_plus_head_only():
     sync_policy()
 
-    assert Capability.objects.count() == 56
+    assert Capability.objects.count() == 57
     assert RoleCapability.objects.count() == 62
-    assert DesignationCapability.objects.count() == 15
+    assert DesignationCapability.objects.count() == 16
 
     student = make_user("student-policy@example.edu")
     counselor = make_user("counselor-policy@example.edu", role="COUNSELOR")

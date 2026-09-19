@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "compass.institutional_forms",
     "compass.documents",
     "compass.inventory",
+    "compass.reports",
     "compass.good_moral",
     "compass.feedback",
     "compass.graduate_tracer",
