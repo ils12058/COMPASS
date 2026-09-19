@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from uuid import uuid4
 
 import pytest
@@ -15,6 +16,7 @@ from compass.accounts.models import (
     UserDesignation,
 )
 from compass.accounts.services import set_user_capability_override
+from compass.audit.context import AuditContext
 from compass.authentication.sessions import create_auth_session
 from compass.institutional_forms.models import FormFamily, FormRevision, FormRevisionStatus
 from compass.inventory.models import (
@@ -429,7 +431,6 @@ def test_support_context_is_privacy_minimized_and_has_no_scores_or_narratives():
 @pytest.mark.django_db
 def test_support_profile_is_nested_in_inventory_and_family_rows_have_no_life_status():
     sync_policy()
-    admin = make_user("support-inventory-admin@example.edu", "IT_ADMIN")
     student = make_user("support-inventory-student@example.edu")
     year = AcademicYear.objects.create(label="2026-2027", is_current=True)
     _, _, program = make_org("API")
@@ -453,7 +454,7 @@ def test_support_profile_is_nested_in_inventory_and_family_rows_have_no_life_sta
     }
     response = client.put(
         "/api/v1/inventory/me/current",
-        data=__import__("json").dumps(payload),
+        data=json.dumps(payload),
         content_type="application/json",
         HTTP_X_CSRFTOKEN=client.get("/api/v1/auth/csrf").json()["csrf_token"],
     )
@@ -471,7 +472,6 @@ def test_support_profile_is_nested_in_inventory_and_family_rows_have_no_life_sta
 @pytest.mark.django_db
 def test_support_profile_draft_fields_may_be_null_but_submission_requires_explicit_values():
     sync_policy()
-    admin = make_user("support-submit-admin@example.edu", "IT_ADMIN")
     student = make_user("support-submit-student@example.edu")
     AcademicYear.objects.create(label="2026-2027", is_current=True)
     _, _, program = make_org("SUBMIT")
@@ -498,9 +498,7 @@ def test_support_profile_draft_fields_may_be_null_but_submission_requires_explic
     with pytest.raises(InvalidInventoryInput, match="Student Support fields"):
         submit_current_inventory(
             student=student,
-            context=__import__("compass.audit.context", fromlist=["AuditContext"]).AuditContext.user(
-                student
-            ),
+            context=AuditContext.user(student),
         )
 
     values["support_profile"] = {
@@ -512,9 +510,7 @@ def test_support_profile_draft_fields_may_be_null_but_submission_requires_explic
     replace_current_inventory(student=student, values=values)
     submitted = submit_current_inventory(
         student=student,
-        context=__import__("compass.audit.context", fromlist=["AuditContext"]).AuditContext.user(
-            student
-        ),
+        context=AuditContext.user(student),
     )
     assert submitted.submitted_at is not None
     assert submitted.support_profile.four_ps_status == FourPsStatus.NOT_SPECIFIED
@@ -545,13 +541,16 @@ def test_submitted_historical_null_support_profile_remains_readable_and_immutabl
     assert response.json()["support_profile"]["four_ps_status"] is None
     assert response.json()["pwd_status"] is None
 
-    # A current-year draft can exist without mutating the historical snapshot.
-    make_inventory(
+    # A current-year draft can change without mutating the historical snapshot.
+    current_item = make_inventory(
         student=student,
         year=current,
         program=program,
         suffix="current-history",
         submitted=False,
     )
-    with pytest.raises(Exception, match="locked|current"):
-        replace_current_inventory(student=student, values={"nickname": "Must not rewrite history"})
+    replace_current_inventory(student=student, values={"nickname": "Current only"})
+    old.refresh_from_db()
+    current_item.refresh_from_db()
+    assert old.nickname == ""
+    assert current_item.nickname == "Current only"
