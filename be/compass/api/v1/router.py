@@ -31,6 +31,7 @@ from compass.referrals.api import router as referrals_router
 from compass.reports.api import router as reports_router
 from compass.routine_interviews.api import router as routine_interviews_router
 from compass.service_catalog.api import router as service_catalog_router
+from compass.student_support.api import router as student_support_router
 
 api = NinjaAPI(
     title="COMPASS API",
@@ -77,6 +78,10 @@ api = NinjaAPI(
             {
                 "name": "inventory",
                 "description": "Student annual Individual Inventory self-service.",
+            },
+            {
+                "name": "student-support",
+                "description": "Privacy-minimized Student Support context within Guidance scope.",
             },
             {
                 "name": "reports",
@@ -166,6 +171,7 @@ api.add_router("/counseling", counseling_router)
 api.add_router("/academic-years", academic_years_router)
 api.add_router("/institutional-forms", institutional_forms_router)
 api.add_router("/inventory", inventory_router)
+api.add_router("/student-support", student_support_router)
 api.add_router("/reports", reports_router)
 api.add_router("/good-moral", good_moral_router)
 api.add_router("/feedback", feedback_router)

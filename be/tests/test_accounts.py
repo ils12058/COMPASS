@@ -144,7 +144,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
         "DPO",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 65
+    assert RoleCapability.objects.count() == 66
     assert DesignationCapability.objects.count() == 18
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
@@ -156,8 +156,8 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 62
-    assert RoleCapability.objects.count() == 65
+    assert Capability.objects.count() == 63
+    assert RoleCapability.objects.count() == 66
     assert DesignationCapability.objects.count() == 18
 
 
@@ -205,6 +205,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "appointments.manage",
         "counseling.view_assigned",
         "counseling.manage_assigned",
+        "student_support.view",
         "shared_summaries.view_assigned",
         "shared_summaries.manage_assigned",
         "routine_interviews.view_assigned",
@@ -475,6 +476,7 @@ def test_institutional_officer_is_neutral_and_dpo_adds_only_privacy_capabilities
     assert not officer.has_capability("institutional_designations.manage")
     assert not officer.has_capability("organization.manage")
     assert not officer.has_capability("reports.view")
+    assert not officer.has_capability("student_support.view")
 
 
 def test_designation_role_compatibility_fails_closed_for_unknown_codes():

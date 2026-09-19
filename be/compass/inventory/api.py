@@ -15,6 +15,11 @@ from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.student_support.models import (
+    FourPsStatus,
+    IndigenousPeoplesStatus,
+    ParentLifeStatus,
+)
 
 from .models import (
     AnnualIncomeStatus,
@@ -31,11 +36,10 @@ from .models import (
     LivingArrangement,
     OccupationCategory,
     OrganizationScope,
-    ParentLifeStatus,
     ParentStatus,
     ParentStatusCategory,
-    PhysicalDisadvantageStatus,
     PostGraduationField,
+    PWDStatus,
     Sex,
     TransportationFrequencyCategory,
     TransportationMode,
@@ -95,16 +99,28 @@ class CurrentReligionCategoryValue(StrEnum):
     NOT_SPECIFIED = CurrentReligionCategory.NOT_SPECIFIED
 
 
-class PhysicalDisadvantageStatusValue(StrEnum):
-    NONE = PhysicalDisadvantageStatus.NONE
-    HAS_PHYSICAL_DISADVANTAGE = PhysicalDisadvantageStatus.HAS_PHYSICAL_DISADVANTAGE
-    NOT_SPECIFIED = PhysicalDisadvantageStatus.NOT_SPECIFIED
+class PWDStatusValue(StrEnum):
+    PWD = PWDStatus.PWD
+    NON_PWD = PWDStatus.NON_PWD
+    NOT_SPECIFIED = PWDStatus.NOT_SPECIFIED
 
 
 class ParentLifeStatusValue(StrEnum):
     LIVING = ParentLifeStatus.LIVING
     DECEASED = ParentLifeStatus.DECEASED
     NOT_SPECIFIED = ParentLifeStatus.NOT_SPECIFIED
+
+
+class FourPsStatusValue(StrEnum):
+    BENEFICIARY = FourPsStatus.BENEFICIARY
+    NOT_BENEFICIARY = FourPsStatus.NOT_BENEFICIARY
+    NOT_SPECIFIED = FourPsStatus.NOT_SPECIFIED
+
+
+class IndigenousPeoplesStatusValue(StrEnum):
+    MEMBER = IndigenousPeoplesStatus.MEMBER
+    NOT_MEMBER = IndigenousPeoplesStatus.NOT_MEMBER
+    NOT_SPECIFIED = IndigenousPeoplesStatus.NOT_SPECIFIED
 
 
 class ParentStatusCategoryValue(StrEnum):
@@ -264,7 +280,6 @@ class InventoryStatusValue(StrEnum):
 
 class FamilyMemberPayload(StrictSchema):
     kind: FamilyMemberKindValue
-    life_status: ParentLifeStatusValue | None = None
     name: str = ""
     date_of_birth: date | None = None
     place_of_birth: str = ""
@@ -328,6 +343,13 @@ class GeographicLocationPayload(StrictSchema):
     barangay_name_snapshot: str = ""
 
 
+class SupportProfilePayload(StrictSchema):
+    four_ps_status: FourPsStatusValue | None = None
+    indigenous_peoples_status: IndigenousPeoplesStatusValue | None = None
+    mother_life_status: ParentLifeStatusValue | None = None
+    father_life_status: ParentLifeStatusValue | None = None
+
+
 class InventoryPayload(StrictSchema):
     full_name: str = ""
     nickname: str = ""
@@ -380,7 +402,7 @@ class InventoryPayload(StrictSchema):
     height: str = ""
     weight: str = ""
     physical_disadvantage: str = ""
-    physical_disadvantage_status: PhysicalDisadvantageStatusValue | None = None
+    pwd_status: PWDStatusValue | None = None
     illness_this_year: str = ""
     previous_illness: str = ""
     education_entries: list[EducationEntryPayload] = Field(default_factory=list)
@@ -421,6 +443,7 @@ class InventoryPayload(StrictSchema):
     prior_counseling_where: str = ""
     current_concerns: str = ""
     current_fears: str = ""
+    support_profile: SupportProfilePayload = Field(default_factory=SupportProfilePayload)
 
 
 class AcademicYearSummary(StrictSchema):
@@ -585,7 +608,7 @@ def _inventory(item) -> dict[str, object]:
         "height",
         "weight",
         "physical_disadvantage",
-        "physical_disadvantage_status",
+        "pwd_status",
         "illness_this_year",
         "previous_illness",
         "year_level",
@@ -642,7 +665,7 @@ def _inventory(item) -> dict[str, object]:
         "intended_work_field",
         "civil_status_category",
         "current_religion_category",
-        "physical_disadvantage_status",
+        "pwd_status",
         "parent_status_category",
     ):
         data[field] = _optional_choice(data[field])
@@ -651,7 +674,6 @@ def _inventory(item) -> dict[str, object]:
         "family_members",
         (
             "kind",
-            "life_status",
             "name",
             "date_of_birth",
             "place_of_birth",
@@ -707,12 +729,28 @@ def _inventory(item) -> dict[str, object]:
             "barangay_name_snapshot",
         ),
     )
+    profile = item.support_profile
+    data["support_profile"] = {
+        "four_ps_status": _optional_choice(profile.four_ps_status),
+        "indigenous_peoples_status": _optional_choice(profile.indigenous_peoples_status),
+        "mother_life_status": _optional_choice(profile.mother_life_status),
+        "father_life_status": _optional_choice(profile.father_life_status),
+    }
     return data
 
 
 def _payload_values(payload: InventoryPayload) -> dict[str, object]:
     values = payload.model_dump(mode="python")
     values["full_name_snapshot"] = values.pop("full_name")
+    for field in (
+        "sex",
+        "living_arrangement",
+        "handedness",
+        "ideal_monthly_allowance",
+        "intended_work_field",
+    ):
+        if values[field] is None:
+            values[field] = ""
     return values
 
 

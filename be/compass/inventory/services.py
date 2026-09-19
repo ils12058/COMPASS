@@ -24,6 +24,12 @@ from compass.institutional_forms.services import (
 )
 from compass.organization.academic_years import get_current_academic_year
 from compass.organization.models import AcademicYear, Program
+from compass.student_support.models import (
+    FourPsStatus,
+    IndigenousPeoplesStatus,
+    ParentLifeStatus,
+    StudentSupportProfile,
+)
 
 from .models import (
     AnnualIncomeStatus,
@@ -41,9 +47,8 @@ from .models import (
     InventoryTransportationEntry,
     LivingArrangement,
     OccupationCategory,
-    ParentLifeStatus,
-    PhysicalDisadvantageStatus,
     PostGraduationField,
+    PWDStatus,
     StudentInventory,
     TransportationFrequencyCategory,
 )
@@ -217,7 +222,7 @@ SCALAR_FIELDS = (
     "height",
     "weight",
     "physical_disadvantage",
-    "physical_disadvantage_status",
+    "pwd_status",
     "illness_this_year",
     "previous_illness",
     "course_currently_enrolled",
@@ -264,6 +269,13 @@ CHILD_COLLECTIONS = (
     "geographic_locations",
 )
 
+SUPPORT_FIELDS = (
+    "four_ps_status",
+    "indigenous_peoples_status",
+    "mother_life_status",
+    "father_life_status",
+)
+
 
 def _inventory_queryset():
     return StudentInventory.objects.select_related(
@@ -275,6 +287,7 @@ def _inventory_queryset():
         "program__college__campus",
         "form_revision",
         "form_revision__family",
+        "support_profile",
     ).prefetch_related(
         "family_members",
         "siblings",
@@ -352,19 +365,16 @@ def _normalize_snapshot_categories(values: dict[str, object]) -> dict[str, objec
         else:
             normalized["current_religion"] = _choice_label(CurrentReligionCategory, religion)
 
-    physical = normalized.get("physical_disadvantage_status")
-    if physical is not None:
-        physical = str(physical)
-        normalized["physical_disadvantage_status"] = physical
+    pwd_status = normalized.get("pwd_status")
+    if pwd_status is not None:
+        pwd_status = str(pwd_status)
+        normalized["pwd_status"] = pwd_status
         detail = str(normalized.get("physical_disadvantage", "")).strip()
-        if physical == PhysicalDisadvantageStatus.HAS_PHYSICAL_DISADVANTAGE and not detail:
+        if pwd_status == PWDStatus.PWD and not detail:
             raise InvalidInventoryInput(
-                "physical_disadvantage detail is required when a disadvantage is reported."
+                "physical_disadvantage detail is required when pwd_status is PWD."
             )
-        if physical in {
-            PhysicalDisadvantageStatus.NONE,
-            PhysicalDisadvantageStatus.NOT_SPECIFIED,
-        }:
+        if pwd_status in {PWDStatus.NON_PWD, PWDStatus.NOT_SPECIFIED}:
             normalized["physical_disadvantage"] = ""
 
     parent_status = normalized.get("parent_status_category")
@@ -385,13 +395,6 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
         if kind in seen:
             raise InvalidInventoryInput("Only one family-member row per kind is allowed.")
         seen.add(kind)
-        life_status = row.get("life_status")
-        if life_status is not None:
-            life_status = str(life_status)
-            if life_status not in ParentLifeStatus.values:
-                raise InvalidInventoryInput("Unsupported parent life_status.")
-            row["life_status"] = life_status
-
         status = row.get("annual_income_status")
         if status is not None:
             status = str(status)
@@ -430,6 +433,52 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
 
         normalized.append(row)
     return normalized
+
+
+def _normalize_support_profile(values: object) -> dict[str, object]:
+    if not isinstance(values, dict):
+        raise InvalidInventoryInput("support_profile must be an object.")
+    unknown = set(values) - set(SUPPORT_FIELDS)
+    if unknown:
+        raise InvalidInventoryInput("The support_profile contains unsupported fields.")
+
+    normalized = dict(values)
+    choices = {
+        "four_ps_status": FourPsStatus,
+        "indigenous_peoples_status": IndigenousPeoplesStatus,
+        "mother_life_status": ParentLifeStatus,
+        "father_life_status": ParentLifeStatus,
+    }
+    for field, choice_class in choices.items():
+        value = normalized.get(field)
+        if value is None:
+            continue
+        value = str(value)
+        if value not in choice_class.values:
+            raise InvalidInventoryInput(f"Unsupported support_profile {field}.")
+        normalized[field] = value
+    return normalized
+
+
+def _lock_or_create_support_profile(item: StudentInventory) -> StudentSupportProfile:
+    profile = StudentSupportProfile.objects.select_for_update().filter(inventory_id=item.pk).first()
+    if profile is None:
+        profile = StudentSupportProfile.objects.create(inventory=item)
+    return profile
+
+
+def _apply_support_profile(
+    profile: StudentSupportProfile,
+    values: dict[str, object],
+) -> None:
+    for field in SUPPORT_FIELDS:
+        if field in values:
+            setattr(profile, field, values[field])
+    try:
+        profile.full_clean(exclude=("inventory",))
+    except ValidationError as exc:
+        raise InvalidInventoryInput("The support_profile contains invalid typed values.") from exc
+    profile.save(update_fields=[*SUPPORT_FIELDS, "updated_at"])
 
 
 def _pair(code: str, name: str, label: str, *, required: bool) -> tuple[str, str]:
@@ -575,6 +624,7 @@ def ensure_current_inventory(*, student: User, context: AuditContext) -> Student
             academic_year_id=current.pk,
         ).first()
         if existing is not None:
+            StudentSupportProfile.objects.get_or_create(inventory=existing)
             return _inventory_queryset().get(pk=existing.pk)
         revision = _active_inventory_revision()
         try:
@@ -583,6 +633,7 @@ def ensure_current_inventory(*, student: User, context: AuditContext) -> Student
                 academic_year=current,
                 form_revision=revision,
             )
+            StudentSupportProfile.objects.create(inventory=item)
         except IntegrityError:
             item = StudentInventory.objects.filter(
                 student_id=locked_student.pk,
@@ -593,6 +644,7 @@ def ensure_current_inventory(*, student: User, context: AuditContext) -> Student
                     "The current Individual Inventory could not be created safely; "
                     "retry the request."
                 ) from None
+            StudentSupportProfile.objects.get_or_create(inventory=item)
             return _inventory_queryset().get(pk=item.pk)
         record_event(
             context=context,
@@ -632,14 +684,17 @@ def _validate_draft_consistency(item: StudentInventory) -> None:
         )
 
 
-def _validate_submission(item: StudentInventory) -> None:
+def _validate_submission(
+    item: StudentInventory,
+    profile: StudentSupportProfile,
+) -> None:
     _validate_draft_consistency(item)
     required_scalars = (
         ("sex", item.sex),
         ("date_of_birth", item.date_of_birth),
         ("civil_status_category", item.civil_status_category),
         ("current_religion_category", item.current_religion_category),
-        ("physical_disadvantage_status", item.physical_disadvantage_status),
+        ("pwd_status", item.pwd_status),
         ("parent_status_category", item.parent_status_category),
         ("living_arrangement", item.living_arrangement),
     )
@@ -655,7 +710,7 @@ def _validate_submission(item: StudentInventory) -> None:
             "civil_status": item.civil_status,
             "current_religion_category": item.current_religion_category,
             "current_religion": item.current_religion,
-            "physical_disadvantage_status": item.physical_disadvantage_status,
+            "pwd_status": item.pwd_status,
             "physical_disadvantage": item.physical_disadvantage,
             "parent_status_category": item.parent_status_category,
         }
@@ -666,6 +721,20 @@ def _validate_submission(item: StudentInventory) -> None:
         "physical_disadvantage",
     ):
         setattr(item, field, normalized_root[field])
+
+    required_support = (
+        ("four_ps_status", profile.four_ps_status),
+        ("indigenous_peoples_status", profile.indigenous_peoples_status),
+        ("mother_life_status", profile.mother_life_status),
+        ("father_life_status", profile.father_life_status),
+    )
+    missing_support = [name for name, value in required_support if value in {None, ""}]
+    if missing_support:
+        raise InvalidInventoryInput(
+            "Inventory submission requires Student Support fields: "
+            + ", ".join(missing_support)
+            + "."
+        )
 
     current_location = next(
         (
@@ -701,8 +770,6 @@ def _validate_submission(item: StudentInventory) -> None:
         parent = parents.get(kind)
         if parent is None:
             raise InvalidInventoryInput(f"{kind.label} family-member row is required.")
-        if parent.life_status in {None, ""}:
-            raise InvalidInventoryInput(f"{kind.label} life_status is required.")
         if parent.occupation_category in {None, ""}:
             raise InvalidInventoryInput(f"{kind.label} occupation_category is required.")
         if parent.annual_income_status in {None, ""}:
@@ -711,7 +778,6 @@ def _validate_submission(item: StudentInventory) -> None:
             [
                 {
                     "kind": parent.kind,
-                    "life_status": parent.life_status,
                     "occupation_category": parent.occupation_category,
                     "occupation": parent.occupation,
                     "annual_income_status": parent.annual_income_status,
@@ -806,7 +872,12 @@ def replace_current_inventory(
     values: dict[str, object],
 ) -> StudentInventory:
     _require_current_student(student)
-    unsupported = set(values) - set(SCALAR_FIELDS) - set(CHILD_COLLECTIONS) - {"program_id"}
+    unsupported = (
+        set(values)
+        - set(SCALAR_FIELDS)
+        - set(CHILD_COLLECTIONS)
+        - {"program_id", "support_profile"}
+    )
     if unsupported:
         raise InvalidInventoryInput("The Inventory update contains unsupported fields.")
     with transaction.atomic():
@@ -821,6 +892,10 @@ def replace_current_inventory(
         if item.submitted_at is not None:
             raise InventoryConflict("A submitted Individual Inventory is locked.")
         normalized_values = _normalize_snapshot_categories(values)
+        support_values = None
+        if "support_profile" in normalized_values:
+            support_values = _normalize_support_profile(normalized_values.pop("support_profile"))
+        profile = _lock_or_create_support_profile(item)
         if "program_id" in normalized_values:
             program_id = normalized_values.pop("program_id")
             item.program = None if program_id is None else _require_active_program(program_id)
@@ -830,6 +905,8 @@ def replace_current_inventory(
         _apply_scalar_values(item, normalized_values)
         item.save(update_fields=["program", *SCALAR_FIELDS, "updated_at"])
         _replace_children(item, normalized_values)
+        if support_values is not None:
+            _apply_support_profile(profile, support_values)
         return _inventory_queryset().get(pk=item.pk)
 
 
@@ -856,7 +933,8 @@ def submit_current_inventory(
             raise InventoryConflict("Year Level is required before Inventory submission.")
         item.program = _require_active_program(item.program_id)
         item.course_currently_enrolled = item.program.name
-        _validate_submission(item)
+        profile = _lock_or_create_support_profile(item)
+        _validate_submission(item, profile)
         item.submitted_at = timezone.now()
         item.save(
             update_fields=[
