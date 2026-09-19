@@ -71,7 +71,7 @@ class EmailDelivery(models.Model):
         default=EmailDeliveryStatus.PENDING,
     )
     attempt_count = models.PositiveSmallIntegerField(default=0)
-    next_attempt_at = models.DateTimeField(default=timezone.now)
+    next_attempt_at = models.DateTimeField(default=timezone.now, blank=True, null=True)
     last_attempt_at = models.DateTimeField(blank=True, null=True)
     sent_at = models.DateTimeField(blank=True, null=True)
     failure_code = models.CharField(max_length=64, blank=True, default="")
