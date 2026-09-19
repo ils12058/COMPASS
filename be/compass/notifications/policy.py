@@ -66,7 +66,10 @@ _EVENT_CATALOG = {
         policy=NotificationPolicy.MANDATORY_OPERATIONAL,
         channels=_EMAIL_CHANNELS,
         title="Appointment Scheduled",
-        message="A COMPASS Appointment has been scheduled. Sign in to COMPASS to review the details.",
+        message=(
+            "A COMPASS Appointment has been scheduled. "
+            "Sign in to COMPASS to review the details."
+        ),
         email_subject="COMPASS Appointment Scheduled",
         email_template="appointment_scheduled",
     ),
@@ -75,7 +78,10 @@ _EVENT_CATALOG = {
         policy=NotificationPolicy.MANDATORY_OPERATIONAL,
         channels=_EMAIL_CHANNELS,
         title="Appointment Cancelled",
-        message="A COMPASS Appointment has been cancelled. Sign in to COMPASS to review the details.",
+        message=(
+            "A COMPASS Appointment has been cancelled. "
+            "Sign in to COMPASS to review the details."
+        ),
         email_subject="COMPASS Appointment Cancelled",
         email_template="appointment_cancelled",
     ),
@@ -84,7 +90,10 @@ _EVENT_CATALOG = {
         policy=NotificationPolicy.MANDATORY_OPERATIONAL,
         channels=_EMAIL_CHANNELS,
         title="Good Moral Certificate Issued",
-        message="Your Good Moral certificate has been issued in COMPASS. Sign in to COMPASS to review it.",
+        message=(
+            "Your Good Moral certificate has been issued in COMPASS. "
+            "Sign in to COMPASS to review it."
+        ),
         email_subject="COMPASS Good Moral Certificate Issued",
         email_template="good_moral_issued",
     ),
@@ -93,7 +102,10 @@ _EVENT_CATALOG = {
         policy=NotificationPolicy.MANDATORY_OPERATIONAL,
         channels=_EMAIL_CHANNELS,
         title="Exit Interview Reopened",
-        message="Your Exit Interview has been reopened for correction. Sign in to COMPASS to review it.",
+        message=(
+            "Your Exit Interview has been reopened for correction. "
+            "Sign in to COMPASS to review it."
+        ),
         email_subject="COMPASS Exit Interview Reopened",
         email_template="exit_interview_reopened",
     ),
@@ -120,7 +132,10 @@ _EVENT_CATALOG = {
         policy=NotificationPolicy.OPTIONAL_INFORMATIONAL,
         channels=_EMAIL_CHANNELS,
         title="Feedback Invitation",
-        message="Your recent GCO service has been completed. You may submit the appropriate Feedback/CSM form in COMPASS.",
+        message=(
+            "Your recent GCO service has been completed. "
+            "You may submit the appropriate Feedback/CSM form in COMPASS."
+        ),
         email_subject="COMPASS Feedback Invitation",
         email_template="feedback_invitation",
     ),
@@ -129,7 +144,10 @@ _EVENT_CATALOG = {
         policy=NotificationPolicy.MANDATORY_SECURITY,
         channels=_EMAIL_CHANNELS,
         title="Password Reset",
-        message="Your COMPASS password was reset. If you did not perform this action, contact the appropriate university office immediately.",
+        message=(
+            "Your COMPASS password was reset. If you did not perform this action, "
+            "contact the appropriate university office immediately."
+        ),
         email_subject="COMPASS Password Reset",
         email_template="security_password_reset",
     ),
@@ -138,7 +156,10 @@ _EVENT_CATALOG = {
         policy=NotificationPolicy.MANDATORY_SECURITY,
         channels=_EMAIL_CHANNELS,
         title="Multi-Factor Authentication Disabled",
-        message="Multi-factor authentication was disabled on your COMPASS account. If you did not perform this action, contact the appropriate university office immediately.",
+        message=(
+            "Multi-factor authentication was disabled on your COMPASS account. "
+            "If you did not perform this action, contact the appropriate university office immediately."
+        ),
         email_subject="COMPASS Multi-Factor Authentication Disabled",
         email_template="security_mfa_disabled",
     ),
@@ -147,7 +168,10 @@ _EVENT_CATALOG = {
         policy=NotificationPolicy.MANDATORY_SECURITY,
         channels=_EMAIL_CHANNELS,
         title="MFA Recovery Codes Regenerated",
-        message="New MFA recovery codes were generated for your COMPASS account. If you did not perform this action, review your account security.",
+        message=(
+            "New MFA recovery codes were generated for your COMPASS account. "
+            "If you did not perform this action, review your account security."
+        ),
         email_subject="COMPASS MFA Recovery Codes Regenerated",
         email_template="security_recovery_codes_regenerated",
     ),
@@ -156,7 +180,10 @@ _EVENT_CATALOG = {
         policy=NotificationPolicy.MANDATORY_SECURITY,
         channels=_EMAIL_CHANNELS,
         title="Multi-Factor Authentication Reset",
-        message="Multi-factor authentication was reset for your COMPASS account by an administrator. You may need to configure MFA again.",
+        message=(
+            "Multi-factor authentication was reset for your COMPASS account by an administrator. "
+            "You may need to configure MFA again."
+        ),
         email_subject="COMPASS Multi-Factor Authentication Reset",
         email_template="security_mfa_admin_reset",
     ),
@@ -165,7 +192,11 @@ _EVENT_CATALOG = {
         policy=NotificationPolicy.MANDATORY_SECURITY,
         channels=_EMAIL_CHANNELS,
         title="Account Access Changed",
-        message="Your COMPASS account access or permissions were changed by an administrator. Sign in to review your account and contact the appropriate office if this change is unexpected.",
+        message=(
+            "Your COMPASS account access or permissions were changed by an administrator. "
+            "Sign in to review your account and contact the appropriate office if this change "
+            "is unexpected."
+        ),
         email_subject="COMPASS Account Access Changed",
         email_template="security_account_access_changed",
     ),
