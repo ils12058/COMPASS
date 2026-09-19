@@ -84,9 +84,7 @@ def test_configuration_only_skips_runtime_and_worker_smoke():
         patch(
             "compass.platform_ops.management.commands.compass_doctor.collect_platform_health"
         ) as health,
-        patch(
-            "compass.platform_ops.management.commands.compass_doctor.run_worker_smoke"
-        ) as worker,
+        patch("compass.platform_ops.management.commands.compass_doctor.run_worker_smoke") as worker,
     ):
         call_command("compass_doctor", "--configuration-only", stdout=output)
 
@@ -107,9 +105,7 @@ def test_default_doctor_uses_shared_passive_diagnostics_and_does_not_smoke_worke
             "compass.platform_ops.management.commands.compass_doctor.collect_platform_health",
             return_value=health_fixture(),
         ) as health,
-        patch(
-            "compass.platform_ops.management.commands.compass_doctor.run_worker_smoke"
-        ) as worker,
+        patch("compass.platform_ops.management.commands.compass_doctor.run_worker_smoke") as worker,
     ):
         call_command("compass_doctor", stdout=output)
 
@@ -137,9 +133,7 @@ def test_worker_smoke_invokes_existing_noop_and_recognizes_expected_result():
 
 def test_worker_smoke_timeout_failure_is_safe_and_bounded():
     async_result = MagicMock()
-    async_result.get.side_effect = TimeoutError(
-        "redis://user:secret@private-broker/0 task-secret"
-    )
+    async_result.get.side_effect = TimeoutError("redis://user:secret@private-broker/0 task-secret")
     with patch(
         "compass.platform_ops.diagnostics.infrastructure_noop.delay",
         return_value=async_result,
