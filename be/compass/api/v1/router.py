@@ -121,7 +121,9 @@ api = NinjaAPI(
             },
             {
                 "name": "notifications",
-                "description": "Authenticated self-service in-app Notifications and email preference.",
+                "description": (
+                    "Authenticated self-service in-app Notifications and email preference."
+                ),
             },
             {
                 "name": "document-branding",
