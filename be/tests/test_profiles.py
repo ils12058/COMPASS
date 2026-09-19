@@ -130,7 +130,7 @@ def test_user_directly_owns_minimal_reusable_profile_fields_without_personalprof
 def test_profile_foundation_tracks_current_capability_policy_counts():
     sync_policy()
     assert Capability.objects.count() == 58
-    assert RoleCapability.objects.count() == 62
+    assert RoleCapability.objects.count() == 63
     assert DesignationCapability.objects.count() == 16
     assert not Capability.objects.filter(code__startswith="profile.").exists()
 
@@ -138,7 +138,13 @@ def test_profile_foundation_tracks_current_capability_policy_counts():
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "role_code",
-    ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN"],
+    [
+        "STUDENT",
+        "COUNSELOR",
+        "GUIDANCE_SERVICES_STAFF",
+        "IT_ADMIN",
+        "INSTITUTIONAL_OFFICER",
+    ],
 )
 def test_every_active_primary_role_can_get_only_its_own_profile(role_code):
     sync_policy()
