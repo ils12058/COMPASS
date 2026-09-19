@@ -44,8 +44,7 @@ class Command(BaseCommand):
             type=float,
             default=WORKER_SMOKE_DEFAULT_TIMEOUT_SECONDS,
             help=(
-                "Worker smoke timeout in seconds "
-                f"(maximum {WORKER_SMOKE_MAX_TIMEOUT_SECONDS:g})."
+                f"Worker smoke timeout in seconds (maximum {WORKER_SMOKE_MAX_TIMEOUT_SECONDS:g})."
             ),
         )
 
@@ -57,9 +56,7 @@ class Command(BaseCommand):
         try:
             environment = collect_environment_diagnostics()
         except Exception as exc:
-            raise CommandError(
-                "COMPASS configuration diagnostics could not be evaluated."
-            ) from exc
+            raise CommandError("COMPASS configuration diagnostics could not be evaluated.") from exc
 
         self.stdout.write("[OK] Application configuration — resolved Django settings are loaded.")
         for category in environment.categories:
