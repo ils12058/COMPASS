@@ -106,6 +106,7 @@ def test_user_directly_owns_minimal_reusable_profile_fields_without_personalprof
     assert PROFILE_FIELDS <= field_names
     assert {
         "email",
+        "institutional_id",
         "first_name",
         "middle_name",
         "last_name",
@@ -171,6 +172,7 @@ def test_every_active_primary_role_can_get_only_its_own_profile(role_code):
     body = response.json()
     assert body["user_id"] == str(user.pk)
     assert body["email"] == user.email
+    assert body["institutional_id"] is None
     assert body["first_name"] == user.first_name
     assert body["last_name"] == user.last_name
     assert body["full_name"] == user.get_full_name()
