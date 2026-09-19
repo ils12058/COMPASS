@@ -82,9 +82,7 @@ def make_delivery(
         status=status,
         failure_code=failure_code,
         attempt_count=attempt_count,
-        next_attempt_at=(
-            timezone.now() if status == EmailDeliveryStatus.PENDING else None
-        ),
+        next_attempt_at=(timezone.now() if status == EmailDeliveryStatus.PENDING else None),
     )
 
 
@@ -444,10 +442,13 @@ def test_concurrent_manual_retry_creates_only_one_durable_retry_intent(monkeypat
     delivery.refresh_from_db()
     assert delivery.status == EmailDeliveryStatus.PENDING
     assert delivery.attempt_count == 3
-    assert AuditEvent.objects.filter(
-        action="notification.email.retry_requested",
-        target_id=str(delivery.pk),
-    ).count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action="notification.email.retry_requested",
+            target_id=str(delivery.pk),
+        ).count()
+        == 1
+    )
 
 
 @pytest.mark.django_db
