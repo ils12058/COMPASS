@@ -184,7 +184,9 @@ def test_request_initial_setup_account_uses_the_same_real_flow():
     assert response.status_code == 202
     challenge = EmailOTPChallenge.objects.get(pk=response.json()["challenge_id"])
     assert challenge.user_id == user.pk
+    assert challenge.purpose == EmailOTPPurpose.EMAIL_VERIFICATION
     assert not user.has_usable_password()
+    assert user.email_verified_at is None
     delivery.assert_called_once()
 
 
@@ -266,6 +268,9 @@ def test_confirm_initial_password_sets_django_password_without_auto_login():
     user.refresh_from_db()
     assert user.has_usable_password()
     assert user.check_password(NEW_PASSWORD)
+    assert user.email_verified_at is not None
+    consumed = EmailOTPChallenge.objects.get(pk=response.json()["challenge_id"]).consumed_at
+    assert consumed == user.email_verified_at
     assert AuthSession.objects.filter(user=user).count() == 0
     assert AuditEvent.objects.filter(
         action=AUTH_PASSWORD_INITIAL_SET,
@@ -306,6 +311,7 @@ def test_confirm_password_policy_failure_does_not_burn_valid_otp():
     challenge = EmailOTPChallenge.objects.get(pk=challenge_id)
     assert challenge.consumed_at is None
     assert not user.has_usable_password()
+    assert user.email_verified_at is None
     assert not AuditEvent.objects.filter(action=AUTH_PASSWORD_INITIAL_SET).exists()
 
     accepted = post_json(
@@ -398,6 +404,7 @@ def test_confirm_password_reset_rejects_exact_reuse_and_audits_reset():
     user.refresh_from_db()
     assert not user.check_password(CURRENT_PASSWORD)
     assert user.check_password(RESET_PASSWORD)
+    assert user.email_verified_at is not None
     assert AuditEvent.objects.filter(
         action=AUTH_PASSWORD_RESET,
         actor_user=user,
@@ -543,3 +550,113 @@ def test_same_valid_otp_can_mutate_password_at_most_once_concurrently():
     user.refresh_from_db()
     assert user.check_password(NEW_PASSWORD)
     assert EmailOTPChallenge.objects.get(pk=challenge.pk).consumed_at is not None
+
+
+
+@pytest.mark.django_db(transaction=True)
+def test_recovery_preserves_existing_email_verification_timestamp():
+    verified_at = timezone.now() - timedelta(days=2)
+    user = make_user(email="already-verified@example.edu")
+    user.email_verified_at = verified_at
+    user.save(update_fields=["email_verified_at", "updated_at"])
+    client = Client()
+
+    response, _delivery = issue_via_api(client, user.email)
+    challenge = EmailOTPChallenge.objects.get(pk=response.json()["challenge_id"])
+    assert challenge.purpose == EmailOTPPurpose.RECOVERY
+
+    confirmed = post_json(
+        client,
+        "/api/v1/auth/password/confirm",
+        {
+            "challenge_id": str(challenge.pk),
+            "code": "123456",
+            "new_password": RESET_PASSWORD,
+        },
+    )
+    assert confirmed.status_code == 200
+    user.refresh_from_db()
+    assert user.email_verified_at == verified_at
+
+
+@pytest.mark.django_db(transaction=True)
+def test_stale_email_verification_challenge_cannot_become_password_reset():
+    from compass.authentication.email_otp import issue_email_otp
+
+    user = make_user(email="stale-verification@example.edu", password=None)
+    with (
+        patch("compass.authentication.email_otp._new_code", side_effect=["111111", "222222"]),
+        patch("compass.authentication.email_otp.deliver_email_otp.delay"),
+    ):
+        first = issue_email_otp(
+            email=user.email,
+            purpose=EmailOTPPurpose.EMAIL_VERIFICATION,
+            user=user,
+            dispatch=False,
+            replace_existing=False,
+        ).challenge
+        second = issue_email_otp(
+            email=user.email,
+            purpose=EmailOTPPurpose.EMAIL_VERIFICATION,
+            user=user,
+            dispatch=False,
+            replace_existing=False,
+        ).challenge
+
+    first_result = confirm_password_access(
+        challenge_id=first.pk,
+        code="111111",
+        new_password=NEW_PASSWORD,
+    )
+    assert first_result.password_set is True
+    user.refresh_from_db()
+    verified_at = user.email_verified_at
+    assert verified_at is not None
+
+    with pytest.raises(PasswordChallengeInvalid):
+        confirm_password_access(
+            challenge_id=second.pk,
+            code="222222",
+            new_password=RESET_PASSWORD,
+        )
+
+    user.refresh_from_db()
+    second.refresh_from_db()
+    assert user.check_password(NEW_PASSWORD)
+    assert not user.check_password(RESET_PASSWORD)
+    assert user.email_verified_at == verified_at
+    assert second.consumed_at is not None
+
+
+@pytest.mark.django_db(transaction=True)
+def test_direct_and_bootstrap_style_accounts_are_not_falsely_marked_verified():
+    role, _created = Role.objects.get_or_create(
+        code="IT_ADMIN",
+        defaults={"name": "IT Administrator"},
+    )
+    user = User.objects.create_user(
+        email="bootstrap-style@example.edu",
+        password=CURRENT_PASSWORD,
+        role=role,
+        first_name="Bootstrap",
+        last_name="Admin",
+    )
+    assert user.email_verified_at is None
+
+
+@pytest.mark.django_db(transaction=True)
+def test_legacy_unverified_account_login_behavior_is_unchanged():
+    user = make_user(email="legacy-unverified@example.edu")
+    assert user.email_verified_at is None
+    client = Client()
+
+    login = post_json(
+        client,
+        "/api/v1/auth/login",
+        {"email": user.email, "password": CURRENT_PASSWORD},
+    )
+
+    assert login.status_code == 200
+    assert login.json()["authenticated"] is True
+    user.refresh_from_db()
+    assert user.email_verified_at is None
