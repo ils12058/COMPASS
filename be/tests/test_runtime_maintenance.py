@@ -103,7 +103,9 @@ def test_maintenance_read_and_mutations_use_view_manage_and_recent_mfa():
     counselor = make_user("runtime-counselor@example.edu", "COUNSELOR")
     student = make_user("runtime-student@example.edu", "STUDENT")
 
-    assert auth_client(student, recent_mfa=True).get("/api/v1/platform/maintenance").status_code == 403
+    assert (
+        auth_client(student, recent_mfa=True).get("/api/v1/platform/maintenance").status_code == 403
+    )
 
     no_mfa = auth_client(admin, recent_mfa=False)
     denied = post_json(
@@ -286,14 +288,20 @@ def test_schedule_validation_and_effective_timestamp_rules_need_no_celery():
         now=now,
     )
     assert scheduled.state == MaintenanceState.SCHEDULED
-    assert derive_maintenance_snapshot(
-        MaintenanceConfiguration.objects.get(pk=1),
-        now=start,
-    ).state == MaintenanceState.MAINTENANCE
-    assert derive_maintenance_snapshot(
-        MaintenanceConfiguration.objects.get(pk=1),
-        now=end,
-    ).state == MaintenanceState.NORMAL
+    assert (
+        derive_maintenance_snapshot(
+            MaintenanceConfiguration.objects.get(pk=1),
+            now=start,
+        ).state
+        == MaintenanceState.MAINTENANCE
+    )
+    assert (
+        derive_maintenance_snapshot(
+            MaintenanceConfiguration.objects.get(pk=1),
+            now=end,
+        ).state
+        == MaintenanceState.NORMAL
+    )
 
     from config.celery import app
 
