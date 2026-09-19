@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from io import StringIO
 from uuid import uuid4
 
@@ -121,8 +121,11 @@ def test_email_delivery_summary_counts_and_sent_today_use_application_timezone()
         next_attempt_at=now + timedelta(minutes=5),
     )
     EmailDelivery.objects.filter(pk=sent_today.pk).update(sent_at=now)
+    local_today = timezone.localtime(now).date()
+    local_tz = timezone.get_current_timezone()
+    local_day_start = timezone.make_aware(datetime.combine(local_today, time.min), local_tz)
     EmailDelivery.objects.filter(pk=sent_yesterday.pk).update(
-        sent_at=now - timedelta(days=1)
+        sent_at=local_day_start - timedelta(seconds=1)
     )
 
     response = auth_client(admin).get("/api/v1/platform/email-deliveries/summary")
