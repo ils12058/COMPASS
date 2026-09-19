@@ -76,6 +76,11 @@ REFERRAL_ACTION_RECORDED = "referral.action_recorded"
 REFERRAL_STATUS_UPDATED = "referral.status_updated"
 CALL_SLIP_CREATED = "call_slip.created"
 DOCUMENT_BRANDING_UPDATED = "document_branding.updated"
+PLATFORM_MAINTENANCE_ENABLED = "platform.maintenance.enabled"
+PLATFORM_MAINTENANCE_DISABLED = "platform.maintenance.disabled"
+PLATFORM_MAINTENANCE_SCHEDULED = "platform.maintenance.scheduled"
+PLATFORM_MAINTENANCE_SCHEDULE_CANCELLED = "platform.maintenance.schedule_cancelled"
+NOTIFICATION_EMAIL_RETRY_REQUESTED = "notification.email.retry_requested"
 CALL_SLIP_INTERVIEW_ENDED = "call_slip.interview_ended"
 ECOUNSELING_ROOM_PROVISIONED = "ecounseling.room_provisioned"
 ECOUNSELING_JOIN_AUTHORIZED = "ecounseling.join_authorized"
@@ -165,6 +170,11 @@ __all__ = [
     "REFERRAL_STATUS_UPDATED",
     "CALL_SLIP_CREATED",
     "DOCUMENT_BRANDING_UPDATED",
+    "PLATFORM_MAINTENANCE_ENABLED",
+    "PLATFORM_MAINTENANCE_DISABLED",
+    "PLATFORM_MAINTENANCE_SCHEDULED",
+    "PLATFORM_MAINTENANCE_SCHEDULE_CANCELLED",
+    "NOTIFICATION_EMAIL_RETRY_REQUESTED",
     "CALL_SLIP_INTERVIEW_ENDED",
     "ECOUNSELING_ROOM_PROVISIONED",
     "ECOUNSELING_JOIN_AUTHORIZED",
