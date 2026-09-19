@@ -190,7 +190,9 @@ def _record_failure(
         ):
             return
         delivery.failure_code = failure_code
-        terminal = not retryable or delivery.attempt_count >= settings.NOTIFICATION_EMAIL_MAX_ATTEMPTS
+        terminal = (
+            not retryable or delivery.attempt_count >= settings.NOTIFICATION_EMAIL_MAX_ATTEMPTS
+        )
         if terminal:
             delivery.status = EmailDeliveryStatus.FAILED
             delivery.next_attempt_at = None
@@ -242,7 +244,9 @@ def deliver_email_delivery(delivery_id: UUID) -> str:
         rendered = render_notification_email(claim.event_code)
     except Exception:
         _record_failure(claim, failure_code="template_error", retryable=False)
-        _log_delivery_result(claim, status=EmailDeliveryStatus.FAILED, failure_code="template_error")
+        _log_delivery_result(
+            claim, status=EmailDeliveryStatus.FAILED, failure_code="template_error"
+        )
         return EmailDeliveryStatus.FAILED
 
     try:
