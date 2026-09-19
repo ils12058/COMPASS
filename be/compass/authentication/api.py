@@ -57,6 +57,7 @@ from compass.authentication.services import (
     logout_current_session,
 )
 from compass.authentication.sessions import (
+    RecentMFARequired,
     has_recent_mfa,
     resolve_trusted_session,
     revoke_all_trusted_sessions,
