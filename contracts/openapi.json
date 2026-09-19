@@ -1642,6 +1642,7 @@
           "inventory.view_self",
           "organization.manage",
           "organization.view",
+          "platform_operations.manage",
           "platform_operations.view",
           "referrals.manage",
           "referrals.view",
@@ -1990,6 +1991,7 @@
         "type": "object"
       },
       "CommandCatalogEntryResponse": {
+        "additionalProperties": false,
         "properties": {
           "category": {
             "$ref": "#/components/schemas/CommandCategory"
@@ -2032,6 +2034,7 @@
         "type": "object"
       },
       "CommandCatalogResponse": {
+        "additionalProperties": false,
         "properties": {
           "commands": {
             "items": {
@@ -3984,7 +3987,178 @@
         "title": "EligibleCounselorResponse",
         "type": "object"
       },
+      "EmailDeliveryItemResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_code": {
+            "title": "Event Code",
+            "type": "string"
+          },
+          "failure_code": {
+            "title": "Failure Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Attempt At"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "event_code",
+          "status",
+          "attempt_count",
+          "created_at",
+          "updated_at",
+          "last_attempt_at",
+          "next_attempt_at",
+          "sent_at",
+          "failure_code"
+        ],
+        "title": "EmailDeliveryItemResponse",
+        "type": "object"
+      },
+      "EmailDeliveryPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EmailDeliveryItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "EmailDeliveryPageResponse",
+        "type": "object"
+      },
+      "EmailDeliverySummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "cancelled_count": {
+            "title": "Cancelled Count",
+            "type": "integer"
+          },
+          "due_pending_count": {
+            "title": "Due Pending Count",
+            "type": "integer"
+          },
+          "failed_count": {
+            "title": "Failed Count",
+            "type": "integer"
+          },
+          "oldest_pending_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Pending At"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "processing_count": {
+            "title": "Processing Count",
+            "type": "integer"
+          },
+          "sent_today": {
+            "title": "Sent Today",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pending_count",
+          "processing_count",
+          "failed_count",
+          "cancelled_count",
+          "sent_today",
+          "oldest_pending_at",
+          "due_pending_count"
+        ],
+        "title": "EmailDeliverySummaryResponse",
+        "type": "object"
+      },
       "EnvironmentCategoryResponse": {
+        "additionalProperties": false,
         "properties": {
           "code": {
             "title": "Code",
@@ -4011,6 +4185,7 @@
         "type": "object"
       },
       "EnvironmentValueResponse": {
+        "additionalProperties": false,
         "properties": {
           "code": {
             "title": "Code",
@@ -6885,6 +7060,7 @@
         "type": "string"
       },
       "HealthCheckResponse": {
+        "additionalProperties": false,
         "properties": {
           "code": {
             "title": "Code",
@@ -8820,6 +8996,131 @@
         "title": "MFAStatusResponse",
         "type": "object"
       },
+      "MaintenanceEnableRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_end_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected End At"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "MaintenanceEnableRequest",
+        "type": "object"
+      },
+      "MaintenanceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "manual_expected_end_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Expected End At"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "schedule_active": {
+            "title": "Schedule Active",
+            "type": "boolean"
+          },
+          "schedule_upcoming": {
+            "title": "Schedule Upcoming",
+            "type": "boolean"
+          },
+          "scheduled_end_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled End At"
+          },
+          "scheduled_start_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled Start At"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "source",
+          "message",
+          "manual_expected_end_at",
+          "scheduled_start_at",
+          "scheduled_end_at",
+          "schedule_upcoming",
+          "schedule_active"
+        ],
+        "title": "MaintenanceResponse",
+        "type": "object"
+      },
+      "MaintenanceScheduleRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "MaintenanceScheduleRequest",
+        "type": "object"
+      },
       "MediaCaptureResponse": {
         "additionalProperties": false,
         "properties": {
@@ -9521,6 +9822,7 @@
         "type": "string"
       },
       "PlatformEnvironmentResponse": {
+        "additionalProperties": false,
         "properties": {
           "categories": {
             "items": {
@@ -9548,6 +9850,7 @@
         "type": "object"
       },
       "PlatformHealthResponse": {
+        "additionalProperties": false,
         "properties": {
           "checks": {
             "items": {
@@ -12069,6 +12372,91 @@
         "title": "TOTPSetupResponse",
         "type": "object"
       },
+      "TechnicalActivityItemResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Display Name"
+          },
+          "actor_type": {
+            "title": "Actor Type",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "description",
+          "occurred_at",
+          "actor_type",
+          "actor_display_name"
+        ],
+        "title": "TechnicalActivityItemResponse",
+        "type": "object"
+      },
+      "TechnicalActivityPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TechnicalActivityItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "TechnicalActivityPageResponse",
+        "type": "object"
+      },
       "TranscriptionStartRequest": {
         "additionalProperties": false,
         "properties": {
@@ -13283,6 +13671,7 @@
                 "inventory.view_self",
                 "organization.manage",
                 "organization.view",
+                "platform_operations.manage",
                 "platform_operations.view",
                 "referrals.manage",
                 "referrals.view",
@@ -13439,6 +13828,7 @@
                 "inventory.view_self",
                 "organization.manage",
                 "organization.view",
+                "platform_operations.manage",
                 "platform_operations.view",
                 "referrals.manage",
                 "referrals.view",
@@ -26774,6 +27164,84 @@
         ]
       }
     },
+    "/api/v1/platform/activity": {
+      "get": {
+        "operationId": "platformOperationsListActivity",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TechnicalActivityPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "List curated technical runtime activity",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
     "/api/v1/platform/commands": {
       "get": {
         "operationId": "platformOperationsCommandCatalog",
@@ -26816,6 +27284,225 @@
           }
         ],
         "summary": "List approved operator command guidance",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
+    "/api/v1/platform/email-deliveries": {
+      "get": {
+        "operationId": "platformOperationsListEmailDeliveries",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailDeliveryPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "List safe EmailDelivery operational state",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
+    "/api/v1/platform/email-deliveries/summary": {
+      "get": {
+        "operationId": "platformOperationsGetEmailDeliverySummary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailDeliverySummaryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inspect aggregate EmailDelivery state",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
+    "/api/v1/platform/email-deliveries/{delivery_id}/retry": {
+      "post": {
+        "operationId": "platformOperationsRetryEmailDelivery",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "delivery_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Delivery Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailDeliveryItemResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Request one eligible EmailDelivery retry",
         "tags": [
           "platform-operations"
         ]
@@ -26910,6 +27597,319 @@
           }
         ],
         "summary": "Inspect safe platform dependency health",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
+    "/api/v1/platform/maintenance": {
+      "get": {
+        "operationId": "platformOperationsGetMaintenance",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inspect effective Maintenance Mode",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
+    "/api/v1/platform/maintenance/disable": {
+      "post": {
+        "operationId": "platformOperationsDisableMaintenance",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Disable manual Maintenance Mode",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
+    "/api/v1/platform/maintenance/enable": {
+      "post": {
+        "operationId": "platformOperationsEnableMaintenance",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceEnableRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Enable manual Maintenance Mode",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
+    "/api/v1/platform/maintenance/schedule": {
+      "delete": {
+        "operationId": "platformOperationsCancelMaintenanceSchedule",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Cancel the configured Maintenance Mode schedule",
+        "tags": [
+          "platform-operations"
+        ]
+      },
+      "put": {
+        "operationId": "platformOperationsScheduleMaintenance",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceScheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Create or replace a Maintenance Mode schedule",
         "tags": [
           "platform-operations"
         ]
