@@ -1,0 +1,252 @@
+{% extends "documents/layouts/report.html" %}
+{% block title %}Students' Profile{% endblock %}
+{% block body %}
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 14mm 14mm 17mm;
+  }
+
+  .student-profile-report {
+    font-size: 9pt;
+  }
+
+  .student-profile-title {
+    margin: 0 0 4mm;
+    text-align: center;
+    font-size: 15pt;
+    letter-spacing: 0.2mm;
+  }
+
+  .student-profile-context,
+  .student-profile-coverage {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 5mm;
+  }
+
+  .student-profile-context th,
+  .student-profile-context td,
+  .student-profile-coverage th,
+  .student-profile-coverage td {
+    border: 0.25mm solid #777;
+    padding: 1.4mm 2mm;
+    vertical-align: top;
+  }
+
+  .student-profile-context th,
+  .student-profile-coverage th {
+    width: 31%;
+    background: #f1f1f1;
+    text-align: left;
+  }
+
+  .student-profile-report h2 {
+    margin: 5mm 0 1.5mm;
+    font-size: 11pt;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .student-profile-methodology {
+    margin: 0 0 5mm;
+    padding: 2.5mm 3mm;
+    border: 0.25mm solid #999;
+    line-height: 1.35;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .student-profile-methodology p {
+    margin: 0 0 1.8mm;
+  }
+
+  .student-profile-methodology p:last-child {
+    margin-bottom: 0;
+  }
+
+  .student-profile-program-legend {
+    margin: 0 0 4mm;
+    font-size: 8pt;
+  }
+
+  .student-profile-program-legend ul {
+    margin: 1.5mm 0 0 5mm;
+    padding: 0;
+  }
+
+  .student-profile-program-legend li {
+    margin: 0 0 0.8mm;
+  }
+
+  .student-profile-section {
+    margin-top: 4mm;
+  }
+
+  .student-profile-section-heading {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .student-profile-section .report-table {
+    margin-top: 1.5mm;
+    table-layout: fixed;
+    font-size: 8.3pt;
+  }
+
+  .student-profile-section .report-table th,
+  .student-profile-section .report-table td {
+    padding: 1.25mm 1.4mm;
+    overflow-wrap: anywhere;
+  }
+
+  .student-profile-category {
+    width: 31%;
+    text-align: left;
+  }
+
+  .student-profile-program {
+    text-align: center;
+  }
+
+  .student-profile-total {
+    width: 13%;
+    text-align: center;
+  }
+
+  .student-profile-percentage {
+    width: 18%;
+    text-align: center;
+  }
+
+  .student-profile-number {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .student-profile-empty {
+    margin: 7mm 0;
+    padding: 4mm;
+    border: 0.25mm solid #777;
+    text-align: center;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .student-profile-continuation {
+    margin-top: 4mm;
+  }
+
+  .student-profile-muted {
+    font-size: 8pt;
+  }
+</style>
+
+<div class="student-profile-report">
+  <h1 class="student-profile-title">{{ student_profile.title }}</h1>
+
+  <table class="student-profile-context avoid-page-break">
+    <tbody>
+      <tr>
+        <th scope="row">Academic Year</th>
+        <td>{{ student_profile.academic_year }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Campus</th>
+        <td>{{ student_profile.campus }}</td>
+      </tr>
+      <tr>
+        <th scope="row">College</th>
+        <td>{{ student_profile.college }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Program</th>
+        <td>{{ student_profile.program }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Year Level</th>
+        <td>{{ student_profile.year_level }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Generated</th>
+        <td>{{ student_profile.generated_at|date:"Y-m-d H:i T" }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <section class="avoid-page-break">
+    <h2>Inventory Coverage</h2>
+    <table class="student-profile-coverage">
+      <tbody>
+        {% for row in student_profile.coverage.rows %}
+          <tr>
+            <th scope="row">{{ row.label }}</th>
+            <td>{{ row.value }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="student-profile-methodology">
+    <h2>Methodology / Coverage Note</h2>
+    <p>{{ student_profile.profile_population_note }}</p>
+    <p>{{ student_profile.coverage.scope_note }}</p>
+    {% if student_profile.coverage.ignored_filter_note %}
+      <p>{{ student_profile.coverage.ignored_filter_note }}</p>
+    {% endif %}
+  </section>
+
+  {% if student_profile.program_legend and not student_profile.empty_message %}
+    <section class="student-profile-program-legend avoid-page-break">
+      <strong>Program columns</strong>
+      <ul>
+        {% for program in student_profile.program_legend %}
+          <li><strong>{{ program.display_label }}</strong>{% if program.detail_label %} — {{ program.detail_label }}{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if student_profile.empty_message %}
+    <p class="student-profile-empty">{{ student_profile.empty_message }}</p>
+  {% else %}
+    {% for section in student_profile.sections %}
+      {% for chunk in section.chunks %}
+        <section class="student-profile-section{% if not forloop.first %} student-profile-continuation{% endif %}">
+          <div class="student-profile-section-heading">
+            <h2>
+              {{ section.title }}
+              {% if not forloop.first %}<span class="student-profile-muted">(continued)</span>{% endif %}
+            </h2>
+          </div>
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th class="student-profile-category" scope="col">Category</th>
+                {% for program in chunk.programs %}
+                  <th class="student-profile-program" scope="col">{{ program.display_label }}</th>
+                {% endfor %}
+                <th class="student-profile-total" scope="col">Total</th>
+                <th class="student-profile-percentage" scope="col">Percentage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in chunk.rows %}
+                <tr>
+                  <td>{{ row.label }}</td>
+                  {% for program_count in row.program_counts %}
+                    <td class="student-profile-number">{{ program_count.count }}</td>
+                  {% endfor %}
+                  <td class="student-profile-number">{{ row.total_count }}</td>
+                  <td class="student-profile-number">{{ row.percentage }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      {% endfor %}
+    {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

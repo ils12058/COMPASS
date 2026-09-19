@@ -143,6 +143,7 @@ EXPECTED_OPERATION_IDS = {
     "inventoryListMyHistory",
     "inventoryGetMyHistoryItem",
     "reportsGetStudentProfile",
+    "reportsDownloadStudentProfilePdf",
     "goodMoralCreateMyCurrentStudentRequest",
     "goodMoralCreateMyGraduateRequest",
     "goodMoralListMyRequests",
