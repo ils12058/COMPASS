@@ -16,8 +16,8 @@ from compass.authentication.sessions import RecentMFARequired, require_recent_mf
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
+from .activity import DEFAULT_PAGE_SIZE as ACTIVITY_DEFAULT_PAGE_SIZE
 from .activity import (
-    DEFAULT_PAGE_SIZE as ACTIVITY_DEFAULT_PAGE_SIZE,
     PrivacyActivityCategory,
     PrivacyActivityPaginationError,
     list_privacy_activity,
