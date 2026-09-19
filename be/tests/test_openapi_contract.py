@@ -1235,7 +1235,6 @@ def test_platform_operations_openapi_runtime_surface_and_secret_safety() -> None
         assert forbidden not in serialized
 
 
-
 def test_privacy_governance_openapi_is_purpose_built_and_has_no_delete_or_global_audit() -> None:
     schema = _generated_schema()
 
@@ -1276,7 +1275,10 @@ def test_privacy_governance_openapi_is_purpose_built_and_has_no_delete_or_global
         assert _response_statuses(operation) >= statuses
 
     mutation_operations = {
-        ("/api/v1/privacy/processing-activities", "post"): "privacyGovernanceCreateProcessingActivity",
+        (
+            "/api/v1/privacy/processing-activities",
+            "post",
+        ): "privacyGovernanceCreateProcessingActivity",
         (
             "/api/v1/privacy/processing-activities/{processing_id}",
             "patch",
