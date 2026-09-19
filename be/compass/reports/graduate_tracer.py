@@ -91,9 +91,7 @@ def _base_queryset(*, submitted_from: date | None, submitted_to: date | None):
         submitted_at__isnull=False,
     )
     if submitted_from is not None:
-        queryset = queryset.filter(
-            submitted_at__gte=_submission_boundary(submitted_from)
-        )
+        queryset = queryset.filter(submitted_at__gte=_submission_boundary(submitted_from))
     if submitted_to is not None:
         queryset = queryset.filter(
             submitted_at__lt=_submission_boundary(submitted_to, following_day=True)
@@ -246,9 +244,7 @@ def _multi_select_distribution(
             )
         )
 
-    malformed = queryset.filter(
-        Q(**{field: []}) | ~Q(**{f"{field}__contained_by": values})
-    ).count()
+    malformed = queryset.filter(Q(**{field: []}) | ~Q(**{f"{field}__contained_by": values})).count()
     if malformed:
         rows.append(
             _row(
