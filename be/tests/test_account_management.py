@@ -144,6 +144,8 @@ def test_manager_can_list_create_and_inspect_accounts_without_sensitive_fields()
     assert body["id"] == str(created.pk)
     assert body["email"] == "new.user@example.edu"
     assert body["password_configured"] is False
+    assert body["email_verified"] is False
+    assert body["email_verified_at"] is None
     assert body["mfa_enabled"] is False
     assert not hasattr(created, "password_hash")
     assert "password" not in body
@@ -165,7 +167,8 @@ def test_manager_can_list_create_and_inspect_accounts_without_sensitive_fields()
     assert len(listing.json()["items"]) == 1
     assert listing.json()["items"][0]["email"] == "new.user@example.edu"
     assert listing.json()["items"][0]["role"] == "COUNSELOR"
-    assert "password_configured" not in listing.json()["items"][0]
+    assert listing.json()["items"][0]["password_configured"] is False
+    assert listing.json()["items"][0]["email_verified"] is False
 
     forbidden = post_json(
         client,
@@ -189,7 +192,7 @@ def test_account_listing_filters_and_pagination_are_bounded():
     client, _admin, _session = make_admin_client()
     make_user(email="active-counselor@example.edu", role="COUNSELOR")
     inactive = make_user(email="inactive-student@example.edu", active=False)
-    dpo = make_user(email="dpo-student@example.edu")
+    dpo = make_user(email="dpo-officer@example.edu", role="INSTITUTIONAL_OFFICER")
     UserDesignation.objects.create(user=dpo, designation=Designation.objects.get(code="DPO"))
 
     page = client.get("/api/v1/accounts?page=1&page_size=1")
@@ -249,6 +252,8 @@ def test_identity_email_change_invalidates_target_security_state_and_audits_fiel
     client, admin, _session = make_admin_client()
     target = make_user(email="old@example.edu")
     now = timezone.now()
+    target.email_verified_at = now - timedelta(days=1)
+    target.save(update_fields=["email_verified_at", "updated_at"])
     target_session = create_auth_session(target, now=now).session
     trusted = create_trusted_session(target, now=now).session
     challenge = create_login_challenge(
@@ -266,6 +271,15 @@ def test_identity_email_change_invalidates_target_security_state_and_audits_fiel
         expires_at=now + timedelta(minutes=5),
         last_sent_at=now,
     )
+    verification_challenge = EmailOTPChallenge.objects.create(
+        user=target,
+        email=target.email,
+        purpose="email_verification",
+        code_hash="hash",
+        created_at=now,
+        expires_at=now + timedelta(minutes=5),
+        last_sent_at=now,
+    )
 
     response = client.patch(
         f"/api/v1/accounts/{target.pk}/identity",
@@ -277,10 +291,12 @@ def test_identity_email_change_invalidates_target_security_state_and_audits_fiel
     target.refresh_from_db()
     assert target.email == "new@example.edu"
     assert target.first_name == "Renamed"
+    assert target.email_verified_at is None
     assert AuthSession.objects.get(pk=target_session.pk).revoked_at is not None
     assert TrustedSession.objects.get(pk=trusted.pk).revoked_at is not None
     assert LoginChallenge.objects.get(pk=challenge.pk).consumed_at is not None
     assert EmailOTPChallenge.objects.get(pk=email_challenge.pk).consumed_at is not None
+    assert EmailOTPChallenge.objects.get(pk=verification_challenge.pk).consumed_at is not None
     assert target.has_usable_password()
     event = AuditEvent.objects.get(action="account.updated", target_id=str(target.pk))
     assert event.actor_user_id == admin.pk
@@ -347,14 +363,24 @@ def test_role_designation_and_override_mutations_update_authority_and_invalidate
 
     designation = post_json(
         client,
-        f"/api/v1/accounts/{target.pk}/designations/DPO",
+        f"/api/v1/accounts/{target.pk}/designations/HEAD_GUIDANCE_COUNSELOR",
         {},
         headers=csrf_headers(client),
     )
     assert designation.status_code == 200
-    assert designation.json()["designations"] == ["DPO"]
-    assert UserDesignation.objects.filter(user=target, designation__code="DPO").exists()
+    assert designation.json()["designations"] == ["HEAD_GUIDANCE_COUNSELOR"]
+    assert UserDesignation.objects.filter(
+        user=target,
+        designation__code="HEAD_GUIDANCE_COUNSELOR",
+    ).exists()
     assert AuthSession.objects.get(pk=target_session.pk).revoked_at is not None
+
+    removed_designation = client.delete(
+        f"/api/v1/accounts/{target.pk}/designations/HEAD_GUIDANCE_COUNSELOR",
+        **csrf_headers(client),
+    )
+    assert removed_designation.status_code == 200
+    assert removed_designation.json()["designations"] == []
 
     override = client.put(
         f"/api/v1/accounts/{target.pk}/capability-overrides/accounts.manage",
@@ -813,3 +839,144 @@ def test_student_lifecycle_authority_and_role_transition_preservation():
         **csrf_headers(dpo_client),
     )
     assert dpo_denied.status_code == 403
+
+
+
+@pytest.mark.django_db
+def test_designation_role_compatibility_is_fail_closed_and_role_change_never_cleans_it_up():
+    sync_policy()
+    client, _admin, _session = make_admin_client()
+    student = make_user(email="student-dpo@example.edu", role="STUDENT")
+    gss = make_user(email="gss-head@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    admin_target = make_user(email="admin-dpo@example.edu", role="IT_ADMIN")
+    officer = make_user(email="officer-dpo@example.edu", role="INSTITUTIONAL_OFFICER")
+    counselor = make_user(email="counselor-head@example.edu", role="COUNSELOR")
+    headers = csrf_headers(client)
+
+    for target, designation_code in (
+        (student, "DPO"),
+        (student, "HEAD_GUIDANCE_COUNSELOR"),
+        (gss, "HEAD_GUIDANCE_COUNSELOR"),
+        (admin_target, "DPO"),
+    ):
+        response = post_json(
+            client,
+            f"/api/v1/accounts/{target.pk}/designations/{designation_code}",
+            {},
+            headers=headers,
+        )
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "designation_role_conflict"
+
+    valid_dpo = post_json(
+        client,
+        f"/api/v1/accounts/{officer.pk}/designations/DPO",
+        {},
+        headers=headers,
+    )
+    assert valid_dpo.status_code == 200
+    assert valid_dpo.json()["designations"] == ["DPO"]
+
+    valid_head = post_json(
+        client,
+        f"/api/v1/accounts/{counselor.pk}/designations/HEAD_GUIDANCE_COUNSELOR",
+        {},
+        headers=headers,
+    )
+    assert valid_head.status_code == 200
+
+    blocked_officer_role = client.put(
+        f"/api/v1/accounts/{officer.pk}/role",
+        data=json.dumps({"role": "COUNSELOR"}),
+        content_type="application/json",
+        **headers,
+    )
+    assert blocked_officer_role.status_code == 409
+    assert blocked_officer_role.json()["error"]["code"] == "designation_role_conflict"
+    officer.refresh_from_db()
+    assert officer.role.code == "INSTITUTIONAL_OFFICER"
+    assert officer.designations.filter(code="DPO").exists()
+
+    blocked_head_role = client.put(
+        f"/api/v1/accounts/{counselor.pk}/role",
+        data=json.dumps({"role": "GUIDANCE_SERVICES_STAFF"}),
+        content_type="application/json",
+        **headers,
+    )
+    assert blocked_head_role.status_code == 409
+    counselor.refresh_from_db()
+    assert counselor.role.code == "COUNSELOR"
+    assert counselor.designations.filter(code="HEAD_GUIDANCE_COUNSELOR").exists()
+
+
+@pytest.mark.django_db
+def test_designation_mutation_requires_dedicated_capability_recent_mfa_and_is_never_self_targeted():
+    sync_policy()
+    actor = make_user(email="delegated-manager@example.edu", role="COUNSELOR")
+    UserCapabilityOverride.objects.create(
+        user=actor,
+        capability=Capability.objects.get(code="accounts.manage"),
+        effect=UserCapabilityOverride.Effect.GRANT,
+        reason="Temporary account management",
+    )
+    now = timezone.now()
+    issued = create_auth_session(actor, mfa_verified_at=now, now=now)
+    client = Client()
+    client.cookies["compass_session"] = issued.token
+    officer = make_user(email="target-officer@example.edu", role="INSTITUTIONAL_OFFICER")
+
+    denied = post_json(
+        client,
+        f"/api/v1/accounts/{officer.pk}/designations/DPO",
+        {},
+        headers=csrf_headers(client),
+    )
+    assert denied.status_code == 403
+    assert denied.json()["error"]["code"] == "institutional_designation_permission_denied"
+
+    admin_client, admin, _session = make_admin_client(email="designation-admin@example.edu")
+    no_step_up = create_auth_session(admin)
+    admin_client.cookies["compass_session"] = no_step_up.token
+    recent_required = post_json(
+        admin_client,
+        f"/api/v1/accounts/{officer.pk}/designations/DPO",
+        {},
+        headers=csrf_headers(admin_client),
+    )
+    assert recent_required.status_code == 403
+    assert recent_required.json()["error"]["code"] == "recent_mfa_required"
+
+    admin_client, admin, _session = make_admin_client(email="self-designation-admin@example.edu")
+    self_target = post_json(
+        admin_client,
+        f"/api/v1/accounts/{admin.pk}/designations/DPO",
+        {},
+        headers=csrf_headers(admin_client),
+    )
+    assert self_target.status_code == 403
+    assert self_target.json()["error"]["code"] == "self_target_forbidden"
+
+
+@pytest.mark.django_db
+def test_account_listing_exposes_and_filters_safe_verification_state():
+    sync_policy()
+    client, _admin, _session = make_admin_client()
+    verified = make_user(email="verified@example.edu", role="COUNSELOR")
+    verified.email_verified_at = timezone.now()
+    verified.save(update_fields=["email_verified_at", "updated_at"])
+    unverified = make_user(email="unverified@example.edu", role="COUNSELOR")
+
+    verified_page = client.get("/api/v1/accounts?email_verified=true&role=COUNSELOR")
+    assert verified_page.status_code == 200
+    assert [item["id"] for item in verified_page.json()["items"]] == [str(verified.pk)]
+    assert verified_page.json()["items"][0]["email_verified"] is True
+    assert verified_page.json()["items"][0]["password_configured"] is True
+
+    unverified_page = client.get("/api/v1/accounts?email_verified=false&role=COUNSELOR")
+    assert unverified_page.status_code == 200
+    assert [item["id"] for item in unverified_page.json()["items"]] == [str(unverified.pk)]
+
+    detail = client.get(f"/api/v1/accounts/{verified.pk}")
+    assert detail.status_code == 200
+    assert detail.json()["email_verified"] is True
+    assert detail.json()["email_verified_at"] is not None
