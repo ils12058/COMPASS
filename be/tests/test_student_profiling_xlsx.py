@@ -407,7 +407,10 @@ def test_legacy_program_column_is_retained(monkeypatch):
     report["program_columns"].append(legacy)
     for section in report["sections"].values():
         for row in section["rows"]:
-            row["program_counts"].append({"program_key": "legacy:not-recorded", "count": 0})
+            row["program_counts"] = [
+                *row["program_counts"],
+                {"program_key": "legacy:not-recorded", "count": 0},
+            ]
 
     workbook = workbook_from_report(monkeypatch, report)
     assert "Not recorded / legacy" in [cell.value for cell in workbook["Sex"][1]]
