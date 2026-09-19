@@ -901,9 +901,10 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         401,
         422,
     }
-    assert _response_statuses(
-        _operation(schema, "/api/v1/notifications/unread-count", "get")
-    ) >= {200, 401}
+    assert _response_statuses(_operation(schema, "/api/v1/notifications/unread-count", "get")) >= {
+        200,
+        401,
+    }
     assert _response_statuses(
         _operation(schema, "/api/v1/notifications/{notification_id}/read", "patch")
     ) >= {200, 401, 404}
@@ -911,9 +912,10 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         200,
         401,
     }
-    assert _response_statuses(
-        _operation(schema, "/api/v1/notifications/preferences", "patch")
-    ) >= {200, 401}
+    assert _response_statuses(_operation(schema, "/api/v1/notifications/preferences", "patch")) >= {
+        200,
+        401,
+    }
     assert _response_statuses(_operation(schema, "/api/v1/document-branding/profile", "get")) >= {
         200,
         401,
