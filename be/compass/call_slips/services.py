@@ -21,6 +21,8 @@ from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
 )
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 from compass.organization.models import (
     CounselorResponsibility,
     StaffSupervision,
@@ -415,6 +417,7 @@ def create_call_slip(
     other_destination: str,
     report_at: datetime,
     referral_id: UUID | None,
+    notify_student: bool = True,
     idempotency_key: str,
     request_fingerprint: str,
     context: AuditContext,
@@ -507,6 +510,15 @@ def create_call_slip(
             target_id=item.pk,
             metadata=_safe_audit_metadata(item_for_audit),
         )
+        if notify_student:
+            create_notification_for_event(
+                recipient=student,
+                event=NotificationEvent.CALL_SLIP_ISSUED,
+                source_type="call_slip",
+                source_id=item.pk,
+                target_type="CALL_SLIP",
+                target_id=item.pk,
+            )
         return item_for_audit
 
 
