@@ -343,16 +343,10 @@ def test_section_sheet_uses_all_programs_key_lookup_and_canonical_percentage(mon
     programs = report["program_columns"]
     row = report["sections"]["sex"]["rows"][0]
     expected_counts = {
-        str(program["key"]): (index + 1) * 10
-        for index, program in enumerate(programs)
+        str(program["key"]): (index + 1) * 10 for index, program in enumerate(programs)
     }
     row["program_counts"] = list(
-        reversed(
-            [
-                {"program_key": key, "count": count}
-                for key, count in expected_counts.items()
-            ]
-        )
+        reversed([{"program_key": key, "count": count} for key, count in expected_counts.items()])
     )
     row["total_count"] = 777
     row["percentage"] = Decimal("32.72")
@@ -371,10 +365,7 @@ def test_section_sheet_uses_all_programs_key_lookup_and_canonical_percentage(mon
         "Total",
         "Percentage (%)",
     ]
-    assert exported[1:5] == [
-        expected_counts[str(program["key"])]
-        for program in programs
-    ]
+    assert exported[1:5] == [expected_counts[str(program["key"])] for program in programs]
     assert exported[5] == 777
     assert Decimal(str(exported[6])).quantize(Decimal("0.01")) == Decimal("32.72")
     assert worksheet.cell(row=2, column=7).number_format == "0.00"
@@ -416,9 +407,7 @@ def test_legacy_program_column_is_retained(monkeypatch):
     report["program_columns"].append(legacy)
     for section in report["sections"].values():
         for row in section["rows"]:
-            row["program_counts"].append(
-                {"program_key": "legacy:not-recorded", "count": 0}
-            )
+            row["program_counts"].append({"program_key": "legacy:not-recorded", "count": 0})
 
     workbook = workbook_from_report(monkeypatch, report)
     assert "Not recorded / legacy" in [cell.value for cell in workbook["Sex"][1]]
@@ -531,9 +520,7 @@ def test_filename_sanitization_is_shared_with_pdf_without_behavior_regression():
         "student-profile-AY-2026-2027.xlsx"
     )
     assert student_profiling_pdf_filename("2026-2027") == "student-profile-2026-2027.pdf"
-    assert student_profiling_pdf_filename(" AY 2026/2027 ") == (
-        "student-profile-AY-2026-2027.pdf"
-    )
+    assert student_profiling_pdf_filename(" AY 2026/2027 ") == ("student-profile-AY-2026-2027.pdf")
     assert "/" not in student_profiling_xlsx_filename("../../AY 2026/2027")
 
 
