@@ -39,7 +39,7 @@ def dispatch_due_notification_emails(self) -> int:
         try:
             deliver_notification_email.delay(str(delivery_id))
         except Exception:
-            logger.exception(
+            logger.warning(
                 "notification email recovery enqueue failed",
                 extra={
                     "event": "notification_email_recovery_enqueue_failed",
