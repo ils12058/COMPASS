@@ -41,7 +41,7 @@ EXPECTED_SHEETS = [
     "Sex",
     "Age",
     "Civil Status",
-    "Physical Disadv.",
+    "PWD Status",
     "Religion",
     "Mother Life",
     "Father Life",

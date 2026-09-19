@@ -171,6 +171,7 @@ EXPECTED_OPERATION_IDS = {
     "inventorySubmitMyCurrent",
     "inventoryListMyHistory",
     "inventoryGetMyHistoryItem",
+    "studentSupportGetContext",
     "reportsGetStudentProfile",
     "reportsDownloadStudentProfilePdf",
     "reportsDownloadStudentProfileXlsx",
@@ -314,6 +315,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "academic-years",
         "institutional-forms",
         "inventory",
+        "student-support",
         "reports",
         "good-moral",
         "feedback",
@@ -423,8 +425,15 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "InventoryProgramSummary",
         "CivilStatusCategoryValue",
         "CurrentReligionCategoryValue",
-        "PhysicalDisadvantageStatusValue",
+        "PWDStatusValue",
+        "FourPsStatusValue",
+        "IndigenousPeoplesStatusValue",
         "ParentLifeStatusValue",
+        "SupportProfilePayload",
+        "StudentSupportContextResponse",
+        "SupportIndicatorResponse",
+        "StudentReference",
+        "AcademicYearReference",
         "ParentStatusCategoryValue",
         "OccupationCategoryValue",
         "AnnualIncomeStatusValue",
@@ -528,8 +537,9 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "major",
         "civil_status_category",
         "current_religion_category",
-        "physical_disadvantage_status",
+        "pwd_status",
         "parent_status_category",
+        "support_profile",
         "geographic_locations",
     } <= set(inventory_payload)
     assert inventory_payload["program_id"]["anyOf"][0]["format"] == "uuid"
@@ -539,7 +549,16 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert "program" in inventory_response
     assert inventory_response["program"]["anyOf"][0]["$ref"].endswith("/InventoryProgramSummary")
     family_member = schemas["FamilyMemberPayload"]["properties"]
-    assert {"life_status", "occupation_category", "annual_income_status"} <= set(family_member)
+    assert {"occupation_category", "annual_income_status"} <= set(family_member)
+    assert "life_status" not in family_member
+    assert "physical_disadvantage_status" not in inventory_payload
+    support_profile = schemas["SupportProfilePayload"]["properties"]
+    assert set(support_profile) == {
+        "four_ps_status",
+        "indigenous_peoples_status",
+        "mother_life_status",
+        "father_life_status",
+    }
     transport = schemas["TransportationEntryPayload"]["properties"]
     assert "frequency_category" in transport
     location = schemas["GeographicLocationPayload"]["properties"]
@@ -555,6 +574,22 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "barangay_psgc_code",
         "barangay_name_snapshot",
     } == set(location)
+
+    support_context = schemas["StudentSupportContextResponse"]["properties"]
+    assert set(support_context) == {
+        "student",
+        "academic_year",
+        "inventory_status",
+        "available",
+        "indicators",
+    }
+    support_operation = _operation(
+        schema,
+        "/api/v1/student-support/students/{student_id}/context",
+        "get",
+    )
+    assert support_operation["operationId"] == "studentSupportGetContext"
+    assert support_operation["tags"] == ["student-support"]
 
     exit_draft = schemas["ExitInterviewDraftPayload"]["properties"]
     assert {
@@ -649,6 +684,17 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "submitted_inventory_count",
         "generated_at",
     } == set(report_context)
+    assert schemas["PWDStatusValue"]["enum"] == ["PWD", "NON_PWD", "NOT_SPECIFIED"]
+    assert schemas["FourPsStatusValue"]["enum"] == [
+        "BENEFICIARY",
+        "NOT_BENEFICIARY",
+        "NOT_SPECIFIED",
+    ]
+    assert schemas["IndigenousPeoplesStatusValue"]["enum"] == [
+        "MEMBER",
+        "NOT_MEMBER",
+        "NOT_SPECIFIED",
+    ]
     assert schemas["DistributionRow"]["properties"]["percentage"]["type"] == "number"
     assert schemas["InventoryCoverage"]["properties"]["missing_count"]["anyOf"][-1] == {
         "type": "null"
@@ -757,6 +803,14 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _response_statuses(
         _operation(schema, "/api/v1/organization/programs/{program_id}/disable", "post")
     ) >= {200, 401, 403, 404, 409, 422}
+
+    assert _response_statuses(
+        _operation(
+            schema,
+            "/api/v1/student-support/students/{student_id}/context",
+            "get",
+        )
+    ) >= {200, 401, 403, 404, 409}
 
     assert _response_statuses(_operation(schema, "/api/v1/reports/student-profile", "get")) >= {
         200,
@@ -1097,6 +1151,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "shared_summaries.manage_assigned",
             "shared_summaries.view_assigned",
             "shared_summaries.view_self",
+            "student_support.view",
         ]
     )
     assert schemas["Effect"]["enum"] == ["GRANT", "REVOKE"]

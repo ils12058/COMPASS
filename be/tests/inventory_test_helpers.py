@@ -18,19 +18,17 @@ def minimum_normalized_inventory_values(
         "date_of_birth": date(2007, 1, 1),
         "civil_status_category": "NOT_SPECIFIED",
         "current_religion_category": "NOT_SPECIFIED",
-        "physical_disadvantage_status": "NOT_SPECIFIED",
+        "pwd_status": "NOT_SPECIFIED",
         "parent_status_category": "NOT_SPECIFIED",
         "living_arrangement": "OWN_HOUSE",
         "family_members": [
             {
                 "kind": "FATHER",
-                "life_status": "NOT_SPECIFIED",
                 "occupation_category": "NOT_SPECIFIED",
                 "annual_income_status": "NOT_SPECIFIED",
             },
             {
                 "kind": "MOTHER",
-                "life_status": "NOT_SPECIFIED",
                 "occupation_category": "NOT_SPECIFIED",
                 "annual_income_status": "NOT_SPECIFIED",
             },
@@ -39,6 +37,12 @@ def minimum_normalized_inventory_values(
         "education_entries": [],
         "organization_memberships": [],
         "transportation_entries": [],
+        "support_profile": {
+            "four_ps_status": "NOT_SPECIFIED",
+            "indigenous_peoples_status": "NOT_SPECIFIED",
+            "mother_life_status": "NOT_SPECIFIED",
+            "father_life_status": "NOT_SPECIFIED",
+        },
         "geographic_locations": [
             {
                 "kind": "CURRENT",

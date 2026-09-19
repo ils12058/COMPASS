@@ -19,9 +19,8 @@ from compass.inventory.models import (
     InventoryGeographicLocation,
     LivingArrangement,
     OccupationCategory,
-    ParentLifeStatus,
     ParentStatusCategory,
-    PhysicalDisadvantageStatus,
+    PWDStatus,
     Sex,
     StudentInventory,
 )
@@ -34,6 +33,7 @@ from compass.inventory.services import (
 )
 from compass.organization.academic_years import AcademicYearConflict, require_current_academic_year
 from compass.organization.models import AcademicYear, Campus, College, Program
+from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
 
 LEGACY_KEY = "NOT_RECORDED_LEGACY"
 LEGACY_LABEL = "Not recorded / legacy"
@@ -438,6 +438,65 @@ def _family_section(
     return {"key": key, "label": label, "denominator": denominator, "rows": rows}
 
 
+def _support_profile_section(
+    *,
+    base_queryset,
+    program_totals: dict[str, int],
+    field: str,
+    choices,
+    key: str,
+    label: str,
+    denominator: int,
+    columns: list[dict[str, object]],
+) -> dict[str, object]:
+    choice_pairs = list(choices)
+    labels = {value: choice_label for value, choice_label in choice_pairs}
+    counts: dict[str, dict[str, int]] = {value: {} for value, _ in choice_pairs}
+    counts[LEGACY_KEY] = {}
+    observed_by_program: dict[str, int] = {}
+
+    rows = (
+        StudentSupportProfile.objects.filter(
+            inventory_id__in=base_queryset.values("id"),
+        )
+        .values(field, "inventory__program_id")
+        .annotate(total=Count("id"))
+    )
+    for result in rows:
+        program_key = _program_key(result["inventory__program_id"])
+        total = int(result["total"])
+        observed_by_program[program_key] = observed_by_program.get(program_key, 0) + total
+        raw = result[field]
+        category = raw if raw in labels else LEGACY_KEY
+        counts[category][program_key] = counts[category].get(program_key, 0) + total
+
+    for program_key, base_total in program_totals.items():
+        missing = base_total - observed_by_program.get(program_key, 0)
+        if missing > 0:
+            counts[LEGACY_KEY][program_key] = counts[LEGACY_KEY].get(program_key, 0) + missing
+
+    rows_out = [
+        _row(
+            key=value,
+            label=choice_label,
+            denominator=denominator,
+            counts=counts[value],
+            columns=columns,
+        )
+        for value, choice_label in choice_pairs
+    ]
+    rows_out.append(
+        _row(
+            key=LEGACY_KEY,
+            label=LEGACY_LABEL,
+            denominator=denominator,
+            counts=counts[LEGACY_KEY],
+            columns=columns,
+        )
+    )
+    return {"key": key, "label": label, "denominator": denominator, "rows": rows_out}
+
+
 def _geography_section(
     *,
     base_queryset,
@@ -780,10 +839,10 @@ def build_student_profiling_report(
         ),
         "physical_disadvantage": _scalar_section(
             base_queryset=base_queryset,
-            field="physical_disadvantage_status",
-            choices=PhysicalDisadvantageStatus.choices,
+            field="pwd_status",
+            choices=PWDStatus.choices,
             key="physical_disadvantage",
-            label="Distribution of Students based on Physical Disadvantage",
+            label="Distribution of Students based on PWD Status",
             denominator=denominator,
             columns=columns,
         ),
@@ -796,22 +855,20 @@ def build_student_profiling_report(
             denominator=denominator,
             columns=columns,
         ),
-        "mother_life_status": _family_section(
+        "mother_life_status": _support_profile_section(
             base_queryset=base_queryset,
             program_totals=program_totals,
-            family_kind=FamilyMemberKind.MOTHER,
-            field="life_status",
+            field="mother_life_status",
             choices=ParentLifeStatus.choices,
             key="mother_life_status",
             label="Distribution of Students based on Mother Life Status",
             denominator=denominator,
             columns=columns,
         ),
-        "father_life_status": _family_section(
+        "father_life_status": _support_profile_section(
             base_queryset=base_queryset,
             program_totals=program_totals,
-            family_kind=FamilyMemberKind.FATHER,
-            field="life_status",
+            field="father_life_status",
             choices=ParentLifeStatus.choices,
             key="father_life_status",
             label="Distribution of Students based on Father Life Status",

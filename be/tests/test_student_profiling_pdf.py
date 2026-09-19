@@ -121,7 +121,7 @@ def synthetic_report(
         "sex": "Distribution of Students based on Sex",
         "age": "Distribution of Students based on Age",
         "civil_status": "Distribution of Students based on Civil Status",
-        "physical_disadvantage": "Distribution of Students based on Physical Disadvantage",
+        "physical_disadvantage": "Distribution of Students based on PWD Status",
         "current_religion": "Distribution of Students based on Current Religion",
         "mother_life_status": "Distribution of Students based on Mother Life Status",
         "father_life_status": "Distribution of Students based on Father Life Status",
