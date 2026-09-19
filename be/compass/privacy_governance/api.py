@@ -16,6 +16,12 @@ from compass.authentication.sessions import RecentMFARequired, require_recent_mf
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
+from .activity import (
+    DEFAULT_PAGE_SIZE as ACTIVITY_DEFAULT_PAGE_SIZE,
+    PrivacyActivityCategory,
+    PrivacyActivityPaginationError,
+    list_privacy_activity,
+)
 from .models import (
     PrivacyIncidentStatus,
     PrivacyNotificationAssessment,
@@ -209,6 +215,27 @@ class PrivacyIncidentCreateRequest(StrictSchema):
     notification_reference: str = ""
 
 
+class PrivacyActivityItemResponse(StrictSchema):
+    id: UUID
+    category: PrivacyActivityCategory
+    type: str
+    title: str
+    description: str
+    occurred_at: datetime
+    actor_display_name: str | None
+    artifact_type: str | None
+    artifact_format: str | None
+    scope: str | None
+    resource_reference: str | None
+
+
+class PrivacyActivityPageResponse(StrictSchema):
+    items: list[PrivacyActivityItemResponse]
+    page: int
+    page_size: int
+    has_next: bool
+
+
 class PrivacyIncidentUpdateRequest(StrictSchema):
     title: str | None = None
     summary: str | None = None
@@ -306,6 +333,50 @@ def _incident(item) -> dict[str, object]:
         "created_at": item.created_at,
         "updated_at": item.updated_at,
         "resolved_at": item.resolved_at,
+    }
+
+
+@router.get(
+    "/activity",
+    response=response_with_errors(PrivacyActivityPageResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="privacyGovernanceListActivity",
+)
+def privacy_activity(
+    request,
+    page: int = 1,
+    page_size: int = ACTIVITY_DEFAULT_PAGE_SIZE,
+    category: PrivacyActivityCategory | None = None,
+):
+    _require(request, "privacy_governance.view")
+    try:
+        result = list_privacy_activity(
+            page=page,
+            page_size=page_size,
+            category=category,
+        )
+    except PrivacyActivityPaginationError as exc:
+        raise APIError(422, "invalid_privacy_activity_request", str(exc)) from exc
+    return {
+        "items": [
+            {
+                "id": item.id,
+                "category": item.category,
+                "type": item.type,
+                "title": item.title,
+                "description": item.description,
+                "occurred_at": item.occurred_at,
+                "actor_display_name": item.actor_display_name,
+                "artifact_type": item.artifact_type,
+                "artifact_format": item.artifact_format,
+                "scope": item.scope,
+                "resource_reference": item.resource_reference,
+            }
+            for item in result.items
+        ],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
     }
 
 
