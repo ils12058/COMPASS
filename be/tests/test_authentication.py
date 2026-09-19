@@ -290,7 +290,7 @@ def test_mfa_recovery_regeneration_and_disable_create_mandatory_security_notific
     assert regenerated.status_code == 200
     generated_codes = regenerated.json()["recovery_codes"]
     regen_audit = AuditEvent.objects.get(
-        action="auth.mfa.recovery_codes.regenerated",
+        action=AUTH_MFA_RECOVERY_CODES_REGENERATED,
         actor_user=user,
     )
     regen_notification = Notification.objects.get(
