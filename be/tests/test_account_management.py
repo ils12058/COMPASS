@@ -105,7 +105,6 @@ class _AllowLimiter:
             retry_after_seconds=1,
         )
 
-
 @pytest.mark.django_db
 def test_account_management_requires_manage_not_accounts_view_and_requires_recent_mfa_for_writes():
     sync_policy()
@@ -128,7 +127,6 @@ def test_account_management_requires_manage_not_accounts_view_and_requires_recen
     )
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "recent_mfa_required"
-
 
 @pytest.mark.django_db
 def test_manager_can_list_create_and_inspect_accounts_without_sensitive_fields():
@@ -192,7 +190,6 @@ def test_manager_can_list_create_and_inspect_accounts_without_sensitive_fields()
     assert forbidden.status_code == 422
     assert not User.objects.filter(email="bad@example.edu").exists()
 
-
 @pytest.mark.django_db
 def test_account_listing_filters_and_pagination_are_bounded():
     sync_policy()
@@ -224,7 +221,6 @@ def test_account_listing_filters_and_pagination_are_bounded():
     invalid_page = client.get("/api/v1/accounts?page=0")
     assert invalid_page.status_code == 422
 
-
 @pytest.mark.django_db
 def test_account_creation_rejects_duplicate_email_and_noncanonical_role():
     sync_policy()
@@ -251,7 +247,6 @@ def test_account_creation_rejects_duplicate_email_and_noncanonical_role():
     assert first.status_code == 201
     assert duplicate.status_code == 409
     assert unknown_role.status_code == 422
-
 
 @pytest.mark.django_db
 def test_identity_email_change_invalidates_target_security_state_and_audits_fields_only():
@@ -311,7 +306,6 @@ def test_identity_email_change_invalidates_target_security_state_and_audits_fiel
     assert "old@example.edu" not in str(event.metadata)
     assert "new@example.edu" not in str(event.metadata)
 
-
 @pytest.mark.django_db
 def test_disable_enable_revokes_state_preserves_mfa_and_is_idempotent():
     sync_policy()
@@ -359,7 +353,6 @@ def test_disable_enable_revokes_state_preserves_mfa_and_is_idempotent():
     assert (
         AuditEvent.objects.filter(action="account.enabled", target_id=str(target.pk)).count() == 1
     )
-
 
 @pytest.mark.django_db
 def test_role_designation_and_override_mutations_update_authority_and_invalidate_sessions():
@@ -427,7 +420,6 @@ def test_role_designation_and_override_mutations_update_authority_and_invalidate
     target.refresh_from_db()
     assert not target.has_capability("accounts.manage")
 
-
 @pytest.mark.django_db
 def test_last_manager_and_self_target_safety_are_enforced():
     from compass.account_management import services as management_services
@@ -467,7 +459,6 @@ def test_last_manager_and_self_target_safety_are_enforced():
     assert blocked.status_code == 409
     target.refresh_from_db()
     assert target.role.code == "STUDENT"
-
 
 @pytest.mark.django_db
 def test_administrative_mfa_reset_never_returns_mfa_material():
@@ -512,7 +503,6 @@ def test_administrative_mfa_reset_never_returns_mfa_material():
     assert event.actor_user_id == admin.pk
     assert event.metadata == {}
 
-
 @pytest.mark.django_db
 def test_administrative_session_revocation_uses_authentication_primitives_and_target_activity():
     sync_policy()
@@ -555,7 +545,6 @@ def test_administrative_session_revocation_uses_authentication_primitives_and_ta
     activity_types = {item["type"] for item in activity.json()["items"]}
     assert {"auth.session.revoked", "auth.trusted.session.revoked"} <= activity_types
 
-
 @pytest.mark.django_db
 def test_effective_manage_override_authorizes_without_role_shortcut():
     sync_policy()
@@ -573,7 +562,6 @@ def test_effective_manage_override_authorizes_without_role_shortcut():
     client.cookies["compass_session"] = issued.token
     response = client.get("/api/v1/accounts")
     assert response.status_code == 200
-
 
 @pytest.mark.django_db
 def test_role_change_blocks_provider_availability_until_configuration_is_removed():
@@ -609,7 +597,6 @@ def test_role_change_blocks_provider_availability_until_configuration_is_removed
     assert changed.status_code == 200
     provider.refresh_from_db()
     assert provider.role.code == "INSTITUTIONAL_OFFICER"
-
 
 @pytest.mark.django_db
 def test_role_change_blocks_active_or_future_appointment_until_resolved():
@@ -655,7 +642,6 @@ def test_role_change_blocks_active_or_future_appointment_until_resolved():
         **csrf_headers(client),
     )
     assert changed.status_code == 200
-
 
 @pytest.mark.django_db
 def test_student_lifecycle_management_is_recent_mfa_guarded_audited_and_session_preserving():
@@ -739,7 +725,6 @@ def test_student_lifecycle_management_is_recent_mfa_guarded_audited_and_session_
     )
     assert nonstudent.status_code == 409
     assert nonstudent.json()["error"]["code"] == "student_lifecycle_conflict"
-
 
 @pytest.mark.django_db
 def test_student_lifecycle_authority_and_role_transition_preservation():
@@ -848,7 +833,6 @@ def test_student_lifecycle_authority_and_role_transition_preservation():
     assert dpo_denied.status_code == 403
 
 
-
 @pytest.mark.django_db
 def test_designation_role_compatibility_is_fail_closed_and_role_change_never_cleans_it_up():
     sync_policy()
@@ -915,7 +899,6 @@ def test_designation_role_compatibility_is_fail_closed_and_role_change_never_cle
     assert counselor.role.code == "COUNSELOR"
     assert counselor.designations.filter(code="HEAD_GUIDANCE_COUNSELOR").exists()
 
-
 @pytest.mark.django_db
 def test_designation_mutation_requires_dedicated_capability_recent_mfa_and_is_never_self_targeted():
     sync_policy()
@@ -950,10 +933,7 @@ def test_designation_mutation_requires_dedicated_capability_recent_mfa_and_is_ne
         **csrf_headers(client),
     )
     assert remove_denied.status_code == 403
-    assert (
-        remove_denied.json()["error"]["code"]
-        == "institutional_designation_permission_denied"
-    )
+    assert remove_denied.json()["error"]["code"] == "institutional_designation_permission_denied"
     assert officer.designations.filter(code="DPO").exists()
 
     admin_client, admin, _session = make_admin_client(email="designation-admin@example.edu")
@@ -978,7 +958,6 @@ def test_designation_mutation_requires_dedicated_capability_recent_mfa_and_is_ne
     assert self_target.status_code == 403
     assert self_target.json()["error"]["code"] == "self_target_forbidden"
 
-
 @pytest.mark.django_db
 def test_account_listing_exposes_and_filters_safe_verification_state():
     sync_policy()
@@ -1002,7 +981,6 @@ def test_account_listing_exposes_and_filters_safe_verification_state():
     assert detail.status_code == 200
     assert detail.json()["email_verified"] is True
     assert detail.json()["email_verified_at"] is not None
-
 
 
 @pytest.mark.django_db
@@ -1046,7 +1024,6 @@ def test_institutional_officer_transition_does_not_bypass_organization_relations
     assert CounselorResponsibility.objects.filter(counselor=counselor).exists()
     assert StaffSupervision.objects.filter(staff=staff).exists()
     assert StudentAffiliation.objects.filter(student=student).exists()
-
 
 @pytest.mark.django_db
 def test_clean_institutional_officer_can_change_role_without_inferred_gco_relationships():
