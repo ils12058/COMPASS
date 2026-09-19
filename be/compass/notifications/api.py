@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import NoReturn
 from uuid import UUID
 
-from ninja import Field, Router, Schema
-from pydantic import ConfigDict
+from ninja import Router, Schema
+from pydantic import ConfigDict, Field
 
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
