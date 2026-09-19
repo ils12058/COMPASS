@@ -1113,7 +1113,6 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     )
 
 
-
 def test_platform_operations_openapi_is_get_only_read_only_and_secret_safe() -> None:
     schema = _generated_schema()
 
