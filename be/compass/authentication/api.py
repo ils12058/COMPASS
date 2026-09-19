@@ -154,9 +154,9 @@ class EmailChangeRequestResponse(Schema):
 
 
 class EmailChangeConfirmRequest(Schema):
-    request_id: UUID
-    challenge_id: UUID
     code: str
+    request_id: UUID | None = None
+    challenge_id: UUID | None = None
 
 
 class EmailChangeConfirmResponse(Schema):
