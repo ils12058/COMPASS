@@ -1017,6 +1017,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "inventory.view_self",
             "organization.manage",
             "organization.view",
+            "platform_operations.view",
             "reports.view",
             "referrals.manage",
             "referrals.view",
