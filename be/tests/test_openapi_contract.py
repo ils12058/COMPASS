@@ -196,6 +196,11 @@ EXPECTED_OPERATION_IDS = {
     "callSlipsListMy",
     "callSlipsGetMy",
     "callSlipsRecordInterviewEnded",
+    "notificationsListMine",
+    "notificationsGetUnreadCount",
+    "notificationsMarkRead",
+    "notificationsGetPreferences",
+    "notificationsUpdatePreferences",
     "documentBrandingGetProfile",
     "documentBrandingUpdateProfile",
     "eCounselingGetMyWorkspace",
@@ -286,6 +291,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "routine-interviews",
         "referrals",
         "call-slips",
+        "notifications",
         "document-branding",
         "e-counseling",
     ]
@@ -889,6 +895,25 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _response_statuses(
         _operation(schema, "/api/v1/call-slips/{call_slip_id}/interview-ended", "patch")
     ) >= {200, 401, 403, 404, 409, 422}
+
+    assert _response_statuses(_operation(schema, "/api/v1/notifications", "get")) >= {
+        200,
+        401,
+        422,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/notifications/unread-count", "get")
+    ) >= {200, 401}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/notifications/{notification_id}/read", "patch")
+    ) >= {200, 401, 404}
+    assert _response_statuses(_operation(schema, "/api/v1/notifications/preferences", "get")) >= {
+        200,
+        401,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/notifications/preferences", "patch")
+    ) >= {200, 401}
     assert _response_statuses(_operation(schema, "/api/v1/document-branding/profile", "get")) >= {
         200,
         401,
