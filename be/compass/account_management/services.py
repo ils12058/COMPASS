@@ -21,7 +21,12 @@ from compass.accounts.models import (
     UserCapabilityOverride,
     UserDesignation,
 )
-from compass.accounts.policy import CAPABILITY_CODES, DESIGNATION_CODES, ROLE_CODES
+from compass.accounts.policy import (
+    CAPABILITY_CODES,
+    DESIGNATION_CODES,
+    ROLE_CODES,
+    designation_role_compatible,
+)
 from compass.accounts.services import set_user_capability_override, user_has_capability
 from compass.audit.actions import (
     ACCOUNT_CAPABILITY_OVERRIDE_REMOVED,
@@ -52,6 +57,7 @@ from compass.authentication.sessions import (
 )
 
 ACCOUNT_MANAGE_CAPABILITY = "accounts.manage"
+INSTITUTIONAL_DESIGNATION_MANAGE_CAPABILITY = "institutional_designations.manage"
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_PAGE_NUMBER = 100_000
@@ -63,6 +69,10 @@ class AccountManagementError(RuntimeError):
 
 class ManagementNotAuthorized(AccountManagementError):
     """The actor does not currently have effective account-management authority."""
+
+
+class DesignationManagementNotAuthorized(ManagementNotAuthorized):
+    """The actor lacks the dedicated authority to record institutional designations."""
 
 
 class AccountNotFound(AccountManagementError):
@@ -107,6 +117,10 @@ class AvailabilityRelationshipConflict(AccountManagementError):
 
 class AppointmentRelationshipConflict(AccountManagementError):
     """The role change would strand an active or future Appointment reservation."""
+
+
+class DesignationRoleConflict(AccountManagementError):
+    """The requested role/designation combination is incompatible with canonical policy."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,6 +261,34 @@ def _assert_manager(actor: User) -> None:
         raise ManagementNotAuthorized("accounts.manage is required")
 
 
+def _assert_designation_manager(actor: User) -> None:
+    if not user_has_capability(actor, INSTITUTIONAL_DESIGNATION_MANAGE_CAPABILITY):
+        raise DesignationManagementNotAuthorized(
+            "accounts.manage and institutional_designations.manage are required"
+        )
+
+
+def _assert_user_designations_compatible(*, user_id, role_code: str) -> None:
+    designation_codes = tuple(
+        UserDesignation.objects.filter(user_id=user_id)
+        .select_related("designation")
+        .values_list("designation__code", flat=True)
+    )
+    incompatible = tuple(
+        code
+        for code in designation_codes
+        if not designation_role_compatible(
+            designation_code=code,
+            role_code=role_code,
+        )
+    )
+    if incompatible:
+        joined = ", ".join(sorted(incompatible))
+        raise DesignationRoleConflict(
+            f"role {role_code} is incompatible with existing designation(s): {joined}"
+        )
+
+
 def _assert_recent_mfa(*, actor: User, actor_session) -> None:
     if getattr(actor_session, "user_id", None) != actor.pk:
         raise ManagementNotAuthorized("the step-up session does not belong to the actor")
@@ -302,13 +344,15 @@ def serialize_account(user: User, *, detail: bool = False) -> dict[str, object]:
         "student_lifecycle_status": user.student_lifecycle_status,
         "designations": _account_designation_codes(user),
         "is_active": user.is_active,
+        "password_configured": user.has_usable_password(),
+        "email_verified": user.email_verified_at is not None,
         "created_at": user.created_at,
     }
     if detail:
         payload.update(
             {
                 "updated_at": user.updated_at,
-                "password_configured": user.has_usable_password(),
+                "email_verified_at": user.email_verified_at,
                 "mfa_enabled": has_active_totp_factor(user.pk),
             }
         )
@@ -334,6 +378,7 @@ def list_accounts(
     role: str | None = None,
     is_active: bool | None = None,
     designation: str | None = None,
+    email_verified: bool | None = None,
     search: str | None = None,
 ) -> AccountPage:
     page, page_size = _validate_pagination(page=page, page_size=page_size)
@@ -350,6 +395,8 @@ def list_accounts(
         queryset = queryset.filter(
             designations__code=_canonical_designation_code(designation)
         ).distinct()
+    if email_verified is not None:
+        queryset = queryset.filter(email_verified_at__isnull=not email_verified)
     if search is not None:
         if not isinstance(search, str):
             raise InvalidManagementInput("search must be a string")
@@ -516,9 +563,13 @@ def update_identity(
         previous_email = target.email
         for field_name in changed_fields:
             setattr(target, field_name, normalized[field_name])
+        update_fields = [*changed_fields, "updated_at"]
+        if "email" in changed_fields:
+            target.email_verified_at = None
+            update_fields.append("email_verified_at")
         try:
             with transaction.atomic():
-                target.save(update_fields=[*changed_fields, "updated_at"])
+                target.save(update_fields=update_fields)
         except IntegrityError as exc:
             raise DuplicateEmail("an account with this email already exists") from exc
 
@@ -615,6 +666,7 @@ def change_role(
             )
         if target.role_id == role_record.pk:
             return MutationResult(user=target, changed=False)
+        _assert_user_designations_compatible(user_id=target.pk, role_code=role_code)
         from compass.organization.services import (
             OrganizationRoleTransitionConflict,
             validate_role_transition,
@@ -729,8 +781,9 @@ def assign_designation(
         actor_session=actor_session,
         target_id=target_id,
         authority_change=True,
-    ) as (_locked_actor, target):
+    ) as (locked_actor, target):
         assert target is not None
+        _assert_designation_manager(locked_actor)
         if target.pk == actor.pk:
             raise SelfTargetForbidden("an administrator cannot change their own designations")
         designation_record = Designation.objects.filter(code=designation_code).first()
@@ -738,6 +791,13 @@ def assign_designation(
             raise ManagementConfigurationError(
                 "the requested canonical designation is not synchronized; run "
                 "sync_identity_policy first"
+            )
+        if not designation_role_compatible(
+            designation_code=designation_code,
+            role_code=target.role.code,
+        ):
+            raise DesignationRoleConflict(
+                f"designation {designation_code} is incompatible with role {target.role.code}"
             )
         assignment = (
             UserDesignation.objects.select_for_update()
@@ -781,8 +841,9 @@ def remove_designation(
         actor_session=actor_session,
         target_id=target_id,
         authority_change=True,
-    ) as (_locked_actor, target):
+    ) as (locked_actor, target):
         assert target is not None
+        _assert_designation_manager(locked_actor)
         if target.pk == actor.pk:
             raise SelfTargetForbidden("an administrator cannot change their own designations")
         designation_record = Designation.objects.filter(code=designation_code).first()
@@ -1048,10 +1109,13 @@ def reset_account_mfa(
 
 __all__ = [
     "ACCOUNT_MANAGE_CAPABILITY",
+    "INSTITUTIONAL_DESIGNATION_MANAGE_CAPABILITY",
     "AccountManagementError",
     "AccountNotFound",
     "AccountPage",
     "DEFAULT_PAGE_SIZE",
+    "DesignationManagementNotAuthorized",
+    "DesignationRoleConflict",
     "DuplicateEmail",
     "InvalidManagementInput",
     "LastAccountManagerError",
