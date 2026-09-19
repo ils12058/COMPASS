@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
                 "default_permissions": (),
                 "constraints": [
                     models.CheckConstraint(
-                        condition=Q(("id", 1)),
+                        condition=Q(("pk", 1)),
                         name="platform_maint_singleton_pk",
                     ),
                     models.CheckConstraint(
