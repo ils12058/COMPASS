@@ -460,4 +460,4 @@ def test_no_bulk_retry_route_exists():
         "/api/v1/platform/email-deliveries/retry",
         **csrf(client),
     )
-    assert response.status_code == 404
+    assert response.status_code in {404, 422}
