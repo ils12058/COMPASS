@@ -17,6 +17,8 @@ from compass.common.errors import APIError
 
 from .activity import (
     DEFAULT_PAGE_SIZE as ACTIVITY_DEFAULT_PAGE_SIZE,
+)
+from .activity import (
     TechnicalActivityPaginationError,
     list_technical_activity,
 )
@@ -28,6 +30,8 @@ from .diagnostics import (
 )
 from .email_operations import (
     DEFAULT_PAGE_SIZE as EMAIL_DEFAULT_PAGE_SIZE,
+)
+from .email_operations import (
     EmailDeliveryNotFound,
     EmailDeliveryNotRetryable,
     EmailDeliveryOperationsError,
