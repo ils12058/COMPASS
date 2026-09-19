@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
+from django.db import IntegrityError
 from django.test import Client
 from django.utils import timezone
 
@@ -149,31 +150,31 @@ def test_csv_commit_creates_multiple_unverified_unpassworded_accounts_and_studen
         (
             b"email,first_name,last_name,role,password\n"
             b"a@example.edu,A,User,STUDENT,secret\n",
-            "csv_import_malformed",
+            "csv_import_unsupported_headers",
         ),
         (
             b"email,first_name,last_name,role,designation\n"
             b"a@example.edu,A,User,STUDENT,DPO\n",
-            "csv_import_malformed",
+            "csv_import_unsupported_headers",
         ),
         (
             b"email,first_name,last_name,role,capability\n"
             b"a@example.edu,A,User,STUDENT,accounts.manage\n",
-            "csv_import_malformed",
+            "csv_import_unsupported_headers",
         ),
         (
             b"email,first_name,last_name,role,is_active\n"
             b"a@example.edu,A,User,STUDENT,false\n",
-            "csv_import_malformed",
+            "csv_import_unsupported_headers",
         ),
         (
             b"email,first_name,last_name,role,unexpected\n"
             b"a@example.edu,A,User,STUDENT,x\n",
-            "csv_import_malformed",
+            "csv_import_unsupported_headers",
         ),
         (
             b"email,first_name,role\na@example.edu,A,STUDENT\n",
-            "csv_import_malformed",
+            "csv_import_unsupported_headers",
         ),
     ],
 )
@@ -199,7 +200,7 @@ def test_csv_rejects_duplicate_headers_bad_utf8_and_malformed_rows():
         dry_run=True,
     )
     assert duplicate_header.status_code == 422
-    assert duplicate_header.json()["error"]["code"] == "csv_import_malformed"
+    assert duplicate_header.json()["error"]["code"] == "csv_import_unsupported_headers"
 
     bad_utf8 = upload(client, b"email,first_name,last_name,role\n\xff", dry_run=True)
     assert bad_utf8.status_code == 422
@@ -255,6 +256,7 @@ def test_csv_rejects_case_insensitive_duplicate_email_rows():
 
     committed = upload(client, duplicate, dry_run=False)
     assert committed.status_code == 422
+    assert committed.json()["error"]["code"] == "csv_import_duplicate_identity"
     assert not User.objects.filter(email="duplicate@example.edu").exists()
 
 
@@ -354,11 +356,12 @@ def test_csv_audit_failure_rolls_back_whole_batch():
 
     with patch(
         "compass.account_management.csv_import.record_event",
-        side_effect=RuntimeError("synthetic audit failure"),
+        side_effect=IntegrityError("synthetic audit failure"),
     ):
-        with pytest.raises(RuntimeError, match="synthetic audit failure"):
-            upload(client, csv_bytes, dry_run=False)
+        response = upload(client, csv_bytes, dry_run=False)
 
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "csv_import_conflict"
     assert not User.objects.filter(email__contains=".rollback@example.edu").exists()
 
 
