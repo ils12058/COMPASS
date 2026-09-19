@@ -256,10 +256,13 @@ def test_consent_request_creates_only_local_room_binding_and_is_idempotent():
     assert notification.target_type == "E_COUNSELING"
     assert notification.target_id == appointment.pk
     assert EmailDelivery.objects.filter(notification=notification).count() == 1
-    assert Notification.objects.filter(
-        recipient=student,
-        event_code="ecounseling.consent.requested",
-    ).count() == 1
+    assert (
+        Notification.objects.filter(
+            recipient=student,
+            event_code="ecounseling.consent.requested",
+        ).count()
+        == 1
+    )
     assert student.has_capability("ecounseling.consent_self")
 
 
