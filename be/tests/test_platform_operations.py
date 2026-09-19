@@ -173,7 +173,9 @@ def test_redis_concerns_and_celery_broker_fail_independently(failed_index):
     redis_codes = ["redis_cache", "redis_rate_limit", "redis_idempotency", "celery_broker"]
     by_code = {item.code: item for item in health.checks}
     for index, code in enumerate(redis_codes):
-        expected = DiagnosticStatus.UNAVAILABLE if index == failed_index else DiagnosticStatus.HEALTHY
+        expected = (
+            DiagnosticStatus.UNAVAILABLE if index == failed_index else DiagnosticStatus.HEALTHY
+        )
         assert by_code[code].status == expected
     assert by_code["celery_worker"].status == DiagnosticStatus.NOT_CHECKED
     assert by_code["celery_beat"].status == DiagnosticStatus.NOT_CHECKED
@@ -184,7 +186,9 @@ def test_redis_concerns_and_celery_broker_fail_independently(failed_index):
 
 
 def test_storage_probe_treats_false_as_success_and_sanitizes_exceptions():
-    with patch("compass.platform_ops.diagnostics.ObjectStorage.exists", return_value=False) as exists:
+    with patch(
+        "compass.platform_ops.diagnostics.ObjectStorage.exists", return_value=False
+    ) as exists:
         healthy = probe_object_storage()
     assert healthy.status == DiagnosticStatus.HEALTHY
     exists.assert_called_once()
