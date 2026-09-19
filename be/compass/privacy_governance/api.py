@@ -209,9 +209,7 @@ class PrivacyIncidentCreateRequest(StrictSchema):
     estimated_affected_subjects: int | None = None
     assessment_summary: str = ""
     containment_summary: str = ""
-    notification_assessment: NotificationAssessmentValue = (
-        NotificationAssessmentValue.NOT_ASSESSED
-    )
+    notification_assessment: NotificationAssessmentValue = NotificationAssessmentValue.NOT_ASSESSED
     notification_reference: str = ""
 
 
