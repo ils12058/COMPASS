@@ -144,7 +144,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
         "DPO",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 64
+    assert RoleCapability.objects.count() == 65
     assert DesignationCapability.objects.count() == 16
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
@@ -156,8 +156,8 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 59
-    assert RoleCapability.objects.count() == 64
+    assert Capability.objects.count() == 60
+    assert RoleCapability.objects.count() == 65
     assert DesignationCapability.objects.count() == 16
 
 
