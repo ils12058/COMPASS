@@ -900,7 +900,6 @@ def build_student_profiling_report(
     }
 
 
-
 def student_profiling_release_context(report: dict[str, object]) -> dict[str, object]:
     """Return only safe resolved filter context for release auditing."""
 
@@ -917,9 +916,7 @@ def student_profiling_release_context(report: dict[str, object]) -> dict[str, ob
         if item is None:
             return None, None
         if not isinstance(item, dict):
-            raise ReportConfigurationConflict(
-                f"The Student Profiling {name} context is invalid."
-            )
+            raise ReportConfigurationConflict(f"The Student Profiling {name} context is invalid.")
         item_id = item.get("id")
         item_code = item.get("code")
         return (
@@ -932,9 +929,7 @@ def student_profiling_release_context(report: dict[str, object]) -> dict[str, ob
     program_id, program_code = organization_values("program")
     year_level = report_context.get("year_level")
     if year_level is not None and type(year_level) is not int:
-        raise ReportConfigurationConflict(
-            "The Student Profiling Year Level context is invalid."
-        )
+        raise ReportConfigurationConflict("The Student Profiling Year Level context is invalid.")
 
     return {
         "academic_year_id": str(academic_year["id"]),
