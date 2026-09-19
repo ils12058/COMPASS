@@ -188,6 +188,7 @@ class MFAResetResponse(StrictSchema):
 
 class CsvImportRowResponse(StrictSchema):
     row_number: int
+    institutional_id: str
     email: str
     action: str
     message: str
@@ -323,6 +324,7 @@ def _csv_report(report: CsvImportReport) -> dict[str, object]:
         "rows": [
             {
                 "row_number": row.row_number,
+                "institutional_id": row.institutional_id,
                 "email": row.email,
                 "action": row.action,
                 "message": row.message,
@@ -336,6 +338,7 @@ def _csv_issue_details(exc: CsvImportInvalidRows) -> list[dict[str, object]]:
     return [
         {
             "row_number": issue.row_number,
+            "institutional_id": issue.institutional_id,
             "email": issue.email,
             "message": issue.message,
         }
