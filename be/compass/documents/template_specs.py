@@ -44,6 +44,14 @@ _TEMPLATE_SPECS = {
         include_accreditation_footer=False,
         show_page_numbers=False,
     ),
+    ("student_profiling_report", 1): DocumentTemplateSpec(
+        key="student_profiling_report",
+        version=1,
+        template_name="documents/reports/student_profile.html",
+        layout_family=LayoutFamily.REPORT,
+        include_accreditation_footer=False,
+        show_page_numbers=True,
+    ),
     ("foundation_test", 1): DocumentTemplateSpec(
         key="foundation_test",
         version=1,
