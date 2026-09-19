@@ -111,7 +111,9 @@ def post(client: Client, path: str, payload: dict[str, object]):
 
 
 @pytest.mark.django_db
-def test_non_totp_email_change_requires_current_mailbox_then_new_mailbox_and_revokes_auth_state():
+def test_non_totp_email_change_requires_current_mailbox_then_new_mailbox_and_revokes_auth_state(
+    django_capture_on_commit_callbacks,
+):
     sync_policy()
     user = make_user(
         "old-address@example.edu",
@@ -164,9 +166,10 @@ def test_non_totp_email_change_requires_current_mailbox_then_new_mailbox_and_rev
     user.refresh_from_db()
     assert user.email == "old-address@example.edu"
 
-    with patch(
-        "compass.authentication.email_change._safe_enqueue_old_email_alert"
-    ) as enqueue_alert:
+    with (
+        patch("compass.authentication.email_change._safe_enqueue_old_email_alert") as enqueue_alert,
+        django_capture_on_commit_callbacks(execute=True),
+    ):
         confirmed = post(
             client,
             "/api/v1/auth/email-change/confirm",
