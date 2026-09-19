@@ -114,7 +114,7 @@ def create_notification_for_event(
 def list_my_notifications(
     *,
     actor: User,
-    page: int = DEFAULT_PAGE_SIZE // DEFAULT_PAGE_SIZE,
+    page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> NotificationPage:
     if page < 1:
