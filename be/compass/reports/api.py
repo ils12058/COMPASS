@@ -24,6 +24,11 @@ from .services import (
     ReportNotFound,
     build_student_profiling_report,
 )
+from .xlsx import (
+    XLSX_CONTENT_TYPE,
+    StudentProfilingWorkbookUnavailable,
+    render_student_profiling_xlsx,
+)
 
 router = Router(tags=["reports"])
 
@@ -50,6 +55,12 @@ def _raise(exc: ReportError) -> NoReturn:
             503,
             "report_document_unavailable",
             "The Student Profiling report PDF is temporarily unavailable.",
+        ) from exc
+    if isinstance(exc, StudentProfilingWorkbookUnavailable):
+        raise APIError(
+            503,
+            "report_workbook_unavailable",
+            "The Student Profiling report XLSX is temporarily unavailable.",
         ) from exc
     raise APIError(
         500,
@@ -112,5 +123,36 @@ def student_profile_pdf(
         _raise(exc)
 
     response = HttpResponse(result.pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{result.filename}"'
+    return response
+
+
+@router.get(
+    "/student-profile/xlsx",
+    response=response_with_errors(None, 401, 403, 404, 409, 422, 503),
+    auth=session_auth,
+    operation_id="reportsDownloadStudentProfileXlsx",
+)
+def student_profile_xlsx(
+    request,
+    academic_year_id: UUID | None = None,
+    campus_id: UUID | None = None,
+    college_id: UUID | None = None,
+    program_id: UUID | None = None,
+    year_level: int | None = None,
+):
+    _require_viewer(request)
+    try:
+        result = render_student_profiling_xlsx(
+            academic_year_id=academic_year_id,
+            campus_id=campus_id,
+            college_id=college_id,
+            program_id=program_id,
+            year_level=year_level,
+        )
+    except ReportError as exc:
+        _raise(exc)
+
+    response = HttpResponse(result.xlsx_bytes, content_type=XLSX_CONTENT_TYPE)
     response["Content-Disposition"] = f'attachment; filename="{result.filename}"'
     return response
