@@ -286,7 +286,10 @@ def _pdf_response(
         raise APIError(
             503,
             "release_audit_unavailable",
-            "The certificate could not be released because its required privacy audit is unavailable.",
+            (
+                "The certificate could not be released because its required privacy audit "
+                "is unavailable."
+            ),
         ) from exc
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="good-moral-{item.pk}.pdf"'
