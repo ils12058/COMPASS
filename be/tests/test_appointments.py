@@ -37,6 +37,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.availability.services import replace_office_weekly, replace_provider_weekly
+from compass.notifications.models import EmailDelivery, Notification
 from compass.organization.models import (
     Campus,
     College,
@@ -211,6 +212,17 @@ def test_booking_creates_scheduled_reservation_with_snapshot_reference_and_audit
     assert item.ends_at - item.starts_at == timedelta(minutes=60)
     assert item.cancellation_cutoff_minutes == 30
     assert item.created_by_id == student.pk
+    scheduled = Notification.objects.filter(
+        event_code="appointment.scheduled",
+        source_type="appointment",
+        source_id=item.pk,
+    ).order_by("recipient_id")
+    assert scheduled.count() == 2
+    assert {row.recipient_id for row in scheduled} == {student.pk, provider.pk}
+    assert {row.policy for row in scheduled} == {"MANDATORY_OPERATIONAL"}
+    assert {row.target_type for row in scheduled} == {"APPOINTMENT"}
+    assert {row.target_id for row in scheduled} == {item.pk}
+    assert EmailDelivery.objects.filter(notification__in=scheduled).count() == 2
     event = AuditEvent.objects.get(action="appointment.created", target_id=str(item.pk))
     assert event.metadata == {
         "reference_code": item.reference_code,
@@ -588,7 +600,16 @@ def test_cancellation_boundary_admin_bypass_and_repeat_are_safe():
         now=start - timedelta(minutes=1),
     )
     assert cancelled.status == "CANCELLED"
+    cancelled_notifications = Notification.objects.filter(
+        event_code="appointment.cancelled",
+        source_type="appointment",
+        source_id=item.pk,
+    )
+    assert cancelled_notifications.count() == 2
+    assert {row.recipient_id for row in cancelled_notifications} == {student.pk, provider.pk}
+    assert EmailDelivery.objects.filter(notification__in=cancelled_notifications).count() == 2
     event_count = AuditEvent.objects.filter(action="appointment.cancelled").count()
+    notification_count = cancelled_notifications.count()
     repeated = cancel_appointment(
         appointment_id=item.pk,
         actor=head,
@@ -598,6 +619,14 @@ def test_cancellation_boundary_admin_bypass_and_repeat_are_safe():
     )
     assert repeated.status == "CANCELLED"
     assert AuditEvent.objects.filter(action="appointment.cancelled").count() == event_count
+    assert (
+        Notification.objects.filter(
+            event_code="appointment.cancelled",
+            source_type="appointment",
+            source_id=item.pk,
+        ).count()
+        == notification_count
+    )
 
 
 @pytest.mark.django_db
