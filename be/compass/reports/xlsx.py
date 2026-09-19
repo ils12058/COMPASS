@@ -19,9 +19,7 @@ from .services import ReportError, build_student_profiling_report
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 MAX_EXCEL_COLUMNS = 16_384
-EMPTY_REPORT_MESSAGE = (
-    "No submitted Individual Inventories matched the selected profile filters."
-)
+EMPTY_REPORT_MESSAGE = "No submitted Individual Inventories matched the selected profile filters."
 
 FILTER_LABELS = {
     "academic_year_id": "Academic Year",
@@ -260,9 +258,7 @@ def _percentage_value(value: object) -> Decimal:
         return value
     if isinstance(value, int | float):
         return Decimal(str(value))
-    raise StudentProfilingWorkbookUnavailable(
-        "The Student Profiling percentage value is invalid."
-    )
+    raise StudentProfilingWorkbookUnavailable("The Student Profiling percentage value is invalid.")
 
 
 def _coverage_rows(coverage: dict[str, object]) -> list[tuple[str, object]]:
@@ -285,9 +281,7 @@ def _coverage_rows(coverage: dict[str, object]) -> list[tuple[str, object]]:
                 "Not available from current COMPASS data",
             ),
         ]
-    raise StudentProfilingWorkbookUnavailable(
-        "The Student Profiling coverage mode is unsupported."
-    )
+    raise StudentProfilingWorkbookUnavailable("The Student Profiling coverage mode is unsupported.")
 
 
 def _coverage_ignored_note(coverage: dict[str, object]) -> str | None:
@@ -299,9 +293,8 @@ def _coverage_ignored_note(coverage: dict[str, object]) -> str | None:
     labels = [FILTER_LABELS.get(str(item), str(item)) for item in raw_filters]
     if not labels:
         return None
-    return (
-        "Coverage filters not applicable to missing-Inventory classification: "
-        + ", ".join(labels)
+    return "Coverage filters not applicable to missing-Inventory classification: " + ", ".join(
+        labels
     )
 
 
@@ -429,11 +422,7 @@ def _build_section_sheet(
 ) -> None:
     worksheet = workbook.create_sheet(title=sheet_name)
     is_geography = section_key == "city_municipality"
-    headers = (
-        [category_header, "Province", "Region"]
-        if is_geography
-        else [category_header]
-    )
+    headers = [category_header, "Province", "Region"] if is_geography else [category_header]
     headers.extend(str(program["display_label"]) for program in program_columns)
     headers.extend(["Total", "Percentage (%)"])
     _write_table_header(worksheet, 1, headers)
