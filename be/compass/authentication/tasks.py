@@ -82,21 +82,27 @@ def deliver_email_change_security_alert(self, request_id: str) -> int:
 
         pending.old_email_alert_attempt_count += 1
         pending.save(update_fields=["old_email_alert_attempt_count"])
+        destination = pending.current_email_snapshot
 
-        sent = Mailer().send(
-            subject="Your COMPASS sign-in email was changed",
-            body=(
-                "Your COMPASS sign-in email was changed. "
-                "If you did not expect this change, contact the UCN Guidance and Counseling "
-                "Office or your authorized COMPASS administrator immediately.\n\n"
-                "No action is required if you expected this change."
-            ),
-            recipients=pending.current_email_snapshot,
-        )
-        if sent:
-            pending.old_email_alert_sent_at = timezone.now()
-            pending.save(update_fields=["old_email_alert_sent_at"])
-        return sent
+    sent = Mailer().send(
+        subject="Your COMPASS sign-in email was changed",
+        body=(
+            "Your COMPASS sign-in email was changed. "
+            "If you did not expect this change, contact the UCN Guidance and Counseling "
+            "Office or your authorized COMPASS administrator immediately.\n\n"
+            "No action is required if you expected this change."
+        ),
+        recipients=destination,
+    )
+    if sent != 1:
+        raise RuntimeError("COMPASS email-change security alert was not accepted for delivery")
+
+    EmailChangeRequest.objects.filter(
+        pk=request_id,
+        confirmed_at__isnull=False,
+        old_email_alert_sent_at__isnull=True,
+    ).update(old_email_alert_sent_at=timezone.now())
+    return sent
 
 
 __all__ = ["deliver_email_change_security_alert", "deliver_email_otp"]
