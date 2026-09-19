@@ -197,11 +197,14 @@ def test_publish_is_explicit_idempotent_immutable_and_audit_content_free():
     rendered = render_notification_email(notification.event_code)
     assert marker not in rendered.text_body
     assert marker not in rendered.html_body
-    assert Notification.objects.filter(
-        recipient=student,
-        event_code="counseling.shared_summary.published",
-        source_id=published.pk,
-    ).count() == 1
+    assert (
+        Notification.objects.filter(
+            recipient=student,
+            event_code="counseling.shared_summary.published",
+            source_id=published.pk,
+        ).count()
+        == 1
+    )
 
     with pytest.raises(CounselingSharedSummaryAlreadyPublished):
         put_assigned_shared_summary(
