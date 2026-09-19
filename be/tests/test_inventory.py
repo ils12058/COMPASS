@@ -194,13 +194,11 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
             "family_members": [
                 {
                     "kind": "FATHER",
-                    "life_status": "NOT_SPECIFIED",
                     "occupation_category": "NOT_SPECIFIED",
                     "annual_income_status": "NOT_SPECIFIED",
                 },
                 {
                     "kind": "MOTHER",
-                    "life_status": "LIVING",
                     "name": "Parent Snapshot",
                     "occupation": "Teacher",
                     "occupation_category": "GOVERNMENT_EMPLOYEE",
