@@ -49,8 +49,6 @@ def make_response(email: str, **values) -> GraduateTracerResponse:
         "unemployment_reasons": ["NO_JOB_OPPORTUNITY"],
     }
     defaults.update(values)
-    from django.utils import timezone
-
     return GraduateTracerResponse.objects.create(
         student=make_student(email),
         status=GraduateTracerStatus.SUBMITTED,
@@ -169,10 +167,7 @@ def test_filtered_xlsx_filename_is_deterministic_and_contains_only_safe_dates():
         submitted_from=date(2026, 1, 1),
         submitted_to=date(2026, 12, 31),
     )
-    assert (
-        result.filename
-        == "graduate-tracer-schema-v1-submitted-2026-01-01-to-2026-12-31.xlsx"
-    )
+    assert result.filename == "graduate-tracer-schema-v1-submitted-2026-01-01-to-2026-12-31.xlsx"
     assert result.release_context == {
         "instrument_schema_version": 1,
         "submitted_from": "2026-01-01",
