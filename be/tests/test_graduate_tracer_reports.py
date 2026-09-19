@@ -147,8 +147,11 @@ def test_graduate_tracer_report_authorization_uses_reports_view_and_override_sem
     )
 
     assert auth_client(head).get("/api/v1/reports/graduate-tracer").status_code == 200
+    assert auth_client(head).get("/api/v1/reports/graduate-tracer/xlsx").status_code == 200
     for denied in (counselor, staff, student, admin, dpo):
-        assert auth_client(denied).get("/api/v1/reports/graduate-tracer").status_code == 403
+        client = auth_client(denied)
+        assert client.get("/api/v1/reports/graduate-tracer").status_code == 403
+        assert client.get("/api/v1/reports/graduate-tracer/xlsx").status_code == 403
 
     set_user_capability_override(
         user=counselor,
@@ -156,7 +159,9 @@ def test_graduate_tracer_report_authorization_uses_reports_view_and_override_sem
         effect="GRANT",
         reason="Synthetic approved reporting exception",
     )
-    assert auth_client(counselor).get("/api/v1/reports/graduate-tracer").status_code == 200
+    counselor_client = auth_client(counselor)
+    assert counselor_client.get("/api/v1/reports/graduate-tracer").status_code == 200
+    assert counselor_client.get("/api/v1/reports/graduate-tracer/xlsx").status_code == 200
 
 
 @pytest.mark.django_db
@@ -291,6 +296,7 @@ def test_profile_and_employment_distributions_use_explicit_conditional_denominat
         "gts-unemployed@example.edu",
         current_employment_state=GTSEmploymentState.NOT_EMPLOYED,
         unemployment_reasons=[
+            GTSUnemploymentReason.NO_JOB_OPPORTUNITY,
             GTSUnemploymentReason.NO_JOB_OPPORTUNITY,
             GTSUnemploymentReason.OTHER,
         ],
