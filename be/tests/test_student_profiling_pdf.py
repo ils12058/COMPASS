@@ -98,10 +98,7 @@ def synthetic_report(
             }
         )
 
-    program_counts = [
-        {"program_key": program["key"], "count": 1}
-        for program in programs
-    ]
+    program_counts = [{"program_key": program["key"], "count": 1} for program in programs]
     generic_row = {
         "key": "SYNTHETIC",
         "label": "Synthetic category",
@@ -140,11 +137,7 @@ def synthetic_report(
             "key": key,
             "label": label,
             "denominator": submitted_count,
-            "rows": [
-                dict(geography_row)
-                if key == "city_municipality"
-                else dict(generic_row)
-            ],
+            "rows": [dict(geography_row) if key == "city_municipality" else dict(generic_row)],
         }
         for key, label in section_labels.items()
     }
@@ -210,7 +203,9 @@ def fake_pdf_result() -> StudentProfilingPdfResult:
 @pytest.mark.django_db
 def test_pdf_endpoint_reuses_reports_view_without_recent_mfa(monkeypatch):
     sync_policy()
-    monkeypatch.setattr(reports_api, "render_student_profiling_pdf", lambda **kwargs: fake_pdf_result())
+    monkeypatch.setattr(
+        reports_api, "render_student_profiling_pdf", lambda **kwargs: fake_pdf_result()
+    )
 
     head = make_head()
     counselor = make_user("ordinary-pdf@example.edu", "COUNSELOR")
@@ -400,27 +395,15 @@ def test_presentation_chunks_programs_by_key_not_positional_alignment():
     section = report["sections"]["sex"]
     row = section["rows"][0]
 
-    expected = {
-        str(program["key"]): 100 + index
-        for index, program in enumerate(programs)
-    }
+    expected = {str(program["key"]): 100 + index for index, program in enumerate(programs)}
     row["program_counts"] = list(
-        reversed(
-            [
-                {"program_key": key, "count": value}
-                for key, value in expected.items()
-            ]
-        )
+        reversed([{"program_key": key, "count": value} for key, value in expected.items()])
     )
     row["total_count"] = 777
     row["percentage"] = Decimal("32.72")
 
     context = build_student_profiling_print_context(report)
-    sex = next(
-        item
-        for item in context["student_profile"]["sections"]
-        if item["key"] == "sex"
-    )
+    sex = next(item for item in context["student_profile"]["sections"] if item["key"] == "sex")
     chunks = sex["chunks"]
 
     assert MAX_PROGRAM_COLUMNS_PER_TABLE == 2
@@ -438,9 +421,7 @@ def test_presentation_chunks_programs_by_key_not_positional_alignment():
         assert chunk["rows"][0]["total_count"] == 777
         assert chunk["rows"][0]["percentage"] == "32.72%"
 
-    assert seen == [
-        program["key"] for program in context["student_profile"]["program_legend"]
-    ]
+    assert seen == [program["key"] for program in context["student_profile"]["program_legend"]]
     assert len(seen) == len(set(seen)) == 5
 
 
@@ -448,9 +429,7 @@ def test_current_and_historical_coverage_are_mode_specific_and_deduplicated():
     current = build_student_profiling_print_context(
         synthetic_report(program_count=2, submitted_count=2, mode="CURRENT")
     )["student_profile"]
-    current_rows = {
-        row["label"]: row["value"] for row in current["coverage"]["rows"]
-    }
+    current_rows = {row["label"]: row["value"] for row in current["coverage"]["rows"]}
     assert current_rows["Eligible Students"] == 4
     assert current_rows["Submitted"] == 2
     assert current_rows["Draft"] == 1
@@ -461,18 +440,14 @@ def test_current_and_historical_coverage_are_mode_specific_and_deduplicated():
     historical = build_student_profiling_print_context(
         synthetic_report(program_count=2, submitted_count=2, mode="HISTORICAL_LIMITED")
     )["student_profile"]
-    historical_rows = {
-        row["label"]: row["value"] for row in historical["coverage"]["rows"]
-    }
+    historical_rows = {row["label"]: row["value"] for row in historical["coverage"]["rows"]}
     assert "Eligible Students" not in historical_rows
     assert historical_rows["Submitted"] == 2
     assert historical_rows["Draft"] == 1
     assert historical_rows["Without Individual Inventory"] == (
         "Not available from current COMPASS data"
     )
-    assert historical["coverage"]["scope_note"] == (
-        "CANONICAL HISTORICAL COVERAGE SCOPE NOTE."
-    )
+    assert historical["coverage"]["scope_note"] == ("CANONICAL HISTORICAL COVERAGE SCOPE NOTE.")
     assert "Campus" in historical["coverage"]["ignored_filter_note"]
     assert "College" in historical["coverage"]["ignored_filter_note"]
 
@@ -518,9 +493,7 @@ def test_print_context_drops_unexpected_student_level_private_values():
     report = synthetic_report(program_count=2)
     report["private_student_number"] = "PRIVATE-STUDENT-NUMBER"
     report["private_email"] = "private-student@example.edu"
-    report["sections"]["sex"]["rows"][0]["private_narrative"] = (
-        "PRIVATE COUNSELING NARRATIVE"
-    )
+    report["sections"]["sex"]["rows"][0]["private_narrative"] = "PRIVATE COUNSELING NARRATIVE"
 
     html, _ = render_document_html(
         "student_profiling_report",
@@ -571,9 +544,7 @@ def test_pdf_does_not_reintroduce_historical_report_terms_or_fake_qms_identity()
 
 def test_filename_is_deterministic_sanitized_and_non_pii():
     assert student_profiling_pdf_filename("2026-2027") == "student-profile-2026-2027.pdf"
-    assert student_profiling_pdf_filename(" AY 2026/2027 ") == (
-        "student-profile-AY-2026-2027.pdf"
-    )
+    assert student_profiling_pdf_filename(" AY 2026/2027 ") == ("student-profile-AY-2026-2027.pdf")
     assert "/" not in student_profiling_pdf_filename("2026/2027")
     assert "PRIVATE-STUDENT" not in student_profiling_pdf_filename("2026-2027")
 
