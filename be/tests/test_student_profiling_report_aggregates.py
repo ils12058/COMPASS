@@ -9,13 +9,12 @@ from compass.accounts.models import StudentLifecycleStatus
 from compass.inventory.models import (
     CivilStatusCategory,
     CurrentReligionCategory,
-    FamilyMemberKind,
-    ParentLifeStatus,
     ParentStatusCategory,
-    PhysicalDisadvantageStatus,
+    PWDStatus,
     Sex,
 )
 from compass.organization.models import AcademicYear
+from compass.student_support.models import ParentLifeStatus
 from compass.reports.services import (
     LEGACY_KEY,
     LEGACY_LABEL,
@@ -253,7 +252,7 @@ def test_not_specified_and_not_recorded_legacy_are_distinct():
         program=program,
         civil_status_category=CivilStatusCategory.NOT_SPECIFIED,
         religion=CurrentReligionCategory.NOT_SPECIFIED,
-        physical=PhysicalDisadvantageStatus.NOT_SPECIFIED,
+        physical=PWDStatus.NOT_SPECIFIED,
         parent_status=ParentStatusCategory.NOT_SPECIFIED,
     )
     make_inventory(
@@ -297,15 +296,13 @@ def test_parent_life_sections_have_independent_student_denominators():
         )
         for index in range(3)
     ]
-    items[1].family_members.filter(kind=FamilyMemberKind.MOTHER).update(
-        life_status=ParentLifeStatus.DECEASED
+    items[1].support_profile.mother_life_status = ParentLifeStatus.DECEASED
+    items[1].support_profile.father_life_status = ParentLifeStatus.DECEASED
+    items[1].support_profile.save(
+        update_fields=["mother_life_status", "father_life_status", "updated_at"]
     )
-    items[1].family_members.filter(kind=FamilyMemberKind.FATHER).update(
-        life_status=ParentLifeStatus.DECEASED
-    )
-    items[2].family_members.filter(kind=FamilyMemberKind.FATHER).update(
-        life_status=ParentLifeStatus.NOT_SPECIFIED
-    )
+    items[2].support_profile.father_life_status = ParentLifeStatus.NOT_SPECIFIED
+    items[2].support_profile.save(update_fields=["father_life_status", "updated_at"])
 
     report = build_student_profiling_report()
     mother = report["sections"]["mother_life_status"]
