@@ -50,7 +50,6 @@ def make_user(*, role: Role | str = "STUDENT", email: str = "student@example.edu
         last_name="User",
     )
 
-
 @pytest.mark.django_db
 def test_custom_user_uses_uuid_email_identity_and_no_django_permission_fields():
     assert settings.AUTH_USER_MODEL == "accounts.User"
@@ -77,7 +76,6 @@ def test_custom_user_uses_uuid_email_identity_and_no_django_permission_fields():
     assert user.check_password("correct horse battery staple")
     assert user.password != "correct horse battery staple"
     assert User.objects.get_by_natural_key("REYNAN@EXAMPLE.EDU") == user
-
 
 @pytest.mark.django_db
 def test_postgresql_expression_constraint_rejects_case_only_email_collision():
@@ -107,7 +105,6 @@ def test_postgresql_expression_constraint_rejects_case_only_email_collision():
                 ]
             )
 
-
 @pytest.mark.django_db
 def test_user_manager_requires_a_known_primary_role():
     with pytest.raises(ValueError, match="primary role is required"):
@@ -125,7 +122,6 @@ def test_user_manager_requires_a_known_primary_role():
             first_name="Unknown",
             last_name="Role",
         )
-
 
 @pytest.mark.django_db
 def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions():
@@ -160,7 +156,6 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert RoleCapability.objects.count() == 63
     assert DesignationCapability.objects.count() == 16
 
-
 @pytest.mark.django_db
 def test_user_has_one_primary_role_and_designation_assignment_is_non_duplicate():
     sync_policy()
@@ -168,13 +163,10 @@ def test_user_has_one_primary_role_and_designation_assignment_is_non_duplicate()
     head = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     UserDesignation.objects.create(user=user, designation=head)
 
-    assert list(user.designations.values_list("code", flat=True)) == [
-        "HEAD_GUIDANCE_COUNSELOR"
-    ]
+    assert list(user.designations.values_list("code", flat=True)) == ["HEAD_GUIDANCE_COUNSELOR"]
     with pytest.raises(IntegrityError):
         with transaction.atomic():
             UserDesignation.objects.create(user=user, designation=head)
-
 
 @pytest.mark.django_db
 def test_effective_capabilities_combine_role_designation_and_overrides():
@@ -302,7 +294,6 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     assert effective_capabilities(user) == frozenset()
     assert not user.has_capability("accounts.view")
 
-
 @pytest.mark.django_db
 def test_student_media_consent_capability_is_explicit():
     sync_policy()
@@ -326,7 +317,6 @@ def test_student_media_consent_capability_is_explicit():
     assert not student.has_capability("call_slips.manage")
     assert not student.has_capability("ecounseling.manage_media_assigned")
 
-
 @pytest.mark.django_db
 def test_override_requires_a_reason_and_known_capability():
     sync_policy()
@@ -345,7 +335,6 @@ def test_override_requires_a_reason_and_known_capability():
             effect=UserCapabilityOverride.Effect.GRANT,
             reason="Should not authorize unknown policy",
         )
-
 
 @pytest.mark.django_db
 def test_create_it_admin_bootstraps_hashed_password_and_is_safe_on_repeat():
@@ -398,7 +387,6 @@ def test_create_it_admin_bootstraps_hashed_password_and_is_safe_on_repeat():
     assert "no changes made" in repeat_output.getvalue()
     assert User.objects.count() == 1
 
-
 @pytest.mark.django_db
 def test_create_it_admin_requires_policy_sync():
     with pytest.raises(CommandError, match="sync_identity_policy first"):
@@ -416,7 +404,6 @@ def test_create_it_admin_requires_policy_sync():
 def test_django_admin_route_remains_unavailable(client):
     response = client.get("/admin/")
     assert response.status_code == 404
-
 
 @pytest.mark.django_db
 def test_student_lifecycle_defaults_constraint_and_current_student_predicate():
@@ -437,7 +424,6 @@ def test_student_lifecycle_defaults_constraint_and_current_student_predicate():
         with transaction.atomic():
             User.objects.filter(pk=student.pk).update(student_lifecycle_status="NOT_VALID")
 
-
 @pytest.mark.django_db
 def test_student_lifecycle_migration_backfills_only_existing_students():
     sync_policy()
@@ -452,7 +438,6 @@ def test_student_lifecycle_migration_backfills_only_existing_students():
     counselor.refresh_from_db()
     assert student.student_lifecycle_status == StudentLifecycleStatus.CURRENT
     assert counselor.student_lifecycle_status is None
-
 
 
 @pytest.mark.django_db
@@ -473,7 +458,6 @@ def test_institutional_officer_is_neutral_and_dpo_adds_no_capabilities():
     assert not officer.has_capability("institutional_designations.manage")
     assert not officer.has_capability("organization.manage")
     assert not officer.has_capability("reports.view")
-
 
 
 def test_designation_role_compatibility_fails_closed_for_unknown_codes():
