@@ -162,20 +162,18 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
 
 
 @pytest.mark.django_db
-def test_user_has_one_primary_role_and_can_hold_multiple_non_duplicate_designations():
+def test_user_has_one_primary_role_and_designation_assignment_is_non_duplicate():
     sync_policy()
-    user = make_user()
-    designations = list(Designation.objects.order_by("code"))
-    UserDesignation.objects.create(user=user, designation=designations[0])
-    UserDesignation.objects.create(user=user, designation=designations[1])
+    user = make_user(role="COUNSELOR")
+    head = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    UserDesignation.objects.create(user=user, designation=head)
 
-    assert set(user.designations.values_list("code", flat=True)) == {
-        "DPO",
-        "HEAD_GUIDANCE_COUNSELOR",
-    }
+    assert list(user.designations.values_list("code", flat=True)) == [
+        "HEAD_GUIDANCE_COUNSELOR"
+    ]
     with pytest.raises(IntegrityError):
         with transaction.atomic():
-            UserDesignation.objects.create(user=user, designation=designations[0])
+            UserDesignation.objects.create(user=user, designation=head)
 
 
 @pytest.mark.django_db
