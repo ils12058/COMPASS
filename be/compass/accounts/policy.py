@@ -90,6 +90,13 @@ CAPABILITY_DEFINITIONS = (
         ),
     ),
     CapabilityDefinition(
+        code="platform_operations.view",
+        name="View platform operations",
+        description=(
+            "View safe COMPASS platform health, configuration diagnostics, and operator guidance."
+        ),
+    ),
+    CapabilityDefinition(
         code="organization.view",
         name="View organization",
         description="View safe organizational structure through an authorized COMPASS workflow.",
@@ -397,6 +404,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "accounts.view",
             "accounts.manage",
             "institutional_designations.manage",
+            "platform_operations.view",
             "organization.view",
             "organization.manage",
             "services.view",
