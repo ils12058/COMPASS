@@ -114,7 +114,7 @@ def test_student_profiling_successful_release_records_safe_audit_event(
     assert response.status_code == 200
     event = AuditEvent.objects.get(action="report.export_released")
     assert event.actor_user_id == head.pk
-    assert event.target_type == "report.student_profiling"
+    assert event.target_type == "reports.studentprofiling"
     assert event.target_id == result.release_context["academic_year_id"]
     assert event.metadata == {
         "report_type": "student_profiling",
