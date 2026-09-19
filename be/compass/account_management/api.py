@@ -39,6 +39,7 @@ from .services import (
     DesignationManagementNotAuthorized,
     DesignationRoleConflict,
     DuplicateEmail,
+    DuplicateInstitutionalId,
     InvalidManagementInput,
     LastAccountManagerError,
     ManagementConfigurationError,
@@ -86,6 +87,7 @@ class StrictSchema(Schema):
 
 class AccountSummaryResponse(StrictSchema):
     id: UUID
+    institutional_id: str | None
     email: str
     first_name: str
     middle_name: str
@@ -115,6 +117,7 @@ class AccountListResponse(StrictSchema):
 
 
 class AccountCreateRequest(StrictSchema):
+    institutional_id: str
     email: str
     first_name: str
     last_name: str
@@ -125,7 +128,7 @@ class AccountCreateRequest(StrictSchema):
 
 
 class IdentityUpdateRequest(StrictSchema):
-    email: str | None = None
+    institutional_id: str | None = None
     first_name: str | None = None
     middle_name: str | None = None
     last_name: str | None = None
@@ -245,6 +248,12 @@ def _raise_management_error(exc: AccountManagementError) -> NoReturn:
         raise APIError(404, "account_not_found", "The requested account was not found.") from exc
     if isinstance(exc, DuplicateEmail):
         raise APIError(409, "email_in_use", "An account with this email already exists.") from exc
+    if isinstance(exc, DuplicateInstitutionalId):
+        raise APIError(
+            409,
+            "institutional_id_in_use",
+            "An account with this Institutional ID already exists.",
+        ) from exc
     if isinstance(exc, LastAccountManagerError):
         raise APIError(
             409,
@@ -457,6 +466,7 @@ def account_create(request, payload: AccountCreateRequest):
             actor=request.auth_user,
             actor_session=request.auth_session,
             context=_context(request),
+            institutional_id=payload.institutional_id,
             email=payload.email,
             first_name=payload.first_name,
             middle_name=payload.middle_name,
