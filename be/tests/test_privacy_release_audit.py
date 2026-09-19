@@ -12,6 +12,10 @@ from compass.accounts.models import Designation, Role, User, UserDesignation
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.good_moral.services import GoodMoralDocumentUnavailable
+from compass.reports.graduate_tracer_xlsx import (
+    GraduateTracerWorkbookUnavailable,
+    GraduateTracerXlsxResult,
+)
 from compass.reports.pdf import (
     StudentProfilingDocumentUnavailable,
     StudentProfilingPdfResult,
@@ -263,3 +267,100 @@ def test_good_moral_render_or_audit_failure_does_not_create_successful_release(m
     assert audit_failed.json()["error"]["code"] == "release_audit_unavailable"
     assert audit_failed["Content-Type"].startswith("application/json")
     assert b"must not escape" not in audit_failed.content
+
+
+@pytest.mark.django_db
+def test_graduate_tracer_xlsx_release_records_only_safe_report_context(monkeypatch):
+    sync_policy()
+    head = make_head()
+    result = GraduateTracerXlsxResult(
+        xlsx_bytes=b"PK synthetic graduate tracer",
+        filename="graduate-tracer-schema-v1.xlsx",
+        release_context={
+            "instrument_schema_version": 1,
+            "submitted_from": "2026-01-01",
+            "submitted_to": "2026-12-31",
+        },
+    )
+    monkeypatch.setattr(
+        "compass.reports.api.render_graduate_tracer_xlsx",
+        lambda **kwargs: result,
+    )
+
+    response = auth_client(head).get(
+        "/api/v1/reports/graduate-tracer/xlsx?submitted_from=2026-01-01&submitted_to=2026-12-31"
+    )
+
+    assert response.status_code == 200
+    event = AuditEvent.objects.get(action="report.export_released")
+    assert event.actor_user_id == head.pk
+    assert event.target_type == "reports.graduatetracer"
+    assert event.target_id == "1"
+    assert event.metadata == {
+        "report_type": "graduate_tracer",
+        "format": "XLSX",
+        "instrument_schema_version": 1,
+        "submitted_from": "2026-01-01",
+        "submitted_to": "2026-12-31",
+    }
+    serialized = str(event.metadata).lower()
+    for forbidden in (
+        "respondent",
+        "employment",
+        "salary",
+        "student_id",
+        "percentage",
+        "count",
+    ):
+        assert forbidden not in serialized
+
+
+@pytest.mark.django_db
+def test_graduate_tracer_denial_or_render_failure_creates_no_release_event(monkeypatch):
+    sync_policy()
+    dpo = make_dpo()
+    denied = auth_client(dpo).get("/api/v1/reports/graduate-tracer/xlsx")
+    assert denied.status_code == 403
+    assert not AuditEvent.objects.filter(action="report.export_released").exists()
+
+    head = make_head()
+    monkeypatch.setattr(
+        "compass.reports.api.render_graduate_tracer_xlsx",
+        lambda **kwargs: (_ for _ in ()).throw(
+            GraduateTracerWorkbookUnavailable("synthetic workbook failure")
+        ),
+    )
+    failed = auth_client(head).get("/api/v1/reports/graduate-tracer/xlsx")
+    assert failed.status_code == 503
+    assert failed.json()["error"]["code"] == "report_workbook_unavailable"
+    assert not AuditEvent.objects.filter(action="report.export_released").exists()
+
+
+@pytest.mark.django_db
+def test_graduate_tracer_audit_failure_blocks_workbook_bytes(monkeypatch):
+    sync_policy()
+    head = make_head()
+    result = GraduateTracerXlsxResult(
+        xlsx_bytes=b"PK must not be released",
+        filename="blocked.xlsx",
+        release_context={
+            "instrument_schema_version": 1,
+            "submitted_from": None,
+            "submitted_to": None,
+        },
+    )
+    monkeypatch.setattr(
+        "compass.reports.api.render_graduate_tracer_xlsx",
+        lambda **kwargs: result,
+    )
+    monkeypatch.setattr(
+        "compass.privacy_governance.releases.record_event",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("audit database unavailable")),
+    )
+
+    response = auth_client(head).get("/api/v1/reports/graduate-tracer/xlsx")
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "release_audit_unavailable"
+    assert response["Content-Type"].startswith("application/json")
+    assert b"must not be released" not in response.content

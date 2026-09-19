@@ -133,6 +133,8 @@ jobs:
           tests/test_good_moral.py
           tests/test_feedback.py
           tests/test_graduate_tracer.py
+          tests/test_graduate_tracer_reports.py
+          tests/test_graduate_tracer_xlsx.py
           tests/test_exit_interviews.py
           tests/test_counseling.py
           tests/test_shared_summaries.py

@@ -174,6 +174,8 @@ EXPECTED_OPERATION_IDS = {
     "reportsGetStudentProfile",
     "reportsDownloadStudentProfilePdf",
     "reportsDownloadStudentProfileXlsx",
+    "reportsGetGraduateTracer",
+    "reportsDownloadGraduateTracerXlsx",
     "goodMoralCreateMyCurrentStudentRequest",
     "goodMoralCreateMyGraduateRequest",
     "goodMoralListMyRequests",
@@ -654,6 +656,23 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _operation(schema, "/api/v1/reports/student-profile", "get")["operationId"] == (
         "reportsGetStudentProfile"
     )
+    graduate_report = schemas["GraduateTracerReportResponse"]["properties"]
+    assert set(graduate_report) == {"report_context", "methodology", "sections"}
+    graduate_context = schemas["GraduateTracerReportContext"]["properties"]
+    assert set(graduate_context) == {
+        "instrument_schema_version",
+        "submitted_from",
+        "submitted_to",
+        "submitted_response_count",
+        "generated_at",
+    }
+    assert schemas["GraduateTracerDistributionRow"]["properties"]["percentage"]["type"] == "number"
+    graduate_operation = _operation(schema, "/api/v1/reports/graduate-tracer", "get")
+    assert graduate_operation["operationId"] == "reportsGetGraduateTracer"
+    assert graduate_operation["tags"] == ["reports"]
+    graduate_xlsx = _operation(schema, "/api/v1/reports/graduate-tracer/xlsx", "get")
+    assert graduate_xlsx["operationId"] == "reportsDownloadGraduateTracerXlsx"
+    assert graduate_xlsx["tags"] == ["reports"]
 
     assert {
         "student_id",
@@ -756,6 +775,21 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         403,
         404,
         409,
+        422,
+        503,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/reports/graduate-tracer", "get")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/reports/graduate-tracer/xlsx", "get")
+    ) >= {
+        200,
+        401,
+        403,
         422,
         503,
     }

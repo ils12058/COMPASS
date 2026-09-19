@@ -6543,6 +6543,77 @@
         "title": "GraduateTracerDetailResponse",
         "type": "object"
       },
+      "GraduateTracerDistributionRow": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "percentage": {
+            "title": "Percentage",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "count",
+          "percentage"
+        ],
+        "title": "GraduateTracerDistributionRow",
+        "type": "object"
+      },
+      "GraduateTracerDistributionSection": {
+        "additionalProperties": false,
+        "properties": {
+          "denominator": {
+            "title": "Denominator",
+            "type": "integer"
+          },
+          "denominator_label": {
+            "title": "Denominator Label",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "multiple_selection": {
+            "title": "Multiple Selection",
+            "type": "boolean"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GraduateTracerDistributionRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "denominator",
+          "denominator_label",
+          "multiple_selection",
+          "rows"
+        ],
+        "title": "GraduateTracerDistributionSection",
+        "type": "object"
+      },
       "GraduateTracerDraftPayload": {
         "additionalProperties": false,
         "properties": {
@@ -6937,6 +7008,50 @@
         "title": "GraduateTracerEducationPayload",
         "type": "object"
       },
+      "GraduateTracerMethodology": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_grouping": {
+            "title": "Academic Grouping",
+            "type": "string"
+          },
+          "drafts": {
+            "title": "Drafts",
+            "type": "string"
+          },
+          "free_text": {
+            "title": "Free Text",
+            "type": "string"
+          },
+          "multi_select": {
+            "title": "Multi Select",
+            "type": "string"
+          },
+          "population": {
+            "title": "Population",
+            "type": "string"
+          },
+          "response_rate": {
+            "title": "Response Rate",
+            "type": "string"
+          },
+          "submission_period": {
+            "title": "Submission Period",
+            "type": "string"
+          }
+        },
+        "required": [
+          "population",
+          "drafts",
+          "submission_period",
+          "response_rate",
+          "academic_grouping",
+          "free_text",
+          "multi_select"
+        ],
+        "title": "GraduateTracerMethodology",
+        "type": "object"
+      },
       "GraduateTracerPageResponse": {
         "additionalProperties": false,
         "properties": {
@@ -6998,6 +7113,167 @@
           "examination_name"
         ],
         "title": "GraduateTracerProfessionalExamPayload",
+        "type": "object"
+      },
+      "GraduateTracerReportContext": {
+        "additionalProperties": false,
+        "properties": {
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "instrument_schema_version": {
+            "title": "Instrument Schema Version",
+            "type": "integer"
+          },
+          "submitted_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted From"
+          },
+          "submitted_response_count": {
+            "title": "Submitted Response Count",
+            "type": "integer"
+          },
+          "submitted_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted To"
+          }
+        },
+        "required": [
+          "instrument_schema_version",
+          "submitted_from",
+          "submitted_to",
+          "submitted_response_count",
+          "generated_at"
+        ],
+        "title": "GraduateTracerReportContext",
+        "type": "object"
+      },
+      "GraduateTracerReportResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "methodology": {
+            "$ref": "#/components/schemas/GraduateTracerMethodology"
+          },
+          "report_context": {
+            "$ref": "#/components/schemas/GraduateTracerReportContext"
+          },
+          "sections": {
+            "$ref": "#/components/schemas/GraduateTracerSections"
+          }
+        },
+        "required": [
+          "report_context",
+          "methodology",
+          "sections"
+        ],
+        "title": "GraduateTracerReportResponse",
+        "type": "object"
+      },
+      "GraduateTracerSections": {
+        "additionalProperties": false,
+        "properties": {
+          "civil_status": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "current_employment_state": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "current_job_level": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "curriculum_relevant_to_first_job": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "employer_business_line": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "first_job_after_college": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "first_job_duration": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "first_job_level": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "first_job_related_to_course": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "first_job_source": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "initial_gross_monthly_earning": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "place_of_work": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "present_employment_status": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "reasons_for_staying_on_job": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "region_of_origin": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "residence_location": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "sex": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "time_to_first_job": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "unemployment_reasons": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          },
+          "useful_competencies": {
+            "$ref": "#/components/schemas/GraduateTracerDistributionSection"
+          }
+        },
+        "required": [
+          "sex",
+          "civil_status",
+          "region_of_origin",
+          "residence_location",
+          "current_employment_state",
+          "unemployment_reasons",
+          "present_employment_status",
+          "employer_business_line",
+          "place_of_work",
+          "first_job_after_college",
+          "reasons_for_staying_on_job",
+          "first_job_related_to_course",
+          "first_job_duration",
+          "first_job_source",
+          "time_to_first_job",
+          "first_job_level",
+          "current_job_level",
+          "initial_gross_monthly_earning",
+          "curriculum_relevant_to_first_job",
+          "useful_competencies"
+        ],
+        "title": "GraduateTracerSections",
         "type": "object"
       },
       "GraduateTracerStatusValue": {
@@ -30808,6 +31084,193 @@
         "summary": "Referrals Update Status",
         "tags": [
           "referrals"
+        ]
+      }
+    },
+    "/api/v1/reports/graduate-tracer": {
+      "get": {
+        "operationId": "reportsGetGraduateTracer",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "submitted_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Submitted From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "submitted_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Submitted To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraduateTracerReportResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Graduate Tracer",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/graduate-tracer/xlsx": {
+      "get": {
+        "operationId": "reportsDownloadGraduateTracerXlsx",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "submitted_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Submitted From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "submitted_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Submitted To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Graduate Tracer Xlsx",
+        "tags": [
+          "reports"
         ]
       }
     },
