@@ -24,7 +24,6 @@ from compass.privacy_governance.models import (
     PrivacyIncidentStatus,
     PrivacyNotificationAssessment,
     PrivacyReview,
-    PrivacyReviewStatus,
     ProcessingActivity,
 )
 from compass.privacy_governance.services import (
