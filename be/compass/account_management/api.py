@@ -7,7 +7,8 @@ from enum import Enum
 from typing import NoReturn
 from uuid import UUID
 
-from ninja import Router, Schema, Status
+from ninja import File, Router, Schema, Status
+from ninja.files import UploadedFile
 from pydantic import ConfigDict
 
 from compass.accounts.models import StudentLifecycleStatus, UserCapabilityOverride
@@ -24,6 +25,8 @@ from .services import (
     AccountNotFound,
     AppointmentRelationshipConflict,
     AvailabilityRelationshipConflict,
+    DesignationManagementNotAuthorized,
+    DesignationRoleConflict,
     DuplicateEmail,
     InvalidManagementInput,
     LastAccountManagerError,
@@ -50,6 +53,15 @@ from .services import (
     set_capability_override,
     set_student_lifecycle,
     update_identity,
+)
+from .csv_import import (
+    MAX_CSV_BYTES,
+    CsvImportConflict,
+    CsvImportInvalidRows,
+    CsvImportMalformed,
+    CsvImportReport,
+    CsvImportTooLarge,
+    provision_accounts_from_csv,
 )
 
 router = Router(tags=["accounts"])
@@ -82,12 +94,14 @@ class AccountSummaryResponse(StrictSchema):
     student_lifecycle_status: StudentLifecycleCode | None
     designations: list[DesignationCode]
     is_active: bool
+    password_configured: bool
+    email_verified: bool
     created_at: datetime
 
 
 class AccountDetailResponse(AccountSummaryResponse):
     updated_at: datetime
-    password_configured: bool
+    email_verified_at: datetime | None
     mfa_enabled: bool
 
 
@@ -167,6 +181,24 @@ class MFAResetResponse(StrictSchema):
     revoked_trusted_session_count: int
 
 
+class CsvImportRowResponse(StrictSchema):
+    row_number: int
+    email: str
+    action: str
+    message: str
+
+
+class CsvImportResponse(StrictSchema):
+    valid: bool
+    committed: bool
+    total_rows: int
+    create_count: int
+    skip_count: int
+    conflict_count: int
+    invalid_count: int
+    rows: list[CsvImportRowResponse]
+
+
 def _require_management(request, *, recent_mfa: bool) -> None:
     user = request.auth_user
     if not user.has_capability("accounts.manage"):
@@ -182,7 +214,31 @@ def _require_management(request, *, recent_mfa: bool) -> None:
             raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
 
 
+def _require_designation_management(request) -> None:
+    _require_management(request, recent_mfa=True)
+    if not request.auth_user.has_capability("institutional_designations.manage"):
+        raise APIError(
+            403,
+            "institutional_designation_permission_denied",
+            (
+                "The accounts.manage and institutional_designations.manage capabilities "
+                "are required."
+            ),
+        )
+
+
 def _raise_management_error(exc: AccountManagementError) -> NoReturn:
+    if isinstance(exc, DesignationManagementNotAuthorized):
+        raise APIError(
+            403,
+            "institutional_designation_permission_denied",
+            (
+                "The accounts.manage and institutional_designations.manage capabilities "
+                "are required."
+            ),
+        ) from exc
+    if isinstance(exc, DesignationRoleConflict):
+        raise APIError(409, "designation_role_conflict", str(exc)) from exc
     if isinstance(exc, AccountNotFound):
         raise APIError(404, "account_not_found", "The requested account was not found.") from exc
     if isinstance(exc, DuplicateEmail):
@@ -244,6 +300,38 @@ def _context(request) -> AuditContext:
     return AuditContext.from_request(request, actor=request.auth_user)
 
 
+def _csv_report(report: CsvImportReport) -> dict[str, object]:
+    return {
+        "valid": report.valid,
+        "committed": report.committed,
+        "total_rows": report.total_rows,
+        "create_count": report.create_count,
+        "skip_count": report.skip_count,
+        "conflict_count": report.conflict_count,
+        "invalid_count": report.invalid_count,
+        "rows": [
+            {
+                "row_number": row.row_number,
+                "email": row.email,
+                "action": row.action,
+                "message": row.message,
+            }
+            for row in report.rows
+        ],
+    }
+
+
+def _csv_issue_details(exc: CsvImportInvalidRows) -> list[dict[str, object]]:
+    return [
+        {
+            "row_number": issue.row_number,
+            "email": issue.email,
+            "message": issue.message,
+        }
+        for issue in exc.issues
+    ]
+
+
 @router.get(
     "",
     response=response_with_errors(AccountListResponse, 401, 403, 422),
@@ -258,6 +346,7 @@ def accounts(
     role: RoleCode | None = None,
     is_active: bool | None = None,
     designation: DesignationCode | None = None,
+    email_verified: bool | None = None,
     search: str | None = None,
 ):
     _require_management(request, recent_mfa=False)
@@ -268,6 +357,7 @@ def accounts(
             role=role.value if role is not None else None,
             is_active=is_active,
             designation=designation.value if designation is not None else None,
+            email_verified=email_verified,
             search=search,
         )
     except AccountManagementError as exc:
@@ -278,6 +368,60 @@ def accounts(
         "page_size": result.page_size,
         "has_next": result.has_next,
     }
+
+
+@router.post(
+    "/imports/csv",
+    response=response_with_errors(CsvImportResponse, 401, 403, 409, 422),
+    auth=session_auth,
+    operation_id="accountsImportCsv",
+    summary="Validate or commit a bounded CSV account import",
+)
+def account_csv_import(
+    request,
+    file: File[UploadedFile],
+    dry_run: bool = True,
+):
+    _require_management(request, recent_mfa=True)
+    data = file.read(MAX_CSV_BYTES + 1)
+    try:
+        report = provision_accounts_from_csv(
+            actor=request.auth_user,
+            actor_session=request.auth_session,
+            context=_context(request),
+            data=data,
+            dry_run=dry_run,
+        )
+    except RecentMFARequired as exc:
+        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+    except CsvImportTooLarge as exc:
+        raise APIError(422, "csv_import_too_large", str(exc)) from exc
+    except CsvImportMalformed as exc:
+        raise APIError(422, "csv_import_malformed", str(exc)) from exc
+    except CsvImportInvalidRows as exc:
+        raise APIError(
+            422,
+            "csv_import_invalid_rows",
+            str(exc),
+            details=_csv_issue_details(exc),
+        ) from exc
+    except CsvImportConflict as exc:
+        raise APIError(
+            409,
+            "csv_import_conflict",
+            str(exc),
+            details=[
+                {
+                    "row_number": row.row_number,
+                    "email": row.email,
+                    "message": row.message,
+                }
+                for row in exc.rows
+            ],
+        ) from exc
+    except AccountManagementError as exc:
+        _raise_management_error(exc)
+    return _csv_report(report)
 
 
 @router.post(
@@ -465,7 +609,7 @@ def account_designations(request, user_id: UUID):
     summary="Assign a managed account designation",
 )
 def account_designation_assign(request, user_id: UUID, designation_code: DesignationCode):
-    _require_management(request, recent_mfa=True)
+    _require_designation_management(request)
     try:
         assign_designation(
             actor=request.auth_user,
@@ -489,7 +633,7 @@ def account_designation_assign(request, user_id: UUID, designation_code: Designa
     summary="Remove a managed account designation",
 )
 def account_designation_remove(request, user_id: UUID, designation_code: DesignationCode):
-    _require_management(request, recent_mfa=True)
+    _require_designation_management(request)
     try:
         remove_designation(
             actor=request.auth_user,
