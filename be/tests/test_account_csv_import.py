@@ -80,6 +80,7 @@ VALID_CSV = (
 )
 
 
+
 @pytest.mark.django_db
 def test_csv_dry_run_is_bounded_validation_only_and_performs_zero_writes():
     sync_policy()
@@ -98,6 +99,7 @@ def test_csv_dry_run_is_bounded_validation_only_and_performs_zero_writes():
     assert {row["action"] for row in body["rows"]} == {"CREATE"}
     assert User.objects.count() == before
     assert not AuditEvent.objects.filter(action="account.csv_imported").exists()
+
 
 
 @pytest.mark.django_db
@@ -141,6 +143,7 @@ def test_csv_commit_creates_multiple_unverified_unpassworded_accounts_and_studen
     serialized_audit = str(list(AuditEvent.objects.values_list("metadata", flat=True)))
     assert "student.one@example.edu" not in serialized_audit
     assert "officer.one@example.edu" not in serialized_audit
+
 
 
 @pytest.mark.django_db
@@ -187,6 +190,7 @@ def test_csv_rejects_password_designation_capability_state_unknown_and_missing_h
     assert User.objects.filter(email="a@example.edu").count() == 0
 
 
+
 @pytest.mark.django_db
 def test_csv_rejects_duplicate_headers_bad_utf8_and_malformed_rows():
     sync_policy()
@@ -213,6 +217,7 @@ def test_csv_rejects_duplicate_headers_bad_utf8_and_malformed_rows():
     assert malformed.json()["error"]["code"] == "csv_import_malformed"
 
 
+
 @pytest.mark.django_db
 def test_csv_dry_run_reports_invalid_rows_and_commit_rejects_them_without_writes():
     sync_policy()
@@ -235,6 +240,7 @@ def test_csv_dry_run_reports_invalid_rows_and_commit_rejects_them_without_writes
     assert not User.objects.filter(email__in=["not-an-email", "valid@example.edu"]).exists()
 
 
+
 @pytest.mark.django_db
 def test_csv_rejects_case_insensitive_duplicate_email_rows():
     sync_policy()
@@ -254,6 +260,7 @@ def test_csv_rejects_case_insensitive_duplicate_email_rows():
     assert committed.status_code == 422
     assert committed.json()["error"]["code"] == "csv_import_duplicate_identity"
     assert not User.objects.filter(email="duplicate@example.edu").exists()
+
 
 
 @pytest.mark.django_db
@@ -283,6 +290,7 @@ def test_csv_existing_identical_active_account_is_skip_and_reimport_is_idempoten
     assert second.json()["skip_count"] == 2
     assert User.objects.filter(email="existing@example.edu").count() == 1
     assert User.objects.filter(email="new@example.edu").count() == 1
+
 
 
 @pytest.mark.django_db
@@ -320,6 +328,7 @@ def test_csv_existing_conflict_blocks_complete_commit(existing_kwargs):
     assert not User.objects.filter(email="would-create@example.edu").exists()
 
 
+
 @pytest.mark.django_db
 def test_csv_commit_revalidates_after_dry_run_and_does_not_use_persisted_batch_state():
     sync_policy()
@@ -345,6 +354,7 @@ def test_csv_commit_revalidates_after_dry_run_and_does_not_use_persisted_batch_s
     assert not User.objects.filter(email="other@example.edu").exists()
 
 
+
 @pytest.mark.django_db
 def test_csv_audit_failure_rolls_back_whole_batch():
     sync_policy()
@@ -366,6 +376,7 @@ def test_csv_audit_failure_rolls_back_whole_batch():
     assert not User.objects.filter(email__contains=".rollback@example.edu").exists()
 
 
+
 @pytest.mark.django_db
 def test_csv_requires_accounts_manage_and_recent_mfa():
     sync_policy()
@@ -382,6 +393,7 @@ def test_csv_requires_accounts_manage_and_recent_mfa():
     assert step_up.json()["error"]["code"] == "recent_mfa_required"
 
 
+
 @pytest.mark.django_db
 def test_csv_size_limit_is_enforced_before_any_account_write():
     sync_policy()
@@ -393,6 +405,7 @@ def test_csv_size_limit_is_enforced_before_any_account_write():
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "csv_import_too_large"
     assert User.objects.count() == 1
+
 
 
 
