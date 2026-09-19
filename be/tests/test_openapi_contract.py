@@ -298,6 +298,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "notifications",
         "document-branding",
         "e-counseling",
+        "platform-operations",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
