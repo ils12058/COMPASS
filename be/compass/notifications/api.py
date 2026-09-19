@@ -75,7 +75,9 @@ def _raise(exc: NotificationError) -> NoReturn:
         raise APIError(404, "notification_not_found", str(exc)) from exc
     if isinstance(exc, InvalidNotificationInput):
         raise APIError(422, "invalid_notification_input", str(exc)) from exc
-    raise APIError(500, "internal_error", "The Notification request could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "The Notification request could not be completed."
+    ) from exc
 
 
 def _view(item: Notification) -> NotificationResponse:
