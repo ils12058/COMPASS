@@ -439,10 +439,7 @@ def test_role_designation_and_override_mutations_update_authority_and_invalidate
     assert {row.target_id for row in access_notifications} == {target.pk}
     assert len({row.source_id for row in access_notifications}) == 5
     assert EmailDelivery.objects.filter(notification__in=access_notifications).count() == 5
-    assert all(
-        "Temporary operational coverage" not in row.message
-        for row in access_notifications
-    )
+    assert all("Temporary operational coverage" not in row.message for row in access_notifications)
 
 
 @pytest.mark.django_db
