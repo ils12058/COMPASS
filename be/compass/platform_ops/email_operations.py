@@ -170,9 +170,7 @@ def list_email_deliveries(
     page, page_size = _validate_page(page=page, page_size=page_size)
     normalized_status = _normalize_status(status)
 
-    queryset = EmailDelivery.objects.select_related("notification").order_by(
-        "-created_at", "-id"
-    )
+    queryset = EmailDelivery.objects.select_related("notification").order_by("-created_at", "-id")
     if normalized_status is not None:
         queryset = queryset.filter(status=normalized_status)
 
@@ -228,9 +226,7 @@ def retry_email_delivery(
                 "the requested EmailDelivery is not eligible for manual retry"
             )
         if not delivery.notification.recipient.is_active:
-            raise EmailDeliveryNotRetryable(
-                "the requested EmailDelivery recipient is not active"
-            )
+            raise EmailDeliveryNotRetryable("the requested EmailDelivery recipient is not active")
 
         previous_failure_code = delivery.failure_code
         delivery.status = EmailDeliveryStatus.PENDING
