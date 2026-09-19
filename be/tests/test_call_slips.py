@@ -33,6 +33,9 @@ from compass.counseling.models import CounselingEncounter, CounselingSharedSumma
 from compass.ecounseling.models import ECounselingRoom
 from compass.institutional_forms.models import FormFamily, FormRevision
 from compass.institutional_forms.services import SUPPORTED_SCHEMA_VERSIONS
+from compass.notifications.delivery import render_notification_email
+from compass.notifications.models import EmailDelivery, Notification, NotificationPreference
+from compass.notifications.policy import NotificationEvent, NotificationPolicy
 from compass.organization.models import (
     Campus,
     College,
@@ -130,6 +133,7 @@ def create_for(
     destination_type: str = "GUIDANCE_OFFICE",
     other_destination: str = "",
     referral_id=None,
+    notify_student: bool = False,
 ):
     return create_call_slip(
         actor=actor,
@@ -139,6 +143,7 @@ def create_for(
         other_destination=other_destination,
         report_at=report_at or (timezone.now() + timedelta(days=1)),
         referral_id=referral_id,
+        notify_student=notify_student,
         idempotency_key=key,
         request_fingerprint=fingerprint,
         context=audit_context(actor),
@@ -483,12 +488,16 @@ def test_create_persistent_idempotency_does_not_store_raw_key():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_concurrent_same_actor_retry_creates_one_call_slip():
+def test_concurrent_same_actor_retry_creates_one_call_slip(monkeypatch):
     sync_policy()
     ensure_call_slip_form_revision()
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
     report_at = timezone.now() + timedelta(hours=2)
+    monkeypatch.setattr(
+        "compass.notifications.services._safe_kick_email_delivery",
+        lambda delivery_id: None,
+    )
 
     def worker():
         close_old_connections()
@@ -501,6 +510,7 @@ def test_concurrent_same_actor_retry_creates_one_call_slip():
                 key="concurrent-retry",
                 fingerprint="a" * 64,
                 report_at=report_at,
+                notify_student=True,
             ).pk
         finally:
             close_old_connections()
@@ -510,6 +520,8 @@ def test_concurrent_same_actor_retry_creates_one_call_slip():
 
     assert len(set(ids)) == 1
     assert CallSlip.objects.count() == 1
+    assert Notification.objects.count() == 1
+    assert EmailDelivery.objects.count() == 1
 
 
 @pytest.mark.django_db
@@ -824,6 +836,10 @@ def test_create_api_uses_server_resolved_issuer_and_does_not_accept_issued_by_ov
     )
     assert created.status_code == 201
     assert created.json()["issued_by"]["id"] == str(counselor.pk)
+    created_id = created.json()["id"]
+    notification = Notification.objects.get(source_id=created_id)
+    assert notification.recipient_id == student.pk
+    assert EmailDelivery.objects.filter(notification=notification).count() == 1
 
     payload["issued_by_id"] = str(counselor.pk)
     rejected = client.post(
@@ -834,3 +850,243 @@ def test_create_api_uses_server_resolved_issuer_and_does_not_accept_issued_by_ov
         **headers,
     )
     assert rejected.status_code == 422
+
+
+
+@pytest.mark.django_db
+def test_live_call_slip_creates_one_mandatory_notification_and_email_delivery():
+    sync_policy()
+    head = make_head("head.notification@example.edu")
+    student = make_user("student.notification@example.edu", "STUDENT")
+
+    item = create_for(
+        head,
+        student,
+        key="live-notification",
+        fingerprint="1" * 64,
+        notify_student=True,
+    )
+
+    notification = Notification.objects.get()
+    delivery = EmailDelivery.objects.get()
+    assert notification.recipient_id == student.pk
+    assert notification.event_code == NotificationEvent.CALL_SLIP_ISSUED
+    assert notification.policy == NotificationPolicy.MANDATORY_OPERATIONAL
+    assert notification.source_type == "call_slip"
+    assert notification.source_id == item.pk
+    assert notification.target_type == "CALL_SLIP"
+    assert notification.target_id == item.pk
+    assert delivery.notification_id == notification.pk
+    assert delivery.status == "PENDING"
+
+
+@pytest.mark.django_db
+def test_historical_back_entry_explicitly_suppresses_notification_regardless_of_report_time():
+    sync_policy()
+    head = make_head("head.history@example.edu")
+    student = make_user("student.history@example.edu", "STUDENT")
+
+    item = create_for(
+        head,
+        student,
+        key="history-no-notify",
+        fingerprint="2" * 64,
+        report_at=timezone.now() - timedelta(days=90),
+        notify_student=False,
+    )
+
+    assert CallSlip.objects.filter(pk=item.pk).exists()
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_call_slip_idempotent_retry_does_not_duplicate_notification_intent():
+    sync_policy()
+    head = make_head("head.retry@example.edu")
+    student = make_user("student.retry@example.edu", "STUDENT")
+
+    first = create_for(
+        head,
+        student,
+        key="notify-retry",
+        fingerprint="3" * 64,
+        notify_student=True,
+    )
+    repeated = create_for(
+        head,
+        student,
+        key="notify-retry",
+        fingerprint="3" * 64,
+        notify_student=True,
+    )
+
+    assert repeated.pk == first.pk
+    assert CallSlip.objects.count() == 1
+    assert Notification.objects.count() == 1
+    assert EmailDelivery.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_call_slip_same_idempotency_key_conflicts_when_notification_intent_changes():
+    sync_policy()
+    head = make_head("head.intent@example.edu")
+    student = make_user("student.intent@example.edu", "STUDENT")
+
+    create_for(
+        head,
+        student,
+        key="intent-conflict",
+        fingerprint="4" * 64,
+        notify_student=True,
+    )
+    with pytest.raises(CallSlipCreationConflict):
+        create_for(
+            head,
+            student,
+            key="intent-conflict",
+            fingerprint="5" * 64,
+            notify_student=False,
+        )
+
+
+@pytest.mark.django_db
+def test_live_call_slip_rolls_back_when_durable_notification_intent_fails(monkeypatch):
+    sync_policy()
+    head = make_head("head.atomic@example.edu")
+    student = make_user("student.atomic@example.edu", "STUDENT")
+
+    def fail_notification(**kwargs):
+        raise RuntimeError("synthetic durable notification persistence failure")
+
+    monkeypatch.setattr(
+        "compass.call_slips.services.create_notification_for_event",
+        fail_notification,
+    )
+    with pytest.raises(RuntimeError, match="durable notification"):
+        create_for(
+            head,
+            student,
+            key="atomic-failure",
+            fingerprint="6" * 64,
+            notify_student=True,
+        )
+
+    assert CallSlip.objects.count() == 0
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
+    assert AuditEvent.objects.filter(action="call_slip.created").count() == 0
+
+
+@pytest.mark.django_db
+def test_mandatory_call_slip_email_bypasses_optional_email_preference():
+    sync_policy()
+    head = make_head("head.preference@example.edu")
+    student = make_user("student.preference@example.edu", "STUDENT")
+    NotificationPreference.objects.create(
+        user=student,
+        optional_email_enabled=False,
+    )
+
+    create_for(
+        head,
+        student,
+        key="mandatory-preference",
+        fingerprint="7" * 64,
+        notify_student=True,
+    )
+
+    notification = Notification.objects.get()
+    assert notification.policy == NotificationPolicy.MANDATORY_OPERATIONAL
+    assert EmailDelivery.objects.filter(notification=notification).count() == 1
+
+
+@pytest.mark.django_db
+def test_call_slip_notification_and_email_do_not_copy_sensitive_source_content():
+    sync_policy()
+    head = make_head("head.privacy@example.edu")
+    student = make_user("student.privacy@example.edu", "STUDENT")
+    referral = create_referral_for(
+        head,
+        student,
+        key="privacy-referral",
+        fingerprint="8" * 64,
+    )
+    record_action(
+        actor=head,
+        referral_id=referral.pk,
+        action_type="SEND_CALL_SLIP_INTERVIEW_PERMIT",
+        occurred_at=timezone.now(),
+        remarks="SENSITIVE-REFERRAL-ACTION-REMARK",
+        context=audit_context(head),
+    )
+
+    create_for(
+        head,
+        student,
+        key="privacy-call-slip",
+        fingerprint="9" * 64,
+        course_year="SENSITIVE-COURSE-YEAR",
+        destination_type="OTHER",
+        other_destination="SENSITIVE-CUSTOM-DESTINATION",
+        referral_id=referral.pk,
+        notify_student=True,
+    )
+
+    notification = Notification.objects.get()
+    rendered = render_notification_email(NotificationEvent.CALL_SLIP_ISSUED)
+    serialized = "\n".join(
+        [
+            notification.title,
+            notification.message,
+            rendered.subject,
+            rendered.text_body,
+            rendered.html_body,
+        ]
+    )
+    for marker in (
+        "SENSITIVE-LINKED-REFERRAL-REASON",
+        "SENSITIVE-REFERRAL-ACTION-REMARK",
+        "SENSITIVE-COURSE-YEAR",
+        "SENSITIVE-CUSTOM-DESTINATION",
+    ):
+        assert marker not in serialized
+        assert marker not in " ".join(
+            str(value)
+            for value in EmailDelivery.objects.values().get().values()
+        )
+
+
+@pytest.mark.django_db
+def test_call_slip_api_fingerprint_includes_notify_student_command_intent():
+    sync_policy()
+    counselor, _, _, student, _ = setup_scope()
+    client = auth_client(counselor)
+    headers = csrf(client)
+    payload = {
+        "student_id": str(student.pk),
+        "course_year": "BSIS 4",
+        "destination_type": "GUIDANCE_OFFICE",
+        "other_destination": "",
+        "report_at": (timezone.now() + timedelta(hours=1)).isoformat(),
+        "referral_id": None,
+        "notify_student": True,
+    }
+    first = client.post(
+        "/api/v1/call-slips",
+        data=json.dumps(payload),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="notify-intent-api",
+        **headers,
+    )
+    assert first.status_code == 201
+
+    payload["notify_student"] = False
+    conflict = client.post(
+        "/api/v1/call-slips",
+        data=json.dumps(payload),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="notify-intent-api",
+        **headers,
+    )
+    assert conflict.status_code == 409
