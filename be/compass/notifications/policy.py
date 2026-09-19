@@ -158,7 +158,8 @@ _EVENT_CATALOG = {
         title="Multi-Factor Authentication Disabled",
         message=(
             "Multi-factor authentication was disabled on your COMPASS account. "
-            "If you did not perform this action, contact the appropriate university office immediately."
+            "If you did not perform this action, contact the appropriate university "
+            "office immediately."
         ),
         email_subject="COMPASS Multi-Factor Authentication Disabled",
         email_template="security_mfa_disabled",
