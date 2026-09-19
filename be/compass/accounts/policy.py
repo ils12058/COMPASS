@@ -105,6 +105,22 @@ CAPABILITY_DEFINITIONS = (
         ),
     ),
     CapabilityDefinition(
+        code="privacy_governance.view",
+        name="View privacy governance",
+        description=(
+            "View COMPASS privacy-governance records and curated privacy/security oversight "
+            "activity."
+        ),
+    ),
+    CapabilityDefinition(
+        code="privacy_governance.manage",
+        name="Manage privacy governance",
+        description=(
+            "Manage COMPASS privacy-governance records, reviews, and privacy incident "
+            "documentation."
+        ),
+    ),
+    CapabilityDefinition(
         code="organization.view",
         name="View organization",
         description="View safe organizational structure through an authorized COMPASS workflow.",
@@ -514,7 +530,12 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "reports.view",
         }
     ),
-    "DPO": frozenset(),
+    "DPO": frozenset(
+        {
+            "privacy_governance.view",
+            "privacy_governance.manage",
+        }
+    ),
 }
 
 DESIGNATION_ROLE_COMPATIBILITY: dict[str, frozenset[str]] = {
