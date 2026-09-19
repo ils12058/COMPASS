@@ -47,6 +47,14 @@ ROLE_DEFINITIONS = (
         name="Student",
         description="Student account role.",
     ),
+    RoleDefinition(
+        code="INSTITUTIONAL_OFFICER",
+        name="Institutional Officer",
+        description=(
+            "Neutral institutional account role for university-level officers without an "
+            "operational GCO or platform-administration identity."
+        ),
+    ),
 )
 
 DESIGNATION_DEFINITIONS = (
@@ -72,6 +80,14 @@ CAPABILITY_DEFINITIONS = (
         code="accounts.manage",
         name="Manage accounts",
         description="Manage account identity and account status through an authorized workflow.",
+    ),
+    CapabilityDefinition(
+        code="institutional_designations.manage",
+        name="Manage institutional designations",
+        description=(
+            "Record or remove high-trust institutional appointments in COMPASS through an "
+            "authorized account-management workflow."
+        ),
     ),
     CapabilityDefinition(
         code="organization.view",
@@ -380,6 +396,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
         {
             "accounts.view",
             "accounts.manage",
+            "institutional_designations.manage",
             "organization.view",
             "organization.manage",
             "services.view",
@@ -454,6 +471,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "graduate_tracer.manage_self",
         }
     ),
+    "INSTITUTIONAL_OFFICER": frozenset(),
 }
 
 # Designations add only the explicitly confirmed domain authorities below. Head Guidance remains
@@ -482,6 +500,11 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     "DPO": frozenset(),
 }
 
+DESIGNATION_ROLE_COMPATIBILITY: dict[str, frozenset[str]] = {
+    "HEAD_GUIDANCE_COUNSELOR": frozenset({"COUNSELOR"}),
+    "DPO": frozenset({"INSTITUTIONAL_OFFICER"}),
+}
+
 ROLE_CODES = frozenset(definition.code for definition in ROLE_DEFINITIONS)
 DESIGNATION_CODES = frozenset(definition.code for definition in DESIGNATION_DEFINITIONS)
 CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINITIONS)
@@ -497,9 +520,27 @@ def _validate_policy() -> None:
     for role_code, capability_codes in ROLE_CAPABILITY_GRANTS.items():
         if role_code not in ROLE_CODES or not capability_codes <= CAPABILITY_CODES:
             raise RuntimeError(f"invalid role capability policy for {role_code}")
+    if set(DESIGNATION_ROLE_COMPATIBILITY) != DESIGNATION_CODES:
+        raise RuntimeError(
+            "designation compatibility policy must define every canonical designation exactly once"
+        )
     for designation_code, capability_codes in DESIGNATION_CAPABILITY_GRANTS.items():
         if designation_code not in DESIGNATION_CODES or not capability_codes <= CAPABILITY_CODES:
             raise RuntimeError(f"invalid designation capability policy for {designation_code}")
+    for designation_code, role_codes in DESIGNATION_ROLE_COMPATIBILITY.items():
+        if designation_code not in DESIGNATION_CODES or not role_codes:
+            raise RuntimeError(f"invalid designation compatibility policy for {designation_code}")
+        if not role_codes <= ROLE_CODES:
+            raise RuntimeError(
+                f"designation compatibility references unknown role for {designation_code}"
+            )
+
+
+def designation_role_compatible(*, designation_code: str, role_code: str) -> bool:
+    if designation_code not in DESIGNATION_CODES or role_code not in ROLE_CODES:
+        return False
+    allowed_roles = DESIGNATION_ROLE_COMPATIBILITY.get(designation_code)
+    return allowed_roles is not None and role_code in allowed_roles
 
 
 _validate_policy()
