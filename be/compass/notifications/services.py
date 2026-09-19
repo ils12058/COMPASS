@@ -51,7 +51,7 @@ def _safe_kick_email_delivery(delivery_id: str) -> None:
 
         deliver_notification_email.delay(delivery_id)
     except Exception:
-        logger.exception(
+        logger.warning(
             "notification email enqueue failed; durable delivery remains recoverable",
             extra={
                 "event": "notification_email_enqueue_failed",
