@@ -542,6 +542,7 @@ def test_incident_audit_failure_rolls_back_creation(monkeypatch):
             summary="Synthetic summary",
             affected_area="Synthetic area",
             personal_data_categories=["Identity"],
+            discovered_at=timezone.now(),
         )
 
     assert PrivacyIncident.objects.count() == 0
