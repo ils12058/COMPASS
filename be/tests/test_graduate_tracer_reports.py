@@ -109,11 +109,7 @@ def make_response(
     defaults.update(values)
     return GraduateTracerResponse.objects.create(
         student=student,
-        status=(
-            GraduateTracerStatus.SUBMITTED
-            if submitted
-            else GraduateTracerStatus.DRAFT
-        ),
+        status=(GraduateTracerStatus.SUBMITTED if submitted else GraduateTracerStatus.DRAFT),
         submitted_at=(submitted_at or timezone.now()) if submitted else None,
         **defaults,
     )
@@ -172,9 +168,7 @@ def test_population_is_submitted_schema_v1_history_and_ignores_later_account_sta
 
     submitted.student.is_active = False
     submitted.student.student_lifecycle_status = StudentLifecycleStatus.FORMER
-    submitted.student.save(
-        update_fields=["is_active", "student_lifecycle_status", "updated_at"]
-    )
+    submitted.student.save(update_fields=["is_active", "student_lifecycle_status", "updated_at"])
 
     report = build_graduate_tracer_report()
     assert report["report_context"]["submitted_response_count"] == 1
@@ -219,18 +213,12 @@ def test_submission_period_filters_are_inclusive_local_dates_not_cohorts():
     client = auth_client(head)
 
     bounded = client.get(
-        "/api/v1/reports/graduate-tracer"
-        "?submitted_from=2026-09-01&submitted_to=2026-09-30"
+        "/api/v1/reports/graduate-tracer?submitted_from=2026-09-01&submitted_to=2026-09-30"
     )
-    from_only = client.get(
-        "/api/v1/reports/graduate-tracer?submitted_from=2026-10-01"
-    )
-    to_only = client.get(
-        "/api/v1/reports/graduate-tracer?submitted_to=2026-08-31"
-    )
+    from_only = client.get("/api/v1/reports/graduate-tracer?submitted_from=2026-10-01")
+    to_only = client.get("/api/v1/reports/graduate-tracer?submitted_to=2026-08-31")
     invalid = client.get(
-        "/api/v1/reports/graduate-tracer"
-        "?submitted_from=2026-10-01&submitted_to=2026-09-01"
+        "/api/v1/reports/graduate-tracer?submitted_from=2026-10-01&submitted_to=2026-09-01"
     )
 
     assert bounded.status_code == 200
@@ -418,10 +406,7 @@ def test_controlled_report_rows_reuse_schema_v1_choice_keys_and_labels():
         "useful_competencies": GTSUsefulCompetency,
     }
     for section_name, choices in mapping.items():
-        actual = [
-            (item["key"], item["label"])
-            for item in report["sections"][section_name]["rows"]
-        ]
+        actual = [(item["key"], item["label"]) for item in report["sections"][section_name]["rows"]]
         assert actual == list(choices.choices)
 
 
