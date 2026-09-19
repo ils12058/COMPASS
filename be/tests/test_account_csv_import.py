@@ -148,13 +148,11 @@ def test_csv_commit_creates_multiple_unverified_unpassworded_accounts_and_studen
     ("header", "code"),
     [
         (
-            b"email,first_name,last_name,role,password\n"
-            b"a@example.edu,A,User,STUDENT,secret\n",
+            b"email,first_name,last_name,role,password\na@example.edu,A,User,STUDENT,secret\n",
             "csv_import_unsupported_headers",
         ),
         (
-            b"email,first_name,last_name,role,designation\n"
-            b"a@example.edu,A,User,STUDENT,DPO\n",
+            b"email,first_name,last_name,role,designation\na@example.edu,A,User,STUDENT,DPO\n",
             "csv_import_unsupported_headers",
         ),
         (
@@ -163,13 +161,11 @@ def test_csv_commit_creates_multiple_unverified_unpassworded_accounts_and_studen
             "csv_import_unsupported_headers",
         ),
         (
-            b"email,first_name,last_name,role,is_active\n"
-            b"a@example.edu,A,User,STUDENT,false\n",
+            b"email,first_name,last_name,role,is_active\na@example.edu,A,User,STUDENT,false\n",
             "csv_import_unsupported_headers",
         ),
         (
-            b"email,first_name,last_name,role,unexpected\n"
-            b"a@example.edu,A,User,STUDENT,x\n",
+            b"email,first_name,last_name,role,unexpected\na@example.edu,A,User,STUDENT,x\n",
             "csv_import_unsupported_headers",
         ),
         (
