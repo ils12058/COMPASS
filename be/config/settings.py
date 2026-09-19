@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "compass.call_slips",
     "compass.notifications",
     "compass.ecounseling",
+    "compass.platform_ops",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
