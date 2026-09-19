@@ -1010,6 +1010,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "graduate_tracer.manage_self",
             "graduate_tracer.view",
             "graduate_tracer.view_self",
+            "institutional_designations.manage",
             "institutional_forms.manage",
             "institutional_forms.view",
             "inventory.manage_self",
