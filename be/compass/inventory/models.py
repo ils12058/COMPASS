@@ -38,18 +38,9 @@ class CurrentReligionCategory(models.TextChoices):
     NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
 
 
-class PhysicalDisadvantageStatus(models.TextChoices):
-    NONE = "NONE", "None"
-    HAS_PHYSICAL_DISADVANTAGE = (
-        "HAS_PHYSICAL_DISADVANTAGE",
-        "Has physical disadvantage",
-    )
-    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
-
-
-class ParentLifeStatus(models.TextChoices):
-    LIVING = "LIVING", "Living"
-    DECEASED = "DECEASED", "Deceased"
+class PWDStatus(models.TextChoices):
+    PWD = "PWD", "PWD"
+    NON_PWD = "NON_PWD", "Non-PWD"
     NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
 
 
@@ -324,9 +315,9 @@ class StudentInventory(models.Model):
     height = models.CharField(max_length=64, blank=True, default="")
     weight = models.CharField(max_length=64, blank=True, default="")
     physical_disadvantage = models.TextField(blank=True, default="")
-    physical_disadvantage_status = models.CharField(
+    pwd_status = models.CharField(
         max_length=32,
-        choices=PhysicalDisadvantageStatus.choices,
+        choices=PWDStatus.choices,
         null=True,
         blank=True,
     )
@@ -459,12 +450,6 @@ class InventoryFamilyMember(models.Model):
     email_address = models.EmailField(blank=True, default="")
     educational_attainment = models.CharField(max_length=160, blank=True, default="")
     occupation = models.CharField(max_length=160, blank=True, default="")
-    life_status = models.CharField(
-        max_length=24,
-        choices=ParentLifeStatus.choices,
-        null=True,
-        blank=True,
-    )
     occupation_category = models.CharField(
         max_length=32,
         choices=OccupationCategory.choices,
