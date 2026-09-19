@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
-from typing import Callable
 
 import redis
 from django.conf import settings
@@ -43,7 +44,7 @@ class DiagnosticCheck:
 @dataclass(frozen=True, slots=True)
 class PlatformHealth:
     status: DiagnosticStatus
-    timestamp: object
+    timestamp: datetime
     summary: str
     checks: tuple[DiagnosticCheck, ...]
 
@@ -64,7 +65,7 @@ class ConfigurationCategory:
 
 @dataclass(frozen=True, slots=True)
 class EnvironmentDiagnostics:
-    timestamp: object
+    timestamp: datetime
     startup_limitation: str
     categories: tuple[ConfigurationCategory, ...]
 
