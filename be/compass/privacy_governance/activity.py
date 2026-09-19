@@ -40,6 +40,8 @@ from compass.authentication.actions import (
     AUTH_PASSWORD_RESET,
 )
 
+from .releases import GOOD_MORAL_TARGET_TYPE, STUDENT_PROFILING_TARGET_TYPE
+
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_PAGE_NUMBER = 100_000
@@ -124,7 +126,7 @@ def _base(
 
 
 def _report_release(event: AuditEvent) -> PrivacyActivityItem | None:
-    if event.target_type != "report.student_profiling":
+    if event.target_type != STUDENT_PROFILING_TARGET_TYPE:
         return None
     resource = _uuid_string(event.target_id)
     if resource is None:
@@ -169,7 +171,7 @@ def _report_release(event: AuditEvent) -> PrivacyActivityItem | None:
 
 
 def _document_release(event: AuditEvent) -> PrivacyActivityItem | None:
-    if event.target_type != "goodmoral.request":
+    if event.target_type != GOOD_MORAL_TARGET_TYPE:
         return None
     resource = _uuid_string(event.target_id)
     if resource is None:
