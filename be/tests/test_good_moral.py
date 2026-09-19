@@ -41,6 +41,7 @@ from compass.good_moral.services import (
 from compass.institutional_forms.models import FormRevision
 from compass.institutional_forms.services import activate_form_revision
 from compass.inventory.models import StudentInventory
+from compass.notifications.models import EmailDelivery, Notification, NotificationPreference
 from compass.organization.models import AcademicYear, Campus, College, StudentAffiliation
 
 
@@ -525,6 +526,27 @@ def test_f4_issue_rechecks_current_lifecycle_and_duplicate_issue_is_idempotent()
     assert issued.document_template_key == "good_moral_current_student"
     assert issued.document_template_version == 1
 
+    issued_notification = Notification.objects.get(
+        recipient=student,
+        event_code="good_moral.issued",
+        source_type="good_moral_request",
+        source_id=item.pk,
+    )
+    feedback_notification = Notification.objects.get(
+        recipient=student,
+        event_code="feedback.invitation",
+        source_type="good_moral_request",
+        source_id=item.pk,
+    )
+    assert issued_notification.policy == "MANDATORY_OPERATIONAL"
+    assert issued_notification.target_type == "GOOD_MORAL"
+    assert issued_notification.target_id == item.pk
+    assert feedback_notification.policy == "OPTIONAL_INFORMATIONAL"
+    assert feedback_notification.target_type == "FEEDBACK"
+    assert feedback_notification.target_id is None
+    assert EmailDelivery.objects.filter(notification=issued_notification).exists()
+    assert EmailDelivery.objects.filter(notification=feedback_notification).exists()
+
     repeated = issue_request(
         actor=counselor,
         request_id=item.pk,
@@ -545,6 +567,44 @@ def test_f4_issue_rechecks_current_lifecycle_and_duplicate_issue_is_idempotent()
         ).count()
         == 1
     )
+    assert Notification.objects.filter(
+        recipient=student,
+        event_code="good_moral.issued",
+        source_id=item.pk,
+    ).count() == 1
+    assert Notification.objects.filter(
+        recipient=student,
+        event_code="feedback.invitation",
+        source_id=item.pk,
+    ).count() == 1
+
+
+@pytest.mark.django_db
+def test_feedback_invitation_email_respects_optional_preference_but_issuance_email_does_not():
+    sync_policy()
+    student = make_user("issue.preference@example.edu")
+    counselor = make_user("issue.preference.counselor@example.edu", role="COUNSELOR")
+    item, _inventory = make_current_request(student)
+    NotificationPreference.objects.create(user=student, optional_email_enabled=False)
+
+    issue_request(
+        actor=counselor,
+        request_id=item.pk,
+        context=AuditContext.user(counselor),
+    )
+
+    issued_notification = Notification.objects.get(
+        recipient=student,
+        event_code="good_moral.issued",
+        source_id=item.pk,
+    )
+    feedback_notification = Notification.objects.get(
+        recipient=student,
+        event_code="feedback.invitation",
+        source_id=item.pk,
+    )
+    assert EmailDelivery.objects.filter(notification=issued_notification).exists()
+    assert not EmailDelivery.objects.filter(notification=feedback_notification).exists()
 
 
 @pytest.mark.django_db
