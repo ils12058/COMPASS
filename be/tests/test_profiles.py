@@ -129,8 +129,8 @@ def test_user_directly_owns_minimal_reusable_profile_fields_without_personalprof
 @pytest.mark.django_db
 def test_profile_foundation_tracks_current_capability_policy_counts():
     sync_policy()
-    assert Capability.objects.count() == 58
-    assert RoleCapability.objects.count() == 63
+    assert Capability.objects.count() == 59
+    assert RoleCapability.objects.count() == 64
     assert DesignationCapability.objects.count() == 16
     assert not Capability.objects.filter(code__startswith="profile.").exists()
 
@@ -192,7 +192,7 @@ def test_every_active_primary_role_can_get_only_its_own_profile(role_code):
 @pytest.mark.django_db
 def test_dpo_designation_has_self_profile_only_and_no_generic_profile_directory():
     sync_policy()
-    dpo = make_user("dpo@example.edu", role="IT_ADMIN")
+    dpo = make_user("dpo@example.edu", role="INSTITUTIONAL_OFFICER")
     other = make_user("other@example.edu")
     UserDesignation.objects.create(
         user=dpo,
@@ -232,7 +232,7 @@ def test_unauthenticated_profile_requests_are_rejected():
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "role_code",
-    ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN"],
+    ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER"],
 )
 def test_each_role_can_patch_own_profile_without_recent_mfa_or_session_rotation(role_code):
     sync_policy()

@@ -25,6 +25,7 @@ from compass.inventory.api import router as inventory_router
 from compass.notifications.api import router as notifications_router
 from compass.organization.academic_years_api import router as academic_years_router
 from compass.organization.api import router as organization_router
+from compass.platform_ops.api import router as platform_operations_router
 from compass.referrals.api import router as referrals_router
 from compass.reports.api import router as reports_router
 from compass.routine_interviews.api import router as routine_interviews_router
@@ -133,6 +134,13 @@ api = NinjaAPI(
                 "name": "e-counseling",
                 "description": "Secure ONLINE Counseling workspace and Daily provider boundary.",
             },
+            {
+                "name": "platform-operations",
+                "description": (
+                    "Capability-authorized COMPASS platform health, configuration diagnostics, "
+                    "and operator guidance."
+                ),
+            },
         ]
     },
     openapi_url="/openapi.json" if settings.API_DOCS_ENABLED else None,
@@ -160,6 +168,7 @@ api.add_router("/routine-interviews", routine_interviews_router)
 api.add_router("/referrals", referrals_router)
 api.add_router("/call-slips", call_slips_router)
 api.add_router("/notifications", notifications_router)
+api.add_router("/platform", platform_operations_router)
 api.add_router("/document-branding", document_branding_router)
 api.add_router("/e-counseling", ecounseling_router)
 api.add_router("/integrations/daily", daily_router)

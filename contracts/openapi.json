@@ -1642,6 +1642,7 @@
           "inventory.view_self",
           "organization.manage",
           "organization.view",
+          "platform_operations.view",
           "referrals.manage",
           "referrals.view",
           "reports.view",
@@ -1987,6 +1988,78 @@
         },
         "title": "CollegeUpdateRequest",
         "type": "object"
+      },
+      "CommandCatalogEntryResponse": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/CommandCategory"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "invocation": {
+            "title": "Invocation",
+            "type": "string"
+          },
+          "mutates_state": {
+            "title": "Mutates State",
+            "type": "boolean"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "category",
+          "display_name",
+          "purpose",
+          "invocation",
+          "mutates_state",
+          "notes"
+        ],
+        "title": "CommandCatalogEntryResponse",
+        "type": "object"
+      },
+      "CommandCatalogResponse": {
+        "properties": {
+          "commands": {
+            "items": {
+              "$ref": "#/components/schemas/CommandCatalogEntryResponse"
+            },
+            "title": "Commands",
+            "type": "array"
+          },
+          "execution_supported": {
+            "title": "Execution Supported",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "execution_supported",
+          "commands"
+        ],
+        "title": "CommandCatalogResponse",
+        "type": "object"
+      },
+      "CommandCategory": {
+        "enum": [
+          "BOOTSTRAP",
+          "DEPLOYMENT",
+          "DIAGNOSTIC"
+        ],
+        "title": "CommandCategory",
+        "type": "string"
       },
       "ConsentDecisionRequest": {
         "additionalProperties": false,
@@ -3351,6 +3424,17 @@
         "title": "DesignationListResponse",
         "type": "object"
       },
+      "DiagnosticStatus": {
+        "enum": [
+          "HEALTHY",
+          "DEGRADED",
+          "UNAVAILABLE",
+          "DISABLED",
+          "NOT_CHECKED"
+        ],
+        "title": "DiagnosticStatus",
+        "type": "string"
+      },
       "DirectRoutineEntryMode": {
         "enum": [
           "WALK_IN",
@@ -3898,6 +3982,65 @@
           "is_default"
         ],
         "title": "EligibleCounselorResponse",
+        "type": "object"
+      },
+      "EnvironmentCategoryResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "$ref": "#/components/schemas/EnvironmentValueResponse"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "values"
+        ],
+        "title": "EnvironmentCategoryResponse",
+        "type": "object"
+      },
+      "EnvironmentValueResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "value"
+        ],
+        "title": "EnvironmentValueResponse",
         "type": "object"
       },
       "ExceptionCreateRequest": {
@@ -6741,6 +6884,33 @@
         "title": "HandednessValue",
         "type": "string"
       },
+      "HealthCheckResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DiagnosticStatus"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "status",
+          "summary"
+        ],
+        "title": "HealthCheckResponse",
+        "type": "object"
+      },
       "HealthResponse": {
         "properties": {
           "checks": {
@@ -9349,6 +9519,64 @@
         ],
         "title": "PhysicalDisadvantageStatusValue",
         "type": "string"
+      },
+      "PlatformEnvironmentResponse": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/EnvironmentCategoryResponse"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "startup_limitation": {
+            "title": "Startup Limitation",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timestamp",
+          "startup_limitation",
+          "categories"
+        ],
+        "title": "PlatformEnvironmentResponse",
+        "type": "object"
+      },
+      "PlatformHealthResponse": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/HealthCheckResponse"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DiagnosticStatus"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "timestamp",
+          "summary",
+          "checks"
+        ],
+        "title": "PlatformHealthResponse",
+        "type": "object"
       },
       "PostGraduationFieldValue": {
         "enum": [
@@ -13055,6 +13283,7 @@
                 "inventory.view_self",
                 "organization.manage",
                 "organization.view",
+                "platform_operations.view",
                 "referrals.manage",
                 "referrals.view",
                 "reports.view",
@@ -13210,6 +13439,7 @@
                 "inventory.view_self",
                 "organization.manage",
                 "organization.view",
+                "platform_operations.view",
                 "referrals.manage",
                 "referrals.view",
                 "reports.view",
@@ -26544,6 +26774,147 @@
         ]
       }
     },
+    "/api/v1/platform/commands": {
+      "get": {
+        "operationId": "platformOperationsCommandCatalog",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandCatalogResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "List approved operator command guidance",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
+    "/api/v1/platform/environment": {
+      "get": {
+        "operationId": "platformOperationsEnvironment",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformEnvironmentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inspect safe resolved platform configuration",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
+    "/api/v1/platform/health": {
+      "get": {
+        "operationId": "platformOperationsHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformHealthResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inspect safe platform dependency health",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
     "/api/v1/referrals": {
       "get": {
         "operationId": "referralsList",
@@ -28929,6 +29300,10 @@
     {
       "description": "Secure ONLINE Counseling workspace and Daily provider boundary.",
       "name": "e-counseling"
+    },
+    {
+      "description": "Capability-authorized COMPASS platform health, configuration diagnostics, and operator guidance.",
+      "name": "platform-operations"
     }
   ]
 }

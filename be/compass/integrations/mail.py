@@ -10,6 +10,15 @@ from django.core.mail import EmailMultiAlternatives
 
 
 class Mailer:
+    def probe_connection(self) -> None:
+        """Open and close the configured mail transport without sending a message."""
+
+        backend = mail.mailers["default"]
+        try:
+            backend.open()
+        finally:
+            backend.close()
+
     def send(
         self,
         subject: str,

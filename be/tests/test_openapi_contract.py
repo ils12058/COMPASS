@@ -22,6 +22,9 @@ CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 EXPECTED_OPERATION_IDS = {
     "healthLive",
     "healthReady",
+    "platformOperationsHealth",
+    "platformOperationsEnvironment",
+    "platformOperationsCommandCatalog",
     "authGetCsrf",
     "authLogin",
     "authRequestPasswordAccess",
@@ -295,6 +298,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "notifications",
         "document-branding",
         "e-counseling",
+        "platform-operations",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -1017,6 +1021,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "inventory.view_self",
             "organization.manage",
             "organization.view",
+            "platform_operations.view",
             "reports.view",
             "referrals.manage",
             "referrals.view",
@@ -1107,3 +1112,43 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         r"turnstile_secret|encryption_key|daily_api_key|daily_webhook_hmac|share_token|s3_key)",
         serialized,
     )
+
+
+def test_platform_operations_openapi_is_get_only_read_only_and_secret_safe() -> None:
+    schema = _generated_schema()
+
+    expected = {
+        "/api/v1/platform/health": "platformOperationsHealth",
+        "/api/v1/platform/environment": "platformOperationsEnvironment",
+        "/api/v1/platform/commands": "platformOperationsCommandCatalog",
+    }
+    for path, operation_id in expected.items():
+        path_item = schema["paths"][path]
+        assert set(path_item) == {"get"}
+        assert path_item["get"]["operationId"] == operation_id
+        assert path_item["get"]["tags"] == ["platform-operations"]
+        assert _response_statuses(path_item["get"]) >= {200, 401, 403}
+
+    assert "/api/v1/platform/commands/run" not in schema["paths"]
+    serialized = json.dumps(
+        {
+            name: value
+            for name, value in schema["components"]["schemas"].items()
+            if name.startswith(("Platform", "Environment", "HealthCheck", "CommandCatalog"))
+        }
+    ).lower()
+    for forbidden in (
+        "secret_key",
+        "password",
+        "redis_url",
+        "bucket_name",
+        "access_key",
+        "smtp_host",
+        "smtp_username",
+        "daily_api_key",
+        "daily_webhook_hmac",
+        "turnstile_secret",
+        "totp_encryption_key",
+        "token",
+    ):
+        assert forbidden not in serialized
