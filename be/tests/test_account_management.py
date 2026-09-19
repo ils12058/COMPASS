@@ -590,7 +590,7 @@ def test_role_change_blocks_provider_availability_until_configuration_is_removed
 
     blocked = client.put(
         f"/api/v1/accounts/{provider.pk}/role",
-        data=json.dumps({"role": "STUDENT"}),
+        data=json.dumps({"role": "INSTITUTIONAL_OFFICER"}),
         content_type="application/json",
         **csrf_headers(client),
     )
@@ -602,13 +602,13 @@ def test_role_change_blocks_provider_availability_until_configuration_is_removed
     ProviderAvailabilityWindow.objects.filter(provider=provider).delete()
     changed = client.put(
         f"/api/v1/accounts/{provider.pk}/role",
-        data=json.dumps({"role": "STUDENT"}),
+        data=json.dumps({"role": "INSTITUTIONAL_OFFICER"}),
         content_type="application/json",
         **csrf_headers(client),
     )
     assert changed.status_code == 200
     provider.refresh_from_db()
-    assert provider.role.code == "STUDENT"
+    assert provider.role.code == "INSTITUTIONAL_OFFICER"
 
 
 @pytest.mark.django_db
