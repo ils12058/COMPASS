@@ -13,11 +13,11 @@ from django.utils import timezone
 
 from compass.accounts.models import Role, StudentLifecycleStatus, User
 from compass.audit.models import AuditEvent
-from compass.authentication.actions import AUTH_MFA_RECOVERY_CODES_REGENERATED
 from compass.authentication.abuse import (
     AuthenticationRateLimited,
     check_auth_rate_limit,
 )
+from compass.authentication.actions import AUTH_MFA_RECOVERY_CODES_REGENERATED
 from compass.authentication.crypto import decrypt_totp_secret, encrypt_totp_secret
 from compass.authentication.email_otp import (
     EmailOTPInvalid,
