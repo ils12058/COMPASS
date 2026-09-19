@@ -68,6 +68,7 @@ def healthy_platform_health() -> PlatformHealth:
 def test_platform_operations_capability_is_it_admin_baseline_only():
     sync_policy()
     assert "platform_operations.view" in CAPABILITY_CODES
+    assert "platform_operations.manage" in CAPABILITY_CODES
 
     admin = make_user("platform-admin@example.edu", "IT_ADMIN")
     counselor = make_user("platform-counselor@example.edu", "COUNSELOR")
@@ -86,8 +87,10 @@ def test_platform_operations_capability_is_it_admin_baseline_only():
     )
 
     assert admin.has_capability("platform_operations.view")
+    assert admin.has_capability("platform_operations.manage")
     for user in (counselor, staff, student, officer, dpo, head):
         assert not user.has_capability("platform_operations.view")
+        assert not user.has_capability("platform_operations.manage")
 
 
 @pytest.mark.django_db

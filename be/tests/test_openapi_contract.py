@@ -25,6 +25,15 @@ EXPECTED_OPERATION_IDS = {
     "platformOperationsHealth",
     "platformOperationsEnvironment",
     "platformOperationsCommandCatalog",
+    "platformOperationsGetMaintenance",
+    "platformOperationsEnableMaintenance",
+    "platformOperationsDisableMaintenance",
+    "platformOperationsScheduleMaintenance",
+    "platformOperationsCancelMaintenanceSchedule",
+    "platformOperationsGetEmailDeliverySummary",
+    "platformOperationsListEmailDeliveries",
+    "platformOperationsRetryEmailDelivery",
+    "platformOperationsListActivity",
     "authGetCsrf",
     "authLogin",
     "authRequestPasswordAccess",
@@ -1021,6 +1030,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "inventory.view_self",
             "organization.manage",
             "organization.view",
+            "platform_operations.manage",
             "platform_operations.view",
             "reports.view",
             "referrals.manage",
@@ -1114,29 +1124,73 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     )
 
 
-def test_platform_operations_openapi_is_get_only_read_only_and_secret_safe() -> None:
+def test_platform_operations_openapi_runtime_surface_and_secret_safety() -> None:
     schema = _generated_schema()
 
-    expected = {
+    read_only = {
         "/api/v1/platform/health": "platformOperationsHealth",
         "/api/v1/platform/environment": "platformOperationsEnvironment",
         "/api/v1/platform/commands": "platformOperationsCommandCatalog",
+        "/api/v1/platform/maintenance": "platformOperationsGetMaintenance",
+        "/api/v1/platform/email-deliveries/summary": "platformOperationsGetEmailDeliverySummary",
+        "/api/v1/platform/email-deliveries": "platformOperationsListEmailDeliveries",
+        "/api/v1/platform/activity": "platformOperationsListActivity",
     }
-    for path, operation_id in expected.items():
+    for path, operation_id in read_only.items():
         path_item = schema["paths"][path]
         assert set(path_item) == {"get"}
         assert path_item["get"]["operationId"] == operation_id
         assert path_item["get"]["tags"] == ["platform-operations"]
         assert _response_statuses(path_item["get"]) >= {200, 401, 403}
 
+    mutations = {
+        ("/api/v1/platform/maintenance/enable", "post"): (
+            "platformOperationsEnableMaintenance",
+            {200, 401, 403, 409, 422},
+        ),
+        ("/api/v1/platform/maintenance/disable", "post"): (
+            "platformOperationsDisableMaintenance",
+            {200, 401, 403, 409},
+        ),
+        ("/api/v1/platform/maintenance/schedule", "put"): (
+            "platformOperationsScheduleMaintenance",
+            {200, 401, 403, 409, 422},
+        ),
+        ("/api/v1/platform/maintenance/schedule", "delete"): (
+            "platformOperationsCancelMaintenanceSchedule",
+            {200, 401, 403, 404},
+        ),
+        ("/api/v1/platform/email-deliveries/{delivery_id}/retry", "post"): (
+            "platformOperationsRetryEmailDelivery",
+            {200, 401, 403, 404, 409},
+        ),
+    }
+    for (path, method), (operation_id, statuses) in mutations.items():
+        operation = _operation(schema, path, method)
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["platform-operations"]
+        assert _response_statuses(operation) >= statuses
+
     assert "/api/v1/platform/commands/run" not in schema["paths"]
-    serialized = json.dumps(
-        {
-            name: value
-            for name, value in schema["components"]["schemas"].items()
-            if name.startswith(("Platform", "Environment", "HealthCheck", "CommandCatalog"))
-        }
-    ).lower()
+    assert "/api/v1/platform/email-deliveries/retry" not in schema["paths"]
+
+    schemas = schema["components"]["schemas"]
+    safe_schema_names = {
+        name
+        for name in schemas
+        if name.startswith(
+            (
+                "Platform",
+                "Environment",
+                "HealthCheck",
+                "CommandCatalog",
+                "Maintenance",
+                "EmailDelivery",
+                "TechnicalActivity",
+            )
+        )
+    }
+    serialized = json.dumps({name: schemas[name] for name in safe_schema_names}).lower()
     for forbidden in (
         "secret_key",
         "password",
@@ -1149,6 +1203,14 @@ def test_platform_operations_openapi_is_get_only_read_only_and_secret_safe() -> 
         "daily_webhook_hmac",
         "turnstile_secret",
         "totp_encryption_key",
-        "token",
+        "claim_token",
+        "claim_expires_at",
+        "recipient_email",
+        "recipient_name",
+        "notification_message",
+        "notification_title",
+        "email_body",
+        "rendered_html",
+        "metadata",
     ):
         assert forbidden not in serialized
