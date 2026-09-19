@@ -99,9 +99,7 @@ def _clean_message(value: str) -> str:
 
 
 def _get_or_create_configuration() -> MaintenanceConfiguration:
-    item, _created = MaintenanceConfiguration.objects.get_or_create(
-        pk=MAINTENANCE_SINGLETON_ID
-    )
+    item, _created = MaintenanceConfiguration.objects.get_or_create(pk=MAINTENANCE_SINGLETON_ID)
     return item
 
 
@@ -172,9 +170,7 @@ def get_maintenance_snapshot(*, now: datetime | None = None) -> MaintenanceSnaps
 
 def _locked_configuration() -> MaintenanceConfiguration:
     _get_or_create_configuration()
-    return MaintenanceConfiguration.objects.select_for_update().get(
-        pk=MAINTENANCE_SINGLETON_ID
-    )
+    return MaintenanceConfiguration.objects.select_for_update().get(pk=MAINTENANCE_SINGLETON_ID)
 
 
 def _validate_model(item: MaintenanceConfiguration) -> None:
