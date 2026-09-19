@@ -1,0 +1,39 @@
+name: XLSX dependency bootstrap
+
+on:
+  push:
+    branches:
+      - feature/report-xlsx-export-foundation
+    paths:
+      - .github/workflows/xlsx-dependency-bootstrap.yml
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: be
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/report-xlsx-export-foundation
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Add openpyxl with uv
+        run: uv add "openpyxl==3.1.5"
+      - name: Verify lock
+        run: uv lock --check
+      - name: Remove bootstrap workflow and commit dependency
+        working-directory: .
+        run: |
+          rm .github/workflows/xlsx-dependency-bootstrap.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add be/pyproject.toml be/uv.lock .github/workflows/xlsx-dependency-bootstrap.yml
+          git commit -m "Add openpyxl XLSX dependency"
+          git push origin HEAD:feature/report-xlsx-export-foundation
