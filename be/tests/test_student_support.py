@@ -17,6 +17,7 @@ from compass.accounts.models import (
 )
 from compass.accounts.services import set_user_capability_override
 from compass.audit.context import AuditContext
+from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.institutional_forms.models import FormFamily, FormRevision, FormRevisionStatus
 from compass.inventory.models import (
@@ -554,3 +555,77 @@ def test_submitted_historical_null_support_profile_remains_readable_and_immutabl
     current_item.refresh_from_db()
     assert old.nickname == ""
     assert current_item.nickname == "Current only"
+
+
+
+@pytest.mark.django_db
+def test_support_profile_failure_rolls_back_inventory_root_and_children(monkeypatch):
+    sync_policy()
+    student = make_user("support-rollback@example.edu")
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    _, _, program = make_org("ROLLBACK")
+    make_inventory(
+        student=student,
+        year=year,
+        program=program,
+        suffix="rollback",
+        submitted=False,
+    )
+
+    def fail_support(*_args, **_kwargs):
+        raise RuntimeError("synthetic support persistence failure")
+
+    monkeypatch.setattr(
+        "compass.inventory.services._apply_support_profile",
+        fail_support,
+    )
+    values = minimum_normalized_inventory_values(program_id=program.pk)
+    values["nickname"] = "Must Roll Back"
+    values["family_members"][0]["name"] = "Must Roll Back Parent"
+
+    with pytest.raises(RuntimeError, match="synthetic support persistence failure"):
+        replace_current_inventory(student=student, values=values)
+
+    item = StudentInventory.objects.get(student=student, academic_year=year)
+    assert item.nickname == ""
+    assert not item.family_members.filter(name="Must Roll Back Parent").exists()
+
+
+@pytest.mark.django_db
+def test_inventory_audit_metadata_never_contains_support_or_pwd_values():
+    sync_policy()
+    student = make_user("support-audit@example.edu")
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    _, _, program = make_org("AUDIT")
+    make_inventory(
+        student=student,
+        year=year,
+        program=program,
+        suffix="audit",
+        submitted=False,
+    )
+    values = minimum_normalized_inventory_values(program_id=program.pk)
+    values["pwd_status"] = "PWD"
+    values["physical_disadvantage"] = "SENTINEL PWD DETAIL"
+    values["support_profile"] = {
+        "four_ps_status": "BENEFICIARY",
+        "indigenous_peoples_status": "MEMBER",
+        "mother_life_status": "DECEASED",
+        "father_life_status": "DECEASED",
+    }
+    replace_current_inventory(student=student, values=values)
+    submit_current_inventory(student=student, context=AuditContext.user(student))
+
+    event = AuditEvent.objects.get(action="inventory.submitted")
+    serialized = json.dumps(event.metadata, default=str)
+    for forbidden in (
+        "PWD",
+        "SENTINEL PWD DETAIL",
+        "BENEFICIARY",
+        "MEMBER",
+        "DECEASED",
+        "four_ps",
+        "indigenous",
+        "life_status",
+    ):
+        assert forbidden not in serialized
