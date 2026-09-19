@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 from django.core import mail
 from django.test import override_settings
 
@@ -35,3 +37,14 @@ def test_mailer_can_add_html_alternative_without_losing_plain_text():
     assert len(message.alternatives) == 1
     assert message.alternatives[0].content == "<p>HTML body</p>"
     assert message.alternatives[0].mimetype == "text/html"
+
+
+
+def test_mailer_connection_probe_opens_and_closes_without_sending():
+    backend = MagicMock()
+    with patch("compass.integrations.mail.mail.mailers", {"default": backend}):
+        Mailer().probe_connection()
+
+    backend.open.assert_called_once_with()
+    backend.close.assert_called_once_with()
+    backend.send_messages.assert_not_called()
