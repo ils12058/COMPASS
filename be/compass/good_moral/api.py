@@ -17,6 +17,10 @@ from compass.authentication.api import session_auth
 from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.privacy_governance.releases import (
+    ReleaseAuditUnavailable,
+    record_good_moral_release,
+)
 
 from .models import GoodMoralStatus, GoodMoralVariant
 from .services import (
@@ -261,11 +265,32 @@ def _correction_values(payload: GoodMoralCorrectionPayload) -> dict[str, object]
     return {mapping.get(name, name): value for name, value in values.items()}
 
 
-def _pdf_response(item) -> HttpResponse:
+def _pdf_response(
+    item,
+    *,
+    context: AuditContext,
+    access_mode: str,
+) -> HttpResponse:
     try:
         pdf_bytes = render_certificate_pdf(item)
     except GoodMoralError as exc:
         _raise(exc)
+    try:
+        record_good_moral_release(
+            context=context,
+            request_id=item.pk,
+            variant=item.variant,
+            access_mode=access_mode,
+        )
+    except ReleaseAuditUnavailable as exc:
+        raise APIError(
+            503,
+            "release_audit_unavailable",
+            (
+                "The certificate could not be released because its required privacy audit "
+                "is unavailable."
+            ),
+        ) from exc
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="good-moral-{item.pk}.pdf"'
     return response
@@ -356,7 +381,7 @@ def good_moral_download_my(request, request_id: UUID):
         item = get_mine(student=request.auth_user, request_id=request_id)
     except GoodMoralError as exc:
         _raise(exc)
-    return _pdf_response(item)
+    return _pdf_response(item, context=_context(request), access_mode="SELF")
 
 
 @router.get(
@@ -418,7 +443,7 @@ def good_moral_download(request, request_id: UUID):
         item = get_request(actor=request.auth_user, request_id=request_id)
     except GoodMoralError as exc:
         _raise(exc)
-    return _pdf_response(item)
+    return _pdf_response(item, context=_context(request), access_mode="GCO")
 
 
 @router.post(

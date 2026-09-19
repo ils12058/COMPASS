@@ -197,6 +197,17 @@ def fake_pdf_result() -> StudentProfilingPdfResult:
     return StudentProfilingPdfResult(
         pdf_bytes=b"%PDF-" + (b"x" * 2048),
         filename="student-profile-2026-2027.pdf",
+        release_context={
+            "academic_year_id": str(uuid4()),
+            "academic_year_label": "2026-2027",
+            "campus_id": None,
+            "campus_code": None,
+            "college_id": None,
+            "college_code": None,
+            "program_id": None,
+            "program_code": None,
+            "year_level": None,
+        },
     )
 
 
@@ -212,7 +223,7 @@ def test_pdf_endpoint_reuses_reports_view_without_recent_mfa(monkeypatch):
     staff = make_user("staff-pdf@example.edu", "GUIDANCE_SERVICES_STAFF")
     student = make_user("student-pdf@example.edu", "STUDENT")
     admin = make_user("admin-pdf@example.edu", "IT_ADMIN")
-    dpo = make_user("dpo-pdf@example.edu", "IT_ADMIN")
+    dpo = make_user("dpo-pdf@example.edu", "INSTITUTIONAL_OFFICER")
     UserDesignation.objects.create(
         user=dpo,
         designation=Designation.objects.get(code="DPO"),

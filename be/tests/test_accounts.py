@@ -145,7 +145,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
     assert RoleCapability.objects.count() == 65
-    assert DesignationCapability.objects.count() == 16
+    assert DesignationCapability.objects.count() == 18
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -156,9 +156,9 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 60
+    assert Capability.objects.count() == 62
     assert RoleCapability.objects.count() == 65
-    assert DesignationCapability.objects.count() == 16
+    assert DesignationCapability.objects.count() == 18
 
 
 @pytest.mark.django_db
@@ -453,7 +453,7 @@ def test_student_lifecycle_migration_backfills_only_existing_students():
 
 
 @pytest.mark.django_db
-def test_institutional_officer_is_neutral_and_dpo_adds_no_capabilities():
+def test_institutional_officer_is_neutral_and_dpo_adds_only_privacy_capabilities():
     sync_policy()
     officer = make_user(
         role="INSTITUTIONAL_OFFICER",
@@ -465,7 +465,12 @@ def test_institutional_officer_is_neutral_and_dpo_adds_no_capabilities():
         user=officer,
         designation=Designation.objects.get(code="DPO"),
     )
-    assert effective_capabilities(officer) == frozenset()
+    assert effective_capabilities(officer) == frozenset(
+        {
+            "privacy_governance.view",
+            "privacy_governance.manage",
+        }
+    )
     assert not officer.has_capability("accounts.manage")
     assert not officer.has_capability("institutional_designations.manage")
     assert not officer.has_capability("organization.manage")

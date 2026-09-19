@@ -898,3 +898,47 @@ def build_student_profiling_report(
         "inventory_coverage": _coverage(filters),
         "sections": sections,
     }
+
+
+def student_profiling_release_context(report: dict[str, object]) -> dict[str, object]:
+    """Return only safe resolved filter context for release auditing."""
+
+    report_context = report.get("report_context")
+    if not isinstance(report_context, dict):
+        raise ReportConfigurationConflict("The Student Profiling report context is invalid.")
+
+    academic_year = report_context.get("academic_year")
+    if not isinstance(academic_year, dict) or academic_year.get("id") is None:
+        raise ReportConfigurationConflict("The Student Profiling Academic Year context is invalid.")
+
+    def organization_values(name: str) -> tuple[str | None, str | None]:
+        item = report_context.get(name)
+        if item is None:
+            return None, None
+        if not isinstance(item, dict):
+            raise ReportConfigurationConflict(f"The Student Profiling {name} context is invalid.")
+        item_id = item.get("id")
+        item_code = item.get("code")
+        return (
+            str(item_id) if item_id is not None else None,
+            str(item_code) if item_code is not None else None,
+        )
+
+    campus_id, campus_code = organization_values("campus")
+    college_id, college_code = organization_values("college")
+    program_id, program_code = organization_values("program")
+    year_level = report_context.get("year_level")
+    if year_level is not None and type(year_level) is not int:
+        raise ReportConfigurationConflict("The Student Profiling Year Level context is invalid.")
+
+    return {
+        "academic_year_id": str(academic_year["id"]),
+        "academic_year_label": str(academic_year.get("label") or ""),
+        "campus_id": campus_id,
+        "campus_code": campus_code,
+        "college_id": college_id,
+        "college_code": college_code,
+        "program_id": program_id,
+        "program_code": program_code,
+        "year_level": year_level,
+    }

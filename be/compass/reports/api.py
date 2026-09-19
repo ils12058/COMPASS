@@ -8,9 +8,14 @@ from uuid import UUID
 from django.http import HttpResponse
 from ninja import Router
 
+from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.privacy_governance.releases import (
+    ReleaseAuditUnavailable,
+    record_student_profiling_release,
+)
 
 from .pdf import (
     StudentProfilingDocumentUnavailable,
@@ -122,6 +127,19 @@ def student_profile_pdf(
     except ReportError as exc:
         _raise(exc)
 
+    try:
+        record_student_profiling_release(
+            context=AuditContext.from_request(request, actor=request.auth_user),
+            artifact_format="PDF",
+            release_context=result.release_context,
+        )
+    except ReleaseAuditUnavailable as exc:
+        raise APIError(
+            503,
+            "release_audit_unavailable",
+            "The report could not be released because its required privacy audit is unavailable.",
+        ) from exc
+
     response = HttpResponse(result.pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{result.filename}"'
     return response
@@ -152,6 +170,19 @@ def student_profile_xlsx(
         )
     except ReportError as exc:
         _raise(exc)
+
+    try:
+        record_student_profiling_release(
+            context=AuditContext.from_request(request, actor=request.auth_user),
+            artifact_format="XLSX",
+            release_context=result.release_context,
+        )
+    except ReleaseAuditUnavailable as exc:
+        raise APIError(
+            503,
+            "release_audit_unavailable",
+            "The report could not be released because its required privacy audit is unavailable.",
+        ) from exc
 
     response = HttpResponse(result.xlsx_bytes, content_type=XLSX_CONTENT_TYPE)
     response["Content-Disposition"] = f'attachment; filename="{result.filename}"'

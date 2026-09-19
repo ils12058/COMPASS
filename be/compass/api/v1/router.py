@@ -26,6 +26,7 @@ from compass.notifications.api import router as notifications_router
 from compass.organization.academic_years_api import router as academic_years_router
 from compass.organization.api import router as organization_router
 from compass.platform_ops.api import router as platform_operations_router
+from compass.privacy_governance.api import router as privacy_governance_router
 from compass.referrals.api import router as referrals_router
 from compass.reports.api import router as reports_router
 from compass.routine_interviews.api import router as routine_interviews_router
@@ -141,6 +142,12 @@ api = NinjaAPI(
                     "and operator guidance."
                 ),
             },
+            {
+                "name": "privacy-governance",
+                "description": (
+                    "DPO privacy-governance records and curated privacy/security oversight."
+                ),
+            },
         ]
     },
     openapi_url="/openapi.json" if settings.API_DOCS_ENABLED else None,
@@ -169,6 +176,7 @@ api.add_router("/referrals", referrals_router)
 api.add_router("/call-slips", call_slips_router)
 api.add_router("/notifications", notifications_router)
 api.add_router("/platform", platform_operations_router)
+api.add_router("/privacy", privacy_governance_router)
 api.add_router("/document-branding", document_branding_router)
 api.add_router("/e-counseling", ecounseling_router)
 api.add_router("/integrations/daily", daily_router)

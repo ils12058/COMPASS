@@ -58,6 +58,17 @@ def fake_xlsx_result() -> StudentProfilingXlsxResult:
     return StudentProfilingXlsxResult(
         xlsx_bytes=b"synthetic-xlsx-payload",
         filename="student-profile-2026-2027.xlsx",
+        release_context={
+            "academic_year_id": str(uuid4()),
+            "academic_year_label": "2026-2027",
+            "campus_id": None,
+            "campus_code": None,
+            "college_id": None,
+            "college_code": None,
+            "program_id": None,
+            "program_code": None,
+            "year_level": None,
+        },
     )
 
 
@@ -103,7 +114,7 @@ def test_xlsx_endpoint_reuses_reports_view_without_recent_mfa(monkeypatch):
     staff = make_user("staff-xlsx@example.edu", "GUIDANCE_SERVICES_STAFF")
     student = make_user("student-xlsx@example.edu", "STUDENT")
     admin = make_user("admin-xlsx@example.edu", "IT_ADMIN")
-    dpo = make_user("dpo-xlsx@example.edu", "IT_ADMIN")
+    dpo = make_user("dpo-xlsx@example.edu", "INSTITUTIONAL_OFFICER")
     UserDesignation.objects.create(
         user=dpo,
         designation=Designation.objects.get(code="DPO"),
