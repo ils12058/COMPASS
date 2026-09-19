@@ -440,12 +440,15 @@ def test_failed_step_up_totp_does_not_create_notification_or_email():
     assert login(client, email=user.email, password="correct-password").status_code == 200
     setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {}, headers=csrf_headers(client))
     parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
-    assert post_json(
-        client,
-        "/api/v1/auth/mfa/totp/confirm",
-        {"code": parsed.now()},
-        headers=csrf_headers(client),
-    ).status_code == 200
+    assert (
+        post_json(
+            client,
+            "/api/v1/auth/mfa/totp/confirm",
+            {"code": parsed.now()},
+            headers=csrf_headers(client),
+        ).status_code
+        == 200
+    )
 
     failed = post_json(
         client,
