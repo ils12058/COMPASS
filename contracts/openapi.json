@@ -1677,7 +1677,8 @@
           "services.view",
           "shared_summaries.manage_assigned",
           "shared_summaries.view_assigned",
-          "shared_summaries.view_self"
+          "shared_summaries.view_self",
+          "student_support.view"
         ],
         "title": "CapabilityCode",
         "type": "string"
@@ -4967,16 +4968,6 @@
             "title": "Languages Spoken",
             "type": "string"
           },
-          "life_status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ParentLifeStatusValue"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "name": {
             "default": "",
             "title": "Name",
@@ -5223,6 +5214,15 @@
         ],
         "title": "FormRevisionSummary",
         "type": "object"
+      },
+      "FourPsStatusValue": {
+        "enum": [
+          "BENEFICIARY",
+          "NOT_BENEFICIARY",
+          "NOT_SPECIFIED"
+        ],
+        "title": "FourPsStatusValue",
+        "type": "string"
       },
       "GTSAdvancedStudyReasonValue": {
         "enum": [
@@ -7522,6 +7522,15 @@
         "title": "IncidentStatusValue",
         "type": "string"
       },
+      "IndigenousPeoplesStatusValue": {
+        "enum": [
+          "MEMBER",
+          "NOT_MEMBER",
+          "NOT_SPECIFIED"
+        ],
+        "title": "IndigenousPeoplesStatusValue",
+        "type": "string"
+      },
       "InterestValue": {
         "enum": [
           "PAINTING",
@@ -8118,16 +8127,6 @@
             "title": "Physical Disadvantage",
             "type": "string"
           },
-          "physical_disadvantage_status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PhysicalDisadvantageStatusValue"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "place_of_birth": {
             "default": "",
             "title": "Place Of Birth",
@@ -8187,6 +8186,16 @@
               }
             ],
             "title": "Program Id"
+          },
+          "pwd_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PWDStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "reading_preferences": {
             "default": "",
@@ -8257,6 +8266,13 @@
             "default": "",
             "title": "Student Number",
             "type": "string"
+          },
+          "support_profile": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportProfilePayload"
+              }
+            ]
           },
           "transportation_entries": {
             "items": {
@@ -8794,16 +8810,6 @@
             "title": "Physical Disadvantage",
             "type": "string"
           },
-          "physical_disadvantage_status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PhysicalDisadvantageStatusValue"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "place_of_birth": {
             "default": "",
             "title": "Place Of Birth",
@@ -8873,6 +8879,16 @@
               }
             ],
             "title": "Program Id"
+          },
+          "pwd_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PWDStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "reading_preferences": {
             "default": "",
@@ -8958,6 +8974,13 @@
               }
             ],
             "title": "Submitted At"
+          },
+          "support_profile": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportProfilePayload"
+              }
+            ]
           },
           "transportation_entries": {
             "items": {
@@ -9930,6 +9953,15 @@
         "title": "OverrideRemovalResponse",
         "type": "object"
       },
+      "PWDStatusValue": {
+        "enum": [
+          "PWD",
+          "NON_PWD",
+          "NOT_SPECIFIED"
+        ],
+        "title": "PWDStatusValue",
+        "type": "string"
+      },
       "ParentLifeStatusValue": {
         "enum": [
           "LIVING",
@@ -10129,15 +10161,6 @@
         ],
         "title": "PersonWorkspaceSummary",
         "type": "object"
-      },
-      "PhysicalDisadvantageStatusValue": {
-        "enum": [
-          "NONE",
-          "HAS_PHYSICAL_DISADVANTAGE",
-          "NOT_SPECIFIED"
-        ],
-        "title": "PhysicalDisadvantageStatusValue",
-        "type": "string"
       },
       "PlatformEnvironmentResponse": {
         "additionalProperties": false,
@@ -13377,6 +13400,26 @@
         "title": "StudentProfilingSections",
         "type": "object"
       },
+      "StudentReference": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "StudentReference",
+        "type": "object"
+      },
       "StudentRoutineDetailResponse": {
         "additionalProperties": false,
         "properties": {
@@ -13612,6 +13655,40 @@
         "title": "StudentSummary",
         "type": "object"
       },
+      "StudentSupportContextResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearReference"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/SupportIndicatorResponse"
+            },
+            "title": "Indicators",
+            "type": "array"
+          },
+          "inventory_status": {
+            "$ref": "#/components/schemas/InventoryStatusValue"
+          },
+          "student": {
+            "$ref": "#/components/schemas/StudentReference"
+          }
+        },
+        "required": [
+          "student",
+          "academic_year",
+          "inventory_status",
+          "available",
+          "indicators"
+        ],
+        "title": "StudentSupportContextResponse",
+        "type": "object"
+      },
       "StudentWorkspaceResponse": {
         "additionalProperties": false,
         "properties": {
@@ -13655,6 +13732,72 @@
         ],
         "title": "StudyCareerChoiceValue",
         "type": "string"
+      },
+      "SupportIndicatorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "SupportIndicatorResponse",
+        "type": "object"
+      },
+      "SupportProfilePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "father_life_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParentLifeStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "four_ps_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FourPsStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "indigenous_peoples_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndigenousPeoplesStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mother_life_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParentLifeStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "SupportProfilePayload",
+        "type": "object"
       },
       "TOTPConfirmationResponse": {
         "properties": {
@@ -15010,7 +15153,8 @@
                 "services.view",
                 "shared_summaries.manage_assigned",
                 "shared_summaries.view_assigned",
-                "shared_summaries.view_self"
+                "shared_summaries.view_self",
+                "student_support.view"
               ],
               "title": "CapabilityCode",
               "type": "string"
@@ -15169,7 +15313,8 @@
                 "services.view",
                 "shared_summaries.manage_assigned",
                 "shared_summaries.view_assigned",
-                "shared_summaries.view_self"
+                "shared_summaries.view_self",
+                "student_support.view"
               ],
               "title": "CapabilityCode",
               "type": "string"
@@ -33066,6 +33211,84 @@
           "services"
         ]
       }
+    },
+    "/api/v1/student-support/students/{student_id}/context": {
+      "get": {
+        "operationId": "studentSupportGetContext",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentSupportContextResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Student Support Get Context",
+        "tags": [
+          "student-support"
+        ]
+      }
     }
   },
   "servers": [],
@@ -33121,6 +33344,10 @@
     {
       "description": "Student annual Individual Inventory self-service.",
       "name": "inventory"
+    },
+    {
+      "description": "Privacy-minimized Student Support context within Guidance scope.",
+      "name": "student-support"
     },
     {
       "description": "Restricted aggregate Guidance and Counseling Office reports.",
