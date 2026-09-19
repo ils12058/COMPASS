@@ -211,6 +211,8 @@ def create_processing_activity(
 ) -> ProcessingActivity:
     cleaned_code = _clean_code(code)
     with transaction.atomic():
+        if ProcessingActivity.objects.filter(code=cleaned_code).exists():
+            raise PrivacyConflict("processing activity code already exists")
         item = ProcessingActivity(
             code=cleaned_code,
             name=_clean_required(name, label="name", maximum=160),
