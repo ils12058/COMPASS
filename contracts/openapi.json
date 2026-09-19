@@ -225,6 +225,22 @@
             "title": "Email",
             "type": "string"
           },
+          "email_verified": {
+            "title": "Email Verified",
+            "type": "boolean"
+          },
+          "email_verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Verified At"
+          },
           "first_name": {
             "title": "First Name",
             "type": "string"
@@ -293,9 +309,11 @@
           "student_lifecycle_status",
           "designations",
           "is_active",
+          "password_configured",
+          "email_verified",
           "created_at",
           "updated_at",
-          "password_configured",
+          "email_verified_at",
           "mfa_enabled"
         ],
         "title": "AccountDetailResponse",
@@ -352,6 +370,10 @@
             "title": "Email",
             "type": "string"
           },
+          "email_verified": {
+            "title": "Email Verified",
+            "type": "boolean"
+          },
           "first_name": {
             "title": "First Name",
             "type": "string"
@@ -376,6 +398,10 @@
           "middle_name": {
             "title": "Middle Name",
             "type": "string"
+          },
+          "password_configured": {
+            "title": "Password Configured",
+            "type": "boolean"
           },
           "role": {
             "$ref": "#/components/schemas/RoleCode"
@@ -407,6 +433,8 @@
           "student_lifecycle_status",
           "designations",
           "is_active",
+          "password_configured",
+          "email_verified",
           "created_at"
         ],
         "title": "AccountSummaryResponse",
@@ -1607,6 +1635,7 @@
           "graduate_tracer.manage_self",
           "graduate_tracer.view",
           "graduate_tracer.view_self",
+          "institutional_designations.manage",
           "institutional_forms.manage",
           "institutional_forms.view",
           "inventory.manage_self",
@@ -2771,6 +2800,87 @@
         ],
         "title": "CoverageModeValue",
         "type": "string"
+      },
+      "CsvImportResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "committed": {
+            "title": "Committed",
+            "type": "boolean"
+          },
+          "conflict_count": {
+            "title": "Conflict Count",
+            "type": "integer"
+          },
+          "create_count": {
+            "title": "Create Count",
+            "type": "integer"
+          },
+          "invalid_count": {
+            "title": "Invalid Count",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CsvImportRowResponse"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "skip_count": {
+            "title": "Skip Count",
+            "type": "integer"
+          },
+          "total_rows": {
+            "title": "Total Rows",
+            "type": "integer"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid",
+          "committed",
+          "total_rows",
+          "create_count",
+          "skip_count",
+          "conflict_count",
+          "invalid_count",
+          "rows"
+        ],
+        "title": "CsvImportResponse",
+        "type": "object"
+      },
+      "CsvImportRowResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "row_number": {
+            "title": "Row Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "row_number",
+          "email",
+          "action",
+          "message"
+        ],
+        "title": "CsvImportRowResponse",
+        "type": "object"
       },
       "CurrentReligionCategoryValue": {
         "enum": [
@@ -10154,6 +10264,7 @@
         "enum": [
           "COUNSELOR",
           "GUIDANCE_SERVICES_STAFF",
+          "INSTITUTIONAL_OFFICER",
           "IT_ADMIN",
           "STUDENT"
         ],
@@ -12444,6 +12555,22 @@
           },
           {
             "in": "query",
+            "name": "email_verified",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Email Verified"
+            }
+          },
+          {
+            "in": "query",
             "name": "search",
             "required": false,
             "schema": {
@@ -12592,6 +12719,115 @@
           }
         ],
         "summary": "Create a managed account",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/v1/accounts/imports/csv": {
+      "post": {
+        "operationId": "accountsImportCsv",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dry_run",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Dry Run",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "title": "File",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvImportResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Validate or commit a bounded CSV account import",
         "tags": [
           "accounts"
         ]
@@ -12812,6 +13048,7 @@
                 "graduate_tracer.manage_self",
                 "graduate_tracer.view",
                 "graduate_tracer.view_self",
+                "institutional_designations.manage",
                 "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
@@ -12966,6 +13203,7 @@
                 "graduate_tracer.manage_self",
                 "graduate_tracer.view",
                 "graduate_tracer.view_self",
+                "institutional_designations.manage",
                 "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
