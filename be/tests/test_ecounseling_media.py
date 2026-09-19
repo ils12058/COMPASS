@@ -46,6 +46,7 @@ from compass.ecounseling.services import (
     create_join_credential,
 )
 from compass.integrations.daily import DailyUnavailable
+from compass.notifications.models import EmailDelivery, Notification
 from compass.service_catalog.services import create_service, set_service_active
 
 
@@ -246,6 +247,19 @@ def test_consent_request_creates_only_local_room_binding_and_is_idempotent():
     assert first[0]["decision"] == ConsentDecision.PENDING
     assert ECounselingConsent.objects.count() == 1
     assert AuditEvent.objects.filter(action="ecounseling.consent_requested").count() == 1
+    notification = Notification.objects.get(
+        recipient=student,
+        event_code="ecounseling.consent.requested",
+        source_type="ecounseling_consent",
+    )
+    assert notification.source_id == first[0]["id"]
+    assert notification.target_type == "E_COUNSELING"
+    assert notification.target_id == appointment.pk
+    assert EmailDelivery.objects.filter(notification=notification).count() == 1
+    assert Notification.objects.filter(
+        recipient=student,
+        event_code="ecounseling.consent.requested",
+    ).count() == 1
     assert student.has_capability("ecounseling.consent_self")
 
 
