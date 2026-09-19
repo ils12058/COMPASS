@@ -246,9 +246,7 @@ def test_good_moral_render_or_audit_failure_does_not_create_successful_release(m
             GoodMoralDocumentUnavailable("synthetic certificate render failure")
         ),
     )
-    render_failed = auth_client(student).get(
-        f"/api/v1/good-moral/me/{request_id}/pdf"
-    )
+    render_failed = auth_client(student).get(f"/api/v1/good-moral/me/{request_id}/pdf")
     assert render_failed.status_code == 503
     assert not AuditEvent.objects.filter(action="document.download_released").exists()
 
@@ -260,9 +258,7 @@ def test_good_moral_render_or_audit_failure_does_not_create_successful_release(m
         "compass.privacy_governance.releases.record_event",
         lambda **kwargs: (_ for _ in ()).throw(RuntimeError("audit write failed")),
     )
-    audit_failed = auth_client(student).get(
-        f"/api/v1/good-moral/me/{request_id}/pdf"
-    )
+    audit_failed = auth_client(student).get(f"/api/v1/good-moral/me/{request_id}/pdf")
     assert audit_failed.status_code == 503
     assert audit_failed.json()["error"]["code"] == "release_audit_unavailable"
     assert audit_failed["Content-Type"].startswith("application/json")
