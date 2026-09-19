@@ -408,3 +408,70 @@ def test_privacy_activity_has_no_arbitrary_action_filter_or_global_audit_route()
     assert [item["id"] for item in normal.json()["items"]] == [str(event.pk)]
     assert unknown_query.json()["items"] == normal.json()["items"]
     assert client.get("/api/v1/privacy/audit-events").status_code == 404
+
+
+@pytest.mark.django_db
+def test_privacy_activity_projects_graduate_tracer_release_without_report_contents():
+    sync_policy()
+    dpo = make_dpo("gts-activity-dpo@example.edu")
+    actor = make_user("gts-release-actor@example.edu", "COUNSELOR")
+    now = timezone.now()
+
+    event = record_event(
+        context=audited_context(actor),
+        action=REPORT_EXPORT_RELEASED,
+        outcome="SUCCESS",
+        target_type="reports.graduatetracer",
+        target_id=1,
+        occurred_at=now,
+        metadata={
+            "report_type": "graduate_tracer",
+            "format": "XLSX",
+            "instrument_schema_version": 1,
+            "submitted_from": "2026-01-01",
+            "submitted_to": "2026-12-31",
+            "respondent_count": 999,
+            "SENTINEL_EMPLOYMENT_VALUE": "must never project",
+        },
+    )
+    record_event(
+        context=audited_context(actor),
+        action=REPORT_EXPORT_RELEASED,
+        outcome="SUCCESS",
+        target_type="reports.graduatetracer",
+        target_id=1,
+        occurred_at=now - timedelta(seconds=1),
+        metadata={
+            "report_type": "graduate_tracer",
+            "format": "XLSX",
+            "instrument_schema_version": 1,
+            "submitted_from": "2026-12-31",
+            "submitted_to": "2026-01-01",
+        },
+    )
+
+    response = auth_client(dpo).get("/api/v1/privacy/activity?category=DATA_RELEASE")
+
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert [item["id"] for item in items] == [str(event.pk)]
+    item = items[0]
+    assert item["title"] == "Graduate Tracer XLSX released"
+    assert item["artifact_type"] == "graduate_tracer"
+    assert item["artifact_format"] == "XLSX"
+    assert item["resource_reference"] == "schema-v1"
+    assert "Schema version 1" in item["scope"]
+    assert "Submitted from 2026-01-01" in item["scope"]
+    assert "Submitted to 2026-12-31" in item["scope"]
+
+    serialized = response.content.decode()
+    for forbidden in (
+        "respondent_count",
+        "999",
+        "SENTINEL_EMPLOYMENT_VALUE",
+        "must never project",
+        "employment",
+        "salary",
+        '"metadata"',
+    ):
+        assert forbidden not in serialized
