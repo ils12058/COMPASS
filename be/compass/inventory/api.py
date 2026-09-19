@@ -742,6 +742,15 @@ def _inventory(item) -> dict[str, object]:
 def _payload_values(payload: InventoryPayload) -> dict[str, object]:
     values = payload.model_dump(mode="python")
     values["full_name_snapshot"] = values.pop("full_name")
+    for field in (
+        "sex",
+        "living_arrangement",
+        "handedness",
+        "ideal_monthly_allowance",
+        "intended_work_field",
+    ):
+        if values[field] is None:
+            values[field] = ""
     return values
 
 
