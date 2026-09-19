@@ -67,8 +67,7 @@ _EVENT_CATALOG = {
         channels=_EMAIL_CHANNELS,
         title="Appointment Scheduled",
         message=(
-            "A COMPASS Appointment has been scheduled. "
-            "Sign in to COMPASS to review the details."
+            "A COMPASS Appointment has been scheduled. Sign in to COMPASS to review the details."
         ),
         email_subject="COMPASS Appointment Scheduled",
         email_template="appointment_scheduled",
@@ -79,8 +78,7 @@ _EVENT_CATALOG = {
         channels=_EMAIL_CHANNELS,
         title="Appointment Cancelled",
         message=(
-            "A COMPASS Appointment has been cancelled. "
-            "Sign in to COMPASS to review the details."
+            "A COMPASS Appointment has been cancelled. Sign in to COMPASS to review the details."
         ),
         email_subject="COMPASS Appointment Cancelled",
         email_template="appointment_cancelled",
@@ -103,8 +101,7 @@ _EVENT_CATALOG = {
         channels=_EMAIL_CHANNELS,
         title="Exit Interview Reopened",
         message=(
-            "Your Exit Interview has been reopened for correction. "
-            "Sign in to COMPASS to review it."
+            "Your Exit Interview has been reopened for correction. Sign in to COMPASS to review it."
         ),
         email_subject="COMPASS Exit Interview Reopened",
         email_template="exit_interview_reopened",
