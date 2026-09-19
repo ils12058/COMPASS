@@ -20,9 +20,8 @@ from compass.inventory.models import (
     InventoryGeographicLocation,
     InventoryTransportationEntry,
     OccupationCategory,
-    ParentLifeStatus,
     ParentStatusCategory,
-    PhysicalDisadvantageStatus,
+    PWDStatus,
     StudentInventory,
     TransportationFrequencyCategory,
 )
@@ -39,6 +38,7 @@ from compass.inventory.services import (
     submit_current_inventory,
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
+from compass.student_support.models import ParentLifeStatus
 from compass.organization.models import Campus, College, Program
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
@@ -188,14 +188,14 @@ def test_current_religion_other_requires_detail_and_none_is_distinct_from_not_sp
 
 
 @pytest.mark.django_db
-def test_physical_disadvantage_status_is_source_neutral_and_requires_detail_only_when_present():
+def test_pwd_status_requires_detail_only_when_pwd_and_clears_non_pwd_detail():
     student, _, _ = make_draft("physical@example.edu")
     with pytest.raises(InvalidInventoryInput, match="physical_disadvantage detail"):
         replace_current_inventory(
             student=student,
             values={
-                "physical_disadvantage_status": (
-                    PhysicalDisadvantageStatus.HAS_PHYSICAL_DISADVANTAGE
+                "pwd_status": (
+                    PWDStatus.PWD
                 ),
                 "physical_disadvantage": "",
             },
@@ -204,7 +204,7 @@ def test_physical_disadvantage_status_is_source_neutral_and_requires_detail_only
     reported = replace_current_inventory(
         student=student,
         values={
-            "physical_disadvantage_status": (PhysicalDisadvantageStatus.HAS_PHYSICAL_DISADVANTAGE),
+            "pwd_status": (PWDStatus.PWD),
             "physical_disadvantage": "Mobility limitation",
         },
     )
@@ -213,7 +213,7 @@ def test_physical_disadvantage_status_is_source_neutral_and_requires_detail_only
     none_value = replace_current_inventory(
         student=student,
         values={
-            "physical_disadvantage_status": PhysicalDisadvantageStatus.NONE,
+            "pwd_status": PWDStatus.NON_PWD,
             "physical_disadvantage": "Contradiction",
         },
     )
@@ -222,7 +222,7 @@ def test_physical_disadvantage_status_is_source_neutral_and_requires_detail_only
     unspecified = replace_current_inventory(
         student=student,
         values={
-            "physical_disadvantage_status": PhysicalDisadvantageStatus.NOT_SPECIFIED,
+            "pwd_status": PWDStatus.NOT_SPECIFIED,
             "physical_disadvantage": "Do not infer",
         },
     )
@@ -245,31 +245,18 @@ def test_atomic_parent_family_status_categories_do_not_rewrite_legacy_grouped_va
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("kind", ["FATHER", "MOTHER"])
+@pytest.mark.parametrize("field", ["father_life_status", "mother_life_status"])
 @pytest.mark.parametrize(
     "life_status",
     [ParentLifeStatus.LIVING, ParentLifeStatus.DECEASED, ParentLifeStatus.NOT_SPECIFIED],
 )
-def test_parent_life_status_is_explicit_and_not_inferred_from_other_parent_fields(
-    kind, life_status
-):
-    student, _, _ = make_draft(f"parent-life-{kind.lower()}-{life_status.lower()}@example.edu")
+def test_parent_life_status_is_explicit_support_data_and_not_inferred(field, life_status):
+    student, _, _ = make_draft(f"parent-life-{field}-{life_status.lower()}@example.edu")
     item = replace_current_inventory(
         student=student,
-        values={
-            "family_members": [
-                {
-                    "kind": kind,
-                    "life_status": life_status,
-                    "name": "",
-                    "occupation": "",
-                    "annual_income_previous_year": None,
-                }
-            ]
-        },
+        values={"support_profile": {field: life_status}},
     )
-    parent = item.family_members.get(kind=kind)
-    assert parent.life_status == life_status
+    assert getattr(item.support_profile, field) == life_status
 
 
 @pytest.mark.django_db
@@ -692,7 +679,7 @@ def test_negative_transport_fare_and_parent_income_have_database_protection():
         "date_of_birth",
         "civil_status_category",
         "current_religion_category",
-        "physical_disadvantage_status",
+        "pwd_status",
         "parent_status_category",
         "living_arrangement",
     ],
@@ -754,7 +741,7 @@ def test_valid_normalized_inventory_submits_and_freezes_all_snapshots():
             "civil_status": "Bad client text",
             "current_religion_category": CurrentReligionCategory.ROMAN_CATHOLIC,
             "current_religion": "Bad client text",
-            "physical_disadvantage_status": PhysicalDisadvantageStatus.NONE,
+            "pwd_status": PWDStatus.NON_PWD,
             "physical_disadvantage": "Contradiction",
             "parent_status_category": ParentStatusCategory.MARRIED,
             "transportation_entries": [
