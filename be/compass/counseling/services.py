@@ -18,6 +18,8 @@ from compass.audit.actions import COUNSELING_ENCOUNTER_CREATED, COUNSELING_ENCOU
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 from compass.service_catalog.models import DeliveryMode, Service
 from compass.service_catalog.services import (
     provider_role_eligible,
@@ -256,24 +258,31 @@ def _create_row(
                 ended_at=ended_at,
                 created_by=counselor,
             )
+            record_event(
+                context=context,
+                action=COUNSELING_ENCOUNTER_CREATED,
+                outcome=AuditOutcome.SUCCESS,
+                target_type="counseling.encounter",
+                target_id=encounter.pk,
+                metadata={
+                    "entry_mode": entry_mode,
+                    "delivery_mode": delivery_mode,
+                    "appointment_id": str(appointment.pk) if appointment is not None else None,
+                },
+            )
+            create_notification_for_event(
+                recipient=student,
+                event=NotificationEvent.FEEDBACK_INVITATION,
+                source_type="counseling_encounter",
+                source_id=encounter.pk,
+                target_type="FEEDBACK",
+            )
     except IntegrityError as exc:
         if appointment is not None:
             raise CounselingAppointmentAlreadyUsed(
                 "The linked Appointment already has a Counseling Encounter."
             ) from exc
         raise
-    record_event(
-        context=context,
-        action=COUNSELING_ENCOUNTER_CREATED,
-        outcome=AuditOutcome.SUCCESS,
-        target_type="counseling.encounter",
-        target_id=encounter.pk,
-        metadata={
-            "entry_mode": entry_mode,
-            "delivery_mode": delivery_mode,
-            "appointment_id": str(appointment.pk) if appointment is not None else None,
-        },
-    )
     return encounter
 
 

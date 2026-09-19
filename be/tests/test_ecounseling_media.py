@@ -46,6 +46,7 @@ from compass.ecounseling.services import (
     create_join_credential,
 )
 from compass.integrations.daily import DailyUnavailable
+from compass.notifications.models import EmailDelivery, Notification
 from compass.service_catalog.services import create_service, set_service_active
 
 
@@ -246,7 +247,67 @@ def test_consent_request_creates_only_local_room_binding_and_is_idempotent():
     assert first[0]["decision"] == ConsentDecision.PENDING
     assert ECounselingConsent.objects.count() == 1
     assert AuditEvent.objects.filter(action="ecounseling.consent_requested").count() == 1
+    notification = Notification.objects.get(
+        recipient=student,
+        event_code="ecounseling.consent.requested",
+        source_type="ecounseling_consent",
+    )
+    assert notification.source_id == first[0]["id"]
+    assert notification.target_type == "E_COUNSELING"
+    assert notification.target_id == appointment.pk
+    assert EmailDelivery.objects.filter(notification=notification).count() == 1
+    assert (
+        Notification.objects.filter(
+            recipient=student,
+            event_code="ecounseling.consent.requested",
+        ).count()
+        == 1
+    )
     assert student.has_capability("ecounseling.consent_self")
+
+
+@pytest.mark.django_db
+def test_multi_scope_consent_request_batches_notification_and_later_new_scope_gets_new_one():
+    _, student, counselor, appointment = setup_session()
+
+    first_batch = request_consents(
+        counselor=counselor,
+        appointment_id=appointment.pk,
+        scopes=[ConsentScope.LIVE_TRANSCRIPTION, ConsentScope.TRANSCRIPT_STORAGE],
+        context=context(counselor),
+    )
+    first_notifications = Notification.objects.filter(
+        recipient=student,
+        event_code="ecounseling.consent.requested",
+    )
+    assert len(first_batch) == 2
+    assert first_notifications.count() == 1
+    first_notification = first_notifications.get()
+    assert first_notification.source_id == first_batch[0]["id"]
+    assert EmailDelivery.objects.filter(notification=first_notification).count() == 1
+
+    repeated = request_consents(
+        counselor=counselor,
+        appointment_id=appointment.pk,
+        scopes=[ConsentScope.LIVE_TRANSCRIPTION, ConsentScope.TRANSCRIPT_STORAGE],
+        context=context(counselor),
+    )
+    assert repeated == first_batch
+    assert first_notifications.count() == 1
+
+    later = request_consents(
+        counselor=counselor,
+        appointment_id=appointment.pk,
+        scopes=[ConsentScope.AUDIO_VIDEO_RECORDING],
+        context=context(counselor),
+    )
+    all_notifications = Notification.objects.filter(
+        recipient=student,
+        event_code="ecounseling.consent.requested",
+    )
+    assert all_notifications.count() == 2
+    assert later[0]["id"] in set(all_notifications.values_list("source_id", flat=True))
+    assert EmailDelivery.objects.filter(notification__in=all_notifications).count() == 2
 
 
 @pytest.mark.django_db

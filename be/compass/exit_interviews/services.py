@@ -27,6 +27,8 @@ from compass.inventory.services import (
     InventoryConflict,
     require_current_submitted_inventory,
 )
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 from compass.organization.academic_years import AcademicYearConflict, require_current_academic_year
 
 from .models import (
@@ -765,5 +767,13 @@ def reopen_for_correction(
                 transition="SUBMITTED -> DRAFT",
                 reopen_event_id=event.pk,
             ),
+        )
+        create_notification_for_event(
+            recipient=item.student,
+            event=NotificationEvent.EXIT_INTERVIEW_REOPENED,
+            source_type="exit_interview",
+            source_id=item.pk,
+            target_type="EXIT_INTERVIEW",
+            target_id=item.pk,
         )
         return _queryset().get(pk=item.pk)

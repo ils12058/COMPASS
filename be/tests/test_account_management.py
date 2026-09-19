@@ -34,6 +34,7 @@ from compass.authentication.sessions import (
     create_trusted_session,
 )
 from compass.availability.models import ProviderAvailabilityWindow
+from compass.notifications.models import EmailDelivery, Notification
 from compass.organization.models import (
     Campus,
     College,
@@ -427,6 +428,19 @@ def test_role_designation_and_override_mutations_update_authority_and_invalidate
     target.refresh_from_db()
     assert not target.has_capability("accounts.manage")
 
+    access_notifications = Notification.objects.filter(
+        recipient=target,
+        event_code="security.account_access.changed",
+        source_type="audit_event",
+    )
+    assert access_notifications.count() == 5
+    assert {row.policy for row in access_notifications} == {"MANDATORY_SECURITY"}
+    assert {row.target_type for row in access_notifications} == {"ACCOUNT_SECURITY"}
+    assert {row.target_id for row in access_notifications} == {target.pk}
+    assert len({row.source_id for row in access_notifications}) == 5
+    assert EmailDelivery.objects.filter(notification__in=access_notifications).count() == 5
+    assert all("Temporary operational coverage" not in row.message for row in access_notifications)
+
 
 @pytest.mark.django_db
 def test_last_manager_and_self_target_safety_are_enforced():
@@ -511,6 +525,32 @@ def test_administrative_mfa_reset_never_returns_mfa_material():
     event = AuditEvent.objects.get(action="account.mfa.reset", target_id=str(target.pk))
     assert event.actor_user_id == admin.pk
     assert event.metadata == {}
+    notification = Notification.objects.get(
+        recipient=target,
+        event_code="security.mfa.admin_reset",
+        source_type="audit_event",
+        source_id=event.pk,
+    )
+    assert notification.policy == "MANDATORY_SECURITY"
+    assert notification.target_type == "ACCOUNT_SECURITY"
+    assert notification.target_id == target.pk
+    assert EmailDelivery.objects.filter(notification=notification).exists()
+
+    repeated = post_json(
+        client,
+        f"/api/v1/accounts/{target.pk}/security/reset-mfa",
+        {},
+        headers=csrf_headers(client),
+    )
+    assert repeated.status_code == 200
+    assert repeated.json()["reset"] is False
+    assert (
+        Notification.objects.filter(
+            recipient=target,
+            event_code="security.mfa.admin_reset",
+        ).count()
+        == 1
+    )
 
 
 @pytest.mark.django_db

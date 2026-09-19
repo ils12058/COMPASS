@@ -34,6 +34,8 @@ from compass.integrations.daily import (
     DailyInvalidResponse,
     DailyUnavailable,
 )
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 from compass.service_catalog.models import DeliveryMode
 
 from .models import (
@@ -256,6 +258,7 @@ def request_consents(
                 )
 
         result: list[ECounselingConsent] = []
+        newly_created: list[ECounselingConsent] = []
         for scope in scopes:
             current = existing.get(scope)
             if current is not None:
@@ -278,7 +281,18 @@ def request_consents(
                     "scope": scope,
                 },
             )
+            newly_created.append(current)
             result.append(current)
+
+        if newly_created:
+            create_notification_for_event(
+                recipient=appointment.student,
+                event=NotificationEvent.ECOUNSELING_CONSENT_REQUESTED,
+                source_type="ecounseling_consent",
+                source_id=newly_created[0].pk,
+                target_type="E_COUNSELING",
+                target_id=appointment.pk,
+            )
         return [_consent_dict(item) for item in result]
 
 

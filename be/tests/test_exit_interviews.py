@@ -45,6 +45,7 @@ from compass.exit_interviews.services import ensure_my_current
 from compass.institutional_forms.models import FormFamily, FormRevision
 from compass.inventory.models import StudentInventory
 from compass.inventory.services import require_current_submitted_inventory
+from compass.notifications.models import EmailDelivery, Notification
 from compass.organization.models import AcademicYear
 from compass.referrals.models import Referral
 from compass.routine_interviews.models import RoutineInterview
@@ -709,6 +710,17 @@ def test_only_head_may_read_all_and_reopen_with_required_reason():
     assert reopened.json()["reopen_events"][0]["reason"] == (
         "Student requested a factual correction."
     )
+    notification = Notification.objects.get(
+        recipient=student,
+        event_code="exit_interview.reopened",
+        source_type="exit_interview",
+        source_id=exit_id,
+    )
+    assert notification.policy == "MANDATORY_OPERATIONAL"
+    assert notification.target_type == "EXIT_INTERVIEW"
+    assert notification.target_id == ExitInterview.objects.get(pk=exit_id).pk
+    assert "Student requested a factual correction." not in notification.message
+    assert EmailDelivery.objects.filter(notification=notification).exists()
 
 
 @pytest.mark.django_db

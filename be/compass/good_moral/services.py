@@ -36,6 +36,8 @@ from compass.inventory.services import (
     InventoryConflict,
     require_current_submitted_inventory,
 )
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 from compass.organization.models import StudentAffiliation
 
 from .models import GoodMoralRequest, GoodMoralStatus, GoodMoralVariant
@@ -591,6 +593,21 @@ def issue_request(
                 "document_template_key": template_key,
                 "document_template_version": template_version,
             },
+        )
+        create_notification_for_event(
+            recipient=item.student,
+            event=NotificationEvent.GOOD_MORAL_ISSUED,
+            source_type="good_moral_request",
+            source_id=item.pk,
+            target_type="GOOD_MORAL",
+            target_id=item.pk,
+        )
+        create_notification_for_event(
+            recipient=item.student,
+            event=NotificationEvent.FEEDBACK_INVITATION,
+            source_type="good_moral_request",
+            source_id=item.pk,
+            target_type="FEEDBACK",
         )
         return _queryset().get(pk=item.pk)
 

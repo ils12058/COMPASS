@@ -13,6 +13,8 @@ from compass.audit.actions import COUNSELING_SHARED_SUMMARY_PUBLISHED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 
 from .models import CounselingEncounter, CounselingSharedSummary
 from .services import DEFAULT_PAGE_SIZE, CounselingError, _validate_page
@@ -145,6 +147,14 @@ def publish_assigned_shared_summary(
             target_type="counseling.sharedsummary",
             target_id=item.pk,
             metadata={"counseling_encounter_id": str(encounter.pk)},
+        )
+        create_notification_for_event(
+            recipient=encounter.student,
+            event=NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED,
+            source_type="counseling_shared_summary",
+            source_id=item.pk,
+            target_type="COUNSELING_SHARED_SUMMARY",
+            target_id=item.pk,
         )
         return _summary_queryset().get(pk=item.pk)
 

@@ -37,6 +37,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.availability.services import replace_office_weekly, replace_provider_weekly
+from compass.notifications.models import EmailDelivery, Notification
 from compass.organization.models import (
     Campus,
     College,
@@ -211,6 +212,17 @@ def test_booking_creates_scheduled_reservation_with_snapshot_reference_and_audit
     assert item.ends_at - item.starts_at == timedelta(minutes=60)
     assert item.cancellation_cutoff_minutes == 30
     assert item.created_by_id == student.pk
+    scheduled = Notification.objects.filter(
+        event_code="appointment.scheduled",
+        source_type="appointment",
+        source_id=item.pk,
+    ).order_by("recipient_id")
+    assert scheduled.count() == 2
+    assert {row.recipient_id for row in scheduled} == {student.pk, provider.pk}
+    assert {row.policy for row in scheduled} == {"MANDATORY_OPERATIONAL"}
+    assert {row.target_type for row in scheduled} == {"APPOINTMENT"}
+    assert {row.target_id for row in scheduled} == {item.pk}
+    assert EmailDelivery.objects.filter(notification__in=scheduled).count() == 2
     event = AuditEvent.objects.get(action="appointment.created", target_id=str(item.pk))
     assert event.metadata == {
         "reference_code": item.reference_code,
@@ -407,6 +419,49 @@ def test_explicit_cross_scope_counselor_is_allowed_and_gss_is_not_student_select
 
 @pytest.mark.django_db
 @override_settings(TIME_ZONE="Asia/Manila")
+def test_booking_rolls_back_domain_and_audit_when_mandatory_notification_persistence_fails(
+    monkeypatch,
+):
+    sync_policy()
+    actor = make_user("rollback-admin@example.edu", "IT_ADMIN")
+    student = make_user("rollback-student@example.edu", "STUDENT")
+    provider = make_user("rollback-provider@example.edu", "COUNSELOR")
+    service = active_service(actor)
+    configure_availability(actor, provider)
+    start = future_local_start()
+
+    def fail_notification(**_kwargs):
+        raise RuntimeError("synthetic notification persistence failure")
+
+    monkeypatch.setattr(
+        "compass.appointments.services.create_notification_for_event",
+        fail_notification,
+    )
+
+    with pytest.raises(RuntimeError, match="synthetic notification persistence failure"):
+        create_student_appointment(
+            student=student,
+            service_id=service.pk,
+            provider_id=provider.pk,
+            delivery_mode="IN_PERSON",
+            starts_at=start,
+            context=context(student),
+            now=start - timedelta(days=1),
+        )
+
+    assert not Appointment.objects.filter(student=student, provider=provider).exists()
+    assert not AuditEvent.objects.filter(
+        action="appointment.created",
+        actor_user=student,
+    ).exists()
+    assert not Notification.objects.filter(
+        recipient__in=(student, provider),
+        event_code="appointment.scheduled",
+    ).exists()
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
 def test_full_interval_must_fit_base_availability():
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
@@ -588,7 +643,16 @@ def test_cancellation_boundary_admin_bypass_and_repeat_are_safe():
         now=start - timedelta(minutes=1),
     )
     assert cancelled.status == "CANCELLED"
+    cancelled_notifications = Notification.objects.filter(
+        event_code="appointment.cancelled",
+        source_type="appointment",
+        source_id=item.pk,
+    )
+    assert cancelled_notifications.count() == 2
+    assert {row.recipient_id for row in cancelled_notifications} == {student.pk, provider.pk}
+    assert EmailDelivery.objects.filter(notification__in=cancelled_notifications).count() == 2
     event_count = AuditEvent.objects.filter(action="appointment.cancelled").count()
+    notification_count = cancelled_notifications.count()
     repeated = cancel_appointment(
         appointment_id=item.pk,
         actor=head,
@@ -598,6 +662,14 @@ def test_cancellation_boundary_admin_bypass_and_repeat_are_safe():
     )
     assert repeated.status == "CANCELLED"
     assert AuditEvent.objects.filter(action="appointment.cancelled").count() == event_count
+    assert (
+        Notification.objects.filter(
+            event_code="appointment.cancelled",
+            source_type="appointment",
+            source_id=item.pk,
+        ).count()
+        == notification_count
+    )
 
 
 @pytest.mark.django_db
@@ -627,6 +699,13 @@ def test_exact_self_cancellation_cutoff_boundary_is_allowed():
         now=start - timedelta(minutes=30),
     )
     assert cancelled.status == "CANCELLED"
+    self_cancel_notifications = Notification.objects.filter(
+        event_code="appointment.cancelled",
+        source_type="appointment",
+        source_id=item.pk,
+    )
+    assert self_cancel_notifications.count() == 2
+    assert {row.recipient_id for row in self_cancel_notifications} == {student.pk, provider.pk}
 
 
 @pytest.mark.django_db

@@ -24,6 +24,8 @@ from compass.inventory.services import (
     InventoryStatus,
     get_current_inventory_status,
 )
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.service_catalog.models import AppointmentPolicy, DeliveryMode, Service
 from compass.service_catalog.services import (
@@ -486,6 +488,15 @@ def create_student_appointment(
                 "delivery_mode": normalized_mode,
             },
         )
+        for recipient in (locked_student, locked_provider):
+            create_notification_for_event(
+                recipient=recipient,
+                event=NotificationEvent.APPOINTMENT_SCHEDULED,
+                source_type="appointment",
+                source_id=appointment.pk,
+                target_type="APPOINTMENT",
+                target_id=appointment.pk,
+            )
     return _appointment_queryset().get(pk=appointment.pk)
 
 
@@ -535,6 +546,15 @@ def cancel_appointment(
                 "administrative": administrative,
             },
         )
+        for recipient in (item.student, item.provider):
+            create_notification_for_event(
+                recipient=recipient,
+                event=NotificationEvent.APPOINTMENT_CANCELLED,
+                source_type="appointment",
+                source_id=item.pk,
+                target_type="APPOINTMENT",
+                target_id=item.pk,
+            )
         return _appointment_queryset().get(pk=item.pk)
 
 

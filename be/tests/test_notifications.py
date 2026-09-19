@@ -11,8 +11,50 @@ from django.utils import timezone
 
 from compass.accounts.models import Role, User
 from compass.authentication.sessions import create_auth_session
+from compass.notifications.delivery import render_notification_email
 from compass.notifications.models import EmailDelivery, Notification, NotificationPreference
-from compass.notifications.policy import NotificationPolicy, email_allowed_for_policy
+from compass.notifications.policy import (
+    _EVENT_CATALOG,
+    NotificationChannel,
+    NotificationEvent,
+    NotificationPolicy,
+    email_allowed_for_policy,
+)
+
+
+def test_notification_event_catalog_is_complete_renderable_and_privacy_safe():
+    assert set(_EVENT_CATALOG) == set(NotificationEvent)
+    sensitive_sentinels = (
+        "COUNSELING-SENSITIVE-SENTINEL",
+        "REFERRAL-REASON-SENTINEL",
+        "EXIT-ANSWER-SENTINEL",
+        "GOOD-MORAL-RECEIPT-SENTINEL",
+        "REPORT-DATA-SENTINEL",
+        "OTP-123456",
+        "RECOVERY-CODE-SENTINEL",
+        "PASSWORD-SENTINEL",
+        "DAILY-ROOM-TOKEN-SENTINEL",
+        "SESSION-ID-SENTINEL",
+        "AUDIT-METADATA-SENTINEL",
+        "OVERRIDE-REASON-SENTINEL",
+    )
+
+    for event in NotificationEvent:
+        definition = _EVENT_CATALOG[event]
+        assert definition.event == event
+        assert definition.policy in NotificationPolicy
+        assert NotificationChannel.IN_APP in definition.channels
+        if NotificationChannel.EMAIL not in definition.channels:
+            continue
+
+        rendered = render_notification_email(event.value)
+        combined = "\n".join((rendered.subject, rendered.text_body, rendered.html_body))
+        assert rendered.text_body.strip()
+        assert rendered.html_body.strip()
+        assert "http://" not in combined
+        assert "https://" not in combined
+        for sentinel in sensitive_sentinels:
+            assert sentinel not in combined
 
 
 def make_user(email: str, role_code: str = "STUDENT") -> User:
