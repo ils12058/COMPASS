@@ -544,10 +544,13 @@ def test_administrative_mfa_reset_never_returns_mfa_material():
     )
     assert repeated.status_code == 200
     assert repeated.json()["reset"] is False
-    assert Notification.objects.filter(
-        recipient=target,
-        event_code="security.mfa.admin_reset",
-    ).count() == 1
+    assert (
+        Notification.objects.filter(
+            recipient=target,
+            event_code="security.mfa.admin_reset",
+        ).count()
+        == 1
+    )
 
 
 @pytest.mark.django_db
