@@ -962,6 +962,7 @@ def submit_current_inventory(
         item.submitted_at = timezone.now()
         item.save(
             update_fields=[
+                "student_number",
                 "course_currently_enrolled",
                 "civil_status",
                 "current_religion",
