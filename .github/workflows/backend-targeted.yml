@@ -143,6 +143,10 @@ jobs:
           tests/test_mail.py
           tests/test_storage.py
           tests/test_platform_operations.py
+          tests/test_runtime_maintenance.py
+          tests/test_platform_email_operations.py
+          tests/test_platform_activity.py
+          tests/test_runtime_operations_audit.py
           tests/test_compass_doctor.py
           tests/test_authentication.py
           tests/test_account_management.py
