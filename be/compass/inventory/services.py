@@ -930,10 +930,19 @@ def submit_current_inventory(
 ) -> StudentInventory:
     _require_current_student(student)
     with transaction.atomic():
+        locked_student = (
+            User.objects.select_for_update()
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
+        )
+        if locked_student is None:
+            raise InventoryNotFound("The Student account was not found.")
+        _require_current_student(locked_student)
         current = _current_year()
         item = (
             StudentInventory.objects.select_for_update()
-            .filter(student_id=student.pk, academic_year_id=current.pk)
+            .filter(student_id=locked_student.pk, academic_year_id=current.pk)
             .first()
         )
         if item is None:
@@ -947,6 +956,8 @@ def submit_current_inventory(
         item.program = _require_active_program(item.program_id)
         item.course_currently_enrolled = item.program.name
         profile = _lock_or_create_support_profile(item)
+        if locked_student.institutional_id is not None:
+            item.student_number = locked_student.institutional_id
         _validate_submission(item, profile)
         item.submitted_at = timezone.now()
         item.save(
