@@ -561,8 +561,8 @@ def create_privacy_incident(
     summary: object,
     affected_area: object,
     personal_data_categories: object,
+    discovered_at: datetime,
     occurred_at: datetime | None = None,
-    discovered_at: datetime | None = None,
     estimated_affected_subjects: int | None = None,
     assessment_summary: object = "",
     containment_summary: object = "",
@@ -594,7 +594,7 @@ def create_privacy_incident(
                 label="personal_data_categories",
             ),
             occurred_at=occurred_at,
-            discovered_at=discovered_at or timezone.now(),
+            discovered_at=discovered_at,
             estimated_affected_subjects=estimated_affected_subjects,
             assessment_summary=_clean_optional(
                 assessment_summary,
