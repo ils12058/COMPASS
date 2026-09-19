@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
+from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID
 
@@ -24,16 +26,26 @@ from compass.organization.academic_years import get_current_academic_year
 from compass.organization.models import AcademicYear, Program
 
 from .models import (
+    AnnualIncomeStatus,
+    CivilStatusCategory,
     CourseChoiceReason,
+    CurrentReligionCategory,
+    FamilyMemberKind,
+    GeographicLocationKind,
     ImmunizationType,
     InventoryEducationEntry,
     InventoryFamilyMember,
+    InventoryGeographicLocation,
     InventoryOrganizationMembership,
     InventorySibling,
     InventoryTransportationEntry,
     LivingArrangement,
+    OccupationCategory,
+    ParentLifeStatus,
+    PhysicalDisadvantageStatus,
     PostGraduationField,
     StudentInventory,
+    TransportationFrequencyCategory,
 )
 
 INVENTORY_FAMILY_KEY = "individual_inventory"
@@ -43,6 +55,81 @@ class InventoryStatus(StrEnum):
     MISSING = "MISSING"
     DRAFT = "DRAFT"
     SUBMITTED = "SUBMITTED"
+
+
+class CombinedParentIncomeStatus(StrEnum):
+    REPORTED = "REPORTED"
+    NOT_SPECIFIED = "NOT_SPECIFIED"
+
+
+class ParentIncomeBand(StrEnum):
+    NONE = "NONE"
+    POOR = "POOR"
+    LOW_INCOME = "LOW_INCOME"
+    LOWER_MIDDLE_INCOME = "LOWER_MIDDLE_INCOME"
+    MIDDLE_MIDDLE_INCOME = "MIDDLE_MIDDLE_INCOME"
+    UPPER_MIDDLE_INCOME = "UPPER_MIDDLE_INCOME"
+    UPPER_INCOME = "UPPER_INCOME"
+    RICH = "RICH"
+    NOT_SPECIFIED = "NOT_SPECIFIED"
+
+
+@dataclass(frozen=True, slots=True)
+class CombinedParentIncome:
+    status: CombinedParentIncomeStatus
+    amount: Decimal | None
+
+
+def combine_parent_annual_income(
+    *,
+    father_status: str,
+    father_amount: Decimal | None,
+    mother_status: str,
+    mother_amount: Decimal | None,
+) -> CombinedParentIncome:
+    pairs = ((father_status, father_amount), (mother_status, mother_amount))
+    if any(status == AnnualIncomeStatus.NOT_SPECIFIED for status, _ in pairs):
+        return CombinedParentIncome(CombinedParentIncomeStatus.NOT_SPECIFIED, None)
+
+    total = Decimal("0")
+    for status, amount in pairs:
+        if status == AnnualIncomeStatus.NONE:
+            continue
+        if status != AnnualIncomeStatus.REPORTED or amount is None or amount <= 0:
+            raise InvalidInventoryInput(
+                "Parent annual-income values are not internally consistent."
+            )
+        total += amount
+    return CombinedParentIncome(CombinedParentIncomeStatus.REPORTED, total)
+
+
+def classify_parent_annual_income(combined: CombinedParentIncome) -> ParentIncomeBand:
+    if combined.status == CombinedParentIncomeStatus.NOT_SPECIFIED or combined.amount is None:
+        return ParentIncomeBand.NOT_SPECIFIED
+    amount = combined.amount
+    if amount == 0:
+        return ParentIncomeBand.NONE
+    if amount < Decimal("131484"):
+        return ParentIncomeBand.POOR
+    if amount < Decimal("262968"):
+        return ParentIncomeBand.LOW_INCOME
+    if amount < Decimal("525936"):
+        return ParentIncomeBand.LOWER_MIDDLE_INCOME
+    if amount < Decimal("920388"):
+        return ParentIncomeBand.MIDDLE_MIDDLE_INCOME
+    if amount < Decimal("1577808"):
+        return ParentIncomeBand.UPPER_MIDDLE_INCOME
+    if amount <= Decimal("2626680"):
+        return ParentIncomeBand.UPPER_INCOME
+    return ParentIncomeBand.RICH
+
+
+def derive_age_on(*, date_of_birth: date, on_date: date) -> int:
+    return (
+        on_date.year
+        - date_of_birth.year
+        - ((on_date.month, on_date.day) < (date_of_birth.month, date_of_birth.day))
+    )
 
 
 class InventoryError(RuntimeError):
@@ -90,6 +177,7 @@ SCALAR_FIELDS = (
     "sex",
     "birth_order_among_siblings",
     "civil_status",
+    "civil_status_category",
     "current_address",
     "permanent_address",
     "contact_number",
@@ -98,7 +186,9 @@ SCALAR_FIELDS = (
     "languages_most_fluent",
     "religion_from_birth",
     "current_religion",
+    "current_religion_category",
     "parent_statuses",
+    "parent_status_category",
     "guardian_name",
     "guardian_relationship",
     "guardian_address",
@@ -127,6 +217,7 @@ SCALAR_FIELDS = (
     "height",
     "weight",
     "physical_disadvantage",
+    "physical_disadvantage_status",
     "illness_this_year",
     "previous_illness",
     "course_currently_enrolled",
@@ -170,6 +261,7 @@ CHILD_COLLECTIONS = (
     "education_entries",
     "organization_memberships",
     "transportation_entries",
+    "geographic_locations",
 )
 
 
@@ -189,6 +281,7 @@ def _inventory_queryset():
         "education_entries",
         "organization_memberships",
         "transportation_entries",
+        "geographic_locations",
     )
 
 
@@ -222,6 +315,209 @@ def _require_active_program(program_id: UUID) -> Program:
     ):
         raise InventoryConflict("The selected Program, College, and Campus must all be active.")
     return program
+
+
+def _choice_label(choice_class, value: str) -> str:
+    return choice_class(value).label
+
+
+def _normalize_snapshot_categories(values: dict[str, object]) -> dict[str, object]:
+    normalized = dict(values)
+
+    civil = normalized.get("civil_status_category")
+    if civil is not None:
+        civil = str(civil)
+        normalized["civil_status_category"] = civil
+        if civil == CivilStatusCategory.OTHER:
+            if not str(normalized.get("civil_status", "")).strip():
+                raise InvalidInventoryInput(
+                    "civil_status detail is required when category is OTHER."
+                )
+        elif civil == CivilStatusCategory.NOT_SPECIFIED:
+            normalized["civil_status"] = ""
+        else:
+            normalized["civil_status"] = _choice_label(CivilStatusCategory, civil)
+
+    religion = normalized.get("current_religion_category")
+    if religion is not None:
+        religion = str(religion)
+        normalized["current_religion_category"] = religion
+        if religion == CurrentReligionCategory.OTHER:
+            if not str(normalized.get("current_religion", "")).strip():
+                raise InvalidInventoryInput(
+                    "current_religion detail is required when category is OTHER."
+                )
+        elif religion == CurrentReligionCategory.NOT_SPECIFIED:
+            normalized["current_religion"] = ""
+        else:
+            normalized["current_religion"] = _choice_label(CurrentReligionCategory, religion)
+
+    physical = normalized.get("physical_disadvantage_status")
+    if physical is not None:
+        physical = str(physical)
+        normalized["physical_disadvantage_status"] = physical
+        detail = str(normalized.get("physical_disadvantage", "")).strip()
+        if physical == PhysicalDisadvantageStatus.HAS_PHYSICAL_DISADVANTAGE and not detail:
+            raise InvalidInventoryInput(
+                "physical_disadvantage detail is required when a disadvantage is reported."
+            )
+        if physical in {
+            PhysicalDisadvantageStatus.NONE,
+            PhysicalDisadvantageStatus.NOT_SPECIFIED,
+        }:
+            normalized["physical_disadvantage"] = ""
+
+    parent_status = normalized.get("parent_status_category")
+    if parent_status is not None:
+        normalized["parent_status_category"] = str(parent_status)
+
+    return normalized
+
+
+def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
+    if not isinstance(rows, list):
+        raise InvalidInventoryInput("family_members must be a list.")
+    normalized: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for raw in rows:
+        row = dict(raw)
+        kind = str(row.get("kind", ""))
+        if kind in seen:
+            raise InvalidInventoryInput("Only one family-member row per kind is allowed.")
+        seen.add(kind)
+        life_status = row.get("life_status")
+        if life_status is not None:
+            life_status = str(life_status)
+            if life_status not in ParentLifeStatus.values:
+                raise InvalidInventoryInput("Unsupported parent life_status.")
+            row["life_status"] = life_status
+
+        status = row.get("annual_income_status")
+        if status is not None:
+            status = str(status)
+            if status not in AnnualIncomeStatus.values:
+                raise InvalidInventoryInput("Unsupported annual_income_status.")
+            row["annual_income_status"] = status
+            amount = row.get("annual_income_previous_year")
+            if status == AnnualIncomeStatus.REPORTED:
+                if amount is None or Decimal(amount) <= 0:
+                    raise InvalidInventoryInput(
+                        "REPORTED parent annual income requires a positive amount."
+                    )
+            elif status == AnnualIncomeStatus.NONE:
+                row["annual_income_previous_year"] = Decimal("0")
+            elif status == AnnualIncomeStatus.NOT_SPECIFIED:
+                row["annual_income_previous_year"] = None
+
+        occupation_category = row.get("occupation_category")
+        if occupation_category is not None:
+            occupation_category = str(occupation_category)
+            if occupation_category not in OccupationCategory.values:
+                raise InvalidInventoryInput("Unsupported occupation_category.")
+            row["occupation_category"] = occupation_category
+            if (
+                occupation_category == OccupationCategory.OTHER
+                and not str(row.get("occupation", "")).strip()
+            ):
+                raise InvalidInventoryInput(
+                    "occupation detail is required when occupation_category is OTHER."
+                )
+            if occupation_category in {
+                OccupationCategory.NONE,
+                OccupationCategory.NOT_SPECIFIED,
+            }:
+                row["occupation"] = ""
+
+        normalized.append(row)
+    return normalized
+
+
+def _pair(code: str, name: str, label: str, *, required: bool) -> tuple[str, str]:
+    code = code.strip()
+    name = name.strip()
+    if bool(code) != bool(name):
+        raise InvalidInventoryInput(f"{label} PSGC code and name must be supplied together.")
+    if required and not code:
+        raise InvalidInventoryInput(f"{label} PSGC code and name are required.")
+    if len(code) > 32 or len(name) > 160:
+        raise InvalidInventoryInput(f"{label} PSGC code or display name is too long.")
+    return code, name
+
+
+def _normalize_geographic_rows(rows: object) -> list[dict[str, object]]:
+    if not isinstance(rows, list):
+        raise InvalidInventoryInput("geographic_locations must be a list.")
+    normalized: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for raw in rows:
+        row = dict(raw)
+        kind = str(row.get("kind", ""))
+        if kind not in GeographicLocationKind.values or kind in seen:
+            raise InvalidInventoryInput("Geographic location kind must be unique and supported.")
+        seen.add(kind)
+        not_specified = bool(row.get("not_specified", False))
+        row["kind"] = kind
+        row["not_specified"] = not_specified
+        field_pairs = (
+            ("region_psgc_code", "region_name_snapshot", "Region"),
+            ("province_psgc_code", "province_name_snapshot", "Province"),
+            (
+                "city_municipality_psgc_code",
+                "city_municipality_name_snapshot",
+                "City/Municipality",
+            ),
+            ("barangay_psgc_code", "barangay_name_snapshot", "Barangay"),
+        )
+        if not_specified:
+            for code_field, name_field, _ in field_pairs:
+                if str(row.get(code_field, "")).strip() or str(row.get(name_field, "")).strip():
+                    raise InvalidInventoryInput(
+                        "A not-specified geographic location cannot contain PSGC values."
+                    )
+                row[code_field] = ""
+                row[name_field] = ""
+        else:
+            for code_field, name_field, label in field_pairs:
+                code, name = _pair(
+                    str(row.get(code_field, "")),
+                    str(row.get(name_field, "")),
+                    label,
+                    required=label in {"Region", "City/Municipality"},
+                )
+                row[code_field] = code
+                row[name_field] = name
+        normalized.append(row)
+    return normalized
+
+
+def _normalize_transportation_rows(rows: object) -> list[dict[str, object]]:
+    if not isinstance(rows, list):
+        raise InvalidInventoryInput("transportation_entries must be a list.")
+    normalized: list[dict[str, object]] = []
+    for raw in rows:
+        row = dict(raw)
+        category = row.get("frequency_category")
+        if category is not None:
+            category = str(category)
+            if category not in TransportationFrequencyCategory.values:
+                raise InvalidInventoryInput("Unsupported transportation frequency_category.")
+            row["frequency_category"] = category
+            detail = str(row.get("frequency", "")).strip()
+            if category == TransportationFrequencyCategory.OTHER:
+                if not detail:
+                    raise InvalidInventoryInput(
+                        "frequency detail is required when frequency_category is OTHER."
+                    )
+                row["frequency"] = detail
+            elif category == TransportationFrequencyCategory.NOT_SPECIFIED:
+                row["frequency"] = ""
+            else:
+                row["frequency"] = _choice_label(TransportationFrequencyCategory, category)
+        fare = row.get("fare")
+        if fare is not None and Decimal(fare) < 0:
+            raise InvalidInventoryInput("Transportation fare must be non-negative.")
+        normalized.append(row)
+    return normalized
 
 
 def _active_inventory_revision():
@@ -338,6 +634,107 @@ def _validate_draft_consistency(item: StudentInventory) -> None:
 
 def _validate_submission(item: StudentInventory) -> None:
     _validate_draft_consistency(item)
+    required_scalars = (
+        ("sex", item.sex),
+        ("date_of_birth", item.date_of_birth),
+        ("civil_status_category", item.civil_status_category),
+        ("current_religion_category", item.current_religion_category),
+        ("physical_disadvantage_status", item.physical_disadvantage_status),
+        ("parent_status_category", item.parent_status_category),
+        ("living_arrangement", item.living_arrangement),
+    )
+    missing = [name for name, value in required_scalars if value in {None, ""}]
+    if missing:
+        raise InvalidInventoryInput(
+            "Inventory submission requires normalized fields: " + ", ".join(missing) + "."
+        )
+
+    normalized_root = _normalize_snapshot_categories(
+        {
+            "civil_status_category": item.civil_status_category,
+            "civil_status": item.civil_status,
+            "current_religion_category": item.current_religion_category,
+            "current_religion": item.current_religion,
+            "physical_disadvantage_status": item.physical_disadvantage_status,
+            "physical_disadvantage": item.physical_disadvantage,
+            "parent_status_category": item.parent_status_category,
+        }
+    )
+    for field in (
+        "civil_status",
+        "current_religion",
+        "physical_disadvantage",
+    ):
+        setattr(item, field, normalized_root[field])
+
+    current_location = next(
+        (
+            row
+            for row in item.geographic_locations.all()
+            if row.kind == GeographicLocationKind.CURRENT
+        ),
+        None,
+    )
+    if current_location is None:
+        raise InvalidInventoryInput(
+            "A deliberate CURRENT structured geographic location response is required."
+        )
+    _normalize_geographic_rows(
+        [
+            {
+                "kind": current_location.kind,
+                "not_specified": current_location.not_specified,
+                "region_psgc_code": current_location.region_psgc_code,
+                "region_name_snapshot": current_location.region_name_snapshot,
+                "province_psgc_code": current_location.province_psgc_code,
+                "province_name_snapshot": current_location.province_name_snapshot,
+                "city_municipality_psgc_code": current_location.city_municipality_psgc_code,
+                "city_municipality_name_snapshot": current_location.city_municipality_name_snapshot,
+                "barangay_psgc_code": current_location.barangay_psgc_code,
+                "barangay_name_snapshot": current_location.barangay_name_snapshot,
+            }
+        ]
+    )
+
+    parents = {row.kind: row for row in item.family_members.all()}
+    for kind in (FamilyMemberKind.FATHER, FamilyMemberKind.MOTHER):
+        parent = parents.get(kind)
+        if parent is None:
+            raise InvalidInventoryInput(f"{kind.label} family-member row is required.")
+        if parent.life_status in {None, ""}:
+            raise InvalidInventoryInput(f"{kind.label} life_status is required.")
+        if parent.occupation_category in {None, ""}:
+            raise InvalidInventoryInput(f"{kind.label} occupation_category is required.")
+        if parent.annual_income_status in {None, ""}:
+            raise InvalidInventoryInput(f"{kind.label} annual_income_status is required.")
+        _normalize_family_rows(
+            [
+                {
+                    "kind": parent.kind,
+                    "life_status": parent.life_status,
+                    "occupation_category": parent.occupation_category,
+                    "occupation": parent.occupation,
+                    "annual_income_status": parent.annual_income_status,
+                    "annual_income_previous_year": parent.annual_income_previous_year,
+                }
+            ]
+        )
+    for row in item.transportation_entries.all():
+        if row.frequency_category in {None, ""}:
+            raise InvalidInventoryInput(
+                "Each transportation entry requires a frequency_category before submission."
+            )
+        _normalize_transportation_rows(
+            [
+                {
+                    "mode": row.mode,
+                    "frequency": row.frequency,
+                    "frequency_category": row.frequency_category,
+                    "fare": row.fare,
+                }
+            ]
+        )
+
     if ImmunizationType.OTHER in item.immunizations and not item.immunization_other.strip():
         raise InvalidInventoryInput(
             "immunization_other is required when OTHER immunization is selected."
@@ -370,11 +767,12 @@ def _apply_scalar_values(item: StudentInventory, values: dict[str, object]) -> N
 
 
 def _replace_children(item: StudentInventory, values: dict[str, object]) -> None:
-    family_rows = values.get("family_members", [])
+    family_rows = _normalize_family_rows(values.get("family_members", []))
     sibling_rows = values.get("siblings", [])
     education_rows = values.get("education_entries", [])
     organization_rows = values.get("organization_memberships", [])
-    transportation_rows = values.get("transportation_entries", [])
+    transportation_rows = _normalize_transportation_rows(values.get("transportation_entries", []))
+    geographic_rows = _normalize_geographic_rows(values.get("geographic_locations", []))
 
     item.family_members.all().delete()
     InventoryFamilyMember.objects.bulk_create(
@@ -395,6 +793,10 @@ def _replace_children(item: StudentInventory, values: dict[str, object]) -> None
     item.transportation_entries.all().delete()
     InventoryTransportationEntry.objects.bulk_create(
         [InventoryTransportationEntry(inventory=item, **row) for row in transportation_rows]
+    )
+    item.geographic_locations.all().delete()
+    InventoryGeographicLocation.objects.bulk_create(
+        [InventoryGeographicLocation(inventory=item, **row) for row in geographic_rows]
     )
 
 
@@ -418,7 +820,7 @@ def replace_current_inventory(
             raise InventoryNotFound("The current academic-year Individual Inventory was not found.")
         if item.submitted_at is not None:
             raise InventoryConflict("A submitted Individual Inventory is locked.")
-        normalized_values = dict(values)
+        normalized_values = _normalize_snapshot_categories(values)
         if "program_id" in normalized_values:
             program_id = normalized_values.pop("program_id")
             item.program = None if program_id is None else _require_active_program(program_id)
@@ -459,6 +861,9 @@ def submit_current_inventory(
         item.save(
             update_fields=[
                 "course_currently_enrolled",
+                "civil_status",
+                "current_religion",
+                "physical_disadvantage",
                 "submitted_at",
                 "updated_at",
             ]
