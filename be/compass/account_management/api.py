@@ -558,6 +558,8 @@ def account_email_change(request, user_id: UUID, payload: ManagedEmailChangeRequ
             request=request,
             turnstile_token=payload.turnstile_token,
         )
+    except RecentMFARequired as exc:
+        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
     except AuthenticationRateLimited as exc:
         raise APIError(
             429,
