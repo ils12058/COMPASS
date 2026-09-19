@@ -29,14 +29,14 @@ from compass.inventory.models import (
     InventoryGeographicLocation,
     LivingArrangement,
     OccupationCategory,
-    ParentLifeStatus,
     ParentStatusCategory,
-    PhysicalDisadvantageStatus,
+    PWDStatus,
     Sex,
     StudentInventory,
 )
 from compass.organization.models import AcademicYear, Campus, College, Program
 from compass.reports.services import calculate_percentage, year_level_label
+from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
 
 
 def sync_policy() -> None:
@@ -121,7 +121,7 @@ def make_inventory(
     date_of_birth=None,
     civil_status_category: str | None = CivilStatusCategory.SINGLE,
     religion: str | None = CurrentReligionCategory.ROMAN_CATHOLIC,
-    physical: str | None = PhysicalDisadvantageStatus.NONE,
+    physical: str | None = PWDStatus.NON_PWD,
     parent_status: str | None = ParentStatusCategory.MARRIED,
     living: str = LivingArrangement.OWN_HOUSE,
     with_parents: bool = True,
@@ -143,7 +143,7 @@ def make_inventory(
         date_of_birth=date_of_birth,
         civil_status_category=civil_status_category,
         current_religion_category=religion,
-        physical_disadvantage_status=physical,
+        pwd_status=physical,
         physical_disadvantage="Private medical narrative",
         parent_status_category=parent_status,
         living_arrangement=living,
@@ -155,7 +155,6 @@ def make_inventory(
             inventory=item,
             kind=FamilyMemberKind.FATHER,
             name="Private Father",
-            life_status=ParentLifeStatus.LIVING,
             occupation="Private occupation narrative",
             occupation_category=OccupationCategory.FARMER,
             annual_income_status=AnnualIncomeStatus.NONE,
@@ -171,6 +170,11 @@ def make_inventory(
             annual_income_status=AnnualIncomeStatus.NONE,
             annual_income_previous_year=Decimal("0"),
         )
+    StudentSupportProfile.objects.create(
+        inventory=item,
+        mother_life_status=ParentLifeStatus.LIVING if with_parents else None,
+        father_life_status=ParentLifeStatus.LIVING if with_parents else None,
+    )
     if with_location:
         InventoryGeographicLocation.objects.create(
             inventory=item,
