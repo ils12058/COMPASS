@@ -71,6 +71,7 @@ def csrf(client: Client) -> dict[str, str]:
     assert response.status_code == 200
     return {"HTTP_X_CSRFTOKEN": response.json()["csrf_token"]}
 
+
 @pytest.mark.django_db
 def test_policy_grants_organization_capabilities_and_revoke_still_wins():
     sync_policy()
@@ -91,6 +92,7 @@ def test_policy_grants_organization_capabilities_and_revoke_still_wins():
         reason="separation",
     )
     assert not counselor.has_capability("organization.manage")
+
 
 @pytest.mark.django_db
 def test_effective_scope_head_and_gss_inheritance_are_dynamic_not_capability_inheritance():
@@ -134,6 +136,7 @@ def test_effective_scope_head_and_gss_inheritance_are_dynamic_not_capability_inh
     }
     assert not staff.has_capability("organization.manage")
 
+
 @pytest.mark.django_db
 def test_default_routing_prefers_college_then_head_and_reports_head_ambiguity():
     sync_policy()
@@ -173,6 +176,7 @@ def test_default_routing_prefers_college_then_head_and_reports_head_ambiguity():
     assert result.counselor is None
     assert result.reason == "AMBIGUOUS_HEAD_CONFIGURATION"
 
+
 @pytest.mark.django_db
 def test_disabled_supervisor_keeps_relationship_but_staff_operational_scope_is_empty():
     sync_policy()
@@ -187,6 +191,7 @@ def test_disabled_supervisor_keeps_relationship_but_staff_operational_scope_is_e
     counselor.save(update_fields=["is_active", "updated_at"])
     assert StaffSupervision.objects.filter(staff=staff).exists()
     assert effective_responsibility_colleges(staff) == ()
+
 
 @pytest.mark.django_db
 def test_assignment_noop_does_not_create_fake_audit_event():
@@ -212,6 +217,7 @@ def test_assignment_noop_does_not_create_fake_audit_event():
         AuditEvent.objects.filter(action__startswith="organization.student_affiliation").count()
         == count
     )
+
 
 @pytest.mark.django_db
 def test_role_changes_are_blocked_until_organization_relationship_is_removed():
@@ -242,6 +248,7 @@ def test_role_changes_are_blocked_until_organization_relationship_is_removed():
     )
     assert allowed.status_code == 200
 
+
 @pytest.mark.django_db
 def test_structure_disable_refuses_active_children_and_current_assignments():
     sync_policy()
@@ -257,6 +264,7 @@ def test_structure_disable_refuses_active_children_and_current_assignments():
         set_campus_active(campus_id=campus.pk, is_active=False, context=context(actor))
     with pytest.raises(OrganizationConflict):
         set_college_active(college_id=college.pk, is_active=False, context=context(actor))
+
 
 @pytest.mark.django_db
 def test_manager_api_uses_capability_and_recent_mfa_not_role_shortcut():
@@ -299,6 +307,7 @@ def test_manager_api_uses_capability_and_recent_mfa_not_role_shortcut():
         **csrf(fresh),
     )
     assert denied.status_code == 403
+
 
 
 @pytest.mark.django_db
