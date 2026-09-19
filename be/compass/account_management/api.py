@@ -57,10 +57,12 @@ from .services import (
 from .csv_import import (
     MAX_CSV_BYTES,
     CsvImportConflict,
+    CsvImportDuplicateIdentity,
     CsvImportInvalidRows,
     CsvImportMalformed,
     CsvImportReport,
     CsvImportTooLarge,
+    CsvImportUnsupportedHeaders,
     provision_accounts_from_csv,
 )
 
@@ -372,7 +374,7 @@ def accounts(
 
 @router.post(
     "/imports/csv",
-    response=response_with_errors(CsvImportResponse, 401, 403, 409, 422),
+    response=response_with_errors(CsvImportResponse, 401, 403, 409, 422, 503),
     auth=session_auth,
     operation_id="accountsImportCsv",
     summary="Validate or commit a bounded CSV account import",
@@ -396,8 +398,17 @@ def account_csv_import(
         raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
     except CsvImportTooLarge as exc:
         raise APIError(422, "csv_import_too_large", str(exc)) from exc
+    except CsvImportUnsupportedHeaders as exc:
+        raise APIError(422, "csv_import_unsupported_headers", str(exc)) from exc
     except CsvImportMalformed as exc:
         raise APIError(422, "csv_import_malformed", str(exc)) from exc
+    except CsvImportDuplicateIdentity as exc:
+        raise APIError(
+            422,
+            "csv_import_duplicate_identity",
+            str(exc),
+            details=_csv_issue_details(exc),
+        ) from exc
     except CsvImportInvalidRows as exc:
         raise APIError(
             422,
