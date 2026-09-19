@@ -397,8 +397,23 @@ def test_privacy_activity_pagination_and_category_filter_are_bounded_and_determi
 def test_privacy_activity_has_no_arbitrary_action_filter_or_global_audit_route():
     sync_policy()
     dpo = make_dpo("no-global-audit-dpo@example.edu")
+    actor = make_user("no-global-audit-actor@example.edu", "IT_ADMIN")
+    event = record_event(
+        context=AuditContext.user(actor),
+        action=ACCOUNT_ROLE_CHANGED,
+        outcome="SUCCESS",
+        target_type="accounts.user",
+        target_id=uuid4(),
+        metadata={"from_role": "COUNSELOR", "to_role": "INSTITUTIONAL_OFFICER"},
+    )
     client = auth_client(dpo)
 
-    arbitrary = client.get("/api/v1/privacy/activity?action=counseling.encounter.updated")
-    assert arbitrary.status_code == 422
+    normal = client.get("/api/v1/privacy/activity")
+    unknown_query = client.get(
+        "/api/v1/privacy/activity?action=counseling.encounter.updated"
+    )
+
+    assert normal.status_code == unknown_query.status_code == 200
+    assert [item["id"] for item in normal.json()["items"]] == [str(event.pk)]
+    assert unknown_query.json()["items"] == normal.json()["items"]
     assert client.get("/api/v1/privacy/audit-events").status_code == 404
