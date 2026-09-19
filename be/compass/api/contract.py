@@ -34,6 +34,7 @@ CURRENT_API_TAGS = frozenset(
         "document-branding",
         "e-counseling",
         "platform-operations",
+        "privacy-governance",
     }
 )
 OPERATION_ID_PATTERN = re.compile(r"^[a-z][A-Za-z0-9]*$", re.ASCII)
@@ -63,6 +64,7 @@ OPERATION_ID_PREFIXES = {
     "document-branding": "documentBranding",
     "e-counseling": "eCounseling",
     "platform-operations": "platformOperations",
+    "privacy-governance": "privacyGovernance",
 }
 HTTP_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch"})
 
