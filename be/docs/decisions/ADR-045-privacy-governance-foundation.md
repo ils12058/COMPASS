@@ -175,6 +175,9 @@ Instrument:
 The PDF/XLSX result carries a small safe release-context projection derived from the report already
 built. No second report query is performed merely for audit.
 
+The release AuditEvent target type is `reports.studentprofiling`, with the resolved Academic Year
+UUID as its opaque target identifier.
+
 Release metadata contains only report type, format, resolved Academic Year, optional Campus/College/
 Program scope, and optional Year Level. It excludes aggregate values, demographic counts, Inventory
 responses, and artifact bytes/content.
