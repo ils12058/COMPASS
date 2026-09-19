@@ -46,6 +46,7 @@ EXPECTED_OPERATION_IDS = {
     "profileUpdateMyProfile",
     "accountsList",
     "accountsCreate",
+    "accountsImportCsv",
     "accountsGet",
     "accountsUpdateIdentity",
     "accountsDisable",
@@ -413,8 +414,15 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert expected_schemas <= schemas.keys()
     assert schemas["AccountSummaryResponse"]["properties"]["id"]["format"] == "uuid"
     assert schemas["AccountSummaryResponse"]["properties"]["created_at"]["format"] == "date-time"
-    assert "student_lifecycle_status" in schemas["AccountSummaryResponse"]["properties"]
+    account_summary = schemas["AccountSummaryResponse"]["properties"]
+    account_detail = schemas["AccountDetailResponse"]["properties"]
+    assert "student_lifecycle_status" in account_summary
+    assert "password_configured" in account_summary
+    assert "email_verified" in account_summary
+    assert "email_verified_at" not in account_summary
+    assert "email_verified_at" in account_detail
     assert "student_lifecycle_status" in schemas["UserSummary"]["properties"]
+    assert "INSTITUTIONAL_OFFICER" in schemas["RoleCode"]["enum"]
     assert (
         _operation(
             schema,
@@ -429,6 +437,9 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _operation(schema, "/api/v1/accounts", "post")["requestBody"]["content"][
         "application/json"
     ]["schema"]["$ref"].endswith("/AccountCreateRequest")
+    csv_import_operation = _operation(schema, "/api/v1/accounts/imports/csv", "post")
+    assert csv_import_operation["operationId"] == "accountsImportCsv"
+    assert "multipart/form-data" in csv_import_operation["requestBody"]["content"]
     assert _operation(schema, "/api/v1/auth/login", "post")["requestBody"]["content"][
         "application/json"
     ]["schema"]["$ref"].endswith("/LoginRequest")
@@ -799,6 +810,14 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     ) >= {200, 401, 403, 404, 409, 422}
     assert _response_statuses(_operation(schema, "/api/v1/accounts", "post")) >= {
         201,
+        401,
+        403,
+        409,
+        422,
+        503,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/accounts/imports/csv", "post")) >= {
+        200,
         401,
         403,
         409,
