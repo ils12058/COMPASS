@@ -15,15 +15,14 @@ from compass.audit.actions import (
     NOTIFICATION_EMAIL_RETRY_REQUESTED,
     PLATFORM_MAINTENANCE_DISABLED,
     PLATFORM_MAINTENANCE_ENABLED,
-    PLATFORM_MAINTENANCE_SCHEDULED,
     PLATFORM_MAINTENANCE_SCHEDULE_CANCELLED,
+    PLATFORM_MAINTENANCE_SCHEDULED,
     REFERRAL_CREATED,
 )
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.audit.services import record_event
 from compass.authentication.sessions import create_auth_session
-
 
 TECHNICAL_ACTIONS = {
     PLATFORM_MAINTENANCE_ENABLED,
