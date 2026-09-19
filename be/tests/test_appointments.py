@@ -699,6 +699,13 @@ def test_exact_self_cancellation_cutoff_boundary_is_allowed():
         now=start - timedelta(minutes=30),
     )
     assert cancelled.status == "CANCELLED"
+    self_cancel_notifications = Notification.objects.filter(
+        event_code="appointment.cancelled",
+        source_type="appointment",
+        source_id=item.pk,
+    )
+    assert self_cancel_notifications.count() == 2
+    assert {row.recipient_id for row in self_cancel_notifications} == {student.pk, provider.pk}
 
 
 @pytest.mark.django_db
