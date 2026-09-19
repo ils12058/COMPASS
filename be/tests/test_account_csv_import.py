@@ -27,9 +27,11 @@ def make_user(
     middle_name: str = "",
     last_name: str = "User",
     suffix: str = "",
+    institutional_id: str | None = None,
 ) -> User:
     return User.objects.create_user(
         email=email,
+        institutional_id=institutional_id,
         password="a-test-password",
         role=Role.objects.get(code=role),
         first_name=first_name,
@@ -74,9 +76,9 @@ def upload(
 
 
 VALID_CSV = (
-    b"email,first_name,last_name,role,middle_name,suffix\n"
-    b"student.one@example.edu,Student,One,STUDENT,,\n"
-    b"officer.one@example.edu,Officer,One,INSTITUTIONAL_OFFICER,,\n"
+    b"institutional_id,email,first_name,last_name,role,middle_name,suffix\n"
+    b"UCN-CSV-101,student.one@example.edu,Student,One,STUDENT,,\n"
+    b"EMP-CSV-201,officer.one@example.edu,Officer,One,INSTITUTIONAL_OFFICER,,\n"
 )
 
 
@@ -194,19 +196,21 @@ def test_csv_rejects_duplicate_headers_bad_utf8_and_malformed_rows():
 
     duplicate_header = upload(
         client,
-        b"email,email,first_name,last_name,role\na@example.edu,a@example.edu,A,U,STUDENT\n",
+        b"institutional_id,email,email,first_name,last_name,role\nUCN-X,a@example.edu,a@example.edu,A,U,STUDENT\n",
         dry_run=True,
     )
     assert duplicate_header.status_code == 422
     assert duplicate_header.json()["error"]["code"] == "csv_import_unsupported_headers"
 
-    bad_utf8 = upload(client, b"email,first_name,last_name,role\n\xff", dry_run=True)
+    bad_utf8 = upload(
+        client, b"institutional_id,email,first_name,last_name,role\n\xff", dry_run=True
+    )
     assert bad_utf8.status_code == 422
     assert bad_utf8.json()["error"]["code"] == "csv_import_malformed"
 
     malformed = upload(
         client,
-        b"email,first_name,last_name,role\na@example.edu,A,User\n",
+        b"institutional_id,email,first_name,last_name,role\nUCN-X,a@example.edu,A,User\n",
         dry_run=True,
     )
     assert malformed.status_code == 422
@@ -218,9 +222,9 @@ def test_csv_dry_run_reports_invalid_rows_and_commit_rejects_them_without_writes
     sync_policy()
     client, _admin = admin_client()
     invalid = (
-        b"email,first_name,last_name,role\n"
-        b"not-an-email,A,User,STUDENT\n"
-        b"valid@example.edu,Valid,User,NOT_CANONICAL\n"
+        b"institutional_id,email,first_name,last_name,role\n"
+        b"UCN-INV-1,not-an-email,A,User,STUDENT\n"
+        b"UCN-INV-2,valid@example.edu,Valid,User,NOT_CANONICAL\n"
     )
 
     dry = upload(client, invalid, dry_run=True)
@@ -240,9 +244,9 @@ def test_csv_rejects_case_insensitive_duplicate_email_rows():
     sync_policy()
     client, _admin = admin_client()
     duplicate = (
-        b"email,first_name,last_name,role\n"
-        b"Duplicate@Example.edu,First,User,STUDENT\n"
-        b"duplicate@example.edu,Second,User,STUDENT\n"
+        b"institutional_id,email,first_name,last_name,role\n"
+        b"UCN-DUPEMAIL-1,Duplicate@Example.edu,First,User,STUDENT\n"
+        b"UCN-DUPEMAIL-2,duplicate@example.edu,Second,User,STUDENT\n"
     )
 
     dry = upload(client, duplicate, dry_run=True)
@@ -261,12 +265,13 @@ def test_csv_existing_identical_active_account_is_skip_and_reimport_is_idempoten
     sync_policy()
     client, _admin = admin_client()
     csv_bytes = (
-        b"email,first_name,middle_name,last_name,suffix,role\n"
-        b"existing@example.edu,Existing,,User,,COUNSELOR\n"
-        b"new@example.edu,New,,User,,STUDENT\n"
+        b"institutional_id,email,first_name,middle_name,last_name,suffix,role\n"
+        b"UCN-EXIST-1,existing@example.edu,Existing,,User,,COUNSELOR\n"
+        b"UCN-NEW-1,new@example.edu,New,,User,,STUDENT\n"
     )
     make_user(
         email="existing@example.edu",
+        institutional_id="UCN-EXIST-1",
         role="COUNSELOR",
         first_name="Existing",
         last_name="User",
@@ -302,11 +307,15 @@ def test_csv_existing_identical_active_account_is_skip_and_reimport_is_idempoten
 def test_csv_existing_conflict_blocks_complete_commit(existing_kwargs):
     sync_policy()
     client, _admin = admin_client()
-    make_user(email="conflict@example.edu", **existing_kwargs)
+    make_user(
+        email="conflict@example.edu",
+        institutional_id="UCN-CONFLICT-1",
+        **existing_kwargs,
+    )
     csv_bytes = (
-        b"email,first_name,last_name,role\n"
-        b"conflict@example.edu,Same,User,COUNSELOR\n"
-        b"would-create@example.edu,Would,Create,STUDENT\n"
+        b"institutional_id,email,first_name,last_name,role\n"
+        b"UCN-CONFLICT-1,conflict@example.edu,Same,User,COUNSELOR\n"
+        b"UCN-WOULD-1,would-create@example.edu,Would,Create,STUDENT\n"
     )
 
     dry = upload(client, csv_bytes, dry_run=True)
@@ -325,9 +334,9 @@ def test_csv_commit_revalidates_after_dry_run_and_does_not_use_persisted_batch_s
     sync_policy()
     client, _admin = admin_client()
     csv_bytes = (
-        b"email,first_name,last_name,role\n"
-        b"racy@example.edu,Racy,User,COUNSELOR\n"
-        b"other@example.edu,Other,User,STUDENT\n"
+        b"institutional_id,email,first_name,last_name,role\n"
+        b"UCN-RACY-1,racy@example.edu,Racy,User,COUNSELOR\n"
+        b"UCN-OTHER-1,other@example.edu,Other,User,STUDENT\n"
     )
     dry = upload(client, csv_bytes, dry_run=True)
     assert dry.status_code == 200
@@ -335,6 +344,7 @@ def test_csv_commit_revalidates_after_dry_run_and_does_not_use_persisted_batch_s
 
     make_user(
         email="racy@example.edu",
+        institutional_id="UCN-RACY-1",
         role="GUIDANCE_SERVICES_STAFF",
         first_name="External",
         last_name="Change",
@@ -350,9 +360,9 @@ def test_csv_audit_failure_rolls_back_whole_batch():
     sync_policy()
     client, _admin = admin_client()
     csv_bytes = (
-        b"email,first_name,last_name,role\n"
-        b"one.rollback@example.edu,One,Rollback,STUDENT\n"
-        b"two.rollback@example.edu,Two,Rollback,COUNSELOR\n"
+        b"institutional_id,email,first_name,last_name,role\n"
+        b"UCN-ROLLBACK-1,one.rollback@example.edu,One,Rollback,STUDENT\n"
+        b"UCN-ROLLBACK-2,two.rollback@example.edu,Two,Rollback,COUNSELOR\n"
     )
 
     with patch(
@@ -399,8 +409,10 @@ def test_csv_size_limit_is_enforced_before_any_account_write():
 def test_csv_row_limit_is_enforced_without_persisting_any_rows():
     sync_policy()
     client, _admin = admin_client()
-    rows = ["email,first_name,last_name,role"]
-    rows.extend(f"user{index}@example.edu,User,{index},STUDENT" for index in range(1001))
+    rows = ["institutional_id,email,first_name,last_name,role"]
+    rows.extend(
+        f"UCN-LIMIT-{index},user{index}@example.edu,User,{index},STUDENT" for index in range(1001)
+    )
     content = ("\n".join(rows) + "\n").encode()
 
     response = upload(client, content, dry_run=False)

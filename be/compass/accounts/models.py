@@ -78,6 +78,21 @@ class UserManager(BaseUserManager):
             raise ValueError("email must be a string")
         return email.strip().lower()
 
+    @classmethod
+    def normalize_institutional_id(cls, institutional_id: str | None) -> str | None:
+        """Normalize a UCN-issued identifier without interpreting its structure."""
+
+        if institutional_id is None:
+            return None
+        if not isinstance(institutional_id, str):
+            raise ValueError("institutional_id must be a string or null")
+        normalized = institutional_id.strip().upper()
+        if not normalized:
+            return None
+        if len(normalized) > 64 or any(ord(character) < 32 for character in normalized):
+            raise ValueError("institutional_id is invalid")
+        return normalized
+
     def clean_email(self, email: str | None) -> str:
         normalized = self.normalize_email(email)
         try:
@@ -113,6 +128,7 @@ class UserManager(BaseUserManager):
         middle_name: str = "",
         last_name: str = "",
         suffix: str = "",
+        institutional_id: str | None = None,
         is_active: bool = True,
     ) -> User:
         if not first_name.strip() or not last_name.strip():
@@ -122,6 +138,7 @@ class UserManager(BaseUserManager):
         resolved_role = self._resolve_role(role)
         user = self.model(
             email=self.clean_email(email),
+            institutional_id=self.normalize_institutional_id(institutional_id),
             role=resolved_role,
             student_lifecycle_status=(
                 StudentLifecycleStatus.CURRENT if resolved_role.code == "STUDENT" else None
@@ -145,6 +162,7 @@ class User(AbstractBaseUser):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(max_length=254, unique=True)
+    institutional_id = models.CharField(max_length=64, blank=True, null=True)
     first_name = models.CharField(max_length=150)
     middle_name = models.CharField(max_length=150, blank=True, default="")
     last_name = models.CharField(max_length=150)
@@ -195,6 +213,11 @@ class User(AbstractBaseUser):
                 Lower("email"),
                 name="accounts_user_email_ci_uniq",
             ),
+            models.UniqueConstraint(
+                Lower("institutional_id"),
+                condition=models.Q(institutional_id__isnull=False),
+                name="accounts_user_institutional_id_ci_uniq",
+            ),
             models.CheckConstraint(
                 condition=(
                     models.Q(student_lifecycle_status__isnull=True)
@@ -209,10 +232,16 @@ class User(AbstractBaseUser):
         super().clean()
         if self.email is not None:
             self.email = self.__class__.objects.normalize_email(self.email)
+        self.institutional_id = self.__class__.objects.normalize_institutional_id(
+            self.institutional_id
+        )
 
     def save(self, *args, **kwargs):
         if self.email is not None:
             self.email = self.__class__.objects.normalize_email(self.email)
+        self.institutional_id = self.__class__.objects.normalize_institutional_id(
+            self.institutional_id
+        )
         return super().save(*args, **kwargs)
 
     def get_full_name(self) -> str:

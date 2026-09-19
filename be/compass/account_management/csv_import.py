@@ -7,6 +7,7 @@ import io
 from dataclasses import dataclass
 
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 
 from compass.accounts.models import Role, User
 from compass.audit.actions import ACCOUNT_CREATED, ACCOUNT_CSV_IMPORTED
@@ -22,13 +23,14 @@ from .services import (
     _canonical_role_code,
     _clean_email,
     _clean_identity_text,
+    _clean_institutional_id,
     _lock_management_mutex,
     _lock_users,
 )
 
 MAX_CSV_BYTES = 1_048_576
 MAX_CSV_ROWS = 1_000
-REQUIRED_HEADERS = frozenset({"email", "first_name", "last_name", "role"})
+REQUIRED_HEADERS = frozenset({"institutional_id", "email", "first_name", "last_name", "role"})
 OPTIONAL_HEADERS = frozenset({"middle_name", "suffix"})
 ALLOWED_HEADERS = REQUIRED_HEADERS | OPTIONAL_HEADERS
 
@@ -58,7 +60,7 @@ class CsvImportInvalidRows(CsvImportError):
 
 
 class CsvImportDuplicateIdentity(CsvImportInvalidRows):
-    """The same normalized email occurs more than once in the submitted CSV."""
+    """A normalized email or Institutional ID occurs more than once in the submitted CSV."""
 
 
 class CsvImportConflict(CsvImportError):
@@ -72,6 +74,7 @@ class CsvImportConflict(CsvImportError):
 @dataclass(frozen=True, slots=True)
 class CsvImportIssue:
     row_number: int
+    institutional_id: str
     email: str
     code: str
     message: str
@@ -80,6 +83,7 @@ class CsvImportIssue:
 @dataclass(frozen=True, slots=True)
 class CsvProvisionRow:
     row_number: int
+    institutional_id: str
     email: str
     first_name: str
     middle_name: str
@@ -91,6 +95,7 @@ class CsvProvisionRow:
 @dataclass(frozen=True, slots=True)
 class CsvImportRowResult:
     row_number: int
+    institutional_id: str
     email: str
     action: str
     message: str = ""
@@ -160,6 +165,7 @@ def _parse_csv(data: bytes) -> ParsedCsv:
     rows: list[CsvProvisionRow] = []
     issues: list[CsvImportIssue] = []
     seen_emails: dict[str, int] = {}
+    seen_institutional_ids: dict[str, int] = {}
     total_rows = 0
 
     try:
@@ -174,8 +180,11 @@ def _parse_csv(data: bytes) -> ParsedCsv:
                     f"CSV row {physical_row_number} does not match the header column count"
                 )
             raw = {header: value for header, value in zip(headers, values, strict=True)}
+            raw_institutional_id = raw.get("institutional_id", "").strip()
             raw_email = raw.get("email", "").strip()
             try:
+                institutional_id = _clean_institutional_id(raw_institutional_id)
+                assert institutional_id is not None
                 email = _clean_email(raw_email)
                 first_name = _clean_identity_text(
                     "first_name", raw.get("first_name"), required=True
@@ -190,6 +199,7 @@ def _parse_csv(data: bytes) -> ParsedCsv:
                 issues.append(
                     CsvImportIssue(
                         row_number=physical_row_number,
+                        institutional_id=raw_institutional_id,
                         email=raw_email,
                         code="invalid_row",
                         message=str(exc),
@@ -197,21 +207,34 @@ def _parse_csv(data: bytes) -> ParsedCsv:
                 )
                 continue
 
-            duplicate_of = seen_emails.get(email.casefold())
-            if duplicate_of is not None:
+            duplicate_email_of = seen_emails.get(email.casefold())
+            duplicate_id_of = seen_institutional_ids.get(institutional_id.casefold())
+            if duplicate_email_of is not None or duplicate_id_of is not None:
+                if duplicate_email_of is not None:
+                    message = (
+                        f"duplicate email in CSV; first occurrence is row {duplicate_email_of}"
+                    )
+                else:
+                    message = (
+                        "duplicate institutional_id in CSV; first occurrence is row "
+                        f"{duplicate_id_of}"
+                    )
                 issues.append(
                     CsvImportIssue(
                         row_number=physical_row_number,
+                        institutional_id=institutional_id,
                         email=email,
                         code="duplicate_identity",
-                        message=(f"duplicate email in CSV; first occurrence is row {duplicate_of}"),
+                        message=message,
                     )
                 )
                 continue
             seen_emails[email.casefold()] = physical_row_number
+            seen_institutional_ids[institutional_id.casefold()] = physical_row_number
             rows.append(
                 CsvProvisionRow(
                     row_number=physical_row_number,
+                    institutional_id=institutional_id,
                     email=email,
                     first_name=first_name,
                     middle_name=middle_name,
@@ -248,23 +271,48 @@ def _classify_rows(
     lock_existing: bool,
 ) -> tuple[CsvImportRowResult, ...]:
     emails = tuple(row.email for row in rows)
-    queryset = User.objects.select_related("role").filter(email__in=emails)
+    institutional_ids = tuple(row.institutional_id for row in rows)
+    queryset = User.objects.select_related("role").filter(
+        Q(email__in=emails) | Q(institutional_id__in=institutional_ids)
+    )
     if lock_existing:
         queryset = queryset.select_for_update()
-    existing = {user.email.casefold(): user for user in queryset}
+    existing_by_email = {user.email.casefold(): user for user in queryset}
+    existing_by_id = {
+        user.institutional_id.casefold(): user
+        for user in queryset
+        if user.institutional_id is not None
+    }
     results: list[CsvImportRowResult] = []
 
     for row in rows:
-        current = existing.get(row.email.casefold())
-        if current is None:
+        email_match = existing_by_email.get(row.email.casefold())
+        id_match = existing_by_id.get(row.institutional_id.casefold())
+        if email_match is None and id_match is None:
             results.append(
                 CsvImportRowResult(
                     row_number=row.row_number,
+                    institutional_id=row.institutional_id,
                     email=row.email,
                     action="CREATE",
                 )
             )
             continue
+
+        if email_match is None or id_match is None or email_match.pk != id_match.pk:
+            reason = "email and Institutional ID do not resolve to the same account"
+            results.append(
+                CsvImportRowResult(
+                    row_number=row.row_number,
+                    institutional_id=row.institutional_id,
+                    email=row.email,
+                    action="CONFLICT",
+                    message=reason,
+                )
+            )
+            continue
+
+        current = email_match
         if (
             current.is_active
             and current.role.code == row.role
@@ -273,11 +321,13 @@ def _classify_rows(
             results.append(
                 CsvImportRowResult(
                     row_number=row.row_number,
+                    institutional_id=row.institutional_id,
                     email=row.email,
                     action="SKIP",
                 )
             )
             continue
+
         reason = "existing account is disabled"
         if current.is_active and current.role.code != row.role:
             reason = "existing account has a different role"
@@ -286,6 +336,7 @@ def _classify_rows(
         results.append(
             CsvImportRowResult(
                 row_number=row.row_number,
+                institutional_id=row.institutional_id,
                 email=row.email,
                 action="CONFLICT",
                 message=reason,
@@ -303,6 +354,7 @@ def _report(
     invalid_rows = tuple(
         CsvImportRowResult(
             row_number=issue.row_number,
+            institutional_id=issue.institutional_id,
             email=issue.email,
             action="INVALID",
             message=issue.message,
@@ -377,6 +429,7 @@ def provision_accounts_from_csv(
             for row in create_rows.values():
                 user = User.objects.create_user(
                     email=row.email,
+                    institutional_id=row.institutional_id,
                     password=None,
                     role=role_records[row.role],
                     first_name=row.first_name,
@@ -398,6 +451,7 @@ def provision_accounts_from_csv(
                 (
                     CsvImportRowResult(
                         row_number=0,
+                        institutional_id="",
                         email="",
                         action="CONFLICT",
                         message="account state changed while the CSV import was committing",

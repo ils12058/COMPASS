@@ -31,6 +31,7 @@ class StrictSchema(Schema):
 
 class MyProfileResponse(StrictSchema):
     user_id: UUID
+    institutional_id: str | None
     email: str
     first_name: str
     middle_name: str
@@ -58,6 +59,7 @@ class MyProfileUpdateRequest(StrictSchema):
 def _serialize(user) -> dict[str, object]:
     return {
         "user_id": user.pk,
+        "institutional_id": user.institutional_id,
         "email": user.email,
         "first_name": user.first_name,
         "middle_name": user.middle_name,

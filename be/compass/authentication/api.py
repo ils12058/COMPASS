@@ -18,6 +18,15 @@ from compass.authentication.abuse import (
     AuthenticationAbuseUnavailable,
     AuthenticationRateLimited,
 )
+from compass.authentication.email_change import (
+    EmailChangeConflict,
+    EmailChangeInvalid,
+    EmailChangeNotFound,
+    EmailChangeStrongAuthRequired,
+    confirm_email_change,
+    request_current_email_security_challenge,
+    request_self_email_change,
+)
 from compass.authentication.email_otp import EmailOTPInvalid, EmailOTPSecurityUnavailable
 from compass.authentication.mfa import (
     TOTPAlreadyConfigured,
@@ -48,6 +57,7 @@ from compass.authentication.services import (
     logout_current_session,
 )
 from compass.authentication.sessions import (
+    RecentMFARequired,
     has_recent_mfa,
     resolve_trusted_session,
     revoke_all_trusted_sessions,
@@ -119,6 +129,39 @@ class PasswordAccessConfirmRequest(Schema):
 
 class PasswordAccessConfirmResponse(Schema):
     password_set: bool
+
+
+class EmailChangeSecurityChallengeRequest(Schema):
+    turnstile_token: str | None = None
+
+
+class EmailChangeSecurityChallengeResponse(Schema):
+    challenge_id: UUID
+    expires_at: datetime
+
+
+class EmailChangeRequest(Schema):
+    new_email: str
+    turnstile_token: str | None = None
+    current_email_challenge_id: UUID | None = None
+    current_email_code: str | None = None
+
+
+class EmailChangeRequestResponse(Schema):
+    request_id: UUID
+    challenge_id: UUID
+    expires_at: datetime
+
+
+class EmailChangeConfirmRequest(Schema):
+    code: str
+    request_id: UUID | None = None
+    challenge_id: UUID | None = None
+
+
+class EmailChangeConfirmResponse(Schema):
+    changed: bool
+    reauthentication_required: bool
 
 
 class SessionSummary(Schema):
@@ -393,6 +436,34 @@ def _raise_password_policy(exc: PasswordPolicyRejected) -> None:
     ) from exc
 
 
+def _raise_email_change_error(exc: Exception) -> None:
+    if isinstance(exc, RecentMFARequired):
+        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+    if isinstance(exc, EmailChangeStrongAuthRequired):
+        raise APIError(
+            403,
+            "totp_step_up_required",
+            "TOTP-backed step-up authentication is required.",
+        ) from exc
+    if isinstance(exc, EmailChangeNotFound):
+        raise APIError(
+            404, "email_change_not_found", "The email change request was not found."
+        ) from exc
+    if isinstance(exc, EmailChangeConflict):
+        raise APIError(409, "email_change_conflict", str(exc)) from exc
+    if isinstance(exc, (EmailChangeInvalid, EmailOTPInvalid)):
+        raise APIError(
+            422,
+            "invalid_email_change_request",
+            "The email change request could not be verified.",
+        ) from exc
+    raise APIError(
+        500,
+        "internal_error",
+        "The email change operation could not be completed.",
+    ) from exc
+
+
 @router.get(
     "/csrf",
     response=CSRFResponse,
@@ -407,6 +478,141 @@ def csrf_token(request):
     """Return a masked Django CSRF token and cause the CSRF cookie to be issued."""
 
     return {"csrf_token": get_token(request)}
+
+
+@router.post(
+    "/email-change/security-challenge",
+    response=response_with_errors(
+        EmailChangeSecurityChallengeResponse,
+        401,
+        403,
+        422,
+        429,
+        503,
+    ),
+    auth=session_auth,
+    operation_id="authRequestEmailChangeSecurityChallenge",
+    summary="Authorize email change from the current mailbox",
+)
+def request_email_change_security_challenge(
+    request,
+    payload: EmailChangeSecurityChallengeRequest,
+):
+    try:
+        challenge = request_current_email_security_challenge(
+            user=request.auth_user,
+            request=request,
+            turnstile_token=payload.turnstile_token,
+        )
+    except AuthenticationRateLimited as exc:
+        _raise_rate_limited(exc)
+    except EmailOTPSecurityUnavailable as exc:
+        _raise_security_unavailable(exc)
+    except Exception as exc:
+        _raise_email_change_error(exc)
+    return {
+        "challenge_id": challenge.challenge_id,
+        "expires_at": challenge.expires_at,
+    }
+
+
+@router.post(
+    "/email-change/request",
+    response=response_with_errors(
+        EmailChangeRequestResponse,
+        401,
+        403,
+        409,
+        422,
+        429,
+        503,
+    ),
+    auth=session_auth,
+    operation_id="authRequestEmailChange",
+    summary="Request a verified sign-in email change",
+)
+def request_email_change(request, payload: EmailChangeRequest):
+    try:
+        pending = request_self_email_change(
+            user=request.auth_user,
+            session=request.auth_session,
+            new_email=payload.new_email,
+            context=AuditContext.from_request(request, actor=request.auth_user),
+            request=request,
+            turnstile_token=payload.turnstile_token,
+            current_email_challenge_id=payload.current_email_challenge_id,
+            current_email_code=payload.current_email_code,
+        )
+    except AuthenticationRateLimited as exc:
+        _raise_rate_limited(exc)
+    except EmailOTPSecurityUnavailable as exc:
+        _raise_security_unavailable(exc)
+    except Exception as exc:
+        _raise_email_change_error(exc)
+    return {
+        "request_id": pending.request_id,
+        "challenge_id": pending.challenge_id,
+        "expires_at": pending.expires_at,
+    }
+
+
+@router.post(
+    "/email-change/confirm",
+    response=response_with_errors(
+        EmailChangeConfirmResponse,
+        401,
+        403,
+        404,
+        409,
+        422,
+        429,
+        503,
+    ),
+    auth=session_auth,
+    operation_id="authConfirmEmailChange",
+    summary="Confirm a verified sign-in email change",
+)
+def confirm_email_change_route(
+    request,
+    payload: EmailChangeConfirmRequest,
+    response: HttpResponse,
+):
+    try:
+        result = confirm_email_change(
+            user=request.auth_user,
+            session=request.auth_session,
+            request_id=payload.request_id,
+            challenge_id=payload.challenge_id,
+            code=payload.code,
+            context=AuditContext.from_request(request, actor=request.auth_user),
+            request=request,
+        )
+    except AuthenticationRateLimited as exc:
+        _raise_rate_limited(exc)
+    except EmailOTPSecurityUnavailable as exc:
+        _raise_security_unavailable(exc)
+    except Exception as exc:
+        _raise_email_change_error(exc)
+
+    _delete_cookie(
+        response,
+        name=settings.AUTH_SESSION_COOKIE_NAME,
+        path=settings.AUTH_SESSION_COOKIE_PATH,
+    )
+    _delete_cookie(
+        response,
+        name=settings.AUTH_TRUSTED_COOKIE_NAME,
+        path=settings.AUTH_TRUSTED_COOKIE_PATH,
+    )
+    _delete_cookie(
+        response,
+        name=settings.AUTH_LOGIN_CHALLENGE_COOKIE_NAME,
+        path=settings.AUTH_LOGIN_CHALLENGE_COOKIE_PATH,
+    )
+    return {
+        "changed": True,
+        "reauthentication_required": result.reauthentication_required,
+    }
 
 
 @router.post(

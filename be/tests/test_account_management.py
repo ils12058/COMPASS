@@ -22,7 +22,6 @@ from compass.audit.models import AuditEvent
 from compass.authentication.crypto import encrypt_totp_secret
 from compass.authentication.models import (
     AuthSession,
-    EmailOTPChallenge,
     LoginChallenge,
     RecoveryCode,
     TOTPFactor,
@@ -139,6 +138,7 @@ def test_manager_can_list_create_and_inspect_accounts_without_sensitive_fields()
         client,
         "/api/v1/accounts",
         {
+            "institutional_id": "EMP-NEW-001",
             "email": "  New.User@Example.edu ",
             "first_name": "New",
             "last_name": "User",
@@ -182,6 +182,7 @@ def test_manager_can_list_create_and_inspect_accounts_without_sensitive_fields()
         client,
         "/api/v1/accounts",
         {
+            "institutional_id": "UCN-BAD-001",
             "email": "bad@example.edu",
             "first_name": "Bad",
             "last_name": "Payload",
@@ -231,6 +232,7 @@ def test_account_creation_rejects_duplicate_email_and_noncanonical_role():
     sync_policy()
     client, _admin, _session = make_admin_client()
     payload = {
+        "institutional_id": "UCN-DUP-001",
         "email": "duplicate@example.edu",
         "first_name": "Duplicate",
         "last_name": "User",
@@ -240,13 +242,22 @@ def test_account_creation_rejects_duplicate_email_and_noncanonical_role():
     duplicate = post_json(
         client,
         "/api/v1/accounts",
-        {**payload, "email": "DUPLICATE@example.edu"},
+        {
+            **payload,
+            "institutional_id": "UCN-DUP-002",
+            "email": "DUPLICATE@example.edu",
+        },
         headers=csrf_headers(client),
     )
     unknown_role = post_json(
         client,
         "/api/v1/accounts",
-        {**payload, "email": "unknown-role@example.edu", "role": "NOT_CANONICAL"},
+        {
+            **payload,
+            "institutional_id": "UCN-DUP-003",
+            "email": "unknown-role@example.edu",
+            "role": "NOT_CANONICAL",
+        },
         headers=csrf_headers(client),
     )
     assert first.status_code == 201
@@ -255,62 +266,51 @@ def test_account_creation_rejects_duplicate_email_and_noncanonical_role():
 
 
 @pytest.mark.django_db
-def test_identity_email_change_invalidates_target_security_state_and_audits_fields_only():
+def test_generic_identity_update_excludes_email_and_audits_institutional_id_structurally():
     sync_policy()
     client, admin, _session = make_admin_client()
     target = make_user(email="old@example.edu")
-    now = timezone.now()
-    target.email_verified_at = now - timedelta(days=1)
-    target.save(update_fields=["email_verified_at", "updated_at"])
-    target_session = create_auth_session(target, now=now).session
-    trusted = create_trusted_session(target, now=now).session
-    challenge = create_login_challenge(
-        target,
-        allowed_methods=["totp"],
-        trust_browser=False,
-        now=now,
-    ).challenge
-    email_challenge = EmailOTPChallenge.objects.create(
-        user=target,
-        email=target.email,
-        purpose="security_challenge",
-        code_hash="hash",
-        created_at=now,
-        expires_at=now + timedelta(minutes=5),
-        last_sent_at=now,
+
+    forbidden = client.patch(
+        f"/api/v1/accounts/{target.pk}/identity",
+        data=json.dumps({"email": "new@example.edu"}),
+        content_type="application/json",
+        **csrf_headers(client),
     )
-    verification_challenge = EmailOTPChallenge.objects.create(
-        user=target,
-        email=target.email,
-        purpose="email_verification",
-        code_hash="hash",
-        created_at=now,
-        expires_at=now + timedelta(minutes=5),
-        last_sent_at=now,
-    )
+    assert forbidden.status_code == 422
+    target.refresh_from_db()
+    assert target.email == "old@example.edu"
 
     response = client.patch(
         f"/api/v1/accounts/{target.pk}/identity",
-        data=json.dumps({"email": " New@Example.edu ", "first_name": "Renamed"}),
+        data=json.dumps(
+            {
+                "institutional_id": " ucn-managed-001 ",
+                "first_name": "Renamed",
+            }
+        ),
         content_type="application/json",
         **csrf_headers(client),
     )
     assert response.status_code == 200
     target.refresh_from_db()
-    assert target.email == "new@example.edu"
+    assert target.email == "old@example.edu"
+    assert target.institutional_id == "UCN-MANAGED-001"
     assert target.first_name == "Renamed"
-    assert target.email_verified_at is None
-    assert AuthSession.objects.get(pk=target_session.pk).revoked_at is not None
-    assert TrustedSession.objects.get(pk=trusted.pk).revoked_at is not None
-    assert LoginChallenge.objects.get(pk=challenge.pk).consumed_at is not None
-    assert EmailOTPChallenge.objects.get(pk=email_challenge.pk).consumed_at is not None
-    assert EmailOTPChallenge.objects.get(pk=verification_challenge.pk).consumed_at is not None
-    assert target.has_usable_password()
-    event = AuditEvent.objects.get(action="account.updated", target_id=str(target.pk))
-    assert event.actor_user_id == admin.pk
-    assert event.metadata == {"changed_fields": ["email", "first_name"]}
-    assert "old@example.edu" not in str(event.metadata)
-    assert "new@example.edu" not in str(event.metadata)
+
+    id_event = AuditEvent.objects.get(
+        action="account.institutional_id.changed",
+        target_id=str(target.pk),
+    )
+    assert id_event.actor_user_id == admin.pk
+    assert id_event.metadata == {"changed_fields": ["institutional_id"]}
+    assert "UCN-MANAGED-001" not in str(id_event.metadata)
+
+    update_event = AuditEvent.objects.get(
+        action="account.updated",
+        target_id=str(target.pk),
+    )
+    assert update_event.metadata == {"changed_fields": ["institutional_id", "first_name"]}
 
 
 @pytest.mark.django_db

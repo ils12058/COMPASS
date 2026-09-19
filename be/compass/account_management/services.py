@@ -36,6 +36,7 @@ from compass.audit.actions import (
     ACCOUNT_DESIGNATION_REMOVED,
     ACCOUNT_DISABLED,
     ACCOUNT_ENABLED,
+    ACCOUNT_INSTITUTIONAL_ID_CHANGED,
     ACCOUNT_MFA_RESET,
     ACCOUNT_ROLE_CHANGED,
     ACCOUNT_STUDENT_LIFECYCLE_CHANGED,
@@ -99,6 +100,10 @@ class AccountNotFound(AccountManagementError):
 
 class DuplicateEmail(AccountManagementError):
     """The requested email is already assigned to another account."""
+
+
+class DuplicateInstitutionalId(AccountManagementError):
+    """The requested Institutional ID is already assigned to another account."""
 
 
 class InvalidManagementInput(AccountManagementError):
@@ -232,6 +237,21 @@ def _clean_email(value: str) -> str:
         raise InvalidManagementInput("a valid email address is required") from exc
 
 
+def _clean_institutional_id(value: str | None, *, required: bool = True) -> str | None:
+    try:
+        normalized = User.objects.normalize_institutional_id(value)
+    except (TypeError, ValueError) as exc:
+        raise InvalidManagementInput("institutional_id is invalid") from exc
+    if required and normalized is None:
+        raise InvalidManagementInput("institutional_id is required")
+    if normalized is not None:
+        try:
+            User._meta.get_field("institutional_id").clean(normalized, None)
+        except ValidationError as exc:
+            raise InvalidManagementInput("institutional_id is invalid") from exc
+    return normalized
+
+
 def _clean_expiry(value: datetime | None) -> datetime | None:
     if value is None:
         return None
@@ -352,6 +372,7 @@ def serialize_account(user: User, *, detail: bool = False) -> dict[str, object]:
 
     payload: dict[str, object] = {
         "id": user.pk,
+        "institutional_id": user.institutional_id,
         "email": user.email,
         "first_name": user.first_name,
         "middle_name": user.middle_name,
@@ -423,7 +444,8 @@ def list_accounts(
             raise InvalidManagementInput("search is too long")
         if normalized_search:
             search_filter = (
-                Q(email__icontains=normalized_search)
+                Q(institutional_id__icontains=normalized_search)
+                | Q(email__icontains=normalized_search)
                 | Q(first_name__icontains=normalized_search)
                 | Q(middle_name__icontains=normalized_search)
                 | Q(last_name__icontains=normalized_search)
@@ -479,6 +501,7 @@ def create_account(
     actor: User,
     actor_session,
     context: AuditContext,
+    institutional_id: str,
     email: str,
     first_name: str,
     last_name: str,
@@ -487,6 +510,7 @@ def create_account(
     suffix: str = "",
     is_active: bool = True,
 ) -> User:
+    cleaned_institutional_id = _clean_institutional_id(institutional_id)
     cleaned_email = _clean_email(email)
     cleaned_first_name = _clean_identity_text("first_name", first_name, required=True)
     cleaned_last_name = _clean_identity_text("last_name", last_name, required=True)
@@ -504,10 +528,15 @@ def create_account(
             raise ManagementConfigurationError(
                 "the requested canonical role is not synchronized; run sync_identity_policy first"
             )
+        if User.objects.filter(email__iexact=cleaned_email).exists():
+            raise DuplicateEmail("an account with this email already exists")
+        if User.objects.filter(institutional_id__iexact=cleaned_institutional_id).exists():
+            raise DuplicateInstitutionalId("an account with this institutional_id already exists")
         try:
             with transaction.atomic():
                 user = User.objects.create_user(
                     email=cleaned_email,
+                    institutional_id=cleaned_institutional_id,
                     password=None,
                     role=role_record,
                     first_name=cleaned_first_name,
@@ -517,7 +546,13 @@ def create_account(
                     is_active=is_active,
                 )
         except IntegrityError as exc:
-            raise DuplicateEmail("an account with this email already exists") from exc
+            if User.objects.filter(institutional_id__iexact=cleaned_institutional_id).exists():
+                raise DuplicateInstitutionalId(
+                    "an account with this institutional_id already exists"
+                ) from exc
+            if User.objects.filter(email__iexact=cleaned_email).exists():
+                raise DuplicateEmail("an account with this email already exists") from exc
+            raise
         record_event(
             context=context,
             action=ACCOUNT_CREATED,
@@ -537,7 +572,7 @@ def update_identity(
     context: AuditContext,
     changes: Mapping[str, object],
 ) -> MutationResult:
-    allowed_fields = ("email", "first_name", "middle_name", "last_name", "suffix")
+    allowed_fields = ("institutional_id", "first_name", "middle_name", "last_name", "suffix")
     unknown_fields = set(changes) - set(allowed_fields)
     if unknown_fields:
         raise InvalidManagementInput("identity updates contain unsupported fields")
@@ -556,8 +591,8 @@ def update_identity(
             if field_name not in changes:
                 continue
             value = changes[field_name]
-            if field_name == "email":
-                normalized[field_name] = _clean_email(value)  # type: ignore[arg-type]
+            if field_name == "institutional_id":
+                normalized[field_name] = _clean_institutional_id(value)  # type: ignore[arg-type]
             elif field_name in {"first_name", "last_name"}:
                 normalized[field_name] = _clean_identity_text(
                     field_name,
@@ -578,26 +613,27 @@ def update_identity(
         if not changed_fields:
             return MutationResult(user=target, changed=False)
 
-        previous_email = target.email
         for field_name in changed_fields:
             setattr(target, field_name, normalized[field_name])
         update_fields = [*changed_fields, "updated_at"]
-        if "email" in changed_fields:
-            target.email_verified_at = None
-            update_fields.append("email_verified_at")
         try:
             with transaction.atomic():
                 target.save(update_fields=update_fields)
         except IntegrityError as exc:
-            raise DuplicateEmail("an account with this email already exists") from exc
+            if "institutional_id" in changed_fields:
+                raise DuplicateInstitutionalId(
+                    "an account with this institutional_id already exists"
+                ) from exc
+            raise
 
-        if "email" in changed_fields:
-            invalidate_auth_state_after_authority_change(
-                user_id=target.pk,
+        if "institutional_id" in changed_fields:
+            record_event(
                 context=context,
-                reason="email_changed",
-                invalidate_email_security_challenges=True,
-                previous_email=previous_email,
+                action=ACCOUNT_INSTITUTIONAL_ID_CHANGED,
+                outcome=AuditOutcome.SUCCESS,
+                target_type="accounts.user",
+                target_id=target.pk,
+                metadata={"changed_fields": ["institutional_id"]},
             )
         record_event(
             context=context,

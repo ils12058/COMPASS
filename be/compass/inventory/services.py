@@ -632,6 +632,7 @@ def ensure_current_inventory(*, student: User, context: AuditContext) -> Student
                 student=locked_student,
                 academic_year=current,
                 form_revision=revision,
+                student_number=locked_student.institutional_id or "",
             )
             StudentSupportProfile.objects.create(inventory=item)
         except IntegrityError:
@@ -881,10 +882,16 @@ def replace_current_inventory(
     if unsupported:
         raise InvalidInventoryInput("The Inventory update contains unsupported fields.")
     with transaction.atomic():
+        locked_student = (
+            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+        )
+        if locked_student is None:
+            raise InventoryNotFound("The Student account was not found.")
+        _require_current_student(locked_student)
         current = _current_year()
         item = (
             StudentInventory.objects.select_for_update()
-            .filter(student_id=student.pk, academic_year_id=current.pk)
+            .filter(student_id=locked_student.pk, academic_year_id=current.pk)
             .first()
         )
         if item is None:
@@ -902,6 +909,9 @@ def replace_current_inventory(
         if item.program_id is not None:
             item.program = _require_active_program(item.program_id)
             normalized_values["course_currently_enrolled"] = item.program.name
+        canonical_institutional_id = locked_student.institutional_id
+        if canonical_institutional_id is not None:
+            normalized_values["student_number"] = canonical_institutional_id
         _apply_scalar_values(item, normalized_values)
         item.save(update_fields=["program", *SCALAR_FIELDS, "updated_at"])
         _replace_children(item, normalized_values)
@@ -917,10 +927,16 @@ def submit_current_inventory(
 ) -> StudentInventory:
     _require_current_student(student)
     with transaction.atomic():
+        locked_student = (
+            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+        )
+        if locked_student is None:
+            raise InventoryNotFound("The Student account was not found.")
+        _require_current_student(locked_student)
         current = _current_year()
         item = (
             StudentInventory.objects.select_for_update()
-            .filter(student_id=student.pk, academic_year_id=current.pk)
+            .filter(student_id=locked_student.pk, academic_year_id=current.pk)
             .first()
         )
         if item is None:
@@ -934,10 +950,13 @@ def submit_current_inventory(
         item.program = _require_active_program(item.program_id)
         item.course_currently_enrolled = item.program.name
         profile = _lock_or_create_support_profile(item)
+        if locked_student.institutional_id is not None:
+            item.student_number = locked_student.institutional_id
         _validate_submission(item, profile)
         item.submitted_at = timezone.now()
         item.save(
             update_fields=[
+                "student_number",
                 "course_currently_enrolled",
                 "civil_status",
                 "current_religion",

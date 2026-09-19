@@ -19,6 +19,8 @@ AUTH_TRUSTED_SESSION_REVOKED = "auth.trusted.session.revoked"
 AUTH_EMAIL_OTP_ISSUED = "auth.email.otp.issued"
 AUTH_EMAIL_OTP_FAILED = "auth.email.otp.failed"
 AUTH_EMAIL_OTP_CONSUMED = "auth.email.otp.consumed"
+AUTH_EMAIL_CHANGE_REQUESTED = "auth.email.change.requested"
+AUTH_EMAIL_CHANGED = "auth.email.changed"
 AUTH_PASSWORD_INITIAL_SET = "auth.password.initial_set"
 AUTH_PASSWORD_RESET = "auth.password.reset"
 
