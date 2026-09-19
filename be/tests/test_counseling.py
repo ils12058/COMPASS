@@ -23,7 +23,6 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.counseling.models import CounselingEncounter
-from compass.notifications.models import EmailDelivery, Notification
 from compass.counseling.services import (
     CounselingAppointmentAlreadyUsed,
     CounselingAppointmentInvalid,
@@ -34,6 +33,7 @@ from compass.counseling.services import (
     create_encounter,
     update_encounter,
 )
+from compass.notifications.models import EmailDelivery, Notification
 from compass.service_catalog.services import create_service, set_service_active
 
 
