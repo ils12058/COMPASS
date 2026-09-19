@@ -309,7 +309,6 @@ def test_manager_api_uses_capability_and_recent_mfa_not_role_shortcut():
     assert denied.status_code == 403
 
 
-
 @pytest.mark.django_db
 def test_dpo_institutional_officer_is_never_head_guidance_fallback():
     sync_policy()
