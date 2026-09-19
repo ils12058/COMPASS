@@ -96,13 +96,13 @@ def test_email_delivery_summary_counts_and_sent_today_use_application_timezone()
 
     pending_oldest = make_delivery(recipient, status=EmailDeliveryStatus.PENDING)
     pending_newer = make_delivery(recipient, status=EmailDeliveryStatus.PENDING)
-    processing = make_delivery(recipient, status=EmailDeliveryStatus.PROCESSING)
-    failed = make_delivery(
+    make_delivery(recipient, status=EmailDeliveryStatus.PROCESSING)
+    make_delivery(
         recipient,
         status=EmailDeliveryStatus.FAILED,
         failure_code="transport_error",
     )
-    cancelled = make_delivery(
+    make_delivery(
         recipient,
         status=EmailDeliveryStatus.CANCELLED,
         failure_code="recipient_inactive",
