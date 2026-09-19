@@ -195,8 +195,9 @@ def test_dynamic_program_columns_include_legacy_and_no_hardcoded_sample_programs
     for key in (Sex.MALE, Sex.FEMALE):
         item = report_row(report["sections"]["sex"], key)
         assert sum(count["count"] for count in item["program_counts"]) == item["total_count"]
-    assert "BSIT" not in json.dumps(report)
-    assert "BSIS" not in json.dumps(report)
+    serialized = json.dumps(report, default=str)
+    assert "BSIT" not in serialized
+    assert "BSIS" not in serialized
 
 
 @pytest.mark.django_db
@@ -278,7 +279,7 @@ def test_not_specified_and_not_recorded_legacy_are_distinct():
         section = report["sections"][section_name]
         assert report_row(section, "NOT_SPECIFIED")["total_count"] == 1
         assert report_row(section, LEGACY_KEY)["total_count"] == 1
-    assert "Nort specified" not in json.dumps(report)
+    assert "Nort specified" not in json.dumps(report, default=str)
 
 
 @pytest.mark.django_db
