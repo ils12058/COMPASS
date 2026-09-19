@@ -433,7 +433,7 @@ def test_support_profile_is_nested_in_inventory_and_family_rows_have_no_life_sta
     }
     response = client.put(
         "/api/v1/inventory/me/current",
-        data=json.dumps(payload),
+        data=json.dumps(payload, default=str),
         content_type="application/json",
         HTTP_X_CSRFTOKEN=client.get("/api/v1/auth/csrf").json()["csrf_token"],
     )

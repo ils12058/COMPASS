@@ -425,8 +425,15 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "InventoryProgramSummary",
         "CivilStatusCategoryValue",
         "CurrentReligionCategoryValue",
-        "PhysicalDisadvantageStatusValue",
+        "PWDStatusValue",
+        "FourPsStatusValue",
+        "IndigenousPeoplesStatusValue",
         "ParentLifeStatusValue",
+        "SupportProfilePayload",
+        "StudentSupportContextResponse",
+        "SupportIndicatorResponse",
+        "StudentReference",
+        "AcademicYearReference",
         "ParentStatusCategoryValue",
         "OccupationCategoryValue",
         "AnnualIncomeStatusValue",
@@ -677,6 +684,17 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "submitted_inventory_count",
         "generated_at",
     } == set(report_context)
+    assert schemas["PWDStatusValue"]["enum"] == ["PWD", "NON_PWD", "NOT_SPECIFIED"]
+    assert schemas["FourPsStatusValue"]["enum"] == [
+        "BENEFICIARY",
+        "NOT_BENEFICIARY",
+        "NOT_SPECIFIED",
+    ]
+    assert schemas["IndigenousPeoplesStatusValue"]["enum"] == [
+        "MEMBER",
+        "NOT_MEMBER",
+        "NOT_SPECIFIED",
+    ]
     assert schemas["DistributionRow"]["properties"]["percentage"]["type"] == "number"
     assert schemas["InventoryCoverage"]["properties"]["missing_count"]["anyOf"][-1] == {
         "type": "null"
@@ -1133,6 +1151,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "shared_summaries.manage_assigned",
             "shared_summaries.view_assigned",
             "shared_summaries.view_self",
+            "student_support.view",
         ]
     )
     assert schemas["Effect"]["enum"] == ["GRANT", "REVOKE"]

@@ -273,7 +273,7 @@ def test_spouse_row_is_not_forced_to_have_parent_profiling_statuses():
         },
     )
     spouse = item.family_members.get(kind="SPOUSE")
-    assert spouse.life_status is None
+    assert not hasattr(spouse, "life_status")
     assert spouse.occupation_category is None
     assert spouse.annual_income_status is None
 
@@ -772,7 +772,7 @@ def test_legacy_submitted_inventory_with_null_normalized_fields_remains_readable
         current_religion="legacy religion",
         current_religion_category=None,
         physical_disadvantage="legacy detail",
-        physical_disadvantage_status=None,
+        pwd_status=None,
         parent_statuses=["WIDOW_WIDOWER_LIVING_TOGETHER"],
         parent_status_category=None,
         program=None,
@@ -785,7 +785,6 @@ def test_legacy_submitted_inventory_with_null_normalized_fields_remains_readable
         occupation_category=None,
         annual_income_previous_year=None,
         annual_income_status=None,
-        life_status=None,
     )
     InventoryTransportationEntry.objects.create(
         inventory=draft,
@@ -798,9 +797,13 @@ def test_legacy_submitted_inventory_with_null_normalized_fields_remains_readable
     historical = get_my_inventory_history_item(student=student, inventory_id=draft.pk)
     assert historical.civil_status_category is None
     assert historical.current_religion_category is None
-    assert historical.physical_disadvantage_status is None
+    assert historical.pwd_status is None
     assert historical.parent_status_category is None
     assert historical.family_members.get().occupation_category is None
+    assert historical.support_profile.four_ps_status is None
+    assert historical.support_profile.indigenous_peoples_status is None
+    assert historical.support_profile.mother_life_status is None
+    assert historical.support_profile.father_life_status is None
     assert historical.transportation_entries.get().frequency_category is None
     assert historical.geographic_locations.count() == 0
     assert historical.civil_status == "legacy free text"

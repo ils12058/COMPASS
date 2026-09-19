@@ -29,7 +29,6 @@ def minimum_normalized_inventory_values(
             },
             {
                 "kind": "MOTHER",
-                "life_status": "NOT_SPECIFIED",
                 "occupation_category": "NOT_SPECIFIED",
                 "annual_income_status": "NOT_SPECIFIED",
             },

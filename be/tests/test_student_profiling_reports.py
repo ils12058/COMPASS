@@ -164,7 +164,6 @@ def make_inventory(
             inventory=item,
             kind=FamilyMemberKind.MOTHER,
             name="Private Mother",
-            life_status=ParentLifeStatus.LIVING,
             occupation="Private occupation narrative",
             occupation_category=OccupationCategory.GOVERNMENT_EMPLOYEE,
             annual_income_status=AnnualIncomeStatus.NONE,
