@@ -142,6 +142,7 @@ EXPECTED_OPERATION_IDS = {
     "inventorySubmitMyCurrent",
     "inventoryListMyHistory",
     "inventoryGetMyHistoryItem",
+    "reportsGetStudentProfile",
     "goodMoralCreateMyCurrentStudentRequest",
     "goodMoralCreateMyGraduateRequest",
     "goodMoralListMyRequests",
@@ -275,6 +276,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "academic-years",
         "institutional-forms",
         "inventory",
+        "reports",
         "good-moral",
         "feedback",
         "graduate-tracer",
@@ -388,6 +390,17 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "GeographicLocationKindValue",
         "TransportationFrequencyCategoryValue",
         "GeographicLocationPayload",
+        "StudentProfilingReportResponse",
+        "ReportContext",
+        "ProgramColumn",
+        "InventoryCoverage",
+        "Methodology",
+        "StudentProfilingSections",
+        "DistributionSection",
+        "DistributionRow",
+        "ProgramCount",
+        "GeographicDistributionSection",
+        "GeographicDistributionRow",
     }
     assert expected_schemas <= schemas.keys()
     assert schemas["AccountSummaryResponse"]["properties"]["id"]["format"] == "uuid"
@@ -566,6 +579,33 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "time_to_first_job",
         "curriculum_improvement_suggestions",
     } <= set(graduate_tracer_draft)
+    student_profile = schemas["StudentProfilingReportResponse"]["properties"]
+    assert set(student_profile) == {
+        "report_context",
+        "methodology",
+        "program_columns",
+        "inventory_coverage",
+        "sections",
+    }
+    report_context = schemas["ReportContext"]["properties"]
+    assert {
+        "academic_year",
+        "campus",
+        "college",
+        "program",
+        "year_level",
+        "year_level_label",
+        "submitted_inventory_count",
+        "generated_at",
+    } == set(report_context)
+    assert schemas["DistributionRow"]["properties"]["percentage"]["type"] == "number"
+    assert schemas["InventoryCoverage"]["properties"]["missing_count"]["anyOf"][-1] == {
+        "type": "null"
+    }
+    assert _operation(schema, "/api/v1/reports/student-profile", "get")["operationId"] == (
+        "reportsGetStudentProfile"
+    )
+
     assert {
         "student_id",
         "instrument_schema_version",
@@ -649,6 +689,15 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _response_statuses(
         _operation(schema, "/api/v1/organization/programs/{program_id}/disable", "post")
     ) >= {200, 401, 403, 404, 409, 422}
+
+    assert _response_statuses(_operation(schema, "/api/v1/reports/student-profile", "get")) >= {
+        200,
+        401,
+        403,
+        404,
+        409,
+        422,
+    }
 
     assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/me", "post")) >= {
         200,
@@ -906,6 +955,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "inventory.view_self",
             "organization.manage",
             "organization.view",
+            "reports.view",
             "referrals.manage",
             "referrals.view",
             "routine_interviews.manage_assigned",
