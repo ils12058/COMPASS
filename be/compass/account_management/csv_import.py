@@ -139,14 +139,10 @@ def _headers(raw_headers: list[str]) -> tuple[str, ...]:
         raise CsvImportUnsupportedHeaders("CSV contains duplicate headers")
     missing = sorted(REQUIRED_HEADERS - set(headers))
     if missing:
-        raise CsvImportUnsupportedHeaders(
-            "CSV is missing required headers: " + ", ".join(missing)
-        )
+        raise CsvImportUnsupportedHeaders("CSV is missing required headers: " + ", ".join(missing))
     unknown = sorted(set(headers) - ALLOWED_HEADERS)
     if unknown:
-        raise CsvImportUnsupportedHeaders(
-            "CSV contains unsupported headers: " + ", ".join(unknown)
-        )
+        raise CsvImportUnsupportedHeaders("CSV contains unsupported headers: " + ", ".join(unknown))
     return headers
 
 
@@ -184,15 +180,11 @@ def _parse_csv(data: bytes) -> ParsedCsv:
                 first_name = _clean_identity_text(
                     "first_name", raw.get("first_name"), required=True
                 )
-                last_name = _clean_identity_text(
-                    "last_name", raw.get("last_name"), required=True
-                )
+                last_name = _clean_identity_text("last_name", raw.get("last_name"), required=True)
                 middle_name = _clean_identity_text(
                     "middle_name", raw.get("middle_name", ""), allow_none=True
                 )
-                suffix = _clean_identity_text(
-                    "suffix", raw.get("suffix", ""), allow_none=True
-                )
+                suffix = _clean_identity_text("suffix", raw.get("suffix", ""), allow_none=True)
                 role = _canonical_role_code(raw.get("role", ""))
             except InvalidManagementInput as exc:
                 issues.append(
@@ -212,10 +204,7 @@ def _parse_csv(data: bytes) -> ParsedCsv:
                         row_number=physical_row_number,
                         email=email,
                         code="duplicate_identity",
-                        message=(
-                            "duplicate email in CSV; first occurrence is row "
-                            f"{duplicate_of}"
-                        ),
+                        message=(f"duplicate email in CSV; first occurrence is row {duplicate_of}"),
                     )
                 )
                 continue
@@ -378,9 +367,7 @@ def provision_accounts_from_csv(
             if classification_by_row[row.row_number].action == "CREATE"
         }
         requested_roles = {row.role for row in create_rows.values()}
-        role_records = {
-            role.code: role for role in Role.objects.filter(code__in=requested_roles)
-        }
+        role_records = {role.code: role for role in Role.objects.filter(code__in=requested_roles)}
         if set(role_records) != requested_roles:
             raise ManagementConfigurationError(
                 "a requested canonical role is not synchronized; run sync_identity_policy first"
