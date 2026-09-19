@@ -192,7 +192,9 @@ def test_non_totp_email_change_requires_current_mailbox_then_new_mailbox_and_rev
         record = model.objects.get(pk=pk)
         assert getattr(record, field) is not None
 
-    assert "compass_session" not in confirmed.cookies or not confirmed.cookies["compass_session"].value
+    assert (
+        "compass_session" not in confirmed.cookies or not confirmed.cookies["compass_session"].value
+    )
     changed_event = AuditEvent.objects.get(action="auth.email.changed", actor_user=user)
     serialized = str(changed_event.metadata)
     assert "old-address@example.edu" not in serialized

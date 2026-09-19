@@ -70,11 +70,7 @@ def deliver_email_change_security_alert(self, request_id: str) -> int:
     from compass.authentication.models import EmailChangeRequest
 
     with transaction.atomic():
-        pending = (
-            EmailChangeRequest.objects.select_for_update()
-            .filter(pk=request_id)
-            .first()
-        )
+        pending = EmailChangeRequest.objects.select_for_update().filter(pk=request_id).first()
         if pending is None or pending.confirmed_at is None:
             return 0
         if pending.old_email_alert_sent_at is not None:

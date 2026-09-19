@@ -531,9 +531,7 @@ def create_account(
         if User.objects.filter(email__iexact=cleaned_email).exists():
             raise DuplicateEmail("an account with this email already exists")
         if User.objects.filter(institutional_id__iexact=cleaned_institutional_id).exists():
-            raise DuplicateInstitutionalId(
-                "an account with this institutional_id already exists"
-            )
+            raise DuplicateInstitutionalId("an account with this institutional_id already exists")
         try:
             with transaction.atomic():
                 user = User.objects.create_user(
@@ -548,9 +546,7 @@ def create_account(
                     is_active=is_active,
                 )
         except IntegrityError as exc:
-            if User.objects.filter(
-                institutional_id__iexact=cleaned_institutional_id
-            ).exists():
+            if User.objects.filter(institutional_id__iexact=cleaned_institutional_id).exists():
                 raise DuplicateInstitutionalId(
                     "an account with this institutional_id already exists"
                 ) from exc

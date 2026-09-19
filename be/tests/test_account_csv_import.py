@@ -202,7 +202,9 @@ def test_csv_rejects_duplicate_headers_bad_utf8_and_malformed_rows():
     assert duplicate_header.status_code == 422
     assert duplicate_header.json()["error"]["code"] == "csv_import_unsupported_headers"
 
-    bad_utf8 = upload(client, b"institutional_id,email,first_name,last_name,role\n\xff", dry_run=True)
+    bad_utf8 = upload(
+        client, b"institutional_id,email,first_name,last_name,role\n\xff", dry_run=True
+    )
     assert bad_utf8.status_code == 422
     assert bad_utf8.json()["error"]["code"] == "csv_import_malformed"
 
@@ -409,8 +411,7 @@ def test_csv_row_limit_is_enforced_without_persisting_any_rows():
     client, _admin = admin_client()
     rows = ["institutional_id,email,first_name,last_name,role"]
     rows.extend(
-        f"UCN-LIMIT-{index},user{index}@example.edu,User,{index},STUDENT"
-        for index in range(1001)
+        f"UCN-LIMIT-{index},user{index}@example.edu,User,{index},STUDENT" for index in range(1001)
     )
     content = ("\n".join(rows) + "\n").encode()
 

@@ -203,9 +203,7 @@ def test_csv_requires_and_matches_email_plus_institutional_id_without_merging():
             **csrf(client),
         )
 
-    missing_header = upload(
-        "email,first_name,last_name,role\nnew@example.edu,New,User,STUDENT\n"
-    )
+    missing_header = upload("email,first_name,last_name,role\nnew@example.edu,New,User,STUDENT\n")
     assert missing_header.status_code == 422
 
     exact = upload(

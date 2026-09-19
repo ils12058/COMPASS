@@ -446,7 +446,9 @@ def _raise_email_change_error(exc: Exception) -> None:
             "TOTP-backed step-up authentication is required.",
         ) from exc
     if isinstance(exc, EmailChangeNotFound):
-        raise APIError(404, "email_change_not_found", "The email change request was not found.") from exc
+        raise APIError(
+            404, "email_change_not_found", "The email change request was not found."
+        ) from exc
     if isinstance(exc, EmailChangeConflict):
         raise APIError(409, "email_change_conflict", str(exc)) from exc
     if isinstance(exc, (EmailChangeInvalid, EmailOTPInvalid)):

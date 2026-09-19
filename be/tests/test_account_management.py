@@ -22,7 +22,6 @@ from compass.audit.models import AuditEvent
 from compass.authentication.crypto import encrypt_totp_secret
 from compass.authentication.models import (
     AuthSession,
-    EmailOTPChallenge,
     LoginChallenge,
     RecoveryCode,
     TOTPFactor,
@@ -311,9 +310,7 @@ def test_generic_identity_update_excludes_email_and_audits_institutional_id_stru
         action="account.updated",
         target_id=str(target.pk),
     )
-    assert update_event.metadata == {
-        "changed_fields": ["institutional_id", "first_name"]
-    }
+    assert update_event.metadata == {"changed_fields": ["institutional_id", "first_name"]}
 
 
 @pytest.mark.django_db

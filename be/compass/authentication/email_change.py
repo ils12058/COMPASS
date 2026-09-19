@@ -15,8 +15,8 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.authentication.actions import (
-    AUTH_EMAIL_CHANGED,
     AUTH_EMAIL_CHANGE_REQUESTED,
+    AUTH_EMAIL_CHANGED,
 )
 from compass.authentication.email_otp import (
     EmailOTPInvalid,
@@ -367,10 +367,7 @@ def confirm_email_change(
             raise EmailChangeNotFound("the pending email change was not found")
         if pending.expires_at <= current:
             raise EmailChangeInvalid("the pending email change is unavailable")
-        if (
-            challenge_id is not None
-            and pending.email_otp_challenge_id != challenge_id
-        ):
+        if challenge_id is not None and pending.email_otp_challenge_id != challenge_id:
             raise EmailChangeInvalid("the pending email change is unavailable")
         if not locked_user.is_active:
             raise EmailChangeInvalid("the account is unavailable")
@@ -378,9 +375,7 @@ def confirm_email_change(
             raise EmailChangeInvalid("the authenticated session is unavailable")
         if locked_user.email != pending.current_email_snapshot:
             raise EmailChangeConflict("the account email changed after this request was created")
-        if User.objects.filter(email__iexact=pending.new_email).exclude(
-            pk=locked_user.pk
-        ).exists():
+        if User.objects.filter(email__iexact=pending.new_email).exclude(pk=locked_user.pk).exists():
             raise EmailChangeConflict("the proposed email is already assigned to another account")
 
         if mfa_required_for_user(locked_user):
@@ -442,9 +437,7 @@ def confirm_email_change(
                 target_id=locked_user.pk,
                 metadata={
                     "initiator": (
-                        "self"
-                        if pending.requested_by_id == locked_user.pk
-                        else "administrator"
+                        "self" if pending.requested_by_id == locked_user.pk else "administrator"
                     )
                 },
             )

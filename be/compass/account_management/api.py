@@ -574,7 +574,9 @@ def account_email_change(request, user_id: UUID, payload: ManagedEmailChangeRequ
             "Authentication is temporarily unavailable.",
         ) from exc
     except EmailChangePermissionDenied as exc:
-        raise APIError(403, "permission_denied", "The accounts.manage capability is required.") from exc
+        raise APIError(
+            403, "permission_denied", "The accounts.manage capability is required."
+        ) from exc
     except EmailChangeNotFound as exc:
         raise APIError(404, "account_not_found", "The requested account was not found.") from exc
     except EmailChangeConflict as exc:

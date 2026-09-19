@@ -883,10 +883,7 @@ def replace_current_inventory(
         raise InvalidInventoryInput("The Inventory update contains unsupported fields.")
     with transaction.atomic():
         locked_student = (
-            User.objects.select_for_update()
-            .select_related("role")
-            .filter(pk=student.pk)
-            .first()
+            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
         )
         if locked_student is None:
             raise InventoryNotFound("The Student account was not found.")
@@ -931,10 +928,7 @@ def submit_current_inventory(
     _require_current_student(student)
     with transaction.atomic():
         locked_student = (
-            User.objects.select_for_update()
-            .select_related("role")
-            .filter(pk=student.pk)
-            .first()
+            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
         )
         if locked_student is None:
             raise InventoryNotFound("The Student account was not found.")

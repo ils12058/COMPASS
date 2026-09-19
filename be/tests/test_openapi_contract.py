@@ -493,26 +493,38 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     csv_import_operation = _operation(schema, "/api/v1/accounts/imports/csv", "post")
     assert csv_import_operation["operationId"] == "accountsImportCsv"
     assert "multipart/form-data" in csv_import_operation["requestBody"]["content"]
-    assert _operation(
-        schema,
-        "/api/v1/auth/email-change/security-challenge",
-        "post",
-    )["operationId"] == "authRequestEmailChangeSecurityChallenge"
-    assert _operation(
-        schema,
-        "/api/v1/auth/email-change/request",
-        "post",
-    )["operationId"] == "authRequestEmailChange"
-    assert _operation(
-        schema,
-        "/api/v1/auth/email-change/confirm",
-        "post",
-    )["operationId"] == "authConfirmEmailChange"
-    assert _operation(
-        schema,
-        "/api/v1/accounts/{user_id}/email-change",
-        "post",
-    )["operationId"] == "accountsRequestEmailChange"
+    assert (
+        _operation(
+            schema,
+            "/api/v1/auth/email-change/security-challenge",
+            "post",
+        )["operationId"]
+        == "authRequestEmailChangeSecurityChallenge"
+    )
+    assert (
+        _operation(
+            schema,
+            "/api/v1/auth/email-change/request",
+            "post",
+        )["operationId"]
+        == "authRequestEmailChange"
+    )
+    assert (
+        _operation(
+            schema,
+            "/api/v1/auth/email-change/confirm",
+            "post",
+        )["operationId"]
+        == "authConfirmEmailChange"
+    )
+    assert (
+        _operation(
+            schema,
+            "/api/v1/accounts/{user_id}/email-change",
+            "post",
+        )["operationId"]
+        == "accountsRequestEmailChange"
+    )
     assert _operation(schema, "/api/v1/auth/login", "post")["requestBody"]["content"][
         "application/json"
     ]["schema"]["$ref"].endswith("/LoginRequest")
