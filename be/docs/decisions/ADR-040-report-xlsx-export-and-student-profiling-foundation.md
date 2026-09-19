@@ -199,6 +199,11 @@ sanitizer is shared so PDF and XLSX filenames cannot drift.
 
 No new PDF reports are introduced by this slice.
 
+## OpenAPI contract
+
+The XLSX endpoint is part of the normal generated OpenAPI surface. `contracts/openapi.json` is
+produced by the repository export tooling / CI sync and is not maintained by hand.
+
 ## Consequences
 
 Student Profiling now has:
