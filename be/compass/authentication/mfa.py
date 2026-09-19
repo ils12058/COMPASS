@@ -30,6 +30,8 @@ from compass.authentication.actions import (
 from compass.authentication.crypto import decrypt_totp_secret, encrypt_totp_secret
 from compass.authentication.models import AuthSession, RecoveryCode, TOTPFactor
 from compass.authentication.sessions import revoke_all_trusted_sessions
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 
 User = get_user_model()
 TOTP_CODE_RE = re.compile(r"^\d{6}$", re.ASCII)
@@ -450,13 +452,21 @@ def regenerate_recovery_codes(
         if not has_active_totp_factor(user.pk):
             raise TOTPNotConfigured("TOTP is not enabled")
         codes = _replace_recovery_codes_locked(user.pk, now=current)
-        record_event(
+        audit_event = record_event(
             context=context,
             action=AUTH_MFA_RECOVERY_CODES_REGENERATED,
             outcome="SUCCESS",
             target_type="accounts.user",
             target_id=user.pk,
             metadata={"count": len(codes)},
+        )
+        create_notification_for_event(
+            recipient=user,
+            event=NotificationEvent.SECURITY_RECOVERY_CODES_REGENERATED,
+            source_type="audit_event",
+            source_id=audit_event.pk,
+            target_type="ACCOUNT_SECURITY",
+            target_id=user.pk,
         )
     return codes
 
@@ -521,13 +531,21 @@ def disable_totp(
             reason="mfa_disabled",
             now=current,
         )
-        record_event(
+        audit_event = record_event(
             context=context,
             action=AUTH_MFA_TOTP_DISABLED,
             outcome="SUCCESS",
             target_type="auth.totpfactor",
             target_id=factor.pk,
             metadata={},
+        )
+        create_notification_for_event(
+            recipient=user,
+            event=NotificationEvent.SECURITY_MFA_DISABLED,
+            source_type="audit_event",
+            source_id=audit_event.pk,
+            target_type="ACCOUNT_SECURITY",
+            target_id=user.pk,
         )
 
 
