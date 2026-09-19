@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import json
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
@@ -20,6 +19,11 @@ from compass.accounts.models import (
 from compass.accounts.services import set_user_capability_override
 from compass.authentication.sessions import create_auth_session
 from compass.graduate_tracer.models import (
+    GraduateTracerEducation,
+    GraduateTracerProfessionalExam,
+    GraduateTracerResponse,
+    GraduateTracerStatus,
+    GraduateTracerTraining,
     GTSBusinessLine,
     GTSCivilStatus,
     GTSEarningBracket,
@@ -35,11 +39,6 @@ from compass.graduate_tracer.models import (
     GTSStayingReason,
     GTSUnemploymentReason,
     GTSUsefulCompetency,
-    GraduateTracerEducation,
-    GraduateTracerProfessionalExam,
-    GraduateTracerResponse,
-    GraduateTracerStatus,
-    GraduateTracerTraining,
 )
 from compass.reports.graduate_tracer import NOT_RECORDED, build_graduate_tracer_report
 

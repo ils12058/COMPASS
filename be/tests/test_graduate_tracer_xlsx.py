@@ -5,16 +5,17 @@ from io import BytesIO
 
 import pytest
 from django.core.management import call_command
+from django.utils import timezone
 from openpyxl import load_workbook
 
 from compass.accounts.models import Role, StudentLifecycleStatus, User
 from compass.graduate_tracer.models import (
-    GTSBusinessLine,
-    GTSEmploymentState,
-    GTSPresentEmploymentStatus,
     GraduateTracerEducation,
     GraduateTracerResponse,
     GraduateTracerStatus,
+    GTSBusinessLine,
+    GTSEmploymentState,
+    GTSPresentEmploymentStatus,
 )
 from compass.reports.graduate_tracer_xlsx import (
     EMPTY_REPORT_MESSAGE,

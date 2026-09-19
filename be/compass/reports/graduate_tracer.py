@@ -10,6 +10,8 @@ from django.utils import timezone
 
 from compass.graduate_tracer.models import (
     GTS_SCHEMA_VERSION,
+    GraduateTracerResponse,
+    GraduateTracerStatus,
     GTSBusinessLine,
     GTSCivilStatus,
     GTSEarningBracket,
@@ -25,8 +27,6 @@ from compass.graduate_tracer.models import (
     GTSStayingReason,
     GTSUnemploymentReason,
     GTSUsefulCompetency,
-    GraduateTracerResponse,
-    GraduateTracerStatus,
 )
 
 NOT_RECORDED = "NOT_RECORDED"

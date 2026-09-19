@@ -12,13 +12,13 @@ from compass.accounts.models import Designation, Role, User, UserDesignation
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.good_moral.services import GoodMoralDocumentUnavailable
-from compass.reports.pdf import (
-    StudentProfilingDocumentUnavailable,
-    StudentProfilingPdfResult,
-)
 from compass.reports.graduate_tracer_xlsx import (
     GraduateTracerWorkbookUnavailable,
     GraduateTracerXlsxResult,
+)
+from compass.reports.pdf import (
+    StudentProfilingDocumentUnavailable,
+    StudentProfilingPdfResult,
 )
 from compass.reports.xlsx import StudentProfilingXlsxResult
 
