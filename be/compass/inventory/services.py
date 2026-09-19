@@ -47,8 +47,8 @@ from .models import (
     InventoryTransportationEntry,
     LivingArrangement,
     OccupationCategory,
-    PWDStatus,
     PostGraduationField,
+    PWDStatus,
     StudentInventory,
     TransportationFrequencyCategory,
 )

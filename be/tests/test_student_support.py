@@ -374,7 +374,7 @@ def test_support_context_is_privacy_minimized_and_has_no_scores_or_narratives():
     _, college, program = make_org("PRIVATE")
     student = make_user("support-private@example.edu")
     affiliate(student, college, counselor=counselor)
-    item = make_inventory(
+    make_inventory(
         student=student,
         year=year,
         program=program,

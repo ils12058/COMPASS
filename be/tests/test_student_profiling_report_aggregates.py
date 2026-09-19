@@ -14,13 +14,13 @@ from compass.inventory.models import (
     Sex,
 )
 from compass.organization.models import AcademicYear
-from compass.student_support.models import ParentLifeStatus
 from compass.reports.services import (
     LEGACY_KEY,
     LEGACY_LABEL,
     InvalidReportFilter,
     build_student_profiling_report,
 )
+from compass.student_support.models import ParentLifeStatus
 from tests.test_student_profiling_reports import (
     make_inventory,
     make_organization,

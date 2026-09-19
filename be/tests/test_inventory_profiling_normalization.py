@@ -38,8 +38,8 @@ from compass.inventory.services import (
     submit_current_inventory,
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
-from compass.student_support.models import ParentLifeStatus
 from compass.organization.models import Campus, College, Program
+from compass.student_support.models import ParentLifeStatus
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
