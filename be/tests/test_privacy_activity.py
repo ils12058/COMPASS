@@ -291,9 +291,7 @@ def test_privacy_governance_projection_never_copies_incident_narrative():
         },
     )
 
-    response = auth_client(dpo).get(
-        "/api/v1/privacy/activity?category=PRIVACY_GOVERNANCE"
-    )
+    response = auth_client(dpo).get("/api/v1/privacy/activity?category=PRIVACY_GOVERNANCE")
 
     assert response.status_code == 200
     item = response.json()["items"][0]
@@ -373,12 +371,8 @@ def test_privacy_activity_pagination_and_category_filter_are_bounded_and_determi
     ]
     client = auth_client(dpo)
 
-    first = client.get(
-        "/api/v1/privacy/activity?category=ACCESS_CONTROL&page=1&page_size=2"
-    )
-    second = client.get(
-        "/api/v1/privacy/activity?category=ACCESS_CONTROL&page=2&page_size=2"
-    )
+    first = client.get("/api/v1/privacy/activity?category=ACCESS_CONTROL&page=1&page_size=2")
+    second = client.get("/api/v1/privacy/activity?category=ACCESS_CONTROL&page=2&page_size=2")
     invalid = client.get("/api/v1/privacy/activity?page_size=51")
 
     assert first.status_code == second.status_code == 200
@@ -409,9 +403,7 @@ def test_privacy_activity_has_no_arbitrary_action_filter_or_global_audit_route()
     client = auth_client(dpo)
 
     normal = client.get("/api/v1/privacy/activity")
-    unknown_query = client.get(
-        "/api/v1/privacy/activity?action=counseling.encounter.updated"
-    )
+    unknown_query = client.get("/api/v1/privacy/activity?action=counseling.encounter.updated")
 
     assert normal.status_code == unknown_query.status_code == 200
     assert [item["id"] for item in normal.json()["items"]] == [str(event.pk)]
