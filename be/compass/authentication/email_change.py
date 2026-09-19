@@ -351,14 +351,10 @@ def confirm_email_change(
 
     with transaction.atomic():
         locked_user = User.objects.select_for_update().select_related("role").get(pk=user.pk)
-        pending_query = (
-            EmailChangeRequest.objects.select_for_update()
-            .select_related("requested_by", "email_otp_challenge")
-            .filter(
-                user_id=locked_user.pk,
-                confirmed_at__isnull=True,
-                cancelled_at__isnull=True,
-            )
+        pending_query = EmailChangeRequest.objects.select_for_update().filter(
+            user_id=locked_user.pk,
+            confirmed_at__isnull=True,
+            cancelled_at__isnull=True,
         )
         if request_id is not None:
             pending_query = pending_query.filter(pk=request_id)
