@@ -62,10 +62,14 @@ def _safe_kick_email_delivery(delivery_id: str) -> None:
 
 
 def optional_email_enabled_for(user: User) -> bool:
-    stored = NotificationPreference.objects.filter(user=user).values_list(
-        "optional_email_enabled",
-        flat=True,
-    ).first()
+    stored = (
+        NotificationPreference.objects.filter(user=user)
+        .values_list(
+            "optional_email_enabled",
+            flat=True,
+        )
+        .first()
+    )
     return True if stored is None else bool(stored)
 
 
@@ -123,8 +127,9 @@ def list_my_notifications(
         raise InvalidNotificationInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
     offset = (page - 1) * page_size
     rows = list(
-        Notification.objects.filter(recipient=actor)
-        .order_by("-created_at", "-id")[offset : offset + page_size + 1]
+        Notification.objects.filter(recipient=actor).order_by("-created_at", "-id")[
+            offset : offset + page_size + 1
+        ]
     )
     return NotificationPage(
         items=tuple(rows[:page_size]),
