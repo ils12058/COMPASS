@@ -392,3 +392,22 @@ def test_csv_size_limit_is_enforced_before_any_account_write():
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "csv_import_too_large"
     assert User.objects.count() == 1
+
+
+
+@pytest.mark.django_db
+def test_csv_row_limit_is_enforced_without_persisting_any_rows():
+    sync_policy()
+    client, _admin = admin_client()
+    rows = ["email,first_name,last_name,role"]
+    rows.extend(
+        f"user{index}@example.edu,User,{index},STUDENT"
+        for index in range(1001)
+    )
+    content = ("\n".join(rows) + "\n").encode()
+
+    response = upload(client, content, dry_run=False)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "csv_import_too_large"
+    assert User.objects.count() == 1
