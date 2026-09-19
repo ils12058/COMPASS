@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from uuid import UUID
 
@@ -40,7 +40,11 @@ from compass.authentication.actions import (
     AUTH_PASSWORD_RESET,
 )
 
-from .releases import GOOD_MORAL_TARGET_TYPE, STUDENT_PROFILING_TARGET_TYPE
+from .releases import (
+    GOOD_MORAL_TARGET_TYPE,
+    GRADUATE_TRACER_TARGET_TYPE,
+    STUDENT_PROFILING_TARGET_TYPE,
+)
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -125,7 +129,58 @@ def _base(
     )
 
 
+def _safe_iso_date(value: object) -> date | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or len(value) != 10:
+        raise ValueError("invalid bounded ISO date")
+    return date.fromisoformat(value)
+
+
+def _graduate_tracer_report_release(event: AuditEvent) -> PrivacyActivityItem | None:
+    if event.target_type != GRADUATE_TRACER_TARGET_TYPE:
+        return None
+    metadata = event.metadata
+    if metadata.get("report_type") != "graduate_tracer":
+        return None
+    if metadata.get("format") != "XLSX":
+        return None
+    schema_version = metadata.get("instrument_schema_version")
+    if type(schema_version) is not int or schema_version != 1:
+        return None
+    if str(event.target_id) != str(schema_version):
+        return None
+    try:
+        submitted_from = _safe_iso_date(metadata.get("submitted_from"))
+        submitted_to = _safe_iso_date(metadata.get("submitted_to"))
+    except (TypeError, ValueError):
+        return None
+    if submitted_from is not None and submitted_to is not None:
+        if submitted_from > submitted_to:
+            return None
+
+    scope_parts = [f"Schema version {schema_version}"]
+    if submitted_from is not None:
+        scope_parts.append(f"Submitted from {submitted_from.isoformat()}")
+    if submitted_to is not None:
+        scope_parts.append(f"Submitted to {submitted_to.isoformat()}")
+    return _base(
+        event,
+        category=PrivacyActivityCategory.DATA_RELEASE,
+        title="Graduate Tracer XLSX released",
+        description=(
+            "COMPASS authorized and prepared an aggregate Graduate Tracer report response."
+        ),
+        artifact_type="graduate_tracer",
+        artifact_format="XLSX",
+        scope="; ".join(scope_parts),
+        resource_reference=f"schema-v{schema_version}",
+    )
+
+
 def _report_release(event: AuditEvent) -> PrivacyActivityItem | None:
+    if event.target_type == GRADUATE_TRACER_TARGET_TYPE:
+        return _graduate_tracer_report_release(event)
     if event.target_type != STUDENT_PROFILING_TARGET_TYPE:
         return None
     resource = _uuid_string(event.target_id)
