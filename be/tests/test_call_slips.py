@@ -852,7 +852,6 @@ def test_create_api_uses_server_resolved_issuer_and_does_not_accept_issued_by_ov
     assert rejected.status_code == 422
 
 
-
 @pytest.mark.django_db
 def test_live_call_slip_creates_one_mandatory_notification_and_email_delivery():
     sync_policy()
@@ -1052,8 +1051,7 @@ def test_call_slip_notification_and_email_do_not_copy_sensitive_source_content()
     ):
         assert marker not in serialized
         assert marker not in " ".join(
-            str(value)
-            for value in EmailDelivery.objects.values().get().values()
+            str(value) for value in EmailDelivery.objects.values().get().values()
         )
 
 
