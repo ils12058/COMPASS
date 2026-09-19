@@ -30,6 +30,7 @@ CURRENT_API_TAGS = frozenset(
         "routine-interviews",
         "referrals",
         "call-slips",
+        "notifications",
         "document-branding",
         "e-counseling",
     }
@@ -57,6 +58,7 @@ OPERATION_ID_PREFIXES = {
     "routine-interviews": "routineInterviews",
     "referrals": "referrals",
     "call-slips": "callSlips",
+    "notifications": "notifications",
     "document-branding": "documentBranding",
     "e-counseling": "eCounseling",
 }

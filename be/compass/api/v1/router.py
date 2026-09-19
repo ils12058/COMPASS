@@ -22,6 +22,7 @@ from compass.good_moral.api import router as good_moral_router
 from compass.graduate_tracer.api import router as graduate_tracer_router
 from compass.institutional_forms.api import router as institutional_forms_router
 from compass.inventory.api import router as inventory_router
+from compass.notifications.api import router as notifications_router
 from compass.organization.academic_years_api import router as academic_years_router
 from compass.organization.api import router as organization_router
 from compass.referrals.api import router as referrals_router
@@ -119,6 +120,12 @@ api = NinjaAPI(
                 "description": "Student reporting permits / Guidance Call Slip records.",
             },
             {
+                "name": "notifications",
+                "description": (
+                    "Authenticated self-service in-app Notifications and email preference."
+                ),
+            },
+            {
                 "name": "document-branding",
                 "description": "Approved institutional and GCO document identity configuration.",
             },
@@ -152,6 +159,7 @@ api.add_router("/exit-interviews", exit_interviews_router)
 api.add_router("/routine-interviews", routine_interviews_router)
 api.add_router("/referrals", referrals_router)
 api.add_router("/call-slips", call_slips_router)
+api.add_router("/notifications", notifications_router)
 api.add_router("/document-branding", document_branding_router)
 api.add_router("/e-counseling", ecounseling_router)
 api.add_router("/integrations/daily", daily_router)
