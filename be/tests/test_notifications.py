@@ -22,7 +22,6 @@ from compass.notifications.policy import (
 )
 
 
-
 def test_notification_event_catalog_is_complete_renderable_and_privacy_safe():
     assert set(_EVENT_CATALOG) == set(NotificationEvent)
     sensitive_sentinels = (
@@ -49,16 +48,13 @@ def test_notification_event_catalog_is_complete_renderable_and_privacy_safe():
             continue
 
         rendered = render_notification_email(event.value)
-        combined = "\n".join(
-            (rendered.subject, rendered.text_body, rendered.html_body)
-        )
+        combined = "\n".join((rendered.subject, rendered.text_body, rendered.html_body))
         assert rendered.text_body.strip()
         assert rendered.html_body.strip()
         assert "http://" not in combined
         assert "https://" not in combined
         for sentinel in sensitive_sentinels:
             assert sentinel not in combined
-
 
 
 def make_user(email: str, role_code: str = "STUDENT") -> User:
