@@ -13,6 +13,7 @@ from compass.audit.services import record_event
 logger = logging.getLogger("compass.privacy_governance")
 
 STUDENT_PROFILING_TARGET_TYPE = "reports.studentprofiling"
+GRADUATE_TRACER_TARGET_TYPE = "reports.graduatetracer"
 GOOD_MORAL_TARGET_TYPE = "goodmoral.request"
 
 
@@ -83,6 +84,29 @@ def record_student_profiling_release(
     )
 
 
+def record_graduate_tracer_release(
+    *,
+    context: AuditContext,
+    release_context: Mapping[str, object],
+) -> None:
+    schema_version = release_context.get("instrument_schema_version")
+    if schema_version != 1:
+        raise ValueError("unsupported Graduate Tracer schema version")
+    _record_release(
+        context=context,
+        action=REPORT_EXPORT_RELEASED,
+        target_type=GRADUATE_TRACER_TARGET_TYPE,
+        target_id=schema_version,
+        metadata={
+            "report_type": "graduate_tracer",
+            "format": "XLSX",
+            "instrument_schema_version": schema_version,
+            "submitted_from": release_context.get("submitted_from"),
+            "submitted_to": release_context.get("submitted_to"),
+        },
+    )
+
+
 def record_good_moral_release(
     *,
     context: AuditContext,
@@ -108,8 +132,10 @@ def record_good_moral_release(
 
 __all__ = [
     "GOOD_MORAL_TARGET_TYPE",
+    "GRADUATE_TRACER_TARGET_TYPE",
     "ReleaseAuditUnavailable",
     "STUDENT_PROFILING_TARGET_TYPE",
     "record_good_moral_release",
+    "record_graduate_tracer_release",
     "record_student_profiling_release",
 ]
