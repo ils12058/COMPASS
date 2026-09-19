@@ -121,7 +121,6 @@ def issue_direct(email: str, *, code: str = "123456"):
         result = request_password_access(email=email)
     return result.challenge
 
-
 @pytest.mark.django_db(transaction=True)
 def test_request_known_active_account_creates_hash_only_dispatched_recovery_challenge():
     user = make_user(email="Case.User@Example.edu")
@@ -143,7 +142,6 @@ def test_request_known_active_account_creates_hash_only_dispatched_recovery_chal
     assert "123456" not in challenge.code_hash
     assert challenge.code_hash != "123456"
     delivery.assert_called_once_with(str(challenge.pk), "123456")
-
 
 @pytest.mark.django_db(transaction=True)
 def test_request_unknown_and_disabled_accounts_have_same_public_shape_without_delivery():
@@ -173,7 +171,6 @@ def test_request_unknown_and_disabled_accounts_have_same_public_shape_without_de
     assert disabled_challenge.email == "disabled@example.edu"
     assert unknown_challenge.purpose == disabled_challenge.purpose == EmailOTPPurpose.RECOVERY
 
-
 @pytest.mark.django_db(transaction=True)
 def test_request_initial_setup_account_uses_the_same_real_flow():
     user = make_user(email="new.user@example.edu", password=None)
@@ -188,7 +185,6 @@ def test_request_initial_setup_account_uses_the_same_real_flow():
     assert not user.has_usable_password()
     assert user.email_verified_at is None
     delivery.assert_called_once()
-
 
 @pytest.mark.django_db(transaction=True)
 def test_request_replaces_only_outstanding_recovery_challenge():
@@ -215,7 +211,6 @@ def test_request_replaces_only_outstanding_recovery_challenge():
     assert stale.status_code == 400
     assert stale.json()["error"]["code"] == "password_challenge_invalid"
     assert not user.check_password(NEW_PASSWORD)
-
 
 @pytest.mark.django_db(transaction=True)
 def test_password_request_rate_limit_and_turnstile_use_existing_safe_controls(monkeypatch):
@@ -245,7 +240,6 @@ def test_password_request_rate_limit_and_turnstile_use_existing_safe_controls(mo
     assert rejected.status_code == 403
     assert rejected.json()["error"]["code"] == "security_verification_failed"
     assert not EmailOTPChallenge.objects.filter(email=user.email).exists()
-
 
 @pytest.mark.django_db(transaction=True)
 def test_confirm_initial_password_sets_django_password_without_auto_login():
@@ -288,7 +282,6 @@ def test_confirm_initial_password_sets_django_password_without_auto_login():
     assert login.status_code == 200
     assert login.json()["authenticated"] is True
 
-
 @pytest.mark.django_db(transaction=True)
 def test_confirm_password_policy_failure_does_not_burn_valid_otp():
     user = make_user(email="policy@example.edu", password=None)
@@ -325,7 +318,6 @@ def test_confirm_password_policy_failure_does_not_burn_valid_otp():
     )
     assert accepted.status_code == 200
     assert User.objects.get(pk=user.pk).check_password(NEW_PASSWORD)
-
 
 @pytest.mark.django_db(transaction=True)
 def test_confirm_rejects_malformed_expired_and_exhausted_codes_safely():
@@ -368,7 +360,6 @@ def test_confirm_rejects_malformed_expired_and_exhausted_codes_safely():
     expired.refresh_from_db()
     assert expired.failed_attempt_count == 0
     assert expired.consumed_at is None
-
 
 @pytest.mark.django_db(transaction=True)
 def test_confirm_password_reset_rejects_exact_reuse_and_audits_reset():
@@ -415,7 +406,6 @@ def test_confirm_password_reset_rejects_exact_reuse_and_audits_reset():
     assert CURRENT_PASSWORD not in json.dumps(
         list(AuditEvent.objects.values_list("metadata", flat=True))
     )
-
 
 @pytest.mark.django_db(transaction=True)
 def test_reset_revokes_reusable_state_preserves_mfa_and_projects_safe_activity():
@@ -472,7 +462,6 @@ def test_reset_revokes_reusable_state_preserves_mfa_and_projects_safe_activity()
         for item in items
     )
 
-
 @pytest.mark.django_db(transaction=True)
 def test_decoy_disabled_and_email_changed_challenges_cannot_set_password():
     unknown = Client()
@@ -523,7 +512,6 @@ def test_decoy_disabled_and_email_changed_challenges_cannot_set_password():
     assert changed_confirm.status_code == 400
     assert not User.objects.get(pk=changed.pk).has_usable_password()
 
-
 @pytest.mark.django_db(transaction=True)
 def test_same_valid_otp_can_mutate_password_at_most_once_concurrently():
     user = make_user(email="concurrent@example.edu", password=None)
@@ -552,7 +540,6 @@ def test_same_valid_otp_can_mutate_password_at_most_once_concurrently():
     assert EmailOTPChallenge.objects.get(pk=challenge.pk).consumed_at is not None
 
 
-
 @pytest.mark.django_db(transaction=True)
 def test_recovery_preserves_existing_email_verification_timestamp():
     verified_at = timezone.now() - timedelta(days=2)
@@ -577,7 +564,6 @@ def test_recovery_preserves_existing_email_verification_timestamp():
     assert confirmed.status_code == 200
     user.refresh_from_db()
     assert user.email_verified_at == verified_at
-
 
 @pytest.mark.django_db(transaction=True)
 def test_stale_email_verification_challenge_cannot_become_password_reset():
@@ -627,7 +613,6 @@ def test_stale_email_verification_challenge_cannot_become_password_reset():
     assert user.email_verified_at == verified_at
     assert second.consumed_at is not None
 
-
 @pytest.mark.django_db(transaction=True)
 def test_direct_and_bootstrap_style_accounts_are_not_falsely_marked_verified():
     role, _created = Role.objects.get_or_create(
@@ -642,7 +627,6 @@ def test_direct_and_bootstrap_style_accounts_are_not_falsely_marked_verified():
         last_name="Admin",
     )
     assert user.email_verified_at is None
-
 
 @pytest.mark.django_db(transaction=True)
 def test_legacy_unverified_account_login_behavior_is_unchanged():
