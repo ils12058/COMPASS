@@ -145,6 +145,7 @@ jobs:
           tests/test_student_profiling_report_aggregates.py
           tests/test_student_profiling_report_coverage.py
           tests/test_student_profiling_pdf.py
+          tests/test_student_profiling_xlsx.py
           tests/test_service_catalog.py
           tests/test_availability.py
           tests/test_idempotency.py
