@@ -22,13 +22,13 @@ from compass.counseling.shared_summaries import (
     publish_assigned_shared_summary,
     put_assigned_shared_summary,
 )
-from compass.notifications.delivery import render_notification_email
-from compass.notifications.models import EmailDelivery, Notification
 from compass.inventory.services import (
     ensure_current_inventory,
     replace_current_inventory,
     submit_current_inventory,
 )
+from compass.notifications.delivery import render_notification_email
+from compass.notifications.models import EmailDelivery, Notification
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
 from compass.organization.models import Campus, College, Program
 from compass.routine_interviews.services import (
