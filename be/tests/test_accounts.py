@@ -452,7 +452,6 @@ def test_student_lifecycle_migration_backfills_only_existing_students():
     assert counselor.student_lifecycle_status is None
 
 
-
 @pytest.mark.django_db
 def test_institutional_officer_is_neutral_and_dpo_adds_no_capabilities():
     sync_policy()
