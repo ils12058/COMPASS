@@ -226,7 +226,10 @@ def test_csv_requires_and_matches_email_plus_institutional_id_without_merging():
         "UCN-DUP-001,one@example.edu,One,User,STUDENT\n"
         "ucn-dup-001,two@example.edu,Two,User,STUDENT\n"
     )
-    assert duplicate.status_code == 422
+    assert duplicate.status_code == 200
+    assert duplicate.json()["valid"] is False
+    assert duplicate.json()["invalid_count"] == 1
+    assert duplicate.json()["rows"][1]["action"] == "INVALID"
 
 
 @pytest.mark.django_db
