@@ -5,10 +5,10 @@ from __future__ import annotations
 from django.core.management.base import BaseCommand, CommandError
 
 from compass.platform_ops.diagnostics import (
-    DiagnosticCheck,
-    DiagnosticStatus,
     WORKER_SMOKE_DEFAULT_TIMEOUT_SECONDS,
     WORKER_SMOKE_MAX_TIMEOUT_SECONDS,
+    DiagnosticCheck,
+    DiagnosticStatus,
     collect_environment_diagnostics,
     collect_platform_health,
     run_worker_smoke,
@@ -61,7 +61,11 @@ class Command(BaseCommand):
         self.stdout.write("[OK] Application configuration — resolved Django settings are loaded.")
         for category in environment.categories:
             safe_values = ", ".join(
-                f"{value.code}={str(value.value).lower() if isinstance(value.value, bool) else value.value}"
+                (
+                    f"{value.code}={str(value.value).lower()}"
+                    if isinstance(value.value, bool)
+                    else f"{value.code}={value.value}"
+                )
                 for value in category.values
             )
             self.stdout.write(f"[INFO] {category.label} — {safe_values}")
