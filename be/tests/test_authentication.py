@@ -277,6 +277,10 @@ def test_mfa_recovery_regeneration_and_disable_create_mandatory_security_notific
     )
     assert confirmed.status_code == 200
 
+    session = AuthSession.objects.get(user=user, revoked_at__isnull=True)
+    session.mfa_verified_at = timezone.now()
+    session.save(update_fields=["mfa_verified_at"])
+
     regenerated = post_json(
         client,
         "/api/v1/auth/mfa/recovery-codes/regenerate",
