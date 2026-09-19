@@ -228,6 +228,13 @@ CAPABILITY_DEFINITIONS = (
         description="Create, edit, and submit the authenticated Student's current Inventory.",
     ),
     CapabilityDefinition(
+        code="student_support.view",
+        name="View Student Support context",
+        description=(
+            "View privacy-minimized Student Support indicators within authorized Guidance scope."
+        ),
+    ),
+    CapabilityDefinition(
         code="reports.view",
         name="View aggregate reports",
         description="View privacy-bounded aggregate Guidance and Counseling Office reports.",
@@ -448,6 +455,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "appointments.view_self",
             "counseling.view_assigned",
             "counseling.manage_assigned",
+            "student_support.view",
             "shared_summaries.view_assigned",
             "shared_summaries.manage_assigned",
             "routine_interviews.view_assigned",
