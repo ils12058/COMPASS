@@ -5,12 +5,17 @@ from __future__ import annotations
 from typing import NoReturn
 from uuid import UUID
 
+from django.http import HttpResponse
 from ninja import Router
 
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
+from .pdf import (
+    StudentProfilingDocumentUnavailable,
+    render_student_profiling_pdf,
+)
 from .schemas import StudentProfilingReportResponse
 from .services import (
     InvalidReportFilter,
@@ -40,6 +45,12 @@ def _raise(exc: ReportError) -> NoReturn:
         raise APIError(409, "report_configuration_conflict", str(exc)) from exc
     if isinstance(exc, InvalidReportFilter):
         raise APIError(422, "invalid_report_filter", str(exc)) from exc
+    if isinstance(exc, StudentProfilingDocumentUnavailable):
+        raise APIError(
+            503,
+            "report_document_unavailable",
+            "The Student Profiling report PDF is temporarily unavailable.",
+        ) from exc
     raise APIError(
         500,
         "internal_error",
@@ -72,3 +83,34 @@ def student_profile(
         )
     except ReportError as exc:
         _raise(exc)
+
+
+@router.get(
+    "/student-profile/pdf",
+    response=response_with_errors(None, 401, 403, 404, 409, 422, 503),
+    auth=session_auth,
+    operation_id="reportsDownloadStudentProfilePdf",
+)
+def student_profile_pdf(
+    request,
+    academic_year_id: UUID | None = None,
+    campus_id: UUID | None = None,
+    college_id: UUID | None = None,
+    program_id: UUID | None = None,
+    year_level: int | None = None,
+):
+    _require_viewer(request)
+    try:
+        result = render_student_profiling_pdf(
+            academic_year_id=academic_year_id,
+            campus_id=campus_id,
+            college_id=college_id,
+            program_id=program_id,
+            year_level=year_level,
+        )
+    except ReportError as exc:
+        _raise(exc)
+
+    response = HttpResponse(result.pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{result.filename}"'
+    return response
