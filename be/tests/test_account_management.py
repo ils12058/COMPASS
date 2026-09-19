@@ -636,7 +636,7 @@ def test_role_change_blocks_active_or_future_appointment_until_resolved():
 
     blocked = client.put(
         f"/api/v1/accounts/{provider.pk}/role",
-        data=json.dumps({"role": "STUDENT"}),
+        data=json.dumps({"role": "INSTITUTIONAL_OFFICER"}),
         content_type="application/json",
         **csrf_headers(client),
     )
@@ -650,7 +650,7 @@ def test_role_change_blocks_active_or_future_appointment_until_resolved():
 
     changed = client.put(
         f"/api/v1/accounts/{provider.pk}/role",
-        data=json.dumps({"role": "STUDENT"}),
+        data=json.dumps({"role": "INSTITUTIONAL_OFFICER"}),
         content_type="application/json",
         **csrf_headers(client),
     )
