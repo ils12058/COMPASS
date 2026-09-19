@@ -1078,6 +1078,11 @@
           "destination_type": {
             "$ref": "#/components/schemas/CallSlipDestinationTypeValue"
           },
+          "notify_student": {
+            "default": true,
+            "title": "Notify Student",
+            "type": "boolean"
+          },
           "other_destination": {
             "default": "",
             "title": "Other Destination",
@@ -8754,6 +8759,144 @@
         "title": "MyProfileUpdateRequest",
         "type": "object"
       },
+      "NotificationPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "NotificationPageResponse",
+        "type": "object"
+      },
+      "NotificationPreferenceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "optional_email_enabled": {
+            "description": "Controls only OPTIONAL_INFORMATIONAL email. Mandatory security and operational email is not disabled by this preference.",
+            "title": "Optional Email Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "optional_email_enabled"
+        ],
+        "title": "NotificationPreferenceResponse",
+        "type": "object"
+      },
+      "NotificationPreferenceUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "optional_email_enabled": {
+            "title": "Optional Email Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "optional_email_enabled"
+        ],
+        "title": "NotificationPreferenceUpdateRequest",
+        "type": "object"
+      },
+      "NotificationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_code": {
+            "title": "Event Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_read": {
+            "title": "Is Read",
+            "type": "boolean"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "policy": {
+            "title": "Policy",
+            "type": "string"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "target_type": {
+            "title": "Target Type",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "event_code",
+          "policy",
+          "title",
+          "message",
+          "target_type",
+          "target_id",
+          "created_at",
+          "read_at",
+          "is_read"
+        ],
+        "title": "NotificationResponse",
+        "type": "object"
+      },
       "OccupationCategoryValue": {
         "enum": [
           "GOVERNMENT_EMPLOYEE",
@@ -11791,6 +11934,20 @@
           "is_current"
         ],
         "title": "TrustedSessionSummary",
+        "type": "object"
+      },
+      "UnreadCountResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "unread_count": {
+            "title": "Unread Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "unread_count"
+        ],
+        "title": "UnreadCountResponse",
         "type": "object"
       },
       "UserSummary": {
@@ -23462,6 +23619,251 @@
         ]
       }
     },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "notificationsListMine",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Notifications List Mine",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/preferences": {
+      "get": {
+        "operationId": "notificationsGetPreferences",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferenceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Notifications Get Preferences",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "patch": {
+        "operationId": "notificationsUpdatePreferences",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferenceUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferenceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Notifications Update Preferences",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/unread-count": {
+      "get": {
+        "operationId": "notificationsGetUnreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Notifications Get Unread Count",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{notification_id}/read": {
+      "patch": {
+        "operationId": "notificationsMarkRead",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Notification Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Notifications Mark Read",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/api/v1/organization/campuses": {
       "get": {
         "operationId": "organizationListCampuses",
@@ -28277,6 +28679,10 @@
     {
       "description": "Student reporting permits / Guidance Call Slip records.",
       "name": "call-slips"
+    },
+    {
+      "description": "Authenticated self-service in-app Notifications and email preference.",
+      "name": "notifications"
     },
     {
       "description": "Approved institutional and GCO document identity configuration.",
