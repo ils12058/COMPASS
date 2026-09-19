@@ -122,8 +122,8 @@ def derive_maintenance_snapshot(
             source=MaintenanceSource.MANUAL,
             message=item.manual_message,
             manual_expected_end_at=item.manual_expected_end_at,
-            scheduled_start_at=item.scheduled_start_at,
-            scheduled_end_at=item.scheduled_end_at,
+            scheduled_start_at=None,
+            scheduled_end_at=None,
             schedule_upcoming=False,
             schedule_active=False,
         )
