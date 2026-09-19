@@ -92,7 +92,7 @@ def test_privacy_activity_data_release_presenters_are_content_free():
         context=audited_context(actor),
         action=REPORT_EXPORT_RELEASED,
         outcome="SUCCESS",
-        target_type="report.student_profiling",
+        target_type="reports.studentprofiling",
         target_id=academic_year_id,
         occurred_at=now,
         metadata={
@@ -311,7 +311,7 @@ def test_privacy_activity_excludes_unrelated_domains_unknown_actions_and_malform
         context=AuditContext.user(actor),
         action=APPOINTMENT_CREATED,
         outcome="SUCCESS",
-        target_type="appointment",
+        target_type="appointments.appointment",
         target_id=uuid4(),
         occurred_at=now,
         metadata={},
@@ -329,7 +329,7 @@ def test_privacy_activity_excludes_unrelated_domains_unknown_actions_and_malform
         context=AuditContext.user(actor),
         action=REPORT_EXPORT_RELEASED,
         outcome="SUCCESS",
-        target_type="report.student_profiling",
+        target_type="reports.studentprofiling",
         target_id="not-a-uuid",
         occurred_at=now - timedelta(seconds=2),
         metadata={
