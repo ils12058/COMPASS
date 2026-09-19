@@ -9,7 +9,11 @@ from uuid import UUID
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 
 from .filenames import safe_report_filename_part
-from .services import ReportError, build_student_profiling_report
+from .services import (
+    ReportError,
+    build_student_profiling_report,
+    student_profiling_release_context,
+)
 
 TEMPLATE_KEY = "student_profiling_report"
 TEMPLATE_VERSION = 1
@@ -51,6 +55,7 @@ class StudentProfilingDocumentUnavailable(ReportError):
 class StudentProfilingPdfResult:
     pdf_bytes: bytes
     filename: str
+    release_context: dict[str, object]
 
 
 def _organization_display(item: dict[str, object] | None, fallback: str) -> str:
@@ -373,4 +378,5 @@ def render_student_profiling_pdf(
     return StudentProfilingPdfResult(
         pdf_bytes=rendered.pdf_bytes,
         filename=student_profiling_pdf_filename(str(academic_year["label"])),
+        release_context=student_profiling_release_context(report),
     )
