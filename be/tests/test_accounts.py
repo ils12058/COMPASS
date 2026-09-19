@@ -137,13 +137,14 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
         "COUNSELOR",
         "GUIDANCE_SERVICES_STAFF",
         "STUDENT",
+        "INSTITUTIONAL_OFFICER",
     }
     assert set(Designation.objects.values_list("code", flat=True)) == {
         "HEAD_GUIDANCE_COUNSELOR",
         "DPO",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 62
+    assert RoleCapability.objects.count() == 63
     assert DesignationCapability.objects.count() == 16
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
@@ -153,10 +154,10 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "designations created=0 updated=0" in second_output.getvalue()
     assert "capabilities created=0 updated=0" in second_output.getvalue()
     assert "role grants created=0" in second_output.getvalue()
-    assert Role.objects.count() == 4
+    assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 57
-    assert RoleCapability.objects.count() == 62
+    assert Capability.objects.count() == 58
+    assert RoleCapability.objects.count() == 63
     assert DesignationCapability.objects.count() == 16
 
 
@@ -453,3 +454,24 @@ def test_student_lifecycle_migration_backfills_only_existing_students():
     counselor.refresh_from_db()
     assert student.student_lifecycle_status == StudentLifecycleStatus.CURRENT
     assert counselor.student_lifecycle_status is None
+
+
+
+@pytest.mark.django_db
+def test_institutional_officer_is_neutral_and_dpo_adds_no_capabilities():
+    sync_policy()
+    officer = make_user(
+        role="INSTITUTIONAL_OFFICER",
+        email="dpo.officer@example.edu",
+    )
+    assert effective_capabilities(officer) == frozenset()
+
+    UserDesignation.objects.create(
+        user=officer,
+        designation=Designation.objects.get(code="DPO"),
+    )
+    assert effective_capabilities(officer) == frozenset()
+    assert not officer.has_capability("accounts.manage")
+    assert not officer.has_capability("institutional_designations.manage")
+    assert not officer.has_capability("organization.manage")
+    assert not officer.has_capability("reports.view")
