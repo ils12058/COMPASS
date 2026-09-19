@@ -848,7 +848,6 @@ def test_student_lifecycle_authority_and_role_transition_preservation():
     assert dpo_denied.status_code == 403
 
 
-
 @pytest.mark.django_db
 def test_designation_role_compatibility_is_fail_closed_and_role_change_never_cleans_it_up():
     sync_policy()
@@ -999,7 +998,6 @@ def test_account_listing_exposes_and_filters_safe_verification_state():
     assert detail.status_code == 200
     assert detail.json()["email_verified"] is True
     assert detail.json()["email_verified_at"] is not None
-
 
 
 @pytest.mark.django_db
