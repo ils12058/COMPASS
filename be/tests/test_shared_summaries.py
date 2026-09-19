@@ -22,6 +22,8 @@ from compass.counseling.shared_summaries import (
     publish_assigned_shared_summary,
     put_assigned_shared_summary,
 )
+from compass.notifications.delivery import render_notification_email
+from compass.notifications.models import EmailDelivery, Notification
 from compass.inventory.services import (
     ensure_current_inventory,
     replace_current_inventory,
@@ -180,6 +182,26 @@ def test_publish_is_explicit_idempotent_immutable_and_audit_content_free():
     assert event.target_id == str(published.pk)
     assert event.metadata == {"counseling_encounter_id": str(encounter.pk)}
     assert marker not in json.dumps(event.metadata)
+
+    notification = Notification.objects.get(
+        recipient=student,
+        event_code="counseling.shared_summary.published",
+        source_type="counseling_shared_summary",
+        source_id=published.pk,
+    )
+    assert notification.policy == "MANDATORY_OPERATIONAL"
+    assert notification.target_type == "COUNSELING_SHARED_SUMMARY"
+    assert notification.target_id == published.pk
+    assert marker not in notification.message
+    assert EmailDelivery.objects.filter(notification=notification).exists()
+    rendered = render_notification_email(notification.event_code)
+    assert marker not in rendered.text_body
+    assert marker not in rendered.html_body
+    assert Notification.objects.filter(
+        recipient=student,
+        event_code="counseling.shared_summary.published",
+        source_id=published.pk,
+    ).count() == 1
 
     with pytest.raises(CounselingSharedSummaryAlreadyPublished):
         put_assigned_shared_summary(
