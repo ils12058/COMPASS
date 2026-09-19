@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
 
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 
+from .filenames import safe_report_filename_part
 from .services import ReportError, build_student_profiling_report
 
 TEMPLATE_KEY = "student_profiling_report"
@@ -328,13 +328,12 @@ def build_student_profiling_print_context(report: dict[str, object]) -> dict[str
     }
 
 
-def _safe_filename_part(value: str) -> str:
-    safe = re.sub(r"[^A-Za-z0-9._-]+", "-", value).strip("-._")
-    return safe or "academic-year"
-
-
 def student_profiling_pdf_filename(academic_year_label: str) -> str:
-    return f"student-profile-{_safe_filename_part(academic_year_label)}.pdf"
+    safe_year = safe_report_filename_part(
+        academic_year_label,
+        fallback="academic-year",
+    )
+    return f"student-profile-{safe_year}.pdf"
 
 
 def render_student_profiling_pdf(
