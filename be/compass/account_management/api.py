@@ -19,6 +19,18 @@ from compass.authentication.sessions import RecentMFARequired, require_recent_mf
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
+from .csv_import import (
+    MAX_CSV_BYTES,
+    CsvImportConflict,
+    CsvImportDuplicateIdentity,
+    CsvImportInvalidRows,
+    CsvImportMalformed,
+    CsvImportReport,
+    CsvImportTooLarge,
+    CsvImportUnsupportedHeaders,
+    provision_accounts_from_csv,
+)
+
 from .services import (
     DEFAULT_PAGE_SIZE,
     AccountManagementError,
@@ -53,17 +65,6 @@ from .services import (
     set_capability_override,
     set_student_lifecycle,
     update_identity,
-)
-from .csv_import import (
-    MAX_CSV_BYTES,
-    CsvImportConflict,
-    CsvImportDuplicateIdentity,
-    CsvImportInvalidRows,
-    CsvImportMalformed,
-    CsvImportReport,
-    CsvImportTooLarge,
-    CsvImportUnsupportedHeaders,
-    provision_accounts_from_csv,
 )
 
 router = Router(tags=["accounts"])
