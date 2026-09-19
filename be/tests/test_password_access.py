@@ -39,6 +39,7 @@ from compass.authentication.sessions import (
     create_trusted_session,
 )
 from compass.common.rate_limit import RateLimitResult
+from compass.notifications.models import EmailDelivery, Notification
 
 NEW_PASSWORD = "river lanterns across campus"
 RESET_PASSWORD = "quiet gardens beside the library"
@@ -279,6 +280,10 @@ def test_confirm_initial_password_sets_django_password_without_auto_login():
         target_id=str(user.pk),
         metadata={"method": "email_otp"},
     ).exists()
+    assert not Notification.objects.filter(
+        recipient=user,
+        event_code="security.password.reset",
+    ).exists()
 
     login = post_json(
         client,
@@ -405,13 +410,26 @@ def test_confirm_password_reset_rejects_exact_reuse_and_audits_reset():
     assert not user.check_password(CURRENT_PASSWORD)
     assert user.check_password(RESET_PASSWORD)
     assert user.email_verified_at is not None
-    assert AuditEvent.objects.filter(
+    audit_event = AuditEvent.objects.get(
         action=AUTH_PASSWORD_RESET,
         actor_user=user,
         target_type="accounts.user",
         target_id=str(user.pk),
         metadata={"method": "email_otp"},
-    ).exists()
+    )
+    notification = Notification.objects.get(
+        recipient=user,
+        event_code="security.password.reset",
+        source_type="audit_event",
+        source_id=audit_event.pk,
+    )
+    assert notification.policy == "MANDATORY_SECURITY"
+    assert notification.target_type == "ACCOUNT_SECURITY"
+    assert notification.target_id == user.pk
+    assert EmailDelivery.objects.filter(notification=notification).exists()
+    assert CURRENT_PASSWORD not in notification.message
+    assert RESET_PASSWORD not in notification.message
+    assert str(challenge_id) not in notification.message
     assert CURRENT_PASSWORD not in json.dumps(
         list(AuditEvent.objects.values_list("metadata", flat=True))
     )
