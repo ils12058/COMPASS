@@ -345,9 +345,7 @@ def test_privacy_review_lifecycle_actor_audit_and_no_delete():
     assert created.json()["status"] == "OPEN"
     assert created.json()["reviewed_by"]["id"] == str(dpo.pk)
 
-    listing = client.get(
-        f"/api/v1/privacy/processing-activities/{processing['id']}/reviews"
-    )
+    listing = client.get(f"/api/v1/privacy/processing-activities/{processing['id']}/reviews")
     assert listing.status_code == 200
     assert listing.json()["items"][0]["id"] == review_id
     assert client.get(f"/api/v1/privacy/reviews/{review_id}").status_code == 200
