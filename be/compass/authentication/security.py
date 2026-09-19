@@ -94,7 +94,11 @@ def invalidate_auth_state_after_authority_change(
     """Compatibility wrapper for administrative authority and identity mutations."""
 
     purposes = (
-        (EmailOTPPurpose.SECURITY_CHALLENGE, EmailOTPPurpose.RECOVERY)
+        (
+            EmailOTPPurpose.SECURITY_CHALLENGE,
+            EmailOTPPurpose.RECOVERY,
+            EmailOTPPurpose.EMAIL_VERIFICATION,
+        )
         if invalidate_email_security_challenges
         else None
     )

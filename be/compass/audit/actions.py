@@ -1,6 +1,7 @@
 """Stable audit action codes used by the current COMPASS foundation."""
 
 ACCOUNT_CREATED = "account.created"
+ACCOUNT_CSV_IMPORTED = "account.csv_imported"
 ACCOUNT_UPDATED = "account.updated"
 ACCOUNT_DISABLED = "account.disabled"
 ACCOUNT_ENABLED = "account.enabled"
@@ -89,6 +90,7 @@ ECOUNSELING_TRANSCRIPTION_STOP_REQUESTED = "ecounseling.transcription_stop_reque
 
 __all__ = [
     "ACCOUNT_CREATED",
+    "ACCOUNT_CSV_IMPORTED",
     "ACCOUNT_UPDATED",
     "ACCOUNT_DISABLED",
     "ACCOUNT_ENABLED",

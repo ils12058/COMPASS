@@ -140,6 +140,8 @@ jobs:
           tests/test_accounts.py
           tests/test_authentication.py
           tests/test_account_management.py
+          tests/test_account_csv_import.py
+          tests/test_password_access.py
           tests/test_organization.py
           tests/test_program_inventory_academic_context.py
           tests/test_inventory_profiling_normalization.py

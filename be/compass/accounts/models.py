@@ -166,6 +166,7 @@ class User(AbstractBaseUser):
         null=True,
     )
     is_active = models.BooleanField(default=True)
+    email_verified_at = models.DateTimeField(blank=True, null=True)
     profile_photo_object_key = models.CharField(
         max_length=512,
         blank=True,
