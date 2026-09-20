@@ -749,11 +749,11 @@ def _coverage(filters: ResolvedReportFilters) -> dict[str, object]:
                 organization_student_affiliation__college_id=filters.college.pk
             )
             applied.append("college_id")
-        eligible = eligible.distinct()
-        eligible_count = eligible.count()
+        eligible_ids = list(eligible.distinct().values_list("id", flat=True))
+        eligible_count = len(eligible_ids)
         inventory_counts = StudentInventory.objects.filter(
             academic_year_id=filters.academic_year.pk,
-            student_id__in=eligible.values("id"),
+            student_id__in=eligible_ids,
         ).aggregate(
             submitted=Count("id", filter=Q(submitted_at__isnull=False)),
             draft=Count("id", filter=Q(submitted_at__isnull=True)),
@@ -809,8 +809,11 @@ def build_student_profiling_report(
         program_id=program_id,
         year_level=year_level,
     )
-    base_queryset = _profile_queryset(filters)
-    denominator = base_queryset.count()
+    population_ids = list(_profile_queryset(filters).values_list("id", flat=True))
+    # Submitted Inventories are immutable. Freeze report membership once so all section queries
+    # describe the same logical population even if another submission commits mid-generation.
+    base_queryset = StudentInventory.objects.filter(pk__in=population_ids)
+    denominator = len(population_ids)
     columns, program_totals = _program_columns(base_queryset)
 
     sections = {
