@@ -638,6 +638,7 @@ def start_transcription(
         _handle_start_provider_failure(capture_id, exc)
     return ECounselingMediaCapture.objects.get(pk=capture_id)
 
+
 def _prepare_stop_locked(
     *,
     appointment: Appointment,
