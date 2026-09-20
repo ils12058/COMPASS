@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/account-effective-access-inspector
+  workflow_dispatch:
 
 permissions:
   contents: write
