@@ -25,16 +25,12 @@ from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
 )
-from compass.organization.models import (
-    CounselorResponsibility,
-    StaffSupervision,
-    StudentAffiliation,
-)
+from compass.organization.access_scope import resolve_organizational_access_scope
+from compass.organization.models import StudentAffiliation
 
 from .models import Referral, ReferralAction, ReferralActionType, ReferralReferenceCounter
 
 REFERRAL_FORM_FAMILY_KEY = "referral_slip"
-HEAD_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
 OPERATIONAL_ROLES = frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -154,49 +150,9 @@ def _validate_student(student: User | None) -> User:
     return student
 
 
-def _is_head(actor: User) -> bool:
-    return (
-        actor.role.code == "COUNSELOR" and actor.designations.filter(code=HEAD_DESIGNATION).exists()
-    )
-
-
-def _counselor_college_ids(counselor_id: UUID) -> tuple[UUID, ...]:
-    return tuple(
-        CounselorResponsibility.objects.filter(
-            counselor_id=counselor_id,
-            counselor__is_active=True,
-            counselor__role__code="COUNSELOR",
-            college__is_active=True,
-            college__campus__is_active=True,
-        )
-        .order_by("college_id")
-        .values_list("college_id", flat=True)
-    )
-
-
 def _scope_college_ids(actor: User) -> tuple[UUID, ...] | None:
-    """Return current Referral scope; None means institution-wide Head scope."""
-
-    if _is_head(actor):
-        return None
-    if actor.role.code == "COUNSELOR":
-        return _counselor_college_ids(actor.pk)
-    if actor.role.code == "GUIDANCE_SERVICES_STAFF":
-        supervision = (
-            StaffSupervision.objects.select_related("supervisor__role")
-            .filter(staff_id=actor.pk)
-            .first()
-        )
-        if (
-            supervision is None
-            or not supervision.supervisor.is_active
-            or supervision.supervisor.role.code != "COUNSELOR"
-        ):
-            return ()
-        if _is_head(supervision.supervisor):
-            return None
-        return _counselor_college_ids(supervision.supervisor_id)
-    return ()
+    scope = resolve_organizational_access_scope(actor)
+    return None if scope.institution_wide else scope.college_ids
 
 
 def _student_in_scope(actor: User, student_id: UUID) -> bool:
