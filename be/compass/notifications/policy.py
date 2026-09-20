@@ -31,6 +31,7 @@ class NotificationEvent(StrEnum):
     ECOUNSELING_CONSENT_REQUESTED = "ecounseling.consent.requested"
     FEEDBACK_INVITATION = "feedback.invitation"
     SECURITY_PASSWORD_RESET = "security.password.reset"
+    SECURITY_PASSWORD_CHANGED = "security.password.changed"
     SECURITY_MFA_DISABLED = "security.mfa.disabled"
     SECURITY_RECOVERY_CODES_REGENERATED = "security.recovery_codes.regenerated"
     SECURITY_MFA_ADMIN_RESET = "security.mfa.admin_reset"
@@ -147,6 +148,18 @@ _EVENT_CATALOG = {
         ),
         email_subject="COMPASS Password Reset",
         email_template="security_password_reset",
+    ),
+    NotificationEvent.SECURITY_PASSWORD_CHANGED: NotificationEventDefinition(
+        event=NotificationEvent.SECURITY_PASSWORD_CHANGED,
+        policy=NotificationPolicy.MANDATORY_SECURITY,
+        channels=_EMAIL_CHANNELS,
+        title="Password Changed",
+        message=(
+            "Your COMPASS password was changed. If you did not perform this action, "
+            "contact the appropriate university office immediately."
+        ),
+        email_subject="COMPASS Password Changed",
+        email_template="security_password_changed",
     ),
     NotificationEvent.SECURITY_MFA_DISABLED: NotificationEventDefinition(
         event=NotificationEvent.SECURITY_MFA_DISABLED,
