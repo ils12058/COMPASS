@@ -291,7 +291,9 @@ def test_direct_creation_has_no_fake_appointment_and_persistent_idempotency(entr
     configure_year(admin)
     inventory = submit_inventory(student, student)
     StudentAffiliation.objects.create(student=student, college=inventory.program.college)
-    counselor_campus = Campus.objects.create(code="DIRECT-COUNSELOR", name="Direct Counselor Campus")
+    counselor_campus = Campus.objects.create(
+        code="DIRECT-COUNSELOR", name="Direct Counselor Campus"
+    )
     counselor_college = College.objects.create(
         campus=counselor_campus,
         code="DIRECT-COUNSELOR-COL",
