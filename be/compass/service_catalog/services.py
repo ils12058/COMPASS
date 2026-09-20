@@ -33,7 +33,9 @@ DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_DESCRIPTION_LENGTH = 2000
 SERVICE_CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$", re.ASCII)
-ELIGIBLE_PROVIDER_ROLE_CODES = frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
+# ADR-050 supersedes the older GSS provider allowance: GSS administer Appointments but do not
+# act as operational providers.
+ELIGIBLE_PROVIDER_ROLE_CODES = frozenset({"COUNSELOR"})
 
 
 class ServiceCatalogError(RuntimeError):
@@ -146,7 +148,7 @@ def _normalize_provider_roles(values: list[str] | tuple[str, ...] | None) -> fro
         raise InvalidServiceCatalogInput("provider_roles must not contain duplicates")
     if not set(normalized) <= ELIGIBLE_PROVIDER_ROLE_CODES:
         raise InvalidServiceCatalogInput(
-            "provider_roles may contain only COUNSELOR or GUIDANCE_SERVICES_STAFF"
+            "provider_roles may contain only COUNSELOR"
         )
     return frozenset(normalized)
 
