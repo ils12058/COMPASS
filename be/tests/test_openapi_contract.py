@@ -1109,9 +1109,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         404,
         422,
     }
-    assert _response_statuses(
-        _operation(schema, "/api/v1/accounts/{user_id}/access", "get")
-    ) >= {
+    assert _response_statuses(_operation(schema, "/api/v1/accounts/{user_id}/access", "get")) >= {
         200,
         401,
         403,
