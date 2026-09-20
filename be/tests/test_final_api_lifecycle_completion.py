@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, override_settings
+from django.test import override_settings
 from django.test.client import BOUNDARY, MULTIPART_CONTENT, encode_multipart
 from django.utils import timezone
 
@@ -20,7 +20,6 @@ from compass.appointments.services import (
     create_student_appointment,
     get_appointment_history,
     mark_appointment_no_show,
-    reassign_appointment,
     reschedule_appointment,
 )
 from compass.audit.models import AuditEvent
@@ -54,35 +53,57 @@ from compass.referrals.services import (
 )
 from tests.test_appointments import (
     active_service,
-    auth_client as appointment_auth_client,
     configure_availability,
-    context as appointment_context,
     create_affiliation,
-    csrf as appointment_csrf,
     future_local_start,
-    make_user as make_appointment_user,
     sync_policy,
     weekly,
+)
+from tests.test_appointments import (
+    auth_client as appointment_auth_client,
+)
+from tests.test_appointments import (
+    context as appointment_context,
+)
+from tests.test_appointments import (
+    csrf as appointment_csrf,
+)
+from tests.test_appointments import (
+    make_user as make_appointment_user,
 )
 from tests.test_call_slips import create_referral_for
 from tests.test_good_moral import (
     auth_client as good_moral_auth_client,
+)
+from tests.test_good_moral import (
     csrf as good_moral_csrf,
+)
+from tests.test_good_moral import (
     make_graduate_request,
+)
+from tests.test_good_moral import (
     make_user as make_good_moral_user,
 )
 from tests.test_notifications import (
     auth_client as notification_auth_client,
+)
+from tests.test_notifications import (
     make_notification,
+)
+from tests.test_notifications import (
     make_user as make_notification_user,
 )
 from tests.test_profile_photos import MemoryBackend, image_upload
 from tests.test_student_support import (
     affiliate,
-    auth_client as support_auth_client,
     make_head,
     make_inventory,
     make_org,
+)
+from tests.test_student_support import (
+    auth_client as support_auth_client,
+)
+from tests.test_student_support import (
     make_user as make_support_user,
 )
 
