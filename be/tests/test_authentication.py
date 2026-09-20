@@ -318,7 +318,7 @@ def test_password_change_serializes_against_primary_login_session_issuance(monke
 
     def paused_check_password(self, raw_password):
         result = original_check_password(self, raw_password)
-        if threading.current_thread().name.startswith("login-race"):
+        if threading.get_ident() == login_thread_ident["value"]:
             verification_entered.set()
             assert release_verification.wait(timeout=5)
         return result
@@ -331,8 +331,10 @@ def test_password_change_serializes_against_primary_login_session_issuance(monke
         headers={},
         request_id=None,
     )
+    login_thread_ident = {"value": None}
 
     def login_worker():
+        login_thread_ident["value"] = threading.get_ident()
         close_old_connections()
         try:
             return authenticate_login(
@@ -352,7 +354,7 @@ def test_password_change_serializes_against_primary_login_session_issuance(monke
                 user=fresh_user,
                 session=fresh_session,
                 current_password="correct-password",
-                new_password="changed-password-123",
+                new_password="new-secure-test-password-123!",
                 context=AuditContext.user(fresh_user),
             )
             password_change_finished.set()
@@ -374,7 +376,7 @@ def test_password_change_serializes_against_primary_login_session_issuance(monke
     login_result.session.session.refresh_from_db()
     assert login_result.session.session.revoked_at is not None
     user.refresh_from_db()
-    assert user.check_password("changed-password-123")
+    assert user.check_password("new-secure-test-password-123!")
 
 
 @pytest.mark.django_db
