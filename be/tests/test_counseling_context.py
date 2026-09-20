@@ -150,6 +150,7 @@ def make_inventory(
         values.update(
             {
                 "pwd_status": "PWD",
+                "physical_disadvantage": "Self-reported PWD detail for test projection.",
                 "civil_status_category": "SOLO_PARENT",
                 "support_profile": {
                     "four_ps_status": "BENEFICIARY",
