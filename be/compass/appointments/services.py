@@ -34,6 +34,7 @@ from compass.organization.models import (
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.service_catalog.models import AppointmentPolicy, DeliveryMode, Service
 from compass.service_catalog.services import (
+    ELIGIBLE_PROVIDER_ROLE_CODES,
     provider_role_eligible,
     service_allows_provider_role,
     service_supports_delivery_mode,
@@ -45,7 +46,7 @@ DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_ELIGIBLE_COUNSELORS = 50
 MAX_REFERENCE_SEQUENCE = 999_999
-PROVIDER_ROLE_CODES = frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
+PROVIDER_ROLE_CODES = ELIGIBLE_PROVIDER_ROLE_CODES
 HEAD_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
 
 
