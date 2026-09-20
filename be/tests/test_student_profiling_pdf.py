@@ -209,7 +209,6 @@ def fake_pdf_result() -> StudentProfilingPdfResult:
             "program_id": None,
             "program_code": None,
             "year_level": None,
-            "access_scope": GLOBAL_REPORT_ACCESS_SCOPE,
         },
     )
 
@@ -269,7 +268,6 @@ def test_pdf_endpoint_forwards_same_report_filters(monkeypatch):
             "college_id": college_id,
             "program_id": program_id,
             "year_level": 3,
-            "access_scope": GLOBAL_REPORT_ACCESS_SCOPE,
         },
     )
     assert response.status_code == 200
