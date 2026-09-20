@@ -78,10 +78,7 @@ class Resource(models.Model):
             models.CheckConstraint(
                 condition=(
                     ~models.Q(status=PublicationStatus.PUBLISHED)
-                    | (
-                        models.Q(published_at__isnull=False)
-                        & models.Q(published_by__isnull=False)
-                    )
+                    | (models.Q(published_at__isnull=False) & models.Q(published_by__isnull=False))
                 ),
                 name="res_published_metadata",
             ),
