@@ -16,7 +16,7 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
 
-from .models import CallSlipDestinationType
+from .models import CallSlipDestinationType, CallSlipLifecycleState
 from .services import (
     DEFAULT_PAGE_SIZE,
     CallSlipConfigurationConflict,
@@ -26,6 +26,7 @@ from .services import (
     CallSlipNotFound,
     CallSlipNotPermitted,
     CallSlipReferralConflict,
+    CallSlipVoidConflict,
     InvalidCallSlipInput,
     create_call_slip,
     get_call_slip,
@@ -33,6 +34,7 @@ from .services import (
     list_call_slips,
     list_my_call_slips,
     record_interview_ended,
+    void_call_slip,
 )
 
 router = Router(tags=["call-slips"])
@@ -48,6 +50,12 @@ class CallSlipDestinationTypeValue(StrEnum):
     OTHER = CallSlipDestinationType.OTHER
 
 
+class CallSlipLifecycleStateValue(StrEnum):
+    ACTIVE = CallSlipLifecycleState.ACTIVE
+    COMPLETED = CallSlipLifecycleState.COMPLETED
+    VOIDED = CallSlipLifecycleState.VOIDED
+
+
 class CallSlipCreateRequest(StrictSchema):
     student_id: UUID
     course_year: str
@@ -60,6 +68,10 @@ class CallSlipCreateRequest(StrictSchema):
 
 class CallSlipInterviewEndedRequest(StrictSchema):
     interview_ended_at: datetime
+
+
+class CallSlipVoidRequest(StrictSchema):
+    reason: str
 
 
 class CallSlipPersonSummary(StrictSchema):
@@ -91,12 +103,15 @@ class CallSlipStudentResponse(StrictSchema):
     issued_by_name_snapshot: str
     form_revision: CallSlipFormRevisionSummary
     interview_ended_at: datetime | None
+    state: CallSlipLifecycleStateValue
+    voided_at: datetime | None
     created_at: datetime
 
 
 class CallSlipOperationalResponse(CallSlipStudentResponse):
     referral: CallSlipReferralSummary | None
     recorded_by: CallSlipPersonSummary | None
+    void_reason: str
     updated_at: datetime
 
 
@@ -152,6 +167,7 @@ def _raise(exc: CallSlipError) -> NoReturn:
             CallSlipCreationConflict,
             CallSlipReferralConflict,
             CallSlipInterviewEndConflict,
+            CallSlipVoidConflict,
         ),
     ):
         raise APIError(409, "call_slip_conflict", str(exc)) from exc
@@ -186,6 +202,8 @@ def _student_view(item) -> dict[str, object]:
         "issued_by_name_snapshot": item.issued_by_name_snapshot,
         "form_revision": _revision(item.form_revision),
         "interview_ended_at": item.interview_ended_at,
+        "state": item.lifecycle_state,
+        "voided_at": item.voided_at,
         "created_at": item.created_at,
     }
 
@@ -199,6 +217,7 @@ def _operational_view(item) -> dict[str, object]:
             else None
         ),
         "recorded_by": _person(item.recorded_by) if item.recorded_by_id else None,
+        "void_reason": item.void_reason,
         "updated_at": item.updated_at,
     }
 
@@ -213,6 +232,7 @@ def call_slips_list_my(
     request,
     from_date: date | None = None,
     to_date: date | None = None,
+    include_voided: bool = False,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -222,6 +242,7 @@ def call_slips_list_my(
             actor=request.auth_user,
             from_date=from_date,
             to_date=to_date,
+            include_voided=include_voided,
             page=page,
             page_size=page_size,
         )
@@ -381,3 +402,23 @@ def call_slips_record_interview_ended(
     except CallSlipError as exc:
         _raise(exc)
     return _operational_view(item)
+
+@router.post(
+    "/{call_slip_id}/void",
+    response=response_with_errors(CallSlipOperationalResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="callSlipsVoid",
+)
+def call_slips_void(request, call_slip_id: UUID, payload: CallSlipVoidRequest):
+    _require_operational(request, "call_slips.manage")
+    try:
+        item = void_call_slip(
+            actor=request.auth_user,
+            call_slip_id=call_slip_id,
+            reason=payload.reason,
+            context=_context(request),
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return _operational_view(item)
+
