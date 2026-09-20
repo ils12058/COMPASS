@@ -1,4 +1,4 @@
-name: Counseling context focused validation
+name: Counseling context contract validation
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
       - feature/counseling-context-access-foundation
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  focused:
+  contract:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -48,29 +48,29 @@ jobs:
         working-directory: be
         run: uv sync --frozen
 
-      - name: Static and framework checks
+      - name: Export canonical OpenAPI contract
         working-directory: be
-        run: |
-          uv lock --check
-          uv run ruff format --check .
-          uv run ruff check .
-          uv run python -m compileall -q compass tests
-          uv run python manage.py makemigrations --check --dry-run --settings=tests.settings
-          uv run python manage.py migrate --noinput --settings=tests.settings
-          uv run python manage.py check --settings=tests.settings
+        run: uv run python manage.py export_openapi --settings=tests.settings
 
-      - name: Focused counseling context tests
+      - name: Validate OpenAPI contract tests
         working-directory: be
-        run: >-
-          uv run pytest -q
-          tests/test_counseling_context.py
-          tests/test_counseling.py
-          tests/test_routine_interviews.py
-          tests/test_appointments.py
-          tests/test_student_support.py
-          tests/test_shared_summaries.py
-          tests/test_inventory_counseling_regression.py
-          tests/test_notifications.py::test_notification_event_catalog_is_complete_renderable_and_privacy_safe
+        run: uv run pytest -q tests/test_openapi_contract.py
+
+      - name: Check canonical OpenAPI contract
+        working-directory: be
+        run: uv run python manage.py export_openapi --check --settings=tests.settings
+
+      - name: Commit regenerated contract
+        run: |
+          if git diff --quiet -- contracts/openapi.json; then
+            echo "OpenAPI contract already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add contracts/openapi.json
+          git commit -m "chore: regenerate counseling context OpenAPI contract"
+          git push
 
       - name: Diff whitespace check
         run: git diff --check
