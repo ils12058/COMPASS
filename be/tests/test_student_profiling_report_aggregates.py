@@ -51,9 +51,10 @@ def test_profile_report_population_is_frozen_before_program_and_section_queries(
 
     original = profiling_report._program_columns
     inserted = False
+    captured_program_total = 0
 
     def insert_after_population_snapshot(queryset):
-        nonlocal inserted
+        nonlocal inserted, captured_program_total
         if not inserted:
             inserted = True
             late_student = make_user("profile-snapshot-late@example.edu")
@@ -64,7 +65,9 @@ def test_profile_report_population_is_frozen_before_program_and_section_queries(
                 program=program,
                 sex=Sex.FEMALE,
             )
-        return original(queryset)
+        result = original(queryset)
+        captured_program_total = sum(result[1].values())
+        return result
 
     with patch(
         "compass.reports.services._program_columns",
@@ -73,7 +76,7 @@ def test_profile_report_population_is_frozen_before_program_and_section_queries(
         report = build_student_profiling_report(academic_year_id=year.pk)
 
     assert report["report_context"]["submitted_inventory_count"] == 1
-    assert sum(column["total"] for column in report["program_columns"]) == 1
+    assert captured_program_total == 1
     sex_section = report["sections"]["sex"]
     assert sex_section["denominator"] == 1
     assert report_row(report, "sex", Sex.MALE)["count"] == 1

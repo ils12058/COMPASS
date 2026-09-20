@@ -118,6 +118,7 @@ def make_response(
 
 @pytest.mark.django_db
 def test_report_population_is_frozen_before_section_queries():
+    sync_policy()
     first = make_response(
         "snapshot-first@example.edu",
         sex=GTSSex.MALE,

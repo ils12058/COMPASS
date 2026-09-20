@@ -234,8 +234,7 @@ def _validate_provider_for_new_configuration(provider: User) -> None:
         raise AvailabilityNotApplicable("An inactive provider cannot receive new Availability.")
     if provider.role.code not in ELIGIBLE_PROVIDER_ROLE_CODES:
         raise AvailabilityNotApplicable(
-            "Availability may only be configured for Counselor or "
-            "Guidance Services Staff providers."
+            "Availability may only be configured for Counselor providers."
         )
 
 

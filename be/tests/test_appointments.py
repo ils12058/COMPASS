@@ -383,10 +383,10 @@ def test_explicit_cross_scope_counselor_is_allowed_and_gss_is_not_student_select
     gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
     service = active_service(
         actor,
-        provider_roles=["COUNSELOR", "GUIDANCE_SERVICES_STAFF"],
+        provider_roles=["COUNSELOR"],
     )
     replace_office_weekly(windows=[weekly()], context=context(actor))
-    for provider in (default, other, gss):
+    for provider in (default, other):
         replace_provider_weekly(
             provider_id=provider.pk,
             windows=[weekly()],

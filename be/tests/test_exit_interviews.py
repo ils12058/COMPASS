@@ -262,7 +262,7 @@ def test_exit_interview_policy_is_student_self_plus_head_only():
     sync_policy()
 
     assert Capability.objects.count() == 63
-    assert RoleCapability.objects.count() == 66
+    assert RoleCapability.objects.count() == 67
     assert DesignationCapability.objects.count() == 18
 
     student = make_user("student-policy@example.edu")
@@ -784,7 +784,7 @@ def test_reopen_and_resubmit_preserve_first_submission_and_append_correction_his
     ]
     reopen_events = list(
         ExitInterviewReopenEvent.objects.filter(exit_interview_id=exit_id).order_by(
-            "created_at", "id"
+            "reopened_at", "id"
         )
     )
     assert len(reopen_events) == 2

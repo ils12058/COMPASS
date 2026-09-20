@@ -214,7 +214,7 @@ def test_database_constraints_reject_bad_or_duplicate_weekly_rows():
 
 
 @pytest.mark.django_db
-def test_provider_configuration_accepts_operational_roles_and_allows_inactive_cleanup_only():
+def test_provider_configuration_accepts_counselor_and_allows_legacy_cleanup_only():
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("c@example.edu", "COUNSELOR")
@@ -231,26 +231,26 @@ def test_provider_configuration_accepts_operational_roles_and_allows_inactive_cl
         )
         == 1
     )
-    assert (
-        len(replace_provider_weekly(provider_id=gss.pk, windows=[weekly()], context=context(actor)))
-        == 1
-    )
-    for provider in (student, other_admin, inactive):
+    for provider in (gss, student, other_admin, inactive):
         with pytest.raises(AvailabilityNotApplicable):
             replace_provider_weekly(
                 provider_id=provider.pk, windows=[weekly()], context=context(actor)
             )
 
-    ProviderAvailabilityWindow.objects.create(
-        provider=inactive,
-        weekday="MONDAY",
-        start_time=time(8),
-        end_time=time(12),
-        mode_scope="ALL",
-    )
-    cleaned = replace_provider_weekly(provider_id=inactive.pk, windows=[], context=context(actor))
-    assert cleaned == ()
-
+    for legacy_provider in (gss, inactive):
+        ProviderAvailabilityWindow.objects.create(
+            provider=legacy_provider,
+            weekday="MONDAY",
+            start_time=time(8),
+            end_time=time(12),
+            mode_scope="ALL",
+        )
+        cleaned = replace_provider_weekly(
+            provider_id=legacy_provider.pk,
+            windows=[],
+            context=context(actor),
+        )
+        assert cleaned == ()
 
 @pytest.mark.django_db
 def test_weekly_replacement_is_idempotent_and_emits_one_meaningful_audit_event():
@@ -440,7 +440,7 @@ def test_effective_query_rejects_inactive_service_unsupported_mode_role_and_larg
             start_date=date(2026, 9, 21),
             end_date=date(2026, 9, 22),
         )
-    with pytest.raises(AvailabilityNotApplicable, match="provider role"):
+    with pytest.raises(AvailabilityNotApplicable, match="operationally available"):
         compute_base_availability(
             provider_id=gss.pk,
             service_id=service.pk,
@@ -690,7 +690,7 @@ def test_student_can_read_effective_availability_but_not_raw_configuration_or_re
 def test_head_can_manage_office_and_other_provider_with_recent_mfa():
     sync_policy()
     head = make_user("head@example.edu", "COUNSELOR")
-    provider = make_user("provider@example.edu", "GUIDANCE_SERVICES_STAFF")
+    provider = make_user("provider@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
         user=head,
         designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
@@ -725,26 +725,40 @@ def test_head_can_manage_office_and_other_provider_with_recent_mfa():
 
 
 @pytest.mark.django_db
-def test_gss_schedule_is_independent_and_not_copied_from_counselor():
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_gss_legacy_schedule_is_non_operational_but_cleanup_compatible():
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
-    counselor = make_user("c@example.edu", "COUNSELOR")
     gss = make_user("g@example.edu", "GUIDANCE_SERVICES_STAFF")
-    replace_provider_weekly(
-        provider_id=counselor.pk,
+    service = active_service(actor)
+    replace_office_weekly(
         windows=[weekly(start=time(8), end=time(17))],
         context=context(actor),
     )
-    replace_provider_weekly(
+    ProviderAvailabilityWindow.objects.create(
+        provider=gss,
+        weekday="MONDAY",
+        start_time=time(8),
+        end_time=time(12),
+        mode_scope="ALL",
+    )
+
+    with pytest.raises(AvailabilityNotApplicable, match="operationally available"):
+        compute_base_availability(
+            provider_id=gss.pk,
+            service_id=service.pk,
+            delivery_mode="IN_PERSON",
+            start_date=date(2026, 9, 21),
+            end_date=date(2026, 9, 22),
+        )
+
+    assert ProviderAvailabilityWindow.objects.filter(provider=gss).exists()
+    cleaned = replace_provider_weekly(
         provider_id=gss.pk,
-        windows=[weekly(start=time(8), end=time(12))],
+        windows=[],
         context=context(actor),
     )
-    counselor_window = ProviderAvailabilityWindow.objects.get(provider=counselor)
-    gss_window = ProviderAvailabilityWindow.objects.get(provider=gss)
-    assert counselor_window.end_time == time(17)
-    assert gss_window.end_time == time(12)
-
+    assert cleaned == ()
 
 @pytest.mark.django_db
 def test_exception_database_constraints_reject_nonpositive_ranges():

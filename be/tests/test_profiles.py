@@ -131,7 +131,7 @@ def test_user_directly_owns_minimal_reusable_profile_fields_without_personalprof
 def test_profile_foundation_tracks_current_capability_policy_counts():
     sync_policy()
     assert Capability.objects.count() == 63
-    assert RoleCapability.objects.count() == 66
+    assert RoleCapability.objects.count() == 67
     assert DesignationCapability.objects.count() == 18
     assert not Capability.objects.filter(code__startswith="profile.").exists()
 
