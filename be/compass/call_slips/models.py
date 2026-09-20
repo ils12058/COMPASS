@@ -16,6 +16,12 @@ class CallSlipDestinationType(models.TextChoices):
     OTHER = "OTHER", "Other"
 
 
+class CallSlipLifecycleState(models.TextChoices):
+    ACTIVE = "ACTIVE", "Active"
+    COMPLETED = "COMPLETED", "Completed"
+    VOIDED = "VOIDED", "Voided"
+
+
 class CallSlip(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     student = models.ForeignKey(
@@ -67,6 +73,14 @@ class CallSlip(models.Model):
     creation_request_fingerprint = models.CharField(max_length=64, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def lifecycle_state(self) -> str:
+        if self.voided_at is not None:
+            return CallSlipLifecycleState.VOIDED
+        if self.interview_ended_at is not None:
+            return CallSlipLifecycleState.COMPLETED
+        return CallSlipLifecycleState.ACTIVE
 
     class Meta:
         default_permissions = ()
