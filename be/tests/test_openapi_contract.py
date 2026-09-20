@@ -299,6 +299,43 @@ def _response_statuses(operation: dict) -> set[int]:
     return {int(status) for status in operation["responses"]}
 
 
+PDF_DOWNLOAD_PATHS = (
+    "/api/v1/good-moral/me/{request_id}/pdf",
+    "/api/v1/good-moral/requests/{request_id}/pdf",
+    "/api/v1/reports/student-profile/pdf",
+)
+XLSX_DOWNLOAD_PATHS = (
+    "/api/v1/reports/student-profile/xlsx",
+    "/api/v1/reports/graduate-tracer/xlsx",
+)
+XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def test_binary_download_success_responses_are_explicitly_typed() -> None:
+    schema = _generated_schema()
+    binary_schema = {"type": "string", "format": "binary"}
+
+    for path in PDF_DOWNLOAD_PATHS:
+        response = _operation(schema, path, "get")["responses"]["200"]
+        assert response["content"]["application/pdf"]["schema"] == binary_schema
+
+    for path in XLSX_DOWNLOAD_PATHS:
+        response = _operation(schema, path, "get")["responses"]["200"]
+        assert response["content"][XLSX_CONTENT_TYPE]["schema"] == binary_schema
+
+
+def test_success_response_bodies_are_explicitly_documented() -> None:
+    schema = _generated_schema()
+
+    for method, path, operation in iter_operations(schema):
+        for status, response in operation["responses"].items():
+            code = int(status)
+            if 200 <= code < 300 and code != 204:
+                assert "content" in response, (
+                    f"{method.upper()} {path} has an undocumented {code} success response body"
+                )
+
+
 def test_generated_schema_matches_committed_contract() -> None:
     assert CONTRACT_PATH.is_file()
     committed = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))

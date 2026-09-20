@@ -52,6 +52,29 @@ from .xlsx import (
 
 router = Router(tags=["reports"])
 
+PDF_SUCCESS_OPENAPI = {
+    "responses": {
+        200: {
+            "content": {
+                "application/pdf": {
+                    "schema": {"type": "string", "format": "binary"},
+                }
+            }
+        }
+    }
+}
+XLSX_SUCCESS_OPENAPI = {
+    "responses": {
+        200: {
+            "content": {
+                XLSX_CONTENT_TYPE: {
+                    "schema": {"type": "string", "format": "binary"},
+                }
+            }
+        }
+    }
+}
+
 
 def _require_viewer(request) -> ReportAccessScope:
     try:
@@ -147,6 +170,7 @@ def student_profile(
     response=response_with_errors(None, 401, 403, 404, 409, 422, 503),
     auth=session_auth,
     operation_id="reportsDownloadStudentProfilePdf",
+    openapi_extra=PDF_SUCCESS_OPENAPI,
 )
 def student_profile_pdf(
     request,
@@ -192,6 +216,7 @@ def student_profile_pdf(
     response=response_with_errors(None, 401, 403, 404, 409, 422, 503),
     auth=session_auth,
     operation_id="reportsDownloadStudentProfileXlsx",
+    openapi_extra=XLSX_SUCCESS_OPENAPI,
 )
 def student_profile_xlsx(
     request,
@@ -258,6 +283,7 @@ def graduate_tracer(
     response=response_with_errors(None, 401, 403, 422, 503),
     auth=session_auth,
     operation_id="reportsDownloadGraduateTracerXlsx",
+    openapi_extra=XLSX_SUCCESS_OPENAPI,
 )
 def graduate_tracer_xlsx(
     request,

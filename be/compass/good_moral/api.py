@@ -49,6 +49,18 @@ from .services import (
 
 router = Router(tags=["good-moral"])
 
+PDF_SUCCESS_OPENAPI = {
+    "responses": {
+        200: {
+            "content": {
+                "application/pdf": {
+                    "schema": {"type": "string", "format": "binary"},
+                }
+            }
+        }
+    }
+}
+
 
 class StrictSchema(Schema):
     model_config = ConfigDict(extra="forbid")
@@ -374,6 +386,7 @@ def good_moral_list_my(request):
     response=response_with_errors(None, 401, 403, 404, 409, 503),
     auth=session_auth,
     operation_id="goodMoralDownloadMyCertificate",
+    openapi_extra=PDF_SUCCESS_OPENAPI,
 )
 def good_moral_download_my(request, request_id: UUID):
     _require_student(request, "good_moral.view_self")
@@ -440,6 +453,7 @@ def good_moral_list_requests(
     response=response_with_errors(None, 401, 403, 404, 409, 503),
     auth=session_auth,
     operation_id="goodMoralDownloadCertificate",
+    openapi_extra=PDF_SUCCESS_OPENAPI,
 )
 def good_moral_download(request, request_id: UUID):
     _require_counselor(request, "good_moral.view")
