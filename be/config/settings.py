@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from compass.common.build_metadata import read_project_version, validate_runtime_build_identity
 from compass.common.config import env, env_bool, env_csv, env_float, env_int, required_env
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -9,6 +10,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 APP_ENV = env("APP_ENV", "local-staging")
 if APP_ENV not in {"local-staging", "live-staging"}:
     raise ValueError("APP_ENV must be either local-staging or live-staging")
+
+APPLICATION_VERSION = read_project_version(BASE_DIR / "pyproject.toml")
+COMPASS_BUILD_ID, COMPASS_BUILD_TIME = validate_runtime_build_identity(
+    app_env=APP_ENV,
+    build_id=env("COMPASS_BUILD_ID", "local"),
+    build_time=env("COMPASS_BUILD_TIME", ""),
+)
 
 IS_LOCAL_STAGING = APP_ENV == "local-staging"
 DEBUG = env_bool("DEBUG", IS_LOCAL_STAGING)
