@@ -50,9 +50,11 @@ jobs:
         working-directory: be
         run: uv sync --frozen
 
-      - name: Apply Ruff formatting
+      - name: Apply Ruff fixes and formatting
         working-directory: be
-        run: uv run ruff format .
+        run: |
+          uv run ruff check --fix .
+          uv run ruff format .
 
       - name: Sync formatting
         run: |
@@ -94,29 +96,10 @@ jobs:
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "auto_committed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Targeted final API lifecycle tests
+      - name: Full backend test suite
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         working-directory: be
-        run: >-
-          uv run pytest
-          tests/test_appointments.py
-          tests/test_appointment_management_scope.py
-          tests/test_availability.py
-          tests/test_service_catalog.py
-          tests/test_counseling.py
-          tests/test_routine_interviews.py
-          tests/test_ecounseling.py
-          tests/test_student_support.py
-          tests/test_inventory.py
-          tests/test_referrals.py
-          tests/test_call_slips.py
-          tests/test_good_moral.py
-          tests/test_notifications.py
-          tests/test_profile_photos.py
-          tests/test_profiles.py
-          tests/test_audit.py
-          tests/test_openapi_contract.py
-          tests/test_final_api_lifecycle_completion.py
+        run: uv run pytest
 
       - name: Verify OpenAPI remains canonical
         if: steps.openapi_sync.outputs.auto_committed != 'true'
