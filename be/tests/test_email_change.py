@@ -404,18 +404,14 @@ def test_initial_old_email_alert_enqueue_failure_is_recovered_from_durable_reque
     assert pending.old_email_alert_sent_at is None
     assert pending.old_email_alert_attempt_count == 0
 
-    with patch(
-        "compass.authentication.tasks.deliver_email_change_security_alert.delay"
-    ) as enqueue:
+    with patch("compass.authentication.tasks.deliver_email_change_security_alert.delay") as enqueue:
         queued = recover_unsent_email_change_security_alerts.run()
     assert queued == 1
     enqueue.assert_called_once_with(str(pending.pk))
 
     pending.old_email_alert_sent_at = timezone.now()
     pending.save(update_fields=["old_email_alert_sent_at"])
-    with patch(
-        "compass.authentication.tasks.deliver_email_change_security_alert.delay"
-    ) as enqueue:
+    with patch("compass.authentication.tasks.deliver_email_change_security_alert.delay") as enqueue:
         queued = recover_unsent_email_change_security_alerts.run()
     assert queued == 0
     enqueue.assert_not_called()
