@@ -175,12 +175,15 @@ def _enforce_report_filter_scope(
         raise ReportAccessDenied(
             "The requested report is outside the authenticated actor's report scope."
         )
-    if filters.campus is not None and not College.objects.filter(
-        pk__in=college_ids,
-        campus_id=filters.campus.pk,
-        is_active=True,
-        campus__is_active=True,
-    ).exists():
+    if (
+        filters.campus is not None
+        and not College.objects.filter(
+            pk__in=college_ids,
+            campus_id=filters.campus.pk,
+            is_active=True,
+            campus__is_active=True,
+        ).exists()
+    ):
         raise ReportAccessDenied(
             "The requested report is outside the authenticated actor's report scope."
         )
@@ -865,9 +868,7 @@ def _coverage(
         )
         applied = ["academic_year_id"]
         if college_ids is not None:
-            eligible = eligible.filter(
-                organization_student_affiliation__college_id__in=college_ids
-            )
+            eligible = eligible.filter(organization_student_affiliation__college_id__in=college_ids)
             applied.append("access_scope")
         if filters.campus is not None:
             eligible = eligible.filter(
@@ -904,9 +905,7 @@ def _coverage(
             "scope_note": f"{CURRENT_COVERAGE_NOTE} {scope_note}",
         }
 
-    inventory_queryset = StudentInventory.objects.filter(
-        academic_year_id=filters.academic_year.pk
-    )
+    inventory_queryset = StudentInventory.objects.filter(academic_year_id=filters.academic_year.pk)
     applied = ["academic_year_id"]
     if college_ids is not None:
         inventory_queryset = inventory_queryset.filter(program__college_id__in=college_ids)
@@ -930,6 +929,7 @@ def _coverage(
         "ignored_filters": historical_ignored,
         "scope_note": f"{HISTORICAL_COVERAGE_NOTE} {scope_note}",
     }
+
 
 def build_student_profiling_report(
     *,

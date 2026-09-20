@@ -300,6 +300,7 @@ def test_operational_configuration_mutations_require_head_capability_and_recent_
         "routine_interview",
     ]
 
+
 @pytest.mark.django_db
 def test_regular_counselor_can_read_but_not_manage_operational_configuration():
     sync_policy()
@@ -329,7 +330,9 @@ def test_regular_counselor_can_read_but_not_manage_operational_configuration():
 
     families = client.get("/api/v1/institutional-forms")
     assert families.status_code == 200
-    assert client.get("/api/v1/institutional-forms/individual_inventory/revisions").status_code == 200
+    assert (
+        client.get("/api/v1/institutional-forms/individual_inventory/revisions").status_code == 200
+    )
 
     denied_register = client.post(
         "/api/v1/institutional-forms/individual_inventory/revisions",
@@ -360,4 +363,3 @@ def test_regular_counselor_can_read_but_not_manage_operational_configuration():
         **csrf(client),
     )
     assert denied_deactivate.status_code == 403
-

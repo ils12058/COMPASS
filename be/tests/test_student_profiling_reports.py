@@ -298,17 +298,25 @@ def test_student_profile_enforces_current_counselor_college_scope_across_filters
     assert unfiltered_body["report_context"]["submitted_inventory_count"] == 1
     assert [column["college"]["code"] for column in unfiltered_body["program_columns"]] == ["A1"]
     assert unfiltered_body["inventory_coverage"]["eligible_student_count"] == 1
-    assert "Counselor-assigned Colleges" in unfiltered_body["methodology"]["profile_population_note"]
+    assert (
+        "Counselor-assigned Colleges" in unfiltered_body["methodology"]["profile_population_note"]
+    )
     assert "A1" in unfiltered_body["methodology"]["profile_population_note"]
 
-    assert client.get(
-        "/api/v1/reports/student-profile",
-        {"college_id": college_a1.pk},
-    ).status_code == 200
-    assert client.get(
-        "/api/v1/reports/student-profile",
-        {"program_id": program_a1.pk},
-    ).status_code == 200
+    assert (
+        client.get(
+            "/api/v1/reports/student-profile",
+            {"college_id": college_a1.pk},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.get(
+            "/api/v1/reports/student-profile",
+            {"program_id": program_a1.pk},
+        ).status_code
+        == 200
+    )
 
     campus_a_response = client.get(
         "/api/v1/reports/student-profile",

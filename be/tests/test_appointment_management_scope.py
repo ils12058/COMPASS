@@ -370,6 +370,7 @@ def test_counselor_override_is_scoped_and_unsupported_role_overrides_fail_closed
         with pytest.raises(AppointmentNotFound):
             get_appointment_for_actor(appointment_id=inside.pk, actor=actor)
 
+
 @pytest.mark.django_db
 def test_counselor_baseline_management_is_limited_to_assigned_colleges():
     sync_policy()
@@ -431,4 +432,3 @@ def test_counselor_baseline_management_is_limited_to_assigned_colleges():
     )
     assert cancelled.status_code == 200
     assert cancelled.json()["status"] == "CANCELLED"
-
