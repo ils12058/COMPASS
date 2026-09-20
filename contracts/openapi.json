@@ -16508,6 +16508,20 @@
       },
       "UserSummary": {
         "properties": {
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "designations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Designations",
+            "type": "array"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -16547,7 +16561,9 @@
           "first_name",
           "last_name",
           "role",
-          "student_lifecycle_status"
+          "student_lifecycle_status",
+          "designations",
+          "capabilities"
         ],
         "title": "UserSummary",
         "type": "object"

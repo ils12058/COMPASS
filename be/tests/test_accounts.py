@@ -240,6 +240,8 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "availability.manage_self",
         "appointments.view_self",
         "appointments.manage",
+        "inventory.view",
+        "inventory.reopen",
         "counseling.view_assigned",
         "counseling.manage_assigned",
         "student_support.view",

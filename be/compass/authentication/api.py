@@ -13,6 +13,8 @@ from ninja import Router, Schema, Status
 from ninja.security import APIKeyCookie
 from ninja.utils import check_csrf
 
+from compass.accounts.policy import DESIGNATION_CODES
+from compass.accounts.services import effective_capabilities
 from compass.audit.context import AuditContext
 from compass.authentication.abuse import (
     AuthenticationAbuseUnavailable,
@@ -86,6 +88,8 @@ class UserSummary(Schema):
     last_name: str
     role: str
     student_lifecycle_status: str | None
+    designations: list[str]
+    capabilities: list[str]
 
 
 class CSRFResponse(Schema):
@@ -282,6 +286,14 @@ def _require_csrf(request) -> None:
 
 
 def _user_summary(user) -> dict[str, object]:
+    designations = sorted(
+        set(
+            user.designations.filter(code__in=DESIGNATION_CODES).values_list(
+                "code",
+                flat=True,
+            )
+        )
+    )
     return {
         "id": user.pk,
         "email": user.email,
@@ -289,6 +301,8 @@ def _user_summary(user) -> dict[str, object]:
         "last_name": user.last_name,
         "role": user.role.code,
         "student_lifecycle_status": user.student_lifecycle_status,
+        "designations": designations,
+        "capabilities": sorted(effective_capabilities(user)),
     }
 
 
