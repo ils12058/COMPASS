@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+from dataclasses import dataclass
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -43,6 +45,9 @@ from compass.service_catalog.services import (
 from .models import RoutineConcern, RoutineInterview
 
 ROUTINE_FORM_FAMILY_KEY = "routine_interview"
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE = 50
+MAX_SEARCH_LENGTH = 160
 INTAKE_FIELDS = (
     "coping_with_college_challenges",
     "coping_remarks",
@@ -134,6 +139,14 @@ class RoutineInterviewCreationConflict(RoutineInterviewError):
 
 class RoutineInterviewFormRevisionUnsupported(RoutineInterviewError):
     pass
+
+
+@dataclass(frozen=True, slots=True)
+class RoutineInterviewPage:
+    items: tuple[RoutineInterview, ...]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 def _queryset():
@@ -451,6 +464,78 @@ def get_mine(*, student: User, routine_interview_id: UUID) -> RoutineInterview:
     if item is None:
         raise RoutineInterviewNotFound("The requested Routine Interview was not found.")
     return item
+
+
+def list_assigned(
+    *,
+    counselor: User,
+    student_id: UUID | None = None,
+    academic_year_id: UUID | None = None,
+    delivery_mode: str | DeliveryMode | None = None,
+    intake_status: str | None = None,
+    evaluation_status: str | None = None,
+    search: str | None = None,
+    page: int = DEFAULT_PAGE_SIZE // DEFAULT_PAGE_SIZE,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> RoutineInterviewPage:
+    _validate_counselor(counselor)
+    if type(page) is not int or page < 1:
+        raise InvalidRoutineInterviewInput("page must be at least 1.")
+    if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
+        raise InvalidRoutineInterviewInput(
+            f"page_size must be between 1 and {MAX_PAGE_SIZE}."
+        )
+    term = ""
+    if search is not None:
+        if not isinstance(search, str):
+            raise InvalidRoutineInterviewInput("search must be text.")
+        term = search.strip()
+        if len(term) > MAX_SEARCH_LENGTH:
+            raise InvalidRoutineInterviewInput(
+                f"search must be at most {MAX_SEARCH_LENGTH} characters."
+            )
+
+    queryset = _queryset().filter(counselor_id=counselor.pk)
+    if student_id is not None:
+        queryset = queryset.filter(student_id=student_id)
+    if academic_year_id is not None:
+        queryset = queryset.filter(inventory__academic_year_id=academic_year_id)
+    if delivery_mode is not None:
+        queryset = queryset.filter(delivery_mode=_normalize_delivery_mode(delivery_mode))
+    if intake_status is not None:
+        if intake_status not in {"DRAFT", "SUBMITTED"}:
+            raise InvalidRoutineInterviewInput("intake_status must be DRAFT or SUBMITTED.")
+        queryset = (
+            queryset.filter(intake_submitted_at__isnull=True)
+            if intake_status == "DRAFT"
+            else queryset.filter(intake_submitted_at__isnull=False)
+        )
+    if evaluation_status is not None:
+        if evaluation_status not in {"DRAFT", "FINALIZED"}:
+            raise InvalidRoutineInterviewInput(
+                "evaluation_status must be DRAFT or FINALIZED."
+            )
+        queryset = (
+            queryset.filter(evaluation_finalized_at__isnull=True)
+            if evaluation_status == "DRAFT"
+            else queryset.filter(evaluation_finalized_at__isnull=False)
+        )
+    if term:
+        queryset = queryset.filter(
+            Q(student__institutional_id__icontains=term)
+            | Q(student__first_name__icontains=term)
+            | Q(student__middle_name__icontains=term)
+            | Q(student__last_name__icontains=term)
+        )
+    queryset = queryset.order_by("-created_at", "id")
+    offset = (page - 1) * page_size
+    rows = list(queryset[offset : offset + page_size + 1])
+    return RoutineInterviewPage(
+        tuple(rows[:page_size]),
+        page,
+        page_size,
+        len(rows) > page_size,
+    )
 
 
 def get_assigned(*, counselor: User, routine_interview_id: UUID) -> RoutineInterview:
