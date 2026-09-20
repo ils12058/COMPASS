@@ -79,7 +79,7 @@ class PlatformHealthResponse(StrictSchema):
 class EnvironmentValueResponse(StrictSchema):
     code: str
     label: str
-    value: bool | int | str
+    value: bool | int | str | None
 
 
 class EnvironmentCategoryResponse(StrictSchema):

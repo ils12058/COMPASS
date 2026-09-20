@@ -4435,6 +4435,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Value"
@@ -14106,6 +14109,53 @@
           }
         },
         "title": "SupportProfilePayload",
+        "type": "object"
+      },
+      "SystemMetadataResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "api_version": {
+            "title": "Api Version",
+            "type": "string"
+          },
+          "application": {
+            "title": "Application",
+            "type": "string"
+          },
+          "build_id": {
+            "title": "Build Id",
+            "type": "string"
+          },
+          "built_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Built At"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "application",
+          "version",
+          "api_version",
+          "build_id",
+          "built_at",
+          "environment"
+        ],
+        "title": "SystemMetadataResponse",
         "type": "object"
       },
       "TOTPConfirmationResponse": {
@@ -27074,6 +27124,28 @@
         ]
       }
     },
+    "/api/v1/meta": {
+      "get": {
+        "operationId": "systemMetadata",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemMetadataResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Inspect COMPASS build and release metadata",
+        "tags": [
+          "metadata"
+        ]
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "operationId": "notificationsListMine",
@@ -34420,6 +34492,10 @@
     {
       "description": "Process liveness and dependency readiness.",
       "name": "health"
+    },
+    {
+      "description": "Public COMPASS application and immutable build identity.",
+      "name": "metadata"
     },
     {
       "description": "Cookie-based authentication and account security.",

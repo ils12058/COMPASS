@@ -81,6 +81,18 @@ jobs:
           [[ "$STAGING_DEPLOY_PORT" == "22" ]]
           [[ "$STAGING_FIREWALL_ID" =~ ^[0-9a-f-]{36}$ ]]
 
+      - name: Resolve immutable build metadata
+        id: build_metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(python -c 'import sys,tomllib; data=tomllib.load(open("be/pyproject.toml","rb")); value=data.get("project",{}).get("version"); sys.exit("be/pyproject.toml [project].version must be non-empty") if not isinstance(value,str) or not value.strip() else print(value.strip())')"
+          build_time="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          test -n "$version"
+          [[ "$build_time" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build_time=$build_time" >> "$GITHUB_OUTPUT"
+
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
         with:
@@ -109,17 +121,32 @@ jobs:
         shell: bash
         env:
           DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
+          APP_VERSION: ${{ steps.build_metadata.outputs.version }}
+          BUILD_TIME: ${{ steps.build_metadata.outputs.build_time }}
         run: |
           set -euo pipefail
           image="registry.digitalocean.com/$DO_REGISTRY_NAME/$DO_REGISTRY_REPOSITORY:$DEPLOY_SHA"
           docker buildx build \
             --platform linux/amd64 \
             --file be/Containerfile \
+            --build-arg "COMPASS_BUILD_ID=$DEPLOY_SHA" \
+            --build-arg "COMPASS_BUILD_TIME=$BUILD_TIME" \
+            --build-arg "COMPASS_VERSION=$APP_VERSION" \
             --tag "$image" \
             --push \
             be
           digest="$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')"
           test -n "$digest"
+
+          image_config="$RUNNER_TEMP/compass-image-config.json"
+          docker buildx imagetools inspect "$image" --format '{{json .Image}}' > "$image_config"
+          image_revision="$(python -c 'import json,sys; print((json.load(open(sys.argv[1])).get("config",{}).get("Labels") or {}).get("org.opencontainers.image.revision",""))' "$image_config")"
+          image_version="$(python -c 'import json,sys; print((json.load(open(sys.argv[1])).get("config",{}).get("Labels") or {}).get("org.opencontainers.image.version",""))' "$image_config")"
+          image_created="$(python -c 'import json,sys; print((json.load(open(sys.argv[1])).get("config",{}).get("Labels") or {}).get("org.opencontainers.image.created",""))' "$image_config")"
+          [[ "$image_revision" == "$DEPLOY_SHA" ]]
+          [[ "$image_version" == "$APP_VERSION" ]]
+          [[ "$image_created" == "$BUILD_TIME" ]]
+
           echo "image=$image" >> "$GITHUB_OUTPUT"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
           echo "Pushed $image ($digest)"
@@ -296,6 +323,29 @@ jobs:
 
           echo "Deployed $IMAGE"
           REMOTE
+
+      - name: Verify public running build identity
+        shell: bash
+        env:
+          DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
+          APP_VERSION: ${{ steps.build_metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          metadata="$RUNNER_TEMP/compass-running-meta.json"
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 --retry-all-errors \
+            -H "Cache-Control: no-cache" \
+            https://staging-api.compass-gco.com/api/v1/meta \
+            > "$metadata"
+          application="$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("application",""))' "$metadata")"
+          build_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("build_id",""))' "$metadata")"
+          version="$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("version",""))' "$metadata")"
+          environment="$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("environment",""))' "$metadata")"
+          built_at="$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("built_at",""))' "$metadata")"
+          [[ "$application" == "COMPASS" ]]
+          [[ "$build_id" == "$DEPLOY_SHA" ]]
+          [[ "$version" == "$APP_VERSION" ]]
+          [[ "$environment" == "live-staging" ]]
+          test -n "$built_at"
 
       - name: Close temporary runner SSH access
         if: always() && steps.runner_firewall.outputs.runner_ip != ''

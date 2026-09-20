@@ -5,6 +5,7 @@ from io import StringIO
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.conf import settings
 from django.core.management import call_command
 from django.db import OperationalError
 from django.test import Client, override_settings
@@ -13,6 +14,7 @@ from django.utils import timezone
 from compass.accounts.models import Designation, Role, User, UserDesignation
 from compass.accounts.policy import CAPABILITY_CODES
 from compass.accounts.services import effective_capabilities, set_user_capability_override
+from compass.api.v1.constants import API_VERSION
 from compass.authentication.sessions import create_auth_session
 from compass.platform_ops.catalog import COMMAND_CATALOG
 from compass.platform_ops.diagnostics import (
@@ -320,6 +322,14 @@ def test_environment_endpoint_is_safe_resolved_projection_with_no_secret_values(
         "notification_delivery",
     } == set(categories)
     assert "Django settings load successfully" in body["startup_limitation"]
+    application_values = {
+        value["code"]: value["value"] for value in categories["application"]["values"]
+    }
+    assert application_values["environment_mode"] == settings.APP_ENV
+    assert application_values["application_version"] == settings.APPLICATION_VERSION
+    assert application_values["api_version"] == API_VERSION
+    assert application_values["build_id"] == settings.COMPASS_BUILD_ID
+    assert application_values["build_timestamp"] is None
 
     serialized = json.dumps(body)
     for sentinel in (
