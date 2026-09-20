@@ -39,11 +39,6 @@ from compass.authentication.mfa import (
     verify_totp_for_session,
 )
 from compass.authentication.models import AuthSession, TrustedSession
-from compass.authentication.password_change import (
-    PasswordChangeAuthenticationFailed,
-    PasswordChangeStrongAuthRequired,
-    change_password,
-)
 from compass.authentication.password_access import (
     PASSWORD_ACCESS_MESSAGE,
     PASSWORD_CHALLENGE_INVALID_MESSAGE,
@@ -52,6 +47,11 @@ from compass.authentication.password_access import (
     PasswordPolicyRejected,
     confirm_password_access,
     request_password_access,
+)
+from compass.authentication.password_change import (
+    PasswordChangeAuthenticationFailed,
+    PasswordChangeStrongAuthRequired,
+    change_password,
 )
 from compass.authentication.services import (
     AuthenticationUnavailable,

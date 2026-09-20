@@ -218,7 +218,9 @@ def test_gss_scope_fails_closed_for_broken_or_inactive_supervision_chain():
     assert list_managed_appointments(actor=gss_inactive).items == ()
 
     no_responsibility = make_user("no-responsibility@example.edu", "COUNSELOR")
-    gss_no_responsibility = make_user("gss-no-responsibility@example.edu", "GUIDANCE_SERVICES_STAFF")
+    gss_no_responsibility = make_user(
+        "gss-no-responsibility@example.edu", "GUIDANCE_SERVICES_STAFF"
+    )
     StaffSupervision.objects.create(
         staff=gss_no_responsibility,
         supervisor=no_responsibility,

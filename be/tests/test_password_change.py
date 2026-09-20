@@ -13,13 +13,10 @@ from compass.accounts.models import Role, User
 from compass.audit.models import AuditEvent
 from compass.authentication.crypto import encrypt_totp_secret
 from compass.authentication.models import (
-    AuthSession,
     EmailOTPChallenge,
     EmailOTPPurpose,
-    LoginChallenge,
     RecoveryCode,
     TOTPFactor,
-    TrustedSession,
 )
 from compass.authentication.sessions import (
     create_auth_session,

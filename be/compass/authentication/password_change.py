@@ -59,7 +59,9 @@ def change_password(
     current = now or timezone.now()
 
     with transaction.atomic():
-        locked_user = User.objects.select_for_update().select_related("role").filter(pk=user.pk).first()
+        locked_user = (
+            User.objects.select_for_update().select_related("role").filter(pk=user.pk).first()
+        )
         if (
             locked_user is None
             or not locked_user.is_active
