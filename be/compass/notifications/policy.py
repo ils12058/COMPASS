@@ -27,6 +27,7 @@ class NotificationEvent(StrEnum):
     APPOINTMENT_CANCELLED = "appointment.cancelled"
     GOOD_MORAL_ISSUED = "good_moral.issued"
     EXIT_INTERVIEW_REOPENED = "exit_interview.reopened"
+    INVENTORY_REOPENED = "inventory.reopened"
     COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
     ECOUNSELING_CONSENT_REQUESTED = "ecounseling.consent.requested"
     FEEDBACK_INVITATION = "feedback.invitation"
@@ -106,6 +107,18 @@ _EVENT_CATALOG = {
         ),
         email_subject="COMPASS Exit Interview Reopened",
         email_template="exit_interview_reopened",
+    ),
+    NotificationEvent.INVENTORY_REOPENED: NotificationEventDefinition(
+        event=NotificationEvent.INVENTORY_REOPENED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Individual Inventory Reopened",
+        message=(
+            "Your annual Individual Inventory has been reopened for correction. "
+            "You may edit and resubmit it in COMPASS."
+        ),
+        email_subject="COMPASS Individual Inventory Reopened",
+        email_template="inventory_reopened",
     ),
     NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED: NotificationEventDefinition(
         event=NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED,
