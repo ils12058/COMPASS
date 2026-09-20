@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
@@ -12,6 +12,10 @@ from pydantic import ConfigDict
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.inventory.api import (
+    CounselorInventoryDetailResponse,
+    counselor_inventory_detail_payload,
+)
 from compass.inventory.services import CurrentAcademicYearNotConfigured
 from compass.student_support.services import StudentSupportConfigurationConflict
 
@@ -116,29 +120,10 @@ class CounselingContextSupportResponse(StrictSchema):
     indicators: list[ContextSupportIndicatorResponse]
 
 
-class ContextInventoryRecordResponse(StrictSchema):
-    id: UUID
-    academic_year: ContextAcademicYearResponse
-    submitted_at: datetime
-    full_name: str
-    student_number: str
-    date_of_birth: date | None
-    nationality: str
-    sex: str
-    civil_status_category: str | None
-    current_religion_category: str | None
-    program: ContextProgramResponse | None
-    year_level: int | None
-    course_currently_enrolled: str
-    major: str
-    living_arrangement: str
-    prior_counseling_experience: bool | None
-
-
 class CounselingContextInventoryResponse(StrictSchema):
     inventory_source_status: CounselingContextInventoryStatus
     available: bool
-    inventory: ContextInventoryRecordResponse | None
+    inventory: CounselorInventoryDetailResponse | None
 
 
 class ContextHistoryItemResponse(StrictSchema):
@@ -250,12 +235,6 @@ def _overview_payload(item) -> dict[str, object]:
     }
 
 
-def _program_payload(item):
-    if item is None:
-        return None
-    return {"id": item.id, "code": item.code, "name": item.name}
-
-
 def _validate_limit(limit: int) -> int:
     if type(limit) is not int or not 1 <= limit <= 50:
         raise APIError(422, "counseling_context_invalid_limit", "limit must be between 1 and 50.")
@@ -328,31 +307,7 @@ def counseling_context_get_inventory(
     return {
         "inventory_source_status": result.inventory_source_status,
         "available": result.available,
-        "inventory": (
-            {
-                "id": item.id,
-                "academic_year": {
-                    "id": item.academic_year_id,
-                    "label": item.academic_year_label,
-                },
-                "submitted_at": item.submitted_at,
-                "full_name": item.full_name,
-                "student_number": item.student_number,
-                "date_of_birth": item.date_of_birth,
-                "nationality": item.nationality,
-                "sex": item.sex,
-                "civil_status_category": item.civil_status_category,
-                "current_religion_category": item.current_religion_category,
-                "program": _program_payload(item.program),
-                "year_level": item.year_level,
-                "course_currently_enrolled": item.course_currently_enrolled,
-                "major": item.major,
-                "living_arrangement": item.living_arrangement,
-                "prior_counseling_experience": item.prior_counseling_experience,
-            }
-            if item is not None
-            else None
-        ),
+        "inventory": counselor_inventory_detail_payload(item) if item is not None else None,
     }
 
 
