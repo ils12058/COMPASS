@@ -602,6 +602,7 @@ def test_contextual_inventory_and_support_do_not_weaken_generic_authorization(wo
     )
 
     a_client = auth_client(world["a"])
+    assert a_client.get(f"/api/v1/inventory/records/{world['inventory'].pk}").status_code == 200
     assert (
         a_client.get(f"/api/v1/student-support/students/{world['anna'].pk}/context").status_code
         == 200
