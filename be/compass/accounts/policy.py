@@ -479,6 +479,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "services.view",
             "availability.view",
             "appointments.view_self",
+            "appointments.manage",
             "referrals.view",
             "referrals.manage",
             "call_slips.view",

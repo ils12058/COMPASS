@@ -60,6 +60,14 @@ _POLICIES: dict[str, tuple[tuple[str, RateLimitPolicy], ...]] = {
             RateLimitPolicy("auth.recovery.combination", limit=10, window_seconds=15 * 60),
         ),
     ),
+    "password_change": (
+        ("ip", RateLimitPolicy("auth.password_change.ip", limit=20, window_seconds=15 * 60)),
+        ("user", RateLimitPolicy("auth.password_change.user", limit=5, window_seconds=15 * 60)),
+        (
+            "combination",
+            RateLimitPolicy("auth.password_change.combination", limit=8, window_seconds=15 * 60),
+        ),
+    ),
     "email_otp_issue": (
         (
             "ip",

@@ -26,6 +26,11 @@ from compass.inventory.services import (
 )
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
+from compass.organization.models import (
+    CounselorResponsibility,
+    StaffSupervision,
+    StudentAffiliation,
+)
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.service_catalog.models import AppointmentPolicy, DeliveryMode, Service
 from compass.service_catalog.services import (
@@ -41,6 +46,7 @@ MAX_PAGE_SIZE = 50
 MAX_ELIGIBLE_COUNSELORS = 50
 MAX_REFERENCE_SEQUENCE = 999_999
 PROVIDER_ROLE_CODES = frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
+HEAD_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
 
 
 class AppointmentError(RuntimeError):
@@ -160,6 +166,85 @@ def _appointment_queryset():
     )
 
 
+def _is_head_guidance(actor: User) -> bool:
+    return (
+        bool(getattr(actor, "pk", None))
+        and actor.is_active
+        and actor.role.code == "COUNSELOR"
+        and actor.designations.filter(code=HEAD_DESIGNATION).exists()
+    )
+
+
+def _counselor_management_college_ids(counselor_id: UUID) -> tuple[UUID, ...]:
+    return tuple(
+        CounselorResponsibility.objects.filter(
+            counselor_id=counselor_id,
+            counselor__is_active=True,
+            counselor__role__code="COUNSELOR",
+            college__is_active=True,
+            college__campus__is_active=True,
+        )
+        .order_by("college_id")
+        .values_list("college_id", flat=True)
+    )
+
+
+def _management_scope_college_ids(actor: User) -> tuple[UUID, ...] | None:
+    """Resolve current Appointment administration scope; None is Head institution-wide."""
+
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or not actor.has_capability("appointments.manage")
+    ):
+        return ()
+    if _is_head_guidance(actor):
+        return None
+    if actor.role.code == "COUNSELOR":
+        return _counselor_management_college_ids(actor.pk)
+    if actor.role.code == "GUIDANCE_SERVICES_STAFF":
+        supervision = (
+            StaffSupervision.objects.select_related("supervisor__role")
+            .filter(staff_id=actor.pk)
+            .first()
+        )
+        if (
+            supervision is None
+            or not supervision.supervisor.is_active
+            or supervision.supervisor.role.code != "COUNSELOR"
+        ):
+            return ()
+        return _counselor_management_college_ids(supervision.supervisor_id)
+    return ()
+
+
+def _student_in_management_scope(actor: User, student_id: UUID) -> bool:
+    college_ids = _management_scope_college_ids(actor)
+    if college_ids is None:
+        return True
+    if not college_ids:
+        return False
+    return StudentAffiliation.objects.filter(
+        student_id=student_id,
+        college_id__in=college_ids,
+        college__is_active=True,
+        college__campus__is_active=True,
+    ).exists()
+
+
+def _scope_managed_queryset(queryset, actor: User):
+    college_ids = _management_scope_college_ids(actor)
+    if college_ids is None:
+        return queryset
+    if not college_ids:
+        return queryset.none()
+    return queryset.filter(
+        student__organization_student_affiliation__college_id__in=college_ids,
+        student__organization_student_affiliation__college__is_active=True,
+        student__organization_student_affiliation__college__campus__is_active=True,
+    )
+
+
 def _date_bounds(
     from_date: date | None, to_date: date | None
 ) -> tuple[datetime | None, datetime | None]:
@@ -216,6 +301,7 @@ def list_my_appointments(
 
 def list_managed_appointments(
     *,
+    actor: User,
     status: str | None = None,
     student_id: UUID | None = None,
     provider_id: UUID | None = None,
@@ -231,7 +317,7 @@ def list_managed_appointments(
     normalized_mode = (
         _normalized_delivery_mode(delivery_mode) if delivery_mode is not None else None
     )
-    qs = _appointment_queryset()
+    qs = _scope_managed_queryset(_appointment_queryset(), actor)
     if normalized_status is not None:
         qs = qs.filter(status=normalized_status)
     if student_id is not None:
@@ -252,12 +338,15 @@ def get_appointment_for_actor(*, appointment_id: UUID, actor: User) -> Appointme
     item = _appointment_queryset().filter(pk=appointment_id).first()
     if item is None:
         raise AppointmentNotFound("The requested Appointment was not found.")
-    can_manage = actor.has_capability("appointments.manage")
     can_view_self = actor.has_capability("appointments.view_self")
     related = item.student_id == actor.pk or item.provider_id == actor.pk
-    if not can_manage and not (can_view_self and related):
-        raise AppointmentNotFound("The requested Appointment was not found.")
-    return item
+    if can_view_self and related:
+        return item
+    if actor.has_capability("appointments.manage") and _student_in_management_scope(
+        actor, item.student_id
+    ):
+        return item
+    raise AppointmentNotFound("The requested Appointment was not found.")
 
 
 def _validate_booking_service(service: Service, provider: User, delivery_mode: str) -> None:
@@ -514,7 +603,12 @@ def cancel_appointment(
         if item is None:
             raise AppointmentNotFound("The requested Appointment was not found.")
         if administrative:
-            pass
+            if (
+                not actor.is_active
+                or not actor.has_capability("appointments.manage")
+                or not _student_in_management_scope(actor, item.student_id)
+            ):
+                raise AppointmentNotFound("The requested Appointment was not found.")
         elif actor.pk != item.student_id or not actor.is_active or actor.role.code != "STUDENT":
             raise AppointmentNotFound("The requested Appointment was not found.")
 

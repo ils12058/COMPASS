@@ -23,5 +23,6 @@ AUTH_EMAIL_CHANGE_REQUESTED = "auth.email.change.requested"
 AUTH_EMAIL_CHANGED = "auth.email.changed"
 AUTH_PASSWORD_INITIAL_SET = "auth.password.initial_set"
 AUTH_PASSWORD_RESET = "auth.password.reset"
+AUTH_PASSWORD_CHANGED = "auth.password.changed"
 
 __all__ = [name for name in globals() if name.startswith("AUTH_")]

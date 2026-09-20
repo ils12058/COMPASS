@@ -57,6 +57,7 @@ EXPECTED_OPERATION_IDS = {
     "authLogin",
     "authRequestPasswordAccess",
     "authConfirmPasswordAccess",
+    "authChangePassword",
     "authVerifyLoginMfa",
     "authLogout",
     "authGetSession",
@@ -400,6 +401,8 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "PasswordAccessRequestResponse",
         "PasswordAccessConfirmRequest",
         "PasswordAccessConfirmResponse",
+        "PasswordChangeRequest",
+        "PasswordChangeResponse",
         "LoginRequest",
         "LoginResponse",
         "SessionListResponse",
@@ -534,6 +537,12 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _operation(schema, "/api/v1/auth/password/confirm", "post")["requestBody"]["content"][
         "application/json"
     ]["schema"]["$ref"].endswith("/PasswordAccessConfirmRequest")
+    password_change = _operation(schema, "/api/v1/auth/password/change", "post")
+    assert password_change["operationId"] == "authChangePassword"
+    assert password_change["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/PasswordChangeRequest"
+    )
+    assert {200, 401, 403, 422, 429, 503} <= _response_statuses(password_change)
     profile_response = schemas["MyProfileResponse"]["properties"]
     assert {
         "user_id",
