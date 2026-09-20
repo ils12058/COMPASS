@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 from uuid import UUID
 
 from compass.accounts.models import User
@@ -70,31 +70,10 @@ class CounselingContextOverview:
 
 
 @dataclass(frozen=True, slots=True)
-class CounselingContextInventory:
-    id: UUID
-    academic_year_id: UUID
-    academic_year_label: str
-    submitted_at: datetime
-    full_name: str
-    student_number: str
-    date_of_birth: date | None
-    nationality: str
-    sex: str
-    civil_status_category: str | None
-    current_religion_category: str | None
-    program: ContextProgramReference | None
-    year_level: int | None
-    course_currently_enrolled: str
-    major: str
-    living_arrangement: str
-    prior_counseling_experience: bool | None
-
-
-@dataclass(frozen=True, slots=True)
 class CounselingContextInventoryResult:
     inventory_source_status: str
     available: bool
-    inventory: CounselingContextInventory | None
+    inventory: StudentInventory | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,13 +117,35 @@ def _routine_interview(access: CounselingContextAccess) -> RoutineInterview | No
     )
 
 
+def _full_inventory_queryset():
+    return StudentInventory.objects.select_related(
+        "student",
+        "student__role",
+        "academic_year",
+        "program",
+        "program__college",
+        "program__college__campus",
+        "form_revision",
+        "form_revision__family",
+        "support_profile",
+    ).prefetch_related(
+        "family_members",
+        "siblings",
+        "education_entries",
+        "organization_memberships",
+        "transportation_entries",
+        "geographic_locations",
+        "reopen_events",
+    )
+
+
 def _inventory_source(
     access: CounselingContextAccess,
 ) -> tuple[str, StudentInventory | None]:
     routine = _routine_interview(access)
     if routine is not None:
         inventory = (
-            StudentInventory.objects.select_related("academic_year", "program")
+            _full_inventory_queryset()
             .filter(pk=routine.inventory_id, student_id=access.student_id)
             .first()
         )
@@ -157,12 +158,7 @@ def _inventory_source(
     status = get_current_inventory_status(_student(access))
     if status.status != InventoryStatus.SUBMITTED or status.inventory is None:
         return status.status, None
-    inventory = (
-        StudentInventory.objects.select_related("academic_year", "program")
-        .filter(pk=status.inventory.pk)
-        .first()
-    )
-    return InventoryStatus.SUBMITTED, inventory
+    return InventoryStatus.SUBMITTED, status.inventory
 
 
 def _program_reference(inventory: StudentInventory | None) -> ContextProgramReference | None:
@@ -265,30 +261,10 @@ def get_context_inventory(
             available=False,
             inventory=None,
         )
-
-    projection = CounselingContextInventory(
-        id=item.pk,
-        academic_year_id=item.academic_year_id,
-        academic_year_label=item.academic_year.label,
-        submitted_at=item.submitted_at,
-        full_name=item.full_name_snapshot or _student(access).get_full_name(),
-        student_number=item.student_number,
-        date_of_birth=item.date_of_birth,
-        nationality=item.nationality,
-        sex=item.sex,
-        civil_status_category=item.civil_status_category,
-        current_religion_category=item.current_religion_category,
-        program=_program_reference(item),
-        year_level=item.year_level,
-        course_currently_enrolled=item.course_currently_enrolled,
-        major=item.major,
-        living_arrangement=item.living_arrangement,
-        prior_counseling_experience=item.prior_counseling_experience,
-    )
     return CounselingContextInventoryResult(
         inventory_source_status=InventoryStatus.SUBMITTED,
         available=True,
-        inventory=projection,
+        inventory=item,
     )
 
 
@@ -410,7 +386,6 @@ __all__ = [
     "ContextProgramReference",
     "ContextRoutineInterviewSummary",
     "CounselingContextHistoryItem",
-    "CounselingContextInventory",
     "CounselingContextInventoryResult",
     "CounselingContextOverview",
     "CounselingContextSharedSummary",
