@@ -401,7 +401,8 @@ CAPABILITY_DEFINITIONS = (
         code="resources.manage",
         name="Manage curated GCO resources",
         description=(
-            "Create, edit, publish, order, and archive curated Guidance and Counseling Office Resources."
+            "Create, edit, publish, order, and archive curated Guidance and Counseling Office "
+            "Resources."
         ),
     ),
     CapabilityDefinition(
