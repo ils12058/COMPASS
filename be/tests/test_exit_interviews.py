@@ -783,7 +783,9 @@ def test_reopen_and_resubmit_preserve_first_submission_and_append_correction_his
         "Second correction",
     ]
     reopen_events = list(
-        ExitInterviewReopenEvent.objects.filter(exit_interview_id=exit_id).order_by("created_at", "id")
+        ExitInterviewReopenEvent.objects.filter(exit_interview_id=exit_id).order_by(
+            "created_at", "id"
+        )
     )
     assert len(reopen_events) == 2
     notifications = Notification.objects.filter(
