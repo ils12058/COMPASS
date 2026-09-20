@@ -67,7 +67,7 @@ jobs:
         run: >-
           uv run pytest -q
           tests/test_counseling_context.py
-          tests/test_inventory_counselor_review.py
+          tests/test_inventory_counselor_review.py::test_cross_scope_counseling_assignment_does_not_expand_inventory_or_support_access
           tests/test_openapi_contract.py
 
       - name: Check canonical OpenAPI contract
