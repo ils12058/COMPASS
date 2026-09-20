@@ -163,16 +163,25 @@ def test_announcement_lifecycle_audience_expiry_ordering_and_audit_are_bounded()
         now=now + timedelta(minutes=1),
     ).items
     assert [item.pk for item in student_rows] == [student_item.pk, all_item.pk]
-    assert {item.pk for item in list_visible_announcements(actor=staff).items} == {
+    visible_at = now + timedelta(minutes=1)
+    assert {
+        item.pk for item in list_visible_announcements(actor=staff, now=visible_at).items
+    } == {
         all_item.pk,
         gco_item.pk,
     }
-    assert {item.pk for item in list_visible_announcements(actor=counselor).items} == {
+    assert {
+        item.pk for item in list_visible_announcements(actor=counselor, now=visible_at).items
+    } == {
         all_item.pk,
         gco_item.pk,
     }
-    assert [item.pk for item in list_visible_announcements(actor=admin).items] == [all_item.pk]
-    assert [item.pk for item in list_visible_announcements(actor=officer).items] == [all_item.pk]
+    assert [
+        item.pk for item in list_visible_announcements(actor=admin, now=visible_at).items
+    ] == [all_item.pk]
+    assert [
+        item.pk for item in list_visible_announcements(actor=officer, now=visible_at).items
+    ] == [all_item.pk]
 
     with pytest.raises(AnnouncementNotFound):
         get_visible_announcement(actor=student, announcement_id=draft.pk)
@@ -240,9 +249,7 @@ def test_announcement_lifecycle_audience_expiry_ordering_and_audit_are_bounded()
         "announcement.updated",
         "announcement.archived",
     ]
-    assert "Corrected office information" not in json.dumps(
-        [event.metadata for event in events]
-    )
+    assert "Corrected office information" not in json.dumps([event.metadata for event in events])
 
 
 @pytest.mark.django_db
