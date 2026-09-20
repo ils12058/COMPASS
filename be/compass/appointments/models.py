@@ -177,14 +177,14 @@ class AppointmentChangeEvent(models.Model):
     new_ends_at = models.DateTimeField(null=True, blank=True)
     previous_provider = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="appointment_reassignments_from",
     )
     new_provider = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="appointment_reassignments_to",
