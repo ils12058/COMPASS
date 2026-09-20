@@ -585,17 +585,13 @@ def test_contextual_inventory_and_support_do_not_weaken_generic_authorization(wo
     assert contextual_support.status_code == 200
     assert b_client.get(f"/api/v1/inventory/records/{world['inventory'].pk}").status_code == 404
     assert (
-        b_client.get(
-            f"/api/v1/student-support/students/{world['anna'].pk}/context"
-        ).status_code
+        b_client.get(f"/api/v1/student-support/students/{world['anna'].pk}/context").status_code
         == 404
     )
 
     a_client = auth_client(world["a"])
     assert (
-        a_client.get(
-            f"/api/v1/student-support/students/{world['anna'].pk}/context"
-        ).status_code
+        a_client.get(f"/api/v1/student-support/students/{world['anna'].pk}/context").status_code
         == 200
     )
 
@@ -802,9 +798,7 @@ def test_context_api_privacy_denials_and_draft_intake_never_leak(world):
     assert opened.json()["student"]["id"] == str(world["anna"].pk)
 
     for actor in (world["a"], world["head"], world["unrelated"]):
-        response = auth_client(actor).get(
-            f"/api/v1/counseling/context/ROUTINE_INTERVIEW/{item.pk}"
-        )
+        response = auth_client(actor).get(f"/api/v1/counseling/context/ROUTINE_INTERVIEW/{item.pk}")
         assert response.status_code == 404
         assert str(world["anna"].pk) not in response.content.decode()
 
