@@ -1,0 +1,83 @@
+name: Authorization scope targeted validation
+
+on:
+  push:
+    branches:
+      - feature/authorization-resource-scope-hardening
+
+permissions:
+  contents: read
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: compass_test
+          POSTGRES_USER: compass
+          POSTGRES_PASSWORD: test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U compass -d compass_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install locked dependencies
+        working-directory: be
+        run: uv sync --frozen
+
+      - name: Static and migration checks
+        working-directory: be
+        run: |
+          uv lock --check
+          uv run ruff format --check .
+          uv run ruff check .
+          uv run python -m compileall -q compass tests
+          uv run python manage.py makemigrations --check --dry-run --settings=tests.settings
+          uv run python manage.py migrate --noinput --settings=tests.settings
+          uv run python manage.py check --settings=tests.settings
+          uv run python manage.py export_openapi --check --settings=tests.settings
+
+      - name: Targeted authorization and privacy tests
+        working-directory: be
+        run: >-
+          uv run pytest -q
+          tests/test_organization.py
+          tests/test_appointment_management_scope.py
+          tests/test_appointments.py
+          tests/test_referrals.py
+          tests/test_call_slips.py
+          tests/test_counseling.py
+          tests/test_shared_summaries.py
+          tests/test_routine_interviews.py
+          tests/test_ecounseling.py
+          tests/test_inventory_counselor_review.py
+          tests/test_student_support.py
+          tests/test_student_profiling_reports.py
+          tests/test_student_profiling_report_aggregates.py
+          tests/test_student_profiling_report_coverage.py
+
+      - name: Diff whitespace check
+        run: git diff --check
