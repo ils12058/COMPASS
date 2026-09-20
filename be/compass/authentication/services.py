@@ -425,6 +425,7 @@ def confirm_login_totp_enrollment(
         locked.save(update_fields=["consumed_at"])
         return result
 
+
 def complete_login_mfa(
     *,
     request,
