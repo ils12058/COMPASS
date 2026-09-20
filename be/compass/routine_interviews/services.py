@@ -475,16 +475,14 @@ def list_assigned(
     intake_status: str | None = None,
     evaluation_status: str | None = None,
     search: str | None = None,
-    page: int = DEFAULT_PAGE_SIZE // DEFAULT_PAGE_SIZE,
+    page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> RoutineInterviewPage:
     _validate_counselor(counselor)
     if type(page) is not int or page < 1:
         raise InvalidRoutineInterviewInput("page must be at least 1.")
     if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
-        raise InvalidRoutineInterviewInput(
-            f"page_size must be between 1 and {MAX_PAGE_SIZE}."
-        )
+        raise InvalidRoutineInterviewInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}.")
     term = ""
     if search is not None:
         if not isinstance(search, str):
@@ -512,9 +510,7 @@ def list_assigned(
         )
     if evaluation_status is not None:
         if evaluation_status not in {"DRAFT", "FINALIZED"}:
-            raise InvalidRoutineInterviewInput(
-                "evaluation_status must be DRAFT or FINALIZED."
-            )
+            raise InvalidRoutineInterviewInput("evaluation_status must be DRAFT or FINALIZED.")
         queryset = (
             queryset.filter(evaluation_finalized_at__isnull=True)
             if evaluation_status == "DRAFT"

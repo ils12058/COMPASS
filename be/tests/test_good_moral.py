@@ -823,6 +823,7 @@ def test_real_chromium_smoke_renders_issued_graduate_certificate():
     assert pdf.startswith(b"%PDF-")
     assert len(pdf) > 1024
 
+
 @pytest.mark.django_db
 def test_good_moral_operational_list_supports_student_filter_and_safe_identity_search():
     sync_policy()
@@ -854,7 +855,10 @@ def test_good_moral_operational_list_supports_student_filter_and_safe_identity_s
     assert filtered.status_code == 200
     assert [row["id"] for row in filtered.json()["items"]] == [str(alpha_request.pk)]
 
-    assert client.get(
-        "/api/v1/good-moral/requests",
-        {"search": "x" * 161},
-    ).status_code == 422
+    assert (
+        client.get(
+            "/api/v1/good-moral/requests",
+            {"search": "x" * 161},
+        ).status_code
+        == 422
+    )

@@ -852,4 +852,3 @@ def list_student_affiliations(
         page_size,
         len(rows) > page_size,
     )
-

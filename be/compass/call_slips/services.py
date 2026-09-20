@@ -552,9 +552,7 @@ def list_call_slips(
             raise InvalidCallSlipInput("search must be text.")
         term = search.strip()
         if len(term) > MAX_SEARCH_LENGTH:
-            raise InvalidCallSlipInput(
-                f"search must be at most {MAX_SEARCH_LENGTH} characters."
-            )
+            raise InvalidCallSlipInput(f"search must be at most {MAX_SEARCH_LENGTH} characters.")
         if term:
             qs = qs.filter(
                 Q(student__institutional_id__icontains=term)

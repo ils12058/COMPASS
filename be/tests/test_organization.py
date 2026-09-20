@@ -332,6 +332,7 @@ def test_dpo_institutional_officer_is_never_head_guidance_fallback():
     assert result.reason == "NO_HEAD_FALLBACK"
     assert effective_responsibility_colleges(officer) == ()
 
+
 @pytest.mark.django_db
 def test_student_affiliation_collection_is_paginated_searchable_and_filterable():
     sync_policy()
@@ -394,7 +395,10 @@ def test_student_affiliation_collection_is_paginated_searchable_and_filterable()
     assert by_student.status_code == 200
     assert [row["student"]["id"] for row in by_student.json()["items"]] == [str(students[0].pk)]
 
-    assert client.get(
-        "/api/v1/organization/student-affiliations",
-        {"page": 0},
-    ).status_code == 422
+    assert (
+        client.get(
+            "/api/v1/organization/student-affiliations",
+            {"page": 0},
+        ).status_code
+        == 422
+    )

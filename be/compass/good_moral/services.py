@@ -362,9 +362,7 @@ def list_requests(
             raise InvalidGoodMoralInput("search must be text.")
         term = search.strip()
         if len(term) > MAX_SEARCH_LENGTH:
-            raise InvalidGoodMoralInput(
-                f"search must be at most {MAX_SEARCH_LENGTH} characters."
-            )
+            raise InvalidGoodMoralInput(f"search must be at most {MAX_SEARCH_LENGTH} characters.")
         if term:
             queryset = queryset.filter(
                 Q(student__institutional_id__icontains=term)

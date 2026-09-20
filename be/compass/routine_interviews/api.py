@@ -593,9 +593,7 @@ def routine_interviews_list_assigned(
             academic_year_id=academic_year_id,
             delivery_mode=delivery_mode.value if delivery_mode is not None else None,
             intake_status=intake_status.value if intake_status is not None else None,
-            evaluation_status=(
-                evaluation_status.value if evaluation_status is not None else None
-            ),
+            evaluation_status=(evaluation_status.value if evaluation_status is not None else None),
             search=search,
             page=page,
             page_size=page_size,

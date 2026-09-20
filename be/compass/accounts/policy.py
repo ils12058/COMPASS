@@ -238,9 +238,7 @@ CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
         code="inventory.reopen",
         name="Reopen individual inventories",
-        description=(
-            "Reopen an eligible submitted Individual Inventory for Student correction."
-        ),
+        description=("Reopen an eligible submitted Individual Inventory for Student correction."),
     ),
     CapabilityDefinition(
         code="student_support.view",

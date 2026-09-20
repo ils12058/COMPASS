@@ -220,10 +220,13 @@ def test_inventory_reopen_resubmit_preserves_history_and_hides_draft_from_guidan
     assert resubmitted.first_submitted_at == first_timestamp
     assert resubmitted.last_submitted_at is not None
     assert resubmitted.submitted_at == resubmitted.last_submitted_at
-    assert AuditEvent.objects.filter(
-        action="inventory.resubmitted",
-        target_id=str(resubmitted.pk),
-    ).count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action="inventory.resubmitted",
+            target_id=str(resubmitted.pk),
+        ).count()
+        == 1
+    )
 
     support_after = get_student_support_context(actor=counselor, student_id=student.pk)
     assert support_after.inventory_status == "SUBMITTED"
@@ -309,8 +312,7 @@ def test_inventory_roster_scope_missing_filters_search_and_draft_privacy():
     assert listing.json()["page_size"] == 2
     assert listing.json()["has_next"] is True
     assert all(
-        row["student"]["institutional_id"].startswith("A1-")
-        for row in listing.json()["items"]
+        row["student"]["institutional_id"].startswith("A1-") for row in listing.json()["items"]
     )
 
     searched = client.get("/api/v1/inventory/students", {"search": "A1-001"})
@@ -328,14 +330,20 @@ def test_inventory_roster_scope_missing_filters_search_and_draft_privacy():
     draft_detail = client.get(f"/api/v1/inventory/records/{draft_inventory_id}")
     assert draft_detail.status_code == 409
 
-    assert client.get(
-        "/api/v1/inventory/students",
-        {"college_id": str(college_a2.pk)},
-    ).status_code == 403
-    assert client.get(
-        "/api/v1/inventory/students",
-        {"program_id": str(program_b1.pk)},
-    ).status_code == 403
+    assert (
+        client.get(
+            "/api/v1/inventory/students",
+            {"college_id": str(college_a2.pk)},
+        ).status_code
+        == 403
+    )
+    assert (
+        client.get(
+            "/api/v1/inventory/students",
+            {"program_id": str(program_b1.pk)},
+        ).status_code
+        == 403
+    )
 
     historical_missing = client.get(
         "/api/v1/inventory/students",

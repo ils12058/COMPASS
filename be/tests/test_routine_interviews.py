@@ -828,6 +828,7 @@ def test_non_current_student_routine_is_read_only_while_counselor_can_finish_exi
     )
     assert finalized.evaluation_finalized_at is not None
 
+
 @pytest.mark.django_db
 def test_counselor_routine_queue_is_assigned_paginated_filtered_and_identity_search_only():
     sync_policy()
@@ -870,9 +871,12 @@ def test_counselor_routine_queue_is_assigned_paginated_filtered_and_identity_sea
     assert filtered.status_code == 200
     assert [row["id"] for row in filtered.json()["items"]] == [str(mine.pk)]
 
-    assert client.get(
-        "/api/v1/routine-interviews",
-        {"page_size": 51},
-    ).status_code == 422
+    assert (
+        client.get(
+            "/api/v1/routine-interviews",
+            {"page_size": 51},
+        ).status_code
+        == 422
+    )
     assert auth_client(other).get("/api/v1/routine-interviews").status_code == 200
     assert auth_client(gss).get("/api/v1/routine-interviews").status_code == 403

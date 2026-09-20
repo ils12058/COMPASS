@@ -1089,6 +1089,7 @@ def test_call_slip_api_fingerprint_includes_notify_student_command_intent():
     )
     assert conflict.status_code == 409
 
+
 @pytest.mark.django_db
 def test_operational_call_slip_search_is_identity_reference_only_and_scope_first():
     sync_policy()
@@ -1126,7 +1127,10 @@ def test_operational_call_slip_search_is_identity_reference_only_and_scope_first
     assert by_reference.status_code == 200
     assert str(linked.pk) in {row["id"] for row in by_reference.json()["items"]}
 
-    assert client_a.get(
-        "/api/v1/call-slips",
-        {"search": "x" * 161},
-    ).status_code == 422
+    assert (
+        client_a.get(
+            "/api/v1/call-slips",
+            {"search": "x" * 161},
+        ).status_code
+        == 422
+    )

@@ -344,8 +344,7 @@ def _inventory_queryset():
 
 def _is_head(actor: User) -> bool:
     return (
-        actor.role.code == "COUNSELOR"
-        and actor.designations.filter(code=HEAD_DESIGNATION).exists()
+        actor.role.code == "COUNSELOR" and actor.designations.filter(code=HEAD_DESIGNATION).exists()
     )
 
 
@@ -448,16 +447,22 @@ def _validate_roster_filters(
         if college is None:
             raise InvalidInventoryInput("The selected College was not found.")
         if college_ids is not None and college.pk not in set(college_ids):
-            raise InventoryNotPermitted("The selected College is outside Counselor Inventory scope.")
+            raise InventoryNotPermitted(
+                "The selected College is outside Counselor Inventory scope."
+            )
     program = None
     if program_id is not None:
         program = Program.objects.select_related("college__campus").filter(pk=program_id).first()
         if program is None:
             raise InvalidInventoryInput("The selected Program was not found.")
         if college_ids is not None and program.college_id not in set(college_ids):
-            raise InventoryNotPermitted("The selected Program is outside Counselor Inventory scope.")
+            raise InventoryNotPermitted(
+                "The selected Program is outside Counselor Inventory scope."
+            )
         if college_id is not None and program.college_id != college_id:
-            raise InvalidInventoryInput("The selected Program does not belong to the selected College.")
+            raise InvalidInventoryInput(
+                "The selected Program does not belong to the selected College."
+            )
     return program
 
 
@@ -1183,6 +1188,7 @@ def get_my_inventory_history_item(*, student: User, inventory_id: UUID) -> Stude
         raise InventoryNotFound("The requested Individual Inventory was not found.")
     return item
 
+
 def list_inventory_students(
     *,
     actor: User,
@@ -1275,9 +1281,7 @@ def list_inventory_students(
         student_id__in=scoped_student_ids,
     )
     if college_id is not None:
-        queryset = queryset.filter(
-            student__organization_student_affiliation__college_id=college_id
-        )
+        queryset = queryset.filter(student__organization_student_affiliation__college_id=college_id)
     if program_id is not None:
         queryset = queryset.filter(program_id=program_id)
     if year_level is not None:
@@ -1396,4 +1400,3 @@ def reopen_inventory_for_correction(
             target_id=item.pk,
         )
         return _inventory_queryset().get(pk=item.pk)
-

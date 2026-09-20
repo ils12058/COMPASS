@@ -569,11 +569,7 @@ def _require_student(request, capability: str) -> None:
 
 def _require_counselor(request, capability: str) -> None:
     user = request.auth_user
-    if (
-        not user.is_active
-        or user.role.code != "COUNSELOR"
-        or not user.has_capability(capability)
-    ):
+    if not user.is_active or user.role.code != "COUNSELOR" or not user.has_capability(capability):
         raise APIError(
             403,
             "permission_denied",
@@ -858,7 +854,11 @@ def _roster_item(row) -> dict[str, object]:
         "status": (
             InventoryStatus.MISSING
             if item is None
-            else (InventoryStatus.SUBMITTED if item.submitted_at is not None else InventoryStatus.DRAFT)
+            else (
+                InventoryStatus.SUBMITTED
+                if item.submitted_at is not None
+                else InventoryStatus.DRAFT
+            )
         ),
         "program": _program_summary(item),
         "year_level": item.year_level if item is not None else None,
@@ -1026,6 +1026,7 @@ def inventory_get_my_history_item(request, inventory_id: UUID):
     except InventoryError as exc:
         _raise(exc)
 
+
 @router.get(
     "/students",
     response=response_with_errors(CounselorInventoryRosterPage, 401, 403, 409, 422),
@@ -1115,4 +1116,3 @@ def inventory_reopen_record(request, inventory_id: UUID, payload: InventoryReope
     except InventoryError as exc:
         _raise(exc)
     return _history_item(item)
-
