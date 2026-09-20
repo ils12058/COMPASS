@@ -79,7 +79,7 @@ class ServiceUpdateRequest(StrictSchema):
     cancellation_cutoff_minutes: int | None = None
     requires_current_inventory: bool = False
     delivery_modes: list[DeliveryMode] = Field(default_factory=list)
-    provider_roles: list[ProviderRoleCode] = Field(default_factory=list)
+    provider_roles: list[ConfigurableProviderRoleCode] = Field(default_factory=list)
 
 
 class ServiceResponse(StrictSchema):
