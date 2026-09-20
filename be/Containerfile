@@ -1,11 +1,24 @@
 FROM python:3.13-slim-bookworm
 
+ARG COMPASS_BUILD_ID=local
+ARG COMPASS_BUILD_TIME=""
+ARG COMPASS_VERSION=""
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONFAULTHANDLER=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    COMPASS_BUILD_ID="${COMPASS_BUILD_ID}" \
+    COMPASS_BUILD_TIME="${COMPASS_BUILD_TIME}"
+
+LABEL org.opencontainers.image.title="COMPASS Backend" \
+    org.opencontainers.image.description="Counseling Office Management Platform and Student Services backend" \
+    org.opencontainers.image.source="https://github.com/ils12058/COMPASS" \
+    org.opencontainers.image.revision="${COMPASS_BUILD_ID}" \
+    org.opencontainers.image.version="${COMPASS_VERSION}" \
+    org.opencontainers.image.created="${COMPASS_BUILD_TIME}"
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.2 /uv /uvx /bin/
 
