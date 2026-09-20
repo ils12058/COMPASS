@@ -172,10 +172,13 @@ def test_resource_kind_validation_visibility_filtering_ordering_archive_and_audi
 
     rows = list_visible_resources(actor=student).items
     assert [item.pk for item in rows] == [link.pk, article.pk]
-    assert [item.pk for item in list_visible_resources(
-        actor=student,
-        kind=ResourceKind.ARTICLE,
-    ).items] == [article.pk]
+    assert [
+        item.pk
+        for item in list_visible_resources(
+            actor=student,
+            kind=ResourceKind.ARTICLE,
+        ).items
+    ] == [article.pk]
 
     with pytest.raises(ResourceNotFound):
         get_visible_resource(actor=student, resource_id=gco_only.pk)
