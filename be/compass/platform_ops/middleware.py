@@ -16,6 +16,7 @@ _BYPASS_EXACT = frozenset(
     {
         "/api/v1/health/live",
         "/api/v1/health/ready",
+        "/api/v1/meta",
         "/api/v1/integrations/daily/webhook",
     }
 )
