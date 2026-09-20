@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from unittest.mock import patch
 
 import pytest
 
@@ -14,6 +15,7 @@ from compass.inventory.models import (
     Sex,
 )
 from compass.organization.models import AcademicYear
+import compass.reports.services as profiling_report
 from compass.reports.services import (
     LEGACY_KEY,
     LEGACY_LABEL,
@@ -30,6 +32,52 @@ from tests.test_student_profiling_reports import (
     submitted_at,
     sync_policy,
 )
+
+
+@pytest.mark.django_db
+def test_profile_report_population_is_frozen_before_program_and_section_queries():
+    sync_policy()
+    year = AcademicYear.objects.create(label="2030-2031", is_current=True)
+    revision = make_revision("snapshot")
+    _, _, program = make_organization("SNAP")
+    first_student = make_user("profile-snapshot-first@example.edu")
+    make_inventory(
+        student=first_student,
+        academic_year=year,
+        revision=revision,
+        program=program,
+        sex=Sex.MALE,
+    )
+
+    original = profiling_report._program_columns
+    inserted = False
+
+    def insert_after_population_snapshot(queryset):
+        nonlocal inserted
+        if not inserted:
+            inserted = True
+            late_student = make_user("profile-snapshot-late@example.edu")
+            make_inventory(
+                student=late_student,
+                academic_year=year,
+                revision=revision,
+                program=program,
+                sex=Sex.FEMALE,
+            )
+        return original(queryset)
+
+    with patch(
+        "compass.reports.services._program_columns",
+        side_effect=insert_after_population_snapshot,
+    ):
+        report = build_student_profiling_report(academic_year_id=year.pk)
+
+    assert report["report_context"]["submitted_inventory_count"] == 1
+    assert sum(column["total"] for column in report["program_columns"]) == 1
+    sex_section = report["sections"]["sex"]
+    assert sex_section["denominator"] == 1
+    assert report_row(report, "sex", Sex.MALE)["count"] == 1
+    assert report_row(report, "sex", Sex.FEMALE)["count"] == 0
 
 
 @pytest.mark.django_db
