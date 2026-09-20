@@ -764,7 +764,6 @@ def test_context_shared_summaries_are_published_only(world):
 
 @pytest.mark.django_db
 def test_context_api_privacy_denials_and_draft_intake_never_leak(world):
-    now = timezone.now().replace(microsecond=0)
     item = create_direct(
         counselor=world["b"],
         student_id=world["anna"].pk,
