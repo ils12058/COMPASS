@@ -290,6 +290,7 @@ jobs:
           "${compose[@]}" run --rm --no-deps -T web python manage.py check </dev/null
           "${compose[@]}" up -d postgres redis
           "${compose[@]}" run --rm -T web python manage.py migrate --noinput </dev/null
+          "${compose[@]}" run --rm -T web python manage.py sync_identity_policy </dev/null
 
           state="$DEPLOY_PATH/.deploy.env"
           previous_state="$DEPLOY_PATH/.deploy.previous.env"

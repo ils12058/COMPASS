@@ -144,7 +144,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
         "DPO",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 71
+    assert RoleCapability.objects.count() == 75
     assert DesignationCapability.objects.count() == 18
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
@@ -157,8 +157,43 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
     assert Capability.objects.count() == 65
-    assert RoleCapability.objects.count() == 71
+    assert RoleCapability.objects.count() == 75
     assert DesignationCapability.objects.count() == 18
+
+
+@pytest.mark.django_db
+def test_counselor_baseline_adds_scoped_authority_without_admin_expansion():
+    sync_policy()
+    counselor = make_user(role="COUNSELOR", email="baseline-counselor@example.edu")
+    expected = {
+        "appointments.manage",
+        "academic_years.view",
+        "institutional_forms.view",
+        "reports.view",
+    }
+    denied = {
+        "availability.manage",
+        "academic_years.manage",
+        "institutional_forms.manage",
+        "organization.manage",
+        "services.manage",
+        "document_branding.manage",
+        "feedback.view_customer_feedback",
+        "feedback.view_csm",
+        "graduate_tracer.view",
+        "exit_interviews.view",
+        "exit_interviews.reopen",
+        "platform_operations.view",
+        "privacy_governance.view",
+    }
+
+    assert all(counselor.has_capability(code) for code in expected)
+    assert all(not counselor.has_capability(code) for code in denied)
+
+    gss = make_user(role="GUIDANCE_SERVICES_STAFF", email="baseline-gss@example.edu")
+    assert not gss.has_capability("reports.view")
+    assert not gss.has_capability("academic_years.view")
+    assert not gss.has_capability("institutional_forms.view")
 
 
 @pytest.mark.django_db

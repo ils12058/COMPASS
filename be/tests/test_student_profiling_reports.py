@@ -34,7 +34,14 @@ from compass.inventory.models import (
     Sex,
     StudentInventory,
 )
-from compass.organization.models import AcademicYear, Campus, College, Program
+from compass.organization.models import (
+    AcademicYear,
+    Campus,
+    College,
+    CounselorResponsibility,
+    Program,
+    StudentAffiliation,
+)
 from compass.reports.services import calculate_percentage, year_level_label
 from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
 
@@ -193,27 +200,27 @@ def report_row(section: dict[str, object], key: str) -> dict[str, object]:
 
 
 @pytest.mark.django_db
-def test_reports_view_capability_is_head_only_by_default_and_override_compatible():
+def test_reports_view_is_counselor_baseline_but_does_not_fabricate_scope():
     sync_policy()
     head = make_head()
     counselor = make_user("counselor-reports@example.edu", role="COUNSELOR", lifecycle=None)
     staff = make_user("staff-reports@example.edu", role="GUIDANCE_SERVICES_STAFF", lifecycle=None)
     student = make_user("student-reports@example.edu")
     admin = make_user("admin-reports@example.edu", role="IT_ADMIN", lifecycle=None)
-    dpo = make_user("dpo-reports@example.edu", role="COUNSELOR", lifecycle=None)
-    UserDesignation.objects.create(user=dpo, designation=Designation.objects.get(code="DPO"))
 
     assert head.has_capability("reports.view")
-    for user in (counselor, staff, student, admin, dpo):
+    assert counselor.has_capability("reports.view")
+    for user in (staff, student, admin):
         assert not user.has_capability("reports.view")
 
     set_user_capability_override(
-        user=counselor,
+        user=admin,
         capability=Capability.objects.get(code="reports.view"),
         effect="GRANT",
         reason="Synthetic approved exception",
     )
-    assert counselor.has_capability("reports.view")
+    assert admin.has_capability("reports.view")
+    assert auth_client(admin).get("/api/v1/reports/student-profile").status_code == 403
 
 
 @pytest.mark.django_db
@@ -232,6 +239,116 @@ def test_student_profile_endpoint_authorization_and_unauthenticated_boundary():
     for user in denied:
         assert auth_client(user).get("/api/v1/reports/student-profile").status_code == 403
     assert Client().get("/api/v1/reports/student-profile").status_code == 401
+
+
+@pytest.mark.django_db
+def test_student_profile_enforces_current_counselor_college_scope_across_filters_and_history():
+    sync_policy()
+    current_year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    historical_year = AcademicYear.objects.create(label="2025-2026", is_current=False)
+    revision = make_revision("counselor-scope")
+
+    campus_a = Campus.objects.create(code="C-A", name="Campus A")
+    college_a1 = College.objects.create(campus=campus_a, code="A1", name="College A1")
+    college_a2 = College.objects.create(campus=campus_a, code="A2", name="College A2")
+    program_a1 = Program.objects.create(college=college_a1, code="P-A1", name="Program A1")
+    program_a2 = Program.objects.create(college=college_a2, code="P-A2", name="Program A2")
+
+    campus_b = Campus.objects.create(code="C-B", name="Campus B")
+    college_b1 = College.objects.create(campus=campus_b, code="B1", name="College B1")
+    program_b1 = Program.objects.create(college=college_b1, code="P-B1", name="Program B1")
+
+    counselor_a = make_user("scope-a@example.edu", role="COUNSELOR", lifecycle=None)
+    counselor_b = make_user("scope-b@example.edu", role="COUNSELOR", lifecycle=None)
+    zero_scope = make_user("scope-none@example.edu", role="COUNSELOR", lifecycle=None)
+    head = make_head("scope-head@example.edu")
+    CounselorResponsibility.objects.create(college=college_a1, counselor=counselor_a)
+    CounselorResponsibility.objects.create(college=college_b1, counselor=counselor_b)
+
+    student_a1 = make_user("scope-student-a1@example.edu")
+    student_a2 = make_user("scope-student-a2@example.edu")
+    student_b1 = make_user("scope-student-b1@example.edu")
+    StudentAffiliation.objects.create(student=student_a1, college=college_a1)
+    StudentAffiliation.objects.create(student=student_a2, college=college_a2)
+    StudentAffiliation.objects.create(student=student_b1, college=college_b1)
+
+    for student, program in (
+        (student_a1, program_a1),
+        (student_a2, program_a2),
+        (student_b1, program_b1),
+    ):
+        make_inventory(
+            student=student,
+            academic_year=current_year,
+            revision=revision,
+            program=program,
+        )
+        make_inventory(
+            student=student,
+            academic_year=historical_year,
+            revision=revision,
+            program=program,
+            submitted_time=submitted_at(2025, 8, 30),
+        )
+
+    client = auth_client(counselor_a)
+    unfiltered = client.get("/api/v1/reports/student-profile")
+    assert unfiltered.status_code == 200
+    unfiltered_body = unfiltered.json()
+    assert unfiltered_body["report_context"]["submitted_inventory_count"] == 1
+    assert [column["college"]["code"] for column in unfiltered_body["program_columns"]] == ["A1"]
+    assert unfiltered_body["inventory_coverage"]["eligible_student_count"] == 1
+    assert (
+        "Counselor-assigned Colleges" in unfiltered_body["methodology"]["profile_population_note"]
+    )
+    assert "A1" in unfiltered_body["methodology"]["profile_population_note"]
+
+    assert (
+        client.get(
+            "/api/v1/reports/student-profile",
+            {"college_id": college_a1.pk},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.get(
+            "/api/v1/reports/student-profile",
+            {"program_id": program_a1.pk},
+        ).status_code
+        == 200
+    )
+
+    campus_a_response = client.get(
+        "/api/v1/reports/student-profile",
+        {"campus_id": campus_a.pk},
+    )
+    assert campus_a_response.status_code == 200
+    assert campus_a_response.json()["report_context"]["submitted_inventory_count"] == 1
+
+    for params in (
+        {"college_id": college_a2.pk},
+        {"college_id": college_b1.pk},
+        {"program_id": program_a2.pk},
+        {"program_id": program_b1.pk},
+        {"campus_id": campus_b.pk},
+    ):
+        response = client.get("/api/v1/reports/student-profile", params)
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "permission_denied"
+
+    historical = client.get(
+        "/api/v1/reports/student-profile",
+        {"academic_year_id": historical_year.pk},
+    )
+    assert historical.status_code == 200
+    assert historical.json()["report_context"]["submitted_inventory_count"] == 1
+    assert historical.json()["inventory_coverage"]["submitted_count"] == 1
+
+    head_report = auth_client(head).get("/api/v1/reports/student-profile")
+    assert head_report.status_code == 200
+    assert head_report.json()["report_context"]["submitted_inventory_count"] == 3
+
+    assert auth_client(zero_scope).get("/api/v1/reports/student-profile").status_code == 403
 
 
 @pytest.mark.parametrize(

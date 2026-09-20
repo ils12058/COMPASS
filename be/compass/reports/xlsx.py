@@ -16,6 +16,8 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from .filenames import safe_report_filename_part
 from .services import (
+    GLOBAL_REPORT_ACCESS_SCOPE,
+    ReportAccessScope,
     ReportError,
     build_student_profiling_report,
     student_profiling_release_context,
@@ -586,6 +588,7 @@ def render_student_profiling_xlsx(
     college_id: UUID | None = None,
     program_id: UUID | None = None,
     year_level: int | None = None,
+    access_scope: ReportAccessScope = GLOBAL_REPORT_ACCESS_SCOPE,
 ) -> StudentProfilingXlsxResult:
     # Keep canonical filter/report failures outside the XLSX exception boundary.
     report = build_student_profiling_report(
@@ -594,6 +597,7 @@ def render_student_profiling_xlsx(
         college_id=college_id,
         program_id=program_id,
         year_level=year_level,
+        access_scope=access_scope,
     )
 
     try:

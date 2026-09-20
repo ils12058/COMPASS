@@ -9,10 +9,12 @@ from django.test import Client
 from openpyxl import load_workbook
 
 from compass.accounts.models import Designation, UserDesignation
+from compass.organization.models import Campus, College, CounselorResponsibility
 from compass.reports import api as reports_api
 from compass.reports import xlsx as report_xlsx
 from compass.reports.pdf import student_profiling_pdf_filename
 from compass.reports.services import (
+    GLOBAL_REPORT_ACCESS_SCOPE,
     InvalidReportFilter,
     ReportConfigurationConflict,
     ReportNotFound,
@@ -167,6 +169,7 @@ def test_xlsx_endpoint_forwards_same_report_filters(monkeypatch):
             "college_id": college_id,
             "program_id": program_id,
             "year_level": 4,
+            "access_scope": GLOBAL_REPORT_ACCESS_SCOPE,
         }
     ]
 
@@ -179,8 +182,30 @@ def test_xlsx_endpoint_forwards_same_report_filters(monkeypatch):
             "college_id": None,
             "program_id": None,
             "year_level": None,
+            "access_scope": GLOBAL_REPORT_ACCESS_SCOPE,
         }
     ]
+
+
+@pytest.mark.django_db
+def test_xlsx_endpoint_passes_regular_counselor_college_scope(monkeypatch):
+    sync_policy()
+    counselor = make_user("scoped-xlsx@example.edu", "COUNSELOR")
+    campus = Campus.objects.create(code="XLSX-SCOPE", name="XLSX Scope Campus")
+    college = College.objects.create(campus=campus, code="XLSX-COL", name="XLSX Scope College")
+    CounselorResponsibility.objects.create(college=college, counselor=counselor)
+    captured: list[dict[str, object]] = []
+
+    def fake_render(**kwargs):
+        captured.append(kwargs)
+        return fake_xlsx_result()
+
+    monkeypatch.setattr(reports_api, "render_student_profiling_xlsx", fake_render)
+    response = auth_client(counselor).get("/api/v1/reports/student-profile/xlsx")
+    assert response.status_code == 200
+    scope = captured[0]["access_scope"]
+    assert scope.is_global is False
+    assert scope.college_ids == (college.pk,)
 
 
 @pytest.mark.django_db
@@ -239,7 +264,7 @@ def test_render_service_calls_canonical_builder_once_and_forwards_exact_filters(
     monkeypatch.setattr(report_xlsx, "build_student_profiling_report", fake_builder)
     result = render_student_profiling_xlsx(**filters)
 
-    assert calls == [filters]
+    assert calls == [{**filters, "access_scope": GLOBAL_REPORT_ACCESS_SCOPE}]
     assert result.filename == "student-profile-2026-2027.xlsx"
     workbook = load_workbook(BytesIO(result.xlsx_bytes), data_only=False, keep_links=False)
     assert workbook.sheetnames == EXPECTED_SHEETS

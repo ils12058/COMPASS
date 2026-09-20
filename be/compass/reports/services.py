@@ -32,7 +32,13 @@ from compass.inventory.services import (
     derive_age_on,
 )
 from compass.organization.academic_years import AcademicYearConflict, require_current_academic_year
-from compass.organization.models import AcademicYear, Campus, College, Program
+from compass.organization.models import (
+    AcademicYear,
+    Campus,
+    College,
+    CounselorResponsibility,
+    Program,
+)
 from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
 
 LEGACY_KEY = "NOT_RECORDED_LEGACY"
@@ -78,6 +84,111 @@ class InvalidReportFilter(ReportError):
     pass
 
 
+class ReportAccessDenied(ReportError):
+    pass
+
+
+HEAD_GUIDANCE_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
+
+
+@dataclass(frozen=True, slots=True)
+class ReportAccessScope:
+    is_global: bool
+    college_ids: tuple[UUID, ...] = ()
+
+
+GLOBAL_REPORT_ACCESS_SCOPE = ReportAccessScope(is_global=True)
+
+
+def _active_scope_college_ids(access_scope: ReportAccessScope) -> tuple[UUID, ...] | None:
+    if access_scope.is_global:
+        return None
+    active_ids = tuple(
+        College.objects.filter(
+            pk__in=access_scope.college_ids,
+            is_active=True,
+            campus__is_active=True,
+        )
+        .order_by("pk")
+        .values_list("pk", flat=True)
+    )
+    if not active_ids:
+        raise ReportAccessDenied("No active Counselor report scope is assigned.")
+    return active_ids
+
+
+def resolve_report_access_scope(actor: User) -> ReportAccessScope:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or not actor.has_capability("reports.view")
+    ):
+        raise ReportAccessDenied("Aggregate report access is required.")
+    if actor.role.code != "COUNSELOR":
+        raise ReportAccessDenied("The authenticated actor has no supported report resource scope.")
+    if actor.designations.filter(code=HEAD_GUIDANCE_DESIGNATION).exists():
+        return GLOBAL_REPORT_ACCESS_SCOPE
+
+    college_ids = tuple(
+        CounselorResponsibility.objects.filter(
+            counselor_id=actor.pk,
+            counselor__is_active=True,
+            counselor__role__code="COUNSELOR",
+            college__is_active=True,
+            college__campus__is_active=True,
+        )
+        .order_by("college_id")
+        .values_list("college_id", flat=True)
+    )
+    if not college_ids:
+        raise ReportAccessDenied("No active Counselor report scope is assigned.")
+    return ReportAccessScope(is_global=False, college_ids=college_ids)
+
+
+def _report_access_scope_note(access_scope: ReportAccessScope) -> str:
+    college_ids = _active_scope_college_ids(access_scope)
+    if college_ids is None:
+        return "Access scope: institution-wide."
+    labels = list(
+        College.objects.filter(pk__in=college_ids)
+        .order_by("campus__code", "code")
+        .values_list("code", "name")
+    )
+    return "Access scope: Counselor-assigned Colleges — " + ", ".join(
+        f"{code} — {name}" for code, name in labels
+    )
+
+
+def _enforce_report_filter_scope(
+    filters: ResolvedReportFilters,
+    access_scope: ReportAccessScope,
+) -> None:
+    college_ids = _active_scope_college_ids(access_scope)
+    if college_ids is None:
+        return
+    allowed = set(college_ids)
+    if filters.college is not None and filters.college.pk not in allowed:
+        raise ReportAccessDenied(
+            "The requested report is outside the authenticated actor's report scope."
+        )
+    if filters.program is not None and filters.program.college_id not in allowed:
+        raise ReportAccessDenied(
+            "The requested report is outside the authenticated actor's report scope."
+        )
+    if (
+        filters.campus is not None
+        and not College.objects.filter(
+            pk__in=college_ids,
+            campus_id=filters.campus.pk,
+            is_active=True,
+            campus__is_active=True,
+        ).exists()
+    ):
+        raise ReportAccessDenied(
+            "The requested report is outside the authenticated actor's report scope."
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class ResolvedReportFilters:
     academic_year: AcademicYear
@@ -120,6 +231,7 @@ def resolve_report_filters(
     college_id: UUID | None,
     program_id: UUID | None,
     year_level: int | None,
+    access_scope: ReportAccessScope = GLOBAL_REPORT_ACCESS_SCOPE,
 ) -> ResolvedReportFilters:
     if academic_year_id is None:
         try:
@@ -161,20 +273,29 @@ def resolve_report_filters(
     if campus is not None and program is not None and program.college.campus_id != campus.pk:
         raise InvalidReportFilter("The selected Program does not belong to the selected Campus.")
 
-    return ResolvedReportFilters(
+    resolved = ResolvedReportFilters(
         academic_year=academic_year,
         campus=campus,
         college=college,
         program=program,
         year_level=year_level,
     )
+    _enforce_report_filter_scope(resolved, access_scope)
+    return resolved
 
 
-def _profile_queryset(filters: ResolvedReportFilters):
+def _profile_queryset(
+    filters: ResolvedReportFilters,
+    *,
+    access_scope: ReportAccessScope = GLOBAL_REPORT_ACCESS_SCOPE,
+):
     queryset = StudentInventory.objects.filter(
         academic_year_id=filters.academic_year.pk,
         submitted_at__isnull=False,
     )
+    college_ids = _active_scope_college_ids(access_scope)
+    if college_ids is not None:
+        queryset = queryset.filter(program__college_id__in=college_ids)
     if filters.campus is not None:
         queryset = queryset.filter(program__college__campus_id=filters.campus.pk)
     if filters.college is not None:
@@ -725,12 +846,19 @@ def _income_section(
     }
 
 
-def _coverage(filters: ResolvedReportFilters) -> dict[str, object]:
+def _coverage(
+    filters: ResolvedReportFilters,
+    *,
+    access_scope: ReportAccessScope = GLOBAL_REPORT_ACCESS_SCOPE,
+) -> dict[str, object]:
     ignored = []
     if filters.program is not None:
         ignored.append("program_id")
     if filters.year_level is not None:
         ignored.append("year_level")
+
+    college_ids = _active_scope_college_ids(access_scope)
+    scope_note = _report_access_scope_note(access_scope)
 
     if filters.academic_year.is_current:
         eligible = User.objects.filter(
@@ -739,6 +867,9 @@ def _coverage(filters: ResolvedReportFilters) -> dict[str, object]:
             student_lifecycle_status=StudentLifecycleStatus.CURRENT,
         )
         applied = ["academic_year_id"]
+        if college_ids is not None:
+            eligible = eligible.filter(organization_student_affiliation__college_id__in=college_ids)
+            applied.append("access_scope")
         if filters.campus is not None:
             eligible = eligible.filter(
                 organization_student_affiliation__college__campus_id=filters.campus.pk
@@ -751,10 +882,13 @@ def _coverage(filters: ResolvedReportFilters) -> dict[str, object]:
             applied.append("college_id")
         eligible_ids = list(eligible.distinct().values_list("id", flat=True))
         eligible_count = len(eligible_ids)
-        inventory_counts = StudentInventory.objects.filter(
+        inventory_queryset = StudentInventory.objects.filter(
             academic_year_id=filters.academic_year.pk,
             student_id__in=eligible_ids,
-        ).aggregate(
+        )
+        if college_ids is not None:
+            inventory_queryset = inventory_queryset.filter(program__college_id__in=college_ids)
+        inventory_counts = inventory_queryset.aggregate(
             submitted=Count("id", filter=Q(submitted_at__isnull=False)),
             draft=Count("id", filter=Q(submitted_at__isnull=True)),
         )
@@ -768,12 +902,15 @@ def _coverage(filters: ResolvedReportFilters) -> dict[str, object]:
             "missing_count": max(eligible_count - submitted_count - draft_count, 0),
             "applied_filters": applied,
             "ignored_filters": ignored,
-            "scope_note": CURRENT_COVERAGE_NOTE,
+            "scope_note": f"{CURRENT_COVERAGE_NOTE} {scope_note}",
         }
 
-    inventory_counts = StudentInventory.objects.filter(
-        academic_year_id=filters.academic_year.pk
-    ).aggregate(
+    inventory_queryset = StudentInventory.objects.filter(academic_year_id=filters.academic_year.pk)
+    applied = ["academic_year_id"]
+    if college_ids is not None:
+        inventory_queryset = inventory_queryset.filter(program__college_id__in=college_ids)
+        applied.append("access_scope")
+    inventory_counts = inventory_queryset.aggregate(
         submitted=Count("id", filter=Q(submitted_at__isnull=False)),
         draft=Count("id", filter=Q(submitted_at__isnull=True)),
     )
@@ -788,9 +925,9 @@ def _coverage(filters: ResolvedReportFilters) -> dict[str, object]:
         "submitted_count": int(inventory_counts["submitted"] or 0),
         "draft_count": int(inventory_counts["draft"] or 0),
         "missing_count": None,
-        "applied_filters": ["academic_year_id"],
+        "applied_filters": applied,
         "ignored_filters": historical_ignored,
-        "scope_note": HISTORICAL_COVERAGE_NOTE,
+        "scope_note": f"{HISTORICAL_COVERAGE_NOTE} {scope_note}",
     }
 
 
@@ -801,6 +938,7 @@ def build_student_profiling_report(
     college_id: UUID | None = None,
     program_id: UUID | None = None,
     year_level: int | None = None,
+    access_scope: ReportAccessScope = GLOBAL_REPORT_ACCESS_SCOPE,
 ) -> dict[str, object]:
     filters = resolve_report_filters(
         academic_year_id=academic_year_id,
@@ -808,8 +946,11 @@ def build_student_profiling_report(
         college_id=college_id,
         program_id=program_id,
         year_level=year_level,
+        access_scope=access_scope,
     )
-    population_ids = list(_profile_queryset(filters).values_list("id", flat=True))
+    population_ids = list(
+        _profile_queryset(filters, access_scope=access_scope).values_list("id", flat=True)
+    )
     # Submitted Inventories are immutable. Freeze report membership once so all section queries
     # describe the same logical population even if another submission commits mid-generation.
     base_queryset = StudentInventory.objects.filter(pk__in=population_ids)
@@ -950,12 +1091,14 @@ def build_student_profiling_report(
             "generated_at": timezone.now(),
         },
         "methodology": {
-            "profile_population_note": PROFILE_METHODOLOGY,
+            "profile_population_note": (
+                f"{PROFILE_METHODOLOGY} {_report_access_scope_note(access_scope)}"
+            ),
             "coverage_note": CURRENT_COVERAGE_NOTE,
             "historical_coverage_note": historical_note,
         },
         "program_columns": columns,
-        "inventory_coverage": _coverage(filters),
+        "inventory_coverage": _coverage(filters, access_scope=access_scope),
         "sections": sections,
     }
 

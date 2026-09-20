@@ -42,6 +42,7 @@ from compass.graduate_tracer.models import (
     GTSUnemploymentReason,
     GTSUsefulCompetency,
 )
+from compass.organization.models import Campus, College, CounselorResponsibility
 from compass.reports.graduate_tracer import NOT_RECORDED, build_graduate_tracer_report
 
 
@@ -156,10 +157,13 @@ def row(report: dict[str, object], section: str, key: str) -> dict[str, object]:
 
 
 @pytest.mark.django_db
-def test_graduate_tracer_report_authorization_uses_reports_view_and_override_semantics():
+def test_graduate_tracer_aggregate_requires_global_report_scope():
     sync_policy()
     head = make_head()
     counselor = make_user("gts-counselor@example.edu", role="COUNSELOR", lifecycle=None)
+    campus = Campus.objects.create(code="GTS-C", name="Graduate Tracer Campus")
+    college = College.objects.create(campus=campus, code="GTS-COL", name="Graduate Tracer College")
+    CounselorResponsibility.objects.create(college=college, counselor=counselor)
     staff = make_user(
         "gts-staff@example.edu",
         role="GUIDANCE_SERVICES_STAFF",
@@ -177,6 +181,7 @@ def test_graduate_tracer_report_authorization_uses_reports_view_and_override_sem
         designation=Designation.objects.get(code="DPO"),
     )
 
+    assert counselor.has_capability("reports.view")
     assert auth_client(head).get("/api/v1/reports/graduate-tracer").status_code == 200
     assert auth_client(head).get("/api/v1/reports/graduate-tracer/xlsx").status_code == 200
     for denied in (counselor, staff, student, admin, dpo):
@@ -185,14 +190,15 @@ def test_graduate_tracer_report_authorization_uses_reports_view_and_override_sem
         assert client.get("/api/v1/reports/graduate-tracer/xlsx").status_code == 403
 
     set_user_capability_override(
-        user=counselor,
+        user=admin,
         capability=Capability.objects.get(code="reports.view"),
         effect="GRANT",
         reason="Synthetic approved reporting exception",
     )
-    counselor_client = auth_client(counselor)
-    assert counselor_client.get("/api/v1/reports/graduate-tracer").status_code == 200
-    assert counselor_client.get("/api/v1/reports/graduate-tracer/xlsx").status_code == 200
+    assert admin.has_capability("reports.view")
+    admin_client = auth_client(admin)
+    assert admin_client.get("/api/v1/reports/graduate-tracer").status_code == 403
+    assert admin_client.get("/api/v1/reports/graduate-tracer/xlsx").status_code == 403
 
 
 @pytest.mark.django_db
