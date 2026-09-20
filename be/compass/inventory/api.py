@@ -883,7 +883,9 @@ def _history_item(item) -> dict[str, object]:
     }
 
 
-def _counselor_detail(item) -> dict[str, object]:
+def counselor_inventory_detail_payload(item) -> dict[str, object]:
+    """Serialize the canonical full read-only Counselor Inventory detail shape."""
+
     return {**_inventory(item), "student": _student_summary(item.student)}
 
 
