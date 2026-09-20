@@ -36,10 +36,13 @@ from .pdf import (
 from .schemas import StudentProfilingReportResponse
 from .services import (
     InvalidReportFilter,
+    ReportAccessDenied,
+    ReportAccessScope,
     ReportConfigurationConflict,
     ReportError,
     ReportNotFound,
     build_student_profiling_report,
+    resolve_report_access_scope,
 )
 from .xlsx import (
     XLSX_CONTENT_TYPE,
@@ -50,17 +53,26 @@ from .xlsx import (
 router = Router(tags=["reports"])
 
 
-def _require_viewer(request) -> None:
-    actor = request.auth_user
-    if not actor.is_active or not actor.has_capability("reports.view"):
+def _require_viewer(request) -> ReportAccessScope:
+    try:
+        return resolve_report_access_scope(request.auth_user)
+    except ReportAccessDenied as exc:
+        raise APIError(403, "permission_denied", str(exc)) from exc
+
+
+def _require_global_viewer(request) -> None:
+    access_scope = _require_viewer(request)
+    if not access_scope.is_global:
         raise APIError(
             403,
             "permission_denied",
-            "Head Guidance aggregate-report authority is required.",
+            "Institution-wide aggregate report access is required.",
         )
 
 
 def _raise(exc: ReportError) -> NoReturn:
+    if isinstance(exc, ReportAccessDenied):
+        raise APIError(403, "permission_denied", str(exc)) from exc
     if isinstance(exc, ReportNotFound):
         raise APIError(404, "report_filter_not_found", str(exc)) from exc
     if isinstance(exc, ReportConfigurationConflict):
@@ -116,7 +128,7 @@ def student_profile(
     program_id: UUID | None = None,
     year_level: int | None = None,
 ):
-    _require_viewer(request)
+    access_scope = _require_viewer(request)
     try:
         return build_student_profiling_report(
             academic_year_id=academic_year_id,
@@ -124,6 +136,7 @@ def student_profile(
             college_id=college_id,
             program_id=program_id,
             year_level=year_level,
+            access_scope=access_scope,
         )
     except ReportError as exc:
         _raise(exc)
@@ -143,7 +156,7 @@ def student_profile_pdf(
     program_id: UUID | None = None,
     year_level: int | None = None,
 ):
-    _require_viewer(request)
+    access_scope = _require_viewer(request)
     try:
         result = render_student_profiling_pdf(
             academic_year_id=academic_year_id,
@@ -151,6 +164,7 @@ def student_profile_pdf(
             college_id=college_id,
             program_id=program_id,
             year_level=year_level,
+            access_scope=access_scope,
         )
     except ReportError as exc:
         _raise(exc)
@@ -187,7 +201,7 @@ def student_profile_xlsx(
     program_id: UUID | None = None,
     year_level: int | None = None,
 ):
-    _require_viewer(request)
+    access_scope = _require_viewer(request)
     try:
         result = render_student_profiling_xlsx(
             academic_year_id=academic_year_id,
@@ -195,6 +209,7 @@ def student_profile_xlsx(
             college_id=college_id,
             program_id=program_id,
             year_level=year_level,
+            access_scope=access_scope,
         )
     except ReportError as exc:
         _raise(exc)
@@ -228,7 +243,7 @@ def graduate_tracer(
     submitted_from: date | None = None,
     submitted_to: date | None = None,
 ):
-    _require_viewer(request)
+    _require_global_viewer(request)
     try:
         return build_graduate_tracer_report(
             submitted_from=submitted_from,
@@ -249,7 +264,7 @@ def graduate_tracer_xlsx(
     submitted_from: date | None = None,
     submitted_to: date | None = None,
 ):
-    _require_viewer(request)
+    _require_global_viewer(request)
     try:
         result = render_graduate_tracer_xlsx(
             submitted_from=submitted_from,
