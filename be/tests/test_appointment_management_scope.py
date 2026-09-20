@@ -85,6 +85,20 @@ def make_service(actor: User):
     return set_service_active(service_id=service.pk, is_active=True, context=context(actor))
 
 
+def make_counseling_service(actor: User):
+    service = create_service(
+        code="COUNSELING",
+        name="Counseling",
+        appointment_policy="OPTIONAL",
+        default_duration_minutes=60,
+        cancellation_cutoff_minutes=30,
+        delivery_modes=["IN_PERSON"],
+        provider_roles=["COUNSELOR"],
+        context=context(actor),
+    )
+    return set_service_active(service_id=service.pk, is_active=True, context=context(actor))
+
+
 def make_college(code: str, *, campus_active: bool = True, college_active: bool = True):
     campus = Campus.objects.create(
         code=f"C-{code}",
@@ -271,7 +285,7 @@ def test_gss_scope_fails_closed_for_broken_or_inactive_supervision_chain():
 
 
 @pytest.mark.django_db
-def test_head_is_institution_wide_but_gss_supervised_by_head_is_not():
+def test_head_and_gss_supervised_by_head_are_institution_wide_for_ordinary_appointments():
     sync_policy()
     admin = make_user("headscope-admin@example.edu", "IT_ADMIN")
     provider = make_user("headscope-provider@example.edu", "COUNSELOR")
@@ -308,10 +322,127 @@ def test_head_is_institution_wide_but_gss_supervised_by_head_is_not():
         inside.pk,
         outside.pk,
     }
-    assert [row.pk for row in list_managed_appointments(actor=gss).items] == [inside.pk]
+    assert {row.pk for row in list_managed_appointments(actor=gss).items} == {
+        inside.pk,
+        outside.pk,
+    }
     assert get_appointment_for_actor(appointment_id=outside.pk, actor=head).pk == outside.pk
+    assert get_appointment_for_actor(appointment_id=outside.pk, actor=gss).pk == outside.pk
+
+
+@pytest.mark.django_db
+def test_counseling_appointment_is_relationship_only_across_list_get_filters_and_cancel():
+    sync_policy()
+    admin = make_user("privacy-admin@example.edu", "IT_ADMIN")
+    anna = make_user("anna@example.edu", "STUDENT")
+    counselor_a = make_user("privacy-counselor-a@example.edu", "COUNSELOR")
+    counselor_b = make_user("privacy-counselor-b@example.edu", "COUNSELOR")
+    head = make_user("privacy-head@example.edu", "COUNSELOR")
+    gss = make_user("privacy-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    UserDesignation.objects.create(
+        user=head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+    StaffSupervision.objects.create(staff=gss, supervisor=head)
+
+    cas = make_college("PRIV-CAS")
+    ccms = make_college("PRIV-CCMS")
+    affiliate(anna, cas)
+    CounselorResponsibility.objects.create(college=cas, counselor=counselor_a)
+    CounselorResponsibility.objects.create(college=ccms, counselor=counselor_b)
+    service = make_counseling_service(admin)
+    item = appointment(
+        reference="APT-2099-350001",
+        student=anna,
+        provider=counselor_b,
+        service=service,
+    )
+
+    student_client = auth_client(anna)
+    provider_client = auth_client(counselor_b, recent_mfa=True)
+    counselor_a_client = auth_client(counselor_a, recent_mfa=True)
+    head_client = auth_client(head, recent_mfa=True)
+    gss_client = auth_client(gss, recent_mfa=True)
+
+    own = student_client.get("/api/v1/appointments/me")
+    assert own.status_code == 200
+    assert [row["id"] for row in own.json()["items"]] == [str(item.pk)]
+    assert student_client.get(f"/api/v1/appointments/{item.pk}").status_code == 200
+
+    provider_list = provider_client.get("/api/v1/appointments")
+    assert provider_list.status_code == 200
+    assert [row["id"] for row in provider_list.json()["items"]] == [str(item.pk)]
+    assert provider_client.get(f"/api/v1/appointments/{item.pk}").status_code == 200
+
+    for client in (counselor_a_client, head_client, gss_client):
+        listed = client.get("/api/v1/appointments")
+        assert listed.status_code == 200
+        assert listed.json()["items"] == []
+        assert client.get(f"/api/v1/appointments/{item.pk}").status_code == 404
+
+    probed = counselor_a_client.get(
+        "/api/v1/appointments",
+        {"student_id": str(anna.pk), "service_id": str(service.pk), "search": "350001"},
+    )
+    assert probed.status_code == 200
+    assert probed.json()["items"] == []
+
+    for client in (counselor_a_client, head_client, gss_client):
+        denied = client.post(
+            f"/api/v1/appointments/{item.pk}/cancel",
+            data=json.dumps({}),
+            content_type="application/json",
+            **csrf(client),
+        )
+        assert denied.status_code == 404
+
+    item.refresh_from_db()
+    assert item.status == "SCHEDULED"
+
+    cancelled = provider_client.post(
+        f"/api/v1/appointments/{item.pk}/cancel",
+        data=json.dumps({}),
+        content_type="application/json",
+        **csrf(provider_client),
+    )
+    assert cancelled.status_code == 200
+    assert cancelled.json()["status"] == "CANCELLED"
+
+
+@pytest.mark.django_db
+def test_head_sees_counseling_appointment_only_when_head_is_selected_provider():
+    sync_policy()
+    admin = make_user("provider-head-admin@example.edu", "IT_ADMIN")
+    head = make_user("provider-head@example.edu", "COUNSELOR")
+    other = make_user("provider-other@example.edu", "COUNSELOR")
+    first_student = make_user("provider-head-student@example.edu", "STUDENT")
+    second_student = make_user("provider-other-student@example.edu", "STUDENT")
+    UserDesignation.objects.create(
+        user=head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+    college = make_college("PROVIDER-HEAD")
+    affiliate(first_student, college)
+    affiliate(second_student, college)
+    service = make_counseling_service(admin)
+    assigned = appointment(
+        reference="APT-2099-360001",
+        student=first_student,
+        provider=head,
+        service=service,
+    )
+    unrelated = appointment(
+        reference="APT-2099-360002",
+        student=second_student,
+        provider=other,
+        service=service,
+    )
+
+    rows = list_managed_appointments(actor=head).items
+    assert [row.pk for row in rows] == [assigned.pk]
+    assert get_appointment_for_actor(appointment_id=assigned.pk, actor=head).pk == assigned.pk
     with pytest.raises(AppointmentNotFound):
-        get_appointment_for_actor(appointment_id=outside.pk, actor=gss)
+        get_appointment_for_actor(appointment_id=unrelated.pk, actor=head)
 
 
 @pytest.mark.django_db

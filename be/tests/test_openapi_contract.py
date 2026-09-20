@@ -165,6 +165,11 @@ EXPECTED_OPERATION_IDS = {
     "counselingPublishAssignedSharedSummary",
     "counselingListMySharedSummaries",
     "counselingGetMySharedSummary",
+    "counselingContextGetOverview",
+    "counselingContextGetSupportIndicators",
+    "counselingContextGetInventory",
+    "counselingContextListHistory",
+    "counselingContextListSharedSummaries",
     "academicYearsList",
     "academicYearsCreate",
     "academicYearsSetCurrent",
@@ -299,6 +304,63 @@ def _response_statuses(operation: dict) -> set[int]:
     return {int(status) for status in operation["responses"]}
 
 
+PDF_DOWNLOAD_PATHS = (
+    "/api/v1/good-moral/me/{request_id}/pdf",
+    "/api/v1/good-moral/requests/{request_id}/pdf",
+    "/api/v1/reports/student-profile/pdf",
+)
+XLSX_DOWNLOAD_PATHS = (
+    "/api/v1/reports/student-profile/xlsx",
+    "/api/v1/reports/graduate-tracer/xlsx",
+)
+XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+BINARY_DOWNLOAD_ERROR_STATUSES = {
+    "/api/v1/good-moral/me/{request_id}/pdf": {401, 403, 404, 409, 503},
+    "/api/v1/good-moral/requests/{request_id}/pdf": {401, 403, 404, 409, 503},
+    "/api/v1/reports/student-profile/pdf": {401, 403, 404, 409, 422, 503},
+    "/api/v1/reports/student-profile/xlsx": {401, 403, 404, 409, 422, 503},
+    "/api/v1/reports/graduate-tracer/xlsx": {401, 403, 422, 503},
+}
+
+
+def test_binary_download_success_responses_are_explicitly_typed() -> None:
+    schema = _generated_schema()
+    binary_schema = {"type": "string", "format": "binary"}
+
+    for path in PDF_DOWNLOAD_PATHS:
+        response = _operation(schema, path, "get")["responses"]["200"]
+        assert response["content"]["application/pdf"]["schema"] == binary_schema
+
+    for path in XLSX_DOWNLOAD_PATHS:
+        response = _operation(schema, path, "get")["responses"]["200"]
+        assert response["content"][XLSX_CONTENT_TYPE]["schema"] == binary_schema
+
+
+def test_binary_download_contracts_preserve_typed_error_responses() -> None:
+    schema = _generated_schema()
+
+    for path, expected_statuses in BINARY_DOWNLOAD_ERROR_STATUSES.items():
+        operation = _operation(schema, path, "get")
+        assert expected_statuses <= _response_statuses(operation)
+        for status in expected_statuses:
+            response_schema = operation["responses"][str(status)]["content"]["application/json"][
+                "schema"
+            ]
+            assert response_schema["$ref"].endswith("/APIErrorResponse")
+
+
+def test_success_response_bodies_are_explicitly_documented() -> None:
+    schema = _generated_schema()
+
+    for method, path, operation in iter_operations(schema):
+        for status, response in operation["responses"].items():
+            code = int(status)
+            if 200 <= code < 300 and code != 204:
+                assert "content" in response, (
+                    f"{method.upper()} {path} has an undocumented {code} success response body"
+                )
+
+
 def test_generated_schema_matches_committed_contract() -> None:
     assert CONTRACT_PATH.is_file()
     committed = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
@@ -373,6 +435,39 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         and operation["tags"][0] in CURRENT_API_TAGS
         for _, _, operation in operations
     )
+
+
+def test_counseling_context_contract_is_anchor_based_and_read_only() -> None:
+    schema = _generated_schema()
+    expected = {
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}": "counselingContextGetOverview",
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/support-indicators": (
+            "counselingContextGetSupportIndicators"
+        ),
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/inventory": (
+            "counselingContextGetInventory"
+        ),
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/history": (
+            "counselingContextListHistory"
+        ),
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/shared-summaries": (
+            "counselingContextListSharedSummaries"
+        ),
+    }
+
+    for path, operation_id in expected.items():
+        assert set(schema["paths"][path]) == {"get"}
+        operation = _operation(schema, path, "get")
+        assert operation["operationId"] == operation_id
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        parameters = {parameter["name"] for parameter in operation["parameters"]}
+        assert {"anchor_type", "anchor_id"} <= parameters
+
+    assert "student_id" not in {
+        parameter["name"]
+        for path in expected
+        for parameter in _operation(schema, path, "get")["parameters"]
+    }
 
 
 def test_cookie_auth_and_public_csrf_contract_are_explicit() -> None:

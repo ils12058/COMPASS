@@ -8,15 +8,14 @@ from uuid import UUID
 from compass.accounts.models import User
 from compass.inventory.models import CivilStatusCategory, PWDStatus, StudentInventory
 from compass.organization.academic_years import get_current_academic_year
-from compass.organization.models import CounselorResponsibility, StudentAffiliation
+from compass.organization.access_scope import resolve_organizational_access_scope
+from compass.organization.models import StudentAffiliation
 from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
     ParentLifeStatus,
     StudentSupportProfile,
 )
-
-HEAD_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
 
 
 class StudentSupportError(RuntimeError):
@@ -56,10 +55,6 @@ _INDICATORS = (
 )
 
 
-def _is_head(actor: User) -> bool:
-    return actor.designations.filter(code=HEAD_DESIGNATION).exists()
-
-
 def _require_scoped_student(*, actor: User, student_id: UUID) -> User:
     student = (
         User.objects.select_related("role")
@@ -69,22 +64,16 @@ def _require_scoped_student(*, actor: User, student_id: UUID) -> User:
     if student is None:
         raise StudentSupportNotFound("The requested Student was not found.")
 
-    if _is_head(actor):
+    scope = resolve_organizational_access_scope(actor)
+    if scope.institution_wide:
         return student
-
-    affiliation = (
-        StudentAffiliation.objects.select_related("college__campus")
-        .filter(student_id=student.pk)
-        .first()
-    )
-    if affiliation is None:
+    if not scope.college_ids:
         raise StudentSupportNotFound("The requested Student was not found.")
-    college = affiliation.college
-    if not college.is_active or not college.campus.is_active:
-        raise StudentSupportNotFound("The requested Student was not found.")
-    if not CounselorResponsibility.objects.filter(
-        college_id=college.pk,
-        counselor_id=actor.pk,
+    if not StudentAffiliation.objects.filter(
+        student_id=student.pk,
+        college_id__in=scope.college_ids,
+        college__is_active=True,
+        college__campus__is_active=True,
     ).exists():
         raise StudentSupportNotFound("The requested Student was not found.")
     return student
@@ -114,11 +103,9 @@ def _indicator_rows(
     )
 
 
-def get_student_support_context(*, actor: User, student_id: UUID) -> StudentSupportContext:
-    if not actor.is_active or actor.role.code != "COUNSELOR":
-        raise StudentSupportNotFound("The requested Student was not found.")
+def build_student_support_context(*, student: User) -> StudentSupportContext:
+    """Build the canonical factual projection after the caller has authorized the Student."""
 
-    student = _require_scoped_student(actor=actor, student_id=student_id)
     academic_year = get_current_academic_year()
     if academic_year is None:
         raise StudentSupportConfigurationConflict("No current Academic Year is configured.")
@@ -143,11 +130,20 @@ def get_student_support_context(*, actor: User, student_id: UUID) -> StudentSupp
     )
 
 
+def get_student_support_context(*, actor: User, student_id: UUID) -> StudentSupportContext:
+    if not actor.is_active or actor.role.code != "COUNSELOR":
+        raise StudentSupportNotFound("The requested Student was not found.")
+
+    student = _require_scoped_student(actor=actor, student_id=student_id)
+    return build_student_support_context(student=student)
+
+
 __all__ = [
     "StudentSupportConfigurationConflict",
     "StudentSupportContext",
     "StudentSupportError",
     "StudentSupportNotFound",
     "SupportIndicator",
+    "build_student_support_context",
     "get_student_support_context",
 ]

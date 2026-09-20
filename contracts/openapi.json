@@ -2767,6 +2767,356 @@
         "title": "ConsentResponse",
         "type": "object"
       },
+      "ContextAcademicYearResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "ContextAcademicYearResponse",
+        "type": "object"
+      },
+      "ContextEncounterResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "started_at",
+          "ended_at"
+        ],
+        "title": "ContextEncounterResponse",
+        "type": "object"
+      },
+      "ContextHistoryItemResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Mode"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContextIdentityResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Code"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "occurred_at",
+          "title",
+          "status",
+          "reference_code",
+          "delivery_mode",
+          "provider"
+        ],
+        "title": "ContextHistoryItemResponse",
+        "type": "object"
+      },
+      "ContextIdentityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "ContextIdentityResponse",
+        "type": "object"
+      },
+      "ContextOrganizationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "ContextOrganizationResponse",
+        "type": "object"
+      },
+      "ContextProgramResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "ContextProgramResponse",
+        "type": "object"
+      },
+      "ContextRoutineInterviewResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "entry_mode": {
+            "title": "Entry Mode",
+            "type": "string"
+          },
+          "evaluation_status": {
+            "title": "Evaluation Status",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intake_status": {
+            "title": "Intake Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "entry_mode",
+          "intake_status",
+          "evaluation_status"
+        ],
+        "title": "ContextRoutineInterviewResponse",
+        "type": "object"
+      },
+      "ContextSharedSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "counseling_ended_at": {
+            "format": "date-time",
+            "title": "Counseling Ended At",
+            "type": "string"
+          },
+          "counselor": {
+            "$ref": "#/components/schemas/ContextIdentityResponse"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "content",
+          "published_at",
+          "counseling_ended_at",
+          "counselor"
+        ],
+        "title": "ContextSharedSummaryResponse",
+        "type": "object"
+      },
+      "ContextStudentOverviewResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "campus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContextOrganizationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContextOrganizationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          },
+          "program": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContextProgramResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "year_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
+          }
+        },
+        "required": [
+          "id",
+          "institutional_id",
+          "display_name",
+          "campus",
+          "college",
+          "program",
+          "year_level"
+        ],
+        "title": "ContextStudentOverviewResponse",
+        "type": "object"
+      },
+      "ContextSupportIndicatorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "ContextSupportIndicatorResponse",
+        "type": "object"
+      },
       "CounselingAssignedSharedSummaryResponse": {
         "additionalProperties": false,
         "properties": {
@@ -2816,6 +3166,201 @@
           "updated_at"
         ],
         "title": "CounselingAssignedSharedSummaryResponse",
+        "type": "object"
+      },
+      "CounselingContextAnchorType": {
+        "enum": [
+          "APPOINTMENT",
+          "ROUTINE_INTERVIEW"
+        ],
+        "title": "CounselingContextAnchorType",
+        "type": "string"
+      },
+      "CounselingContextHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContextHistoryItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "limit"
+        ],
+        "title": "CounselingContextHistoryResponse",
+        "type": "object"
+      },
+      "CounselingContextInventoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "inventory": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorInventoryDetailResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inventory_source_status": {
+            "$ref": "#/components/schemas/CounselingContextInventoryStatus"
+          }
+        },
+        "required": [
+          "inventory_source_status",
+          "available",
+          "inventory"
+        ],
+        "title": "CounselingContextInventoryResponse",
+        "type": "object"
+      },
+      "CounselingContextInventoryStatus": {
+        "enum": [
+          "MISSING",
+          "DRAFT",
+          "SUBMITTED"
+        ],
+        "title": "CounselingContextInventoryStatus",
+        "type": "string"
+      },
+      "CounselingContextOverviewResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "available_sections": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Available Sections",
+            "type": "array"
+          },
+          "delivery_mode": {
+            "title": "Delivery Mode",
+            "type": "string"
+          },
+          "entry_mode": {
+            "title": "Entry Mode",
+            "type": "string"
+          },
+          "matching_encounter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContextEncounterResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "routine_interview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContextRoutineInterviewResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "source_type": {
+            "$ref": "#/components/schemas/CounselingContextAnchorType"
+          },
+          "student": {
+            "$ref": "#/components/schemas/ContextStudentOverviewResponse"
+          },
+          "valid_from": {
+            "format": "date-time",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_until": {
+            "format": "date-time",
+            "title": "Valid Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student",
+          "source_type",
+          "source_id",
+          "entry_mode",
+          "delivery_mode",
+          "valid_from",
+          "valid_until",
+          "routine_interview",
+          "matching_encounter",
+          "available_sections"
+        ],
+        "title": "CounselingContextOverviewResponse",
+        "type": "object"
+      },
+      "CounselingContextSharedSummariesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContextSharedSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "limit"
+        ],
+        "title": "CounselingContextSharedSummariesResponse",
+        "type": "object"
+      },
+      "CounselingContextSupportResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/ContextAcademicYearResponse"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/ContextSupportIndicatorResponse"
+            },
+            "title": "Indicators",
+            "type": "array"
+          },
+          "inventory_source_status": {
+            "$ref": "#/components/schemas/CounselingContextInventoryStatus"
+          }
+        },
+        "required": [
+          "academic_year",
+          "inventory_source_status",
+          "available",
+          "indicators"
+        ],
+        "title": "CounselingContextSupportResponse",
         "type": "object"
       },
       "CounselingCreateRequest": {
@@ -24103,6 +24648,481 @@
         ]
       }
     },
+    "/api/v1/counseling/context/{anchor_type}/{anchor_id}": {
+      "get": {
+        "operationId": "counselingContextGetOverview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "anchor_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "APPOINTMENT",
+                "ROUTINE_INTERVIEW"
+              ],
+              "title": "CounselingContextAnchorType",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "anchor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Anchor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingContextOverviewResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Context Get Overview",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/context/{anchor_type}/{anchor_id}/history": {
+      "get": {
+        "operationId": "counselingContextListHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "anchor_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "APPOINTMENT",
+                "ROUTINE_INTERVIEW"
+              ],
+              "title": "CounselingContextAnchorType",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "anchor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Anchor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingContextHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Context List History",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/context/{anchor_type}/{anchor_id}/inventory": {
+      "get": {
+        "operationId": "counselingContextGetInventory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "anchor_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "APPOINTMENT",
+                "ROUTINE_INTERVIEW"
+              ],
+              "title": "CounselingContextAnchorType",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "anchor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Anchor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingContextInventoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Context Get Inventory",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/context/{anchor_type}/{anchor_id}/shared-summaries": {
+      "get": {
+        "operationId": "counselingContextListSharedSummaries",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "anchor_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "APPOINTMENT",
+                "ROUTINE_INTERVIEW"
+              ],
+              "title": "CounselingContextAnchorType",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "anchor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Anchor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingContextSharedSummariesResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Context List Shared Summaries",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/context/{anchor_type}/{anchor_id}/support-indicators": {
+      "get": {
+        "operationId": "counselingContextGetSupportIndicators",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "anchor_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "APPOINTMENT",
+                "ROUTINE_INTERVIEW"
+              ],
+              "title": "CounselingContextAnchorType",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "anchor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Anchor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingContextSupportResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Context Get Support Indicators",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
     "/api/v1/counseling/encounters": {
       "post": {
         "operationId": "counselingCreateEncounter",
@@ -27937,6 +28957,14 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
             "description": "OK"
           },
           "401": {
@@ -28411,6 +29439,14 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
             "description": "OK"
           },
           "401": {
@@ -36085,6 +37121,14 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
             "description": "OK"
           },
           "401": {
@@ -36392,6 +37436,14 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
             "description": "OK"
           },
           "401": {
@@ -36557,6 +37609,14 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
             "description": "OK"
           },
           "401": {

@@ -29,6 +29,7 @@ class NotificationEvent(StrEnum):
     EXIT_INTERVIEW_REOPENED = "exit_interview.reopened"
     INVENTORY_REOPENED = "inventory.reopened"
     COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
+    ROUTINE_INTERVIEW_INTAKE_READY = "routine_interview.intake_ready"
     ECOUNSELING_CONSENT_REQUESTED = "ecounseling.consent.requested"
     FEEDBACK_INVITATION = "feedback.invitation"
     SECURITY_PASSWORD_RESET = "security.password.reset"
@@ -50,6 +51,7 @@ class NotificationEventDefinition:
     email_template: str
 
 
+_IN_APP_ONLY = frozenset({NotificationChannel.IN_APP})
 _EMAIL_CHANNELS = frozenset({NotificationChannel.IN_APP, NotificationChannel.EMAIL})
 
 
@@ -128,6 +130,18 @@ _EVENT_CATALOG = {
         message="A Counseling Shared Summary is now available in COMPASS. Sign in to review it.",
         email_subject="COMPASS Counseling Shared Summary Available",
         email_template="counseling_shared_summary_published",
+    ),
+    NotificationEvent.ROUTINE_INTERVIEW_INTAKE_READY: NotificationEventDefinition(
+        event=NotificationEvent.ROUTINE_INTERVIEW_INTAKE_READY,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Routine Interview Intake Ready",
+        message=(
+            "Your Routine Interview intake is ready. "
+            "Sign in to COMPASS to complete it before continuing."
+        ),
+        email_subject="",
+        email_template="",
     ),
     NotificationEvent.ECOUNSELING_CONSENT_REQUESTED: NotificationEventDefinition(
         event=NotificationEvent.ECOUNSELING_CONSENT_REQUESTED,

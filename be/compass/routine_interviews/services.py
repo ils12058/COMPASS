@@ -36,12 +36,15 @@ from compass.inventory.services import (
     InventoryConflict,
     require_current_submitted_inventory,
 )
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 from compass.service_catalog.models import DeliveryMode
 from compass.service_catalog.services import (
     provider_role_eligible,
     service_supports_delivery_mode,
 )
 
+from .matching import RoutineEncounterMatchIssue, routine_interview_encounter_match_issue
 from .models import RoutineConcern, RoutineInterview
 
 ROUTINE_FORM_FAMILY_KEY = "routine_interview"
@@ -450,6 +453,14 @@ def create_direct(
             target_id=item.pk,
             metadata=_safe_creation_metadata(item_for_audit),
         )
+        create_notification_for_event(
+            recipient=student,
+            event=NotificationEvent.ROUTINE_INTERVIEW_INTAKE_READY,
+            source_type="routine_interview",
+            source_id=item.pk,
+            target_type="ROUTINE_INTERVIEW",
+            target_id=item.pk,
+        )
         return _queryset().get(pk=item.pk)
 
 
@@ -729,45 +740,40 @@ def replace_assigned_evaluation(
 
 
 def _validate_encounter_match(*, item: RoutineInterview, encounter: CounselingEncounter) -> None:
-    if encounter.student_id != item.student_id:
-        raise RoutineInterviewEncounterMismatch(
-            "The Counseling Encounter belongs to another Student."
-        )
-    if encounter.counselor_id != item.counselor_id:
-        raise RoutineInterviewEncounterMismatch(
+    issue = routine_interview_encounter_match_issue(item=item, encounter=encounter)
+    messages = {
+        RoutineEncounterMatchIssue.STUDENT: "The Counseling Encounter belongs to another Student.",
+        RoutineEncounterMatchIssue.COUNSELOR: (
             "The Counseling Encounter belongs to another Counselor."
-        )
-    if encounter.service.code != "COUNSELING":
-        raise RoutineInterviewEncounterMismatch(
+        ),
+        RoutineEncounterMatchIssue.SERVICE: (
             "The Counseling Encounter does not use the canonical COUNSELING Service."
-        )
-    if encounter.delivery_mode != item.delivery_mode:
-        raise RoutineInterviewEncounterMismatch(
+        ),
+        RoutineEncounterMatchIssue.DELIVERY_MODE: (
             "The Counseling Encounter delivery mode does not match the Routine Interview."
-        )
-    if encounter.ended_at > timezone.now():
-        raise RoutineInterviewEncounterMismatch(
+        ),
+        RoutineEncounterMatchIssue.NOT_COMPLETED: (
             "The Counseling Encounter must represent a completed interaction."
-        )
-
-    if item.appointment_id is not None:
-        if encounter.entry_mode != CounselingEntryMode.APPOINTMENT:
+        ),
+    }
+    if issue == RoutineEncounterMatchIssue.ENTRY_MODE:
+        if item.appointment_id is not None:
             raise RoutineInterviewEncounterMismatch(
                 "An Appointment-backed Routine Interview requires an APPOINTMENT Encounter."
             )
-        if encounter.appointment_id != item.appointment_id:
-            raise RoutineInterviewEncounterMismatch(
-                "The Counseling Encounter Appointment does not match the Routine Interview."
-            )
-    else:
-        if encounter.appointment_id is not None:
+        raise RoutineInterviewEncounterMismatch(
+            "The Counseling Encounter entry mode does not match the Routine Interview."
+        )
+    if issue == RoutineEncounterMatchIssue.APPOINTMENT:
+        if item.appointment_id is None:
             raise RoutineInterviewEncounterMismatch(
                 "A direct Routine Interview cannot link an Appointment-backed Encounter."
             )
-        if encounter.entry_mode != item.entry_mode:
-            raise RoutineInterviewEncounterMismatch(
-                "The Counseling Encounter entry mode does not match the Routine Interview."
-            )
+        raise RoutineInterviewEncounterMismatch(
+            "The Counseling Encounter Appointment does not match the Routine Interview."
+        )
+    if issue is not None:
+        raise RoutineInterviewEncounterMismatch(messages[issue])
 
 
 def finalize_assigned_evaluation(

@@ -16,6 +16,7 @@ from compass.availability.api import router as availability_router
 from compass.call_slips.api import router as call_slips_router
 from compass.common.errors import register_exception_handlers
 from compass.counseling.api import router as counseling_router
+from compass.counseling.context_api import router as counseling_context_router
 from compass.documents.api import router as document_branding_router
 from compass.ecounseling.api import daily_router
 from compass.ecounseling.api import router as ecounseling_router
@@ -191,6 +192,7 @@ api.add_router("/services", service_catalog_router)
 api.add_router("/availability", availability_router)
 api.add_router("/appointments", appointments_router)
 api.add_router("/counseling", counseling_router)
+api.add_router("/counseling/context", counseling_context_router)
 api.add_router("/academic-years", academic_years_router)
 api.add_router("/institutional-forms", institutional_forms_router)
 api.add_router("/inventory", inventory_router)

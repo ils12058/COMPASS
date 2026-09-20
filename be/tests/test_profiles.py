@@ -20,6 +20,11 @@ from compass.accounts.models import (
     User,
     UserDesignation,
 )
+from compass.accounts.policy import (
+    CAPABILITY_DEFINITIONS,
+    DESIGNATION_CAPABILITY_GRANTS,
+    ROLE_CAPABILITY_GRANTS,
+)
 from compass.accounts.profiles import (
     ADDRESS_MAX_LENGTH,
     PersonProfileContext,
@@ -130,9 +135,13 @@ def test_user_directly_owns_minimal_reusable_profile_fields_without_personalprof
 @pytest.mark.django_db
 def test_profile_foundation_tracks_current_capability_policy_counts():
     sync_policy()
-    assert Capability.objects.count() == 63
-    assert RoleCapability.objects.count() == 67
-    assert DesignationCapability.objects.count() == 18
+    assert Capability.objects.count() == len(CAPABILITY_DEFINITIONS)
+    assert RoleCapability.objects.count() == sum(
+        len(capabilities) for capabilities in ROLE_CAPABILITY_GRANTS.values()
+    )
+    assert DesignationCapability.objects.count() == sum(
+        len(capabilities) for capabilities in DESIGNATION_CAPABILITY_GRANTS.values()
+    )
     assert not Capability.objects.filter(code__startswith="profile.").exists()
 
 

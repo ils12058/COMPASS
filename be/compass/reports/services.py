@@ -32,13 +32,8 @@ from compass.inventory.services import (
     derive_age_on,
 )
 from compass.organization.academic_years import AcademicYearConflict, require_current_academic_year
-from compass.organization.models import (
-    AcademicYear,
-    Campus,
-    College,
-    CounselorResponsibility,
-    Program,
-)
+from compass.organization.access_scope import resolve_organizational_access_scope
+from compass.organization.models import AcademicYear, Campus, College, Program
 from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
 
 LEGACY_KEY = "NOT_RECORDED_LEGACY"
@@ -88,9 +83,6 @@ class ReportAccessDenied(ReportError):
     pass
 
 
-HEAD_GUIDANCE_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
-
-
 @dataclass(frozen=True, slots=True)
 class ReportAccessScope:
     is_global: bool
@@ -126,23 +118,13 @@ def resolve_report_access_scope(actor: User) -> ReportAccessScope:
         raise ReportAccessDenied("Aggregate report access is required.")
     if actor.role.code != "COUNSELOR":
         raise ReportAccessDenied("The authenticated actor has no supported report resource scope.")
-    if actor.designations.filter(code=HEAD_GUIDANCE_DESIGNATION).exists():
-        return GLOBAL_REPORT_ACCESS_SCOPE
 
-    college_ids = tuple(
-        CounselorResponsibility.objects.filter(
-            counselor_id=actor.pk,
-            counselor__is_active=True,
-            counselor__role__code="COUNSELOR",
-            college__is_active=True,
-            college__campus__is_active=True,
-        )
-        .order_by("college_id")
-        .values_list("college_id", flat=True)
-    )
-    if not college_ids:
+    scope = resolve_organizational_access_scope(actor)
+    if scope.institution_wide:
+        return GLOBAL_REPORT_ACCESS_SCOPE
+    if not scope.college_ids:
         raise ReportAccessDenied("No active Counselor report scope is assigned.")
-    return ReportAccessScope(is_global=False, college_ids=college_ids)
+    return ReportAccessScope(is_global=False, college_ids=scope.college_ids)
 
 
 def _report_access_scope_note(access_scope: ReportAccessScope) -> str:

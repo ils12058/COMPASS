@@ -883,7 +883,9 @@ def _history_item(item) -> dict[str, object]:
     }
 
 
-def _counselor_detail(item) -> dict[str, object]:
+def counselor_inventory_detail_payload(item) -> dict[str, object]:
+    """Serialize the canonical full read-only Counselor Inventory detail shape."""
+
     return {**_inventory(item), "student": _student_summary(item.student)}
 
 
@@ -1091,7 +1093,7 @@ def inventory_list_student_history(request, student_id: UUID):
 def inventory_get_record(request, inventory_id: UUID):
     _require_counselor(request, "inventory.view")
     try:
-        return _counselor_detail(
+        return counselor_inventory_detail_payload(
             get_inventory_for_counselor(actor=request.auth_user, inventory_id=inventory_id)
         )
     except InventoryError as exc:
