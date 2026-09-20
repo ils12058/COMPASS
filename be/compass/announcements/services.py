@@ -156,9 +156,7 @@ def list_managed_announcements(
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> AnnouncementPage:
-    queryset = Announcement.objects.select_related(
-        "created_by", "updated_by", "published_by"
-    ).all()
+    queryset = Announcement.objects.select_related("created_by", "updated_by", "published_by").all()
     if status is not None:
         if status not in PublicationStatus.values:
             raise InvalidAnnouncementInput("status is invalid")
