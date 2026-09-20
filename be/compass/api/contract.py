@@ -10,6 +10,7 @@ OPENAPI_VERSION = "3.1.0"
 CURRENT_API_TAGS = frozenset(
     {
         "health",
+        "metadata",
         "auth",
         "activity",
         "profile",
@@ -41,6 +42,7 @@ CURRENT_API_TAGS = frozenset(
 OPERATION_ID_PATTERN = re.compile(r"^[a-z][A-Za-z0-9]*$", re.ASCII)
 OPERATION_ID_PREFIXES = {
     "health": "health",
+    "metadata": "system",
     "auth": "auth",
     "activity": "me",
     "profile": "profile",
