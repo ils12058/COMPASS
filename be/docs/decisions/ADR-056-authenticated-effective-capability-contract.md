@@ -65,6 +65,20 @@ runtime serializer filters designations through canonical designation codes and 
 capabilities from the canonical capability resolver. This avoids introducing a second hard-coded
 policy list or a broader enum/code-generation refactor solely for this contract.
 
+## Managed-account access inspector
+
+Account managers with `accounts.manage` may inspect another managed account through the read-only
+`GET /api/v1/accounts/{user_id}/access` endpoint. It complements the authenticated user's own
+`/api/v1/auth/session` capability summary.
+
+For every canonical capability, the inspector's final `effective` value comes directly from
+`effective_capabilities(user)`. Role and Designation grant maps are exposed only as explanatory
+baseline provenance, and explicit per-user overrides are shown as administrative context.
+
+The inspector deliberately excludes resource scope, record-level eligibility, and frontend UI
+configuration. Capability-override mutation remains separate and retains its existing recent-MFA,
+validation, audit, notification, and safety requirements.
+
 ## Consequences
 
 No model/schema migration and no identity-policy grant change is introduced.
