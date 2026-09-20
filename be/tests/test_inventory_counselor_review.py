@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+from datetime import timedelta
 
 import pytest
 from django.apps import apps
@@ -10,6 +11,7 @@ from django.test import Client
 from django.utils import timezone
 
 from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.appointments.models import Appointment
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
@@ -31,7 +33,8 @@ from compass.organization.models import (
     StudentAffiliation,
 )
 from compass.reports.services import build_student_profiling_report, resolve_report_access_scope
-from compass.student_support.services import get_student_support_context
+from compass.service_catalog.services import create_service, set_service_active
+from compass.student_support.services import StudentSupportNotFound, get_student_support_context
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
@@ -362,6 +365,48 @@ def test_inventory_roster_scope_missing_filters_search_and_draft_privacy():
     }
 
     assert current.is_current is True
+
+
+@pytest.mark.django_db
+def test_cross_scope_counseling_assignment_does_not_expand_inventory_or_support_access():
+    sync_policy()
+    admin = make_user("assignment-admin@example.edu", "IT_ADMIN")
+    counselor = make_user("assignment-counselor@example.edu", "COUNSELOR")
+    student = make_user("assignment-student@example.edu", "STUDENT")
+    _, student_college, student_program = make_org("ASSIGN-STUDENT")
+    _, counselor_college, _ = make_org("ASSIGN-COUNSELOR")
+    affiliate(student, student_college)
+    CounselorResponsibility.objects.create(college=counselor_college, counselor=counselor)
+    configure_year(admin)
+    inventory = submit_inventory(student=student, program=student_program)
+
+    service = create_service(
+        code="COUNSELING",
+        name="Counseling",
+        appointment_policy="OPTIONAL",
+        default_duration_minutes=60,
+        cancellation_cutoff_minutes=30,
+        delivery_modes=["IN_PERSON"],
+        provider_roles=["COUNSELOR"],
+        context=context(admin),
+    )
+    service = set_service_active(service_id=service.pk, is_active=True, context=context(admin))
+    start = timezone.now() + timedelta(days=2)
+    Appointment.objects.create(
+        reference_code="APT-2099-990001",
+        student=student,
+        provider=counselor,
+        service=service,
+        delivery_mode="IN_PERSON",
+        starts_at=start,
+        ends_at=start + timedelta(hours=1),
+        cancellation_cutoff_minutes=30,
+        created_by=student,
+    )
+
+    assert auth_client(counselor).get(f"/api/v1/inventory/records/{inventory.pk}").status_code == 404
+    with pytest.raises(StudentSupportNotFound):
+        get_student_support_context(actor=counselor, student_id=student.pk)
 
 
 @pytest.mark.django_db
