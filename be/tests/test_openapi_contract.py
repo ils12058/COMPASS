@@ -21,6 +21,7 @@ CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
     "healthLive",
+    "systemMetadata",
     "healthReady",
     "platformOperationsHealth",
     "platformOperationsEnvironment",
@@ -312,6 +313,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
     assert all("compass" not in operation_id.lower() for operation_id in operation_ids)
     assert [tag["name"] for tag in schema["tags"]] == [
         "health",
+        "metadata",
         "auth",
         "activity",
         "profile",
@@ -368,6 +370,12 @@ def test_cookie_auth_and_public_csrf_contract_are_explicit() -> None:
 
     health_live = _operation(schema, "/api/v1/health/live", "get")
     assert "security" not in health_live
+    metadata = _operation(schema, "/api/v1/meta", "get")
+    assert metadata["operationId"] == "systemMetadata"
+    assert "security" not in metadata
+    assert metadata["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/SystemMetadataResponse"
+    )
     daily_webhook = _operation(schema, "/api/v1/integrations/daily/webhook", "post")
     assert "security" not in daily_webhook
 
@@ -386,6 +394,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     expected_schemas = {
         "APIErrorDetail",
         "APIErrorResponse",
+        "SystemMetadataResponse",
         "ValidationIssue",
         "AccountCreateRequest",
         "AccountDetailResponse",
