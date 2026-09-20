@@ -1353,7 +1353,12 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "SUNDAY",
     ]
     assert schemas["AvailabilityModeScope"]["enum"] == ["ALL", "IN_PERSON", "ONLINE"]
-    assert schemas["AppointmentStatus"]["enum"] == ["SCHEDULED", "CANCELLED"]
+    assert schemas["AppointmentStatus"]["enum"] == [
+        "SCHEDULED",
+        "CANCELLED",
+        "COMPLETED",
+        "NO_SHOW",
+    ]
     assert schemas["CounselingEntryMode"]["enum"] == [
         "APPOINTMENT",
         "WALK_IN",

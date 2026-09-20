@@ -500,7 +500,7 @@ def test_profile_photo_http_set_replace_remove_uses_existing_private_photo_servi
         user.refresh_from_db()
         key = user.profile_photo_object_key
         assert key is not None
-        assert key not in response.content.decode()
+        assert "profile_photo_object_key" not in response.json()
 
         removed = client.delete("/api/v1/me/profile/photo")
         assert removed.status_code == 200

@@ -613,6 +613,20 @@ def test_concurrent_head_creations_allocate_unique_referral_references():
     student_b = make_user("student.b@example.edu", "STUDENT")
     now = timezone.now()
 
+    family, _ = FormFamily.objects.get_or_create(
+        key="referral_slip",
+        defaults={"title": "Referral Slip"},
+    )
+    FormRevision.objects.get_or_create(
+        family=family,
+        official_code="CNSC-OP-GTA-01F9",
+        official_revision="1",
+        defaults={
+            "internal_schema_version": 1,
+            "status": "ACTIVE",
+        },
+    )
+
     def worker(actor_id, student_id, key, fingerprint):
         close_old_connections()
         try:
