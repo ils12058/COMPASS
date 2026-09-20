@@ -83,6 +83,7 @@ EXPECTED_OPERATION_IDS = {
     "accountsCreate",
     "accountsImportCsv",
     "accountsGet",
+    "accountsGetEffectiveAccess",
     "accountsUpdateIdentity",
     "accountsRequestEmailChange",
     "accountsDisable",
@@ -547,6 +548,29 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         )["operationId"]
         == "accountsUpdateStudentLifecycle"
     )
+    access_operation = _operation(schema, "/api/v1/accounts/{user_id}/access", "get")
+    assert access_operation["operationId"] == "accountsGetEffectiveAccess"
+    assert _response_statuses(access_operation) >= {200, 401, 403, 404, 422}
+    access_schema = schemas["AccountEffectiveAccessResponse"]["properties"]
+    assert access_schema["role"]["$ref"].endswith("/RoleCode")
+    assert access_schema["designations"]["items"]["$ref"].endswith("/DesignationCode")
+    assert access_schema["effective_capabilities"]["items"]["$ref"].endswith("/CapabilityCode")
+    assert access_schema["capabilities"]["items"]["$ref"].endswith("/AccessCapabilityResponse")
+    assert schemas["AccessSourceType"]["enum"] == ["ROLE", "DESIGNATION"]
+    access_capability = schemas["AccessCapabilityResponse"]["properties"]
+    assert access_capability["code"]["$ref"].endswith("/CapabilityCode")
+    assert access_capability["effective"]["type"] == "boolean"
+    assert access_capability["baseline_sources"]["type"] == "array"
+    assert {
+        "college_ids",
+        "campus_ids",
+        "student_ids",
+        "program_ids",
+        "resource_scope",
+        "global_access",
+        "authorized_records",
+    }.isdisjoint(access_schema)
+
     assert schemas["AccountListResponse"]["properties"]["items"]["type"] == "array"
     assert schemas["APIErrorResponse"]["properties"]["error"]["$ref"].endswith("/APIErrorDetail")
     assert schemas["APIErrorDetail"]["properties"]["details"]["anyOf"]
@@ -1079,6 +1103,13 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         503,
     }
     assert _response_statuses(_operation(schema, "/api/v1/accounts/{user_id}", "get")) >= {
+        200,
+        401,
+        403,
+        404,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/accounts/{user_id}/access", "get")) >= {
         200,
         401,
         403,

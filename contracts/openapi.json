@@ -163,6 +163,162 @@
         "title": "AcademicYearSummary",
         "type": "object"
       },
+      "AccessAccountResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "is_active"
+        ],
+        "title": "AccessAccountResponse",
+        "type": "object"
+      },
+      "AccessBaselineSourceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/AccessSourceType"
+          }
+        },
+        "required": [
+          "type",
+          "code"
+        ],
+        "title": "AccessBaselineSourceResponse",
+        "type": "object"
+      },
+      "AccessCapabilityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "baseline_sources": {
+            "items": {
+              "$ref": "#/components/schemas/AccessBaselineSourceResponse"
+            },
+            "title": "Baseline Sources",
+            "type": "array"
+          },
+          "code": {
+            "$ref": "#/components/schemas/CapabilityCode"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "effective": {
+            "title": "Effective",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "override": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AccessOverrideResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "description",
+          "effective",
+          "baseline_sources",
+          "override"
+        ],
+        "title": "AccessCapabilityResponse",
+        "type": "object"
+      },
+      "AccessOverrideResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CapabilityOverrideCreatorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effect": {
+            "$ref": "#/components/schemas/Effect"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effect",
+          "reason",
+          "expires_at",
+          "created_at",
+          "created_by",
+          "active"
+        ],
+        "title": "AccessOverrideResponse",
+        "type": "object"
+      },
+      "AccessSourceType": {
+        "enum": [
+          "ROLE",
+          "DESIGNATION"
+        ],
+        "title": "AccessSourceType",
+        "type": "string"
+      },
       "AccountCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -334,6 +490,47 @@
           "mfa_enabled"
         ],
         "title": "AccountDetailResponse",
+        "type": "object"
+      },
+      "AccountEffectiveAccessResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/AccessAccountResponse"
+          },
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/AccessCapabilityResponse"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "designations": {
+            "items": {
+              "$ref": "#/components/schemas/DesignationCode"
+            },
+            "title": "Designations",
+            "type": "array"
+          },
+          "effective_capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/CapabilityCode"
+            },
+            "title": "Effective Capabilities",
+            "type": "array"
+          },
+          "role": {
+            "$ref": "#/components/schemas/RoleCode"
+          }
+        },
+        "required": [
+          "account",
+          "role",
+          "designations",
+          "effective_capabilities",
+          "capabilities"
+        ],
+        "title": "AccountEffectiveAccessResponse",
         "type": "object"
       },
       "AccountListResponse": {
@@ -17367,6 +17564,84 @@
           }
         ],
         "summary": "Inspect a managed account",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/v1/accounts/{user_id}/access": {
+      "get": {
+        "operationId": "accountsGetEffectiveAccess",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountEffectiveAccessResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inspect managed account effective access",
         "tags": [
           "accounts"
         ]

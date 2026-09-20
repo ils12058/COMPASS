@@ -1,6 +1,7 @@
 import json
 from datetime import timedelta
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 from cryptography.fernet import Fernet
@@ -12,11 +13,18 @@ from compass.accounts.models import (
     Capability,
     Designation,
     Role,
+    RoleCapability,
     StudentLifecycleStatus,
     User,
     UserCapabilityOverride,
     UserDesignation,
 )
+from compass.accounts.policy import (
+    CAPABILITY_DEFINITIONS,
+    DESIGNATION_CAPABILITY_GRANTS,
+    ROLE_CAPABILITY_GRANTS,
+)
+from compass.accounts.services import effective_capabilities
 from compass.appointments.models import Appointment
 from compass.audit.models import AuditEvent
 from compass.authentication.crypto import encrypt_totp_secret
@@ -613,6 +621,180 @@ def test_effective_manage_override_authorizes_without_role_shortcut():
     client.cookies["compass_session"] = issued.token
     response = client.get("/api/v1/accounts")
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_effective_access_inspector_requires_manage_but_not_recent_mfa():
+    sync_policy()
+    manager = make_user(email="access-manager@example.edu", role="IT_ADMIN")
+    issued = create_auth_session(manager)
+    client = Client()
+    client.cookies["compass_session"] = issued.token
+    target = make_user(email="access-target@example.edu", role="COUNSELOR")
+
+    allowed = client.get(f"/api/v1/accounts/{target.pk}/access")
+    assert allowed.status_code == 200
+
+    unauthenticated = Client().get(f"/api/v1/accounts/{target.pk}/access")
+    assert unauthenticated.status_code == 401
+
+    student = make_user(email="access-student@example.edu")
+    student_session = create_auth_session(student)
+    student_client = Client()
+    student_client.cookies["compass_session"] = student_session.token
+    forbidden = student_client.get(f"/api/v1/accounts/{target.pk}/access")
+    assert forbidden.status_code == 403
+
+    missing = client.get(f"/api/v1/accounts/{uuid4()}/access")
+    assert missing.status_code == 404
+
+
+@pytest.mark.django_db
+def test_effective_access_inspector_uses_canonical_truth_and_explains_provenance():
+    sync_policy()
+    client, admin, _session = make_admin_client()
+    target = make_user(email="access-counselor@example.edu", role="COUNSELOR")
+    head = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    UserDesignation.objects.create(user=target, designation=head)
+
+    UserCapabilityOverride.objects.create(
+        user=target,
+        capability=Capability.objects.get(code="inventory.reopen"),
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Temporary separation of duties",
+        created_by=admin,
+    )
+    UserCapabilityOverride.objects.create(
+        user=target,
+        capability=Capability.objects.get(code="platform_operations.view"),
+        effect=UserCapabilityOverride.Effect.GRANT,
+        reason="Temporary diagnostic coverage",
+        created_by=admin,
+    )
+    UserCapabilityOverride.objects.create(
+        user=target,
+        capability=Capability.objects.get(code="reports.view"),
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Expired historical exception",
+        expires_at=timezone.now() - timedelta(minutes=1),
+        created_by=admin,
+    )
+    unknown = Capability.objects.create(
+        code="accounts.future",
+        name="Unknown future capability",
+    )
+    RoleCapability.objects.create(role=target.role, capability=unknown)
+
+    response = client.get(f"/api/v1/accounts/{target.pk}/access")
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["account"] == {
+        "id": str(target.pk),
+        "email": target.email,
+        "full_name": target.get_full_name(),
+        "is_active": True,
+    }
+    assert body["role"] == "COUNSELOR"
+    assert body["designations"] == ["HEAD_GUIDANCE_COUNSELOR"]
+    assert body["effective_capabilities"] == sorted(effective_capabilities(target))
+    assert body["effective_capabilities"] == sorted(set(body["effective_capabilities"]))
+
+    canonical_codes = sorted(definition.code for definition in CAPABILITY_DEFINITIONS)
+    assert [row["code"] for row in body["capabilities"]] == canonical_codes
+    assert "accounts.future" not in body["effective_capabilities"]
+    assert "accounts.future" not in canonical_codes
+
+    rows = {row["code"]: row for row in body["capabilities"]}
+    for code, row in rows.items():
+        assert row["effective"] is (code in effective_capabilities(target))
+
+    reopen = rows["inventory.reopen"]
+    assert reopen["effective"] is False
+    assert reopen["baseline_sources"] == [{"type": "ROLE", "code": "COUNSELOR"}]
+    assert reopen["override"]["effect"] == "REVOKE"
+    assert reopen["override"]["active"] is True
+    assert reopen["override"]["reason"] == "Temporary separation of duties"
+    assert reopen["override"]["created_by"] == {
+        "id": str(admin.pk),
+        "email": admin.email,
+        "full_name": admin.get_full_name(),
+    }
+
+    grant = rows["platform_operations.view"]
+    assert grant["effective"] is True
+    assert grant["baseline_sources"] == []
+    assert grant["override"]["effect"] == "GRANT"
+    assert grant["override"]["active"] is True
+
+    reports = rows["reports.view"]
+    assert reports["effective"] is True
+    assert reports["baseline_sources"] == [
+        {"type": "ROLE", "code": "COUNSELOR"},
+        {"type": "DESIGNATION", "code": "HEAD_GUIDANCE_COUNSELOR"},
+    ]
+    assert reports["override"]["effect"] == "REVOKE"
+    assert reports["override"]["active"] is False
+
+    assert "inventory.reopen" in ROLE_CAPABILITY_GRANTS["COUNSELOR"]
+    assert "reports.view" in DESIGNATION_CAPABILITY_GRANTS["HEAD_GUIDANCE_COUNSELOR"]
+
+    serialized = json.dumps(body)
+    for forbidden_key in (
+        "college_ids",
+        "campus_ids",
+        "student_ids",
+        "program_ids",
+        "resource_scope",
+        "global_access",
+        "authorized_records",
+        "responsibility_colleges",
+        "supervised_staff",
+    ):
+        assert forbidden_key not in serialized
+
+
+@pytest.mark.django_db
+def test_effective_access_inspector_preserves_dpo_and_disabled_account_semantics():
+    sync_policy()
+    client, _admin, _session = make_admin_client()
+
+    dpo = make_user(email="access-dpo@example.edu", role="INSTITUTIONAL_OFFICER")
+    UserDesignation.objects.create(
+        user=dpo,
+        designation=Designation.objects.get(code="DPO"),
+    )
+    dpo_response = client.get(f"/api/v1/accounts/{dpo.pk}/access")
+    assert dpo_response.status_code == 200
+    dpo_body = dpo_response.json()
+    assert dpo_body["designations"] == ["DPO"]
+    assert dpo_body["effective_capabilities"] == sorted(effective_capabilities(dpo))
+    privacy = {
+        row["code"]: row
+        for row in dpo_body["capabilities"]
+        if row["code"].startswith("privacy_governance.")
+    }
+    assert privacy["privacy_governance.view"]["baseline_sources"] == [
+        {"type": "DESIGNATION", "code": "DPO"}
+    ]
+    assert privacy["privacy_governance.manage"]["effective"] is True
+    assert "accounts.manage" not in dpo_body["effective_capabilities"]
+
+    disabled = make_user(
+        email="access-disabled-counselor@example.edu",
+        role="COUNSELOR",
+        active=False,
+    )
+    disabled_response = client.get(f"/api/v1/accounts/{disabled.pk}/access")
+    assert disabled_response.status_code == 200
+    disabled_body = disabled_response.json()
+    assert disabled_body["account"]["is_active"] is False
+    assert disabled_body["effective_capabilities"] == []
+    assert all(row["effective"] is False for row in disabled_body["capabilities"])
+    inventory = next(
+        row for row in disabled_body["capabilities"] if row["code"] == "inventory.view"
+    )
+    assert inventory["baseline_sources"] == [{"type": "ROLE", "code": "COUNSELOR"}]
 
 
 @pytest.mark.django_db
