@@ -1,4 +1,5 @@
 name: Final API lifecycle full-suite validation
+# Exact-head final backend gate after full-suite failure remediation.
 
 on:
   push:
