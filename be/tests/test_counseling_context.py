@@ -583,6 +583,17 @@ def test_contextual_inventory_and_support_do_not_weaken_generic_authorization(wo
         f"/api/v1/counseling/context/APPOINTMENT/{appointment.pk}/support-indicators"
     )
     assert contextual_inventory.status_code == 200
+    contextual_inventory_body = contextual_inventory.json()
+    assert contextual_inventory_body["available"] is True
+    full_inventory = contextual_inventory_body["inventory"]
+    assert full_inventory["id"] == str(world["inventory"].pk)
+    assert full_inventory["physical_disadvantage"] == (
+        "Self-reported PWD detail for test projection."
+    )
+    assert len(full_inventory["family_members"]) == 2
+    assert full_inventory["support_profile"]["four_ps_status"] == "BENEFICIARY"
+    assert "current_concerns" in full_inventory
+    assert "geographic_locations" in full_inventory
     assert contextual_support.status_code == 200
     assert b_client.get(f"/api/v1/inventory/records/{world['inventory'].pk}").status_code == 404
     assert (
