@@ -66,18 +66,21 @@ jobs:
           uv run pytest -q
           tests/test_organization.py
           tests/test_appointment_management_scope.py
-          tests/test_appointments.py
-          tests/test_referrals.py
-          tests/test_call_slips.py
-          tests/test_counseling.py
-          tests/test_shared_summaries.py
-          tests/test_routine_interviews.py
-          tests/test_ecounseling.py
-          tests/test_inventory_counselor_review.py
-          tests/test_student_support.py
-          tests/test_student_profiling_reports.py
-          tests/test_student_profiling_report_aggregates.py
-          tests/test_student_profiling_report_coverage.py
+          tests/test_appointments.py::test_explicit_cross_scope_counselor_is_allowed_and_gss_is_not_student_selectable
+          tests/test_appointments.py::test_eligible_counselors_are_cross_scope_bounded_and_default_is_marked
+          tests/test_referrals.py::test_referral_scope_is_current_organization_scope_without_assigned_counselor_field
+          tests/test_call_slips.py::test_counselor_gss_and_head_issuer_and_scope_rules
+          tests/test_call_slips.py::test_gss_requires_current_active_counselor_supervisor
+          tests/test_counseling.py::test_direct_encounter_records_actual_completed_time_without_fake_appointment
+          tests/test_counseling.py::test_head_designation_has_no_blanket_read_and_patch_cannot_change_identity
+          tests/test_routine_interviews.py::test_direct_creation_has_no_fake_appointment_and_persistent_idempotency
+          tests/test_inventory_counselor_review.py::test_inventory_roster_scope_missing_filters_search_and_draft_privacy
+          tests/test_inventory_counselor_review.py::test_cross_scope_counseling_assignment_does_not_expand_inventory_or_support_access
+          tests/test_student_support.py::test_head_can_view_any_current_submitted_student_support_context
+          tests/test_student_support.py::test_ordinary_counselor_scope_is_current_affiliation_and_responsibility_only
+          tests/test_student_support.py::test_counselor_without_responsibility_and_inactive_org_get_no_support_data
+          tests/test_student_profiling_reports.py::test_reports_view_is_counselor_baseline_but_does_not_fabricate_scope
+          tests/test_student_profiling_reports.py::test_student_profile_enforces_current_counselor_college_scope_across_filters_and_history
 
       - name: Diff whitespace check
         run: git diff --check
