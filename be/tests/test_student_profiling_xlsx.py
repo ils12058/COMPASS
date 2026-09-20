@@ -266,7 +266,7 @@ def test_render_service_calls_canonical_builder_once_and_forwards_exact_filters(
     monkeypatch.setattr(report_xlsx, "build_student_profiling_report", fake_builder)
     result = render_student_profiling_xlsx(**filters)
 
-    assert calls == [filters]
+    assert calls == [{**filters, "access_scope": GLOBAL_REPORT_ACCESS_SCOPE}]
     assert result.filename == "student-profile-2026-2027.xlsx"
     workbook = load_workbook(BytesIO(result.xlsx_bytes), data_only=False, keep_links=False)
     assert workbook.sheetnames == EXPECTED_SHEETS
