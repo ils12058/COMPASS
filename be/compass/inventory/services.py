@@ -30,8 +30,8 @@ from compass.institutional_forms.services import (
 )
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
-from compass.organization.access_scope import resolve_organizational_access_scope
 from compass.organization.academic_years import get_current_academic_year
+from compass.organization.access_scope import resolve_organizational_access_scope
 from compass.organization.models import AcademicYear, College, Program
 from compass.student_support.models import (
     FourPsStatus,
