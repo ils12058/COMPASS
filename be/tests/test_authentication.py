@@ -1,4 +1,6 @@
 import json
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -7,11 +9,12 @@ import pyotp
 import pytest
 from cryptography.fernet import Fernet
 from django.conf import settings
-from django.db import transaction
+from django.db import close_old_connections, transaction
 from django.test import Client, override_settings
 from django.utils import timezone
 
 from compass.accounts.models import Role, StudentLifecycleStatus, User
+from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.abuse import (
     AuthenticationRateLimited,
@@ -27,9 +30,12 @@ from compass.authentication.email_otp import (
     resend_email_otp,
 )
 from compass.authentication.mfa import invalidate_recovery_codes, verify_totp_for_login
-from compass.authentication.models import AuthSession, EmailOTPChallenge, RecoveryCode, TOTPFactor
+from compass.authentication.models import AuthSession, EmailOTPChallenge, LoginChallenge, RecoveryCode, TOTPFactor
+from compass.authentication.password_change import change_password
+from compass.authentication.services import authenticate_login
 from compass.authentication.sessions import (
     RecentMFARequired,
+    create_auth_session,
     require_recent_mfa,
     resolve_trusted_session,
 )
@@ -260,6 +266,115 @@ def test_totp_enrollment_is_pending_then_returns_one_time_recovery_codes():
     actions = set(AuditEvent.objects.filter(actor_user=user).values_list("action", flat=True))
     assert "auth.mfa.totp.setup.started" in actions
     assert "auth.mfa.totp.enrolled" in actions
+
+
+@pytest.mark.django_db
+@override_settings(AUTH_MFA_REQUIRED_ROLE_CODES=["COUNSELOR"])
+def test_mandatory_mfa_bootstrap_is_challenge_only_until_totp_is_confirmed():
+    user = make_user(email="mandatory-mfa@example.edu", role_code="COUNSELOR")
+    client = Client()
+
+    login_response = login(client, email=user.email, password="correct-password")
+    assert login_response.status_code == 403
+    assert login_response.json()["error"]["code"] == "mfa_setup_required"
+    assert "compass_login_challenge" in login_response.cookies
+    challenge = LoginChallenge.objects.get(user=user)
+    assert challenge.allowed_methods == ["totp_enroll"]
+    assert not AuthSession.objects.filter(user=user).exists()
+    assert client.get("/api/v1/auth/session").status_code == 401
+
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/bootstrap/setup",
+        {},
+        headers=csrf_headers(client),
+    )
+    assert setup.status_code == 200
+    parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
+
+    confirmed = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/bootstrap/confirm",
+        {"code": parsed.now()},
+        headers=csrf_headers(client),
+    )
+    assert confirmed.status_code == 200
+    assert confirmed.json()["enabled"] is True
+    challenge.refresh_from_db()
+    assert challenge.consumed_at is not None
+    assert TOTPFactor.objects.get(user=user).confirmed_at is not None
+    assert not AuthSession.objects.filter(user=user).exists()
+    assert client.get("/api/v1/auth/session").status_code == 401
+
+
+@pytest.mark.django_db(transaction=True)
+def test_password_change_serializes_against_primary_login_session_issuance(monkeypatch):
+    user = make_user(email="serialized-login@example.edu")
+    current = create_auth_session(user).session
+    verification_entered = threading.Event()
+    release_verification = threading.Event()
+    password_change_finished = threading.Event()
+    original_check_password = User.check_password
+
+    def paused_check_password(self, raw_password):
+        result = original_check_password(self, raw_password)
+        if threading.current_thread().name.startswith("login-race"):
+            verification_entered.set()
+            assert release_verification.wait(timeout=5)
+        return result
+
+    monkeypatch.setattr(User, "check_password", paused_check_password)
+
+    request = SimpleNamespace(
+        COOKIES={},
+        META={"REMOTE_ADDR": "127.0.0.1"},
+        headers={},
+        request_id=None,
+    )
+
+    def login_worker():
+        close_old_connections()
+        try:
+            return authenticate_login(
+                request=request,
+                email=user.email,
+                password="correct-password",
+            )
+        finally:
+            close_old_connections()
+
+    def change_worker():
+        close_old_connections()
+        try:
+            fresh_user = User.objects.get(pk=user.pk)
+            fresh_session = AuthSession.objects.get(pk=current.pk)
+            result = change_password(
+                user=fresh_user,
+                session=fresh_session,
+                current_password="correct-password",
+                new_password="changed-password-123",
+                context=AuditContext.user(fresh_user),
+            )
+            password_change_finished.set()
+            return result
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="login-race") as pool:
+        login_future = pool.submit(login_worker)
+        assert verification_entered.wait(timeout=5)
+        change_future = pool.submit(change_worker)
+        # The password transition must be waiting on the same User row while verification is paused.
+        assert not password_change_finished.wait(timeout=0.2)
+        release_verification.set()
+        login_result = login_future.result(timeout=5)
+        change_future.result(timeout=5)
+
+    assert login_result.session is not None
+    login_result.session.session.refresh_from_db()
+    assert login_result.session.session.revoked_at is not None
+    user.refresh_from_db()
+    assert user.check_password("changed-password-123")
 
 
 @pytest.mark.django_db
