@@ -31,8 +31,8 @@ from compass.organization.api import router as organization_router
 from compass.platform_ops.api import router as platform_operations_router
 from compass.privacy_governance.api import router as privacy_governance_router
 from compass.referrals.api import router as referrals_router
-from compass.resources.api import router as resources_router
 from compass.reports.api import router as reports_router
+from compass.resources.api import router as resources_router
 from compass.routine_interviews.api import router as routine_interviews_router
 from compass.service_catalog.api import router as service_catalog_router
 from compass.student_support.api import router as student_support_router
