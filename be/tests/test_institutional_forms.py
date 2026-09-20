@@ -183,9 +183,9 @@ def test_configuration_capabilities_keep_head_business_authority_explicit():
     assert head.has_capability("academic_years.manage")
     assert head.has_capability("institutional_forms.view")
     assert head.has_capability("institutional_forms.manage")
-    assert not counselor.has_capability("academic_years.view")
+    assert counselor.has_capability("academic_years.view")
     assert not counselor.has_capability("academic_years.manage")
-    assert not counselor.has_capability("institutional_forms.view")
+    assert counselor.has_capability("institutional_forms.view")
     assert not counselor.has_capability("institutional_forms.manage")
     assert not admin.has_capability("academic_years.manage")
     assert not admin.has_capability("institutional_forms.manage")
@@ -299,3 +299,65 @@ def test_operational_configuration_mutations_require_head_capability_and_recent_
         "referral_slip",
         "routine_interview",
     ]
+
+@pytest.mark.django_db
+def test_regular_counselor_can_read_but_not_manage_operational_configuration():
+    sync_policy()
+    counselor = make_user("config-counselor@example.edu", "COUNSELOR")
+    year = AcademicYear.objects.create(label="2030-2031", is_current=False)
+    revision = FormRevision.objects.filter(family__key="individual_inventory").first()
+    assert revision is not None
+
+    client = auth_client(counselor, recent_mfa=True)
+    assert client.get("/api/v1/academic-years").status_code == 200
+
+    denied_create = client.post(
+        "/api/v1/academic-years",
+        data=json.dumps({"label": "2031-2032"}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert denied_create.status_code == 403
+
+    denied_current = client.post(
+        f"/api/v1/academic-years/{year.pk}/set-current",
+        data=json.dumps({}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert denied_current.status_code == 403
+
+    families = client.get("/api/v1/institutional-forms")
+    assert families.status_code == 200
+    assert client.get("/api/v1/institutional-forms/individual_inventory/revisions").status_code == 200
+
+    denied_register = client.post(
+        "/api/v1/institutional-forms/individual_inventory/revisions",
+        data=json.dumps(
+            {
+                "official_code": "UCN-TEST-01",
+                "official_revision": "9",
+                "internal_schema_version": 99,
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert denied_register.status_code == 403
+
+    denied_activate = client.post(
+        f"/api/v1/institutional-forms/revisions/{revision.pk}/activate",
+        data=json.dumps({}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert denied_activate.status_code == 403
+
+    denied_deactivate = client.post(
+        f"/api/v1/institutional-forms/revisions/{revision.pk}/deactivate",
+        data=json.dumps({}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert denied_deactivate.status_code == 403
+
