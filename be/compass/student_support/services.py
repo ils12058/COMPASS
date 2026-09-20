@@ -103,11 +103,9 @@ def _indicator_rows(
     )
 
 
-def get_student_support_context(*, actor: User, student_id: UUID) -> StudentSupportContext:
-    if not actor.is_active or actor.role.code != "COUNSELOR":
-        raise StudentSupportNotFound("The requested Student was not found.")
+def build_student_support_context(*, student: User) -> StudentSupportContext:
+    """Build the canonical factual projection after the caller has authorized the Student."""
 
-    student = _require_scoped_student(actor=actor, student_id=student_id)
     academic_year = get_current_academic_year()
     if academic_year is None:
         raise StudentSupportConfigurationConflict("No current Academic Year is configured.")
@@ -132,11 +130,20 @@ def get_student_support_context(*, actor: User, student_id: UUID) -> StudentSupp
     )
 
 
+def get_student_support_context(*, actor: User, student_id: UUID) -> StudentSupportContext:
+    if not actor.is_active or actor.role.code != "COUNSELOR":
+        raise StudentSupportNotFound("The requested Student was not found.")
+
+    student = _require_scoped_student(actor=actor, student_id=student_id)
+    return build_student_support_context(student=student)
+
+
 __all__ = [
     "StudentSupportConfigurationConflict",
     "StudentSupportContext",
     "StudentSupportError",
     "StudentSupportNotFound",
     "SupportIndicator",
+    "build_student_support_context",
     "get_student_support_context",
 ]
