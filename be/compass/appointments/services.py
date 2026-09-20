@@ -14,7 +14,14 @@ from django.utils import timezone
 
 from compass.accounts.models import User
 from compass.accounts.services import is_current_student
-from compass.audit.actions import APPOINTMENT_CANCELLED, APPOINTMENT_CREATED
+from compass.audit.actions import (
+    APPOINTMENT_CANCELLED,
+    APPOINTMENT_COMPLETED,
+    APPOINTMENT_CREATED,
+    APPOINTMENT_NO_SHOW,
+    APPOINTMENT_REASSIGNED,
+    APPOINTMENT_RESCHEDULED,
+)
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
@@ -40,12 +47,19 @@ from compass.service_catalog.services import (
     service_supports_delivery_mode,
 )
 
-from .models import Appointment, AppointmentReferenceCounter, AppointmentStatus
+from .models import (
+    Appointment,
+    AppointmentChangeEvent,
+    AppointmentChangeEventType,
+    AppointmentReferenceCounter,
+    AppointmentStatus,
+)
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_ELIGIBLE_COUNSELORS = 50
 MAX_REFERENCE_SEQUENCE = 999_999
+MAX_CHANGE_REASON_LENGTH = 1000
 PROVIDER_ROLE_CODES = ELIGIBLE_PROVIDER_ROLE_CODES
 HEAD_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
 
@@ -79,6 +93,10 @@ class AppointmentDefaultProviderUnresolved(AppointmentError):
 
 
 class AppointmentCancellationConflict(AppointmentError):
+    pass
+
+
+class AppointmentLifecycleConflict(AppointmentError):
     pass
 
 
@@ -116,6 +134,20 @@ class EligibleCounselor:
     is_default: bool
 
 
+@dataclass(frozen=True, slots=True)
+class AppointmentHistoryEntry:
+    event_type: str
+    occurred_at: datetime
+    actor: User | None
+    reason: str
+    previous_starts_at: datetime | None = None
+    previous_ends_at: datetime | None = None
+    new_starts_at: datetime | None = None
+    new_ends_at: datetime | None = None
+    previous_provider: User | None = None
+    new_provider: User | None = None
+
+
 def _institution_zone() -> ZoneInfo:
     try:
         return ZoneInfo(settings.TIME_ZONE)
@@ -137,7 +169,9 @@ def _normalized_status(value: str | AppointmentStatus | None) -> str | None:
         return None
     normalized = value.value if isinstance(value, AppointmentStatus) else value
     if normalized not in AppointmentStatus.values:
-        raise InvalidAppointmentInput("status must be SCHEDULED or CANCELLED")
+        raise InvalidAppointmentInput(
+            "status must be SCHEDULED, CANCELLED, COMPLETED, or NO_SHOW"
+        )
     return str(normalized)
 
 
@@ -164,6 +198,8 @@ def _appointment_queryset():
         "service",
         "created_by",
         "cancelled_by",
+        "completed_by",
+        "no_show_by",
     )
 
 
@@ -446,14 +482,86 @@ def _interval_is_available(
     )
 
 
-def _has_overlap(*, field: str, user_id: UUID, starts_at: datetime, ends_at: datetime) -> bool:
+def _has_overlap(
+    *,
+    field: str,
+    user_id: UUID,
+    starts_at: datetime,
+    ends_at: datetime,
+    exclude_appointment_id: UUID | None = None,
+) -> bool:
     filters = {
         field: user_id,
         "status": AppointmentStatus.SCHEDULED,
         "starts_at__lt": ends_at,
         "ends_at__gt": starts_at,
     }
-    return Appointment.objects.filter(**filters).exists()
+    queryset = Appointment.objects.filter(**filters)
+    if exclude_appointment_id is not None:
+        queryset = queryset.exclude(pk=exclude_appointment_id)
+    return queryset.exists()
+
+
+def _clean_change_reason(value: str | None, *, required: bool) -> str:
+    if value is None:
+        if required:
+            raise InvalidAppointmentInput("reason is required.")
+        return ""
+    if not isinstance(value, str):
+        raise InvalidAppointmentInput("reason must be text.")
+    cleaned = value.strip()
+    if required and not cleaned:
+        raise InvalidAppointmentInput("reason is required.")
+    if len(cleaned) > MAX_CHANGE_REASON_LENGTH:
+        raise InvalidAppointmentInput(
+            f"reason must be at most {MAX_CHANGE_REASON_LENGTH} characters."
+        )
+    return cleaned
+
+
+def _require_scheduled_before_start(item: Appointment, *, now: datetime) -> None:
+    if item.status != AppointmentStatus.SCHEDULED:
+        raise AppointmentLifecycleConflict(
+            "Only a SCHEDULED Appointment may be changed."
+        )
+    if now >= item.starts_at:
+        raise AppointmentLifecycleConflict(
+            "The Appointment can no longer be changed after it has started."
+        )
+
+
+def _require_management_access(*, actor: User, item: Appointment) -> None:
+    if (
+        not actor.is_active
+        or not actor.has_capability("appointments.manage")
+        or not _student_in_management_scope(actor, item.student_id)
+    ):
+        raise AppointmentNotFound("The requested Appointment was not found.")
+
+
+def _validate_existing_service(
+    *,
+    service: Service,
+    provider: User,
+    delivery_mode: str,
+) -> None:
+    if not service.is_active or service.appointment_policy == AppointmentPolicy.NONE:
+        raise AppointmentNotSchedulable(
+            "The Appointment Service is no longer operationally schedulable."
+        )
+    if not provider.is_active or provider.role.code != "COUNSELOR":
+        raise AppointmentNotSchedulable(
+            "The assigned provider is no longer an active Counselor."
+        )
+    if not service_supports_delivery_mode(service, delivery_mode):
+        raise AppointmentNotSchedulable(
+            "The Service no longer supports the Appointment delivery mode."
+        )
+    if not provider_role_eligible(service, provider):
+        raise AppointmentNotSchedulable(
+            "The assigned Counselor is no longer eligible for this Service."
+        )
+
 
 
 def _reference_year(at: datetime) -> int:
@@ -614,7 +722,11 @@ def cancel_appointment(
             raise AppointmentNotFound("The requested Appointment was not found.")
 
         if item.status == AppointmentStatus.CANCELLED:
-            return item
+            return _appointment_queryset().get(pk=item.pk)
+        if item.status != AppointmentStatus.SCHEDULED:
+            raise AppointmentCancellationConflict(
+                "Only a SCHEDULED Appointment may be cancelled."
+            )
         if current >= item.starts_at:
             raise AppointmentCancellationConflict(
                 "An Appointment cannot be cancelled after it has started."
@@ -651,6 +763,420 @@ def cancel_appointment(
                 target_id=item.pk,
             )
         return _appointment_queryset().get(pk=item.pk)
+
+
+def reschedule_appointment(
+    *,
+    appointment_id: UUID,
+    actor: User,
+    starts_at: datetime,
+    reason: str | None,
+    administrative: bool,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> Appointment:
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+    normalized_start = _aware_start(starts_at)
+    if normalized_start <= current.astimezone(_institution_zone()):
+        raise AppointmentNotSchedulable("Appointments must start in the future.")
+    cleaned_reason = _clean_change_reason(reason, required=False)
+
+    with transaction.atomic():
+        item = (
+            Appointment.objects.select_for_update()
+            .select_related("student__role", "provider__role", "service")
+            .filter(pk=appointment_id)
+            .first()
+        )
+        if item is None:
+            raise AppointmentNotFound("The requested Appointment was not found.")
+
+        if administrative:
+            _require_management_access(actor=actor, item=item)
+        else:
+            if (
+                not actor.is_active
+                or actor.role.code != "STUDENT"
+                or actor.pk != item.student_id
+                or not actor.has_capability("appointments.manage_self")
+            ):
+                raise AppointmentNotFound("The requested Appointment was not found.")
+
+        _require_scheduled_before_start(item, now=current)
+
+        if not administrative and item.cancellation_cutoff_minutes is not None:
+            boundary = item.starts_at - timedelta(minutes=item.cancellation_cutoff_minutes)
+            if current > boundary:
+                raise AppointmentLifecycleConflict(
+                    "The Appointment reschedule cutoff has passed."
+                )
+
+        from compass.ecounseling.models import ECounselingRoom
+
+        if ECounselingRoom.objects.filter(appointment_id=item.pk).exists():
+            raise AppointmentLifecycleConflict(
+                "This Appointment already has an E-Counseling room binding and cannot be rescheduled."
+            )
+
+        _validate_existing_service(
+            service=item.service,
+            provider=item.provider,
+            delivery_mode=item.delivery_mode,
+        )
+        duration = item.ends_at - item.starts_at
+        new_ends_at = normalized_start + duration
+        if not _interval_is_available(
+            provider_id=item.provider_id,
+            service_id=item.service_id,
+            delivery_mode=item.delivery_mode,
+            starts_at=normalized_start,
+            ends_at=new_ends_at,
+        ):
+            raise AppointmentTimeUnavailable(
+                "The full rescheduled interval is not contained in current Availability."
+            )
+        if _has_overlap(
+            field="provider_id",
+            user_id=item.provider_id,
+            starts_at=normalized_start,
+            ends_at=new_ends_at,
+            exclude_appointment_id=item.pk,
+        ):
+            raise AppointmentTimeConflict(
+                "The Counselor already has an overlapping Appointment."
+            )
+        if _has_overlap(
+            field="student_id",
+            user_id=item.student_id,
+            starts_at=normalized_start,
+            ends_at=new_ends_at,
+            exclude_appointment_id=item.pk,
+        ):
+            raise AppointmentTimeConflict(
+                "The Student already has an overlapping Appointment."
+            )
+
+        previous_starts_at = item.starts_at
+        previous_ends_at = item.ends_at
+        event = AppointmentChangeEvent.objects.create(
+            appointment=item,
+            event_type=AppointmentChangeEventType.RESCHEDULED,
+            changed_by=actor,
+            occurred_at=current,
+            reason=cleaned_reason,
+            previous_starts_at=previous_starts_at,
+            previous_ends_at=previous_ends_at,
+            new_starts_at=normalized_start,
+            new_ends_at=new_ends_at,
+        )
+        item.starts_at = normalized_start
+        item.ends_at = new_ends_at
+        item.save(update_fields=["starts_at", "ends_at", "updated_at"])
+        record_event(
+            context=context,
+            action=APPOINTMENT_RESCHEDULED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="appointments.appointment",
+            target_id=item.pk,
+            metadata={
+                "reference_code": item.reference_code,
+                "previous_starts_at": previous_starts_at.isoformat(),
+                "previous_ends_at": previous_ends_at.isoformat(),
+                "new_starts_at": normalized_start.isoformat(),
+                "new_ends_at": new_ends_at.isoformat(),
+                "administrative": administrative,
+            },
+        )
+        for recipient in (item.student, item.provider):
+            create_notification_for_event(
+                recipient=recipient,
+                event=NotificationEvent.APPOINTMENT_RESCHEDULED,
+                source_type="appointment_change_event",
+                source_id=event.pk,
+                target_type="APPOINTMENT",
+                target_id=item.pk,
+            )
+        return _appointment_queryset().get(pk=item.pk)
+
+
+def reassign_appointment(
+    *,
+    appointment_id: UUID,
+    actor: User,
+    provider_id: UUID,
+    reason: str,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> Appointment:
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+    cleaned_reason = _clean_change_reason(reason, required=True)
+
+    with transaction.atomic():
+        item = (
+            Appointment.objects.select_for_update()
+            .select_related("student__role", "provider__role", "service")
+            .filter(pk=appointment_id)
+            .first()
+        )
+        if item is None:
+            raise AppointmentNotFound("The requested Appointment was not found.")
+        _require_management_access(actor=actor, item=item)
+        _require_scheduled_before_start(item, now=current)
+
+        if provider_id == item.provider_id:
+            return _appointment_queryset().get(pk=item.pk)
+
+        from compass.counseling.models import CounselingEncounter
+        from compass.ecounseling.models import ECounselingRoom
+        from compass.routine_interviews.models import RoutineInterview
+
+        if RoutineInterview.objects.filter(appointment_id=item.pk).exists():
+            raise AppointmentLifecycleConflict(
+                "An Appointment with a Routine Interview cannot be reassigned."
+            )
+        if CounselingEncounter.objects.filter(appointment_id=item.pk).exists():
+            raise AppointmentLifecycleConflict(
+                "An Appointment with a Counseling Encounter cannot be reassigned."
+            )
+        if ECounselingRoom.objects.filter(appointment_id=item.pk).exists():
+            raise AppointmentLifecycleConflict(
+                "An Appointment with an E-Counseling room cannot be reassigned."
+            )
+
+        new_provider = (
+            User.objects.select_for_update()
+            .select_related("role")
+            .filter(pk=provider_id)
+            .first()
+        )
+        if new_provider is None:
+            raise AppointmentNotSchedulable("The selected Counselor was not found.")
+        _validate_existing_service(
+            service=item.service,
+            provider=new_provider,
+            delivery_mode=item.delivery_mode,
+        )
+        if not _interval_is_available(
+            provider_id=new_provider.pk,
+            service_id=item.service_id,
+            delivery_mode=item.delivery_mode,
+            starts_at=item.starts_at,
+            ends_at=item.ends_at,
+        ):
+            raise AppointmentTimeUnavailable(
+                "The selected Counselor is not available for the Appointment interval."
+            )
+        if _has_overlap(
+            field="provider_id",
+            user_id=new_provider.pk,
+            starts_at=item.starts_at,
+            ends_at=item.ends_at,
+            exclude_appointment_id=item.pk,
+        ):
+            raise AppointmentTimeConflict(
+                "The selected Counselor already has an overlapping Appointment."
+            )
+
+        previous_provider = item.provider
+        event = AppointmentChangeEvent.objects.create(
+            appointment=item,
+            event_type=AppointmentChangeEventType.REASSIGNED,
+            changed_by=actor,
+            occurred_at=current,
+            reason=cleaned_reason,
+            previous_provider=previous_provider,
+            new_provider=new_provider,
+        )
+        item.provider = new_provider
+        item.save(update_fields=["provider", "updated_at"])
+        record_event(
+            context=context,
+            action=APPOINTMENT_REASSIGNED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="appointments.appointment",
+            target_id=item.pk,
+            metadata={
+                "reference_code": item.reference_code,
+                "previous_provider_id": str(previous_provider.pk),
+                "new_provider_id": str(new_provider.pk),
+            },
+        )
+        for recipient in (item.student, previous_provider, new_provider):
+            create_notification_for_event(
+                recipient=recipient,
+                event=NotificationEvent.APPOINTMENT_REASSIGNED,
+                source_type="appointment_change_event",
+                source_id=event.pk,
+                target_type="APPOINTMENT",
+                target_id=item.pk,
+            )
+        return _appointment_queryset().get(pk=item.pk)
+
+
+def complete_appointment(
+    *,
+    appointment_id: UUID,
+    actor: User,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> Appointment:
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+    with transaction.atomic():
+        item = Appointment.objects.select_for_update().filter(pk=appointment_id).first()
+        if item is None:
+            raise AppointmentNotFound("The requested Appointment was not found.")
+        _require_management_access(actor=actor, item=item)
+        if item.status == AppointmentStatus.COMPLETED:
+            return _appointment_queryset().get(pk=item.pk)
+        if item.status != AppointmentStatus.SCHEDULED:
+            raise AppointmentLifecycleConflict(
+                "Only a SCHEDULED Appointment may be completed."
+            )
+        if current < item.starts_at:
+            raise AppointmentLifecycleConflict(
+                "An Appointment cannot be completed before it starts."
+            )
+        item.status = AppointmentStatus.COMPLETED
+        item.completed_at = current
+        item.completed_by = actor
+        item.save(
+            update_fields=["status", "completed_at", "completed_by", "updated_at"]
+        )
+        record_event(
+            context=context,
+            action=APPOINTMENT_COMPLETED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="appointments.appointment",
+            target_id=item.pk,
+            metadata={
+                "reference_code": item.reference_code,
+                "transition": "SCHEDULED -> COMPLETED",
+            },
+        )
+        return _appointment_queryset().get(pk=item.pk)
+
+
+def mark_appointment_no_show(
+    *,
+    appointment_id: UUID,
+    actor: User,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> Appointment:
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+    with transaction.atomic():
+        item = Appointment.objects.select_for_update().filter(pk=appointment_id).first()
+        if item is None:
+            raise AppointmentNotFound("The requested Appointment was not found.")
+        _require_management_access(actor=actor, item=item)
+        if item.status == AppointmentStatus.NO_SHOW:
+            return _appointment_queryset().get(pk=item.pk)
+        if item.status != AppointmentStatus.SCHEDULED:
+            raise AppointmentLifecycleConflict(
+                "Only a SCHEDULED Appointment may be marked NO_SHOW."
+            )
+        if current < item.ends_at:
+            raise AppointmentLifecycleConflict(
+                "An Appointment cannot be marked NO_SHOW before it ends."
+            )
+
+        from compass.counseling.models import CounselingEncounter
+
+        if CounselingEncounter.objects.filter(appointment_id=item.pk).exists():
+            raise AppointmentLifecycleConflict(
+                "An Appointment with a Counseling Encounter cannot be marked NO_SHOW."
+            )
+        item.status = AppointmentStatus.NO_SHOW
+        item.no_show_at = current
+        item.no_show_by = actor
+        item.save(update_fields=["status", "no_show_at", "no_show_by", "updated_at"])
+        record_event(
+            context=context,
+            action=APPOINTMENT_NO_SHOW,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="appointments.appointment",
+            target_id=item.pk,
+            metadata={
+                "reference_code": item.reference_code,
+                "transition": "SCHEDULED -> NO_SHOW",
+            },
+        )
+        return _appointment_queryset().get(pk=item.pk)
+
+
+def get_appointment_history(
+    *,
+    appointment_id: UUID,
+    actor: User,
+) -> tuple[AppointmentHistoryEntry, ...]:
+    item = get_appointment_for_actor(appointment_id=appointment_id, actor=actor)
+    manager_view = actor.has_capability("appointments.manage") and _student_in_management_scope(
+        actor, item.student_id
+    )
+    entries: list[AppointmentHistoryEntry] = [
+        AppointmentHistoryEntry(
+            event_type="CREATED",
+            occurred_at=item.created_at,
+            actor=item.created_by,
+            reason="",
+        )
+    ]
+    events = (
+        AppointmentChangeEvent.objects.filter(appointment_id=item.pk)
+        .select_related("changed_by", "previous_provider", "new_provider")
+        .order_by("occurred_at", "id")
+    )
+    for event in events:
+        entries.append(
+            AppointmentHistoryEntry(
+                event_type=event.event_type,
+                occurred_at=event.occurred_at,
+                actor=event.changed_by,
+                reason=event.reason if manager_view else "",
+                previous_starts_at=event.previous_starts_at,
+                previous_ends_at=event.previous_ends_at,
+                new_starts_at=event.new_starts_at,
+                new_ends_at=event.new_ends_at,
+                previous_provider=event.previous_provider,
+                new_provider=event.new_provider,
+            )
+        )
+    if item.status == AppointmentStatus.CANCELLED and item.cancelled_at is not None:
+        entries.append(
+            AppointmentHistoryEntry(
+                event_type="CANCELLED",
+                occurred_at=item.cancelled_at,
+                actor=item.cancelled_by,
+                reason="",
+            )
+        )
+    elif item.status == AppointmentStatus.COMPLETED and item.completed_at is not None:
+        entries.append(
+            AppointmentHistoryEntry(
+                event_type="COMPLETED",
+                occurred_at=item.completed_at,
+                actor=item.completed_by,
+                reason="",
+            )
+        )
+    elif item.status == AppointmentStatus.NO_SHOW and item.no_show_at is not None:
+        entries.append(
+            AppointmentHistoryEntry(
+                event_type="NO_SHOW",
+                occurred_at=item.no_show_at,
+                actor=item.no_show_by,
+                reason="",
+            )
+        )
+    return tuple(sorted(entries, key=lambda row: row.occurred_at))
 
 
 def list_eligible_counselors(
