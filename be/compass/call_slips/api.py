@@ -232,7 +232,6 @@ def call_slips_list_my(
     request,
     from_date: date | None = None,
     to_date: date | None = None,
-    include_voided: bool = False,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -242,7 +241,6 @@ def call_slips_list_my(
             actor=request.auth_user,
             from_date=from_date,
             to_date=to_date,
-            include_voided=include_voided,
             page=page,
             page_size=page_size,
         )
@@ -331,6 +329,7 @@ def call_slips_list(
     search: str | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
+    include_voided: bool = False,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -345,6 +344,7 @@ def call_slips_list(
             search=search,
             from_date=from_date,
             to_date=to_date,
+            include_voided=include_voided,
             page=page,
             page_size=page_size,
         )

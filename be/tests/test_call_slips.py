@@ -1113,6 +1113,14 @@ def test_operational_call_slip_search_is_identity_reference_only_and_scope_first
 
     head = make_head("call-search-head@example.edu")
     referral = create_referral_for(head, student_a, key="search-ref", fingerprint="c" * 64)
+    record_action(
+        actor=head,
+        referral_id=referral.pk,
+        action_type="SEND_CALL_SLIP_INTERVIEW_PERMIT",
+        occurred_at=timezone.now(),
+        remarks="Search fixture permit",
+        context=audit_context(head),
+    )
     linked = create_for(
         head,
         student_a,

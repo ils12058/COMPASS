@@ -129,7 +129,7 @@ def patch_my_profile(request, payload: MyProfileUpdateRequest):
 
 
 @router.put(
-    "/me/profile/photo",
+    "/profile/photo",
     response=response_with_errors(MyProfilePhotoResponse, 401, 403, 422, 503),
     auth=session_auth,
     operation_id="profileSetMyPhoto",
@@ -157,7 +157,7 @@ def set_my_profile_photo(request, photo: UploadedFile = File(...)):  # noqa: B00
 
 
 @router.delete(
-    "/me/profile/photo",
+    "/profile/photo",
     response=response_with_errors(MyProfilePhotoResponse, 401, 403, 503),
     auth=session_auth,
     operation_id="profileRemoveMyPhoto",

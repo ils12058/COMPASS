@@ -50,6 +50,9 @@ jobs:
       - name: Install locked dependencies
         working-directory: be
         run: uv sync --frozen
+      - name: Install Chromium for document rendering
+        working-directory: be
+        run: uv run playwright install --with-deps --only-shell chromium
 
       - name: Apply Ruff fixes and formatting
         working-directory: be
