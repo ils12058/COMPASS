@@ -10,6 +10,8 @@ from compass.documents.rendering import DocumentRenderError, render_document_pdf
 
 from .filenames import safe_report_filename_part
 from .services import (
+    GLOBAL_REPORT_ACCESS_SCOPE,
+    ReportAccessScope,
     ReportError,
     build_student_profiling_report,
     student_profiling_release_context,
@@ -348,6 +350,7 @@ def render_student_profiling_pdf(
     college_id: UUID | None = None,
     program_id: UUID | None = None,
     year_level: int | None = None,
+    access_scope: ReportAccessScope = GLOBAL_REPORT_ACCESS_SCOPE,
 ) -> StudentProfilingPdfResult:
     report = build_student_profiling_report(
         academic_year_id=academic_year_id,
@@ -355,6 +358,7 @@ def render_student_profiling_pdf(
         college_id=college_id,
         program_id=program_id,
         year_level=year_level,
+        access_scope=access_scope,
     )
     context = build_student_profiling_print_context(report)
     report_context = report["report_context"]
