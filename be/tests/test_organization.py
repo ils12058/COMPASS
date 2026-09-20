@@ -18,6 +18,7 @@ from compass.accounts.models import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.organization.access_scope import resolve_organizational_access_scope
 from compass.organization.models import (
     Campus,
     College,
@@ -135,6 +136,77 @@ def test_effective_scope_head_and_gss_inheritance_are_dynamic_not_capability_inh
         college_b.pk,
     }
     assert not staff.has_capability("organization.manage")
+
+
+@pytest.mark.django_db
+def test_authorization_organizational_scope_resolver_is_canonical_and_fail_closed():
+    sync_policy()
+    campus = Campus.objects.create(code="AUTH-MAIN", name="Authorization Main")
+    inactive_campus = Campus.objects.create(
+        code="AUTH-OFF",
+        name="Authorization Inactive",
+        is_active=False,
+    )
+    college = College.objects.create(campus=campus, code="AUTH-A", name="Authorization A")
+    inactive_college = College.objects.create(
+        campus=campus,
+        code="AUTH-INACTIVE",
+        name="Authorization Inactive College",
+        is_active=False,
+    )
+    inactive_campus_college = College.objects.create(
+        campus=inactive_campus,
+        code="AUTH-OFF-COL",
+        name="Authorization Inactive Campus College",
+    )
+    counselor = make_user("auth-scope-counselor@example.edu", "COUNSELOR")
+    head = make_user("auth-scope-head@example.edu", "COUNSELOR")
+    staff = make_user("auth-scope-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    head_staff = make_user("auth-scope-head-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    unsupervised = make_user("auth-scope-unsupervised@example.edu", "GUIDANCE_SERVICES_STAFF")
+    inactive_supervisor = make_user(
+        "auth-scope-inactive-supervisor@example.edu",
+        "COUNSELOR",
+        active=False,
+    )
+    inactive_staff = make_user(
+        "auth-scope-inactive-staff@example.edu",
+        "GUIDANCE_SERVICES_STAFF",
+    )
+    unsupported = make_user("auth-scope-admin@example.edu", "IT_ADMIN")
+
+    CounselorResponsibility.objects.create(college=college, counselor=counselor)
+    CounselorResponsibility.objects.create(college=inactive_college, counselor=counselor)
+    CounselorResponsibility.objects.create(
+        college=inactive_campus_college,
+        counselor=counselor,
+    )
+    StaffSupervision.objects.create(staff=staff, supervisor=counselor)
+    StaffSupervision.objects.create(staff=inactive_staff, supervisor=inactive_supervisor)
+    UserDesignation.objects.create(
+        user=head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+    StaffSupervision.objects.create(staff=head_staff, supervisor=head)
+
+    counselor_scope = resolve_organizational_access_scope(counselor)
+    assert counselor_scope.institution_wide is False
+    assert counselor_scope.college_ids == (college.pk,)
+
+    staff_scope = resolve_organizational_access_scope(staff)
+    assert staff_scope == counselor_scope
+
+    head_scope = resolve_organizational_access_scope(head)
+    assert head_scope.institution_wide is True
+    assert head_scope.college_ids == ()
+
+    head_staff_scope = resolve_organizational_access_scope(head_staff)
+    assert head_staff_scope.institution_wide is True
+
+    for actor in (unsupervised, inactive_staff, unsupported):
+        scope = resolve_organizational_access_scope(actor)
+        assert scope.institution_wide is False
+        assert scope.college_ids == ()
 
 
 @pytest.mark.django_db
