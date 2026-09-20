@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from django.conf import settings
 
 from compass.api.v1.constants import API_VERSION
 from compass.common.build_metadata import read_project_version
 
 
+@pytest.mark.django_db
 def test_metadata_endpoint_is_public_minimal_dependency_free_and_no_store(
     client,
     django_assert_num_queries,
