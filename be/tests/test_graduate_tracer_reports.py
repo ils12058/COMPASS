@@ -9,6 +9,7 @@ from django.core.management import call_command
 from django.test import Client, override_settings
 from django.utils import timezone
 
+import compass.reports.graduate_tracer as graduate_tracer_report
 from compass.accounts.models import (
     Capability,
     Designation,
@@ -41,7 +42,6 @@ from compass.graduate_tracer.models import (
     GTSUnemploymentReason,
     GTSUsefulCompetency,
 )
-import compass.reports.graduate_tracer as graduate_tracer_report
 from compass.reports.graduate_tracer import NOT_RECORDED, build_graduate_tracer_report
 
 
