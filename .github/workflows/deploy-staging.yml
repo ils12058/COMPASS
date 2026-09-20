@@ -1,0 +1,309 @@
+name: Deploy staging backend
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_staging_sha:
+        description: "Full 40-character SHA currently expected at origin/staging"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compass-staging-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy staging
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging-api.compass-gco.com
+    permissions:
+      contents: read
+    env:
+      DO_REGISTRY_NAME: ${{ vars.DO_REGISTRY_NAME }}
+      DO_REGISTRY_REPOSITORY: ${{ vars.DO_REGISTRY_REPOSITORY }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      STAGING_DEPLOY_HOST: ${{ vars.STAGING_DEPLOY_HOST }}
+      STAGING_DEPLOY_USER: ${{ vars.STAGING_DEPLOY_USER }}
+      STAGING_DEPLOY_PORT: ${{ vars.STAGING_DEPLOY_PORT }}
+      STAGING_FIREWALL_ID: ${{ vars.STAGING_FIREWALL_ID }}
+
+    steps:
+      # This workflow may be dispatched from main, but the deployable source of truth is staging.
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          ref: refs/heads/staging
+          fetch-depth: 0
+
+      - name: Resolve and verify exact staging revision
+        id: revision
+        env:
+          EXPECTED_STAGING_SHA: ${{ inputs.expected_staging_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$EXPECTED_STAGING_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "expected_staging_sha must be a full 40-character hexadecimal SHA" >&2
+            exit 1
+          fi
+
+          git fetch --no-tags origin \
+            "+refs/heads/staging:refs/remotes/origin/staging"
+          remote_sha="$(git rev-parse refs/remotes/origin/staging)"
+          expected_sha="${EXPECTED_STAGING_SHA,,}"
+
+          if [[ "$remote_sha" != "$expected_sha" ]]; then
+            echo "origin/staging moved after the requested SHA was chosen" >&2
+            echo "expected: $expected_sha" >&2
+            echo "actual:   $remote_sha" >&2
+            exit 1
+          fi
+
+          git checkout --detach "$remote_sha"
+          deploy_sha="$(git rev-parse HEAD)"
+          echo "deploy_sha=$deploy_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$DO_REGISTRY_NAME" =~ ^[a-z0-9-]+$ ]]
+          [[ "$DO_REGISTRY_REPOSITORY" =~ ^[a-z0-9._-]+$ ]]
+          [[ "$DEPLOY_PATH" == "/opt/compass" ]]
+          [[ "$STAGING_DEPLOY_USER" == "compass" ]]
+          [[ "$STAGING_DEPLOY_PORT" == "22" ]]
+          [[ "$STAGING_FIREWALL_ID" =~ ^[0-9a-f-]{36}$ ]]
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Prepare short-lived registry push credentials
+        shell: bash
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          docker_config_dir="$RUNNER_TEMP/compass-registry-push"
+          install -d -m 700 "$docker_config_dir"
+          doctl registry docker-config "$DO_REGISTRY_NAME" \
+            --read-write \
+            --expiry-seconds 900 \
+            > "$docker_config_dir/config.json"
+          chmod 600 "$docker_config_dir/config.json"
+          echo "DOCKER_CONFIG=$docker_config_dir" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push immutable staging image
+        id: image
+        shell: bash
+        env:
+          DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
+        run: |
+          set -euo pipefail
+          image="registry.digitalocean.com/$DO_REGISTRY_NAME/$DO_REGISTRY_REPOSITORY:$DEPLOY_SHA"
+          docker buildx build \
+            --platform linux/amd64 \
+            --file be/Containerfile \
+            --tag "$image" \
+            --push \
+            be
+          digest="$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')"
+          test -n "$digest"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "Pushed $image ($digest)"
+
+      - name: Prepare pinned SSH trust material
+        shell: bash
+        env:
+          STAGING_SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          STAGING_SSH_KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          ssh_dir="$RUNNER_TEMP/compass-staging-ssh"
+          install -d -m 700 "$ssh_dir"
+          printf '%s\n' "$STAGING_SSH_PRIVATE_KEY" > "$ssh_dir/id_ed25519"
+          printf '%s\n' "$STAGING_SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          chmod 600 "$ssh_dir/id_ed25519" "$ssh_dir/known_hosts"
+          echo "STAGING_SSH_DIR=$ssh_dir" >> "$GITHUB_ENV"
+
+      - name: Prepare short-lived registry pull credentials
+        shell: bash
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          docker_config_dir="$RUNNER_TEMP/compass-registry-pull"
+          install -d -m 700 "$docker_config_dir"
+          doctl registry docker-config "$DO_REGISTRY_NAME" \
+            --expiry-seconds 900 \
+            > "$docker_config_dir/config.json"
+          chmod 600 "$docker_config_dir/config.json"
+          echo "STAGING_REGISTRY_PULL_CONFIG=$docker_config_dir/config.json" >> "$GITHUB_ENV"
+
+      - name: Open temporary runner SSH access
+        id: runner_firewall
+        shell: bash
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          runner_ip="$(curl --fail --silent --show-error --retry 3 https://api.ipify.org)"
+          [[ "$runner_ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+          rule="protocol:tcp,ports:22,address:${runner_ip}/32"
+          doctl compute firewall add-rules "$STAGING_FIREWALL_ID" \
+            --inbound-rules "$rule"
+          echo "runner_ip=$runner_ip" >> "$GITHUB_OUTPUT"
+
+      - name: Upload exact deployment manifests and registry credentials
+        shell: bash
+        env:
+          DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          ssh_opts=(
+            -i "$STAGING_SSH_DIR/id_ed25519"
+            -p "$STAGING_DEPLOY_PORT"
+            -o BatchMode=yes
+            -o ConnectTimeout=15
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$STAGING_SSH_DIR/known_hosts"
+          )
+          release_dir="$DEPLOY_PATH/releases/$DEPLOY_SHA"
+          remote_registry_config="$DEPLOY_PATH/.registry-config-$DEPLOY_SHA.json"
+          scp_opts=(
+            -i "$STAGING_SSH_DIR/id_ed25519"
+            -P "$STAGING_DEPLOY_PORT"
+            -o BatchMode=yes
+            -o ConnectTimeout=15
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$STAGING_SSH_DIR/known_hosts"
+          )
+
+          ssh "${ssh_opts[@]}" "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST" \
+            "test -d '$DEPLOY_PATH' && test -f '$DEPLOY_PATH/.env' && mkdir -p '$release_dir' && chmod 750 '$release_dir'"
+          scp "${scp_opts[@]}" \
+            be/compose.staging.yaml \
+            be/Caddyfile \
+            "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST:$release_dir/"
+          scp "${scp_opts[@]}" \
+            "$STAGING_REGISTRY_PULL_CONFIG" \
+            "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST:$remote_registry_config"
+          ssh "${ssh_opts[@]}" "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST" \
+            "chmod 600 '$remote_registry_config'"
+
+      - name: Deploy candidate image on the Droplet
+        shell: bash
+        env:
+          DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          ssh_opts=(
+            -i "$STAGING_SSH_DIR/id_ed25519"
+            -p "$STAGING_DEPLOY_PORT"
+            -o BatchMode=yes
+            -o ConnectTimeout=15
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$STAGING_SSH_DIR/known_hosts"
+          )
+          release_dir="$DEPLOY_PATH/releases/$DEPLOY_SHA"
+          remote_registry_config="$DEPLOY_PATH/.registry-config-$DEPLOY_SHA.json"
+
+          ssh "${ssh_opts[@]}" "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_SHA='$DEPLOY_SHA' IMAGE='$IMAGE' RELEASE_DIR='$release_dir' REGISTRY_CONFIG='$remote_registry_config' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          : "${DEPLOY_PATH:?}"
+          : "${DEPLOY_SHA:?}"
+          : "${IMAGE:?}"
+          : "${RELEASE_DIR:?}"
+          : "${REGISTRY_CONFIG:?}"
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$IMAGE" == "registry.digitalocean.com/"*":$DEPLOY_SHA" ]]
+          test -d "$DEPLOY_PATH"
+          test -f "$DEPLOY_PATH/.env"
+          test -f "$RELEASE_DIR/compose.staging.yaml"
+          test -f "$RELEASE_DIR/Caddyfile"
+          test -s "$REGISTRY_CONFIG"
+
+          if [ -e "$RELEASE_DIR/.env" ] && [ ! -L "$RELEASE_DIR/.env" ]; then
+            echo "release .env path is not a symlink; refusing to overwrite it" >&2
+            exit 1
+          fi
+          ln -sfn ../../.env "$RELEASE_DIR/.env"
+
+          docker_config_dir="$(mktemp -d "$DEPLOY_PATH/.docker-config.XXXXXX")"
+          cleanup() {
+            rm -rf "$docker_config_dir"
+            rm -f "$REGISTRY_CONFIG"
+          }
+          trap cleanup EXIT
+          install -m 600 "$REGISTRY_CONFIG" "$docker_config_dir/config.json"
+          export DOCKER_CONFIG="$docker_config_dir"
+          export COMPASS_IMAGE="$IMAGE"
+          cd "$RELEASE_DIR"
+          compose=(docker compose -f compose.staging.yaml)
+
+          "${compose[@]}" config >/dev/null
+          "${compose[@]}" pull --quiet web worker beat proxy postgres redis
+          docker image inspect "$IMAGE" >/dev/null
+          "${compose[@]}" run --rm --no-deps web python manage.py check
+          "${compose[@]}" up -d postgres redis
+          "${compose[@]}" run --rm web python manage.py migrate --noinput
+
+          state="$DEPLOY_PATH/.deploy.env"
+          previous_state="$DEPLOY_PATH/.deploy.previous.env"
+          if [ -f "$state" ]; then
+            cp "$state" "$previous_state"
+            chmod 640 "$previous_state"
+          fi
+          state_tmp="$DEPLOY_PATH/.deploy.env.tmp.$$"
+          printf 'COMPASS_IMAGE=%s\n' "$IMAGE" > "$state_tmp"
+          chmod 640 "$state_tmp"
+          mv -f "$state_tmp" "$state"
+
+          "${compose[@]}" up -d --remove-orphans
+
+          web_container="$("${compose[@]}" ps -q web)"
+          test -n "$web_container"
+          ready=false
+          for _ in $(seq 1 60); do
+            health="$(docker inspect --format '{{.State.Health.Status}}' "$web_container" 2>/dev/null || true)"
+            if [ "$health" = "healthy" ]; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != true ]; then
+            "${compose[@]}" ps
+            "${compose[@]}" logs --tail=80 web proxy || true
+            exit 1
+          fi
+
+          echo "Deployed $IMAGE"
+          REMOTE
+
+      - name: Close temporary runner SSH access
+        if: always() && steps.runner_firewall.outputs.runner_ip != ''
+        shell: bash
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          rule="protocol:tcp,ports:22,address:${{ steps.runner_firewall.outputs.runner_ip }}/32"
+          doctl compute firewall remove-rules "$STAGING_FIREWALL_ID" \
+            --inbound-rules "$rule"
