@@ -513,6 +513,77 @@ def test_transcription_with_storage_approved_enables_provider_storage():
 
 
 @pytest.mark.django_db
+def test_storage_withdrawal_supersedes_pending_transcription_storage_start():
+    _, student, counselor, appointment = setup_session()
+    fake = FakeMediaDailyClient()
+    requested = request_consents(
+        counselor=counselor,
+        appointment_id=appointment.pk,
+        scopes=[ConsentScope.LIVE_TRANSCRIPTION, ConsentScope.TRANSCRIPT_STORAGE],
+        context=context(counselor),
+    )
+    consent_ids = {}
+    for item in requested:
+        decide_my_consent(
+            student=student,
+            appointment_id=appointment.pk,
+            consent_id=item["id"],
+            decision=ConsentDecision.APPROVED,
+            context=context(student),
+        )
+        consent_ids[item["scope"]] = item["id"]
+
+    original_update = fake.update_room
+    withdrawal_triggered = False
+
+    def racing_update_room(*, room_name: str, properties: dict[str, object]):
+        nonlocal withdrawal_triggered
+        result = original_update(room_name=room_name, properties=properties)
+        if (
+            properties.get("enable_transcription_storage") is True
+            and not withdrawal_triggered
+        ):
+            withdrawal_triggered = True
+            withdraw_my_consent(
+                student=student,
+                appointment_id=appointment.pk,
+                consent_id=consent_ids[ConsentScope.TRANSCRIPT_STORAGE],
+                context=context(student),
+                daily_client=fake,
+            )
+        return result
+
+    fake.update_room = racing_update_room
+    with override_settings(DAILY_ENABLED=True):
+        create_join_credential(
+            actor=student,
+            appointment_id=appointment.pk,
+            context=context(student),
+            daily_client=fake,
+        )
+        with pytest.raises(ECounselingConsentNotApproved):
+            start_transcription(
+                counselor=counselor,
+                appointment_id=appointment.pk,
+                store_transcript=True,
+                context=context(counselor),
+                daily_client=fake,
+            )
+
+    storage_consent = ECounselingConsent.objects.get(
+        pk=consent_ids[ConsentScope.TRANSCRIPT_STORAGE]
+    )
+    capture = ECounselingMediaCapture.objects.get(
+        room__appointment=appointment,
+        kind=MediaCaptureKind.TRANSCRIPTION,
+    )
+    assert storage_consent.withdrawn_at is not None
+    assert capture.status == MediaCaptureStatus.STOP_REQUESTED
+    assert not fake.transcription_starts
+    assert fake.room_updates[-1][1] == {"enable_transcription_storage": False}
+
+
+@pytest.mark.django_db
 def test_withdrawal_persists_when_recording_stop_fails():
     _, student, counselor, appointment = setup_session()
     fake = FakeMediaDailyClient(fail_stop=True)
