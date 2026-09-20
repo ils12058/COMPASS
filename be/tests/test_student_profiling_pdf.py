@@ -616,7 +616,7 @@ def test_render_service_calls_canonical_builder_once_and_preserves_filter_argume
     monkeypatch.setattr(report_pdf, "render_document_pdf", fake_renderer)
 
     result = render_student_profiling_pdf(**ids)
-    assert calls == [ids]
+    assert calls == [{**ids, "access_scope": GLOBAL_REPORT_ACCESS_SCOPE}]
     assert result.pdf_bytes.startswith(b"%PDF-")
     assert result.filename == "student-profile-2026-2027.pdf"
 
