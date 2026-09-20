@@ -53,6 +53,10 @@ AVAILABILITY_PROVIDER_EXCEPTION_CREATED = "availability.provider_exception.creat
 AVAILABILITY_PROVIDER_EXCEPTION_REMOVED = "availability.provider_exception.removed"
 APPOINTMENT_CREATED = "appointment.created"
 APPOINTMENT_CANCELLED = "appointment.cancelled"
+APPOINTMENT_RESCHEDULED = "appointment.rescheduled"
+APPOINTMENT_REASSIGNED = "appointment.reassigned"
+APPOINTMENT_COMPLETED = "appointment.completed"
+APPOINTMENT_NO_SHOW = "appointment.no_show"
 COUNSELING_ENCOUNTER_CREATED = "counseling.encounter.created"
 COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
 COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
@@ -62,6 +66,7 @@ INVENTORY_REOPENED = "inventory.reopened"
 INVENTORY_RESUBMITTED = "inventory.resubmitted"
 GOOD_MORAL_REQUEST_CREATED = "good_moral.request_created"
 GOOD_MORAL_REQUEST_UPDATED = "good_moral.request_updated"
+GOOD_MORAL_REQUEST_CANCELLED = "good_moral.request.cancelled"
 GOOD_MORAL_ISSUED = "good_moral.issued"
 CUSTOMER_FEEDBACK_SUBMITTED = "feedback.customer_feedback_submitted"
 CSM_SUBMITTED = "feedback.csm_submitted"
@@ -77,7 +82,9 @@ ROUTINE_INTERVIEW_EVALUATION_FINALIZED = "routine_interview.evaluation_finalized
 REFERRAL_CREATED = "referral.created"
 REFERRAL_ACTION_RECORDED = "referral.action_recorded"
 REFERRAL_STATUS_UPDATED = "referral.status_updated"
+REFERRAL_VOIDED = "referral.voided"
 CALL_SLIP_CREATED = "call_slip.created"
+CALL_SLIP_VOIDED = "call_slip.voided"
 DOCUMENT_BRANDING_UPDATED = "document_branding.updated"
 ANNOUNCEMENT_CREATED = "announcement.created"
 ANNOUNCEMENT_UPDATED = "announcement.updated"
@@ -169,6 +176,10 @@ __all__ = [
     "AVAILABILITY_PROVIDER_EXCEPTION_REMOVED",
     "APPOINTMENT_CREATED",
     "APPOINTMENT_CANCELLED",
+    "APPOINTMENT_RESCHEDULED",
+    "APPOINTMENT_REASSIGNED",
+    "APPOINTMENT_COMPLETED",
+    "APPOINTMENT_NO_SHOW",
     "COUNSELING_ENCOUNTER_CREATED",
     "COUNSELING_ENCOUNTER_UPDATED",
     "COUNSELING_SHARED_SUMMARY_PUBLISHED",
@@ -176,6 +187,7 @@ __all__ = [
     "INVENTORY_SUBMITTED",
     "GOOD_MORAL_REQUEST_CREATED",
     "GOOD_MORAL_REQUEST_UPDATED",
+    "GOOD_MORAL_REQUEST_CANCELLED",
     "GOOD_MORAL_ISSUED",
     "CUSTOMER_FEEDBACK_SUBMITTED",
     "CSM_SUBMITTED",
@@ -191,7 +203,9 @@ __all__ = [
     "REFERRAL_CREATED",
     "REFERRAL_ACTION_RECORDED",
     "REFERRAL_STATUS_UPDATED",
+    "REFERRAL_VOIDED",
     "CALL_SLIP_CREATED",
+    "CALL_SLIP_VOIDED",
     "DOCUMENT_BRANDING_UPDATED",
     "ANNOUNCEMENT_CREATED",
     "ANNOUNCEMENT_UPDATED",
