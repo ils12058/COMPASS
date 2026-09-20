@@ -20,6 +20,7 @@ from .services import (
     NotificationError,
     NotificationNotFound,
     list_my_notifications,
+    mark_all_my_notifications_read,
     mark_my_notification_read,
     optional_email_enabled_for,
     unread_count_for,
@@ -55,6 +56,10 @@ class NotificationPageResponse(StrictSchema):
 
 class UnreadCountResponse(StrictSchema):
     unread_count: int
+
+
+class MarkAllReadResponse(StrictSchema):
+    updated_count: int
 
 
 class NotificationPreferenceResponse(StrictSchema):
@@ -126,6 +131,18 @@ def notifications_list_mine(
 )
 def notifications_get_unread_count(request):
     return UnreadCountResponse(unread_count=unread_count_for(actor=request.auth_user))
+
+
+@router.patch(
+    "/read-all",
+    response=response_with_errors(MarkAllReadResponse, 401),
+    auth=session_auth,
+    operation_id="notificationsMarkAllRead",
+)
+def notifications_mark_all_read(request):
+    return MarkAllReadResponse(
+        updated_count=mark_all_my_notifications_read(actor=request.auth_user)
+    )
 
 
 @router.patch(
