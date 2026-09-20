@@ -360,6 +360,7 @@ def referrals_record_action(
         _raise(exc)
     return Status(201, _action(action))
 
+
 @router.post(
     "/{referral_id}/void",
     response=response_with_errors(ReferralDetailResponse, 401, 403, 404, 409, 422),
@@ -378,4 +379,3 @@ def referrals_void(request, referral_id: UUID, payload: ReferralVoidRequest):
     except ReferralError as exc:
         _raise(exc)
     return _detail(item)
-

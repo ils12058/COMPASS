@@ -403,6 +403,7 @@ def call_slips_record_interview_ended(
         _raise(exc)
     return _operational_view(item)
 
+
 @router.post(
     "/{call_slip_id}/void",
     response=response_with_errors(CallSlipOperationalResponse, 401, 403, 404, 409, 422),
@@ -421,4 +422,3 @@ def call_slips_void(request, call_slip_id: UUID, payload: CallSlipVoidRequest):
     except CallSlipError as exc:
         _raise(exc)
     return _operational_view(item)
-

@@ -523,6 +523,7 @@ def appointments_cancel(request, appointment_id: UUID):
         _raise(exc)
     return _appointment(item)
 
+
 @router.post(
     "/{appointment_id}/reschedule",
     response=response_with_errors(AppointmentResponse, 401, 403, 404, 409, 422),
@@ -535,10 +536,7 @@ def appointments_reschedule(
     payload: AppointmentRescheduleRequest,
 ):
     actor = request.auth_user
-    self_mode = (
-        actor.role.code == "STUDENT"
-        and actor.has_capability("appointments.manage_self")
-    )
+    self_mode = actor.role.code == "STUDENT" and actor.has_capability("appointments.manage_self")
     administrative = False
     if not self_mode:
         _require(request, "appointments.manage", recent_mfa=True)
@@ -657,4 +655,3 @@ def appointments_get_history(request, appointment_id: UUID):
             for row in items
         ]
     }
-

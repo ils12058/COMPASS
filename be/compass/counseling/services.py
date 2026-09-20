@@ -212,9 +212,7 @@ def _validate_appointment_link(
         AppointmentStatus.SCHEDULED,
         AppointmentStatus.COMPLETED,
     }:
-        raise CounselingAppointmentInvalid(
-            "The linked Appointment must be SCHEDULED or COMPLETED."
-        )
+        raise CounselingAppointmentInvalid("The linked Appointment must be SCHEDULED or COMPLETED.")
     if appointment.provider_id != counselor_id:
         raise CounselingAppointmentInvalid(
             "The linked Appointment is assigned to a different Counselor."

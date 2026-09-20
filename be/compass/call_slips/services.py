@@ -407,9 +407,7 @@ def _lock_linked_referral(
         referral_id=referral.pk,
         voided_at__isnull=True,
     ).exists():
-        raise CallSlipReferralConflict(
-            "The linked Referral already has an active Call Slip."
-        )
+        raise CallSlipReferralConflict("The linked Referral already has an active Call Slip.")
     return referral
 
 
@@ -509,10 +507,13 @@ def create_call_slip(
                     creation_request_fingerprint=fingerprint,
                 )
         except IntegrityError as exc:
-            if referral is not None and CallSlip.objects.filter(
-                referral_id=referral.pk,
-                voided_at__isnull=True,
-            ).exists():
+            if (
+                referral is not None
+                and CallSlip.objects.filter(
+                    referral_id=referral.pk,
+                    voided_at__isnull=True,
+                ).exists()
+            ):
                 raise CallSlipReferralConflict(
                     "The linked Referral already has an active Call Slip."
                 ) from exc
@@ -646,9 +647,7 @@ def record_interview_ended(
         if item is None or not _student_in_scope(actor, item.student_id):
             raise CallSlipNotFound("The requested Call Slip was not found.")
         if item.voided_at is not None:
-            raise CallSlipVoidConflict(
-                "A voided Call Slip cannot record interview completion."
-            )
+            raise CallSlipVoidConflict("A voided Call Slip cannot record interview completion.")
         if item.interview_ended_at is not None:
             if item.interview_ended_at == normalized:
                 return _queryset().get(pk=item.pk)
@@ -669,6 +668,7 @@ def record_interview_ended(
             },
         )
         return item_for_audit
+
 
 def void_call_slip(
     *,
@@ -691,16 +691,12 @@ def void_call_slip(
         if item.voided_at is not None:
             return _queryset().get(pk=item.pk)
         if item.interview_ended_at is not None:
-            raise CallSlipVoidConflict(
-                "A completed Call Slip is historical and cannot be voided."
-            )
+            raise CallSlipVoidConflict("A completed Call Slip is historical and cannot be voided.")
 
         item.voided_at = current
         item.voided_by = actor
         item.void_reason = cleaned_reason
-        item.save(
-            update_fields=["voided_at", "voided_by", "void_reason", "updated_at"]
-        )
+        item.save(update_fields=["voided_at", "voided_by", "void_reason", "updated_at"])
         record_event(
             context=context,
             action=CALL_SLIP_VOIDED,
@@ -721,4 +717,3 @@ def void_call_slip(
             target_id=item.pk,
         )
         return _queryset().get(pk=item.pk)
-

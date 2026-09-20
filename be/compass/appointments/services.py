@@ -169,9 +169,7 @@ def _normalized_status(value: str | AppointmentStatus | None) -> str | None:
         return None
     normalized = value.value if isinstance(value, AppointmentStatus) else value
     if normalized not in AppointmentStatus.values:
-        raise InvalidAppointmentInput(
-            "status must be SCHEDULED, CANCELLED, COMPLETED, or NO_SHOW"
-        )
+        raise InvalidAppointmentInput("status must be SCHEDULED, CANCELLED, COMPLETED, or NO_SHOW")
     return str(normalized)
 
 
@@ -521,9 +519,7 @@ def _clean_change_reason(value: str | None, *, required: bool) -> str:
 
 def _require_scheduled_before_start(item: Appointment, *, now: datetime) -> None:
     if item.status != AppointmentStatus.SCHEDULED:
-        raise AppointmentLifecycleConflict(
-            "Only a SCHEDULED Appointment may be changed."
-        )
+        raise AppointmentLifecycleConflict("Only a SCHEDULED Appointment may be changed.")
     if now >= item.starts_at:
         raise AppointmentLifecycleConflict(
             "The Appointment can no longer be changed after it has started."
@@ -550,9 +546,7 @@ def _validate_existing_service(
             "The Appointment Service is no longer operationally schedulable."
         )
     if not provider.is_active or provider.role.code != "COUNSELOR":
-        raise AppointmentNotSchedulable(
-            "The assigned provider is no longer an active Counselor."
-        )
+        raise AppointmentNotSchedulable("The assigned provider is no longer an active Counselor.")
     if not service_supports_delivery_mode(service, delivery_mode):
         raise AppointmentNotSchedulable(
             "The Service no longer supports the Appointment delivery mode."
@@ -561,7 +555,6 @@ def _validate_existing_service(
         raise AppointmentNotSchedulable(
             "The assigned Counselor is no longer eligible for this Service."
         )
-
 
 
 def _reference_year(at: datetime) -> int:
@@ -724,9 +717,7 @@ def cancel_appointment(
         if item.status == AppointmentStatus.CANCELLED:
             return _appointment_queryset().get(pk=item.pk)
         if item.status != AppointmentStatus.SCHEDULED:
-            raise AppointmentCancellationConflict(
-                "Only a SCHEDULED Appointment may be cancelled."
-            )
+            raise AppointmentCancellationConflict("Only a SCHEDULED Appointment may be cancelled.")
         if current >= item.starts_at:
             raise AppointmentCancellationConflict(
                 "An Appointment cannot be cancelled after it has started."
@@ -813,9 +804,7 @@ def reschedule_appointment(
         if not administrative and item.cancellation_cutoff_minutes is not None:
             boundary = item.starts_at - timedelta(minutes=item.cancellation_cutoff_minutes)
             if current > boundary:
-                raise AppointmentLifecycleConflict(
-                    "The Appointment reschedule cutoff has passed."
-                )
+                raise AppointmentLifecycleConflict("The Appointment reschedule cutoff has passed.")
 
         from compass.ecounseling.models import ECounselingRoom
 
@@ -848,9 +837,7 @@ def reschedule_appointment(
             ends_at=new_ends_at,
             exclude_appointment_id=item.pk,
         ):
-            raise AppointmentTimeConflict(
-                "The Counselor already has an overlapping Appointment."
-            )
+            raise AppointmentTimeConflict("The Counselor already has an overlapping Appointment.")
         if _has_overlap(
             field="student_id",
             user_id=item.student_id,
@@ -858,9 +845,7 @@ def reschedule_appointment(
             ends_at=new_ends_at,
             exclude_appointment_id=item.pk,
         ):
-            raise AppointmentTimeConflict(
-                "The Student already has an overlapping Appointment."
-            )
+            raise AppointmentTimeConflict("The Student already has an overlapping Appointment.")
 
         previous_starts_at = item.starts_at
         previous_ends_at = item.ends_at
@@ -952,10 +937,7 @@ def reassign_appointment(
             )
 
         new_provider = (
-            User.objects.select_for_update()
-            .select_related("role")
-            .filter(pk=provider_id)
-            .first()
+            User.objects.select_for_update().select_related("role").filter(pk=provider_id).first()
         )
         if new_provider is None:
             raise AppointmentNotSchedulable("The selected Counselor was not found.")
@@ -1039,9 +1021,7 @@ def complete_appointment(
         if item.status == AppointmentStatus.COMPLETED:
             return _appointment_queryset().get(pk=item.pk)
         if item.status != AppointmentStatus.SCHEDULED:
-            raise AppointmentLifecycleConflict(
-                "Only a SCHEDULED Appointment may be completed."
-            )
+            raise AppointmentLifecycleConflict("Only a SCHEDULED Appointment may be completed.")
         if current < item.starts_at:
             raise AppointmentLifecycleConflict(
                 "An Appointment cannot be completed before it starts."
@@ -1049,9 +1029,7 @@ def complete_appointment(
         item.status = AppointmentStatus.COMPLETED
         item.completed_at = current
         item.completed_by = actor
-        item.save(
-            update_fields=["status", "completed_at", "completed_by", "updated_at"]
-        )
+        item.save(update_fields=["status", "completed_at", "completed_by", "updated_at"])
         record_event(
             context=context,
             action=APPOINTMENT_COMPLETED,

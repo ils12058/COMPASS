@@ -152,10 +152,7 @@ def student_support_list_students(
                 },
                 "inventory_status": row.inventory_status,
                 "available": row.available,
-                "indicators": [
-                    {"code": item.code, "label": item.label}
-                    for item in row.indicators
-                ],
+                "indicators": [{"code": item.code, "label": item.label} for item in row.indicators],
             }
             for row in result.items
         ],

@@ -127,6 +127,7 @@ def patch_my_profile(request, payload: MyProfileUpdateRequest):
         _raise_profile_error(exc)
     return _serialize(result.user)
 
+
 @router.put(
     "/me/profile/photo",
     response=response_with_errors(MyProfilePhotoResponse, 401, 403, 422, 503),
@@ -179,4 +180,3 @@ def remove_my_profile_photo(request):
         "profile_photo_url": url,
         "profile_photo_updated_at": user.profile_photo_updated_at,
     }
-

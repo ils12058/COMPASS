@@ -180,6 +180,7 @@ __all__ = [
     "list_student_support_students",
 ]
 
+
 def _roster_scope_students(actor: User):
     if (
         not getattr(actor, "pk", None)
@@ -367,4 +368,3 @@ def list_student_support_students(
         page_size=page_size,
         has_next=len(students) > page_size,
     )
-

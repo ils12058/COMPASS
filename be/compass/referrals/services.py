@@ -585,6 +585,7 @@ def record_action(
         )
         return ReferralAction.objects.select_related("referral", "recorded_by").get(pk=action.pk)
 
+
 def void_referral(
     *,
     actor: User,
@@ -617,9 +618,7 @@ def void_referral(
         item.voided_at = current
         item.voided_by = actor
         item.void_reason = cleaned_reason
-        item.save(
-            update_fields=["voided_at", "voided_by", "void_reason", "updated_at"]
-        )
+        item.save(update_fields=["voided_at", "voided_by", "void_reason", "updated_at"])
         record_event(
             context=context,
             action=REFERRAL_VOIDED,
@@ -632,4 +631,3 @@ def void_referral(
             },
         )
         return _detail_queryset().get(pk=item.pk)
-

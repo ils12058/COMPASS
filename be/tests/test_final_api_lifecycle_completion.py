@@ -299,12 +299,15 @@ def test_no_show_is_terminal_and_rejects_existing_counseling_encounter():
     )
     assert result.status == AppointmentStatus.NO_SHOW
     assert result.no_show_at == now
-    assert mark_appointment_no_show(
-        appointment_id=item.pk,
-        actor=manager,
-        context=appointment_context(manager),
-        now=now + timedelta(minutes=1),
-    ).status == AppointmentStatus.NO_SHOW
+    assert (
+        mark_appointment_no_show(
+            appointment_id=item.pk,
+            actor=manager,
+            context=appointment_context(manager),
+            now=now + timedelta(minutes=1),
+        ).status
+        == AppointmentStatus.NO_SHOW
+    )
 
     linked = Appointment.objects.create(
         reference_code="APT-2099-800002",
@@ -393,17 +396,19 @@ def test_student_support_roster_is_scoped_current_privacy_minimized_and_filterab
         {"indicator": "PWD"},
     )
     assert filtered.status_code == 200
-    assert [item["student"]["id"] for item in filtered.json()["items"]] == [
-        str(submitted.pk)
-    ]
-    assert support_auth_client(no_scope).get("/api/v1/student-support/students").json()["items"] == []
+    assert [item["student"]["id"] for item in filtered.json()["items"]] == [str(submitted.pk)]
+    assert (
+        support_auth_client(no_scope).get("/api/v1/student-support/students").json()["items"] == []
+    )
     assert support_auth_client(gss).get("/api/v1/student-support/students").status_code == 403
     head_ids = {
         row["student"]["id"]
-        for row in support_auth_client(head).get(
+        for row in support_auth_client(head)
+        .get(
             "/api/v1/student-support/students",
             {"page_size": 50},
-        ).json()["items"]
+        )
+        .json()["items"]
     }
     assert {str(submitted.pk), str(draft.pk), str(missing.pk)} <= head_ids
 
@@ -470,9 +475,7 @@ def test_profile_photo_http_set_replace_remove_uses_existing_private_photo_servi
             content_type=MULTIPART_CONTENT,
         )
         assert response.status_code == 200
-        assert response.json()["profile_photo_url"].startswith(
-            "https://signed.example.test/"
-        )
+        assert response.json()["profile_photo_url"].startswith("https://signed.example.test/")
         user.refresh_from_db()
         key = user.profile_photo_object_key
         assert key is not None
@@ -537,10 +540,7 @@ def test_referral_and_call_slip_void_preserve_history_and_enable_corrected_reiss
     )
     assert voided.lifecycle_state == "VOIDED"
     assert first.pk not in {row.pk for row in list_call_slips(actor=head).items}
-    assert first.pk in {
-        row.pk
-        for row in list_call_slips(actor=head, include_voided=True).items
-    }
+    assert first.pk in {row.pk for row in list_call_slips(actor=head, include_voided=True).items}
     notice = Notification.objects.get(
         recipient=student,
         event_code="call_slip.voided",
@@ -570,10 +570,13 @@ def test_referral_and_call_slip_void_preserve_history_and_enable_corrected_reiss
     )
     assert replacement.pk != first.pk
     assert CallSlip.objects.filter(referral=referral).count() == 2
-    assert CallSlip.objects.filter(
-        referral=referral,
-        voided_at__isnull=True,
-    ).count() == 1
+    assert (
+        CallSlip.objects.filter(
+            referral=referral,
+            voided_at__isnull=True,
+        ).count()
+        == 1
+    )
 
     void_call_slip(
         actor=head,
@@ -588,10 +591,15 @@ def test_referral_and_call_slip_void_preserve_history_and_enable_corrected_reiss
         context=appointment_context(head),
     )
     assert voided_referral.voided_at is not None
-    assert voided_referral.pk not in {row.pk for row in __import__(
-        "compass.referrals.services",
-        fromlist=["list_referrals"],
-    ).list_referrals(actor=head).items}
+    assert voided_referral.pk not in {
+        row.pk
+        for row in __import__(
+            "compass.referrals.services",
+            fromlist=["list_referrals"],
+        )
+        .list_referrals(actor=head)
+        .items
+    }
     with pytest.raises(ReferralVoidConflict):
         update_status_note(
             actor=head,
