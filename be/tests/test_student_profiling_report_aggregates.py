@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
+import compass.reports.services as profiling_report
 from compass.accounts.models import StudentLifecycleStatus
 from compass.inventory.models import (
     CivilStatusCategory,
@@ -15,7 +16,6 @@ from compass.inventory.models import (
     Sex,
 )
 from compass.organization.models import AcademicYear
-import compass.reports.services as profiling_report
 from compass.reports.services import (
     LEGACY_KEY,
     LEGACY_LABEL,
