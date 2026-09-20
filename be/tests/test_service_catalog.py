@@ -397,7 +397,11 @@ def test_provider_role_eligibility_keeps_legacy_gss_assignment_readable_but_non_
     )
 
     assert service_allows_provider_role(service, "COUNSELOR")
-    assert service_allows_provider_role(service, "GUIDANCE_SERVICES_STAFF")
+    assert ServiceProviderRole.objects.filter(
+        service=service,
+        role__code="GUIDANCE_SERVICES_STAFF",
+    ).exists()
+    assert not service_allows_provider_role(service, "GUIDANCE_SERVICES_STAFF")
     assert service_supports_delivery_mode(service, "ONLINE")
     assert not service_supports_delivery_mode(service, "FAX")
     assert provider_role_eligible(service, counselor)
