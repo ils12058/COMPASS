@@ -218,7 +218,9 @@ def test_inventory_reopen_resubmit_preserves_history_and_hides_draft_from_guidan
     report_draft = build_student_profiling_report(access_scope=access_scope)
     assert report_draft["report_context"]["submitted_inventory_count"] == 0
 
-    replace_current_inventory(student=student, values={"nickname": "Corrected"})
+    corrections = minimum_normalized_inventory_values(program_id=program.pk)
+    corrections["nickname"] = "Corrected"
+    replace_current_inventory(student=student, values=corrections)
     resubmitted = submit_current_inventory(student=student, context=context(student))
     assert resubmitted.first_submitted_at == first_timestamp
     assert resubmitted.last_submitted_at is not None

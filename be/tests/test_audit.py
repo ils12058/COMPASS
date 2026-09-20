@@ -11,6 +11,7 @@ from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, override_settings
 
 from compass.accounts.models import Role
+from compass.accounts.policy import ROLE_DEFINITIONS
 from compass.audit.actions import ACCOUNT_CREATED, IDENTITY_POLICY_SYNCED
 from compass.audit.context import AuditContext
 from compass.audit.models import (
@@ -374,7 +375,7 @@ def test_policy_sync_records_one_event_only_when_it_changes_policy():
     assert event.actor_type == AuditEvent.ActorType.SYSTEM
     assert event.target_type is None
     assert event.target_id is None
-    assert event.metadata["roles_created"] == 4
+    assert event.metadata["roles_created"] == len(ROLE_DEFINITIONS)
 
     call_command("sync_identity_policy", stdout=StringIO())
     assert AuditEvent.objects.filter(action=IDENTITY_POLICY_SYNCED).count() == 1
@@ -393,6 +394,7 @@ def test_policy_sync_rolls_back_if_audit_recording_fails():
     assert AuditEvent.objects.count() == 0
 
 
+@pytest.mark.django_db
 def test_audit_read_api_is_not_exposed():
     from django.test import Client
 

@@ -48,6 +48,22 @@ def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)
 
 
+def ensure_referral_form_revision() -> None:
+    family, _ = FormFamily.objects.get_or_create(
+        key="referral_slip",
+        defaults={"title": "Referral Slip"},
+    )
+    FormRevision.objects.get_or_create(
+        family=family,
+        official_code="CNSC-OP-GTA-01F9",
+        official_revision="1",
+        defaults={
+            "internal_schema_version": 1,
+            "status": "ACTIVE",
+        },
+    )
+
+
 def make_user(email: str, role: str) -> User:
     return User.objects.create_user(
         email=email,
@@ -607,6 +623,7 @@ def test_create_api_preserves_received_at_and_rejects_naive_received_at():
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_head_creations_allocate_unique_referral_references():
     sync_policy()
+    ensure_referral_form_revision()
     head_a = make_head("head.a@example.edu")
     head_b = make_head("head.b@example.edu")
     student_a = make_user("student.a@example.edu", "STUDENT")
