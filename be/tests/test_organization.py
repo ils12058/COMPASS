@@ -331,3 +331,70 @@ def test_dpo_institutional_officer_is_never_head_guidance_fallback():
     assert result.counselor is None
     assert result.reason == "NO_HEAD_FALLBACK"
     assert effective_responsibility_colleges(officer) == ()
+
+@pytest.mark.django_db
+def test_student_affiliation_collection_is_paginated_searchable_and_filterable():
+    sync_policy()
+    admin = make_user("affiliation-admin@example.edu", "IT_ADMIN")
+    campus = Campus.objects.create(code="AFF-MAIN", name="Affiliation Main")
+    other_campus = Campus.objects.create(code="AFF-OTHER", name="Affiliation Other")
+    college_a = College.objects.create(campus=campus, code="AFF-A", name="Affiliation A")
+    college_b = College.objects.create(campus=other_campus, code="AFF-B", name="Affiliation B")
+
+    students = [
+        make_user("affiliation.alpha@example.edu", "STUDENT"),
+        make_user("affiliation.beta@example.edu", "STUDENT"),
+        make_user("affiliation.gamma@example.edu", "STUDENT"),
+    ]
+    for index, student in enumerate(students, start=1):
+        student.institutional_id = f"AFF-{index:03d}"
+        student.first_name = ("Alpha", "Beta", "Gamma")[index - 1]
+        student.save(update_fields=["institutional_id", "first_name", "updated_at"])
+        StudentAffiliation.objects.create(
+            student=student,
+            college=college_a if index < 3 else college_b,
+        )
+
+    client = auth_client(admin)
+    first = client.get("/api/v1/organization/student-affiliations", {"page_size": 2})
+    assert first.status_code == 200
+    assert first.json()["page"] == 1
+    assert first.json()["page_size"] == 2
+    assert first.json()["has_next"] is True
+    assert len(first.json()["items"]) == 2
+
+    searched = client.get(
+        "/api/v1/organization/student-affiliations",
+        {"search": "AFF-002"},
+    )
+    assert searched.status_code == 200
+    assert [row["student"]["id"] for row in searched.json()["items"]] == [str(students[1].pk)]
+
+    by_college = client.get(
+        "/api/v1/organization/student-affiliations",
+        {"college_id": str(college_b.pk)},
+    )
+    assert by_college.status_code == 200
+    assert [row["student"]["id"] for row in by_college.json()["items"]] == [str(students[2].pk)]
+
+    by_campus = client.get(
+        "/api/v1/organization/student-affiliations",
+        {"campus_id": str(campus.pk)},
+    )
+    assert by_campus.status_code == 200
+    assert {row["student"]["id"] for row in by_campus.json()["items"]} == {
+        str(students[0].pk),
+        str(students[1].pk),
+    }
+
+    by_student = client.get(
+        "/api/v1/organization/student-affiliations",
+        {"student_id": str(students[0].pk)},
+    )
+    assert by_student.status_code == 200
+    assert [row["student"]["id"] for row in by_student.json()["items"]] == [str(students[0].pk)]
+
+    assert client.get(
+        "/api/v1/organization/student-affiliations",
+        {"page": 0},
+    ).status_code == 422
