@@ -453,6 +453,7 @@ def test_health_auth_platform_and_daily_webhook_bypass_before_maintenance_lookup
     ) as lookup:
         live = client.get("/api/v1/health/live")
         ready = client.get("/api/v1/health/ready")
+        metadata = client.get("/api/v1/meta")
         auth = client.get("/api/v1/auth/csrf")
         platform = client.get("/api/v1/platform/maintenance")
         webhook = client.post(
@@ -463,6 +464,7 @@ def test_health_auth_platform_and_daily_webhook_bypass_before_maintenance_lookup
 
     assert live.status_code == 200
     assert ready.status_code == 200
+    assert metadata.status_code == 200
     assert auth.status_code == 200
     assert platform.status_code == 401
     if webhook.status_code == 503:
