@@ -710,11 +710,12 @@ def test_only_head_may_read_all_and_reopen_with_required_reason():
     assert reopened.json()["reopen_events"][0]["reason"] == (
         "Student requested a factual correction."
     )
+    reopen_event = ExitInterviewReopenEvent.objects.get(exit_interview_id=exit_id)
     notification = Notification.objects.get(
         recipient=student,
         event_code="exit_interview.reopened",
-        source_type="exit_interview",
-        source_id=exit_id,
+        source_type="exit_interview_reopen_event",
+        source_id=reopen_event.pk,
     )
     assert notification.policy == "MANDATORY_OPERATIONAL"
     assert notification.target_type == "EXIT_INTERVIEW"
@@ -781,7 +782,19 @@ def test_reopen_and_resubmit_preserve_first_submission_and_append_correction_his
         "First correction",
         "Second correction",
     ]
-    assert ExitInterviewReopenEvent.objects.filter(exit_interview_id=exit_id).count() == 2
+    reopen_events = list(
+        ExitInterviewReopenEvent.objects.filter(exit_interview_id=exit_id).order_by("created_at", "id")
+    )
+    assert len(reopen_events) == 2
+    notifications = Notification.objects.filter(
+        recipient=student,
+        event_code="exit_interview.reopened",
+        source_type="exit_interview_reopen_event",
+    )
+    assert notifications.count() == 2
+    assert set(notifications.values_list("source_id", flat=True)) == {
+        event.pk for event in reopen_events
+    }
 
 
 @pytest.mark.django_db
@@ -846,6 +859,68 @@ def test_student_history_survives_current_year_change_without_requiring_new_inve
 
     current_missing = client.get("/api/v1/exit-interviews/me/current")
     assert current_missing.status_code == 404
+
+
+@pytest.mark.django_db
+def test_reopened_historical_year_record_is_owner_addressable_and_resubmittable():
+    sync_policy()
+    student = make_user("historical-correction@example.edu")
+    first_year = make_year("2097-2098", current=True)
+    make_inventory(student, first_year)
+    student_client = auth_client(student)
+    created = ensure_api(student_client)
+    exit_id = created.json()["id"]
+    assert put_api(student_client, valid_payload()).status_code == 200
+    first_submission = submit_api(student_client).json()
+
+    first_year.is_current = False
+    first_year.save(update_fields=["is_current", "updated_at"])
+    second_year = make_year("2098-2099", current=True)
+    make_inventory(student, second_year)
+    current_record = ensure_api(student_client)
+    assert current_record.status_code == 200
+    assert current_record.json()["id"] != exit_id
+
+    head_client = auth_client(make_head("historical-correction-head@example.edu"))
+    reopened = head_client.post(
+        f"/api/v1/exit-interviews/{exit_id}/reopen",
+        data=json.dumps({"reason": "Correct the prior-year record"}),
+        content_type="application/json",
+        **csrf(head_client),
+    )
+    assert reopened.status_code == 200
+    assert reopened.json()["academic_year"]["id"] == str(first_year.pk)
+
+    corrected = valid_payload()
+    corrected["suggestions_recommendations"] = "Prior-year correction"
+    updated = student_client.put(
+        f"/api/v1/exit-interviews/me/{exit_id}",
+        data=json.dumps(corrected),
+        content_type="application/json",
+        **csrf(student_client),
+    )
+    assert updated.status_code == 200
+    assert updated.json()["academic_year"]["id"] == str(first_year.pk)
+    assert updated.json()["suggestions_recommendations"] == "Prior-year correction"
+
+    other = make_user("historical-other@example.edu")
+    other_client = auth_client(other)
+    concealed = other_client.put(
+        f"/api/v1/exit-interviews/me/{exit_id}",
+        data=json.dumps(valid_payload()),
+        content_type="application/json",
+        **csrf(other_client),
+    )
+    assert concealed.status_code == 404
+
+    resubmitted = student_client.post(
+        f"/api/v1/exit-interviews/me/{exit_id}/submit",
+        **csrf(student_client),
+    )
+    assert resubmitted.status_code == 200
+    assert resubmitted.json()["status"] == "SUBMITTED"
+    assert resubmitted.json()["first_submitted_at"] == first_submission["first_submitted_at"]
+    assert resubmitted.json()["academic_year"]["id"] == str(first_year.pk)
 
 
 @pytest.mark.django_db
