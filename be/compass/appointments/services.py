@@ -192,7 +192,11 @@ def _counselor_management_college_ids(counselor_id: UUID) -> tuple[UUID, ...]:
 def _management_scope_college_ids(actor: User) -> tuple[UUID, ...] | None:
     """Resolve current Appointment administration scope; None is Head institution-wide."""
 
-    if not getattr(actor, "pk", None) or not actor.is_active:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or not actor.has_capability("appointments.manage")
+    ):
         return ()
     if _is_head_guidance(actor):
         return None
