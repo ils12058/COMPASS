@@ -34,6 +34,12 @@ from compass.counseling.services import (
     update_encounter,
 )
 from compass.notifications.models import EmailDelivery, Notification
+from compass.organization.models import (
+    Campus,
+    College,
+    CounselorResponsibility,
+    StudentAffiliation,
+)
 from compass.service_catalog.services import create_service, set_service_active
 
 
@@ -165,6 +171,23 @@ def test_direct_encounter_records_actual_completed_time_without_fake_appointment
     admin = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     student = make_user("student@example.edu", "STUDENT")
+    student_campus = Campus.objects.create(code="DIRECT-STUDENT", name="Direct Student Campus")
+    student_college = College.objects.create(
+        campus=student_campus,
+        code="DIRECT-STUDENT-COL",
+        name="Direct Student College",
+    )
+    counselor_campus = Campus.objects.create(
+        code="DIRECT-COUNSELOR",
+        name="Direct Counselor Campus",
+    )
+    counselor_college = College.objects.create(
+        campus=counselor_campus,
+        code="DIRECT-COUNSELOR-COL",
+        name="Direct Counselor College",
+    )
+    StudentAffiliation.objects.create(student=student, college=student_college)
+    CounselorResponsibility.objects.create(college=counselor_college, counselor=counselor)
     create_counseling_service(admin)
     started_at, ended_at = actual_times(minutes=75)
 
