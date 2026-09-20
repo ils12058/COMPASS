@@ -52,12 +52,18 @@ from .services import (
     InventoryError,
     InventoryFormRevisionNotConfigured,
     InventoryNotFound,
+    InventoryNotPermitted,
+    InventoryNotSubmitted,
     InventoryStatus,
     ensure_current_inventory,
     get_current_inventory,
     get_current_inventory_status,
+    get_inventory_for_counselor,
     get_my_inventory_history_item,
+    list_inventory_students,
     list_my_inventory_history,
+    list_student_inventory_history,
+    reopen_inventory_for_correction,
     replace_current_inventory,
     submit_current_inventory,
 )
@@ -469,6 +475,8 @@ class InventoryStatusResponse(StrictSchema):
     academic_year: AcademicYearSummary
     status: InventoryStatusValue
     submitted_at: datetime | None
+    first_submitted_at: datetime | None
+    last_submitted_at: datetime | None
     form_revision: FormRevisionSummary | None
 
 
@@ -477,6 +485,8 @@ class InventorySummaryResponse(StrictSchema):
     academic_year: AcademicYearSummary
     status: InventoryStatusValue
     submitted_at: datetime | None
+    first_submitted_at: datetime | None
+    last_submitted_at: datetime | None
     form_revision: FormRevisionSummary
 
 
@@ -486,11 +496,63 @@ class InventoryResponse(InventoryPayload):
     program: InventoryProgramSummary | None
     status: InventoryStatusValue
     submitted_at: datetime | None
+    first_submitted_at: datetime | None
+    last_submitted_at: datetime | None
     form_revision: FormRevisionSummary
 
 
 class InventoryHistoryResponse(StrictSchema):
     items: list[InventorySummaryResponse]
+
+
+class InventoryStudentSummary(StrictSchema):
+    id: UUID
+    institutional_id: str | None
+    display_name: str
+
+
+class CounselorInventoryRosterItem(StrictSchema):
+    student: InventoryStudentSummary
+    academic_year: AcademicYearSummary
+    inventory_id: UUID | None
+    status: InventoryStatusValue
+    program: InventoryProgramSummary | None
+    year_level: int | None
+    first_submitted_at: datetime | None
+    last_submitted_at: datetime | None
+    submitted_at: datetime | None
+    correction_pending: bool
+
+
+class CounselorInventoryRosterPage(StrictSchema):
+    items: list[CounselorInventoryRosterItem]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class CounselorInventoryHistoryItem(StrictSchema):
+    inventory_id: UUID
+    academic_year: AcademicYearSummary
+    status: InventoryStatusValue
+    program: InventoryProgramSummary | None
+    year_level: int | None
+    first_submitted_at: datetime | None
+    last_submitted_at: datetime | None
+    submitted_at: datetime | None
+    correction_pending: bool
+
+
+class CounselorInventoryHistoryResponse(StrictSchema):
+    items: list[CounselorInventoryHistoryItem]
+
+
+class CounselorInventoryDetailResponse(InventoryResponse):
+    student: InventoryStudentSummary
+
+
+class InventoryReopenRequest(StrictSchema):
+    reason: str = Field(min_length=1, max_length=1000)
 
 
 def _context(request) -> AuditContext:
@@ -505,7 +567,25 @@ def _require_student(request, capability: str) -> None:
         )
 
 
+def _require_counselor(request, capability: str) -> None:
+    user = request.auth_user
+    if (
+        not user.is_active
+        or user.role.code != "COUNSELOR"
+        or not user.has_capability(capability)
+    ):
+        raise APIError(
+            403,
+            "permission_denied",
+            "Counselor Individual Inventory authority is required.",
+        )
+
+
 def _raise(exc: InventoryError) -> NoReturn:
+    if isinstance(exc, InventoryNotPermitted):
+        raise APIError(403, "permission_denied", str(exc)) from exc
+    if isinstance(exc, InventoryNotSubmitted):
+        raise APIError(409, "inventory_not_submitted", str(exc)) from exc
     if isinstance(exc, InventoryCurrentStudentRequired):
         raise APIError(409, "current_student_required", str(exc)) from exc
     if isinstance(exc, InventoryNotFound):
@@ -556,6 +636,8 @@ def _inventory(item) -> dict[str, object]:
         "academic_year": _academic_year(item.academic_year),
         "status": _status(item),
         "submitted_at": item.submitted_at,
+        "first_submitted_at": item.first_submitted_at,
+        "last_submitted_at": item.last_submitted_at,
         "form_revision": _revision(item.form_revision),
         "full_name": item.full_name_snapshot,
     }
@@ -739,6 +821,72 @@ def _inventory(item) -> dict[str, object]:
     return data
 
 
+def _student_summary(student) -> dict[str, object]:
+    return {
+        "id": student.pk,
+        "institutional_id": student.institutional_id,
+        "display_name": student.get_full_name(),
+    }
+
+
+def _program_summary(item) -> dict[str, object] | None:
+    if item is None or item.program is None:
+        return None
+    return {
+        "id": item.program.pk,
+        "code": item.program.code,
+        "name": item.program.name,
+        "college_id": item.program.college_id,
+    }
+
+
+def _correction_pending(item) -> bool:
+    return bool(
+        item is not None
+        and item.submitted_at is None
+        and item.first_submitted_at is not None
+        and list(item.reopen_events.all())
+    )
+
+
+def _roster_item(row) -> dict[str, object]:
+    item = row.inventory
+    return {
+        "student": _student_summary(row.student),
+        "academic_year": _academic_year(row.academic_year),
+        "inventory_id": item.pk if item is not None else None,
+        "status": (
+            InventoryStatus.MISSING
+            if item is None
+            else (InventoryStatus.SUBMITTED if item.submitted_at is not None else InventoryStatus.DRAFT)
+        ),
+        "program": _program_summary(item),
+        "year_level": item.year_level if item is not None else None,
+        "first_submitted_at": item.first_submitted_at if item is not None else None,
+        "last_submitted_at": item.last_submitted_at if item is not None else None,
+        "submitted_at": item.submitted_at if item is not None else None,
+        "correction_pending": _correction_pending(item),
+    }
+
+
+def _history_item(item) -> dict[str, object]:
+    return {
+        "inventory_id": item.pk,
+        "academic_year": _academic_year(item.academic_year),
+        "status": _status(item),
+        "program": _program_summary(item),
+        "year_level": item.year_level,
+        "first_submitted_at": item.first_submitted_at,
+        "last_submitted_at": item.last_submitted_at,
+        "submitted_at": item.submitted_at,
+        "correction_pending": _correction_pending(item),
+    }
+
+
+def _counselor_detail(item) -> dict[str, object]:
+    return {**_inventory(item), "student": _student_summary(item.student)}
+
+
 def _payload_values(payload: InventoryPayload) -> dict[str, object]:
     values = payload.model_dump(mode="python")
     values["full_name_snapshot"] = values.pop("full_name")
@@ -771,6 +919,8 @@ def inventory_get_my_status(request):
         "academic_year": _academic_year(result.academic_year),
         "status": result.status,
         "submitted_at": item.submitted_at if item is not None else None,
+        "first_submitted_at": item.first_submitted_at if item is not None else None,
+        "last_submitted_at": item.last_submitted_at if item is not None else None,
         "form_revision": _revision(item.form_revision) if item is not None else None,
     }
 
@@ -852,6 +1002,8 @@ def inventory_list_my_history(request):
                 "academic_year": _academic_year(item.academic_year),
                 "status": _status(item),
                 "submitted_at": item.submitted_at,
+                "first_submitted_at": item.first_submitted_at,
+                "last_submitted_at": item.last_submitted_at,
                 "form_revision": _revision(item.form_revision),
             }
             for item in list_my_inventory_history(request.auth_user)
@@ -873,3 +1025,94 @@ def inventory_get_my_history_item(request, inventory_id: UUID):
         )
     except InventoryError as exc:
         _raise(exc)
+
+@router.get(
+    "/students",
+    response=response_with_errors(CounselorInventoryRosterPage, 401, 403, 409, 422),
+    auth=session_auth,
+    operation_id="inventoryListStudents",
+)
+def inventory_list_students(
+    request,
+    academic_year_id: UUID | None = None,
+    status: InventoryStatusValue | None = None,
+    college_id: UUID | None = None,
+    program_id: UUID | None = None,
+    year_level: int | None = None,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+):
+    _require_counselor(request, "inventory.view")
+    try:
+        result = list_inventory_students(
+            actor=request.auth_user,
+            academic_year_id=academic_year_id,
+            status=status.value if status is not None else None,
+            college_id=college_id,
+            program_id=program_id,
+            year_level=year_level,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except InventoryError as exc:
+        _raise(exc)
+    return {
+        "items": [_roster_item(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.get(
+    "/students/{student_id}/history",
+    response=response_with_errors(CounselorInventoryHistoryResponse, 401, 403, 404),
+    auth=session_auth,
+    operation_id="inventoryListStudentHistory",
+)
+def inventory_list_student_history(request, student_id: UUID):
+    _require_counselor(request, "inventory.view")
+    try:
+        items = list_student_inventory_history(actor=request.auth_user, student_id=student_id)
+    except InventoryError as exc:
+        _raise(exc)
+    return {"items": [_history_item(item) for item in items]}
+
+
+@router.get(
+    "/records/{inventory_id}",
+    response=response_with_errors(CounselorInventoryDetailResponse, 401, 403, 404, 409),
+    auth=session_auth,
+    operation_id="inventoryGetRecord",
+)
+def inventory_get_record(request, inventory_id: UUID):
+    _require_counselor(request, "inventory.view")
+    try:
+        return _counselor_detail(
+            get_inventory_for_counselor(actor=request.auth_user, inventory_id=inventory_id)
+        )
+    except InventoryError as exc:
+        _raise(exc)
+
+
+@router.post(
+    "/records/{inventory_id}/reopen",
+    response=response_with_errors(CounselorInventoryHistoryItem, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="inventoryReopenRecord",
+)
+def inventory_reopen_record(request, inventory_id: UUID, payload: InventoryReopenRequest):
+    _require_counselor(request, "inventory.reopen")
+    try:
+        item = reopen_inventory_for_correction(
+            actor=request.auth_user,
+            inventory_id=inventory_id,
+            reason=payload.reason,
+            context=_context(request),
+        )
+    except InventoryError as exc:
+        _raise(exc)
+    return _history_item(item)
+
