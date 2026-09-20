@@ -22,7 +22,7 @@ from compass.accounts.models import (
     User,
     UserDesignation,
 )
-from compass.accounts.policy import CAPABILITY_DEFINITIONS
+from compass.accounts.policy import CAPABILITY_DEFINITIONS, ROLE_CAPABILITY_GRANTS
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
@@ -263,7 +263,9 @@ def test_exit_interview_policy_is_student_self_plus_head_only():
     sync_policy()
 
     assert Capability.objects.count() == len(CAPABILITY_DEFINITIONS)
-    assert RoleCapability.objects.count() == 67
+    assert RoleCapability.objects.count() == sum(
+        len(capabilities) for capabilities in ROLE_CAPABILITY_GRANTS.values()
+    )
     assert DesignationCapability.objects.count() == 18
 
     student = make_user("student-policy@example.edu")

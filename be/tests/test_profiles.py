@@ -20,7 +20,7 @@ from compass.accounts.models import (
     User,
     UserDesignation,
 )
-from compass.accounts.policy import CAPABILITY_DEFINITIONS
+from compass.accounts.policy import CAPABILITY_DEFINITIONS, ROLE_CAPABILITY_GRANTS
 from compass.accounts.profiles import (
     ADDRESS_MAX_LENGTH,
     PersonProfileContext,
@@ -132,7 +132,9 @@ def test_user_directly_owns_minimal_reusable_profile_fields_without_personalprof
 def test_profile_foundation_tracks_current_capability_policy_counts():
     sync_policy()
     assert Capability.objects.count() == len(CAPABILITY_DEFINITIONS)
-    assert RoleCapability.objects.count() == 67
+    assert RoleCapability.objects.count() == sum(
+        len(capabilities) for capabilities in ROLE_CAPABILITY_GRANTS.values()
+    )
     assert DesignationCapability.objects.count() == 18
     assert not Capability.objects.filter(code__startswith="profile.").exists()
 
