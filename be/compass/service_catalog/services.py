@@ -147,9 +147,7 @@ def _normalize_provider_roles(values: list[str] | tuple[str, ...] | None) -> fro
     if len(normalized) != len(set(normalized)):
         raise InvalidServiceCatalogInput("provider_roles must not contain duplicates")
     if not set(normalized) <= ELIGIBLE_PROVIDER_ROLE_CODES:
-        raise InvalidServiceCatalogInput(
-            "provider_roles may contain only COUNSELOR"
-        )
+        raise InvalidServiceCatalogInput("provider_roles may contain only COUNSELOR")
     return frozenset(normalized)
 
 
