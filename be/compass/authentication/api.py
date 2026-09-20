@@ -39,6 +39,11 @@ from compass.authentication.mfa import (
     verify_totp_for_session,
 )
 from compass.authentication.models import AuthSession, TrustedSession
+from compass.authentication.password_change import (
+    PasswordChangeAuthenticationFailed,
+    PasswordChangeStrongAuthRequired,
+    change_password,
+)
 from compass.authentication.password_access import (
     PASSWORD_ACCESS_MESSAGE,
     PASSWORD_CHALLENGE_INVALID_MESSAGE,
@@ -129,6 +134,15 @@ class PasswordAccessConfirmRequest(Schema):
 
 class PasswordAccessConfirmResponse(Schema):
     password_set: bool
+
+
+class PasswordChangeRequest(Schema):
+    current_password: str | None = None
+    new_password: str
+
+
+class PasswordChangeResponse(Schema):
+    changed: bool
 
 
 class EmailChangeSecurityChallengeRequest(Schema):
@@ -436,6 +450,28 @@ def _raise_password_policy(exc: PasswordPolicyRejected) -> None:
     ) from exc
 
 
+def _raise_password_change_error(exc: Exception) -> None:
+    if isinstance(exc, RecentMFARequired):
+        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+    if isinstance(exc, PasswordChangeStrongAuthRequired):
+        raise APIError(
+            403,
+            "mfa_setup_required",
+            "Additional account security setup is required.",
+        ) from exc
+    if isinstance(exc, PasswordChangeAuthenticationFailed):
+        raise APIError(
+            403,
+            "password_change_authentication_failed",
+            "The current authentication proof could not be verified.",
+        ) from exc
+    raise APIError(
+        500,
+        "internal_error",
+        "The password change operation could not be completed.",
+    ) from exc
+
+
 def _raise_email_change_error(exc: Exception) -> None:
     if isinstance(exc, RecentMFARequired):
         raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
@@ -641,6 +677,38 @@ def login(request, payload: LoginRequest, response: HttpResponse):
     if result.status == "mfa_setup_required":
         raise APIError(403, "mfa_setup_required", "Additional account security setup is required.")
     return _login_response(result)
+
+
+@router.post(
+    "/password/change",
+    response=response_with_errors(PasswordChangeResponse, 401, 403, 422, 429, 503),
+    auth=session_auth,
+    operation_id="authChangePassword",
+    summary="Change the authenticated account password",
+    description=(
+        "Change the current authenticated account password using recent TOTP-backed MFA when "
+        "required, or the current password for accounts that do not require MFA."
+    ),
+)
+def password_change(request, payload: PasswordChangeRequest):
+    try:
+        result = change_password(
+            user=request.auth_user,
+            session=request.auth_session,
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+            context=AuditContext.from_request(request, actor=request.auth_user),
+            request=request,
+        )
+    except AuthenticationRateLimited as exc:
+        _raise_rate_limited(exc)
+    except AuthenticationAbuseUnavailable as exc:
+        _raise_security_unavailable(exc)
+    except PasswordPolicyRejected as exc:
+        _raise_password_policy(exc)
+    except Exception as exc:
+        _raise_password_change_error(exc)
+    return {"changed": result.changed}
 
 
 @router.post(
