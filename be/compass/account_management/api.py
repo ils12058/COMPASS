@@ -62,6 +62,7 @@ from .services import (
     change_role,
     create_account,
     get_account,
+    inspect_account_access,
     list_accounts,
     list_capability_overrides,
     list_designations,
@@ -191,6 +192,49 @@ class CapabilityOverrideResponse(StrictSchema):
 
 class CapabilityOverrideListResponse(StrictSchema):
     overrides: list[CapabilityOverrideResponse]
+
+
+class AccessSourceType(str, Enum):
+    ROLE = "ROLE"
+    DESIGNATION = "DESIGNATION"
+
+
+class AccessAccountResponse(StrictSchema):
+    id: UUID
+    email: str
+    full_name: str
+    is_active: bool
+
+
+class AccessBaselineSourceResponse(StrictSchema):
+    type: AccessSourceType
+    code: str
+
+
+class AccessOverrideResponse(StrictSchema):
+    effect: UserCapabilityOverride.Effect
+    reason: str
+    expires_at: datetime | None
+    created_at: datetime
+    created_by: CapabilityOverrideCreatorResponse | None
+    active: bool
+
+
+class AccessCapabilityResponse(StrictSchema):
+    code: CapabilityCode
+    name: str
+    description: str
+    effective: bool
+    baseline_sources: list[AccessBaselineSourceResponse]
+    override: AccessOverrideResponse | None
+
+
+class AccountEffectiveAccessResponse(StrictSchema):
+    account: AccessAccountResponse
+    role: RoleCode
+    designations: list[DesignationCode]
+    effective_capabilities: list[CapabilityCode]
+    capabilities: list[AccessCapabilityResponse]
 
 
 class OverrideRemovalResponse(StrictSchema):
@@ -698,6 +742,21 @@ def account_student_lifecycle(
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
+
+
+@router.get(
+    "/{user_id}/access",
+    response=response_with_errors(AccountEffectiveAccessResponse, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="accountsGetEffectiveAccess",
+    summary="Inspect managed account effective access",
+)
+def account_effective_access(request, user_id: UUID):
+    _require_management(request, recent_mfa=False)
+    try:
+        return inspect_account_access(user_id=user_id)
+    except AccountManagementError as exc:
+        _raise_management_error(exc)
 
 
 @router.get(
