@@ -810,7 +810,8 @@ def reschedule_appointment(
 
         if ECounselingRoom.objects.filter(appointment_id=item.pk).exists():
             raise AppointmentLifecycleConflict(
-                "This Appointment already has an E-Counseling room binding and cannot be rescheduled."
+                "This Appointment already has an E-Counseling room binding "
+                "and cannot be rescheduled."
             )
 
         _validate_existing_service(
