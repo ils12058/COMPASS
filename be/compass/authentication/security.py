@@ -37,6 +37,7 @@ def invalidate_reusable_auth_state(
     now: datetime | None = None,
     email_challenge_purposes: Iterable[str | EmailOTPPurpose] | None = None,
     email_challenge_email: str | None = None,
+    exclude_auth_session_id=None,
 ) -> AuthStateInvalidation:
     """Revoke reusable authentication state after a controlled account-security mutation.
 
@@ -55,6 +56,7 @@ def invalidate_reusable_auth_state(
             context=context,
             reason=reason,
             now=current,
+            exclude_session_id=exclude_auth_session_id,
         )
         revoked_trusted_session_count = revoke_all_trusted_sessions(
             user_id=user_id,
