@@ -141,9 +141,7 @@ def test_report_population_is_frozen_before_section_queries():
     ):
         report = build_graduate_tracer_report()
 
-    assert GraduateTracerResponse.objects.filter(
-        status=GraduateTracerStatus.SUBMITTED
-    ).count() == 2
+    assert GraduateTracerResponse.objects.filter(status=GraduateTracerStatus.SUBMITTED).count() == 2
     assert report["report_context"]["submitted_response_count"] == 1
     assert report["sections"]["sex"]["denominator"] == 1
     assert row(report, "sex", GTSSex.MALE)["count"] == 1
