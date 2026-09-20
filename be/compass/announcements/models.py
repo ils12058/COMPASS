@@ -55,10 +55,7 @@ class Announcement(models.Model):
             models.CheckConstraint(
                 condition=(
                     ~models.Q(status=PublicationStatus.PUBLISHED)
-                    | (
-                        models.Q(published_at__isnull=False)
-                        & models.Q(published_by__isnull=False)
-                    )
+                    | (models.Q(published_at__isnull=False) & models.Q(published_by__isnull=False))
                 ),
                 name="ann_published_metadata",
             ),
