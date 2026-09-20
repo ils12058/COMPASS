@@ -586,20 +586,57 @@ def start_transcription(
             room_name=room.daily_room_name,
             properties={"enable_transcription_storage": store_transcript},
         )
+
+        # Re-enter the same room/capture lock boundary before the provider start. Withdrawal uses
+        # these locks too, so whichever transition wins is serialized. A withdrawal that commits
+        # first makes the pending start ineligible; a start that wins first is visible to withdrawal
+        # and is immediately stopped/cleaned up by that path.
         with transaction.atomic():
+            locked_room = ECounselingRoom.objects.select_for_update().get(pk=room.pk)
+            _require_effective_consent_locked(
+                room=locked_room,
+                scope=ConsentScope.LIVE_TRANSCRIPTION,
+            )
+            if store_transcript:
+                _require_effective_consent_locked(
+                    room=locked_room,
+                    scope=ConsentScope.TRANSCRIPT_STORAGE,
+                )
             capture = ECounselingMediaCapture.objects.select_for_update().get(pk=capture_id)
+            if (
+                capture.status != MediaCaptureStatus.START_REQUESTED
+                or capture.provider_instance_id != instance_id
+            ):
+                raise ECounselingMediaConflict(
+                    "Transcription start was superseded by a consent or media-state transition."
+                )
             capture.transcript_storage_enabled = store_transcript
             capture.save(update_fields=["transcript_storage_enabled", "updated_at"])
-        _provider_ack(
-            client.start_transcription(
-                room_name=room.daily_room_name,
-                instance_id=instance_id,
+            _provider_ack(
+                client.start_transcription(
+                    room_name=room.daily_room_name,
+                    instance_id=instance_id,
+                )
             )
-        )
+    except (ECounselingConsentNotApproved, ECounselingMediaConflict):
+        if store_transcript:
+            try:
+                client.update_room(
+                    room_name=room.daily_room_name,
+                    properties={"enable_transcription_storage": False},
+                )
+            except (
+                DailyConfigurationError,
+                DailyUnavailable,
+                DailyHTTPError,
+                DailyInvalidResponse,
+            ) as cleanup_exc:
+                _set_provider_uncertain(capture_id, code="CONSENT_CLEANUP_UNCERTAIN")
+                raise _provider_failure(cleanup_exc) from cleanup_exc
+        raise
     except (DailyConfigurationError, DailyUnavailable, DailyHTTPError, DailyInvalidResponse) as exc:
         _handle_start_provider_failure(capture_id, exc)
     return ECounselingMediaCapture.objects.get(pk=capture_id)
-
 
 def _prepare_stop_locked(
     *,
@@ -821,8 +858,13 @@ def withdraw_my_consent(
                 capture_to_stop = capture
                 disable_storage = capture.transcript_storage_enabled
             elif consent.scope == ConsentScope.TRANSCRIPT_STORAGE:
-                disable_storage = bool(capture.transcript_storage_enabled)
-                if activeish and capture.transcript_storage_enabled:
+                pending_storage_start = capture.status == MediaCaptureStatus.START_REQUESTED
+                disable_storage = pending_storage_start or bool(
+                    capture.transcript_storage_enabled
+                )
+                if pending_storage_start or (
+                    activeish and capture.transcript_storage_enabled
+                ):
                     capture, _ = _prepare_stop_locked(
                         appointment=appointment,
                         room=locked_room,
