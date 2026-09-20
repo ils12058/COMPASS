@@ -803,6 +803,10 @@ def reschedule_appointment(
                 or not actor.has_capability("appointments.manage_self")
             ):
                 raise AppointmentNotFound("The requested Appointment was not found.")
+            if not is_current_student(actor):
+                raise AppointmentCurrentStudentRequired(
+                    "Current Student lifecycle is required to reschedule an Appointment."
+                )
 
         _require_scheduled_before_start(item, now=current)
 
