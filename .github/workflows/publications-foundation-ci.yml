@@ -1,4 +1,5 @@
 name: Publications foundation focused validation
+# Exact-head validation trigger after OpenAPI sync.
 
 on:
   push:
