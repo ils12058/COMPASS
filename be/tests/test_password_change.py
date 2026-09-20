@@ -216,9 +216,7 @@ def test_non_totp_password_change_requires_current_password_and_preserves_only_c
 
 
 @pytest.mark.django_db
-@override_settings(
-    AUTH_TOTP_ENCRYPTION_KEY="5NhdstKBJEQkGK4aIhDDkDu0SyKxcWrKILKTvWOGhiQ="
-)
+@override_settings(AUTH_TOTP_ENCRYPTION_KEY="5NhdstKBJEQkGK4aIhDDkDu0SyKxcWrKILKTvWOGhiQ=")
 def test_totp_password_change_requires_recent_mfa_and_preserves_mfa_state():
     sync_policy()
     user = make_user("totp-change@example.edu")
