@@ -51,6 +51,12 @@ from compass.routine_interviews.services import (
     submit_my_intake,
 )
 from compass.service_catalog.services import create_service, set_service_active
+from compass.student_support.models import (
+    FourPsStatus,
+    IndigenousPeoplesStatus,
+    ParentLifeStatus,
+    StudentSupportProfile,
+)
 from compass.student_support.services import build_student_support_context
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
@@ -630,8 +636,26 @@ def test_context_support_indicators_use_only_current_submitted_inventory(world):
         "STUDENT",
         institutional_id="MISSING-001",
     )
-    _, missing_college, _missing_program = make_org("MISSING")
+    _, missing_college, missing_program = make_org("MISSING")
     StudentAffiliation.objects.create(student=missing_student, college=missing_college)
+    historical_year = AcademicYear.objects.create(label="2025-2026", is_current=False)
+    historical = StudentInventory.objects.create(
+        student=missing_student,
+        academic_year=historical_year,
+        form_revision=world["inventory"].form_revision,
+        program=missing_program,
+        year_level=1,
+        submitted_at=now - timedelta(days=200),
+        pwd_status="NOT_SPECIFIED",
+        civil_status_category="NOT_SPECIFIED",
+    )
+    StudentSupportProfile.objects.create(
+        inventory=historical,
+        four_ps_status=FourPsStatus.BENEFICIARY,
+        indigenous_peoples_status=IndigenousPeoplesStatus.NOT_SPECIFIED,
+        mother_life_status=ParentLifeStatus.NOT_SPECIFIED,
+        father_life_status=ParentLifeStatus.NOT_SPECIFIED,
+    )
     missing_appointment = make_appointment(
         student=missing_student,
         counselor=world["b"],
@@ -648,6 +672,7 @@ def test_context_support_indicators_use_only_current_submitted_inventory(world):
     assert missing_context.inventory_status == "MISSING"
     assert missing_context.available is False
     assert missing_context.indicators == ()
+    assert historical.submitted_at is not None
 
 
 @pytest.mark.django_db
