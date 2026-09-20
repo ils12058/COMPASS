@@ -16,6 +16,7 @@ from compass.accounts.profiles import get_person_profile_context
 from compass.accounts.services import is_current_student
 from compass.audit.actions import (
     GOOD_MORAL_ISSUED,
+    GOOD_MORAL_REQUEST_CANCELLED,
     GOOD_MORAL_REQUEST_CREATED,
     GOOD_MORAL_REQUEST_UPDATED,
 )
@@ -46,6 +47,7 @@ from .models import GoodMoralRequest, GoodMoralStatus, GoodMoralVariant
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_SEARCH_LENGTH = 160
+MAX_CANCELLATION_REASON_LENGTH = 1000
 CURRENT_STUDENT_FAMILY_KEY = "good_moral_current_student"
 GRADUATE_FAMILY_KEY = "good_moral_graduate"
 TEMPLATE_BY_VARIANT = {
@@ -450,7 +452,7 @@ def update_request(
         if item is None:
             raise GoodMoralNotFound("The requested Good Moral record was not found.")
         if item.status != GoodMoralStatus.REQUESTED:
-            raise GoodMoralConflict("An issued Good Moral request is immutable.")
+            raise GoodMoralConflict("Only a REQUESTED Good Moral request may be corrected.")
 
         allowed = (
             CURRENT_EDITABLE_FIELDS
@@ -542,6 +544,8 @@ def issue_request(
             raise GoodMoralNotFound("The requested Good Moral record was not found.")
         if item.status == GoodMoralStatus.ISSUED:
             return _queryset().get(pk=item.pk)
+        if item.status != GoodMoralStatus.REQUESTED:
+            raise GoodMoralConflict("A CANCELLED Good Moral request cannot be issued.")
 
         if item.variant == GoodMoralVariant.CURRENT_STUDENT:
             locked_student = (
@@ -628,6 +632,68 @@ def issue_request(
             source_type="good_moral_request",
             source_id=item.pk,
             target_type="FEEDBACK",
+        )
+        return _queryset().get(pk=item.pk)
+
+
+def cancel_request(
+    *,
+    actor: User,
+    request_id: UUID,
+    reason: str,
+    self_service: bool,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> GoodMoralRequest:
+    if self_service:
+        _validate_student(actor, "good_moral.request_self")
+    else:
+        _validate_counselor(actor, "good_moral.manage")
+    cleaned_reason = _clean_required(
+        reason,
+        "reason",
+        MAX_CANCELLATION_REASON_LENGTH,
+    )
+    cancelled_at = now or timezone.now()
+    if timezone.is_naive(cancelled_at):
+        raise InvalidGoodMoralInput("The cancellation time must be timezone-aware.")
+
+    with transaction.atomic():
+        queryset = GoodMoralRequest.objects.select_for_update()
+        if self_service:
+            queryset = queryset.filter(student_id=actor.pk)
+        item = queryset.filter(pk=request_id).first()
+        if item is None:
+            raise GoodMoralNotFound("The requested Good Moral record was not found.")
+        if item.status == GoodMoralStatus.CANCELLED:
+            return _queryset().get(pk=item.pk)
+        if item.status != GoodMoralStatus.REQUESTED:
+            raise GoodMoralConflict("An ISSUED Good Moral request cannot be cancelled.")
+
+        item.status = GoodMoralStatus.CANCELLED
+        item.cancelled_at = cancelled_at
+        item.cancelled_by = actor
+        item.cancellation_reason = cleaned_reason
+        item.save(
+            update_fields=[
+                "status",
+                "cancelled_at",
+                "cancelled_by",
+                "cancellation_reason",
+                "updated_at",
+            ]
+        )
+        record_event(
+            context=context,
+            action=GOOD_MORAL_REQUEST_CANCELLED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="goodmoral.request",
+            target_id=item.pk,
+            metadata={
+                "variant": item.variant,
+                "transition": "REQUESTED -> CANCELLED",
+                "self_service": self_service,
+            },
         )
         return _queryset().get(pk=item.pk)
 
