@@ -408,6 +408,7 @@ def appointments_list_managed(
     _require(request, "appointments.manage")
     try:
         result = list_managed_appointments(
+            actor=request.auth_user,
             status=status.value if status else None,
             student_id=student_id,
             provider_id=provider_id,
