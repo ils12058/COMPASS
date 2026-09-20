@@ -164,9 +164,7 @@ def test_announcement_lifecycle_audience_expiry_ordering_and_audit_are_bounded()
     ).items
     assert [item.pk for item in student_rows] == [student_item.pk, all_item.pk]
     visible_at = now + timedelta(minutes=1)
-    assert {
-        item.pk for item in list_visible_announcements(actor=staff, now=visible_at).items
-    } == {
+    assert {item.pk for item in list_visible_announcements(actor=staff, now=visible_at).items} == {
         all_item.pk,
         gco_item.pk,
     }
@@ -176,9 +174,9 @@ def test_announcement_lifecycle_audience_expiry_ordering_and_audit_are_bounded()
         all_item.pk,
         gco_item.pk,
     }
-    assert [
-        item.pk for item in list_visible_announcements(actor=admin, now=visible_at).items
-    ] == [all_item.pk]
+    assert [item.pk for item in list_visible_announcements(actor=admin, now=visible_at).items] == [
+        all_item.pk
+    ]
     assert [
         item.pk for item in list_visible_announcements(actor=officer, now=visible_at).items
     ] == [all_item.pk]
