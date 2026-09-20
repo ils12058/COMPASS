@@ -404,7 +404,9 @@ def test_cross_scope_counseling_assignment_does_not_expand_inventory_or_support_
         created_by=student,
     )
 
-    assert auth_client(counselor).get(f"/api/v1/inventory/records/{inventory.pk}").status_code == 404
+    assert (
+        auth_client(counselor).get(f"/api/v1/inventory/records/{inventory.pk}").status_code == 404
+    )
     with pytest.raises(StudentSupportNotFound):
         get_student_support_context(actor=counselor, student_id=student.pk)
 
