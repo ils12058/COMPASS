@@ -79,8 +79,8 @@ def test_profile_report_population_is_frozen_before_program_and_section_queries(
     assert captured_program_total == 1
     sex_section = report["sections"]["sex"]
     assert sex_section["denominator"] == 1
-    assert report_row(report, "sex", Sex.MALE)["count"] == 1
-    assert report_row(report, "sex", Sex.FEMALE)["count"] == 0
+    assert report_row(sex_section, Sex.MALE)["count"] == 1
+    assert report_row(sex_section, Sex.FEMALE)["count"] == 0
 
 
 @pytest.mark.django_db
