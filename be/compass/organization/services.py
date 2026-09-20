@@ -85,6 +85,14 @@ class PeoplePage:
     has_next: bool
 
 
+@dataclass(frozen=True, slots=True)
+class StudentAffiliationPage:
+    items: tuple[StudentAffiliation, ...]
+    page: int
+    page_size: int
+    has_next: bool
+
+
 def _clean_name(value: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise InvalidOrganizationInput("name is required")
@@ -794,3 +802,54 @@ def list_people(
     offset = (page - 1) * page_size
     rows = list(qs[offset : offset + page_size + 1])
     return PeoplePage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
+
+
+def list_student_affiliations(
+    *,
+    student_id: UUID | None = None,
+    college_id: UUID | None = None,
+    campus_id: UUID | None = None,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> StudentAffiliationPage:
+    if type(page) is not int or page < 1:
+        raise InvalidOrganizationInput("page must be a positive integer")
+    if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
+        raise InvalidOrganizationInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
+
+    term = ""
+    if search is not None:
+        if not isinstance(search, str):
+            raise InvalidOrganizationInput("search must be text")
+        term = search.strip()
+        if len(term) > 160:
+            raise InvalidOrganizationInput("search must be at most 160 characters")
+
+    queryset = StudentAffiliation.objects.select_related(
+        "student__role",
+        "college__campus",
+    )
+    if student_id is not None:
+        queryset = queryset.filter(student_id=student_id)
+    if college_id is not None:
+        queryset = queryset.filter(college_id=college_id)
+    if campus_id is not None:
+        queryset = queryset.filter(college__campus_id=campus_id)
+    if term:
+        queryset = queryset.filter(
+            Q(student__institutional_id__icontains=term)
+            | Q(student__first_name__icontains=term)
+            | Q(student__middle_name__icontains=term)
+            | Q(student__last_name__icontains=term)
+        )
+    queryset = queryset.order_by("student__last_name", "student__first_name", "student_id")
+    offset = (page - 1) * page_size
+    rows = list(queryset[offset : offset + page_size + 1])
+    return StudentAffiliationPage(
+        tuple(rows[:page_size]),
+        page,
+        page_size,
+        len(rows) > page_size,
+    )
+
