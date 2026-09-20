@@ -391,6 +391,20 @@ CAPABILITY_DEFINITIONS = (
         description="Manage the approved institutional and GCO document identity configuration.",
     ),
     CapabilityDefinition(
+        code="announcements.manage",
+        name="Manage GCO announcements",
+        description=(
+            "Create, edit, publish, pin, and archive Guidance and Counseling Office Announcements."
+        ),
+    ),
+    CapabilityDefinition(
+        code="resources.manage",
+        name="Manage curated GCO resources",
+        description=(
+            "Create, edit, publish, order, and archive curated Guidance and Counseling Office Resources."
+        ),
+    ),
+    CapabilityDefinition(
         code="ecounseling.view_self",
         name="View own E-Counseling workspace",
         description="View the authenticated Student's own eligible E-Counseling workspace.",
@@ -467,6 +481,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "good_moral.view",
             "good_moral.manage",
             "good_moral.issue",
+            "announcements.manage",
+            "resources.manage",
             "ecounseling.view_assigned",
             "ecounseling.join_assigned",
             "ecounseling.manage_media_assigned",
@@ -484,6 +500,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "referrals.manage",
             "call_slips.view",
             "call_slips.manage",
+            "announcements.manage",
+            "resources.manage",
         }
     ),
     "STUDENT": frozenset(
