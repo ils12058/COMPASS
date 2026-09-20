@@ -30,13 +30,9 @@ from compass.institutional_forms.services import (
 )
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
+from compass.organization.access_scope import resolve_organizational_access_scope
 from compass.organization.academic_years import get_current_academic_year
-from compass.organization.models import (
-    AcademicYear,
-    College,
-    CounselorResponsibility,
-    Program,
-)
+from compass.organization.models import AcademicYear, College, Program
 from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
@@ -68,7 +64,6 @@ from .models import (
 )
 
 INVENTORY_FAMILY_KEY = "individual_inventory"
-HEAD_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_SEARCH_LENGTH = 160
@@ -341,12 +336,6 @@ def _inventory_queryset():
     )
 
 
-def _is_head(actor: User) -> bool:
-    return (
-        actor.role.code == "COUNSELOR" and actor.designations.filter(code=HEAD_DESIGNATION).exists()
-    )
-
-
 def _validate_counselor(actor: User, capability: str) -> None:
     if (
         not getattr(actor, "pk", None)
@@ -358,19 +347,8 @@ def _validate_counselor(actor: User, capability: str) -> None:
 
 
 def _counselor_college_ids(actor: User) -> tuple[UUID, ...] | None:
-    if _is_head(actor):
-        return None
-    return tuple(
-        CounselorResponsibility.objects.filter(
-            counselor_id=actor.pk,
-            counselor__is_active=True,
-            counselor__role__code="COUNSELOR",
-            college__is_active=True,
-            college__campus__is_active=True,
-        )
-        .order_by("college_id")
-        .values_list("college_id", flat=True)
-    )
+    scope = resolve_organizational_access_scope(actor)
+    return None if scope.institution_wide else scope.college_ids
 
 
 def _scoped_students(actor: User):
