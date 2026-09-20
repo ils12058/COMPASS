@@ -109,7 +109,7 @@ def _password_policy_issues(exc: ValidationError) -> tuple[PasswordPolicyIssue, 
     return tuple(issues)
 
 
-def _validate_new_password(*, user, new_password: str) -> None:
+def validate_new_password(*, user, new_password: str) -> None:
     if len(new_password) > MAX_PASSWORD_LENGTH:
         raise PasswordPolicyRejected(
             (
@@ -249,7 +249,7 @@ def confirm_password_access(
                 )
                 invalid = True
             else:
-                _validate_new_password(user=user, new_password=new_password)
+                validate_new_password(user=user, new_password=new_password)
                 initial_password = not user.has_usable_password()
                 user.set_password(new_password)
                 update_fields = ["password", "updated_at"]
@@ -315,4 +315,5 @@ __all__ = [
     "PasswordPolicyRejected",
     "confirm_password_access",
     "request_password_access",
+    "validate_new_password",
 ]
