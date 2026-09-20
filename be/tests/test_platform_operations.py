@@ -12,6 +12,7 @@ from django.test import Client, override_settings
 from django.utils import timezone
 
 from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.api.v1.constants import API_VERSION
 from compass.accounts.policy import CAPABILITY_CODES
 from compass.accounts.services import effective_capabilities, set_user_capability_override
 from compass.authentication.sessions import create_auth_session
@@ -326,7 +327,7 @@ def test_environment_endpoint_is_safe_resolved_projection_with_no_secret_values(
     }
     assert application_values["environment_mode"] == settings.APP_ENV
     assert application_values["application_version"] == settings.APPLICATION_VERSION
-    assert application_values["api_version"] == "1.0.0"
+    assert application_values["api_version"] == API_VERSION
     assert application_values["build_id"] == settings.COMPASS_BUILD_ID
     assert application_values["build_timestamp"] is None
 
