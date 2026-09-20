@@ -9,11 +9,22 @@ import pyotp
 import pytest
 from cryptography.fernet import Fernet
 from django.conf import settings
+from django.core.management import call_command
 from django.db import close_old_connections, transaction
 from django.test import Client, override_settings
 from django.utils import timezone
 
-from compass.accounts.models import Role, StudentLifecycleStatus, User
+from compass.accounts.models import (
+    Capability,
+    Designation,
+    Role,
+    RoleCapability,
+    StudentLifecycleStatus,
+    User,
+    UserCapabilityOverride,
+    UserDesignation,
+)
+from compass.accounts.services import effective_capabilities, set_user_capability_override
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.abuse import (
@@ -47,6 +58,10 @@ from compass.authentication.sessions import (
 )
 from compass.common.rate_limit import RateLimitResult
 from compass.notifications.models import EmailDelivery, Notification
+
+
+def sync_policy() -> None:
+    call_command("sync_identity_policy", verbosity=0)
 
 
 def make_user(*, email="student@example.edu", password="correct-password", role_code="STUDENT"):
@@ -148,6 +163,168 @@ def test_password_login_is_generic_and_stores_only_a_session_digest():
     assert AuditEvent.objects.filter(action="auth.login.failed", actor_user__isnull=True).exists()
     assert Notification.objects.count() == 0
     assert EmailDelivery.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_authenticated_student_contract_exposes_effective_capabilities_without_scope_leaks():
+    sync_policy()
+    user = make_user(email="auth-contract-student@example.edu", role_code="STUDENT")
+    client = Client()
+
+    response = login(client, email=user.email, password="correct-password")
+    assert response.status_code == 200
+    login_user = response.json()["user"]
+
+    assert login_user["role"] == "STUDENT"
+    assert login_user["designations"] == []
+    assert login_user["capabilities"] == sorted(effective_capabilities(user))
+    assert {
+        "appointments.view_self",
+        "appointments.manage_self",
+        "inventory.view_self",
+        "inventory.manage_self",
+    } <= set(login_user["capabilities"])
+    assert {
+        "accounts.manage",
+        "organization.manage",
+        "reports.view",
+        "inventory.view",
+        "inventory.reopen",
+    }.isdisjoint(login_user["capabilities"])
+    assert login_user["capabilities"] == sorted(set(login_user["capabilities"]))
+
+    expected_user_keys = {
+        "id",
+        "email",
+        "first_name",
+        "last_name",
+        "role",
+        "student_lifecycle_status",
+        "designations",
+        "capabilities",
+    }
+    assert set(login_user) == expected_user_keys
+    assert {
+        "role_capabilities",
+        "designation_capabilities",
+        "override_grants",
+        "override_revokes",
+        "override_reasons",
+        "override_expiry",
+        "college_ids",
+        "student_ids",
+        "scope",
+        "global_access",
+        "allowed_resources",
+    }.isdisjoint(login_user)
+
+    current = client.get("/api/v1/auth/session")
+    assert current.status_code == 200
+    assert current.json()["authenticated"] is True
+    assert current.json()["user"] == login_user
+    assert "capabilities" not in current.json()["session"]
+    assert "designations" not in current.json()["session"]
+
+
+@pytest.mark.django_db
+def test_session_refreshes_current_designations_and_override_aware_capabilities():
+    sync_policy()
+    user = make_user(email="auth-contract-counselor@example.edu", role_code="COUNSELOR")
+    client = Client()
+    assert login(client, email=user.email, password="correct-password").status_code == 200
+
+    initial = client.get("/api/v1/auth/session").json()["user"]
+    assert initial["designations"] == []
+    assert {
+        "appointments.manage",
+        "academic_years.view",
+        "institutional_forms.view",
+        "reports.view",
+        "inventory.view",
+        "inventory.reopen",
+    } <= set(initial["capabilities"])
+    assert "academic_years.manage" not in initial["capabilities"]
+    assert "platform_operations.view" not in initial["capabilities"]
+
+    UserDesignation.objects.create(
+        user=user,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+    # Synthetic second canonical assignment proves serializer ordering independently
+    # of insertion order. Normal management services still enforce role compatibility.
+    UserDesignation.objects.create(
+        user=user,
+        designation=Designation.objects.get(code="DPO"),
+    )
+    set_user_capability_override(
+        user=user,
+        capability="reports.view",
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Synthetic active revoke",
+    )
+    set_user_capability_override(
+        user=user,
+        capability="platform_operations.view",
+        effect=UserCapabilityOverride.Effect.GRANT,
+        reason="Synthetic active grant",
+    )
+    set_user_capability_override(
+        user=user,
+        capability="appointments.manage",
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Synthetic expired revoke",
+        expires_at=timezone.now() - timedelta(seconds=1),
+    )
+    unknown = Capability.objects.create(
+        code="accounts.future",
+        name="Unknown future capability",
+    )
+    RoleCapability.objects.create(role=user.role, capability=unknown)
+
+    refreshed = client.get("/api/v1/auth/session")
+    assert refreshed.status_code == 200
+    auth_user = refreshed.json()["user"]
+
+    assert auth_user["designations"] == ["DPO", "HEAD_GUIDANCE_COUNSELOR"]
+    assert auth_user["designations"] == sorted(set(auth_user["designations"]))
+    assert auth_user["capabilities"] == sorted(effective_capabilities(user))
+    assert auth_user["capabilities"] == sorted(set(auth_user["capabilities"]))
+    assert "reports.view" not in auth_user["capabilities"]
+    assert "platform_operations.view" in auth_user["capabilities"]
+    assert "appointments.manage" in auth_user["capabilities"]
+    assert "accounts.future" not in auth_user["capabilities"]
+    assert {
+        "organization.manage",
+        "academic_years.manage",
+        "privacy_governance.view",
+    } <= set(auth_user["capabilities"])
+
+
+@pytest.mark.django_db
+def test_dpo_session_exposes_designation_identity_and_only_effective_dpo_authority():
+    sync_policy()
+    officer = make_user(
+        email="auth-contract-dpo@example.edu",
+        role_code="INSTITUTIONAL_OFFICER",
+    )
+    UserDesignation.objects.create(
+        user=officer,
+        designation=Designation.objects.get(code="DPO"),
+    )
+    client = Client()
+
+    response = login(client, email=officer.email, password="correct-password")
+    assert response.status_code == 200
+    auth_user = response.json()["user"]
+
+    assert auth_user["role"] == "INSTITUTIONAL_OFFICER"
+    assert auth_user["designations"] == ["DPO"]
+    assert auth_user["capabilities"] == [
+        "privacy_governance.manage",
+        "privacy_governance.view",
+    ]
+    assert "accounts.manage" not in auth_user["capabilities"]
+    assert "reports.view" not in auth_user["capabilities"]
 
 
 @pytest.mark.django_db
@@ -451,6 +628,7 @@ def test_mfa_recovery_regeneration_and_disable_create_mandatory_security_notific
 
 @pytest.mark.django_db
 def test_mfa_login_requires_challenge_and_consumes_recovery_code_once():
+    sync_policy()
     user = make_user(email="challenge@example.edu")
     client = Client()
     assert login(client, email=user.email, password="correct-password").status_code == 200
@@ -492,6 +670,9 @@ def test_mfa_login_requires_challenge_and_consumes_recovery_code_once():
     )
     assert completed.status_code == 200
     assert completed.json()["authenticated"] is True
+    assert completed.json()["user"]["role"] == "STUDENT"
+    assert completed.json()["user"]["designations"] == []
+    assert completed.json()["user"]["capabilities"] == sorted(effective_capabilities(user))
     assert AuthSession.objects.get(pk=completed.json()["session_id"]).mfa_verified_at is not None
     recovery = RecoveryCode.objects.get(user=user, used_at__isnull=False)
     assert recovery.used_at is not None
