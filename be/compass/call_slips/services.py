@@ -14,7 +14,11 @@ from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
-from compass.audit.actions import CALL_SLIP_CREATED, CALL_SLIP_INTERVIEW_ENDED
+from compass.audit.actions import (
+    CALL_SLIP_CREATED,
+    CALL_SLIP_INTERVIEW_ENDED,
+    CALL_SLIP_VOIDED,
+)
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
@@ -41,6 +45,7 @@ MAX_PAGE_SIZE = 50
 MAX_COURSE_YEAR_LENGTH = 255
 MAX_OTHER_DESTINATION_LENGTH = 255
 MAX_SEARCH_LENGTH = 160
+MAX_VOID_REASON_LENGTH = 1000
 
 
 class CallSlipError(RuntimeError):
@@ -72,6 +77,10 @@ class CallSlipReferralConflict(CallSlipError):
 
 
 class CallSlipInterviewEndConflict(CallSlipError):
+    pass
+
+
+class CallSlipVoidConflict(CallSlipError):
     pass
 
 
@@ -383,6 +392,8 @@ def _lock_linked_referral(
     referral = Referral.objects.select_for_update().filter(pk=referral_id).first()
     if referral is None or not _student_in_scope(actor, referral.student_id):
         raise CallSlipNotFound("The linked Referral was not found.")
+    if referral.voided_at is not None:
+        raise CallSlipReferralConflict("A voided Referral cannot receive a new Call Slip.")
     if referral.student_id != student_id:
         raise CallSlipReferralConflict("The linked Referral belongs to a different Student.")
     if not ReferralAction.objects.filter(
@@ -392,9 +403,12 @@ def _lock_linked_referral(
         raise CallSlipReferralConflict(
             "The linked Referral does not record SEND_CALL_SLIP_INTERVIEW_PERMIT."
         )
-    if CallSlip.objects.filter(referral_id=referral.pk).exists():
+    if CallSlip.objects.filter(
+        referral_id=referral.pk,
+        voided_at__isnull=True,
+    ).exists():
         raise CallSlipReferralConflict(
-            "The linked Referral already has a Call Slip in this foundation."
+            "The linked Referral already has an active Call Slip."
         )
     return referral
 
@@ -495,9 +509,12 @@ def create_call_slip(
                     creation_request_fingerprint=fingerprint,
                 )
         except IntegrityError as exc:
-            if referral is not None and CallSlip.objects.filter(referral_id=referral.pk).exists():
+            if referral is not None and CallSlip.objects.filter(
+                referral_id=referral.pk,
+                voided_at__isnull=True,
+            ).exists():
                 raise CallSlipReferralConflict(
-                    "The linked Referral already has a Call Slip in this foundation."
+                    "The linked Referral already has an active Call Slip."
                 ) from exc
             raise CallSlipCreationConflict(
                 "The Call Slip could not be created because its creation identity conflicted."
@@ -534,11 +551,14 @@ def list_call_slips(
     search: str | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
+    include_voided: bool = False,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> CallSlipPage:
     _validate_operational_actor(actor)
     qs = _scope_queryset(_queryset(), actor)
+    if not include_voided:
+        qs = qs.filter(voided_at__isnull=True)
     if student_id is not None:
         qs = qs.filter(student_id=student_id)
     if issued_by_id is not None:
@@ -625,6 +645,10 @@ def record_interview_ended(
         item = CallSlip.objects.select_for_update().filter(pk=call_slip_id).first()
         if item is None or not _student_in_scope(actor, item.student_id):
             raise CallSlipNotFound("The requested Call Slip was not found.")
+        if item.voided_at is not None:
+            raise CallSlipVoidConflict(
+                "A voided Call Slip cannot record interview completion."
+            )
         if item.interview_ended_at is not None:
             if item.interview_ended_at == normalized:
                 return _queryset().get(pk=item.pk)
@@ -645,3 +669,56 @@ def record_interview_ended(
             },
         )
         return item_for_audit
+
+def void_call_slip(
+    *,
+    actor: User,
+    call_slip_id: UUID,
+    reason: str,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> CallSlip:
+    _validate_operational_actor(actor)
+    cleaned_reason = _clean_required(reason, "reason", MAX_VOID_REASON_LENGTH)
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidCallSlipInput("The void time must be timezone-aware.")
+
+    with transaction.atomic():
+        item = CallSlip.objects.select_for_update().filter(pk=call_slip_id).first()
+        if item is None or not _student_in_scope(actor, item.student_id):
+            raise CallSlipNotFound("The requested Call Slip was not found.")
+        if item.voided_at is not None:
+            return _queryset().get(pk=item.pk)
+        if item.interview_ended_at is not None:
+            raise CallSlipVoidConflict(
+                "A completed Call Slip is historical and cannot be voided."
+            )
+
+        item.voided_at = current
+        item.voided_by = actor
+        item.void_reason = cleaned_reason
+        item.save(
+            update_fields=["voided_at", "voided_by", "void_reason", "updated_at"]
+        )
+        record_event(
+            context=context,
+            action=CALL_SLIP_VOIDED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="callslips.callslip",
+            target_id=item.pk,
+            metadata={
+                "call_slip_id": str(item.pk),
+                "transition": "ACTIVE -> VOIDED",
+            },
+        )
+        create_notification_for_event(
+            recipient=item.student,
+            event=NotificationEvent.CALL_SLIP_VOIDED,
+            source_type="call_slip",
+            source_id=item.pk,
+            target_type="CALL_SLIP",
+            target_id=item.pk,
+        )
+        return _queryset().get(pk=item.pk)
+
