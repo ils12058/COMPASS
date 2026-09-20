@@ -22,6 +22,7 @@ class GoodMoralVariant(models.TextChoices):
 class GoodMoralStatus(models.TextChoices):
     REQUESTED = "REQUESTED", "Requested"
     ISSUED = "ISSUED", "Issued"
+    CANCELLED = "CANCELLED", "Cancelled"
 
 
 class GoodMoralRequest(models.Model):
@@ -92,6 +93,15 @@ class GoodMoralRequest(models.Model):
     issued_by_name_snapshot = models.CharField(max_length=200, blank=True, default="")
     document_template_key = models.CharField(max_length=128, null=True, blank=True)
     document_template_version = models.PositiveIntegerField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="cancelled_good_moral_requests",
+        null=True,
+        blank=True,
+    )
+    cancellation_reason = models.TextField(blank=True, default="", max_length=1000)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -134,7 +144,7 @@ class GoodMoralRequest(models.Model):
             models.CheckConstraint(
                 condition=(
                     models.Q(
-                        status=GoodMoralStatus.REQUESTED,
+                        status__in=(GoodMoralStatus.REQUESTED, GoodMoralStatus.CANCELLED),
                         form_revision__isnull=True,
                         issued_at__isnull=True,
                         issued_by__isnull=True,
@@ -155,5 +165,22 @@ class GoodMoralRequest(models.Model):
                     )
                 ),
                 name="good_moral_issuance_shape",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        status__in=(GoodMoralStatus.REQUESTED, GoodMoralStatus.ISSUED),
+                        cancelled_at__isnull=True,
+                        cancellation_reason="",
+                    )
+                    | (
+                        models.Q(
+                            status=GoodMoralStatus.CANCELLED,
+                            cancelled_at__isnull=False,
+                        )
+                        & ~models.Q(cancellation_reason="")
+                    )
+                ),
+                name="good_moral_cancellation_shape",
             ),
         ]
