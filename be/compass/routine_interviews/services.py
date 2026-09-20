@@ -36,6 +36,8 @@ from compass.inventory.services import (
     InventoryConflict,
     require_current_submitted_inventory,
 )
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 from compass.service_catalog.models import DeliveryMode
 from compass.service_catalog.services import (
     provider_role_eligible,
@@ -450,6 +452,14 @@ def create_direct(
             target_type="routine.interview",
             target_id=item.pk,
             metadata=_safe_creation_metadata(item_for_audit),
+        )
+        create_notification_for_event(
+            recipient=student,
+            event=NotificationEvent.ROUTINE_INTERVIEW_INTAKE_READY,
+            source_type="routine_interview",
+            source_id=item.pk,
+            target_type="ROUTINE_INTERVIEW",
+            target_id=item.pk,
         )
         return _queryset().get(pk=item.pk)
 
