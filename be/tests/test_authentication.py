@@ -30,7 +30,13 @@ from compass.authentication.email_otp import (
     resend_email_otp,
 )
 from compass.authentication.mfa import invalidate_recovery_codes, verify_totp_for_login
-from compass.authentication.models import AuthSession, EmailOTPChallenge, LoginChallenge, RecoveryCode, TOTPFactor
+from compass.authentication.models import (
+    AuthSession,
+    EmailOTPChallenge,
+    LoginChallenge,
+    RecoveryCode,
+    TOTPFactor,
+)
 from compass.authentication.password_change import change_password
 from compass.authentication.services import authenticate_login
 from compass.authentication.sessions import (
