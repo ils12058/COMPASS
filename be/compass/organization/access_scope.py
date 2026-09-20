@@ -19,9 +19,7 @@ class OrganizationalAccessScope:
 
 
 EMPTY_ORGANIZATIONAL_ACCESS_SCOPE = OrganizationalAccessScope(institution_wide=False)
-INSTITUTION_WIDE_ORGANIZATIONAL_ACCESS_SCOPE = OrganizationalAccessScope(
-    institution_wide=True
-)
+INSTITUTION_WIDE_ORGANIZATIONAL_ACCESS_SCOPE = OrganizationalAccessScope(institution_wide=True)
 
 
 def _is_head_guidance(actor: User) -> bool:
