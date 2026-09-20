@@ -169,9 +169,7 @@ def list_visible_resources(
 ) -> ResourcePage:
     queryset = _visible_queryset(actor)
     if category is not None:
-        queryset = queryset.filter(
-            category=_choice(category, ResourceCategory, "category")
-        )
+        queryset = queryset.filter(category=_choice(category, ResourceCategory, "category"))
     if kind is not None:
         queryset = queryset.filter(kind=_choice(kind, ResourceKind, "kind"))
     return _page(
@@ -197,21 +195,13 @@ def list_managed_resources(
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ResourcePage:
-    queryset = Resource.objects.select_related(
-        "created_by", "updated_by", "published_by"
-    ).all()
+    queryset = Resource.objects.select_related("created_by", "updated_by", "published_by").all()
     if status is not None:
-        queryset = queryset.filter(
-            status=_choice(status, PublicationStatus, "status")
-        )
+        queryset = queryset.filter(status=_choice(status, PublicationStatus, "status"))
     if audience is not None:
-        queryset = queryset.filter(
-            audience=_choice(audience, PublicationAudience, "audience")
-        )
+        queryset = queryset.filter(audience=_choice(audience, PublicationAudience, "audience"))
     if category is not None:
-        queryset = queryset.filter(
-            category=_choice(category, ResourceCategory, "category")
-        )
+        queryset = queryset.filter(category=_choice(category, ResourceCategory, "category"))
     if kind is not None:
         queryset = queryset.filter(kind=_choice(kind, ResourceKind, "kind"))
     return _page(
@@ -332,7 +322,9 @@ def update_resource(
         if item.status == PublicationStatus.PUBLISHED and new_kind != item.kind:
             raise ResourceConflict("A published Resource kind cannot be changed.")
         if item.storage_key and new_kind != ResourceKind.FILE:
-            raise ResourceConflict("Remove or replace the draft FILE Resource instead of changing kind.")
+            raise ResourceConflict(
+                "Remove or replace the draft FILE Resource instead of changing kind."
+            )
         item.kind = new_kind
 
     if "title" in values:
