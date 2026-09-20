@@ -160,7 +160,7 @@ def _report_access_scope_note(access_scope: ReportAccessScope) -> str:
 
 
 def _enforce_report_filter_scope(
-    filters: "ResolvedReportFilters",
+    filters: ResolvedReportFilters,
     access_scope: ReportAccessScope,
 ) -> None:
     college_ids = _active_scope_college_ids(access_scope)
