@@ -12,9 +12,9 @@ from django.test import Client, override_settings
 from django.utils import timezone
 
 from compass.accounts.models import Designation, Role, User, UserDesignation
-from compass.api.v1.constants import API_VERSION
 from compass.accounts.policy import CAPABILITY_CODES
 from compass.accounts.services import effective_capabilities, set_user_capability_override
+from compass.api.v1.constants import API_VERSION
 from compass.authentication.sessions import create_auth_session
 from compass.platform_ops.catalog import COMMAND_CATALOG
 from compass.platform_ops.diagnostics import (
