@@ -64,6 +64,8 @@ EXPECTED_OPERATION_IDS = {
     "authListSessions",
     "authRevokeOtherSessions",
     "authRevokeSession",
+    "authStartMandatoryTotpBootstrap",
+    "authConfirmMandatoryTotpBootstrap",
     "authStartTotpSetup",
     "authConfirmTotpSetup",
     "authVerifyTotp",
@@ -208,6 +210,8 @@ EXPECTED_OPERATION_IDS = {
     "exitInterviewsGetMyCurrent",
     "exitInterviewsUpdateMyCurrent",
     "exitInterviewsSubmitMyCurrent",
+    "exitInterviewsUpdateMine",
+    "exitInterviewsSubmitMine",
     "exitInterviewsListMine",
     "exitInterviewsGetMine",
     "exitInterviewsList",
@@ -537,6 +541,19 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _operation(schema, "/api/v1/auth/password/confirm", "post")["requestBody"]["content"][
         "application/json"
     ]["schema"]["$ref"].endswith("/PasswordAccessConfirmRequest")
+    mandatory_setup = _operation(schema, "/api/v1/auth/mfa/totp/bootstrap/setup", "post")
+    assert mandatory_setup["operationId"] == "authStartMandatoryTotpBootstrap"
+    assert "security" not in mandatory_setup
+    assert {200, 403, 409, 503} <= _response_statuses(mandatory_setup)
+    mandatory_confirm = _operation(
+        schema,
+        "/api/v1/auth/mfa/totp/bootstrap/confirm",
+        "post",
+    )
+    assert mandatory_confirm["operationId"] == "authConfirmMandatoryTotpBootstrap"
+    assert "security" not in mandatory_confirm
+    assert {200, 400, 403, 422, 429, 503} <= _response_statuses(mandatory_confirm)
+
     password_change = _operation(schema, "/api/v1/auth/password/change", "post")
     assert password_change["operationId"] == "authChangePassword"
     assert password_change["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith(
@@ -969,6 +986,12 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _response_statuses(
         _operation(schema, "/api/v1/exit-interviews/me/current/submit", "post")
     ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/exit-interviews/me/{exit_interview_id}", "put")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/exit-interviews/me/{exit_interview_id}/submit", "post")
+    ) >= {200, 401, 403, 404, 409, 422}
     assert _response_statuses(_operation(schema, "/api/v1/exit-interviews/me", "get")) >= {
         200,
         401,
@@ -1215,6 +1238,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     assert schemas["AppointmentPolicy"]["enum"] == ["NONE", "OPTIONAL", "REQUIRED"]
     assert schemas["DeliveryMode"]["enum"] == ["IN_PERSON", "ONLINE"]
     assert schemas["ProviderRoleCode"]["enum"] == ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]
+    assert schemas["ConfigurableProviderRoleCode"]["enum"] == ["COUNSELOR"]
     assert schemas["Weekday"]["enum"] == [
         "MONDAY",
         "TUESDAY",

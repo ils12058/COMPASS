@@ -43,7 +43,9 @@ from .services import (
     list_for_head,
     list_mine,
     reopen_for_correction,
+    replace_mine,
     replace_my_current,
+    submit_mine,
     submit_my_current,
 )
 
@@ -537,6 +539,48 @@ def exit_interviews_get_mine(request, exit_interview_id: UUID):
     _require_student(request, "exit_interviews.view_self")
     try:
         item = get_mine(student=request.auth_user, exit_interview_id=exit_interview_id)
+    except ExitInterviewError as exc:
+        _raise(exc)
+    return _detail(item)
+
+
+@router.put(
+    "/me/{exit_interview_id}",
+    response=response_with_errors(ExitInterviewDetailResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="exitInterviewsUpdateMine",
+)
+def exit_interviews_update_mine(
+    request,
+    exit_interview_id: UUID,
+    payload: ExitInterviewDraftPayload,
+):
+    _require_student(request, "exit_interviews.manage_self")
+    try:
+        item = replace_mine(
+            student=request.auth_user,
+            exit_interview_id=exit_interview_id,
+            values=_payload_values(payload),
+        )
+    except ExitInterviewError as exc:
+        _raise(exc)
+    return _detail(item)
+
+
+@router.post(
+    "/me/{exit_interview_id}/submit",
+    response=response_with_errors(ExitInterviewDetailResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="exitInterviewsSubmitMine",
+)
+def exit_interviews_submit_mine(request, exit_interview_id: UUID):
+    _require_student(request, "exit_interviews.manage_self")
+    try:
+        item = submit_mine(
+            student=request.auth_user,
+            exit_interview_id=exit_interview_id,
+            context=_context(request),
+        )
     except ExitInterviewError as exc:
         _raise(exc)
     return _detail(item)

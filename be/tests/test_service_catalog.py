@@ -290,7 +290,7 @@ def test_activation_requires_complete_configuration_and_schedulable_duration():
         name="None no duration",
         appointment_policy="NONE",
         delivery_modes=["IN_PERSON"],
-        provider_roles=["GUIDANCE_SERVICES_STAFF"],
+        provider_roles=["COUNSELOR"],
         context=context(actor),
     )
     enabled = set_service_active(
@@ -299,6 +299,16 @@ def test_activation_requires_complete_configuration_and_schedulable_duration():
         context=context(actor),
     )
     assert enabled.is_active
+
+    with pytest.raises(InvalidServiceCatalogInput, match="COUNSELOR"):
+        create_service(
+            code="GSS_PROVIDER",
+            name="GSS provider",
+            appointment_policy="NONE",
+            delivery_modes=["IN_PERSON"],
+            provider_roles=["GUIDANCE_SERVICES_STAFF"],
+            context=context(actor),
+        )
 
 
 @pytest.mark.django_db
@@ -364,13 +374,10 @@ def test_active_service_cannot_be_mutated_into_invalid_configuration():
 
 
 @pytest.mark.django_db
-def test_provider_role_eligibility_is_only_active_user_plus_primary_role_configuration():
+def test_provider_role_eligibility_keeps_legacy_gss_assignment_readable_but_non_operational():
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
-    service = configured_service(
-        actor,
-        provider_roles=["COUNSELOR", "GUIDANCE_SERVICES_STAFF"],
-    )
+    service = configured_service(actor, provider_roles=["COUNSELOR"])
     counselor = make_user("c@example.edu", "COUNSELOR")
     staff = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
     student = make_user("s@example.edu", "STUDENT")
@@ -382,25 +389,27 @@ def test_provider_role_eligibility_is_only_active_user_plus_primary_role_configu
         designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
     )
 
+    # Preserve historical rows created under ADR-018, while ADR-050 prevents GSS from acting as a
+    # live provider.
+    ServiceProviderRole.objects.create(
+        service=service,
+        role=Role.objects.get(code="GUIDANCE_SERVICES_STAFF"),
+    )
+
     assert service_allows_provider_role(service, "COUNSELOR")
+    assert ServiceProviderRole.objects.filter(
+        service=service,
+        role__code="GUIDANCE_SERVICES_STAFF",
+    ).exists()
+    assert not service_allows_provider_role(service, "GUIDANCE_SERVICES_STAFF")
     assert service_supports_delivery_mode(service, "ONLINE")
     assert not service_supports_delivery_mode(service, "FAX")
     assert provider_role_eligible(service, counselor)
-    assert provider_role_eligible(service, staff)
+    assert not provider_role_eligible(service, staff)
     assert provider_role_eligible(service, head)
     assert not provider_role_eligible(service, student)
     assert not provider_role_eligible(service, other_admin)
     assert not provider_role_eligible(service, inactive_counselor)
-
-    counselor_only = create_service(
-        code="COUNSELOR_ONLY",
-        name="Counselor only",
-        appointment_policy="NONE",
-        provider_roles=["COUNSELOR"],
-        context=context(actor),
-    )
-    assert provider_role_eligible(counselor_only, counselor)
-    assert not provider_role_eligible(counselor_only, staff)
 
 
 @pytest.mark.django_db

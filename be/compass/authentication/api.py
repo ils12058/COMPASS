@@ -59,7 +59,9 @@ from compass.authentication.services import (
     LoginResult,
     authenticate_login,
     complete_login_mfa,
+    confirm_login_totp_enrollment,
     logout_current_session,
+    start_login_totp_enrollment,
 )
 from compass.authentication.sessions import (
     RecentMFARequired,
@@ -375,7 +377,7 @@ def _apply_login_cookies(response: HttpResponse, result: LoginResult) -> None:
             path=settings.AUTH_LOGIN_CHALLENGE_COOKIE_PATH,
         )
         return
-    if result.status == "mfa_required" and result.challenge is not None:
+    if result.status in {"mfa_required", "mfa_setup_required"} and result.challenge is not None:
         _set_credential_cookie(
             response,
             name=settings.AUTH_LOGIN_CHALLENGE_COOKIE_NAME,
@@ -675,7 +677,16 @@ def login(request, payload: LoginRequest, response: HttpResponse):
     if result.status == "failed":
         raise APIError(401, "authentication_failed", "Invalid email or password.")
     if result.status == "mfa_setup_required":
-        raise APIError(403, "mfa_setup_required", "Additional account security setup is required.")
+        return Status(
+            403,
+            {
+                "error": {
+                    "code": "mfa_setup_required",
+                    "message": "Additional account security setup is required.",
+                    "request_id": getattr(request, "request_id", None),
+                }
+            },
+        )
     return _login_response(result)
 
 
@@ -930,6 +941,66 @@ def revoke_session(request, session_id: UUID, response: HttpResponse):
             response, name=settings.AUTH_SESSION_COOKIE_NAME, path=settings.AUTH_SESSION_COOKIE_PATH
         )
     return {"revoked": True}
+
+
+@router.post(
+    "/mfa/totp/bootstrap/setup",
+    response=response_with_errors(TOTPSetupResponse, 403, 409, 503),
+    operation_id="authStartMandatoryTotpBootstrap",
+    summary="Start mandatory TOTP enrollment from a restricted login challenge",
+)
+def totp_bootstrap_setup(request):
+    _require_csrf(request)
+    try:
+        result = start_login_totp_enrollment(request=request)
+    except InvalidLoginChallenge as exc:
+        raise APIError(
+            403,
+            "mfa_enrollment_challenge_invalid",
+            "The MFA enrollment challenge is unavailable.",
+        ) from exc
+    except TOTPAlreadyConfigured as exc:
+        raise APIError(409, "mfa_already_enabled", "TOTP is already enabled.") from exc
+    except Exception as exc:
+        _raise_security_unavailable(exc)
+    return {"factor_id": result.factor_id, "provisioning_uri": result.provisioning_uri}
+
+
+@router.post(
+    "/mfa/totp/bootstrap/confirm",
+    response=response_with_errors(TOTPConfirmationResponse, 400, 403, 422, 429, 503),
+    operation_id="authConfirmMandatoryTotpBootstrap",
+    summary="Confirm mandatory TOTP enrollment from a restricted login challenge",
+)
+def totp_bootstrap_confirm(request, payload: MFARequest, response: HttpResponse):
+    _require_csrf(request)
+    try:
+        result = confirm_login_totp_enrollment(
+            request=request,
+            code=payload.code,
+        )
+    except AuthenticationRateLimited as exc:
+        _raise_rate_limited(exc)
+    except InvalidLoginChallenge as exc:
+        raise APIError(
+            403,
+            "mfa_enrollment_challenge_invalid",
+            "The MFA enrollment challenge is unavailable.",
+        ) from exc
+    except AuthenticationUnavailable as exc:
+        _raise_security_unavailable(exc)
+    except TOTPEnrollmentMissing as exc:
+        raise APIError(400, "mfa_failed", "The MFA response could not be verified.") from exc
+    except Exception as exc:
+        _raise_security_unavailable(exc)
+    if result is None:
+        _raise_invalid_mfa(TOTPEnrollmentMissing("invalid TOTP code"))
+    _delete_cookie(
+        response,
+        name=settings.AUTH_LOGIN_CHALLENGE_COOKIE_NAME,
+        path=settings.AUTH_LOGIN_CHALLENGE_COOKIE_PATH,
+    )
+    return {"enabled": True, "recovery_codes": list(result.recovery_codes)}
 
 
 @router.post(

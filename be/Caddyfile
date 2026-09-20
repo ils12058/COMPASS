@@ -22,6 +22,7 @@
 		health_uri /api/v1/health/ready
 		health_headers {
 			Host {$CADDY_HEALTH_HOST}
+			X-Forwarded-Proto https
 		}
 		health_interval 10s
 		health_timeout 3s

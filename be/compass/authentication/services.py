@@ -35,9 +35,11 @@ from compass.authentication.actions import (
 from compass.authentication.mfa import (
     TOTPVerification,
     active_totp_factor,
+    confirm_totp_enrollment,
     consume_recovery_code,
     has_active_totp_factor,
     mfa_required_for_user,
+    start_totp_enrollment,
     verify_totp_for_login,
 )
 from compass.authentication.models import AuthSession, LoginChallenge
@@ -185,7 +187,7 @@ def authenticate_login(
     limiter=None,
     now: datetime | None = None,
 ) -> LoginResult:
-    """Verify primary credentials and either issue a session or create a short MFA challenge."""
+    """Verify primary credentials and serialize reusable auth issuance with password changes."""
 
     current = now or timezone.now()
     normalized_email = email.strip().lower() if isinstance(email, str) else ""
@@ -216,52 +218,69 @@ def authenticate_login(
         )
         return LoginResult(status="failed")
 
-    user = User.objects.select_related("role").filter(email__iexact=normalized_email).first()
-    password_valid = _password_matches(user, password)
-    if user is None or not password_valid or not user.is_active:
-        _best_effort_audit(
-            request=request,
-            user=user,
-            action=AUTH_LOGIN_FAILED,
-            outcome="DENIED",
-            metadata={"method": "password"},
-        )
-        return LoginResult(status="failed")
-
-    context = _context(request=request, user=user)
-    if mfa_required_for_user(user):
-        if not has_active_totp_factor(user.pk):
-            _best_effort_audit(
-                request=request,
-                user=user,
-                action=AUTH_LOGIN_MFA_REQUIRED,
-                outcome="DENIED",
-                metadata={"method": "totp_setup"},
+    try:
+        with transaction.atomic():
+            user = (
+                User.objects.select_for_update()
+                .select_related("role")
+                .filter(email__iexact=normalized_email)
+                .first()
             )
-            return LoginResult(status="mfa_setup_required", mfa_methods=("totp",))
+            password_valid = _password_matches(user, password)
+            if user is None or not password_valid or not user.is_active:
+                _best_effort_audit(
+                    request=request,
+                    user=user,
+                    action=AUTH_LOGIN_FAILED,
+                    outcome="DENIED",
+                    metadata={"method": "password"},
+                )
+                return LoginResult(status="failed")
 
-        trusted = resolve_trusted_session(
-            request.COOKIES.get(settings.AUTH_TRUSTED_COOKIE_NAME),
-            request=request,
-            now=current,
-        )
-        if trusted is not None and trusted.user_id == user.pk:
-            issued_session, issued_trusted = _authenticated_session(
-                user=user,
-                request=request,
-                context=context,
-                method="trusted_browser",
-                mfa_verified_at=current,
-                now=current,
-            )
-            return LoginResult(
-                status="success",
-                session=issued_session,
-                trusted_session=issued_trusted,
-            )
+            context = _context(request=request, user=user)
+            if mfa_required_for_user(user):
+                if not has_active_totp_factor(user.pk):
+                    challenge = create_login_challenge(
+                        user,
+                        allowed_methods=["totp_enroll"],
+                        trust_browser=False,
+                        request=request,
+                        now=current,
+                    )
+                    record_event(
+                        context=context,
+                        action=AUTH_LOGIN_MFA_REQUIRED,
+                        outcome="DENIED",
+                        target_type="accounts.user",
+                        target_id=user.pk,
+                        metadata={"method": "totp_setup"},
+                    )
+                    return LoginResult(
+                        status="mfa_setup_required",
+                        challenge=challenge,
+                        mfa_methods=("totp",),
+                    )
 
-        try:
-            with transaction.atomic():
+                trusted = resolve_trusted_session(
+                    request.COOKIES.get(settings.AUTH_TRUSTED_COOKIE_NAME),
+                    request=request,
+                    now=current,
+                )
+                if trusted is not None and trusted.user_id == user.pk:
+                    issued_session, issued_trusted = _authenticated_session(
+                        user=user,
+                        request=request,
+                        context=context,
+                        method="trusted_browser",
+                        mfa_verified_at=current,
+                        now=current,
+                    )
+                    return LoginResult(
+                        status="success",
+                        session=issued_session,
+                        trusted_session=issued_trusted,
+                    )
+
                 challenge = create_login_challenge(
                     user,
                     allowed_methods=["totp", "recovery"],
@@ -277,27 +296,126 @@ def authenticate_login(
                     target_id=user.pk,
                     metadata={"method": "totp"},
                 )
-        except Exception as exc:
-            raise AuthenticationUnavailable from exc
-        return LoginResult(
-            status="mfa_required",
-            challenge=challenge,
-            mfa_methods=("totp", "recovery"),
+                return LoginResult(
+                    status="mfa_required",
+                    challenge=challenge,
+                    mfa_methods=("totp", "recovery"),
+                )
+
+            issued_session, issued_trusted = _authenticated_session(
+                user=user,
+                request=request,
+                context=context,
+                method="password",
+                mfa_verified_at=None,
+                now=current,
+            )
+            return LoginResult(
+                status="success",
+                session=issued_session,
+                trusted_session=issued_trusted,
+            )
+    except AuthenticationUnavailable:
+        raise
+    except Exception as exc:
+        raise AuthenticationUnavailable from exc
+
+
+def _resolve_totp_enrollment_challenge(request, *, now: datetime) -> LoginChallenge:
+    token = request.COOKIES.get(settings.AUTH_LOGIN_CHALLENGE_COOKIE_NAME)
+    challenge = resolve_login_challenge(token, now=now)
+    if challenge is None or "totp_enroll" not in challenge.allowed_methods:
+        raise InvalidLoginChallenge("login challenge is unavailable")
+    return challenge
+
+
+def start_login_totp_enrollment(
+    *,
+    request,
+    now: datetime | None = None,
+):
+    """Start mandatory TOTP enrollment using only a purpose-restricted login challenge."""
+
+    current = now or timezone.now()
+    challenge = _resolve_totp_enrollment_challenge(request, now=current)
+    with transaction.atomic():
+        user = (
+            User.objects.select_for_update()
+            .select_related("role")
+            .filter(pk=challenge.user_id)
+            .first()
+        )
+        locked = LoginChallenge.objects.select_for_update().filter(pk=challenge.pk).first()
+        if (
+            user is None
+            or not user.is_active
+            or locked is None
+            or locked.consumed_at is not None
+            or locked.expires_at <= current
+            or "totp_enroll" not in locked.allowed_methods
+            or user.role.code not in settings.AUTH_MFA_REQUIRED_ROLE_CODES
+            or has_active_totp_factor(user.pk)
+        ):
+            raise InvalidLoginChallenge("login challenge is unavailable")
+        return start_totp_enrollment(
+            user=user,
+            context=_context(request=request, user=user),
+            now=current,
         )
 
-    issued_session, issued_trusted = _authenticated_session(
-        user=user,
-        request=request,
-        context=context,
-        method="password",
-        mfa_verified_at=None,
-        now=current,
-    )
-    return LoginResult(
-        status="success",
-        session=issued_session,
-        trusted_session=issued_trusted,
-    )
+
+def confirm_login_totp_enrollment(
+    *,
+    request,
+    code: str,
+    limiter=None,
+    now: datetime | None = None,
+):
+    """Confirm mandatory TOTP enrollment; no unrestricted AuthSession is issued."""
+
+    current = now or timezone.now()
+    challenge = _resolve_totp_enrollment_challenge(request, now=current)
+    try:
+        check_auth_rate_limit(
+            "totp",
+            ip_address=request_ip(request),
+            user_id=challenge.user_id,
+            limiter=limiter,
+        )
+    except AuthenticationAbuseUnavailable as exc:
+        raise AuthenticationUnavailable from exc
+
+    with transaction.atomic():
+        user = (
+            User.objects.select_for_update()
+            .select_related("role")
+            .filter(pk=challenge.user_id)
+            .first()
+        )
+        locked = LoginChallenge.objects.select_for_update().filter(pk=challenge.pk).first()
+        if (
+            user is None
+            or not user.is_active
+            or locked is None
+            or locked.consumed_at is not None
+            or locked.expires_at <= current
+            or "totp_enroll" not in locked.allowed_methods
+            or user.role.code not in settings.AUTH_MFA_REQUIRED_ROLE_CODES
+            or has_active_totp_factor(user.pk)
+        ):
+            raise InvalidLoginChallenge("login challenge is unavailable")
+
+        result = confirm_totp_enrollment(
+            user=user,
+            code=code,
+            context=_context(request=request, user=user),
+            now=current,
+        )
+        if result is None:
+            return None
+        locked.consumed_at = current
+        locked.save(update_fields=["consumed_at"])
+        return result
 
 
 def complete_login_mfa(

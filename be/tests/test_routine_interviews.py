@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
 from django.core.management import call_command
+from django.db import IntegrityError
 from django.test import Client
 from django.utils import timezone
 
@@ -318,6 +320,32 @@ def test_direct_creation_has_no_fake_appointment_and_persistent_idempotency(entr
             request_fingerprint="b" * 64,
             context=context(counselor),
         )
+
+
+@pytest.mark.django_db
+def test_direct_creation_integrity_race_recovers_outside_failed_savepoint():
+    sync_policy()
+    admin = make_user("race-admin@example.edu", "IT_ADMIN")
+    student = make_user("race-student@example.edu", "STUDENT")
+    counselor = make_user("race-counselor@example.edu", "COUNSELOR")
+    configure_year(admin)
+    submit_inventory(student, student)
+    create_counseling_service(admin)
+
+    with patch(
+        "compass.routine_interviews.services.RoutineInterview.objects.create",
+        side_effect=IntegrityError("simulated unique race"),
+    ):
+        with pytest.raises(RoutineInterviewCreationConflict, match="retry"):
+            create_direct(
+                counselor=counselor,
+                student_id=student.pk,
+                entry_mode="WALK_IN",
+                delivery_mode="IN_PERSON",
+                idempotency_key="race-key",
+                request_fingerprint="c" * 64,
+                context=context(counselor),
+            )
 
 
 @pytest.mark.django_db

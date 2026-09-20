@@ -598,6 +598,47 @@ def replace_my_current(*, student: User, values: dict[str, object]) -> ExitInter
         return _queryset().get(pk=item.pk)
 
 
+def replace_mine(
+    *,
+    student: User,
+    exit_interview_id: UUID,
+    values: dict[str, object],
+) -> ExitInterview:
+    """Replace one owned reopened draft without re-resolving the institution-current year."""
+
+    _validate_student(student)
+    if not is_current_student(student):
+        raise ExitInterviewCurrentStudentRequired(
+            "Current Student lifecycle is required to edit an Exit Interview."
+        )
+    normalized = _normalized_root(values)
+
+    with transaction.atomic():
+        item = (
+            ExitInterview.objects.select_for_update()
+            .filter(pk=exit_interview_id, student_id=student.pk)
+            .first()
+        )
+        if item is None:
+            raise ExitInterviewNotFound("The requested Exit Interview was not found.")
+        if item.status != ExitInterviewStatus.DRAFT:
+            raise ExitInterviewConflict(
+                "A submitted Exit Interview is locked against Student edits."
+            )
+
+        for field_name, value in normalized.items():
+            setattr(item, field_name, value)
+        try:
+            item.full_clean(exclude=("student", "academic_year", "inventory"))
+        except ValidationError as exc:
+            raise InvalidExitInterviewInput(
+                "The Exit Interview contains invalid typed values."
+            ) from exc
+        item.save(update_fields=[*normalized.keys(), "updated_at"])
+        _replace_ratings(item, values)
+        return _queryset().get(pk=item.pk)
+
+
 def _validate_submission(item: ExitInterview) -> None:
     root_values = {field: getattr(item, field) for field in ROOT_EDITABLE_FIELDS}
     _validate_consistency(root_values)
@@ -648,6 +689,62 @@ def submit_my_current(
         )
         if item is None:
             raise ExitInterviewNotFound("The current Academic Year Exit Interview was not found.")
+        if item.status == ExitInterviewStatus.SUBMITTED:
+            return _queryset().get(pk=item.pk)
+
+        _validate_submission(item)
+        first_submission = item.first_submitted_at is None
+        if first_submission:
+            item.first_submitted_at = submitted_at
+        item.last_submitted_at = submitted_at
+        item.status = ExitInterviewStatus.SUBMITTED
+        item.save(
+            update_fields=[
+                "status",
+                "first_submitted_at",
+                "last_submitted_at",
+                "updated_at",
+            ]
+        )
+        action = EXIT_INTERVIEW_SUBMITTED if first_submission else EXIT_INTERVIEW_RESUBMITTED
+        record_event(
+            context=context,
+            action=action,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="exitinterviews.exitinterview",
+            target_id=item.pk,
+            metadata=_safe_metadata(item, transition="DRAFT -> SUBMITTED"),
+        )
+        return _queryset().get(pk=item.pk)
+
+
+def submit_mine(
+    *,
+    student: User,
+    exit_interview_id: UUID,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> ExitInterview:
+    """Submit one owned reopened draft while preserving its historical year and Inventory."""
+
+    _validate_student(student)
+    if not is_current_student(student):
+        raise ExitInterviewCurrentStudentRequired(
+            "Current Student lifecycle is required to submit an Exit Interview."
+        )
+    submitted_at = now or timezone.now()
+    if timezone.is_naive(submitted_at):
+        raise InvalidExitInterviewInput("The submission time must be timezone-aware.")
+
+    with transaction.atomic():
+        item = (
+            ExitInterview.objects.select_for_update()
+            .select_related("academic_year", "inventory")
+            .filter(pk=exit_interview_id, student_id=student.pk)
+            .first()
+        )
+        if item is None:
+            raise ExitInterviewNotFound("The requested Exit Interview was not found.")
         if item.status == ExitInterviewStatus.SUBMITTED:
             return _queryset().get(pk=item.pk)
 
@@ -771,8 +868,8 @@ def reopen_for_correction(
         create_notification_for_event(
             recipient=item.student,
             event=NotificationEvent.EXIT_INTERVIEW_REOPENED,
-            source_type="exit_interview",
-            source_id=item.pk,
+            source_type="exit_interview_reopen_event",
+            source_id=event.pk,
             target_type="EXIT_INTERVIEW",
             target_id=item.pk,
         )

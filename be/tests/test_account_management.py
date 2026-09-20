@@ -674,6 +674,17 @@ def test_role_change_blocks_active_or_future_appointment_until_resolved():
         created_by=student,
     )
 
+    blocked_gss = client.put(
+        f"/api/v1/accounts/{provider.pk}/role",
+        data=json.dumps({"role": "GUIDANCE_SERVICES_STAFF"}),
+        content_type="application/json",
+        **csrf_headers(client),
+    )
+    assert blocked_gss.status_code == 409
+    assert blocked_gss.json()["error"]["code"] == "appointment_relationship_conflict"
+    provider.refresh_from_db()
+    assert provider.role.code == "COUNSELOR"
+
     blocked = client.put(
         f"/api/v1/accounts/{provider.pk}/role",
         data=json.dumps({"role": "INSTITUTIONAL_OFFICER"}),

@@ -25,7 +25,10 @@ from compass.authentication.sessions import (
     create_login_challenge,
     create_trusted_session,
 )
-from compass.authentication.tasks import deliver_email_change_security_alert
+from compass.authentication.tasks import (
+    deliver_email_change_security_alert,
+    recover_unsent_email_change_security_alerts,
+)
 from compass.common.rate_limit import RateLimitResult
 
 
@@ -371,6 +374,47 @@ def test_old_email_security_alert_uses_previous_destination_snapshot():
     pending.refresh_from_db()
     assert pending.old_email_alert_sent_at is not None
     assert pending.old_email_alert_attempt_count == 1
+
+
+@pytest.mark.django_db
+def test_initial_old_email_alert_enqueue_failure_is_recovered_from_durable_request():
+    sync_policy()
+    user = make_user("recover-old@example.edu", institutional_id="UCN-RECOVER-001")
+    client, _session = auth_client(user)
+    proof = post(client, "/api/v1/auth/email-change/security-challenge", {})
+    requested = post(
+        client,
+        "/api/v1/auth/email-change/request",
+        {
+            "new_email": "recover-new@example.edu",
+            "current_email_challenge_id": proof.json()["challenge_id"],
+            "current_email_code": "123456",
+        },
+    )
+
+    with patch(
+        "compass.authentication.tasks.deliver_email_change_security_alert.delay",
+        side_effect=RuntimeError("broker unavailable"),
+    ):
+        confirmed = post(client, "/api/v1/auth/email-change/confirm", {"code": "123456"})
+    assert confirmed.status_code == 200
+
+    pending = EmailChangeRequest.objects.get(pk=requested.json()["request_id"])
+    assert pending.confirmed_at is not None
+    assert pending.old_email_alert_sent_at is None
+    assert pending.old_email_alert_attempt_count == 0
+
+    with patch("compass.authentication.tasks.deliver_email_change_security_alert.delay") as enqueue:
+        queued = recover_unsent_email_change_security_alerts.run()
+    assert queued == 1
+    enqueue.assert_called_once_with(str(pending.pk))
+
+    pending.old_email_alert_sent_at = timezone.now()
+    pending.save(update_fields=["old_email_alert_sent_at"])
+    with patch("compass.authentication.tasks.deliver_email_change_security_alert.delay") as enqueue:
+        queued = recover_unsent_email_change_security_alerts.run()
+    assert queued == 0
+    enqueue.assert_not_called()
 
 
 @pytest.mark.django_db

@@ -405,7 +405,11 @@ CELERY_BEAT_SCHEDULE = {
     "notification-email-recovery": {
         "task": "compass.notifications.email.dispatch_due",
         "schedule": NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS,
-    }
+    },
+    "email-change-security-alert-recovery": {
+        "task": "compass.authentication.email_change.recover_unsent_alerts",
+        "schedule": NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS,
+    },
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
