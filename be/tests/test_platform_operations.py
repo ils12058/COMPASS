@@ -5,6 +5,7 @@ from io import StringIO
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.conf import settings
 from django.core.management import call_command
 from django.db import OperationalError
 from django.test import Client, override_settings
@@ -320,6 +321,14 @@ def test_environment_endpoint_is_safe_resolved_projection_with_no_secret_values(
         "notification_delivery",
     } == set(categories)
     assert "Django settings load successfully" in body["startup_limitation"]
+    application_values = {
+        value["code"]: value["value"] for value in categories["application"]["values"]
+    }
+    assert application_values["environment_mode"] == settings.APP_ENV
+    assert application_values["application_version"] == settings.APPLICATION_VERSION
+    assert application_values["api_version"] == "1.0.0"
+    assert application_values["build_id"] == settings.COMPASS_BUILD_ID
+    assert application_values["build_timestamp"] is None
 
     serialized = json.dumps(body)
     for sentinel in (
