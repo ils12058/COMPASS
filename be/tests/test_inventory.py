@@ -354,6 +354,35 @@ def test_inventory_api_is_student_self_service_only_and_does_not_require_idempot
 
 
 @pytest.mark.django_db
+def test_nullable_sibling_sex_persists_as_blank_draft_value():
+    sync_policy()
+    admin = make_user("sibling-admin@example.edu", "IT_ADMIN")
+    student = make_user("sibling-student@example.edu", "STUDENT")
+    configure_year(admin)
+    ensure_current_inventory(student=student, context=context(student))
+
+    updated = replace_current_inventory(
+        student=student,
+        values={
+            "siblings": [
+                {
+                    "sort_order": 0,
+                    "name": "Sibling",
+                    "sex": None,
+                    "age": None,
+                    "educational_attainment": "",
+                    "occupation": "",
+                    "is_self": False,
+                }
+            ]
+        },
+    )
+
+    sibling = updated.siblings.get()
+    assert sibling.sex == ""
+
+
+@pytest.mark.django_db
 @override_settings(TIME_ZONE="Asia/Manila")
 def test_appointment_prerequisite_blocks_before_reference_then_allows_submitted_inventory():
     sync_policy()
