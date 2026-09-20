@@ -833,9 +833,19 @@ def _apply_scalar_values(item: StudentInventory, values: dict[str, object]) -> N
     _validate_draft_consistency(item)
 
 
+def _normalize_sibling_rows(rows: object) -> list[dict[str, object]]:
+    normalized: list[dict[str, object]] = []
+    for row in rows if isinstance(rows, list) else []:
+        item = dict(row)
+        if item.get("sex") is None:
+            item["sex"] = ""
+        normalized.append(item)
+    return normalized
+
+
 def _replace_children(item: StudentInventory, values: dict[str, object]) -> None:
     family_rows = _normalize_family_rows(values.get("family_members", []))
-    sibling_rows = values.get("siblings", [])
+    sibling_rows = _normalize_sibling_rows(values.get("siblings", []))
     education_rows = values.get("education_entries", [])
     organization_rows = values.get("organization_memberships", [])
     transportation_rows = _normalize_transportation_rows(values.get("transportation_entries", []))
