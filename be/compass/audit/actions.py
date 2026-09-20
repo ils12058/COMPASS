@@ -77,6 +77,15 @@ REFERRAL_ACTION_RECORDED = "referral.action_recorded"
 REFERRAL_STATUS_UPDATED = "referral.status_updated"
 CALL_SLIP_CREATED = "call_slip.created"
 DOCUMENT_BRANDING_UPDATED = "document_branding.updated"
+ANNOUNCEMENT_CREATED = "announcement.created"
+ANNOUNCEMENT_UPDATED = "announcement.updated"
+ANNOUNCEMENT_PUBLISHED = "announcement.published"
+ANNOUNCEMENT_ARCHIVED = "announcement.archived"
+RESOURCE_CREATED = "resource.created"
+RESOURCE_UPDATED = "resource.updated"
+RESOURCE_FILE_ATTACHED = "resource.file_attached"
+RESOURCE_PUBLISHED = "resource.published"
+RESOURCE_ARCHIVED = "resource.archived"
 PLATFORM_MAINTENANCE_ENABLED = "platform.maintenance.enabled"
 PLATFORM_MAINTENANCE_DISABLED = "platform.maintenance.disabled"
 PLATFORM_MAINTENANCE_SCHEDULED = "platform.maintenance.scheduled"
@@ -182,6 +191,15 @@ __all__ = [
     "REFERRAL_STATUS_UPDATED",
     "CALL_SLIP_CREATED",
     "DOCUMENT_BRANDING_UPDATED",
+    "ANNOUNCEMENT_CREATED",
+    "ANNOUNCEMENT_UPDATED",
+    "ANNOUNCEMENT_PUBLISHED",
+    "ANNOUNCEMENT_ARCHIVED",
+    "RESOURCE_CREATED",
+    "RESOURCE_UPDATED",
+    "RESOURCE_FILE_ATTACHED",
+    "RESOURCE_PUBLISHED",
+    "RESOURCE_ARCHIVED",
     "PLATFORM_MAINTENANCE_ENABLED",
     "PLATFORM_MAINTENANCE_DISABLED",
     "PLATFORM_MAINTENANCE_SCHEDULED",
