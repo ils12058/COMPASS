@@ -20,6 +20,7 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
+from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import DeliveryMode, Service
 from compass.service_catalog.services import (
     provider_role_eligible,
@@ -28,7 +29,6 @@ from compass.service_catalog.services import (
 
 from .models import CounselingEncounter, CounselingEntryMode
 
-COUNSELING_SERVICE_CODE = "COUNSELING"
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_STUDENT_SEARCH_LENGTH = 160
