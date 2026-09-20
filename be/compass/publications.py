@@ -26,7 +26,7 @@ def eligible_audiences_for(user) -> tuple[str, ...]:
         audiences.append(PublicationAudience.STUDENTS)
     elif role_code in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}:
         audiences.append(PublicationAudience.GCO_PERSONNEL)
-    return tuple(str(value) for value in audiences)
+    return tuple(value.value for value in audiences)
 
 
 __all__ = ["PublicationAudience", "PublicationStatus", "eligible_audiences_for"]
