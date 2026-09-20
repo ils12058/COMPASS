@@ -28,15 +28,14 @@ from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
 )
-from compass.organization.academic_years import get_current_academic_year
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
+from compass.organization.academic_years import get_current_academic_year
 from compass.organization.models import (
     AcademicYear,
     College,
     CounselorResponsibility,
     Program,
-    StudentAffiliation,
 )
 from compass.student_support.models import (
     FourPsStatus,

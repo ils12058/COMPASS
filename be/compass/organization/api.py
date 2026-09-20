@@ -14,11 +14,7 @@ from compass.authentication.api import session_auth
 from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
-from compass.organization.models import (
-    CounselorResponsibility,
-    StaffSupervision,
-    StudentAffiliation,
-)
+from compass.organization.models import CounselorResponsibility, StaffSupervision
 from compass.organization.services import (
     DEFAULT_PAGE_SIZE,
     InvalidOrganizationInput,
