@@ -345,11 +345,7 @@ def start_login_totp_enrollment(
             .filter(pk=challenge.user_id)
             .first()
         )
-        locked = (
-            LoginChallenge.objects.select_for_update()
-            .filter(pk=challenge.pk)
-            .first()
-        )
+        locked = LoginChallenge.objects.select_for_update().filter(pk=challenge.pk).first()
         if (
             user is None
             or not user.is_active
@@ -396,11 +392,7 @@ def confirm_login_totp_enrollment(
             .filter(pk=challenge.user_id)
             .first()
         )
-        locked = (
-            LoginChallenge.objects.select_for_update()
-            .filter(pk=challenge.pk)
-            .first()
-        )
+        locked = LoginChallenge.objects.select_for_update().filter(pk=challenge.pk).first()
         if (
             user is None
             or not user.is_active
