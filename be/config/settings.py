@@ -74,6 +74,8 @@ INSTALLED_APPS = [
     "compass.referrals",
     "compass.call_slips",
     "compass.notifications",
+    "compass.announcements",
+    "compass.resources",
     "compass.ecounseling",
     "compass.platform_ops",
     "compass.privacy_governance",
@@ -372,6 +374,9 @@ PROFILE_PHOTO_MAX_OUTPUT_BYTES = env_int("PROFILE_PHOTO_MAX_OUTPUT_BYTES", 2 * 1
 PROFILE_PHOTO_MAX_DIMENSION = env_int("PROFILE_PHOTO_MAX_DIMENSION", 1024)
 PROFILE_PHOTO_MAX_PIXELS = env_int("PROFILE_PHOTO_MAX_PIXELS", 25_000_000)
 PROFILE_PHOTO_WEBP_QUALITY = env_int("PROFILE_PHOTO_WEBP_QUALITY", 85)
+RESOURCE_DOWNLOAD_URL_TTL_SECONDS = env_int("RESOURCE_DOWNLOAD_URL_TTL_SECONDS", 300)
+if not 60 <= RESOURCE_DOWNLOAD_URL_TTL_SECONDS <= 900:
+    raise ValueError("RESOURCE_DOWNLOAD_URL_TTL_SECONDS must be between 60 and 900")
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = env("TIME_ZONE", "UTC")

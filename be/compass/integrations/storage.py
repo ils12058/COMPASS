@@ -25,3 +25,10 @@ class ObjectStorage:
 
     def url(self, name: str) -> str:
         return self.backend.url(name)
+
+    def private_url(self, name: str, *, expires_seconds: int) -> str:
+        """Return time-bounded private access from the configured S3-compatible backend."""
+
+        if type(expires_seconds) is not int or expires_seconds <= 0:
+            raise ValueError("expires_seconds must be a positive integer")
+        return self.backend.url(name, expire=expires_seconds)
