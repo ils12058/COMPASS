@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import NoReturn
 from uuid import UUID
 
@@ -194,7 +194,7 @@ class CapabilityOverrideListResponse(StrictSchema):
     overrides: list[CapabilityOverrideResponse]
 
 
-class AccessSourceType(str, Enum):
+class AccessSourceType(StrEnum):
     ROLE = "ROLE"
     DESIGNATION = "DESIGNATION"
 
