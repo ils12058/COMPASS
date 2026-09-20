@@ -398,18 +398,21 @@ def create_direct(
         revision = _optional_form_revision()
 
         try:
-            item = RoutineInterview.objects.create(
-                student=student,
-                counselor=locked_counselor,
-                inventory=inventory,
-                appointment=None,
-                form_revision=revision,
-                entry_mode=normalized_entry,
-                delivery_mode=normalized_delivery,
-                created_by=locked_counselor,
-                direct_creation_key_digest=digest,
-                direct_request_fingerprint=request_fingerprint,
-            )
+            # Keep the uniqueness race inside its own savepoint. If PostgreSQL rejects the insert,
+            # the outer transaction remains usable for the idempotent recovery lookup below.
+            with transaction.atomic():
+                item = RoutineInterview.objects.create(
+                    student=student,
+                    counselor=locked_counselor,
+                    inventory=inventory,
+                    appointment=None,
+                    form_revision=revision,
+                    entry_mode=normalized_entry,
+                    delivery_mode=normalized_delivery,
+                    created_by=locked_counselor,
+                    direct_creation_key_digest=digest,
+                    direct_request_fingerprint=request_fingerprint,
+                )
         except IntegrityError:
             concurrent = RoutineInterview.objects.filter(direct_creation_key_digest=digest).first()
             if concurrent is None:
