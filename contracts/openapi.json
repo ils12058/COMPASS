@@ -2905,138 +2905,6 @@
         "title": "ContextIdentityResponse",
         "type": "object"
       },
-      "ContextInventoryRecordResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "academic_year": {
-            "$ref": "#/components/schemas/ContextAcademicYearResponse"
-          },
-          "civil_status_category": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Civil Status Category"
-          },
-          "course_currently_enrolled": {
-            "title": "Course Currently Enrolled",
-            "type": "string"
-          },
-          "current_religion_category": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Current Religion Category"
-          },
-          "date_of_birth": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Date Of Birth"
-          },
-          "full_name": {
-            "title": "Full Name",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "living_arrangement": {
-            "title": "Living Arrangement",
-            "type": "string"
-          },
-          "major": {
-            "title": "Major",
-            "type": "string"
-          },
-          "nationality": {
-            "title": "Nationality",
-            "type": "string"
-          },
-          "prior_counseling_experience": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Prior Counseling Experience"
-          },
-          "program": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ContextProgramResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "sex": {
-            "title": "Sex",
-            "type": "string"
-          },
-          "student_number": {
-            "title": "Student Number",
-            "type": "string"
-          },
-          "submitted_at": {
-            "format": "date-time",
-            "title": "Submitted At",
-            "type": "string"
-          },
-          "year_level": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Year Level"
-          }
-        },
-        "required": [
-          "id",
-          "academic_year",
-          "submitted_at",
-          "full_name",
-          "student_number",
-          "date_of_birth",
-          "nationality",
-          "sex",
-          "civil_status_category",
-          "current_religion_category",
-          "program",
-          "year_level",
-          "course_currently_enrolled",
-          "major",
-          "living_arrangement",
-          "prior_counseling_experience"
-        ],
-        "title": "ContextInventoryRecordResponse",
-        "type": "object"
-      },
       "ContextOrganizationResponse": {
         "additionalProperties": false,
         "properties": {
@@ -3340,7 +3208,7 @@
           "inventory": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ContextInventoryRecordResponse"
+                "$ref": "#/components/schemas/CounselorInventoryDetailResponse"
               },
               {
                 "type": "null"
