@@ -755,13 +755,23 @@ def _validate_encounter_match(*, item: RoutineInterview, encounter: CounselingEn
         RoutineEncounterMatchIssue.NOT_COMPLETED: (
             "The Counseling Encounter must represent a completed interaction."
         ),
-        RoutineEncounterMatchIssue.ENTRY_MODE: (
-            "The Counseling Encounter entry mode does not match the Routine Interview."
-        ),
-        RoutineEncounterMatchIssue.APPOINTMENT: (
-            "The Counseling Encounter Appointment does not match the Routine Interview."
-        ),
     }
+    if issue == RoutineEncounterMatchIssue.ENTRY_MODE:
+        if item.appointment_id is not None:
+            raise RoutineInterviewEncounterMismatch(
+                "An Appointment-backed Routine Interview requires an APPOINTMENT Encounter."
+            )
+        raise RoutineInterviewEncounterMismatch(
+            "The Counseling Encounter entry mode does not match the Routine Interview."
+        )
+    if issue == RoutineEncounterMatchIssue.APPOINTMENT:
+        if item.appointment_id is None:
+            raise RoutineInterviewEncounterMismatch(
+                "A direct Routine Interview cannot link an Appointment-backed Encounter."
+            )
+        raise RoutineInterviewEncounterMismatch(
+            "The Counseling Encounter Appointment does not match the Routine Interview."
+        )
     if issue is not None:
         raise RoutineInterviewEncounterMismatch(messages[issue])
 
