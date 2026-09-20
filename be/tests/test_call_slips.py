@@ -1088,3 +1088,45 @@ def test_call_slip_api_fingerprint_includes_notify_student_command_intent():
         **headers,
     )
     assert conflict.status_code == 409
+
+@pytest.mark.django_db
+def test_operational_call_slip_search_is_identity_reference_only_and_scope_first():
+    sync_policy()
+    counselor_a, counselor_b, _, student_a, student_b = setup_scope()
+    student_a.institutional_id = "CS-A-001"
+    student_b.institutional_id = "CS-B-001"
+    student_a.save(update_fields=["institutional_id", "updated_at"])
+    student_b.save(update_fields=["institutional_id", "updated_at"])
+
+    item_a = create_for(counselor_a, student_a, key="search-a", fingerprint="a" * 64)
+    create_for(counselor_b, student_b, key="search-b", fingerprint="b" * 64)
+
+    client_a = auth_client(counselor_a)
+    by_id = client_a.get("/api/v1/call-slips", {"search": "CS-A-001"})
+    assert by_id.status_code == 200
+    assert [row["id"] for row in by_id.json()["items"]] == [str(item_a.pk)]
+
+    out_of_scope = client_a.get("/api/v1/call-slips", {"search": "CS-B-001"})
+    assert out_of_scope.status_code == 200
+    assert out_of_scope.json()["items"] == []
+
+    head = make_head("call-search-head@example.edu")
+    referral = create_referral_for(head, student_a, key="search-ref", fingerprint="c" * 64)
+    linked = create_for(
+        head,
+        student_a,
+        key="search-linked",
+        fingerprint="d" * 64,
+        referral_id=referral.pk,
+    )
+    by_reference = auth_client(head).get(
+        "/api/v1/call-slips",
+        {"search": referral.reference_code},
+    )
+    assert by_reference.status_code == 200
+    assert str(linked.pk) in {row["id"] for row in by_reference.json()["items"]}
+
+    assert client_a.get(
+        "/api/v1/call-slips",
+        {"search": "x" * 161},
+    ).status_code == 422
