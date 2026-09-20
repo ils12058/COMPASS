@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from django.core.management import call_command
@@ -40,6 +41,7 @@ from compass.graduate_tracer.models import (
     GTSUnemploymentReason,
     GTSUsefulCompetency,
 )
+import compass.reports.graduate_tracer as graduate_tracer_report
 from compass.reports.graduate_tracer import NOT_RECORDED, build_graduate_tracer_report
 
 
@@ -112,6 +114,41 @@ def make_response(
         submitted_at=(submitted_at or timezone.now()) if submitted else None,
         **defaults,
     )
+
+
+@pytest.mark.django_db
+def test_report_population_is_frozen_before_section_queries():
+    first = make_response(
+        "snapshot-first@example.edu",
+        sex=GTSSex.MALE,
+    )
+    original = graduate_tracer_report._scalar_distribution
+    inserted = False
+
+    def insert_after_population_snapshot(queryset, **kwargs):
+        nonlocal inserted
+        if not inserted:
+            inserted = True
+            make_response(
+                "snapshot-late@example.edu",
+                sex=GTSSex.FEMALE,
+            )
+        return original(queryset, **kwargs)
+
+    with patch(
+        "compass.reports.graduate_tracer._scalar_distribution",
+        side_effect=insert_after_population_snapshot,
+    ):
+        report = build_graduate_tracer_report()
+
+    assert GraduateTracerResponse.objects.filter(
+        status=GraduateTracerStatus.SUBMITTED
+    ).count() == 2
+    assert report["report_context"]["submitted_response_count"] == 1
+    assert report["sections"]["sex"]["denominator"] == 1
+    assert row(report, "sex", GTSSex.MALE)["count"] == 1
+    assert row(report, "sex", GTSSex.FEMALE)["count"] == 0
+    assert first.pk is not None
 
 
 def row(report: dict[str, object], section: str, key: str) -> dict[str, object]:
