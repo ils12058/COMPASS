@@ -252,6 +252,7 @@ def test_provider_configuration_accepts_counselor_and_allows_legacy_cleanup_only
         )
         assert cleaned == ()
 
+
 @pytest.mark.django_db
 def test_weekly_replacement_is_idempotent_and_emits_one_meaningful_audit_event():
     sync_policy()
@@ -759,6 +760,7 @@ def test_gss_legacy_schedule_is_non_operational_but_cleanup_compatible():
         context=context(actor),
     )
     assert cleaned == ()
+
 
 @pytest.mark.django_db
 def test_exception_database_constraints_reject_nonpositive_ranges():
