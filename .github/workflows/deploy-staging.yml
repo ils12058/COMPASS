@@ -260,9 +260,9 @@ jobs:
           "${compose[@]}" config >/dev/null
           "${compose[@]}" pull --quiet web worker beat proxy postgres redis
           docker image inspect "$IMAGE" >/dev/null
-          "${compose[@]}" run --rm --no-deps web python manage.py check
+          "${compose[@]}" run --rm --no-deps -T web python manage.py check
           "${compose[@]}" up -d postgres redis
-          "${compose[@]}" run --rm web python manage.py migrate --noinput
+          "${compose[@]}" run --rm -T web python manage.py migrate --noinput
 
           state="$DEPLOY_PATH/.deploy.env"
           previous_state="$DEPLOY_PATH/.deploy.previous.env"
