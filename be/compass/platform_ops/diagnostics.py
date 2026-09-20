@@ -13,6 +13,7 @@ from django.conf import settings
 from django.db import connection
 from django.utils import timezone
 
+from compass.common.build_metadata import get_build_metadata
 from compass.integrations.mail import Mailer
 from compass.integrations.storage import ObjectStorage
 from compass.tasks import infrastructure_noop
@@ -53,7 +54,7 @@ class PlatformHealth:
 class ConfigurationValue:
     code: str
     label: str
-    value: bool | int | str
+    value: bool | int | str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -355,12 +356,18 @@ def _notification_recovery_configured() -> bool:
 
 def collect_environment_diagnostics() -> EnvironmentDiagnostics:
     database = settings.DATABASES.get("default", {})
+    build = get_build_metadata()
+    build_timestamp = build.built_at.isoformat().replace("+00:00", "Z") if build.built_at else None
     categories = (
         ConfigurationCategory(
             code="application",
             label="Application",
             values=(
                 ConfigurationValue("environment_mode", "Environment mode", settings.APP_ENV),
+                ConfigurationValue("application_version", "Application version", build.version),
+                ConfigurationValue("api_version", "API version", build.api_version),
+                ConfigurationValue("build_id", "Build ID", build.build_id),
+                ConfigurationValue("build_timestamp", "Build timestamp", build_timestamp),
                 ConfigurationValue("debug_enabled", "Debug enabled", bool(settings.DEBUG)),
                 ConfigurationValue(
                     "api_docs_enabled",
