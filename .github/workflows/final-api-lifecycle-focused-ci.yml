@@ -50,6 +50,21 @@ jobs:
         working-directory: be
         run: uv sync --frozen
 
+      - name: Apply Ruff formatting
+        working-directory: be
+        run: uv run ruff format .
+
+      - name: Sync formatting
+        run: |
+          if git diff --quiet -- be; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add be
+          git commit -m "style: format final lifecycle slice"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
       - name: Lightweight gates
         working-directory: be
         run: |
@@ -101,6 +116,7 @@ jobs:
           tests/test_profiles.py
           tests/test_audit.py
           tests/test_openapi_contract.py
+          tests/test_final_api_lifecycle_completion.py
 
       - name: Verify OpenAPI remains canonical
         if: steps.openapi_sync.outputs.auto_committed != 'true'
