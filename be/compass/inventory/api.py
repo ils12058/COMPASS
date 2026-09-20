@@ -1093,7 +1093,7 @@ def inventory_list_student_history(request, student_id: UUID):
 def inventory_get_record(request, inventory_id: UUID):
     _require_counselor(request, "inventory.view")
     try:
-        return _counselor_detail(
+        return counselor_inventory_detail_payload(
             get_inventory_for_counselor(actor=request.auth_user, inventory_id=inventory_id)
         )
     except InventoryError as exc:
