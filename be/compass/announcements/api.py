@@ -128,7 +128,9 @@ def _raise(exc: AnnouncementError) -> NoReturn:
         raise APIError(409, "announcement_not_editable", str(exc)) from exc
     if isinstance(exc, InvalidAnnouncementInput):
         raise APIError(422, "invalid_announcement_input", str(exc)) from exc
-    raise APIError(500, "internal_error", "The Announcement operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "The Announcement operation could not be completed."
+    ) from exc
 
 
 def _person(user) -> PersonSummary:
