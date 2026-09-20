@@ -539,10 +539,7 @@ def test_storage_withdrawal_supersedes_pending_transcription_storage_start():
     def racing_update_room(*, room_name: str, properties: dict[str, object]):
         nonlocal withdrawal_triggered
         result = original_update(room_name=room_name, properties=properties)
-        if (
-            properties.get("enable_transcription_storage") is True
-            and not withdrawal_triggered
-        ):
+        if properties.get("enable_transcription_storage") is True and not withdrawal_triggered:
             withdrawal_triggered = True
             withdraw_my_consent(
                 student=student,
