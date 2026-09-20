@@ -27937,6 +27937,14 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
             "description": "OK"
           },
           "401": {
@@ -28411,6 +28419,14 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
             "description": "OK"
           },
           "401": {
@@ -36085,6 +36101,14 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
             "description": "OK"
           },
           "401": {
@@ -36392,6 +36416,14 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
             "description": "OK"
           },
           "401": {
@@ -36557,6 +36589,14 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
             "description": "OK"
           },
           "401": {
