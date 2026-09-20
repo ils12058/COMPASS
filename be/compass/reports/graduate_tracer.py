@@ -269,10 +269,15 @@ def build_graduate_tracer_report(
     submitted_from: date | None = None,
     submitted_to: date | None = None,
 ) -> dict[str, object]:
-    base = _base_queryset(
-        submitted_from=submitted_from,
-        submitted_to=submitted_to,
+    population_ids = list(
+        _base_queryset(
+            submitted_from=submitted_from,
+            submitted_to=submitted_to,
+        ).values_list("id", flat=True)
     )
+    # Submitted responses are immutable. Materializing membership once prevents separate aggregate
+    # queries under READ COMMITTED from observing different submission populations.
+    base = GraduateTracerResponse.objects.filter(pk__in=population_ids)
     all_label = "Submitted schema-v1 responses"
     employed = base.filter(current_employment_state=GTSEmploymentState.EMPLOYED)
     employed_label = "Employed respondents"
@@ -451,7 +456,7 @@ def build_graduate_tracer_report(
             "instrument_schema_version": GTS_SCHEMA_VERSION,
             "submitted_from": submitted_from,
             "submitted_to": submitted_to,
-            "submitted_response_count": base.count(),
+            "submitted_response_count": len(population_ids),
             "generated_at": timezone.now(),
         },
         "methodology": dict(METHODOLOGY),
