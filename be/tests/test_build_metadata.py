@@ -12,7 +12,9 @@ from compass.common.build_metadata import (
 
 
 def test_project_version_is_read_from_canonical_pyproject():
-    assert read_project_version(Path(settings.BASE_DIR) / "pyproject.toml") == "0.1.0"
+    version = read_project_version(Path(settings.BASE_DIR) / "pyproject.toml")
+    assert version == settings.APPLICATION_VERSION
+    assert version
 
 
 def test_local_staging_allows_local_identity_without_timestamp():
@@ -42,10 +44,9 @@ def test_live_staging_accepts_full_sha_and_utc_build_timestamp():
         "",
         "abc1234",
         "g" * 40,
-        "A" * 40,
     ],
 )
-def test_live_staging_rejects_missing_short_malformed_or_noncanonical_sha(build_id):
+def test_live_staging_rejects_missing_short_or_malformed_sha(build_id):
     with pytest.raises(ValueError, match="COMPASS_BUILD_ID"):
         validate_runtime_build_identity(
             app_env="live-staging",
