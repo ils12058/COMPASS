@@ -515,7 +515,31 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert "email_verified" in account_summary
     assert "email_verified_at" not in account_summary
     assert "email_verified_at" in account_detail
-    assert "student_lifecycle_status" in schemas["UserSummary"]["properties"]
+    user_summary = schemas["UserSummary"]["properties"]
+    assert "student_lifecycle_status" in user_summary
+    assert user_summary["designations"]["type"] == "array"
+    assert user_summary["designations"]["items"]["type"] == "string"
+    assert user_summary["capabilities"]["type"] == "array"
+    assert user_summary["capabilities"]["items"]["type"] == "string"
+    assert {
+        "college_ids",
+        "student_ids",
+        "scope",
+        "global_access",
+        "allowed_resources",
+        "role_capabilities",
+        "designation_capabilities",
+        "override_grants",
+        "override_revokes",
+    }.isdisjoint(user_summary)
+    assert schemas["LoginResponse"]["properties"]["user"]["anyOf"][0]["$ref"].endswith(
+        "/UserSummary"
+    )
+    assert schemas["CurrentSessionResponse"]["properties"]["user"]["$ref"].endswith(
+        "/UserSummary"
+    )
+    assert "capabilities" not in schemas["SessionSummary"]["properties"]
+    assert "designations" not in schemas["SessionSummary"]["properties"]
     assert "INSTITUTIONAL_OFFICER" in schemas["RoleCode"]["enum"]
     assert (
         _operation(
