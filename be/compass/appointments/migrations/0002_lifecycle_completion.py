@@ -145,7 +145,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         blank=True,
                         null=True,
-                        on_delete=django.db.models.deletion.SET_NULL,
+                        on_delete=django.db.models.deletion.PROTECT,
                         related_name="appointment_reassignments_to",
                         to=settings.AUTH_USER_MODEL,
                     ),
@@ -155,7 +155,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         blank=True,
                         null=True,
-                        on_delete=django.db.models.deletion.SET_NULL,
+                        on_delete=django.db.models.deletion.PROTECT,
                         related_name="appointment_reassignments_from",
                         to=settings.AUTH_USER_MODEL,
                     ),
