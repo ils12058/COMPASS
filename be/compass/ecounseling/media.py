@@ -859,7 +859,9 @@ def withdraw_my_consent(
                 capture_to_stop = capture
                 disable_storage = capture.transcript_storage_enabled
             elif consent.scope == ConsentScope.TRANSCRIPT_STORAGE:
-                pending_storage_start = capture.status == MediaCaptureStatus.START_REQUESTED
+                pending_storage_start = (
+                    capture.status == MediaCaptureStatus.START_REQUESTED
+                )
                 disable_storage = pending_storage_start or bool(
                     capture.transcript_storage_enabled
                 )
