@@ -23,11 +23,18 @@ from compass.accounts.models import (
 )
 from compass.accounts.policy import (
     CAPABILITY_CODES,
+    CAPABILITY_DEFINITIONS,
+    DESIGNATION_CAPABILITY_GRANTS,
     DESIGNATION_CODES,
+    ROLE_CAPABILITY_GRANTS,
     ROLE_CODES,
     designation_role_compatible,
 )
-from compass.accounts.services import set_user_capability_override, user_has_capability
+from compass.accounts.services import (
+    effective_capabilities,
+    set_user_capability_override,
+    user_has_capability,
+)
 from compass.audit.actions import (
     ACCOUNT_CAPABILITY_OVERRIDE_REMOVED,
     ACCOUNT_CAPABILITY_OVERRIDE_SET,
@@ -494,6 +501,80 @@ def list_capability_overrides(*, user_id) -> list[dict[str, object]]:
         "capability", "created_by"
     )
     return [_override_payload(override) for override in overrides.order_by("capability__code")]
+
+
+def inspect_account_access(
+    *,
+    user_id,
+    at: datetime | None = None,
+) -> dict[str, object]:
+    """Explain one managed account's current scope-free effective access.
+
+    Final effective truth comes only from effective_capabilities. Canonical Role and
+    Designation grant maps are used solely to explain baseline provenance.
+    """
+
+    user = get_account(user_id=user_id)
+    now = at if at is not None else timezone.now()
+    effective = effective_capabilities(user, at=now)
+    designation_codes = sorted(
+        code for code in _account_designation_codes(user) if code in DESIGNATION_CODES
+    )
+    overrides = {
+        override.capability.code: override
+        for override in UserCapabilityOverride.objects.filter(
+            user_id=user.pk,
+            capability__code__in=CAPABILITY_CODES,
+        )
+        .select_related("capability", "created_by")
+        .order_by("capability__code")
+    }
+
+    capability_rows: list[dict[str, object]] = []
+    role_grants = ROLE_CAPABILITY_GRANTS.get(user.role.code, frozenset())
+    for definition in sorted(CAPABILITY_DEFINITIONS, key=lambda item: item.code):
+        sources: list[dict[str, str]] = []
+        if definition.code in role_grants:
+            sources.append({"type": "ROLE", "code": user.role.code})
+        for designation_code in designation_codes:
+            if definition.code in DESIGNATION_CAPABILITY_GRANTS.get(
+                designation_code,
+                frozenset(),
+            ):
+                sources.append({"type": "DESIGNATION", "code": designation_code})
+
+        override = overrides.get(definition.code)
+        override_payload = None
+        if override is not None:
+            override_payload = {
+                **_override_payload(override),
+                "active": override.expires_at is None or override.expires_at > now,
+            }
+            override_payload.pop("capability", None)
+
+        capability_rows.append(
+            {
+                "code": definition.code,
+                "name": definition.name,
+                "description": definition.description,
+                "effective": definition.code in effective,
+                "baseline_sources": sources,
+                "override": override_payload,
+            }
+        )
+
+    return {
+        "account": {
+            "id": user.pk,
+            "email": user.email,
+            "full_name": user.get_full_name(),
+            "is_active": user.is_active,
+        },
+        "role": user.role.code,
+        "designations": designation_codes,
+        "effective_capabilities": sorted(effective),
+        "capabilities": capability_rows,
+    }
 
 
 def create_account(
