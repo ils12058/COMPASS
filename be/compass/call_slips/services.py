@@ -25,7 +25,7 @@ from compass.institutional_forms.services import (
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.access_scope import resolve_organizational_access_scope
-from compass.organization.models import StudentAffiliation
+from compass.organization.models import StaffSupervision, StudentAffiliation
 from compass.referrals.models import Referral, ReferralAction, ReferralActionType
 
 from .models import CallSlip, CallSlipDestinationType
