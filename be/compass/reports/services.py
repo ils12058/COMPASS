@@ -31,8 +31,8 @@ from compass.inventory.services import (
     combine_parent_annual_income,
     derive_age_on,
 )
-from compass.organization.access_scope import resolve_organizational_access_scope
 from compass.organization.academic_years import AcademicYearConflict, require_current_academic_year
+from compass.organization.access_scope import resolve_organizational_access_scope
 from compass.organization.models import AcademicYear, Campus, College, Program
 from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
 
