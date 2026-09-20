@@ -1,4 +1,4 @@
-name: Final API lifecycle focused validation
+name: Final API lifecycle full-suite validation
 
 on:
   push:
