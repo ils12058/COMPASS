@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import tomllib
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 _FULL_GIT_SHA = re.compile(r"^[0-9a-fA-F]{40}$")
@@ -49,7 +49,7 @@ def parse_build_time(value: str | None) -> datetime | None:
         raise ValueError("COMPASS_BUILD_TIME must be a valid RFC3339/ISO-8601 timestamp") from exc
     if parsed.tzinfo is None or parsed.utcoffset() != timedelta(0):
         raise ValueError("COMPASS_BUILD_TIME must be an explicit UTC timestamp")
-    return parsed.astimezone(timezone.utc)
+    return parsed.astimezone(UTC)
 
 
 def validate_runtime_build_identity(
