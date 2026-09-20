@@ -357,7 +357,9 @@ def _notification_recovery_configured() -> bool:
 def collect_environment_diagnostics() -> EnvironmentDiagnostics:
     database = settings.DATABASES.get("default", {})
     build = get_build_metadata()
-    build_timestamp = build.built_at.isoformat().replace("+00:00", "Z") if build.built_at else None
+    build_timestamp = (
+        build.built_at.isoformat().replace("+00:00", "Z") if build.built_at else None
+    )
     categories = (
         ConfigurationCategory(
             code="application",
