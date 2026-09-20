@@ -35,7 +35,13 @@ from compass.inventory.services import (
     submit_current_inventory,
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
-from compass.organization.models import Campus, College, Program
+from compass.organization.models import (
+    Campus,
+    College,
+    CounselorResponsibility,
+    Program,
+    StudentAffiliation,
+)
 from compass.routine_interviews.models import RoutineInterview
 from compass.routine_interviews.services import (
     InvalidRoutineInterviewInput,
@@ -283,7 +289,15 @@ def test_direct_creation_has_no_fake_appointment_and_persistent_idempotency(entr
     student = make_user("student@example.edu", "STUDENT")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     configure_year(admin)
-    submit_inventory(student, student)
+    inventory = submit_inventory(student, student)
+    StudentAffiliation.objects.create(student=student, college=inventory.program.college)
+    counselor_campus = Campus.objects.create(code="DIRECT-COUNSELOR", name="Direct Counselor Campus")
+    counselor_college = College.objects.create(
+        campus=counselor_campus,
+        code="DIRECT-COUNSELOR-COL",
+        name="Direct Counselor College",
+    )
+    CounselorResponsibility.objects.create(college=counselor_college, counselor=counselor)
     create_counseling_service(admin)
 
     first = create_direct(
