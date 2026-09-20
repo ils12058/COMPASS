@@ -369,3 +369,66 @@ def test_counselor_override_is_scoped_and_unsupported_role_overrides_fail_closed
         assert list_managed_appointments(actor=actor).items == ()
         with pytest.raises(AppointmentNotFound):
             get_appointment_for_actor(appointment_id=inside.pk, actor=actor)
+
+@pytest.mark.django_db
+def test_counselor_baseline_management_is_limited_to_assigned_colleges():
+    sync_policy()
+    admin = make_user("baseline-scope-admin@example.edu", "IT_ADMIN")
+    counselor = make_user("baseline-scope-counselor@example.edu", "COUNSELOR")
+    provider = make_user("baseline-scope-provider@example.edu", "COUNSELOR")
+    in_student = make_user("baseline-scope-in-student@example.edu", "STUDENT")
+    out_student = make_user("baseline-scope-out-student@example.edu", "STUDENT")
+    in_college = make_college("BASELINE-IN")
+    out_college = make_college("BASELINE-OUT")
+    affiliate(in_student, in_college)
+    affiliate(out_student, out_college)
+    CounselorResponsibility.objects.create(college=in_college, counselor=counselor)
+    service = make_service(admin)
+    inside = appointment(
+        reference="APT-2099-500001",
+        student=in_student,
+        provider=provider,
+        service=service,
+    )
+    outside = appointment(
+        reference="APT-2099-500002",
+        student=out_student,
+        provider=provider,
+        service=service,
+    )
+
+    assert counselor.has_capability("appointments.manage")
+    client = auth_client(counselor, recent_mfa=True)
+
+    listed = client.get("/api/v1/appointments")
+    assert listed.status_code == 200
+    assert [row["id"] for row in listed.json()["items"]] == [str(inside.pk)]
+    assert client.get(f"/api/v1/appointments/{inside.pk}").status_code == 200
+    assert client.get(f"/api/v1/appointments/{outside.pk}").status_code == 404
+
+    filtered = client.get(f"/api/v1/appointments?student_id={outside.student_id}")
+    assert filtered.status_code == 200
+    assert filtered.json()["items"] == []
+    searched = client.get("/api/v1/appointments?search=500002")
+    assert searched.status_code == 200
+    assert searched.json()["items"] == []
+
+    denied = client.post(
+        f"/api/v1/appointments/{outside.pk}/cancel",
+        data=json.dumps({}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert denied.status_code == 404
+    outside.refresh_from_db()
+    assert outside.status == "SCHEDULED"
+
+    cancelled = client.post(
+        f"/api/v1/appointments/{inside.pk}/cancel",
+        data=json.dumps({}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert cancelled.status_code == 200
+    assert cancelled.json()["status"] == "CANCELLED"
+
