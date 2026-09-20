@@ -135,7 +135,7 @@ def patch_my_profile(request, payload: MyProfileUpdateRequest):
     operation_id="profileSetMyPhoto",
     summary="Set my profile photo",
 )
-def set_my_profile_photo(request, photo: UploadedFile = File(...)):
+def set_my_profile_photo(request, photo: UploadedFile = File(...)):  # noqa: B008
     user = request.auth_user
     if not user.is_active:
         raise APIError(403, "profile_unavailable", "The account profile is unavailable.")
