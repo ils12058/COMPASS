@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-_FULL_GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
+_FULL_GIT_SHA = re.compile(r"^[0-9a-fA-F]{40}$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,12 +64,12 @@ def validate_runtime_build_identity(
     if app_env == "live-staging":
         if not _FULL_GIT_SHA.fullmatch(resolved_id):
             raise ValueError(
-                "COMPASS_BUILD_ID must be a full 40-character lowercase Git SHA in live-staging"
+                "COMPASS_BUILD_ID must be a full 40-character hexadecimal Git SHA in live-staging"
             )
         resolved_time = parse_build_time(build_time)
         if resolved_time is None:
             raise ValueError("COMPASS_BUILD_TIME is required in live-staging")
-        return resolved_id, resolved_time
+        return resolved_id.lower(), resolved_time
 
     if not resolved_id:
         resolved_id = "local"
