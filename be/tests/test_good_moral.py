@@ -822,3 +822,43 @@ def test_real_chromium_smoke_renders_issued_graduate_certificate():
 
     assert pdf.startswith(b"%PDF-")
     assert len(pdf) > 1024
+
+
+@pytest.mark.django_db
+def test_good_moral_operational_list_supports_student_filter_and_safe_identity_search():
+    sync_policy()
+    counselor = make_user("good-moral-search-counselor@example.edu", role="COUNSELOR")
+    alpha = make_user(
+        "good-moral-alpha@example.edu",
+        lifecycle=StudentLifecycleStatus.GRADUATED,
+    )
+    beta = make_user(
+        "good-moral-beta@example.edu",
+        lifecycle=StudentLifecycleStatus.GRADUATED,
+    )
+    alpha.institutional_id = "GM-ALPHA-001"
+    beta.institutional_id = "GM-BETA-001"
+    alpha.save(update_fields=["institutional_id", "updated_at"])
+    beta.save(update_fields=["institutional_id", "updated_at"])
+    alpha_request = make_graduate_request(alpha)
+    make_graduate_request(beta)
+
+    client = auth_client(counselor)
+    searched = client.get("/api/v1/good-moral/requests", {"search": "GM-ALPHA-001"})
+    assert searched.status_code == 200
+    assert [row["id"] for row in searched.json()["items"]] == [str(alpha_request.pk)]
+
+    filtered = client.get(
+        "/api/v1/good-moral/requests",
+        {"student_id": str(alpha.pk), "status": "REQUESTED"},
+    )
+    assert filtered.status_code == 200
+    assert [row["id"] for row in filtered.json()["items"]] == [str(alpha_request.pk)]
+
+    assert (
+        client.get(
+            "/api/v1/good-moral/requests",
+            {"search": "x" * 161},
+        ).status_code
+        == 422
+    )

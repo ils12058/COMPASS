@@ -20,6 +20,7 @@ from compass.service_catalog.api import DeliveryMode
 
 from .models import RoutineConcern
 from .services import (
+    DEFAULT_PAGE_SIZE,
     EVALUATION_FIELDS,
     INTAKE_FIELDS,
     InvalidRoutineInterviewInput,
@@ -41,6 +42,7 @@ from .services import (
     finalize_assigned_evaluation,
     get_assigned,
     get_mine,
+    list_assigned,
     list_mine,
     replace_assigned_evaluation,
     replace_my_intake,
@@ -198,6 +200,29 @@ class StudentRoutineListResponse(StrictSchema):
 
 class StudentRoutineDetailResponse(StudentRoutineSummaryResponse):
     intake: RoutineIntakePayload
+
+
+class CounselorRoutineSummaryResponse(StrictSchema):
+    id: UUID
+    student: RoutinePersonSummary
+    inventory_context: RoutineInventoryContext
+    entry_mode: RoutineEntryMode
+    delivery_mode: DeliveryMode
+    intake_status: RoutineIntakeStatus
+    intake_submitted_at: datetime | None
+    evaluation_status: RoutineEvaluationStatus
+    evaluation_finalized_at: datetime | None
+    form_revision: RoutineFormRevisionSummary | None
+    appointment: RoutineAppointmentSummary | None
+    counseling_encounter: RoutineEncounterSummary | None
+    created_at: datetime
+
+
+class CounselorRoutinePageResponse(StrictSchema):
+    items: list[CounselorRoutineSummaryResponse]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 class CounselorRoutineDetailResponse(StrictSchema):
@@ -359,6 +384,24 @@ def _student_summary(item) -> dict[str, object]:
 
 def _student_detail(item) -> dict[str, object]:
     return {**_student_summary(item), "intake": _intake(item)}
+
+
+def _counselor_summary(item) -> dict[str, object]:
+    return {
+        "id": item.pk,
+        "student": _person(item.student),
+        "inventory_context": _inventory_context(item),
+        "entry_mode": item.entry_mode,
+        "delivery_mode": item.delivery_mode,
+        "intake_status": "SUBMITTED" if item.intake_submitted_at else "DRAFT",
+        "intake_submitted_at": item.intake_submitted_at,
+        "evaluation_status": "FINALIZED" if item.evaluation_finalized_at else "DRAFT",
+        "evaluation_finalized_at": item.evaluation_finalized_at,
+        "form_revision": _revision(item),
+        "appointment": _appointment(item),
+        "counseling_encounter": _encounter(item),
+        "created_at": item.created_at,
+    }
 
 
 def _counselor_detail(item) -> dict[str, object]:
@@ -523,6 +566,46 @@ def routine_interviews_submit_my_intake(request, routine_interview_id: UUID):
     except RoutineInterviewError as exc:
         _raise(exc)
     return _student_detail(item)
+
+
+@router.get(
+    "",
+    response=response_with_errors(CounselorRoutinePageResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="routineInterviewsListAssigned",
+)
+def routine_interviews_list_assigned(
+    request,
+    student_id: UUID | None = None,
+    academic_year_id: UUID | None = None,
+    delivery_mode: DeliveryMode | None = None,
+    intake_status: RoutineIntakeStatus | None = None,
+    evaluation_status: RoutineEvaluationStatus | None = None,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_counselor(request, "routine_interviews.view_assigned")
+    try:
+        result = list_assigned(
+            counselor=request.auth_user,
+            student_id=student_id,
+            academic_year_id=academic_year_id,
+            delivery_mode=delivery_mode.value if delivery_mode is not None else None,
+            intake_status=intake_status.value if intake_status is not None else None,
+            evaluation_status=(evaluation_status.value if evaluation_status is not None else None),
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except RoutineInterviewError as exc:
+        _raise(exc)
+    return {
+        "items": [_counselor_summary(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
 
 
 @router.get(

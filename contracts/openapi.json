@@ -2017,6 +2017,8 @@
           "institutional_forms.manage",
           "institutional_forms.view",
           "inventory.manage_self",
+          "inventory.reopen",
+          "inventory.view",
           "inventory.view_self",
           "organization.manage",
           "organization.view",
@@ -3022,6 +3024,961 @@
         "title": "CounselorAssignmentRequest",
         "type": "object"
       },
+      "CounselorInventoryDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "accidents_effect": {
+            "default": "",
+            "title": "Accidents Effect",
+            "type": "string"
+          },
+          "accidents_experienced": {
+            "default": "",
+            "title": "Accidents Experienced",
+            "type": "string"
+          },
+          "ambition_goal": {
+            "default": "",
+            "title": "Ambition Goal",
+            "type": "string"
+          },
+          "birth_order_among_siblings": {
+            "default": "",
+            "title": "Birth Order Among Siblings",
+            "type": "string"
+          },
+          "boarding_address": {
+            "default": "",
+            "title": "Boarding Address",
+            "type": "string"
+          },
+          "boarding_exclusive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boarding Exclusive"
+          },
+          "boarding_landlord_name": {
+            "default": "",
+            "title": "Boarding Landlord Name",
+            "type": "string"
+          },
+          "characteristics": {
+            "default": "",
+            "title": "Characteristics",
+            "type": "string"
+          },
+          "civil_status": {
+            "default": "",
+            "title": "Civil Status",
+            "type": "string"
+          },
+          "civil_status_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CivilStatusCategoryValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contact_number": {
+            "default": "",
+            "title": "Contact Number",
+            "type": "string"
+          },
+          "course_choice_other": {
+            "default": "",
+            "title": "Course Choice Other",
+            "type": "string"
+          },
+          "course_choice_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/CourseChoiceReasonValue"
+            },
+            "title": "Course Choice Reasons",
+            "type": "array"
+          },
+          "course_currently_enrolled": {
+            "default": "",
+            "title": "Course Currently Enrolled",
+            "type": "string"
+          },
+          "course_first_choice": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course First Choice"
+          },
+          "current_address": {
+            "default": "",
+            "title": "Current Address",
+            "type": "string"
+          },
+          "current_concerns": {
+            "default": "",
+            "title": "Current Concerns",
+            "type": "string"
+          },
+          "current_fears": {
+            "default": "",
+            "title": "Current Fears",
+            "type": "string"
+          },
+          "current_religion": {
+            "default": "",
+            "title": "Current Religion",
+            "type": "string"
+          },
+          "current_religion_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentReligionCategoryValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "daily_hours_class": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Class"
+          },
+          "daily_hours_library": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Library"
+          },
+          "daily_hours_other": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Other"
+          },
+          "daily_hours_recreation": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Recreation"
+          },
+          "daily_hours_rest": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Rest"
+          },
+          "daily_hours_studying": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Hours Studying"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "desired_extracurricular_activities": {
+            "default": "",
+            "title": "Desired Extracurricular Activities",
+            "type": "string"
+          },
+          "education_entries": {
+            "items": {
+              "$ref": "#/components/schemas/EducationEntryPayload"
+            },
+            "title": "Education Entries",
+            "type": "array"
+          },
+          "email_address": {
+            "default": "",
+            "title": "Email Address",
+            "type": "string"
+          },
+          "emergency_contact_name": {
+            "default": "",
+            "title": "Emergency Contact Name",
+            "type": "string"
+          },
+          "emergency_contact_number": {
+            "default": "",
+            "title": "Emergency Contact Number",
+            "type": "string"
+          },
+          "family_members": {
+            "items": {
+              "$ref": "#/components/schemas/FamilyMemberPayload"
+            },
+            "title": "Family Members",
+            "type": "array"
+          },
+          "first_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Submitted At"
+          },
+          "form_revision": {
+            "$ref": "#/components/schemas/FormRevisionSummary"
+          },
+          "friends_in_school": {
+            "default": "",
+            "title": "Friends In School",
+            "type": "string"
+          },
+          "friends_outside_school": {
+            "default": "",
+            "title": "Friends Outside School",
+            "type": "string"
+          },
+          "full_name": {
+            "default": "",
+            "title": "Full Name",
+            "type": "string"
+          },
+          "geographic_locations": {
+            "items": {
+              "$ref": "#/components/schemas/GeographicLocationPayload"
+            },
+            "title": "Geographic Locations",
+            "type": "array"
+          },
+          "guardian_address": {
+            "default": "",
+            "title": "Guardian Address",
+            "type": "string"
+          },
+          "guardian_contact_number": {
+            "default": "",
+            "title": "Guardian Contact Number",
+            "type": "string"
+          },
+          "guardian_name": {
+            "default": "",
+            "title": "Guardian Name",
+            "type": "string"
+          },
+          "guardian_relationship": {
+            "default": "",
+            "title": "Guardian Relationship",
+            "type": "string"
+          },
+          "handedness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandednessValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "height": {
+            "default": "",
+            "title": "Height",
+            "type": "string"
+          },
+          "highest_subjects_grades": {
+            "default": "",
+            "title": "Highest Subjects Grades",
+            "type": "string"
+          },
+          "hobbies_recreation": {
+            "default": "",
+            "title": "Hobbies Recreation",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ideal_monthly_allowance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdealAllowanceBandValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "illness_this_year": {
+            "default": "",
+            "title": "Illness This Year",
+            "type": "string"
+          },
+          "immunization_other": {
+            "default": "",
+            "title": "Immunization Other",
+            "type": "string"
+          },
+          "immunizations": {
+            "items": {
+              "$ref": "#/components/schemas/ImmunizationValue"
+            },
+            "title": "Immunizations",
+            "type": "array"
+          },
+          "inclination_leadership": {
+            "default": "",
+            "title": "Inclination Leadership",
+            "type": "string"
+          },
+          "inclination_performing_arts": {
+            "default": "",
+            "title": "Inclination Performing Arts",
+            "type": "string"
+          },
+          "inclination_sports": {
+            "default": "",
+            "title": "Inclination Sports",
+            "type": "string"
+          },
+          "intended_work_field": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PostGraduationFieldValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "intended_work_other": {
+            "default": "",
+            "title": "Intended Work Other",
+            "type": "string"
+          },
+          "interests": {
+            "items": {
+              "$ref": "#/components/schemas/InterestValue"
+            },
+            "title": "Interests",
+            "type": "array"
+          },
+          "languages_most_fluent": {
+            "default": "",
+            "title": "Languages Most Fluent",
+            "type": "string"
+          },
+          "languages_spoken_at_home": {
+            "default": "",
+            "title": "Languages Spoken At Home",
+            "type": "string"
+          },
+          "last_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Submitted At"
+          },
+          "living_arrangement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LivingArrangementValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lowest_subjects_grades": {
+            "default": "",
+            "title": "Lowest Subjects Grades",
+            "type": "string"
+          },
+          "major": {
+            "default": "",
+            "title": "Major",
+            "type": "string"
+          },
+          "nationality": {
+            "default": "",
+            "title": "Nationality",
+            "type": "string"
+          },
+          "nickname": {
+            "default": "",
+            "title": "Nickname",
+            "type": "string"
+          },
+          "operations_effect": {
+            "default": "",
+            "title": "Operations Effect",
+            "type": "string"
+          },
+          "operations_experienced": {
+            "default": "",
+            "title": "Operations Experienced",
+            "type": "string"
+          },
+          "organization_memberships": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationMembershipPayload"
+            },
+            "title": "Organization Memberships",
+            "type": "array"
+          },
+          "other_skills_hobbies": {
+            "default": "",
+            "title": "Other Skills Hobbies",
+            "type": "string"
+          },
+          "parent_status_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParentStatusCategoryValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parent_statuses": {
+            "items": {
+              "$ref": "#/components/schemas/ParentStatusValue"
+            },
+            "title": "Parent Statuses",
+            "type": "array"
+          },
+          "permanent_address": {
+            "default": "",
+            "title": "Permanent Address",
+            "type": "string"
+          },
+          "physical_disadvantage": {
+            "default": "",
+            "title": "Physical Disadvantage",
+            "type": "string"
+          },
+          "place_of_birth": {
+            "default": "",
+            "title": "Place Of Birth",
+            "type": "string"
+          },
+          "present_place_people_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Present Place People Count"
+          },
+          "previous_illness": {
+            "default": "",
+            "title": "Previous Illness",
+            "type": "string"
+          },
+          "prior_counseling_experience": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prior Counseling Experience"
+          },
+          "prior_counseling_when": {
+            "default": "",
+            "title": "Prior Counseling When",
+            "type": "string"
+          },
+          "prior_counseling_where": {
+            "default": "",
+            "title": "Prior Counseling Where",
+            "type": "string"
+          },
+          "prior_counselor_name": {
+            "default": "",
+            "title": "Prior Counselor Name",
+            "type": "string"
+          },
+          "program": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InventoryProgramSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "program_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Id"
+          },
+          "pwd_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PWDStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reading_preferences": {
+            "default": "",
+            "title": "Reading Preferences",
+            "type": "string"
+          },
+          "religion_from_birth": {
+            "default": "",
+            "title": "Religion From Birth",
+            "type": "string"
+          },
+          "room_sharing_people_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Sharing People Count"
+          },
+          "schedule_satisfaction_reason": {
+            "default": "",
+            "title": "Schedule Satisfaction Reason",
+            "type": "string"
+          },
+          "schedule_satisfied": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule Satisfied"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SexValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "siblings": {
+            "items": {
+              "$ref": "#/components/schemas/SiblingPayload"
+            },
+            "title": "Siblings",
+            "type": "array"
+          },
+          "special_interest": {
+            "default": "",
+            "title": "Special Interest",
+            "type": "string"
+          },
+          "special_skills_talents": {
+            "default": "",
+            "title": "Special Skills Talents",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InventoryStatusValue"
+          },
+          "student": {
+            "$ref": "#/components/schemas/InventoryStudentSummary"
+          },
+          "student_number": {
+            "default": "",
+            "title": "Student Number",
+            "type": "string"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "support_profile": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportProfilePayload"
+              }
+            ]
+          },
+          "transportation_entries": {
+            "items": {
+              "$ref": "#/components/schemas/TransportationEntryPayload"
+            },
+            "title": "Transportation Entries",
+            "type": "array"
+          },
+          "weight": {
+            "default": "",
+            "title": "Weight",
+            "type": "string"
+          },
+          "year_level": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
+          }
+        },
+        "required": [
+          "id",
+          "academic_year",
+          "program",
+          "status",
+          "submitted_at",
+          "first_submitted_at",
+          "last_submitted_at",
+          "form_revision",
+          "student"
+        ],
+        "title": "CounselorInventoryDetailResponse",
+        "type": "object"
+      },
+      "CounselorInventoryHistoryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "correction_pending": {
+            "title": "Correction Pending",
+            "type": "boolean"
+          },
+          "first_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Submitted At"
+          },
+          "inventory_id": {
+            "format": "uuid",
+            "title": "Inventory Id",
+            "type": "string"
+          },
+          "last_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Submitted At"
+          },
+          "program": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InventoryProgramSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/InventoryStatusValue"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "year_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
+          }
+        },
+        "required": [
+          "inventory_id",
+          "academic_year",
+          "status",
+          "program",
+          "year_level",
+          "first_submitted_at",
+          "last_submitted_at",
+          "submitted_at",
+          "correction_pending"
+        ],
+        "title": "CounselorInventoryHistoryItem",
+        "type": "object"
+      },
+      "CounselorInventoryHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CounselorInventoryHistoryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "CounselorInventoryHistoryResponse",
+        "type": "object"
+      },
+      "CounselorInventoryRosterItem": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "correction_pending": {
+            "title": "Correction Pending",
+            "type": "boolean"
+          },
+          "first_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Submitted At"
+          },
+          "inventory_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inventory Id"
+          },
+          "last_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Submitted At"
+          },
+          "program": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InventoryProgramSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/InventoryStatusValue"
+          },
+          "student": {
+            "$ref": "#/components/schemas/InventoryStudentSummary"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "year_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
+          }
+        },
+        "required": [
+          "student",
+          "academic_year",
+          "inventory_id",
+          "status",
+          "program",
+          "year_level",
+          "first_submitted_at",
+          "last_submitted_at",
+          "submitted_at",
+          "correction_pending"
+        ],
+        "title": "CounselorInventoryRosterItem",
+        "type": "object"
+      },
+      "CounselorInventoryRosterPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CounselorInventoryRosterItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CounselorInventoryRosterPage",
+        "type": "object"
+      },
       "CounselorResponsibilityListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -3173,6 +4130,142 @@
           "created_at"
         ],
         "title": "CounselorRoutineDetailResponse",
+        "type": "object"
+      },
+      "CounselorRoutinePageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CounselorRoutineSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CounselorRoutinePageResponse",
+        "type": "object"
+      },
+      "CounselorRoutineSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineAppointmentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "counseling_encounter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineEncounterSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "entry_mode": {
+            "$ref": "#/components/schemas/RoutineEntryMode"
+          },
+          "evaluation_finalized_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Finalized At"
+          },
+          "evaluation_status": {
+            "$ref": "#/components/schemas/RoutineEvaluationStatus"
+          },
+          "form_revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineFormRevisionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intake_status": {
+            "$ref": "#/components/schemas/RoutineIntakeStatus"
+          },
+          "intake_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intake Submitted At"
+          },
+          "inventory_context": {
+            "$ref": "#/components/schemas/RoutineInventoryContext"
+          },
+          "student": {
+            "$ref": "#/components/schemas/RoutinePersonSummary"
+          }
+        },
+        "required": [
+          "id",
+          "student",
+          "inventory_context",
+          "entry_mode",
+          "delivery_mode",
+          "intake_status",
+          "intake_submitted_at",
+          "evaluation_status",
+          "evaluation_finalized_at",
+          "form_revision",
+          "appointment",
+          "counseling_encounter",
+          "created_at"
+        ],
+        "title": "CounselorRoutineSummaryResponse",
         "type": "object"
       },
       "CounselorRoutineWorkspaceSummary": {
@@ -8874,6 +9967,22 @@
         "title": "InventoryProgramSummary",
         "type": "object"
       },
+      "InventoryReopenRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "InventoryReopenRequest",
+        "type": "object"
+      },
       "InventoryResponse": {
         "additionalProperties": false,
         "properties": {
@@ -9122,6 +10231,18 @@
             "title": "Family Members",
             "type": "array"
           },
+          "first_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Submitted At"
+          },
           "form_revision": {
             "$ref": "#/components/schemas/FormRevisionSummary"
           },
@@ -9270,6 +10391,18 @@
             "default": "",
             "title": "Languages Spoken At Home",
             "type": "string"
+          },
+          "last_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Submitted At"
           },
           "living_arrangement": {
             "anyOf": [
@@ -9554,6 +10687,8 @@
           "program",
           "status",
           "submitted_at",
+          "first_submitted_at",
+          "last_submitted_at",
           "form_revision"
         ],
         "title": "InventoryResponse",
@@ -9565,6 +10700,18 @@
           "academic_year": {
             "$ref": "#/components/schemas/AcademicYearSummary"
           },
+          "first_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Submitted At"
+          },
           "form_revision": {
             "anyOf": [
               {
@@ -9574,6 +10721,18 @@
                 "type": "null"
               }
             ]
+          },
+          "last_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Submitted At"
           },
           "status": {
             "$ref": "#/components/schemas/InventoryStatusValue"
@@ -9595,6 +10754,8 @@
           "academic_year",
           "status",
           "submitted_at",
+          "first_submitted_at",
+          "last_submitted_at",
           "form_revision"
         ],
         "title": "InventoryStatusResponse",
@@ -9609,11 +10770,55 @@
         "title": "InventoryStatusValue",
         "type": "string"
       },
+      "InventoryStudentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          }
+        },
+        "required": [
+          "id",
+          "institutional_id",
+          "display_name"
+        ],
+        "title": "InventoryStudentSummary",
+        "type": "object"
+      },
       "InventorySummaryResponse": {
         "additionalProperties": false,
         "properties": {
           "academic_year": {
             "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "first_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Submitted At"
           },
           "form_revision": {
             "$ref": "#/components/schemas/FormRevisionSummary"
@@ -9622,6 +10827,18 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "last_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Submitted At"
           },
           "status": {
             "$ref": "#/components/schemas/InventoryStatusValue"
@@ -9644,6 +10861,8 @@
           "academic_year",
           "status",
           "submitted_at",
+          "first_submitted_at",
+          "last_submitted_at",
           "form_revision"
         ],
         "title": "InventorySummaryResponse",
@@ -14319,16 +15538,31 @@
       "StudentAffiliationListResponse": {
         "additionalProperties": false,
         "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/StudentAffiliationResponse"
             },
             "title": "Items",
             "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
           }
         },
         "required": [
-          "items"
+          "items",
+          "page",
+          "page_size",
+          "has_next"
         ],
         "title": "StudentAffiliationListResponse",
         "type": "object"
@@ -16264,6 +17498,8 @@
                 "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
+                "inventory.reopen",
+                "inventory.view",
                 "inventory.view_self",
                 "organization.manage",
                 "organization.view",
@@ -16426,6 +17662,8 @@
                 "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
+                "inventory.reopen",
+                "inventory.view",
                 "inventory.view_self",
                 "organization.manage",
                 "organization.view",
@@ -21991,6 +23229,22 @@
           },
           {
             "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
             "name": "from_date",
             "required": false,
             "schema": {
@@ -26492,6 +27746,39 @@
           },
           {
             "in": "query",
+            "name": "student_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Student Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
             "name": "page",
             "required": false,
             "schema": {
@@ -28289,6 +29576,436 @@
           }
         ],
         "summary": "Inventory Get My History Item",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/records/{inventory_id}": {
+      "get": {
+        "operationId": "inventoryGetRecord",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "inventory_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Inventory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselorInventoryDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inventory Get Record",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/records/{inventory_id}/reopen": {
+      "post": {
+        "operationId": "inventoryReopenRecord",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "inventory_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Inventory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InventoryReopenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselorInventoryHistoryItem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inventory Reopen Record",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/students": {
+      "get": {
+        "operationId": "inventoryListStudents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "academic_year_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Academic Year Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/InventoryStatusValue"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "college_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "College Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "program_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Program Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "year_level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year Level"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselorInventoryRosterPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inventory List Students",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/students/{student_id}/history": {
+      "get": {
+        "operationId": "inventoryListStudentHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselorInventoryHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Inventory List Student History",
         "tags": [
           "inventory"
         ]
@@ -31023,7 +32740,95 @@
     "/api/v1/organization/student-affiliations": {
       "get": {
         "operationId": "organizationListStudentAffiliations",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "student_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Student Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "college_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "College Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "campus_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Campus Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -31054,6 +32859,16 @@
               }
             },
             "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -35412,6 +37227,177 @@
       }
     },
     "/api/v1/routine-interviews": {
+      "get": {
+        "operationId": "routineInterviewsListAssigned",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "student_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Student Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "academic_year_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Academic Year Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "delivery_mode",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DeliveryMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "intake_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/RoutineIntakeStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "evaluation_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/RoutineEvaluationStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselorRoutinePageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews List Assigned",
+        "tags": [
+          "routine-interviews"
+        ]
+      },
       "post": {
         "operationId": "routineInterviewsCreateDirect",
         "parameters": [

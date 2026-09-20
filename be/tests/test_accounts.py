@@ -144,7 +144,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
         "DPO",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 75
+    assert RoleCapability.objects.count() == 77
     assert DesignationCapability.objects.count() == 18
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
@@ -156,8 +156,8 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 65
-    assert RoleCapability.objects.count() == 75
+    assert Capability.objects.count() == 67
+    assert RoleCapability.objects.count() == 77
     assert DesignationCapability.objects.count() == 18
 
 
@@ -170,6 +170,8 @@ def test_counselor_baseline_adds_scoped_authority_without_admin_expansion():
         "academic_years.view",
         "institutional_forms.view",
         "reports.view",
+        "inventory.view",
+        "inventory.reopen",
     }
     denied = {
         "availability.manage",

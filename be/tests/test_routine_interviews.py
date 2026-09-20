@@ -827,3 +827,56 @@ def test_non_current_student_routine_is_read_only_while_counselor_can_finish_exi
         context=context(counselor),
     )
     assert finalized.evaluation_finalized_at is not None
+
+
+@pytest.mark.django_db
+def test_counselor_routine_queue_is_assigned_paginated_filtered_and_identity_search_only():
+    sync_policy()
+    admin = make_user("queue-admin@example.edu", "IT_ADMIN")
+    student = make_user("queue.student@example.edu", "STUDENT")
+    student.institutional_id = "RI-2026-001"
+    student.save(update_fields=["institutional_id", "updated_at"])
+    counselor = make_user("queue.counselor@example.edu", "COUNSELOR")
+    other = make_user("queue.other@example.edu", "COUNSELOR")
+    gss = make_user("queue.gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    year = configure_year(admin)
+    submit_inventory(student, student)
+    create_counseling_service(admin)
+
+    mine = direct_routine(counselor=counselor, student=student, key="queue-mine")
+    direct_routine(counselor=other, student=student, key="queue-other")
+
+    client = auth_client(counselor)
+    listing = client.get("/api/v1/routine-interviews")
+    assert listing.status_code == 200
+    assert [row["id"] for row in listing.json()["items"]] == [str(mine.pk)]
+    row = listing.json()["items"][0]
+    assert "intake" not in row
+    assert "evaluation" not in row
+
+    searched = client.get("/api/v1/routine-interviews", {"search": "RI-2026-001"})
+    assert searched.status_code == 200
+    assert [row["id"] for row in searched.json()["items"]] == [str(mine.pk)]
+
+    filtered = client.get(
+        "/api/v1/routine-interviews",
+        {
+            "academic_year_id": str(year.pk),
+            "delivery_mode": "IN_PERSON",
+            "intake_status": "DRAFT",
+            "evaluation_status": "DRAFT",
+            "student_id": str(student.pk),
+        },
+    )
+    assert filtered.status_code == 200
+    assert [row["id"] for row in filtered.json()["items"]] == [str(mine.pk)]
+
+    assert (
+        client.get(
+            "/api/v1/routine-interviews",
+            {"page_size": 51},
+        ).status_code
+        == 422
+    )
+    assert auth_client(other).get("/api/v1/routine-interviews").status_code == 200
+    assert auth_client(gss).get("/api/v1/routine-interviews").status_code == 403

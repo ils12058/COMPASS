@@ -14,11 +14,7 @@ from compass.authentication.api import session_auth
 from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
-from compass.organization.models import (
-    CounselorResponsibility,
-    StaffSupervision,
-    StudentAffiliation,
-)
+from compass.organization.models import CounselorResponsibility, StaffSupervision
 from compass.organization.services import (
     DEFAULT_PAGE_SIZE,
     InvalidOrganizationInput,
@@ -35,6 +31,7 @@ from compass.organization.services import (
     list_colleges,
     list_people,
     list_programs,
+    list_student_affiliations,
     remove_counselor_responsibility,
     remove_staff_supervisor,
     remove_student_affiliation,
@@ -175,6 +172,9 @@ class StudentAffiliationResponse(StrictSchema):
 
 class StudentAffiliationListResponse(StrictSchema):
     items: list[StudentAffiliationResponse]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 class RemovedResponse(StrictSchema):
@@ -684,19 +684,39 @@ def staff_supervisor_remove(request, staff_id: UUID):
 
 @router.get(
     "/student-affiliations",
-    response=response_with_errors(StudentAffiliationListResponse, 401, 403),
+    response=response_with_errors(StudentAffiliationListResponse, 401, 403, 422),
     auth=session_auth,
     operation_id="organizationListStudentAffiliations",
 )
-def student_affiliations(request):
+def student_affiliations(
+    request,
+    student_id: UUID | None = None,
+    college_id: UUID | None = None,
+    campus_id: UUID | None = None,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
     _require(request, "organization.manage")
-    qs = StudentAffiliation.objects.select_related("student__role", "college__campus").order_by(
-        "student__last_name", "student__id"
-    )
+    try:
+        result = list_student_affiliations(
+            student_id=student_id,
+            college_id=college_id,
+            campus_id=campus_id,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except OrganizationError as exc:
+        _raise(exc)
     return {
         "items": [
-            {"student": _person(item.student), "college": _college(item.college)} for item in qs
-        ]
+            {"student": _person(item.student), "college": _college(item.college)}
+            for item in result.items
+        ],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
     }
 
 

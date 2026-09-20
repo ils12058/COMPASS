@@ -234,6 +234,8 @@ class StudentInventory(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(10)],
     )
     submitted_at = models.DateTimeField(null=True, blank=True)
+    first_submitted_at = models.DateTimeField(null=True, blank=True)
+    last_submitted_at = models.DateTimeField(null=True, blank=True)
 
     # Page 1 — personal snapshot.
     full_name_snapshot = models.CharField(max_length=200, blank=True, default="")
@@ -431,6 +433,26 @@ class StudentInventory(models.Model):
                 name="inventory_year_level_range",
             ),
         ]
+
+
+class InventoryReopenEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    inventory = models.ForeignKey(
+        StudentInventory,
+        on_delete=models.CASCADE,
+        related_name="reopen_events",
+    )
+    reopened_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="inventory_reopen_events",
+    )
+    reopened_at = models.DateTimeField()
+    reason = models.TextField(max_length=1000)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("reopened_at", "id")
 
 
 class InventoryFamilyMember(models.Model):

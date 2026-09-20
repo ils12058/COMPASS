@@ -409,6 +409,8 @@ def good_moral_list_requests(
     request,
     variant: GoodMoralVariantValue | None = None,
     status: GoodMoralStatusValue | None = None,
+    student_id: UUID | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -418,6 +420,8 @@ def good_moral_list_requests(
             actor=request.auth_user,
             variant=variant.value if variant is not None else None,
             status=status.value if status is not None else None,
+            student_id=student_id,
+            search=search,
             page=page,
             page_size=page_size,
         )

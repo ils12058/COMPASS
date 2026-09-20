@@ -8,6 +8,7 @@ from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import StudentLifecycleStatus, User
@@ -44,6 +45,7 @@ from .models import GoodMoralRequest, GoodMoralStatus, GoodMoralVariant
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
+MAX_SEARCH_LENGTH = 160
 CURRENT_STUDENT_FAMILY_KEY = "good_moral_current_student"
 GRADUATE_FAMILY_KEY = "good_moral_graduate"
 TEMPLATE_BY_VARIANT = {
@@ -337,6 +339,8 @@ def list_requests(
     actor: User,
     variant: str | None = None,
     status: str | None = None,
+    student_id: UUID | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> GoodMoralPage:
@@ -351,6 +355,22 @@ def list_requests(
         if status not in GoodMoralStatus.values:
             raise InvalidGoodMoralInput("status is not supported.")
         queryset = queryset.filter(status=status)
+    if student_id is not None:
+        queryset = queryset.filter(student_id=student_id)
+    if search is not None:
+        if not isinstance(search, str):
+            raise InvalidGoodMoralInput("search must be text.")
+        term = search.strip()
+        if len(term) > MAX_SEARCH_LENGTH:
+            raise InvalidGoodMoralInput(f"search must be at most {MAX_SEARCH_LENGTH} characters.")
+        if term:
+            queryset = queryset.filter(
+                Q(student__institutional_id__icontains=term)
+                | Q(student__first_name__icontains=term)
+                | Q(student__middle_name__icontains=term)
+                | Q(student__last_name__icontains=term)
+                | Q(applicant_name_snapshot__icontains=term)
+            )
     queryset = queryset.order_by("-created_at", "id")
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])

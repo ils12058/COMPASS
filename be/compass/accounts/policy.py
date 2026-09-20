@@ -228,6 +228,19 @@ CAPABILITY_DEFINITIONS = (
         description="Create, edit, and submit the authenticated Student's current Inventory.",
     ),
     CapabilityDefinition(
+        code="inventory.view",
+        name="View submitted individual inventories",
+        description=(
+            "View submitted Student Individual Inventory records through an authorized "
+            "Guidance workflow."
+        ),
+    ),
+    CapabilityDefinition(
+        code="inventory.reopen",
+        name="Reopen individual inventories",
+        description=("Reopen an eligible submitted Individual Inventory for Student correction."),
+    ),
+    CapabilityDefinition(
         code="student_support.view",
         name="View Student Support context",
         description=(
@@ -471,6 +484,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "availability.manage_self",
             "appointments.view_self",
             "appointments.manage",
+            "inventory.view",
+            "inventory.reopen",
             "counseling.view_assigned",
             "counseling.manage_assigned",
             "student_support.view",

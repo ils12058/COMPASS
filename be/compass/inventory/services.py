@@ -3,18 +3,24 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
 from compass.accounts.services import is_current_student
-from compass.audit.actions import INVENTORY_CREATED, INVENTORY_SUBMITTED
+from compass.audit.actions import (
+    INVENTORY_CREATED,
+    INVENTORY_REOPENED,
+    INVENTORY_RESUBMITTED,
+    INVENTORY_SUBMITTED,
+)
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
@@ -22,8 +28,15 @@ from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
 )
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 from compass.organization.academic_years import get_current_academic_year
-from compass.organization.models import AcademicYear, Program
+from compass.organization.models import (
+    AcademicYear,
+    College,
+    CounselorResponsibility,
+    Program,
+)
 from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
@@ -43,6 +56,7 @@ from .models import (
     InventoryFamilyMember,
     InventoryGeographicLocation,
     InventoryOrganizationMembership,
+    InventoryReopenEvent,
     InventorySibling,
     InventoryTransportationEntry,
     LivingArrangement,
@@ -54,6 +68,11 @@ from .models import (
 )
 
 INVENTORY_FAMILY_KEY = "individual_inventory"
+HEAD_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE = 50
+MAX_SEARCH_LENGTH = 160
+MAX_REOPEN_REASON_LENGTH = 1000
 
 
 class InventoryStatus(StrEnum):
@@ -165,11 +184,34 @@ class InventoryFormRevisionNotConfigured(InventoryError):
     pass
 
 
+class InventoryNotPermitted(InventoryError):
+    pass
+
+
+class InventoryNotSubmitted(InventoryConflict):
+    pass
+
+
 @dataclass(frozen=True, slots=True)
 class CurrentInventoryStatus:
     academic_year: AcademicYear
     status: InventoryStatus
     inventory: StudentInventory | None
+
+
+@dataclass(frozen=True, slots=True)
+class InventoryRosterRow:
+    student: User
+    academic_year: AcademicYear
+    inventory: StudentInventory | None
+
+
+@dataclass(frozen=True, slots=True)
+class InventoryRosterPage:
+    items: tuple[InventoryRosterRow, ...]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 SCALAR_FIELDS = (
@@ -295,6 +337,140 @@ def _inventory_queryset():
         "organization_memberships",
         "transportation_entries",
         "geographic_locations",
+        "reopen_events",
+    )
+
+
+def _is_head(actor: User) -> bool:
+    return (
+        actor.role.code == "COUNSELOR" and actor.designations.filter(code=HEAD_DESIGNATION).exists()
+    )
+
+
+def _validate_counselor(actor: User, capability: str) -> None:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code != "COUNSELOR"
+        or not actor.has_capability(capability)
+    ):
+        raise InventoryNotPermitted("Active Counselor Inventory authority is required.")
+
+
+def _counselor_college_ids(actor: User) -> tuple[UUID, ...] | None:
+    if _is_head(actor):
+        return None
+    return tuple(
+        CounselorResponsibility.objects.filter(
+            counselor_id=actor.pk,
+            counselor__is_active=True,
+            counselor__role__code="COUNSELOR",
+            college__is_active=True,
+            college__campus__is_active=True,
+        )
+        .order_by("college_id")
+        .values_list("college_id", flat=True)
+    )
+
+
+def _scoped_students(actor: User):
+    college_ids = _counselor_college_ids(actor)
+    queryset = User.objects.filter(
+        is_active=True,
+        role__code="STUDENT",
+        organization_student_affiliation__college__is_active=True,
+        organization_student_affiliation__college__campus__is_active=True,
+    ).select_related("role", "organization_student_affiliation__college__campus")
+    if college_ids is None:
+        return queryset
+    if not college_ids:
+        return queryset.none()
+    return queryset.filter(organization_student_affiliation__college_id__in=college_ids)
+
+
+def _student_in_scope(actor: User, student_id: UUID) -> bool:
+    return _scoped_students(actor).filter(pk=student_id).exists()
+
+
+def _pagination(page: int, page_size: int) -> tuple[int, int]:
+    if type(page) is not int or page < 1:
+        raise InvalidInventoryInput("page must be at least 1.")
+    if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
+        raise InvalidInventoryInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}.")
+    return page, page_size
+
+
+def _clean_search(search: str | None) -> str:
+    if search is None:
+        return ""
+    if not isinstance(search, str):
+        raise InvalidInventoryInput("search must be text.")
+    cleaned = search.strip()
+    if len(cleaned) > MAX_SEARCH_LENGTH:
+        raise InvalidInventoryInput(f"search must be at most {MAX_SEARCH_LENGTH} characters.")
+    return cleaned
+
+
+def _identity_search(queryset, term: str, *, prefix: str = ""):
+    if not term:
+        return queryset
+    return queryset.filter(
+        Q(**{f"{prefix}institutional_id__icontains": term})
+        | Q(**{f"{prefix}first_name__icontains": term})
+        | Q(**{f"{prefix}middle_name__icontains": term})
+        | Q(**{f"{prefix}last_name__icontains": term})
+    )
+
+
+def _resolve_roster_year(academic_year_id: UUID | None) -> AcademicYear:
+    if academic_year_id is None:
+        return _current_year()
+    year = AcademicYear.objects.filter(pk=academic_year_id).first()
+    if year is None:
+        raise InvalidInventoryInput("The selected Academic Year was not found.")
+    return year
+
+
+def _validate_roster_filters(
+    *,
+    actor: User,
+    college_id: UUID | None,
+    program_id: UUID | None,
+    year_level: int | None,
+) -> Program | None:
+    college_ids = _counselor_college_ids(actor)
+    if year_level is not None and not 1 <= year_level <= 10:
+        raise InvalidInventoryInput("year_level must be between 1 and 10.")
+    if college_id is not None:
+        college = College.objects.select_related("campus").filter(pk=college_id).first()
+        if college is None:
+            raise InvalidInventoryInput("The selected College was not found.")
+        if college_ids is not None and college.pk not in set(college_ids):
+            raise InventoryNotPermitted(
+                "The selected College is outside Counselor Inventory scope."
+            )
+    program = None
+    if program_id is not None:
+        program = Program.objects.select_related("college__campus").filter(pk=program_id).first()
+        if program is None:
+            raise InvalidInventoryInput("The selected Program was not found.")
+        if college_ids is not None and program.college_id not in set(college_ids):
+            raise InventoryNotPermitted(
+                "The selected Program is outside Counselor Inventory scope."
+            )
+        if college_id is not None and program.college_id != college_id:
+            raise InvalidInventoryInput(
+                "The selected Program does not belong to the selected College."
+            )
+    return program
+
+
+def _correction_pending(item: StudentInventory | None) -> bool:
+    return bool(
+        item is not None
+        and item.submitted_at is None
+        and item.first_submitted_at is not None
+        and item.reopen_events.exists()
     )
 
 
@@ -963,7 +1139,12 @@ def submit_current_inventory(
         if locked_student.institutional_id is not None:
             item.student_number = locked_student.institutional_id
         _validate_submission(item, profile)
-        item.submitted_at = timezone.now()
+        submitted_at = timezone.now()
+        is_resubmission = item.first_submitted_at is not None
+        if item.first_submitted_at is None:
+            item.first_submitted_at = submitted_at
+        item.last_submitted_at = submitted_at
+        item.submitted_at = submitted_at
         item.save(
             update_fields=[
                 "student_number",
@@ -971,13 +1152,15 @@ def submit_current_inventory(
                 "civil_status",
                 "current_religion",
                 "physical_disadvantage",
+                "first_submitted_at",
+                "last_submitted_at",
                 "submitted_at",
                 "updated_at",
             ]
         )
         record_event(
             context=context,
-            action=INVENTORY_SUBMITTED,
+            action=INVENTORY_RESUBMITTED if is_resubmission else INVENTORY_SUBMITTED,
             outcome=AuditOutcome.SUCCESS,
             target_type="inventory.studentinventory",
             target_id=item.pk,
@@ -1003,3 +1186,216 @@ def get_my_inventory_history_item(*, student: User, inventory_id: UUID) -> Stude
     if item is None:
         raise InventoryNotFound("The requested Individual Inventory was not found.")
     return item
+
+
+def list_inventory_students(
+    *,
+    actor: User,
+    academic_year_id: UUID | None = None,
+    status: str | InventoryStatus | None = None,
+    college_id: UUID | None = None,
+    program_id: UUID | None = None,
+    year_level: int | None = None,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> InventoryRosterPage:
+    _validate_counselor(actor, "inventory.view")
+    page, page_size = _pagination(page, page_size)
+    year = _resolve_roster_year(academic_year_id)
+    term = _clean_search(search)
+    _validate_roster_filters(
+        actor=actor,
+        college_id=college_id,
+        program_id=program_id,
+        year_level=year_level,
+    )
+
+    normalized_status = None
+    if status is not None:
+        normalized_status = status.value if isinstance(status, InventoryStatus) else str(status)
+        if normalized_status not in {item.value for item in InventoryStatus}:
+            raise InvalidInventoryInput("status must be MISSING, DRAFT, or SUBMITTED.")
+
+    if not year.is_current and normalized_status == InventoryStatus.MISSING:
+        raise InventoryConflict(
+            "Historical MISSING coverage cannot be reconstructed from authoritative COMPASS data."
+        )
+
+    if year.is_current:
+        queryset = _scoped_students(actor).filter(student_lifecycle_status="CURRENT")
+        if college_id is not None:
+            queryset = queryset.filter(organization_student_affiliation__college_id=college_id)
+        queryset = _identity_search(queryset, term)
+
+        annual = "individual_inventories"
+        if normalized_status == InventoryStatus.MISSING:
+            queryset = queryset.exclude(**{f"{annual}__academic_year_id": year.pk})
+        elif normalized_status == InventoryStatus.DRAFT:
+            queryset = queryset.filter(
+                **{
+                    f"{annual}__academic_year_id": year.pk,
+                    f"{annual}__submitted_at__isnull": True,
+                }
+            )
+        elif normalized_status == InventoryStatus.SUBMITTED:
+            queryset = queryset.filter(
+                **{
+                    f"{annual}__academic_year_id": year.pk,
+                    f"{annual}__submitted_at__isnull": False,
+                }
+            )
+
+        if program_id is not None:
+            queryset = queryset.filter(
+                individual_inventories__academic_year_id=year.pk,
+                individual_inventories__program_id=program_id,
+            )
+        if year_level is not None:
+            queryset = queryset.filter(
+                individual_inventories__academic_year_id=year.pk,
+                individual_inventories__year_level=year_level,
+            )
+
+        queryset = queryset.order_by("last_name", "first_name", "id").distinct()
+        offset = (page - 1) * page_size
+        students = list(queryset[offset : offset + page_size + 1])
+        selected = students[:page_size]
+        inventory_by_student = {
+            item.student_id: item
+            for item in _inventory_queryset().filter(
+                academic_year_id=year.pk,
+                student_id__in=[student.pk for student in selected],
+            )
+        }
+        rows = tuple(
+            InventoryRosterRow(student, year, inventory_by_student.get(student.pk))
+            for student in selected
+        )
+        return InventoryRosterPage(rows, page, page_size, len(students) > page_size)
+
+    scoped_student_ids = _scoped_students(actor).values("pk")
+    queryset = _inventory_queryset().filter(
+        academic_year_id=year.pk,
+        student_id__in=scoped_student_ids,
+    )
+    if college_id is not None:
+        queryset = queryset.filter(student__organization_student_affiliation__college_id=college_id)
+    if program_id is not None:
+        queryset = queryset.filter(program_id=program_id)
+    if year_level is not None:
+        queryset = queryset.filter(year_level=year_level)
+    if normalized_status == InventoryStatus.DRAFT:
+        queryset = queryset.filter(submitted_at__isnull=True)
+    elif normalized_status == InventoryStatus.SUBMITTED:
+        queryset = queryset.filter(submitted_at__isnull=False)
+    queryset = _identity_search(queryset, term, prefix="student__")
+    queryset = queryset.order_by("student__last_name", "student__first_name", "student_id", "id")
+    offset = (page - 1) * page_size
+    items = list(queryset[offset : offset + page_size + 1])
+    rows = tuple(InventoryRosterRow(item.student, year, item) for item in items[:page_size])
+    return InventoryRosterPage(rows, page, page_size, len(items) > page_size)
+
+
+def get_inventory_for_counselor(*, actor: User, inventory_id: UUID) -> StudentInventory:
+    _validate_counselor(actor, "inventory.view")
+    item = _inventory_queryset().filter(pk=inventory_id).first()
+    if item is None or not _student_in_scope(actor, item.student_id):
+        raise InventoryNotFound("The requested Individual Inventory was not found.")
+    if item.submitted_at is None:
+        raise InventoryNotSubmitted(
+            "Only a currently submitted Individual Inventory is available for Counselor review."
+        )
+    return item
+
+
+def list_student_inventory_history(
+    *,
+    actor: User,
+    student_id: UUID,
+) -> tuple[StudentInventory, ...]:
+    _validate_counselor(actor, "inventory.view")
+    if not _student_in_scope(actor, student_id):
+        raise InventoryNotFound("The Student Inventory history was not found.")
+    return tuple(
+        _inventory_queryset()
+        .filter(student_id=student_id)
+        .order_by("-academic_year__label", "-created_at", "id")
+    )
+
+
+def reopen_inventory_for_correction(
+    *,
+    actor: User,
+    inventory_id: UUID,
+    reason: str,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> StudentInventory:
+    _validate_counselor(actor, "inventory.reopen")
+    if not isinstance(reason, str):
+        raise InvalidInventoryInput("reason must be text.")
+    cleaned_reason = reason.strip()
+    if not cleaned_reason:
+        raise InvalidInventoryInput("reason is required to reopen an Individual Inventory.")
+    if len(cleaned_reason) > MAX_REOPEN_REASON_LENGTH:
+        raise InvalidInventoryInput(
+            f"reason must be at most {MAX_REOPEN_REASON_LENGTH} characters."
+        )
+    reopened_at = now or timezone.now()
+    if timezone.is_naive(reopened_at):
+        raise InvalidInventoryInput("The reopen time must be timezone-aware.")
+
+    with transaction.atomic():
+        item = (
+            StudentInventory.objects.select_for_update()
+            .select_related("student__role", "academic_year", "form_revision")
+            .filter(pk=inventory_id)
+            .first()
+        )
+        if item is None or not _student_in_scope(actor, item.student_id):
+            raise InventoryNotFound("The requested Individual Inventory was not found.")
+
+        current = _current_year()
+        if item.academic_year_id != current.pk:
+            raise InventoryConflict(
+                "Only the current Academic Year submitted Individual Inventory may be reopened."
+            )
+        if item.submitted_at is None:
+            raise InventoryConflict("Only a submitted Individual Inventory may be reopened.")
+        if not is_current_student(item.student):
+            raise InventoryCurrentStudentRequired(
+                "Current Student lifecycle is required before reopening for Student correction."
+            )
+
+        event = InventoryReopenEvent.objects.create(
+            inventory=item,
+            reopened_by=actor,
+            reopened_at=reopened_at,
+            reason=cleaned_reason,
+        )
+        item.submitted_at = None
+        item.save(update_fields=["submitted_at", "updated_at"])
+        record_event(
+            context=context,
+            action=INVENTORY_REOPENED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="inventory.studentinventory",
+            target_id=item.pk,
+            metadata={
+                "academic_year": item.academic_year.label,
+                "form_code": item.form_revision.official_code,
+                "form_revision": item.form_revision.official_revision,
+                "transition": "SUBMITTED -> DRAFT",
+                "reopen_event_id": str(event.pk),
+            },
+        )
+        create_notification_for_event(
+            recipient=item.student,
+            event=NotificationEvent.INVENTORY_REOPENED,
+            source_type="inventory_reopen_event",
+            source_id=event.pk,
+            target_type="INVENTORY",
+            target_id=item.pk,
+        )
+        return _inventory_queryset().get(pk=item.pk)

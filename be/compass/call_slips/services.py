@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -39,6 +40,7 @@ DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_COURSE_YEAR_LENGTH = 255
 MAX_OTHER_DESTINATION_LENGTH = 255
+MAX_SEARCH_LENGTH = 160
 
 
 class CallSlipError(RuntimeError):
@@ -529,6 +531,7 @@ def list_call_slips(
     issued_by_id: UUID | None = None,
     destination_type: str | CallSlipDestinationType | None = None,
     referral_id: UUID | None = None,
+    search: str | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
     page: int = 1,
@@ -544,6 +547,21 @@ def list_call_slips(
         qs = qs.filter(destination_type=_normalize_destination_type(destination_type))
     if referral_id is not None:
         qs = qs.filter(referral_id=referral_id)
+    if search is not None:
+        if not isinstance(search, str):
+            raise InvalidCallSlipInput("search must be text.")
+        term = search.strip()
+        if len(term) > MAX_SEARCH_LENGTH:
+            raise InvalidCallSlipInput(f"search must be at most {MAX_SEARCH_LENGTH} characters.")
+        if term:
+            qs = qs.filter(
+                Q(student__institutional_id__icontains=term)
+                | Q(student__first_name__icontains=term)
+                | Q(student__middle_name__icontains=term)
+                | Q(student__last_name__icontains=term)
+                | Q(student_name_snapshot__icontains=term)
+                | Q(referral__reference_code__icontains=term)
+            )
     qs = _apply_date_filters(qs, from_date=from_date, to_date=to_date)
     return _page(
         qs.order_by("-report_at", "-created_at", "id"),
