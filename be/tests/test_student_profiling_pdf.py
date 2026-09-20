@@ -20,6 +20,7 @@ from compass.documents.rendering import (
 )
 from compass.documents.services import update_branding_profile
 from compass.documents.template_specs import LayoutFamily, get_template_spec
+from compass.organization.models import Campus, College, CounselorResponsibility
 from compass.reports import api as reports_api
 from compass.reports import pdf as report_pdf
 from compass.reports.pdf import (
@@ -31,6 +32,7 @@ from compass.reports.pdf import (
     student_profiling_pdf_filename,
 )
 from compass.reports.services import (
+    GLOBAL_REPORT_ACCESS_SCOPE,
     InvalidReportFilter,
     ReportConfigurationConflict,
     ReportNotFound,
@@ -207,6 +209,7 @@ def fake_pdf_result() -> StudentProfilingPdfResult:
             "program_id": None,
             "program_code": None,
             "year_level": None,
+            "access_scope": GLOBAL_REPORT_ACCESS_SCOPE,
         },
     )
 
@@ -266,6 +269,7 @@ def test_pdf_endpoint_forwards_same_report_filters(monkeypatch):
             "college_id": college_id,
             "program_id": program_id,
             "year_level": 3,
+            "access_scope": GLOBAL_REPORT_ACCESS_SCOPE,
         },
     )
     assert response.status_code == 200
@@ -276,6 +280,7 @@ def test_pdf_endpoint_forwards_same_report_filters(monkeypatch):
             "college_id": college_id,
             "program_id": program_id,
             "year_level": 3,
+            "access_scope": GLOBAL_REPORT_ACCESS_SCOPE,
         }
     ]
 
@@ -288,8 +293,30 @@ def test_pdf_endpoint_forwards_same_report_filters(monkeypatch):
             "college_id": None,
             "program_id": None,
             "year_level": None,
+            "access_scope": GLOBAL_REPORT_ACCESS_SCOPE,
         }
     ]
+
+
+@pytest.mark.django_db
+def test_pdf_endpoint_passes_regular_counselor_college_scope(monkeypatch):
+    sync_policy()
+    counselor = make_user("scoped-pdf@example.edu", "COUNSELOR")
+    campus = Campus.objects.create(code="PDF-SCOPE", name="PDF Scope Campus")
+    college = College.objects.create(campus=campus, code="PDF-COL", name="PDF Scope College")
+    CounselorResponsibility.objects.create(college=college, counselor=counselor)
+    captured: list[dict[str, object]] = []
+
+    def fake_render(**kwargs):
+        captured.append(kwargs)
+        return fake_pdf_result()
+
+    monkeypatch.setattr(reports_api, "render_student_profiling_pdf", fake_render)
+    response = auth_client(counselor).get("/api/v1/reports/student-profile/pdf")
+    assert response.status_code == 200
+    scope = captured[0]["access_scope"]
+    assert scope.is_global is False
+    assert scope.college_ids == (college.pk,)
 
 
 @pytest.mark.django_db
