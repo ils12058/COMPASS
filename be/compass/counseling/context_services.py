@@ -210,12 +210,9 @@ def get_context_overview(access: CounselingContextAccess) -> CounselingContextOv
 
     encounter_summary = None
     if access.encounter_id is not None:
-        encounter = (
-            access.encounter_id
-            and routine.counseling_encounter
-            if routine is not None and routine.counseling_encounter_id == access.encounter_id
-            else None
-        )
+        encounter = None
+        if routine is not None and routine.counseling_encounter_id == access.encounter_id:
+            encounter = routine.counseling_encounter
         if encounter is None:
             from .models import CounselingEncounter
 
@@ -324,10 +321,9 @@ def list_context_history(
         for item in appointments
     )
 
-    referrals = (
-        Referral.objects.filter(student_id=student_id)
-        .order_by("-received_at", "-created_at", "-id")[:bounded_limit]
-    )
+    referrals = Referral.objects.filter(student_id=student_id).order_by(
+        "-received_at", "-created_at", "-id"
+    )[:bounded_limit]
     rows.extend(
         CounselingContextHistoryItem(
             id=item.pk,
