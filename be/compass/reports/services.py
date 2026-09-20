@@ -83,7 +83,6 @@ class ReportAccessDenied(ReportError):
     pass
 
 
-
 @dataclass(frozen=True, slots=True)
 class ReportAccessScope:
     is_global: bool
