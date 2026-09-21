@@ -20,7 +20,7 @@ export function SystemErrorPage({
   requestReference?: string | null;
 }) {
   return (
-    <main className="flex min-h-[65vh] items-center px-5 py-12 sm:px-8">
+    <section className="flex min-h-[65vh] items-center px-5 py-12 sm:px-8">
       <section className="mx-auto w-full max-w-xl rounded-2xl border bg-card p-7 text-center shadow-sm sm:p-9">
         <Image
           src="/brand/compass-mark.svg"
@@ -55,6 +55,6 @@ export function SystemErrorPage({
           </Link>
         </div>
       </section>
-    </main>
+    </section>
   );
 }
