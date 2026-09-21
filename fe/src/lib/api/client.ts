@@ -3,13 +3,6 @@ const API_PREFIX = "/api/v1";
 
 type SerializedHeaders = Record<string, string>;
 
-type FetchErrorMetadata = {
-  errorResponses?: readonly {
-    status: number;
-    contentType: string;
-  }[];
-};
-
 export class CompassApiError<T = unknown> extends Error {
   readonly status: number;
   readonly data: T;
@@ -122,7 +115,6 @@ async function parseResponseBody(response: Response): Promise<unknown> {
 export async function compassFetch<T>(
   url: string,
   options: RequestInit = {},
-  _metadata?: FetchErrorMetadata,
 ): Promise<T> {
   const requestUrl = normalizeApiUrl(url);
   const method = (options.method ?? "GET").toUpperCase();
