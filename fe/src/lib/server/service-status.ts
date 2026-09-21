@@ -30,6 +30,7 @@ export async function getInitialPlatformStatus(): Promise<PlatformPublicStatusRe
         Accept: "application/json",
       },
       cache: "no-store",
+      credentials: "omit",
       signal: AbortSignal.timeout(STATUS_TIMEOUT_MS),
     });
 
