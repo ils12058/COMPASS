@@ -22,11 +22,17 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.documents.rendering import DocumentRenderError, render_document_pdf
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
 )
 from compass.organization.access_scope import resolve_organizational_access_scope
+from compass.operational_students import (
+    InvalidOperationalStudentQuery,
+    OperationalStudentPage,
+    list_scoped_operational_students,
+)
 from compass.organization.models import StudentAffiliation
 
 from .models import Referral, ReferralAction, ReferralActionType, ReferralReferenceCounter
@@ -75,6 +81,10 @@ class ReferralActionConflict(ReferralError):
 
 
 class ReferralVoidConflict(ReferralError):
+    pass
+
+
+class ReferralDocumentUnavailable(ReferralError):
     pass
 
 
@@ -435,12 +445,117 @@ def list_referrals(
     return ReferralPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
 
 
+
+def list_eligible_students(
+    *,
+    actor: User,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> OperationalStudentPage:
+    _validate_operational_actor(actor)
+    try:
+        return list_scoped_operational_students(
+            actor=actor,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except InvalidOperationalStudentQuery as exc:
+        raise InvalidReferralInput(str(exc)) from exc
+
+
 def get_referral(*, actor: User, referral_id: UUID) -> Referral:
     _validate_operational_actor(actor)
     item = _scope_queryset(_detail_queryset(), actor).filter(pk=referral_id).first()
     if item is None:
         raise ReferralNotFound("The requested Referral was not found.")
     return item
+
+
+
+_REFERRAL_ACTION_LABELS = {
+    ReferralActionType.CALL_PARENT_GUARDIAN: "Call the Parent/Guardian",
+    ReferralActionType.SEND_PARENT_NOTIFICATION_LETTER: (
+        'Send "Parent Notification Letter"'
+    ),
+    ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT: (
+        'Send "Call Slip/Interview Permit"'
+    ),
+}
+
+
+def build_referral_render_context(item: Referral) -> dict[str, object]:
+    recorded = {action.action_type: action for action in item.actions.all()}
+    action_rows: list[dict[str, object]] = []
+    for action_type in ReferralActionType.values:
+        action = recorded.get(action_type)
+        occurred_at = (
+            timezone.localtime(action.occurred_at)
+            if action is not None
+            else None
+        )
+        action_rows.append(
+            {
+                "label": _REFERRAL_ACTION_LABELS[action_type],
+                "recorded": action is not None,
+                "date": occurred_at.date() if occurred_at is not None else None,
+                "time": (
+                    occurred_at.time().replace(second=0, microsecond=0)
+                    if occurred_at is not None
+                    else None
+                ),
+                "remarks": action.remarks if action is not None else "",
+            }
+        )
+
+    received_at = (
+        timezone.localtime(item.received_at)
+        if item.received_at is not None
+        else None
+    )
+    return {
+        "referral": {
+            "reference_code": item.reference_code,
+            "student_name": item.student_name_snapshot,
+            "course_year_block": item.course_year_block_snapshot,
+            "referrer_name": item.referrer_name,
+            "referred_on": item.referred_on,
+            "received_date": (
+                received_at.date() if received_at is not None else None
+            ),
+            "received_time": (
+                received_at.time().replace(second=0, microsecond=0)
+                if received_at is not None
+                else None
+            ),
+            "reason": item.reason,
+            "actions": action_rows,
+            "status_note": item.status_note,
+            "is_voided": item.voided_at is not None,
+            "void_reason": item.void_reason,
+        },
+        "controlled_form": {
+            "official_code": item.form_revision.official_code,
+            "official_revision": item.form_revision.official_revision,
+            "page_label": "Page 1 of 1",
+        },
+    }
+
+
+def render_referral_pdf(item: Referral) -> bytes:
+    try:
+        result = render_document_pdf(
+            "referral_slip",
+            item.form_revision.internal_schema_version,
+            context=build_referral_render_context(item),
+        )
+    except DocumentRenderError as exc:
+        raise ReferralDocumentUnavailable(
+            "The saved Referral Slip presentation version cannot be rendered "
+            "by this COMPASS build."
+        ) from exc
+    return result.pdf_bytes
 
 
 def _lock_scoped_referral(*, actor: User, referral_id: UUID) -> Referral:

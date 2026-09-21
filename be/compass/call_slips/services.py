@@ -22,12 +22,18 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.documents.rendering import DocumentRenderError, render_document_pdf
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
 )
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
+from compass.operational_students import (
+    InvalidOperationalStudentQuery,
+    OperationalStudentPage,
+    list_scoped_operational_students,
+)
 from compass.organization.access_scope import resolve_organizational_access_scope
 from compass.organization.models import StaffSupervision, StudentAffiliation
 from compass.referrals.models import Referral, ReferralAction, ReferralActionType
@@ -77,6 +83,10 @@ class CallSlipInterviewEndConflict(CallSlipError):
 
 
 class CallSlipVoidConflict(CallSlipError):
+    pass
+
+
+class CallSlipDocumentUnavailable(CallSlipError):
     pass
 
 
@@ -498,6 +508,26 @@ def create_call_slip(
         return item_for_audit
 
 
+
+def list_eligible_students(
+    *,
+    actor: User,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> OperationalStudentPage:
+    _validate_operational_actor(actor)
+    try:
+        return list_scoped_operational_students(
+            actor=actor,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except InvalidOperationalStudentQuery as exc:
+        raise InvalidCallSlipInput(str(exc)) from exc
+
+
 def list_call_slips(
     *,
     actor: User,
@@ -579,6 +609,67 @@ def get_my_call_slip(*, actor: User, call_slip_id: UUID) -> CallSlip:
     if item is None:
         raise CallSlipNotFound("The requested Call Slip was not found.")
     return item
+
+
+
+def build_call_slip_render_context(
+    item: CallSlip,
+    *,
+    access_mode: str,
+) -> dict[str, object]:
+    normalized_access = str(access_mode).strip().upper()
+    if normalized_access not in {"SELF", "GCO"}:
+        raise InvalidCallSlipInput("Call Slip document access mode is invalid.")
+    report_at = timezone.localtime(item.report_at)
+    interview_ended = (
+        timezone.localtime(item.interview_ended_at)
+        if item.interview_ended_at is not None
+        else None
+    )
+    return {
+        "call_slip": {
+            "student_name": item.student_name_snapshot,
+            "course_year": item.course_year_snapshot,
+            "destination": (
+                "Guidance Office"
+                if item.destination_type == CallSlipDestinationType.GUIDANCE_OFFICE
+                else item.other_destination
+            ),
+            "report_date": report_at.date(),
+            "report_time": report_at.time().replace(second=0, microsecond=0),
+            "issued_by_name": item.issued_by_name_snapshot,
+            "interview_ended_at": interview_ended,
+            "state": item.lifecycle_state,
+            "is_voided": item.voided_at is not None,
+            "void_reason": item.void_reason if normalized_access == "GCO" else "",
+            "referral_reference": (
+                item.referral.reference_code
+                if normalized_access == "GCO" and item.referral_id is not None
+                else ""
+            ),
+            "show_operational_metadata": normalized_access == "GCO",
+        },
+        "controlled_form": {
+            "official_code": item.form_revision.official_code,
+            "official_revision": item.form_revision.official_revision,
+            "page_label": "Page 1 of 1",
+        },
+    }
+
+
+def render_call_slip_pdf(item: CallSlip, *, access_mode: str) -> bytes:
+    try:
+        result = render_document_pdf(
+            "call_slip",
+            item.form_revision.internal_schema_version,
+            context=build_call_slip_render_context(item, access_mode=access_mode),
+        )
+    except DocumentRenderError as exc:
+        raise CallSlipDocumentUnavailable(
+            "The saved Call Slip presentation version cannot be rendered "
+            "by this COMPASS build."
+        ) from exc
+    return result.pdf_bytes
 
 
 def record_interview_ended(

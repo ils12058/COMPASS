@@ -7,6 +7,7 @@ from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
+from django.http import HttpResponse
 from ninja import Header, Router, Schema, Status
 from pydantic import ConfigDict
 
@@ -15,6 +16,10 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
+from compass.privacy_governance.releases import (
+    ReleaseAuditUnavailable,
+    record_referral_release,
+)
 
 from .models import ReferralActionType
 from .services import (
@@ -23,6 +28,7 @@ from .services import (
     ReferralActionConflict,
     ReferralConfigurationConflict,
     ReferralCreationConflict,
+    ReferralDocumentUnavailable,
     ReferralError,
     ReferralNotFound,
     ReferralNotPermitted,
@@ -30,14 +36,27 @@ from .services import (
     ReferralVoidConflict,
     create_referral,
     get_referral,
+    list_eligible_students,
     list_referrals,
     record_action,
+    render_referral_pdf,
     update_status_note,
     void_referral,
 )
 
 router = Router(tags=["referrals"])
 CREATE_ROUTE = "/api/v1/referrals"
+PDF_SUCCESS_OPENAPI = {
+    "responses": {
+        200: {
+            "content": {
+                "application/pdf": {
+                    "schema": {"type": "string", "format": "binary"},
+                }
+            }
+        }
+    }
+}
 
 
 class StrictSchema(Schema):
@@ -83,6 +102,26 @@ class ReferralFormRevisionSummary(StrictSchema):
     official_code: str | None
     official_revision: str | None
     internal_schema_version: int
+
+
+class ReferralStudentCollegeResponse(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
+class ReferralStudentOptionResponse(StrictSchema):
+    id: UUID
+    institutional_id: str
+    display_name: str
+    college: ReferralStudentCollegeResponse | None
+
+
+class ReferralStudentOptionPage(StrictSchema):
+    items: list[ReferralStudentOptionResponse]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 class ReferralActionResponse(StrictSchema):
@@ -141,6 +180,8 @@ def _raise(exc: ReferralError) -> NoReturn:
         raise APIError(404, "referral_not_found", str(exc)) from exc
     if isinstance(exc, ReferralNotPermitted):
         raise APIError(403, "referral_not_permitted", str(exc)) from exc
+    if isinstance(exc, ReferralDocumentUnavailable):
+        raise APIError(503, "referral_document_unavailable", str(exc)) from exc
     if isinstance(exc, InvalidReferralInput):
         raise APIError(422, "invalid_referral_request", str(exc)) from exc
     if isinstance(
@@ -193,6 +234,57 @@ def _summary(item) -> dict[str, object]:
         "voided_at": item.voided_at,
         "created_at": item.created_at,
     }
+
+
+def _student_option(item) -> dict[str, object]:
+    return {
+        "id": item.id,
+        "institutional_id": item.institutional_id,
+        "display_name": item.display_name,
+        "college": (
+            {
+                "id": item.college.id,
+                "code": item.college.code,
+                "name": item.college.name,
+            }
+            if item.college is not None
+            else None
+        ),
+    }
+
+
+def _pdf_response(item, *, context: AuditContext) -> HttpResponse:
+    try:
+        pdf_bytes = render_referral_pdf(item)
+    except ReferralError as exc:
+        _raise(exc)
+    revision = item.form_revision
+    try:
+        record_referral_release(
+            context=context,
+            referral_id=item.pk,
+            form_revision_id=revision.pk,
+            official_code=revision.official_code,
+            official_revision=revision.official_revision,
+        )
+    except ReleaseAuditUnavailable as exc:
+        raise APIError(
+            503,
+            "release_audit_unavailable",
+            (
+                "The Referral Slip could not be released because its required "
+                "privacy audit is unavailable."
+            ),
+        ) from exc
+    safe_reference = "".join(
+        character if character.isalnum() or character in {"-", "_", "."} else "-"
+        for character in item.reference_code
+    )
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'attachment; filename="referral-{safe_reference}.pdf"'
+    )
+    return response
 
 
 def _detail(item) -> dict[str, object]:
@@ -286,6 +378,52 @@ def referrals_list(
         "page_size": result.page_size,
         "has_next": result.has_next,
     }
+
+
+@router.get(
+    "/students",
+    response=response_with_errors(ReferralStudentOptionPage, 401, 403, 422),
+    auth=session_auth,
+    operation_id="referralsListEligibleStudents",
+)
+def referrals_list_eligible_students(
+    request,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require(request, "referrals.manage")
+    try:
+        result = list_eligible_students(
+            actor=request.auth_user,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except ReferralError as exc:
+        _raise(exc)
+    return {
+        "items": [_student_option(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.get(
+    "/{referral_id}/pdf",
+    response=response_with_errors(None, 401, 403, 404, 503),
+    auth=session_auth,
+    operation_id="referralsDownloadPdf",
+    openapi_extra=PDF_SUCCESS_OPENAPI,
+)
+def referrals_download_pdf(request, referral_id: UUID):
+    _require(request, "referrals.view")
+    try:
+        item = get_referral(actor=request.auth_user, referral_id=referral_id)
+    except ReferralError as exc:
+        _raise(exc)
+    return _pdf_response(item, context=_context(request))
 
 
 @router.get(

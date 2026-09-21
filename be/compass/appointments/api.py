@@ -47,9 +47,12 @@ from .services import (
     create_student_appointment,
     get_appointment_for_actor,
     get_appointment_history,
+    list_bookable_slots,
     list_eligible_counselors,
     list_managed_appointments,
     list_my_appointments,
+    list_reassignment_candidates,
+    list_reschedule_slots,
     mark_appointment_no_show,
     reassign_appointment,
     reschedule_appointment,
@@ -129,6 +132,27 @@ class AppointmentPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+
+
+class BookableSlotResponse(StrictSchema):
+    starts_at: datetime
+    ends_at: datetime
+
+
+class BookableSlotListResponse(StrictSchema):
+    date: date
+    timezone: str
+    duration_minutes: int
+    items: list[BookableSlotResponse]
+
+
+class AppointmentReassignmentCandidate(StrictSchema):
+    id: UUID
+    display_name: str
+
+
+class AppointmentReassignmentCandidateList(StrictSchema):
+    items: list[AppointmentReassignmentCandidate]
 
 
 class EligibleCounselorResponse(StrictSchema):
@@ -358,6 +382,50 @@ def appointments_list_eligible_counselors(
     }
 
 
+@router.get(
+    "/booking/slots",
+    response=response_with_errors(
+        BookableSlotListResponse,
+        401,
+        403,
+        409,
+        422,
+    ),
+    auth=session_auth,
+    operation_id="appointmentsListBookableSlots",
+)
+def appointments_list_bookable_slots(
+    request,
+    service_id: UUID,
+    provider_id: UUID,
+    delivery_mode: DeliveryMode,
+    date: date,
+):
+    _require_student_self_management(request)
+    try:
+        result = list_bookable_slots(
+            student=request.auth_user,
+            service_id=service_id,
+            provider_id=provider_id,
+            delivery_mode=delivery_mode.value,
+            target_date=date,
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return {
+        "date": result.date,
+        "timezone": result.timezone_name,
+        "duration_minutes": result.duration_minutes,
+        "items": [
+            {
+                "starts_at": _institutional(item.starts_at),
+                "ends_at": _institutional(item.ends_at),
+            }
+            for item in result.items
+        ],
+    }
+
+
 @router.post(
     "",
     response=response_with_errors(
@@ -524,6 +592,56 @@ def appointments_cancel(request, appointment_id: UUID):
     return _appointment(item)
 
 
+@router.get(
+    "/{appointment_id}/reschedule-slots",
+    response=response_with_errors(
+        BookableSlotListResponse,
+        401,
+        403,
+        404,
+        409,
+        422,
+    ),
+    auth=session_auth,
+    operation_id="appointmentsListRescheduleSlots",
+)
+def appointments_list_reschedule_slots(
+    request,
+    appointment_id: UUID,
+    date: date,
+):
+    actor = request.auth_user
+    self_mode = (
+        actor.role.code == "STUDENT"
+        and actor.has_capability("appointments.manage_self")
+    )
+    administrative = False
+    if not self_mode:
+        _require(request, "appointments.manage")
+        administrative = True
+    try:
+        result = list_reschedule_slots(
+            appointment_id=appointment_id,
+            actor=actor,
+            target_date=date,
+            administrative=administrative,
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return {
+        "date": result.date,
+        "timezone": result.timezone_name,
+        "duration_minutes": result.duration_minutes,
+        "items": [
+            {
+                "starts_at": _institutional(item.starts_at),
+                "ends_at": _institutional(item.ends_at),
+            }
+            for item in result.items
+        ],
+    }
+
+
 @router.post(
     "/{appointment_id}/reschedule",
     response=response_with_errors(AppointmentResponse, 401, 403, 404, 409, 422),
@@ -553,6 +671,39 @@ def appointments_reschedule(
     except AppointmentError as exc:
         _raise(exc)
     return _appointment(item)
+
+
+@router.get(
+    "/{appointment_id}/reassignment-candidates",
+    response=response_with_errors(
+        AppointmentReassignmentCandidateList,
+        401,
+        403,
+        404,
+        409,
+        422,
+    ),
+    auth=session_auth,
+    operation_id="appointmentsListReassignmentCandidates",
+)
+def appointments_list_reassignment_candidates(request, appointment_id: UUID):
+    _require(request, "appointments.manage")
+    try:
+        rows = list_reassignment_candidates(
+            appointment_id=appointment_id,
+            actor=request.auth_user,
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return {
+        "items": [
+            {
+                "id": row.user.pk,
+                "display_name": row.user.get_full_name(),
+            }
+            for row in rows
+        ]
+    }
 
 
 @router.post(

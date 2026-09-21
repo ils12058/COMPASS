@@ -7,6 +7,7 @@ from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
+from django.http import HttpResponse
 from ninja import Header, Router, Schema, Status
 from pydantic import ConfigDict
 
@@ -15,12 +16,17 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
+from compass.privacy_governance.releases import (
+    ReleaseAuditUnavailable,
+    record_call_slip_release,
+)
 
 from .models import CallSlipDestinationType, CallSlipLifecycleState
 from .services import (
     DEFAULT_PAGE_SIZE,
     CallSlipConfigurationConflict,
     CallSlipCreationConflict,
+    CallSlipDocumentUnavailable,
     CallSlipError,
     CallSlipInterviewEndConflict,
     CallSlipNotFound,
@@ -32,13 +38,26 @@ from .services import (
     get_call_slip,
     get_my_call_slip,
     list_call_slips,
+    list_eligible_students,
     list_my_call_slips,
     record_interview_ended,
+    render_call_slip_pdf,
     void_call_slip,
 )
 
 router = Router(tags=["call-slips"])
 CREATE_ROUTE = "/api/v1/call-slips"
+PDF_SUCCESS_OPENAPI = {
+    "responses": {
+        200: {
+            "content": {
+                "application/pdf": {
+                    "schema": {"type": "string", "format": "binary"},
+                }
+            }
+        }
+    }
+}
 
 
 class StrictSchema(Schema):
@@ -89,6 +108,26 @@ class CallSlipFormRevisionSummary(StrictSchema):
 class CallSlipReferralSummary(StrictSchema):
     id: UUID
     reference_code: str
+
+
+class CallSlipStudentCollegeResponse(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
+class CallSlipStudentOptionResponse(StrictSchema):
+    id: UUID
+    institutional_id: str
+    display_name: str
+    college: CallSlipStudentCollegeResponse | None
+
+
+class CallSlipStudentOptionPage(StrictSchema):
+    items: list[CallSlipStudentOptionResponse]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 class CallSlipStudentResponse(StrictSchema):
@@ -158,6 +197,8 @@ def _raise(exc: CallSlipError) -> NoReturn:
         raise APIError(404, "call_slip_not_found", str(exc)) from exc
     if isinstance(exc, CallSlipNotPermitted):
         raise APIError(403, "call_slip_not_permitted", str(exc)) from exc
+    if isinstance(exc, CallSlipDocumentUnavailable):
+        raise APIError(503, "call_slip_document_unavailable", str(exc)) from exc
     if isinstance(exc, InvalidCallSlipInput):
         raise APIError(422, "invalid_call_slip_request", str(exc)) from exc
     if isinstance(
@@ -187,6 +228,59 @@ def _revision(revision) -> dict[str, object]:
         "official_revision": revision.official_revision,
         "internal_schema_version": revision.internal_schema_version,
     }
+
+
+def _student_option(item) -> dict[str, object]:
+    return {
+        "id": item.id,
+        "institutional_id": item.institutional_id,
+        "display_name": item.display_name,
+        "college": (
+            {
+                "id": item.college.id,
+                "code": item.college.code,
+                "name": item.college.name,
+            }
+            if item.college is not None
+            else None
+        ),
+    }
+
+
+def _pdf_response(
+    item,
+    *,
+    context: AuditContext,
+    access_mode: str,
+) -> HttpResponse:
+    try:
+        pdf_bytes = render_call_slip_pdf(item, access_mode=access_mode)
+    except CallSlipError as exc:
+        _raise(exc)
+    revision = item.form_revision
+    try:
+        record_call_slip_release(
+            context=context,
+            call_slip_id=item.pk,
+            access_mode=access_mode,
+            form_revision_id=revision.pk,
+            official_code=revision.official_code,
+            official_revision=revision.official_revision,
+        )
+    except ReleaseAuditUnavailable as exc:
+        raise APIError(
+            503,
+            "release_audit_unavailable",
+            (
+                "The Call Slip could not be released because its required "
+                "privacy audit is unavailable."
+            ),
+        ) from exc
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'attachment; filename="call-slip-{item.pk}.pdf"'
+    )
+    return response
 
 
 def _student_view(item) -> dict[str, object]:
@@ -252,6 +346,25 @@ def call_slips_list_my(
         "page_size": result.page_size,
         "has_next": result.has_next,
     }
+
+
+@router.get(
+    "/me/{call_slip_id}/pdf",
+    response=response_with_errors(None, 401, 403, 404, 503),
+    auth=session_auth,
+    operation_id="callSlipsDownloadMyPdf",
+    openapi_extra=PDF_SUCCESS_OPENAPI,
+)
+def call_slips_download_my_pdf(request, call_slip_id: UUID):
+    _require_student(request)
+    try:
+        item = get_my_call_slip(
+            actor=request.auth_user,
+            call_slip_id=call_slip_id,
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return _pdf_response(item, context=_context(request), access_mode="SELF")
 
 
 @router.get(
@@ -356,6 +469,55 @@ def call_slips_list(
         "page_size": result.page_size,
         "has_next": result.has_next,
     }
+
+
+@router.get(
+    "/students",
+    response=response_with_errors(CallSlipStudentOptionPage, 401, 403, 422),
+    auth=session_auth,
+    operation_id="callSlipsListEligibleStudents",
+)
+def call_slips_list_eligible_students(
+    request,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_operational(request, "call_slips.manage")
+    try:
+        result = list_eligible_students(
+            actor=request.auth_user,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return {
+        "items": [_student_option(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.get(
+    "/{call_slip_id}/pdf",
+    response=response_with_errors(None, 401, 403, 404, 503),
+    auth=session_auth,
+    operation_id="callSlipsDownloadPdf",
+    openapi_extra=PDF_SUCCESS_OPENAPI,
+)
+def call_slips_download_pdf(request, call_slip_id: UUID):
+    _require_operational(request, "call_slips.view")
+    try:
+        item = get_call_slip(
+            actor=request.auth_user,
+            call_slip_id=call_slip_id,
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return _pdf_response(item, context=_context(request), access_mode="GCO")
 
 
 @router.get(
