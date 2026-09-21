@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { CompassApiError } from "@/lib/api/client";
 import { MarkdownContent } from "@/features/public/components/markdown-content";
+import { ResourceDetailSkeleton } from "@/features/public/components/public-content-skeletons";
 import { formatPublicDate, isUuid, labelFromEnum, safePublicUrl } from "@/features/public/utils";
 import { useResourcesGetPublic, resourcesDownloadPublicFile } from "@/lib/api/generated/resources/resources";
 import { ResourceKindValue as ResourceKinds } from "@/lib/api/generated/model";
@@ -73,9 +75,14 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
   if (query.isPending) {
     return (
       <div className="public-shell landing-section">
-        <p role="status" className="landing-data-state">
-          Loading resource…
-        </p>
+        <Link className="landing-heading-link" href="/resources">
+          <ArrowLeft aria-hidden="true" />
+          Back to resources
+        </Link>
+        <div role="status" aria-busy="true">
+          <span className="sr-only">Loading resource…</span>
+          <ResourceDetailSkeleton />
+        </div>
       </div>
     );
   }
@@ -140,8 +147,14 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
 
         {resource.kind === ResourceKinds.FILE ? (
           <div className="mt-8">
-            <Button type="button" variant="default" onClick={() => void handleDownload()} disabled={downloading}>
-              <Download aria-hidden="true" />
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => void handleDownload()}
+              disabled={downloading}
+              aria-busy={downloading}
+            >
+              {downloading ? <Spinner aria-label="Preparing download" /> : <Download aria-hidden="true" />}
               {downloading ? "Preparing download…" : "Download file"}
             </Button>
             {downloadError ? (

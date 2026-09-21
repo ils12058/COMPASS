@@ -120,3 +120,46 @@ html[data-compass-status-banner="visible"] body {
     var(--compass-status-banner-height) + env(safe-area-inset-bottom)
   );
 }
+
+.compass-navigation-progress {
+  position: fixed;
+  z-index: 80;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 0.2rem;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.compass-navigation-progress::after {
+  display: block;
+  width: 36%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--compass-brand-gold);
+  box-shadow: 0 0 0.65rem color-mix(in srgb, var(--compass-brand-gold) 65%, transparent);
+  content: "";
+  animation: compass-navigation-progress 1s ease-in-out infinite;
+}
+
+@keyframes compass-navigation-progress {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  55% {
+    transform: translateX(170%);
+  }
+
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compass-navigation-progress::after {
+    animation: none;
+    transform: translateX(170%);
+  }
+}

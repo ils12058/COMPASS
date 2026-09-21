@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { Providers } from "@/app/providers";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { NavigationProgress } from "@/components/navigation-progress";
 import { getInitialPlatformStatus } from "@/lib/server/service-status";
 
 import "@/styles/globals.css";
@@ -62,6 +63,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       className={cn("h-full", "antialiased", plusJakarta.variable, outfit.variable, caveat.variable, "font-sans", geist.variable)}
     >
       <body className="min-h-full bg-background text-foreground">
+        <NavigationProgress />
         <TooltipProvider>
           <Providers initialPlatformStatus={initialPlatformStatus}>{children}</Providers>
         </TooltipProvider>

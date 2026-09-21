@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ResourceCardSkeleton } from "@/features/public/components/public-content-skeletons";
 import { PublicContentPagination } from "@/features/public/components/public-content-pagination";
 import { ResourceCard } from "@/features/public/components/resource-card";
 import { labelFromEnum } from "@/features/public/utils";
@@ -82,10 +83,19 @@ export function ResourcesIndex() {
         </label>
       </div>
 
-      {query.isPending ? (
-        <p role="status" className="landing-data-state">
-          Loading resources…
+      {query.isFetching && query.data ? (
+        <p role="status" className="mb-4 text-sm text-muted-foreground">
+          Updating resources…
         </p>
+      ) : null}
+
+      {query.isPending ? (
+        <div className="grid gap-4 md:grid-cols-2" role="status" aria-busy="true">
+          <span className="sr-only">Loading resources…</span>
+          {Array.from({ length: 6 }, (_, index) => (
+            <ResourceCardSkeleton key={index} />
+          ))}
+        </div>
       ) : query.isError ? (
         <div className="landing-data-state">
           <p role="alert">We couldn’t load resources right now. Please try again.</p>

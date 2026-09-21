@@ -1,9 +1,12 @@
 "use client";
 
+import { BookOpen } from "lucide-react";
 import Link from "next/link";
 
+import { Button } from "@/components/ui/button";
 import { MarkdownContent } from "@/features/public/components/markdown-content";
 import { LANDING_PAGE } from "@/features/public/config";
+import { ResourceCardSkeleton } from "@/features/public/components/public-content-skeletons";
 import { formatPublicDate, labelFromEnum, safePublicUrl } from "@/features/public/utils";
 import { useResourcesListPublic } from "@/lib/api/generated/resources/resources";
 
@@ -18,7 +21,14 @@ export function ResourcePreview() {
   const items = query.data?.data?.items ?? [];
 
   return (
-    <section className="landing-resources-section" aria-labelledby="resources-heading">
+    <section
+      className="landing-section-band landing-resources-section"
+      aria-labelledby="resources-heading"
+    >
+      <BookOpen
+        aria-hidden="true"
+        className="landing-section-band__icon landing-section-band__icon--resources"
+      />
       <div className="public-shell landing-section">
         <div className="landing-section__heading">
           <div>
@@ -32,18 +42,33 @@ export function ResourcePreview() {
           </Link>
         </div>
 
-        {query.isPending ? (
-          <p role="status" className="landing-data-state">
-            Loading resources…
+        {query.isFetching && query.data ? (
+          <p role="status" className="mb-4 text-sm text-muted-foreground">
+            Updating resources…
           </p>
-      ) : query.isError ? (
-        <p role="status" className="landing-data-state">
-          We couldn’t load resources right now. Please try again later.
-        </p>
-      ) : items.length === 0 ? (
-        <p className="landing-data-state">
-          No resources to show right now.
-        </p>
+        ) : null}
+
+        {query.isPending ? (
+          <div className="landing-resources-grid" role="status" aria-busy="true">
+            <span className="sr-only">Loading resources…</span>
+            {Array.from({ length: 3 }, (_, index) => (
+              <ResourceCardSkeleton key={index} compact />
+            ))}
+          </div>
+        ) : query.isError ? (
+          <div className="landing-data-state">
+            <p role="alert">We couldn’t load resources right now.</p>
+            <Button
+              type="button"
+              variant="link"
+              className="mt-3 h-auto p-0"
+              onClick={() => void query.refetch()}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : items.length === 0 ? (
+          <p className="landing-data-state">No resources to show right now.</p>
         ) : (
           <div className="landing-resources-grid">
             {items.map((item) => {

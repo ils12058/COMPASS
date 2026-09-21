@@ -105,31 +105,36 @@ function HomepageStart() {
   return (
     <section
       id="start-here"
-      className="public-shell landing-section landing-start"
+      className="landing-section-band landing-start"
       aria-labelledby="start-here-heading"
     >
-      <div className="landing-start__layout">
-        <div className="landing-start__character-frame" aria-hidden="true">
-          <Character
-            name="point-right"
-            className="landing-start__character landing-start__character--point-right"
-          />
-          <Character
-            name="point-up"
-            className="landing-start__character landing-start__character--point-up"
-          />
-        </div>
-        <div className="landing-start__content">
-          <p className="landing-eyebrow">{start.eyebrow}</p>
-          <h2 id="start-here-heading">{start.title}</h2>
-          <div className="landing-start__cards">
-            {start.items.map((item) => (
-              <article key={item.href} className="landing-start__card">
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
-                <ArrowLink href={item.href}>{item.link}</ArrowLink>
-              </article>
-            ))}
+      <div className="public-shell landing-section">
+        <div className="landing-start__layout">
+          <div className="landing-start__character-frame" aria-hidden="true">
+            <Character
+              name="point-right"
+              className="landing-start__character landing-start__character--point-right"
+            />
+            <Character
+              name="point-up"
+              className="landing-start__character landing-start__character--point-up"
+            />
+          </div>
+          <div className="landing-start__content">
+            <p className="landing-eyebrow">{start.eyebrow}</p>
+            <h2 id="start-here-heading">{start.title}</h2>
+            <div className="landing-start__cards">
+              {start.items.map((item, index) => (
+                <article key={item.href} className="landing-start__card">
+                  <span className="landing-start__number" aria-hidden="true">
+                    {index + 1}
+                  </span>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                  <ArrowLink href={item.href}>{item.link}</ArrowLink>
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -142,22 +147,24 @@ function GuidancePreview() {
 
   return (
     <section
-      className="public-shell landing-section"
+      className="landing-section-band landing-guidance-section"
       aria-labelledby="guidance-heading"
     >
-      <div className="landing-guidance-preview">
-        <div>
-          <p className="landing-eyebrow">{guidance.eyebrow}</p>
-          <h2 id="guidance-heading">{guidance.title}</h2>
-          <p>{guidance.description}</p>
+      <div className="public-shell landing-section">
+        <div className="landing-guidance-preview">
+          <div>
+            <p className="landing-eyebrow">{guidance.eyebrow}</p>
+            <h2 id="guidance-heading">{guidance.title}</h2>
+            <p>{guidance.description}</p>
+          </div>
+          <Link
+            className="landing-content-link landing-guidance-preview__link"
+            href={guidance.href}
+          >
+            {guidance.link}
+            <ArrowRight aria-hidden="true" />
+          </Link>
         </div>
-        <Link
-          className="landing-content-link landing-guidance-preview__link"
-          href={guidance.href}
-        >
-          {guidance.link}
-          <ArrowRight aria-hidden="true" />
-        </Link>
       </div>
     </section>
   );
@@ -168,25 +175,27 @@ function OfficeContactSection() {
 
   return (
     <section
-      className="public-shell landing-section landing-office"
+      className="landing-section-band landing-office"
       aria-labelledby="office-heading"
     >
-      <div className="landing-office__panel">
-        <div className="landing-office__copy">
-          <p className="landing-eyebrow">{office.eyebrow}</p>
-          <h2 id="office-heading">{office.title}</h2>
-          <p>{office.description}</p>
-          <div className="landing-office__actions">
-            <Link className="landing-primary-action" href={office.primaryAction.href}>
-              {office.primaryAction.label}
-              <ArrowUpRight aria-hidden="true" />
-            </Link>
-            <Link className="landing-secondary-action" href={office.secondaryAction.href}>
-              {office.secondaryAction.label}
-            </Link>
+      <div className="public-shell landing-section">
+        <div className="landing-office__panel">
+          <div className="landing-office__copy">
+            <p className="landing-eyebrow">{office.eyebrow}</p>
+            <h2 id="office-heading">{office.title}</h2>
+            <p>{office.description}</p>
+            <div className="landing-office__actions">
+              <Link className="landing-primary-action" href={office.primaryAction.href}>
+                {office.primaryAction.label}
+                <ArrowUpRight aria-hidden="true" />
+              </Link>
+              <Link className="landing-secondary-action" href={office.secondaryAction.href}>
+                {office.secondaryAction.label}
+              </Link>
+            </div>
           </div>
+          <Character name="wave" className="landing-office__character" />
         </div>
-        <Character name="wave" className="landing-office__character" />
       </div>
     </section>
   );

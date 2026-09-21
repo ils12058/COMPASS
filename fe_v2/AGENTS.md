@@ -14,6 +14,19 @@ Use TanStack Query and Orval-generated query/mutation helpers for remote state. 
 
 Do not rebuild per-feature server-state machinery from `useEffect`, `AbortController`, manual caches, focus listeners, loading flags, or custom refresh loops.
 
+## Loading and feedback
+
+Loading feedback must be contextual and proportional to what is blocked. Do not add a global or full-screen loader for the initial app load or every navigation when the shell or meaningful static content can already render.
+
+- Use compact, localized skeletons for the first load of query-backed sections. Announcement and Resource lists should use skeleton cards rather than blank space.
+- Keep already-rendered content visible during background refetches and show only a subtle local refresh cue when appropriate.
+- For slow navigation, a subtle non-blocking top progress indicator may appear after roughly 150–200 ms; it must not replace the page content or prevent normal interaction.
+- Submit, mutation, and download actions use inline pending feedback on the initiating control, prevent duplicate actions, and preserve the surrounding context.
+- Use a full-screen loading state only when no meaningful interface can render yet. Confirmed active maintenance is a separate full-screen system state, not a generic loading fallback.
+- Keep error and empty states visible in the same context, with clear recovery or next-step actions.
+
+Derive loading and pending states from TanStack Query, generated Orval helpers, and the relevant Next.js navigation APIs. Do not introduce a second global loading state or replace useful content with a spinner merely because a background request is in flight.
+
 ## HTTP and authentication
 
 Browser API traffic stays on same-origin `/api/v1/...` paths. The shared transport owns cookie credentials, in-memory CSRF bootstrap through `authGetCsrf`, response parsing, and structured HTTP errors. It must not depend on a hardcoded CSRF cookie name or automatically replay arbitrary unsafe requests after a CSRF failure.

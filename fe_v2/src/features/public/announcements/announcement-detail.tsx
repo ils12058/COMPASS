@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CompassApiError } from "@/lib/api/client";
 import { MarkdownContent } from "@/features/public/components/markdown-content";
+import { AnnouncementDetailSkeleton } from "@/features/public/components/public-content-skeletons";
 import { formatPublicDate, isUuid } from "@/features/public/utils";
 import { useAnnouncementsGetPublic } from "@/lib/api/generated/announcements/announcements";
 
@@ -42,9 +43,14 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
   if (query.isPending) {
     return (
       <div className="public-shell landing-section">
-        <p role="status" className="landing-data-state">
-          Loading announcement…
-        </p>
+        <Link className="landing-heading-link" href="/announcements">
+          <ArrowLeft aria-hidden="true" />
+          Back to announcements
+        </Link>
+        <div role="status" aria-busy="true">
+          <span className="sr-only">Loading announcement…</span>
+          <AnnouncementDetailSkeleton />
+        </div>
       </div>
     );
   }

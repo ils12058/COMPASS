@@ -651,6 +651,68 @@
   padding: 3rem 1.25rem;
 }
 
+.landing-section-band {
+  position: relative;
+  width: 100%;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.landing-section-band > .public-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-section-band__icon {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  left: clamp(0.5rem, 4vw, 4rem);
+  width: clamp(8rem, 17vw, 15rem);
+  height: auto;
+  color: var(--compass-brand-maroon);
+  opacity: 0.07;
+  pointer-events: none;
+  transform: translateY(-50%) rotate(-10deg);
+}
+
+.landing-section-band__icon--resources {
+  color: var(--compass-support-strong);
+  transform: translateY(-50%) rotate(10deg);
+}
+
+.landing-start {
+  background-color: var(--compass-surface-subtle);
+}
+
+.landing-announcements {
+  background-color: color-mix(
+    in srgb,
+    var(--compass-note-butter) 42%,
+    var(--compass-body)
+  );
+}
+
+.landing-guidance-section {
+  background-color: var(--compass-surface-muted);
+}
+
+.landing-resources-section {
+  background-color: color-mix(
+    in srgb,
+    var(--compass-note-rose) 42%,
+    var(--compass-body)
+  );
+}
+
+.landing-office {
+  background-color: color-mix(
+    in srgb,
+    var(--compass-support-soft) 58%,
+    var(--compass-body)
+  );
+}
+
 .landing-section + .landing-section {
   border-top: 0;
 }
@@ -791,12 +853,36 @@
 }
 
 .landing-start__card {
-  min-height: 100%;
-  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+  padding: 1.35rem 1.35rem 1.35rem 5.1rem;
   border: 1px solid var(--compass-border);
   border-radius: 0.75rem;
   background: var(--compass-surface);
   box-shadow: var(--compass-shadow-sm);
+}
+
+.landing-start__number {
+  position: absolute;
+  top: 1.05rem;
+  left: 1.15rem;
+  color: color-mix(in srgb, var(--compass-brand-maroon) 65%, var(--compass-surface));
+  font-family: var(--compass-font-heading);
+  font-size: clamp(3.5rem, 7vw, 5rem);
+  font-weight: 800;
+  letter-spacing: -0.09em;
+  line-height: 0.78;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.landing-start__card:nth-child(2) .landing-start__number {
+  color: color-mix(in srgb, var(--compass-support-strong) 65%, var(--compass-surface));
+}
+
+.landing-start__card:nth-child(3) .landing-start__number {
+  color: color-mix(in srgb, var(--compass-brand-gold) 75%, var(--compass-surface));
 }
 
 .landing-start__card h3,
@@ -996,13 +1082,19 @@
   background-color: var(--compass-surface);
 }
 
+.landing-guidance-preview h2::first-letter,
+.landing-office__panel h2::first-letter {
+  float: left;
+  margin: 0.06em 0.08em 0 0;
+  color: var(--compass-brand-gold);
+  font-size: 1.8em;
+  font-weight: 800;
+  line-height: 0.68;
+}
+
 .landing-guidance-preview__link {
   margin-top: 0;
   white-space: nowrap;
-}
-
-.landing-resources-section {
-  background-color: var(--compass-surface-subtle);
 }
 
 .landing-paper-sheet {
@@ -1317,8 +1409,7 @@ html[data-compass-underline-links="true"] a:not(.public-brand):not(.landing-skip
     gap: 0.35rem;
   }
 
-  .landing-hero__inner,
-  .landing-office {
+  .landing-hero__inner {
     grid-template-columns: 1fr;
   }
 
@@ -1345,6 +1436,28 @@ html[data-compass-underline-links="true"] a:not(.public-brand):not(.landing-skip
 
   .landing-hero__art img {
     width: min(64vw, 14rem);
+  }
+
+  .landing-start__card {
+    padding: 1.15rem 1.15rem 1.2rem 4.15rem;
+  }
+
+  .landing-start__number {
+    top: 0.95rem;
+    left: 0.95rem;
+    font-size: clamp(2.75rem, 10vw, 4rem);
+  }
+
+  .landing-section-band__icon {
+    top: 1rem;
+    left: -1.5rem;
+    width: 6rem;
+    opacity: 0.045;
+    transform: rotate(-10deg);
+  }
+
+  .landing-section-band__icon--resources {
+    transform: rotate(10deg);
   }
 }
 
@@ -1428,6 +1541,11 @@ html[data-compass-underline-links="true"] a:not(.public-brand):not(.landing-skip
     grid-template-columns: 1fr;
     align-items: start;
     gap: 1.25rem;
+  }
+
+  .landing-guidance-preview h2::first-letter,
+  .landing-office__panel h2::first-letter {
+    font-size: 1.5em;
   }
 
   .landing-guidance-preview__link {

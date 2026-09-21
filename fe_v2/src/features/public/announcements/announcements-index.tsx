@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { AnnouncementCard } from "@/features/public/components/announcement-card";
+import { AnnouncementCardSkeleton } from "@/features/public/components/public-content-skeletons";
 import { PublicContentPagination } from "@/features/public/components/public-content-pagination";
 import { useAnnouncementsListPublic } from "@/lib/api/generated/announcements/announcements";
 
@@ -28,10 +29,19 @@ export function AnnouncementsIndex() {
         </p>
       </header>
 
-      {query.isPending ? (
-        <p role="status" className="landing-data-state">
-          Loading announcements…
+      {query.isFetching && query.data ? (
+        <p role="status" className="mb-4 text-sm text-muted-foreground">
+          Updating announcements…
         </p>
+      ) : null}
+
+      {query.isPending ? (
+        <div className="grid gap-4" role="status" aria-busy="true">
+          <span className="sr-only">Loading announcements…</span>
+          {Array.from({ length: 6 }, (_, index) => (
+            <AnnouncementCardSkeleton key={index} />
+          ))}
+        </div>
       ) : query.isError ? (
         <div className="landing-data-state">
           <p role="alert">We couldn’t load announcements right now. Please try again.</p>
