@@ -439,8 +439,6 @@ def test_resource_api_hides_storage_key_and_gss_can_publish_without_head_approva
     assert "storage_key" not in reader.json()
     assert "body_html" not in reader.json()
 
-
-
 @pytest.mark.django_db
 def test_public_resource_readers_only_receive_public_published_content():
     sync_policy()
@@ -560,9 +558,7 @@ def test_public_file_resource_download_uses_private_short_lived_url_without_leak
         storage=storage,
     )
     assert download.url.startswith("https://private.example/")
-    assert storage.private_url_calls == [
-        (public_file.storage_key, download.expires_in_seconds)
-    ]
+    assert storage.private_url_calls == [(public_file.storage_key, download.expires_in_seconds)]
 
     non_public_file = create_draft(
         actor=counselor,
@@ -644,23 +640,16 @@ def test_public_file_resource_download_uses_private_short_lived_url_without_leak
 
     anonymous = Client()
     with patch("compass.resources.services.ObjectStorage", return_value=storage):
-        api_download = anonymous.get(
-            f"/api/v1/public/resources/{public_file.pk}/download"
-        )
+        api_download = anonymous.get(f"/api/v1/public/resources/{public_file.pk}/download")
     assert api_download.status_code == 200
     assert api_download.json()["url"].startswith("https://private.example/")
     assert set(api_download.json()) == {"url", "expires_in_seconds"}
     assert "storage_key" not in api_download.json()
 
     assert (
-        anonymous.get(
-            f"/api/v1/public/resources/{non_public_file.pk}/download"
-        ).status_code
-        == 404
+        anonymous.get(f"/api/v1/public/resources/{non_public_file.pk}/download").status_code == 404
     )
     assert (
-        anonymous.get(
-            f"/api/v1/public/resources/{archived_public_file.pk}/download"
-        ).status_code
+        anonymous.get(f"/api/v1/public/resources/{archived_public_file.pk}/download").status_code
         == 404
     )
