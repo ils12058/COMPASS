@@ -181,7 +181,7 @@ function AnnouncementEditor({ item }: { item: AnnouncementManagementResponse }) 
     if (!audience) {
       return "Choose an audience before publishing.";
     }
-    if (expiresAt && (!expiryIso || Date.parse(expiryIso) <= Date.now())) {
+    if (expiresAt && (!expiryIso || isExpired(expiryIso))) {
       return "Choose a future expiry date and time before publishing.";
     }
     return null;
@@ -318,7 +318,7 @@ function AnnouncementEditor({ item }: { item: AnnouncementManagementResponse }) 
               {item.status === "PUBLISHED" &&
               expiresAt &&
               expiryIso &&
-              Date.parse(expiryIso) <= Date.now() ? (
+              isExpired(expiryIso) ? (
                 <p className="text-xs font-semibold text-[var(--compass-warning)]">
                   Once saved, this announcement will no longer be visible to readers.
                 </p>
