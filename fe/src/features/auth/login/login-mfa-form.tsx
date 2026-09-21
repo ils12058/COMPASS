@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,11 +27,6 @@ export function LoginMfaForm({
     methods.includes("totp") ? "totp" : "recovery",
   );
   const [code, setCode] = useState("");
-
-  useEffect(() => {
-    setMethod(methods.includes("totp") ? "totp" : "recovery");
-    setCode("");
-  }, [methods]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
