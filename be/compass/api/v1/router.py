@@ -145,11 +145,17 @@ api = NinjaAPI(
             },
             {
                 "name": "announcements",
-                "description": "GCO Announcements with explicit public/authenticated readership and publishing management.",
+                "description": (
+                    "GCO Announcements with explicit public/authenticated readership "
+                    "and publishing management."
+                ),
             },
             {
                 "name": "resources",
-                "description": "Curated Guidance Resources with explicit public/authenticated readership and private file access.",
+                "description": (
+                    "Curated Guidance Resources with explicit public/authenticated "
+                    "readership and private file access."
+                ),
             },
             {
                 "name": "document-branding",
