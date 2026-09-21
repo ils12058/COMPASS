@@ -281,9 +281,7 @@ def _pdf_response(item, *, context: AuditContext) -> HttpResponse:
         for character in item.reference_code
     )
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = (
-        f'attachment; filename="referral-{safe_reference}.pdf"'
-    )
+    response["Content-Disposition"] = f'attachment; filename="referral-{safe_reference}.pdf"'
     return response
 
 

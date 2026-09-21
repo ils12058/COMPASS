@@ -508,7 +508,6 @@ def create_call_slip(
         return item_for_audit
 
 
-
 def list_eligible_students(
     *,
     actor: User,
@@ -611,7 +610,6 @@ def get_my_call_slip(*, actor: User, call_slip_id: UUID) -> CallSlip:
     return item
 
 
-
 def build_call_slip_render_context(
     item: CallSlip,
     *,
@@ -622,9 +620,7 @@ def build_call_slip_render_context(
         raise InvalidCallSlipInput("Call Slip document access mode is invalid.")
     report_at = timezone.localtime(item.report_at)
     interview_ended = (
-        timezone.localtime(item.interview_ended_at)
-        if item.interview_ended_at is not None
-        else None
+        timezone.localtime(item.interview_ended_at) if item.interview_ended_at is not None else None
     )
     return {
         "call_slip": {
@@ -666,8 +662,7 @@ def render_call_slip_pdf(item: CallSlip, *, access_mode: str) -> bytes:
         )
     except DocumentRenderError as exc:
         raise CallSlipDocumentUnavailable(
-            "The saved Call Slip presentation version cannot be rendered "
-            "by this COMPASS build."
+            "The saved Call Slip presentation version cannot be rendered by this COMPASS build."
         ) from exc
     return result.pdf_bytes
 

@@ -516,7 +516,9 @@ def create_managed_resource_download(
     try:
         url = object_storage.private_url(item.storage_key, expires_seconds=ttl)
     except Exception as exc:
-        raise ResourceStorageError("Private Resource management download access is unavailable.") from exc
+        raise ResourceStorageError(
+            "Private Resource management download access is unavailable."
+        ) from exc
     return ResourceDownload(url=url, expires_in_seconds=ttl)
 
 

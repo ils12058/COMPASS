@@ -46,9 +46,7 @@ def _pagination(page: int, page_size: int) -> tuple[int, int]:
     if type(page) is not int or page < 1:
         raise InvalidOperationalStudentQuery("page must be a positive integer.")
     if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
-        raise InvalidOperationalStudentQuery(
-            f"page_size must be between 1 and {MAX_PAGE_SIZE}."
-        )
+        raise InvalidOperationalStudentQuery(f"page_size must be between 1 and {MAX_PAGE_SIZE}.")
     return page, page_size
 
 

@@ -611,10 +611,7 @@ def appointments_list_reschedule_slots(
     date: date,
 ):
     actor = request.auth_user
-    self_mode = (
-        actor.role.code == "STUDENT"
-        and actor.has_capability("appointments.manage_self")
-    )
+    self_mode = actor.role.code == "STUDENT" and actor.has_capability("appointments.manage_self")
     administrative = False
     if not self_mode:
         _require(request, "appointments.manage")

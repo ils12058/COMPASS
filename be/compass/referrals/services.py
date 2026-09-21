@@ -445,7 +445,6 @@ def list_referrals(
     return ReferralPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
 
 
-
 def list_eligible_students(
     *,
     actor: User,
@@ -476,12 +475,8 @@ def get_referral(*, actor: User, referral_id: UUID) -> Referral:
 
 _REFERRAL_ACTION_LABELS = {
     ReferralActionType.CALL_PARENT_GUARDIAN: "Call the Parent/Guardian",
-    ReferralActionType.SEND_PARENT_NOTIFICATION_LETTER: (
-        'Send "Parent Notification Letter"'
-    ),
-    ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT: (
-        'Send "Call Slip/Interview Permit"'
-    ),
+    ReferralActionType.SEND_PARENT_NOTIFICATION_LETTER: ('Send "Parent Notification Letter"'),
+    ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT: ('Send "Call Slip/Interview Permit"'),
 }
 
 
@@ -490,11 +485,7 @@ def build_referral_render_context(item: Referral) -> dict[str, object]:
     action_rows: list[dict[str, object]] = []
     for action_type in ReferralActionType.values:
         action = recorded.get(action_type)
-        occurred_at = (
-            timezone.localtime(action.occurred_at)
-            if action is not None
-            else None
-        )
+        occurred_at = timezone.localtime(action.occurred_at) if action is not None else None
         action_rows.append(
             {
                 "label": _REFERRAL_ACTION_LABELS[action_type],
@@ -509,11 +500,7 @@ def build_referral_render_context(item: Referral) -> dict[str, object]:
             }
         )
 
-    received_at = (
-        timezone.localtime(item.received_at)
-        if item.received_at is not None
-        else None
-    )
+    received_at = timezone.localtime(item.received_at) if item.received_at is not None else None
     return {
         "referral": {
             "reference_code": item.reference_code,
@@ -521,9 +508,7 @@ def build_referral_render_context(item: Referral) -> dict[str, object]:
             "course_year_block": item.course_year_block_snapshot,
             "referrer_name": item.referrer_name,
             "referred_on": item.referred_on,
-            "received_date": (
-                received_at.date() if received_at is not None else None
-            ),
+            "received_date": (received_at.date() if received_at is not None else None),
             "received_time": (
                 received_at.time().replace(second=0, microsecond=0)
                 if received_at is not None
@@ -552,8 +537,7 @@ def render_referral_pdf(item: Referral) -> bytes:
         )
     except DocumentRenderError as exc:
         raise ReferralDocumentUnavailable(
-            "The saved Referral Slip presentation version cannot be rendered "
-            "by this COMPASS build."
+            "The saved Referral Slip presentation version cannot be rendered by this COMPASS build."
         ) from exc
     return result.pdf_bytes
 

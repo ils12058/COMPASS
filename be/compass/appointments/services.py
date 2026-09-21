@@ -433,7 +433,6 @@ def _has_overlap(
     return queryset.exists()
 
 
-
 def _candidate_slots(
     *,
     windows,
@@ -497,8 +496,7 @@ def _base_slot_windows(
         )
     except AvailabilityError as exc:
         raise AppointmentTimeUnavailable(
-            "Current Availability could not provide bookable times "
-            "for the requested date."
+            "Current Availability could not provide bookable times for the requested date."
         ) from exc
 
 
@@ -513,8 +511,7 @@ def list_bookable_slots(
 ) -> BookableSlotList:
     if not is_current_student(student):
         raise AppointmentCurrentStudentRequired(
-            "Current Student lifecycle is required to discover "
-            "bookable Appointment times."
+            "Current Student lifecycle is required to discover bookable Appointment times."
         )
     current = now or timezone.now()
     if timezone.is_naive(current):
@@ -522,9 +519,7 @@ def list_bookable_slots(
     normalized_mode = _normalized_delivery_mode(delivery_mode)
     provider = User.objects.select_related("role").filter(pk=provider_id).first()
     if provider is None:
-        raise AppointmentNotSchedulable(
-            "The selected Counselor is not available for booking."
-        )
+        raise AppointmentNotSchedulable("The selected Counselor is not available for booking.")
     _validate_booking_users(student, provider)
     service = Service.objects.filter(pk=service_id).first()
     if service is None:
@@ -801,7 +796,6 @@ def cancel_appointment(
         return _appointment_queryset().get(pk=item.pk)
 
 
-
 def list_reschedule_slots(
     *,
     appointment_id: UUID,
@@ -834,20 +828,15 @@ def list_reschedule_slots(
 
     _require_scheduled_before_start(item, now=current)
     if not administrative and item.cancellation_cutoff_minutes is not None:
-        boundary = item.starts_at - timedelta(
-            minutes=item.cancellation_cutoff_minutes
-        )
+        boundary = item.starts_at - timedelta(minutes=item.cancellation_cutoff_minutes)
         if current > boundary:
-            raise AppointmentLifecycleConflict(
-                "The Appointment reschedule cutoff has passed."
-            )
+            raise AppointmentLifecycleConflict("The Appointment reschedule cutoff has passed.")
 
     from compass.ecounseling.models import ECounselingRoom
 
     if ECounselingRoom.objects.filter(appointment_id=item.pk).exists():
         raise AppointmentLifecycleConflict(
-            "This Appointment already has an E-Counseling room binding "
-            "and cannot be rescheduled."
+            "This Appointment already has an E-Counseling room binding and cannot be rescheduled."
         )
 
     _validate_existing_service(
@@ -1015,7 +1004,6 @@ def reschedule_appointment(
         return _appointment_queryset().get(pk=item.pk)
 
 
-
 def _require_reassignment_relationships_clear(item: Appointment) -> None:
     from compass.counseling.models import CounselingEncounter
     from compass.ecounseling.models import ECounselingRoom
@@ -1133,7 +1121,6 @@ def reassign_appointment(
         return _appointment_queryset().get(pk=item.pk)
 
 
-
 def list_reassignment_candidates(
     *,
     appointment_id: UUID,
@@ -1160,7 +1147,7 @@ def list_reassignment_candidates(
         User.objects.filter(is_active=True, role__code="COUNSELOR")
         .exclude(pk=item.provider_id)
         .select_related("role")
-        .order_by("last_name", "first_name", "id")[:MAX_ELIGIBLE_COUNSELORS]
+        .order_by("last_name", "first_name", "id")
     )
     for provider in providers:
         if not provider_role_eligible(item.service, provider):
@@ -1182,6 +1169,8 @@ def list_reassignment_candidates(
         ):
             continue
         candidates.append(AppointmentReassignmentCandidate(user=provider))
+        if len(candidates) >= MAX_ELIGIBLE_COUNSELORS:
+            break
     return tuple(candidates)
 
 

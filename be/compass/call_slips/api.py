@@ -277,9 +277,7 @@ def _pdf_response(
             ),
         ) from exc
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = (
-        f'attachment; filename="call-slip-{item.pk}.pdf"'
-    )
+    response["Content-Disposition"] = f'attachment; filename="call-slip-{item.pk}.pdf"'
     return response
 
 

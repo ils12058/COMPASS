@@ -302,10 +302,13 @@ def test_managed_resource_download_and_draft_removal_are_lifecycle_safe():
     assert detached.content_type == ""
     assert detached.size_bytes == 0
     assert old_key in storage.deleted
-    assert AuditEvent.objects.filter(
-        action="resource.file_removed",
-        target_id=str(item.pk),
-    ).count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action="resource.file_removed",
+            target_id=str(item.pk),
+        ).count()
+        == 1
+    )
 
     retry = remove_draft_resource_file(
         actor=counselor,
@@ -314,10 +317,13 @@ def test_managed_resource_download_and_draft_removal_are_lifecycle_safe():
         storage=storage,
     )
     assert retry.pk == item.pk
-    assert AuditEvent.objects.filter(
-        action="resource.file_removed",
-        target_id=str(item.pk),
-    ).count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action="resource.file_removed",
+            target_id=str(item.pk),
+        ).count()
+        == 1
+    )
 
     converted = update_resource(
         actor=counselor,
@@ -788,9 +794,7 @@ def test_referral_pdf_uses_bound_form_metadata_actions_void_state_and_release_au
     )
 
     render_context = build_referral_render_context(item)
-    assert render_context["controlled_form"]["official_code"] == (
-        item.form_revision.official_code
-    )
+    assert render_context["controlled_form"]["official_code"] == (item.form_revision.official_code)
     assert render_context["controlled_form"]["official_revision"] == (
         item.form_revision.official_revision
     )
@@ -899,9 +903,7 @@ def test_call_slip_pdf_preserves_self_privacy_and_records_gco_and_self_releases(
 
     mine = auth_client(student).get(f"/api/v1/call-slips/me/{item.pk}/pdf")
     assert mine.status_code == 200
-    denied = auth_client(other_student).get(
-        f"/api/v1/call-slips/me/{item.pk}/pdf"
-    )
+    denied = auth_client(other_student).get(f"/api/v1/call-slips/me/{item.pk}/pdf")
     assert denied.status_code == 404
 
     events = AuditEvent.objects.filter(
