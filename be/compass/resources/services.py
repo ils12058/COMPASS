@@ -159,6 +159,40 @@ def _visible_queryset(actor: User):
     )
 
 
+def _public_queryset():
+    return Resource.objects.filter(
+        status=PublicationStatus.PUBLISHED,
+        published_at__lte=timezone.now(),
+        audience=PublicationAudience.PUBLIC,
+    )
+
+
+def list_public_resources(
+    *,
+    category: str | None = None,
+    kind: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> ResourcePage:
+    queryset = _public_queryset()
+    if category is not None:
+        queryset = queryset.filter(category=_choice(category, ResourceCategory, "category"))
+    if kind is not None:
+        queryset = queryset.filter(kind=_choice(kind, ResourceKind, "kind"))
+    return _page(
+        queryset.order_by("display_order", "-published_at", "-id"),
+        page=page,
+        page_size=page_size,
+    )
+
+
+def get_public_resource(*, resource_id: UUID) -> Resource:
+    item = _public_queryset().filter(pk=resource_id).first()
+    if item is None:
+        raise ResourceNotFound("The requested Resource was not found.")
+    return item
+
+
 def list_visible_resources(
     *,
     actor: User,
@@ -541,6 +575,23 @@ def archive_resource(
     return item
 
 
+def create_public_resource_download(
+    *,
+    resource_id: UUID,
+    storage: ObjectStorage | None = None,
+) -> ResourceDownload:
+    item = get_public_resource(resource_id=resource_id)
+    if item.kind != ResourceKind.FILE or not item.storage_key:
+        raise ResourceConflict("The requested Resource does not have a downloadable file.")
+    object_storage = storage or ObjectStorage()
+    ttl = settings.RESOURCE_DOWNLOAD_URL_TTL_SECONDS
+    try:
+        url = object_storage.private_url(item.storage_key, expires_seconds=ttl)
+    except Exception as exc:
+        raise ResourceStorageError("Private Resource download access is unavailable.") from exc
+    return ResourceDownload(url=url, expires_in_seconds=ttl)
+
+
 def create_resource_download(
     *,
     actor: User,
@@ -573,11 +624,14 @@ __all__ = [
     "ResourceStorageError",
     "archive_resource",
     "attach_resource_file",
+    "create_public_resource_download",
     "create_resource",
     "create_resource_download",
     "get_managed_resource",
+    "get_public_resource",
     "get_visible_resource",
     "list_managed_resources",
+    "list_public_resources",
     "list_visible_resources",
     "publish_resource",
     "update_resource",

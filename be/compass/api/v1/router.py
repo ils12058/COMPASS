@@ -6,6 +6,7 @@ from ninja import NinjaAPI
 from compass.account_management.api import router as account_management_router
 from compass.accounts.profile_api import router as profile_router
 from compass.activity.api import router as activity_router
+from compass.announcements.api import public_router as public_announcements_router
 from compass.announcements.api import router as announcements_router
 from compass.api.v1.constants import API_VERSION
 from compass.api.v1.health import router as health_router
@@ -33,6 +34,7 @@ from compass.platform_ops.api import router as platform_operations_router
 from compass.privacy_governance.api import router as privacy_governance_router
 from compass.referrals.api import router as referrals_router
 from compass.reports.api import router as reports_router
+from compass.resources.api import public_router as public_resources_router
 from compass.resources.api import router as resources_router
 from compass.routine_interviews.api import router as routine_interviews_router
 from compass.service_catalog.api import router as service_catalog_router
@@ -143,11 +145,11 @@ api = NinjaAPI(
             },
             {
                 "name": "announcements",
-                "description": "GCO-wide authenticated Announcements and publishing management.",
+                "description": "GCO Announcements with explicit public/authenticated readership and publishing management.",
             },
             {
                 "name": "resources",
-                "description": "Curated authenticated Guidance Resources and private file access.",
+                "description": "Curated Guidance Resources with explicit public/authenticated readership and private file access.",
             },
             {
                 "name": "document-branding",
@@ -208,6 +210,8 @@ api.add_router("/call-slips", call_slips_router)
 api.add_router("/notifications", notifications_router)
 api.add_router("/announcements", announcements_router)
 api.add_router("/resources", resources_router)
+api.add_router("/public/announcements", public_announcements_router)
+api.add_router("/public/resources", public_resources_router)
 api.add_router("/platform", platform_operations_router)
 api.add_router("/privacy", privacy_governance_router)
 api.add_router("/document-branding", document_branding_router)
