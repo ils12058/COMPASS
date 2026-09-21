@@ -73,3 +73,43 @@
     outline-color: CanvasText;
   }
 }
+
+
+html[data-compass-text-size="large"] {
+  font-size: 112.5%;
+}
+
+html[data-compass-text-size="extra-large"] {
+  font-size: 125%;
+}
+
+html[data-compass-spacing="relaxed"] body {
+  line-height: 1.8;
+}
+
+html[data-compass-spacing="relaxed"] :where(p, li, blockquote, dd, dt, label) {
+  letter-spacing: 0.025em;
+  word-spacing: 0.08em;
+  line-height: 1.8;
+}
+
+html[data-compass-underline-links="true"] a:not(.no-underline) {
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.09em;
+  text-underline-offset: 0.18em;
+}
+
+html[data-compass-motion="reduced"] *,
+html[data-compass-motion="reduced"] *::before,
+html[data-compass-motion="reduced"] *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+html[data-compass-status-banner="visible"] body {
+  padding-bottom: calc(
+    var(--compass-status-banner-height) + env(safe-area-inset-bottom)
+  );
+}
