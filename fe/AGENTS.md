@@ -52,3 +52,12 @@ unsafe URL schemes.
 
 Public FILE resources obtain short-lived download URLs only after a user action through the
 generated public download operation. Do not expose or persist object-storage keys or signed URLs.
+
+## Content authoring
+
+- Announcement and Resource `body_markdown` is canonical Markdown.
+- Staff management uses WYSIWYG editing; do not expose Markdown source as the default workflow.
+- Do not persist HTML or editor-specific JSON.
+- Published/preview rendering continues through the shared safe Markdown renderer.
+- Raw HTML remains disabled.
+
