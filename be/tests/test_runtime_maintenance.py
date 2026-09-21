@@ -552,3 +552,108 @@ def test_platform_recovery_routes_remain_capability_authorized_during_active_mai
     )
     assert disabled.status_code == 200
     assert disabled.json()["state"] == "NORMAL"
+
+
+@pytest.mark.django_db
+def test_public_platform_status_projects_normal_schedule_active_and_manual_states():
+    client = Client()
+    now = timezone.now()
+
+    with patch("compass.platform_ops.services.timezone.now", return_value=now):
+        normal = client.get("/api/v1/platform/status")
+    assert normal.status_code == 200
+    assert normal.json() == {
+        "status": "operational",
+        "message": None,
+        "starts_at": None,
+        "ends_at": None,
+    }
+
+    item = get_maintenance_configuration()
+    item.scheduled_start_at = now + timedelta(minutes=30)
+    item.scheduled_end_at = now + timedelta(hours=2)
+    item.scheduled_message = "Planned maintenance"
+    item.save(
+        update_fields=[
+            "scheduled_start_at",
+            "scheduled_end_at",
+            "scheduled_message",
+            "updated_at",
+        ]
+    )
+
+    with patch("compass.platform_ops.services.timezone.now", return_value=now):
+        scheduled = client.get("/api/v1/platform/status")
+    assert scheduled.status_code == 200
+    assert scheduled.json()["status"] == "maintenance_scheduled"
+    assert scheduled.json()["message"] == "Planned maintenance"
+    assert scheduled.json()["starts_at"] is not None
+    assert scheduled.json()["ends_at"] is not None
+
+    active_now = now + timedelta(hours=1)
+    with patch("compass.platform_ops.services.timezone.now", return_value=active_now):
+        active = client.get("/api/v1/platform/status")
+    assert active.status_code == 200
+    assert active.json()["status"] == "maintenance_active"
+    assert active.json()["message"] == "Planned maintenance"
+    assert active.json()["starts_at"] is not None
+    assert active.json()["ends_at"] is not None
+
+    item.scheduled_start_at = None
+    item.scheduled_end_at = None
+    item.scheduled_message = ""
+    item.manual_enabled = True
+    item.manual_message = "<b>Plain maintenance text</b>"
+    item.manual_expected_end_at = now + timedelta(hours=3)
+    item.save(
+        update_fields=[
+            "scheduled_start_at",
+            "scheduled_end_at",
+            "scheduled_message",
+            "manual_enabled",
+            "manual_message",
+            "manual_expected_end_at",
+            "updated_at",
+        ]
+    )
+
+    with patch("compass.platform_ops.services.timezone.now", return_value=now):
+        manual = client.get("/api/v1/platform/status")
+    assert manual.status_code == 200
+    assert manual.json()["status"] == "maintenance_active"
+    assert manual.json()["message"] == "<b>Plain maintenance text</b>"
+    assert manual.json()["starts_at"] is None
+    assert manual.json()["ends_at"] is not None
+
+
+@pytest.mark.django_db
+def test_public_platform_status_is_anonymous_minimal_and_reachable_during_maintenance():
+    item = get_maintenance_configuration()
+    item.manual_enabled = True
+    item.manual_message = "Maintenance in progress"
+    item.manual_expected_end_at = None
+    item.save(
+        update_fields=[
+            "manual_enabled",
+            "manual_message",
+            "manual_expected_end_at",
+            "updated_at",
+        ]
+    )
+
+    anonymous = Client()
+    response = anonymous.get("/api/v1/platform/status")
+
+    assert response.status_code == 200
+    assert set(response.json()) == {"status", "message", "starts_at", "ends_at"}
+    assert response.json() == {
+        "status": "maintenance_active",
+        "message": "Maintenance in progress",
+        "starts_at": None,
+        "ends_at": None,
+    }
+
+    restricted = anonymous.get("/api/v1/platform/maintenance")
+    assert restricted.status_code == 401
+    assert restricted.json()["error"]["code"] == "authentication_required"
+
