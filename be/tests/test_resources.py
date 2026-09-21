@@ -439,6 +439,7 @@ def test_resource_api_hides_storage_key_and_gss_can_publish_without_head_approva
     assert "storage_key" not in reader.json()
     assert "body_html" not in reader.json()
 
+
 @pytest.mark.django_db
 def test_public_resource_readers_only_receive_public_published_content():
     sync_policy()
