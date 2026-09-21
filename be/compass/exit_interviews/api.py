@@ -157,9 +157,13 @@ class AcademicYearSummary(StrictSchema):
     label: str
 
 
-class StudentSummary(StrictSchema):
+class PersonSummary(StrictSchema):
     id: UUID
     display_name: str
+
+
+class StudentSummary(PersonSummary):
+    institutional_id: str | None
 
 
 class SelfAssessmentRatingPayload(StrictSchema):
@@ -233,7 +237,7 @@ class CollegeFeedbackRatingResponse(StrictSchema):
 class ReopenEventResponse(StrictSchema):
     id: UUID
     reopened_at: datetime
-    reopened_by: StudentSummary
+    reopened_by: PersonSummary
     reason: str
 
 
@@ -327,6 +331,14 @@ def _person(user) -> dict[str, object]:
     return {"id": user.pk, "display_name": user.get_full_name()}
 
 
+def _student_summary(student) -> dict[str, object]:
+    return {
+        "id": student.pk,
+        "institutional_id": student.institutional_id,
+        "display_name": student.get_full_name(),
+    }
+
+
 def _feedback_category(item_code: str) -> str:
     if item_code.startswith("DEAN_"):
         return "DEAN"
@@ -387,7 +399,7 @@ def _reopen_events(item) -> list[dict[str, object]]:
 def _summary(item) -> dict[str, object]:
     return {
         "id": item.pk,
-        "student": _person(item.student),
+        "student": _student_summary(item.student),
         "student_name": item.student_name_snapshot,
         "academic_year": _academic_year(item.academic_year),
         "status": item.status,
@@ -596,6 +608,8 @@ def exit_interviews_list(
     request,
     academic_year_id: UUID | None = None,
     status: ExitInterviewStatusValue | None = None,
+    search: str | None = None,
+    student_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -605,6 +619,8 @@ def exit_interviews_list(
             actor=request.auth_user,
             academic_year_id=academic_year_id,
             status=status.value if status is not None else None,
+            search=search,
+            student_id=student_id,
             page=page,
             page_size=page_size,
         )

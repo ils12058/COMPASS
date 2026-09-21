@@ -1043,6 +1043,7 @@ def inventory_list_students(
     program_id: UUID | None = None,
     year_level: int | None = None,
     search: str | None = None,
+    student_id: UUID | None = None,
     page: int = 1,
     page_size: int = 20,
 ):
@@ -1056,6 +1057,7 @@ def inventory_list_students(
             program_id=program_id,
             year_level=year_level,
             search=search,
+            student_id=student_id,
             page=page,
             page_size=page_size,
         )

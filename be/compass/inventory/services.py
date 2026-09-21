@@ -1175,6 +1175,7 @@ def list_inventory_students(
     program_id: UUID | None = None,
     year_level: int | None = None,
     search: str | None = None,
+    student_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> InventoryRosterPage:
@@ -1202,6 +1203,8 @@ def list_inventory_students(
 
     if year.is_current:
         queryset = _scoped_students(actor).filter(student_lifecycle_status="CURRENT")
+        if student_id is not None:
+            queryset = queryset.filter(pk=student_id)
         if college_id is not None:
             queryset = queryset.filter(organization_student_affiliation__college_id=college_id)
         queryset = _identity_search(queryset, term)
@@ -1257,6 +1260,8 @@ def list_inventory_students(
         academic_year_id=year.pk,
         student_id__in=scoped_student_ids,
     )
+    if student_id is not None:
+        queryset = queryset.filter(student_id=student_id)
     if college_id is not None:
         queryset = queryset.filter(student__organization_student_affiliation__college_id=college_id)
     if program_id is not None:

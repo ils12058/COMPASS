@@ -1110,3 +1110,95 @@ def test_non_current_student_keeps_exit_history_but_cannot_mutate_or_be_reopened
     row = ExitInterview.objects.get(pk=exit_id)
     assert row.status == "SUBMITTED"
     assert not ExitInterviewReopenEvent.objects.filter(exit_interview=row).exists()
+
+
+@pytest.mark.django_db
+def test_head_review_list_supports_identity_search_exact_student_filter_and_snapshot_semantics():
+    sync_policy()
+    current = make_year()
+    student = make_user(
+        "review-list-exit@example.edu",
+        first_name="Initial",
+        last_name="Student",
+    )
+    student.institutional_id = "EXIT-2026-001"
+    student.first_name = "Marina"
+    student.middle_name = "Quill"
+    student.last_name = "Santos"
+    student.save(
+        update_fields=[
+            "institutional_id",
+            "first_name",
+            "middle_name",
+            "last_name",
+            "updated_at",
+        ]
+    )
+    make_inventory(student, current)
+    client = auth_client(student)
+    assert ensure_api(client).status_code == 200
+    payload = valid_payload()
+    payload["student_name"] = "Historical Exit Snapshot"
+    assert put_api(client, payload).status_code == 200
+    submitted = submit_api(client)
+    assert submitted.status_code == 200
+    submitted_id = submitted.json()["id"]
+
+    second = make_user(
+        "review-list-exit-second@example.edu",
+        first_name="Second",
+        last_name="Student",
+    )
+    second.institutional_id = "EXIT-2026-002"
+    second.save(update_fields=["institutional_id", "updated_at"])
+    make_inventory(second, current)
+    assert ensure_api(auth_client(second)).status_code == 200
+
+    student.first_name = "Current"
+    student.middle_name = "Identity"
+    student.last_name = "Reyes"
+    student.save(
+        update_fields=[
+            "first_name",
+            "middle_name",
+            "last_name",
+            "updated_at",
+        ]
+    )
+
+    head = auth_client(make_head("review-list-exit-head@example.edu"))
+    for term in (
+        "EXIT-2026-001",
+        "Current",
+        "Identity",
+        "Reyes",
+        "Historical Exit Snapshot",
+    ):
+        response = head.get("/api/v1/exit-interviews", {"search": term})
+        assert response.status_code == 200
+        assert [row["id"] for row in response.json()["items"]] == [submitted_id]
+
+    combined = head.get(
+        "/api/v1/exit-interviews",
+        {
+            "student_id": str(student.pk),
+            "academic_year_id": str(current.pk),
+            "status": "SUBMITTED",
+        },
+    )
+    assert combined.status_code == 200
+    assert len(combined.json()["items"]) == 1
+    summary = combined.json()["items"][0]
+    assert summary["student"]["id"] == str(student.pk)
+    assert summary["student"]["institutional_id"] == "EXIT-2026-001"
+    assert summary["student"]["display_name"] == "Current Identity Reyes"
+    assert summary["student_name"] == "Historical Exit Snapshot"
+
+    blank = head.get("/api/v1/exit-interviews", {"search": "   ", "page_size": 1})
+    assert blank.status_code == 200
+    assert len(blank.json()["items"]) == 1
+    assert blank.json()["has_next"] is True
+
+    overlong = head.get("/api/v1/exit-interviews", {"search": "x" * 161})
+    assert overlong.status_code == 422
+    assert overlong.json()["error"]["code"] == "invalid_exit_interview_request"

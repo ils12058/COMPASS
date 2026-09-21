@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import transaction
+from django.utils import timezone
 
 from compass.accounts.models import User
 from compass.accounts.profiles import get_person_profile_context
@@ -38,6 +40,8 @@ CSM_SCHEMA_VERSION = 1
 DEFAULT_PAGE_SIZE = 25
 MAX_PAGE_SIZE = 100
 MAX_FEEDBACK_TEXT_LENGTH = 4000
+MAX_SEARCH_LENGTH = 160
+MAX_CSM_SERVICE_FILTER_LENGTH = 255
 
 
 class FeedbackError(RuntimeError):
@@ -121,6 +125,34 @@ def _pagination(page: int, page_size: int) -> tuple[int, int]:
 
 def _customer_queryset():
     return CustomerFeedbackResponse.objects.select_related("form_revision", "form_revision__family")
+
+
+def _optional_text(value: object, field_name: str, maximum: int) -> str:
+    if value is None:
+        return ""
+    return _clean_text(value, field_name, maximum, required=False)
+
+
+def _submission_boundary(value: date, *, following_day: bool = False) -> datetime:
+    if not isinstance(value, date) or isinstance(value, datetime):
+        raise InvalidFeedbackInput("submission date filters must be calendar dates.")
+    local_date = value + timedelta(days=1) if following_day else value
+    return timezone.make_aware(
+        datetime.combine(local_date, time.min),
+        timezone.get_current_timezone(),
+    )
+
+
+def _validate_submission_range(
+    submitted_from: date | None,
+    submitted_to: date | None,
+) -> None:
+    if submitted_from is not None:
+        _submission_boundary(submitted_from)
+    if submitted_to is not None:
+        _submission_boundary(submitted_to)
+    if submitted_from is not None and submitted_to is not None and submitted_from > submitted_to:
+        raise InvalidFeedbackInput("submitted_from must be on or before submitted_to.")
 
 
 def _normalize_services(raw: object) -> list[str]:
@@ -336,11 +368,36 @@ def create_csm_response(
 
 
 def list_customer_feedback(
-    *, actor: User, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE
+    *,
+    actor: User,
+    search: str | None = None,
+    service: str | None = None,
+    submitted_from: date | None = None,
+    submitted_to: date | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ) -> FeedbackPage:
     _validate_viewer(actor, "feedback.view_customer_feedback")
     page, page_size = _pagination(page, page_size)
-    queryset = _customer_queryset().order_by("-submitted_at", "id")
+    term = _optional_text(search, "search", MAX_SEARCH_LENGTH)
+    _validate_submission_range(submitted_from, submitted_to)
+    queryset = _customer_queryset()
+    if term:
+        queryset = queryset.filter(respondent_name_snapshot__icontains=term)
+    if service is not None:
+        selected_service = _choice(
+            service,
+            set(CustomerFeedbackService.values),
+            "service",
+        )
+        queryset = queryset.filter(services_received__contains=[selected_service])
+    if submitted_from is not None:
+        queryset = queryset.filter(submitted_at__gte=_submission_boundary(submitted_from))
+    if submitted_to is not None:
+        queryset = queryset.filter(
+            submitted_at__lt=_submission_boundary(submitted_to, following_day=True)
+        )
+    queryset = queryset.order_by("-submitted_at", "id")
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
     return FeedbackPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
@@ -360,13 +417,30 @@ def list_csm_responses(
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     client_type: str | None = None,
+    service: str | None = None,
+    submitted_from: date | None = None,
+    submitted_to: date | None = None,
 ) -> FeedbackPage:
     _validate_viewer(actor, "feedback.view_csm")
     page, page_size = _pagination(page, page_size)
+    service_term = _optional_text(
+        service,
+        "service",
+        MAX_CSM_SERVICE_FILTER_LENGTH,
+    )
+    _validate_submission_range(submitted_from, submitted_to)
     queryset = ClientSatisfactionResponse.objects.all()
     if client_type is not None:
         client_type = _choice(client_type, set(CSMClientType.values), "client_type")
         queryset = queryset.filter(client_type=client_type)
+    if service_term:
+        queryset = queryset.filter(service_availed__icontains=service_term)
+    if submitted_from is not None:
+        queryset = queryset.filter(submitted_at__gte=_submission_boundary(submitted_from))
+    if submitted_to is not None:
+        queryset = queryset.filter(
+            submitted_at__lt=_submission_boundary(submitted_to, following_day=True)
+        )
     queryset = queryset.order_by("-submitted_at", "id")
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])

@@ -473,6 +473,98 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
     )
 
 
+def test_review_list_query_parameters_match_backend_consistency_contract() -> None:
+    schema = _generated_schema()
+    expected = {
+        "/api/v1/inventory/students": {
+            "academic_year_id",
+            "status",
+            "college_id",
+            "program_id",
+            "year_level",
+            "search",
+            "student_id",
+            "page",
+            "page_size",
+        },
+        "/api/v1/exit-interviews": {
+            "academic_year_id",
+            "status",
+            "search",
+            "student_id",
+            "page",
+            "page_size",
+        },
+        "/api/v1/graduate-tracer/responses": {
+            "search",
+            "student_id",
+            "submitted_from",
+            "submitted_to",
+            "current_employment_state",
+            "page",
+            "page_size",
+        },
+        "/api/v1/referrals": {
+            "search",
+            "student_id",
+            "from_date",
+            "to_date",
+            "include_voided",
+            "page",
+            "page_size",
+        },
+        "/api/v1/feedback/customer-feedback/responses": {
+            "search",
+            "service",
+            "submitted_from",
+            "submitted_to",
+            "page",
+            "page_size",
+        },
+        "/api/v1/feedback/csm/responses": {
+            "client_type",
+            "service",
+            "submitted_from",
+            "submitted_to",
+            "page",
+            "page_size",
+        },
+    }
+
+    for path, expected_parameters in expected.items():
+        operation = _operation(schema, path, "get")
+        assert {parameter["name"] for parameter in operation["parameters"]} == expected_parameters
+
+    graduate_parameters = {
+        parameter["name"]
+        for parameter in _operation(
+            schema,
+            "/api/v1/graduate-tracer/responses",
+            "get",
+        )["parameters"]
+    }
+    assert "status" not in graduate_parameters
+
+    customer_feedback_parameters = {
+        parameter["name"]
+        for parameter in _operation(
+            schema,
+            "/api/v1/feedback/customer-feedback/responses",
+            "get",
+        )["parameters"]
+    }
+    csm_parameters = {
+        parameter["name"]
+        for parameter in _operation(
+            schema,
+            "/api/v1/feedback/csm/responses",
+            "get",
+        )["parameters"]
+    }
+    assert "student_id" not in customer_feedback_parameters
+    assert "student_id" not in csm_parameters
+
+
 def test_counseling_context_contract_is_anchor_based_and_read_only() -> None:
     schema = _generated_schema()
     expected = {
