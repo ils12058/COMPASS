@@ -616,9 +616,7 @@ def graduate_tracer_list_responses(
             submitted_from=submitted_from,
             submitted_to=submitted_to,
             current_employment_state=(
-                current_employment_state.value
-                if current_employment_state is not None
-                else None
+                current_employment_state.value if current_employment_state is not None else None
             ),
             page=page,
             page_size=page_size,

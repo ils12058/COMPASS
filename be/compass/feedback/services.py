@@ -152,9 +152,7 @@ def _validate_submission_range(
     if submitted_to is not None:
         _submission_boundary(submitted_to)
     if submitted_from is not None and submitted_to is not None and submitted_from > submitted_to:
-        raise InvalidFeedbackInput(
-            "submitted_from must be on or before submitted_to."
-        )
+        raise InvalidFeedbackInput("submitted_from must be on or before submitted_to.")
 
 
 def _normalize_services(raw: object) -> list[str]:
@@ -394,9 +392,7 @@ def list_customer_feedback(
         )
         queryset = queryset.filter(services_received__contains=[selected_service])
     if submitted_from is not None:
-        queryset = queryset.filter(
-            submitted_at__gte=_submission_boundary(submitted_from)
-        )
+        queryset = queryset.filter(submitted_at__gte=_submission_boundary(submitted_from))
     if submitted_to is not None:
         queryset = queryset.filter(
             submitted_at__lt=_submission_boundary(submitted_to, following_day=True)
@@ -440,9 +436,7 @@ def list_csm_responses(
     if service_term:
         queryset = queryset.filter(service_availed__icontains=service_term)
     if submitted_from is not None:
-        queryset = queryset.filter(
-            submitted_at__gte=_submission_boundary(submitted_from)
-        )
+        queryset = queryset.filter(submitted_at__gte=_submission_boundary(submitted_from))
     if submitted_to is not None:
         queryset = queryset.filter(
             submitted_at__lt=_submission_boundary(submitted_to, following_day=True)

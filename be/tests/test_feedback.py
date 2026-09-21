@@ -597,9 +597,7 @@ def test_customer_feedback_review_filters_name_service_dates_and_pagination():
         {"search": "x" * 161},
     )
     assert overlong.status_code == 422
-    assert head.get(
-        f"/api/v1/feedback/customer-feedback/responses/{alpha_id}"
-    ).status_code == 200
+    assert head.get(f"/api/v1/feedback/customer-feedback/responses/{alpha_id}").status_code == 200
 
 
 @pytest.mark.django_db

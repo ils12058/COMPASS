@@ -841,9 +841,7 @@ def _clean_search(search: str | None) -> str:
         raise InvalidGraduateTracerInput("search must be text.")
     cleaned = search.strip()
     if len(cleaned) > MAX_SEARCH_LENGTH:
-        raise InvalidGraduateTracerInput(
-            f"search must be at most {MAX_SEARCH_LENGTH} characters."
-        )
+        raise InvalidGraduateTracerInput(f"search must be at most {MAX_SEARCH_LENGTH} characters.")
     return cleaned
 
 
@@ -872,9 +870,7 @@ def list_submitted_for_head(
     page, page_size = _pagination(page, page_size)
     term = _clean_search(search)
     if submitted_from is not None and submitted_to is not None and submitted_from > submitted_to:
-        raise InvalidGraduateTracerInput(
-            "submitted_from must be on or before submitted_to."
-        )
+        raise InvalidGraduateTracerInput("submitted_from must be on or before submitted_to.")
     queryset = _queryset().filter(status=GraduateTracerStatus.SUBMITTED)
     if student_id is not None:
         queryset = queryset.filter(student_id=student_id)
@@ -887,9 +883,7 @@ def list_submitted_for_head(
             | Q(name_snapshot__icontains=term)
         )
     if submitted_from is not None:
-        queryset = queryset.filter(
-            submitted_at__gte=_submission_boundary(submitted_from)
-        )
+        queryset = queryset.filter(submitted_at__gte=_submission_boundary(submitted_from))
     if submitted_to is not None:
         queryset = queryset.filter(
             submitted_at__lt=_submission_boundary(submitted_to, following_day=True)

@@ -383,15 +383,17 @@ def test_referral_scope_is_current_organization_scope_without_assigned_counselor
         ]
     )
 
-    assert [item.pk for item in list_referrals(actor=counselor_a, search=a.reference_code).items] == [
-        a.pk
-    ]
+    assert [
+        item.pk for item in list_referrals(actor=counselor_a, search=a.reference_code).items
+    ] == [a.pk]
     for term in ("REF-A-001", "Current", "LiveMiddle", "Identity", "Alpha ReferralMiddle"):
         assert {item.pk for item in list_referrals(actor=counselor_a, search=term).items} == {
             a.pk,
             gss_item.pk,
         }
-    assert {item.pk for item in list_referrals(actor=counselor_a, student_id=student_a.pk).items} == {
+    assert {
+        item.pk for item in list_referrals(actor=counselor_a, student_id=student_a.pk).items
+    } == {
         a.pk,
         gss_item.pk,
     }

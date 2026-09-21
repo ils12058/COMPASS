@@ -791,9 +791,7 @@ def _clean_search(search: str | None) -> str:
         raise InvalidExitInterviewInput("search must be text.")
     cleaned = search.strip()
     if len(cleaned) > MAX_SEARCH_LENGTH:
-        raise InvalidExitInterviewInput(
-            f"search must be at most {MAX_SEARCH_LENGTH} characters."
-        )
+        raise InvalidExitInterviewInput(f"search must be at most {MAX_SEARCH_LENGTH} characters.")
     return cleaned
 
 
