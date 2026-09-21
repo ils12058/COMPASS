@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export default function GlobalError({
   reset,
 }: {
@@ -74,7 +76,7 @@ export default function GlobalError({
               >
                 Try again
               </button>
-              <a
+              <Link
                 href="/"
                 style={{
                   minHeight: "2.75rem",
@@ -88,7 +90,7 @@ export default function GlobalError({
                 }}
               >
                 Back to COMPASS
-              </a>
+              </Link>
             </div>
           </section>
         </main>
