@@ -1,15 +1,21 @@
 @import "tailwindcss";
 @import "./tokens.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 @layer base {
   * {
     box-sizing: border-box;
     border-color: var(--compass-border);
+    @apply border-border outline-ring/50;
   }
 
   html {
     min-height: 100%;
     background: var(--compass-body);
+    @apply font-sans;
   }
 
   body {
@@ -19,6 +25,7 @@
     color: var(--compass-ink);
     font-family: var(--compass-font-ui);
     line-height: var(--compass-line-height);
+    @apply bg-background text-foreground;
   }
 
   h1,
@@ -73,7 +80,6 @@
     outline-color: CanvasText;
   }
 }
-
 
 html[data-compass-text-size="large"] {
   font-size: 112.5%;
