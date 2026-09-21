@@ -38,6 +38,8 @@ from compass.call_slips.services import (
     CallSlipDocumentUnavailable,
     build_call_slip_render_context,
     create_call_slip,
+)
+from compass.call_slips.services import (
     list_eligible_students as list_call_slip_students,
 )
 from compass.documents.rendering import render_document_html
@@ -53,9 +55,11 @@ from compass.referrals.services import (
     ReferralDocumentUnavailable,
     build_referral_render_context,
     create_referral,
-    list_eligible_students as list_referral_students,
     record_action,
     void_referral,
+)
+from compass.referrals.services import (
+    list_eligible_students as list_referral_students,
 )
 from compass.resources.models import ResourceKind
 from compass.resources.services import (

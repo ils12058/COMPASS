@@ -27,12 +27,12 @@ from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
 )
-from compass.organization.access_scope import resolve_organizational_access_scope
 from compass.operational_students import (
     InvalidOperationalStudentQuery,
     OperationalStudentPage,
     list_scoped_operational_students,
 )
+from compass.organization.access_scope import resolve_organizational_access_scope
 from compass.organization.models import StudentAffiliation
 
 from .models import Referral, ReferralAction, ReferralActionType, ReferralReferenceCounter
