@@ -61,3 +61,9 @@ generated public download operation. Do not expose or persist object-storage key
 - Published/preview rendering continues through the shared safe Markdown renderer.
 - Raw HTML remains disabled.
 
+## Notifications
+
+Notification self-service follows the generated current Notification contract. Do not recreate
+legacy archive, bulk, or status-filter behavior. Unread count is server-owned. Notification target
+metadata is navigation guidance only, never authorization. Optional email preference does not
+suppress mandatory security or operational email.
