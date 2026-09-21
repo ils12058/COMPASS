@@ -1,0 +1,99 @@
+.compass-rich-editor {
+  --crepe-color-background: var(--compass-surface);
+  --crepe-color-on-background: var(--compass-ink);
+  --crepe-color-surface: var(--compass-surface);
+  --crepe-color-surface-low: var(--compass-surface-subtle);
+  --crepe-color-on-surface: var(--compass-ink);
+  --crepe-color-on-surface-variant: var(--compass-text-muted);
+  --crepe-color-outline: var(--compass-border);
+  --crepe-color-primary: var(--compass-brand-maroon);
+  --crepe-color-secondary: var(--compass-support-strong);
+  --crepe-font-default: var(--compass-font-ui);
+  --crepe-font-title: var(--compass-font-heading);
+  --crepe-base-font-size: 1rem;
+  overflow: clip;
+}
+
+.compass-rich-editor .milkdown {
+  background: transparent;
+  color: var(--compass-ink);
+  font-family: var(--compass-font-ui);
+}
+
+.compass-rich-editor .milkdown .editor {
+  min-height: 16rem;
+  padding: 1.25rem;
+  outline: none;
+}
+
+.compass-rich-editor .milkdown .editor p {
+  margin: 0.75rem 0;
+  line-height: var(--compass-line-height);
+}
+
+.compass-rich-editor .milkdown .editor h1,
+.compass-rich-editor .milkdown .editor h2,
+.compass-rich-editor .milkdown .editor h3 {
+  font-family: var(--compass-font-heading);
+  color: var(--compass-ink);
+}
+
+.compass-rich-editor .milkdown .editor h1 {
+  font-size: 1.5rem;
+}
+
+.compass-rich-editor .milkdown .editor h2 {
+  font-size: 1.35rem;
+}
+
+.compass-rich-editor .milkdown .editor h3 {
+  font-size: 1.15rem;
+}
+
+.compass-rich-editor .milkdown .editor a {
+  color: var(--compass-brand-maroon);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.compass-rich-editor .milkdown .editor blockquote {
+  border-left: 0.25rem solid var(--compass-support);
+  color: var(--compass-text-muted);
+  margin: 1rem 0;
+  padding-left: 1rem;
+}
+
+.compass-rich-editor .milkdown .editor ul,
+.compass-rich-editor .milkdown .editor ol {
+  padding-left: 1.5rem;
+}
+
+.compass-rich-editor .milkdown .editor:focus-visible {
+  outline: var(--compass-focus-width) solid var(--compass-focus-color);
+  outline-offset: calc(var(--compass-focus-offset) * -1);
+}
+
+html[data-compass-spacing="relaxed"] .compass-rich-editor .milkdown .editor {
+  line-height: 1.8;
+}
+
+html[data-compass-spacing="relaxed"]
+  .compass-rich-editor
+  .milkdown
+  .editor
+  :where(p, li, blockquote) {
+  letter-spacing: 0.025em;
+  word-spacing: 0.08em;
+  line-height: 1.8;
+}
+
+@media (forced-colors: active) {
+  .compass-rich-editor,
+  .compass-rich-editor [role="toolbar"] {
+    border-color: CanvasText;
+  }
+
+  .compass-rich-editor .milkdown .editor:focus-visible {
+    outline-color: CanvasText;
+  }
+}
