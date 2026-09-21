@@ -39,3 +39,16 @@ Write for the actual Student, Counselor, GCO Services Staff, Head Guidance Couns
 ## Legacy frontend
 
 `reynantlntno/compass-fe@staging` is visual reference only. Preserve useful visual DNA; do not copy its feature architecture, API/session wrappers, navigation capability registry, DTO/parsing layers, giant stylesheets, workflow assumptions, or legacy page copy.
+
+## Public publication content
+
+Public Announcement and Resource pages use only the generated anonymous public operations. Do not
+reuse authenticated reader routes for anonymous visitors and do not infer public visibility in the
+browser.
+
+Backend `body_markdown` is untrusted source. Render it with the approved Markdown component with
+raw HTML disabled. Do not use `dangerouslySetInnerHTML`, `rehype-raw`, legacy `body_html`, or
+unsafe URL schemes.
+
+Public FILE resources obtain short-lived download URLs only after a user action through the
+generated public download operation. Do not expose or persist object-storage keys or signed URLs.

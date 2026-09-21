@@ -22,9 +22,12 @@ from compass.resources.services import (
     ResourceNotFound,
     archive_resource,
     attach_resource_file,
+    create_public_resource_download,
     create_resource,
     create_resource_download,
+    get_public_resource,
     get_visible_resource,
+    list_public_resources,
     list_visible_resources,
     publish_resource,
 )
@@ -435,3 +438,219 @@ def test_resource_api_hides_storage_key_and_gss_can_publish_without_head_approva
     assert reader.json()["body_markdown"] == "<script>raw source only</script>"
     assert "storage_key" not in reader.json()
     assert "body_html" not in reader.json()
+
+
+@pytest.mark.django_db
+def test_public_resource_readers_only_receive_public_published_content():
+    sync_policy()
+    counselor = make_user("resource-public-publisher@example.edu", "COUNSELOR")
+    student = make_user("resource-public-student@example.edu", "STUDENT")
+    staff = make_user("resource-public-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+
+    public_article = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        title="Public article",
+        display_order=20,
+    )
+    public_link = create_draft(
+        actor=counselor,
+        kind=ResourceKind.EXTERNAL_LINK,
+        audience=PublicationAudience.PUBLIC,
+        title="Public link",
+        external_url="https://example.edu/public-guidance",
+        display_order=10,
+    )
+    authenticated = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.ALL_AUTHENTICATED,
+        title="Authenticated resource",
+    )
+    student_only = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.STUDENTS,
+        title="Student resource",
+    )
+    gco_only = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.GCO_PERSONNEL,
+        title="GCO resource",
+    )
+    draft_public = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        title="Draft public resource",
+    )
+
+    for item in (public_article, public_link, authenticated, student_only, gco_only):
+        publish_resource(actor=counselor, resource_id=item.pk, context=context(counselor))
+
+    public_rows = list_public_resources().items
+    assert [item.pk for item in public_rows] == [public_link.pk, public_article.pk]
+    assert get_public_resource(resource_id=public_article.pk).pk == public_article.pk
+    for hidden in (authenticated, student_only, gco_only, draft_public):
+        with pytest.raises(ResourceNotFound):
+            get_public_resource(resource_id=hidden.pk)
+
+    assert {item.pk for item in list_visible_resources(actor=student).items} == {
+        public_article.pk,
+        public_link.pk,
+        authenticated.pk,
+        student_only.pk,
+    }
+    assert {item.pk for item in list_visible_resources(actor=staff).items} == {
+        public_article.pk,
+        public_link.pk,
+        authenticated.pk,
+        gco_only.pk,
+    }
+
+    anonymous = Client()
+    listing = anonymous.get("/api/v1/public/resources?page_size=10")
+    assert listing.status_code == 200
+    ids = [item["id"] for item in listing.json()["items"]]
+    assert ids == [str(public_link.pk), str(public_article.pk)]
+    assert all("storage_key" not in item for item in listing.json()["items"])
+
+    detail = anonymous.get(f"/api/v1/public/resources/{public_link.pk}")
+    assert detail.status_code == 200
+    assert detail.json()["external_url"] == "https://example.edu/public-guidance"
+    assert "storage_key" not in detail.json()
+
+    assert anonymous.get(f"/api/v1/public/resources/{authenticated.pk}").status_code == 404
+
+
+@pytest.mark.django_db
+def test_public_file_resource_download_uses_private_short_lived_url_without_leaking_key():
+    sync_policy()
+    counselor = make_user("resource-public-file@example.edu", "COUNSELOR")
+    storage = FakeStorage()
+
+    public_file = create_draft(
+        actor=counselor,
+        kind=ResourceKind.FILE,
+        audience=PublicationAudience.PUBLIC,
+        title="Public PDF",
+    )
+    public_file = attach_resource_file(
+        actor=counselor,
+        resource_id=public_file.pk,
+        uploaded_file=SimpleUploadedFile(
+            "public-guide.pdf",
+            b"%PDF-1.7\npublic guide",
+            content_type="application/pdf",
+        ),
+        context=context(counselor),
+        storage=storage,
+    )
+    public_file = publish_resource(
+        actor=counselor,
+        resource_id=public_file.pk,
+        context=context(counselor),
+    )
+
+    download = create_public_resource_download(
+        resource_id=public_file.pk,
+        storage=storage,
+    )
+    assert download.url.startswith("https://private.example/")
+    assert storage.private_url_calls == [(public_file.storage_key, download.expires_in_seconds)]
+
+    non_public_file = create_draft(
+        actor=counselor,
+        kind=ResourceKind.FILE,
+        audience=PublicationAudience.ALL_AUTHENTICATED,
+        title="Private PDF",
+    )
+    non_public_file = attach_resource_file(
+        actor=counselor,
+        resource_id=non_public_file.pk,
+        uploaded_file=SimpleUploadedFile(
+            "private-guide.pdf",
+            b"%PDF-1.7\nprivate guide",
+            content_type="application/pdf",
+        ),
+        context=context(counselor),
+        storage=storage,
+    )
+    publish_resource(
+        actor=counselor,
+        resource_id=non_public_file.pk,
+        context=context(counselor),
+    )
+    with pytest.raises(ResourceNotFound):
+        create_public_resource_download(
+            resource_id=non_public_file.pk,
+            storage=storage,
+        )
+
+    archived_public_file = create_draft(
+        actor=counselor,
+        kind=ResourceKind.FILE,
+        audience=PublicationAudience.PUBLIC,
+        title="Archived public PDF",
+    )
+    archived_public_file = attach_resource_file(
+        actor=counselor,
+        resource_id=archived_public_file.pk,
+        uploaded_file=SimpleUploadedFile(
+            "archived-public.pdf",
+            b"%PDF-1.7\narchived public guide",
+            content_type="application/pdf",
+        ),
+        context=context(counselor),
+        storage=storage,
+    )
+    archived_public_file = publish_resource(
+        actor=counselor,
+        resource_id=archived_public_file.pk,
+        context=context(counselor),
+    )
+    archive_resource(
+        actor=counselor,
+        resource_id=archived_public_file.pk,
+        context=context(counselor),
+    )
+    with pytest.raises(ResourceNotFound):
+        create_public_resource_download(
+            resource_id=archived_public_file.pk,
+            storage=storage,
+        )
+
+    public_article = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        title="No file channel",
+    )
+    public_article = publish_resource(
+        actor=counselor,
+        resource_id=public_article.pk,
+        context=context(counselor),
+    )
+    with pytest.raises(ResourceConflict):
+        create_public_resource_download(
+            resource_id=public_article.pk,
+            storage=storage,
+        )
+
+    anonymous = Client()
+    with patch("compass.resources.services.ObjectStorage", return_value=storage):
+        api_download = anonymous.get(f"/api/v1/public/resources/{public_file.pk}/download")
+    assert api_download.status_code == 200
+    assert api_download.json()["url"].startswith("https://private.example/")
+    assert set(api_download.json()) == {"url", "expires_in_seconds"}
+    assert "storage_key" not in api_download.json()
+
+    assert (
+        anonymous.get(f"/api/v1/public/resources/{non_public_file.pk}/download").status_code == 404
+    )
+    assert (
+        anonymous.get(f"/api/v1/public/resources/{archived_public_file.pk}/download").status_code
+        == 404
+    )

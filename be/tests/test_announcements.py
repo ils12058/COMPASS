@@ -21,7 +21,9 @@ from compass.announcements.services import (
     AnnouncementNotFound,
     archive_announcement,
     create_announcement,
+    get_public_announcement,
     get_visible_announcement,
+    list_public_announcements,
     list_visible_announcements,
     publish_announcement,
     update_announcement,
@@ -316,3 +318,222 @@ def test_announcement_api_enforces_management_and_returns_raw_markdown_without_h
         **csrf(staff_client),
     )
     assert staff_create.status_code == 201
+
+
+@pytest.mark.django_db
+def test_public_announcement_audience_is_anonymous_only_when_explicitly_public():
+    sync_policy()
+    counselor = make_user("announcement-public-publisher@example.edu", "COUNSELOR")
+    student = make_user("announcement-public-student@example.edu", "STUDENT")
+    staff = make_user("announcement-public-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    now = timezone.now()
+
+    public_item = create_announcement(
+        actor=counselor,
+        title="Public guidance notice",
+        body_markdown="Public **Markdown** notice.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=True,
+        expires_at=now + timedelta(hours=1),
+        context=context(counselor),
+    )
+    all_item = create_announcement(
+        actor=counselor,
+        title="Authenticated only",
+        body_markdown="Signed-in readers only.",
+        audience=PublicationAudience.ALL_AUTHENTICATED,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+    student_item = create_announcement(
+        actor=counselor,
+        title="Students only",
+        body_markdown="Student audience.",
+        audience=PublicationAudience.STUDENTS,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+    gco_item = create_announcement(
+        actor=counselor,
+        title="GCO only",
+        body_markdown="Personnel audience.",
+        audience=PublicationAudience.GCO_PERSONNEL,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+    draft_public = create_announcement(
+        actor=counselor,
+        title="Draft public",
+        body_markdown="Not published.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+
+    for item in (public_item, all_item, student_item, gco_item):
+        publish_announcement(
+            actor=counselor,
+            announcement_id=item.pk,
+            context=context(counselor),
+            now=now,
+        )
+
+    anonymous_rows = list_public_announcements(now=now + timedelta(minutes=1)).items
+    assert [item.pk for item in anonymous_rows] == [public_item.pk]
+    assert (
+        get_public_announcement(
+            announcement_id=public_item.pk,
+            now=now + timedelta(minutes=1),
+        ).pk
+        == public_item.pk
+    )
+
+    future_public = create_announcement(
+        actor=counselor,
+        title="Future public",
+        body_markdown="Not visible yet.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+    publish_announcement(
+        actor=counselor,
+        announcement_id=future_public.pk,
+        context=context(counselor),
+        now=now + timedelta(hours=1),
+    )
+
+    archived_public = create_announcement(
+        actor=counselor,
+        title="Archived public",
+        body_markdown="No longer public.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+    archived_public = publish_announcement(
+        actor=counselor,
+        announcement_id=archived_public.pk,
+        context=context(counselor),
+        now=now,
+    )
+    archive_announcement(
+        actor=counselor,
+        announcement_id=archived_public.pk,
+        context=context(counselor),
+    )
+
+    for hidden in (
+        all_item,
+        student_item,
+        gco_item,
+        draft_public,
+        future_public,
+        archived_public,
+    ):
+        with pytest.raises(AnnouncementNotFound):
+            get_public_announcement(
+                announcement_id=hidden.pk,
+                now=now + timedelta(minutes=1),
+            )
+
+    assert {
+        item.pk
+        for item in list_visible_announcements(actor=student, now=now + timedelta(minutes=1)).items
+    } == {public_item.pk, all_item.pk, student_item.pk}
+    assert {
+        item.pk
+        for item in list_visible_announcements(actor=staff, now=now + timedelta(minutes=1)).items
+    } == {public_item.pk, all_item.pk, gco_item.pk}
+
+    expired = create_announcement(
+        actor=counselor,
+        title="Expired public",
+        body_markdown="Expired.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=False,
+        expires_at=now + timedelta(minutes=2),
+        context=context(counselor),
+    )
+    publish_announcement(
+        actor=counselor,
+        announcement_id=expired.pk,
+        context=context(counselor),
+        now=now,
+    )
+    with pytest.raises(AnnouncementNotFound):
+        get_public_announcement(
+            announcement_id=expired.pk,
+            now=now + timedelta(minutes=3),
+        )
+
+
+@pytest.mark.django_db
+def test_public_announcement_api_is_anonymous_and_does_not_leak_other_audiences():
+    sync_policy()
+    counselor = make_user("announcement-public-api@example.edu", "COUNSELOR")
+    client = auth_client(counselor)
+
+    public_create = client.post(
+        "/api/v1/announcements/management",
+        data=json.dumps(
+            {
+                "title": "Public API notice",
+                "body_markdown": "Visible without sign-in.",
+                "audience": "PUBLIC",
+                "is_pinned": True,
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert public_create.status_code == 201
+    public_id = public_create.json()["id"]
+    assert (
+        client.post(
+            f"/api/v1/announcements/management/{public_id}/publish",
+            **csrf(client),
+        ).status_code
+        == 200
+    )
+
+    private_create = client.post(
+        "/api/v1/announcements/management",
+        data=json.dumps(
+            {
+                "title": "Signed-in notice",
+                "body_markdown": "Not public.",
+                "audience": "ALL_AUTHENTICATED",
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert private_create.status_code == 201
+    private_id = private_create.json()["id"]
+    assert (
+        client.post(
+            f"/api/v1/announcements/management/{private_id}/publish",
+            **csrf(client),
+        ).status_code
+        == 200
+    )
+
+    anonymous = Client()
+    listing = anonymous.get("/api/v1/public/announcements?page_size=3")
+    assert listing.status_code == 200
+    assert [item["id"] for item in listing.json()["items"]] == [public_id]
+
+    detail = anonymous.get(f"/api/v1/public/announcements/{public_id}")
+    assert detail.status_code == 200
+    assert detail.json()["title"] == "Public API notice"
+    assert "body_html" not in detail.json()
+
+    hidden = anonymous.get(f"/api/v1/public/announcements/{private_id}")
+    assert hidden.status_code == 404

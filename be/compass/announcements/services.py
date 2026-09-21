@@ -122,6 +122,43 @@ def _visible_queryset(actor: User, *, now: datetime | None = None):
     ).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=current))
 
 
+def _public_queryset(*, now: datetime | None = None):
+    current = now or timezone.now()
+    return Announcement.objects.filter(
+        status=PublicationStatus.PUBLISHED,
+        published_at__lte=current,
+        audience=PublicationAudience.PUBLIC,
+    ).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=current))
+
+
+def list_public_announcements(
+    *,
+    pinned: bool | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    now: datetime | None = None,
+) -> AnnouncementPage:
+    queryset = _public_queryset(now=now)
+    if pinned is not None:
+        queryset = queryset.filter(is_pinned=bool(pinned))
+    return _page(
+        queryset.order_by("-is_pinned", "-published_at", "-id"),
+        page=page,
+        page_size=page_size,
+    )
+
+
+def get_public_announcement(
+    *,
+    announcement_id: UUID,
+    now: datetime | None = None,
+) -> Announcement:
+    item = _public_queryset(now=now).filter(pk=announcement_id).first()
+    if item is None:
+        raise AnnouncementNotFound("The requested Announcement was not found.")
+    return item
+
+
 def list_visible_announcements(
     *,
     actor: User,
@@ -353,8 +390,10 @@ __all__ = [
     "archive_announcement",
     "create_announcement",
     "get_managed_announcement",
+    "get_public_announcement",
     "get_visible_announcement",
     "list_managed_announcements",
+    "list_public_announcements",
     "list_visible_announcements",
     "publish_announcement",
     "update_announcement",

@@ -12,6 +12,7 @@ class PublicationStatus(models.TextChoices):
 
 
 class PublicationAudience(models.TextChoices):
+    PUBLIC = "PUBLIC", "Public"
     ALL_AUTHENTICATED = "ALL_AUTHENTICATED", "All authenticated"
     STUDENTS = "STUDENTS", "Students"
     GCO_PERSONNEL = "GCO_PERSONNEL", "GCO personnel"
@@ -20,7 +21,7 @@ class PublicationAudience(models.TextChoices):
 def eligible_audiences_for(user) -> tuple[str, ...]:
     if not getattr(user, "is_active", False):
         return ()
-    audiences = [PublicationAudience.ALL_AUTHENTICATED]
+    audiences = [PublicationAudience.PUBLIC, PublicationAudience.ALL_AUTHENTICATED]
     role_code = getattr(getattr(user, "role", None), "code", None)
     if role_code == "STUDENT":
         audiences.append(PublicationAudience.STUDENTS)

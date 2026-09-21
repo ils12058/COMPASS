@@ -1,4 +1,4 @@
-"""Authenticated reader and capability-authorized Curated Resource API."""
+"""Public/authenticated readers and capability-authorized Curated Resource management API."""
 
 from __future__ import annotations
 
@@ -26,17 +26,21 @@ from .services import (
     ResourceStorageError,
     archive_resource,
     attach_resource_file,
+    create_public_resource_download,
     create_resource,
     create_resource_download,
     get_managed_resource,
+    get_public_resource,
     get_visible_resource,
     list_managed_resources,
+    list_public_resources,
     list_visible_resources,
     publish_resource,
     update_resource,
 )
 
 router = Router(tags=["resources"])
+public_router = Router(tags=["resources"])
 
 
 class StrictSchema(Schema):
@@ -44,6 +48,7 @@ class StrictSchema(Schema):
 
 
 class ResourceAudienceValue(StrEnum):
+    PUBLIC = PublicationAudience.PUBLIC
     ALL_AUTHENTICATED = PublicationAudience.ALL_AUTHENTICATED
     STUDENTS = PublicationAudience.STUDENTS
     GCO_PERSONNEL = PublicationAudience.GCO_PERSONNEL
@@ -442,4 +447,62 @@ def resources_get_visible(request, resource_id: UUID):
     return _reader(item)
 
 
-__all__ = ["router"]
+@public_router.get(
+    "",
+    response=response_with_errors(ResourceReaderPageResponse, 422),
+    operation_id="resourcesListPublic",
+)
+def resources_list_public(
+    request,
+    category: ResourceCategoryValue | None = None,
+    kind: ResourceKindValue | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    try:
+        result = list_public_resources(
+            category=category.value if category is not None else None,
+            kind=kind.value if kind is not None else None,
+            page=page,
+            page_size=page_size,
+        )
+    except ResourceError as exc:
+        _raise(exc)
+    return ResourceReaderPageResponse(
+        items=[_reader(item) for item in result.items],
+        page=result.page,
+        page_size=result.page_size,
+        has_next=result.has_next,
+    )
+
+
+@public_router.get(
+    "/{resource_id}/download",
+    response=response_with_errors(ResourceDownloadResponse, 404, 409, 503),
+    operation_id="resourcesDownloadPublicFile",
+)
+def resources_download_public_file(request, resource_id: UUID):
+    try:
+        result = create_public_resource_download(resource_id=resource_id)
+    except ResourceError as exc:
+        _raise(exc)
+    return ResourceDownloadResponse(
+        url=result.url,
+        expires_in_seconds=result.expires_in_seconds,
+    )
+
+
+@public_router.get(
+    "/{resource_id}",
+    response=response_with_errors(ResourceReaderResponse, 404),
+    operation_id="resourcesGetPublic",
+)
+def resources_get_public(request, resource_id: UUID):
+    try:
+        item = get_public_resource(resource_id=resource_id)
+    except ResourceError as exc:
+        _raise(exc)
+    return _reader(item)
+
+
+__all__ = ["public_router", "router"]

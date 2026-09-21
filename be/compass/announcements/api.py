@@ -1,4 +1,4 @@
-"""Authenticated reader and capability-authorized Announcement API."""
+"""Public/authenticated readers and capability-authorized Announcement management API."""
 
 from __future__ import annotations
 
@@ -25,14 +25,17 @@ from .services import (
     archive_announcement,
     create_announcement,
     get_managed_announcement,
+    get_public_announcement,
     get_visible_announcement,
     list_managed_announcements,
+    list_public_announcements,
     list_visible_announcements,
     publish_announcement,
     update_announcement,
 )
 
 router = Router(tags=["announcements"])
+public_router = Router(tags=["announcements"])
 
 
 class StrictSchema(Schema):
@@ -40,6 +43,7 @@ class StrictSchema(Schema):
 
 
 class AnnouncementAudienceValue(StrEnum):
+    PUBLIC = PublicationAudience.PUBLIC
     ALL_AUTHENTICATED = PublicationAudience.ALL_AUTHENTICATED
     STUDENTS = PublicationAudience.STUDENTS
     GCO_PERSONNEL = PublicationAudience.GCO_PERSONNEL
@@ -355,4 +359,44 @@ def announcements_get_visible(request, announcement_id: UUID):
     return _reader(item)
 
 
-__all__ = ["router"]
+@public_router.get(
+    "",
+    response=response_with_errors(AnnouncementReaderPageResponse, 422),
+    operation_id="announcementsListPublic",
+)
+def announcements_list_public(
+    request,
+    pinned: bool | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    try:
+        result = list_public_announcements(
+            pinned=pinned,
+            page=page,
+            page_size=page_size,
+        )
+    except AnnouncementError as exc:
+        _raise(exc)
+    return AnnouncementReaderPageResponse(
+        items=[_reader(item) for item in result.items],
+        page=result.page,
+        page_size=result.page_size,
+        has_next=result.has_next,
+    )
+
+
+@public_router.get(
+    "/{announcement_id}",
+    response=response_with_errors(AnnouncementReaderResponse, 404),
+    operation_id="announcementsGetPublic",
+)
+def announcements_get_public(request, announcement_id: UUID):
+    try:
+        item = get_public_announcement(announcement_id=announcement_id)
+    except AnnouncementError as exc:
+        _raise(exc)
+    return _reader(item)
+
+
+__all__ = ["public_router", "router"]
