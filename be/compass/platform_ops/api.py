@@ -276,11 +276,7 @@ def platform_public_status(request):
         status=PublicPlatformStatus.MAINTENANCE_ACTIVE,
         message=snapshot.message,
         starts_at=snapshot.scheduled_start_at if scheduled else None,
-        ends_at=(
-            snapshot.scheduled_end_at
-            if scheduled
-            else snapshot.manual_expected_end_at
-        ),
+        ends_at=(snapshot.scheduled_end_at if scheduled else snapshot.manual_expected_end_at),
     )
 
 
