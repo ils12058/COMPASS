@@ -20,7 +20,6 @@ export default defineConfig({
         fetch: {
           includeHttpResponseReturnType: true,
           forceSuccessResponse: true,
-          includeHttpErrorResponse: true,
           serializeResponseHeaders: true,
         },
       },
