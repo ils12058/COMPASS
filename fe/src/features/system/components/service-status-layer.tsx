@@ -104,9 +104,10 @@ export function ServiceStatusLayer({
     return { kind: "unknown" };
   }, [query.data, query.isError]);
 
-  const status: ServiceStatusView = online
-    ? backendStatus
-    : { kind: "offline" };
+  const status = useMemo<ServiceStatusView>(
+    () => (online ? backendStatus : { kind: "offline" }),
+    [backendStatus, online],
+  );
 
   useEffect(() => {
     document.documentElement.dataset.compassServiceStatus = status.kind;
