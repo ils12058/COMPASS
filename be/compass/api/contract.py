@@ -75,6 +75,9 @@ OPERATION_ID_PREFIXES = {
     "privacy-governance": "privacyGovernance",
 }
 HTTP_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch"})
+_OPERATION_ID_LOCATION_EXCEPTIONS = {
+    ("get", "/api/v1/platform/status"): "platformPublicStatus",
+}
 
 
 def iter_operations(schema: dict[str, Any]) -> Iterator[tuple[str, str, dict[str, Any]]]:
@@ -130,10 +133,12 @@ def validate_openapi_contract(schema: dict[str, Any]) -> None:
             operation_id[len(expected_prefix) :] if operation_id.startswith(expected_prefix) else ""
         )
         if not suffix or suffix[0] not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
-            problems.append(
-                f"{location} operationId {operation_id!r} must use the {expected_prefix}<Action> "
-                "convention"
-            )
+            allowed_exception = _OPERATION_ID_LOCATION_EXCEPTIONS.get((method, path))
+            if operation_id != allowed_exception:
+                problems.append(
+                    f"{location} operationId {operation_id!r} must use the "
+                    f"{expected_prefix}<Action> convention"
+                )
 
     if operation_count == 0:
         problems.append("schema has no public HTTP operations")
