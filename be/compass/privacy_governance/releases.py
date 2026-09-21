@@ -15,6 +15,8 @@ logger = logging.getLogger("compass.privacy_governance")
 STUDENT_PROFILING_TARGET_TYPE = "reports.studentprofiling"
 GRADUATE_TRACER_TARGET_TYPE = "reports.graduatetracer"
 GOOD_MORAL_TARGET_TYPE = "goodmoral.request"
+REFERRAL_TARGET_TYPE = "referrals.referral"
+CALL_SLIP_TARGET_TYPE = "callslips.callslip"
 
 
 class ReleaseAuditUnavailable(RuntimeError):
@@ -130,12 +132,66 @@ def record_good_moral_release(
     )
 
 
+def record_referral_release(
+    *,
+    context: AuditContext,
+    referral_id,
+    form_revision_id,
+    official_code: str | None,
+    official_revision: str | None,
+) -> None:
+    _record_release(
+        context=context,
+        action=DOCUMENT_DOWNLOAD_RELEASED,
+        target_type=REFERRAL_TARGET_TYPE,
+        target_id=referral_id,
+        metadata={
+            "document_type": "referral_slip",
+            "access_mode": "GCO",
+            "form_revision_id": str(form_revision_id),
+            "official_code": official_code,
+            "official_revision": official_revision,
+        },
+    )
+
+
+def record_call_slip_release(
+    *,
+    context: AuditContext,
+    call_slip_id,
+    access_mode: str,
+    form_revision_id,
+    official_code: str | None,
+    official_revision: str | None,
+) -> None:
+    normalized_access = str(access_mode).strip().upper()
+    if normalized_access not in {"SELF", "GCO"}:
+        raise ValueError("unsupported Call Slip release access mode")
+    _record_release(
+        context=context,
+        action=DOCUMENT_DOWNLOAD_RELEASED,
+        target_type=CALL_SLIP_TARGET_TYPE,
+        target_id=call_slip_id,
+        metadata={
+            "document_type": "call_slip",
+            "access_mode": normalized_access,
+            "form_revision_id": str(form_revision_id),
+            "official_code": official_code,
+            "official_revision": official_revision,
+        },
+    )
+
+
 __all__ = [
+    "CALL_SLIP_TARGET_TYPE",
     "GOOD_MORAL_TARGET_TYPE",
     "GRADUATE_TRACER_TARGET_TYPE",
+    "REFERRAL_TARGET_TYPE",
     "ReleaseAuditUnavailable",
     "STUDENT_PROFILING_TARGET_TYPE",
+    "record_call_slip_release",
     "record_good_moral_release",
     "record_graduate_tracer_release",
+    "record_referral_release",
     "record_student_profiling_release",
 ]

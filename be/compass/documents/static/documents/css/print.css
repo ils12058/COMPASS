@@ -229,3 +229,30 @@ body {
 .good-moral-controlled-footer {
   margin-top: 10mm;
 }
+
+
+/* Compact controlled forms: Referral Slip and Interview Permit / Call Slip. */
+.official-form { font-size: 9.5pt; }
+.official-form-title { margin: 0 0 7mm; text-align: center; font-size: 13pt; letter-spacing: 0.2mm; }
+.document-state-banner { margin: 0 auto 4mm; padding: 1.5mm 4mm; border: 0.5mm solid #111; text-align: center; font-weight: 700; letter-spacing: 0.8mm; }
+.document-state-banner.subtle { border-width: 0.25mm; font-size: 8.5pt; }
+.official-form-grid { display: grid; grid-template-columns: 38mm 1fr; gap: 2mm 4mm; align-items: end; margin-bottom: 4mm; }
+.official-form-grid.compact { grid-template-columns: 22mm 1fr; margin-bottom: 2mm; }
+.official-form-label { font-weight: 600; }
+.official-form-value { min-height: 5mm; padding: 0 1mm 0.5mm; border-bottom: 0.25mm solid #333; }
+.official-form-section { margin: 5mm 0; }
+.official-form-long-text { min-height: 32mm; margin-top: 1.5mm; padding: 2mm; border: 0.25mm solid #777; white-space: normal; }
+.official-form-two-column, .call-slip-report { display: grid; grid-template-columns: 1fr 1fr; gap: 12mm; margin: 5mm 0; }
+.official-form-subheading { margin: 8mm 0 4mm; padding-top: 3mm; border-top: 0.25mm solid #777; text-align: center; font-style: italic; }
+.official-form-table { width: 100%; border-collapse: collapse; margin: 4mm 0; }
+.official-form-table th, .official-form-table td { border: 0.25mm solid #777; padding: 1.5mm 2mm; vertical-align: top; }
+.official-form-table th { text-align: center; }
+.official-form-table th:first-child, .official-form-table td:first-child { width: 45%; }
+.check-box { display: inline-flex; width: 4mm; height: 4mm; margin-right: 1.5mm; border: 0.25mm solid #333; align-items: center; justify-content: center; font-size: 8pt; line-height: 1; }
+.signature-block { width: 76mm; margin: 9mm auto 7mm; text-align: center; }
+.signature-line { min-height: 6mm; padding: 0 2mm 0.5mm; border-bottom: 0.25mm solid #333; text-align: center; }
+.signature-caption { margin-top: 1mm; text-align: center; font-size: 8.5pt; }
+.call-slip-destination { margin-top: 2mm; }
+.call-slip-instruction { margin: 6mm auto; max-width: 155mm; text-align: center; font-style: italic; }
+.status-row { margin-top: 5mm; }
+.void-reason { margin-top: 4mm; padding: 2mm; border: 0.25mm solid #777; }

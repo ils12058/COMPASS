@@ -93,6 +93,7 @@ ANNOUNCEMENT_ARCHIVED = "announcement.archived"
 RESOURCE_CREATED = "resource.created"
 RESOURCE_UPDATED = "resource.updated"
 RESOURCE_FILE_ATTACHED = "resource.file_attached"
+RESOURCE_FILE_REMOVED = "resource.file_removed"
 RESOURCE_PUBLISHED = "resource.published"
 RESOURCE_ARCHIVED = "resource.archived"
 PLATFORM_MAINTENANCE_ENABLED = "platform.maintenance.enabled"
@@ -214,6 +215,7 @@ __all__ = [
     "RESOURCE_CREATED",
     "RESOURCE_UPDATED",
     "RESOURCE_FILE_ATTACHED",
+    "RESOURCE_FILE_REMOVED",
     "RESOURCE_PUBLISHED",
     "RESOURCE_ARCHIVED",
     "PLATFORM_MAINTENANCE_ENABLED",

@@ -1,0 +1,44 @@
+{% extends "documents/layouts/compact_form.html" %}
+{% block title %}Referral Slip{% endblock %}
+{% block body %}
+<section class="official-form referral-slip">
+  {% if referral.is_voided %}<div class="document-state-banner">VOIDED</div>{% endif %}
+  <h1 class="official-form-title">REFERRAL SLIP</h1>
+  <div class="official-form-grid">
+    <div class="official-form-label">Name of Student</div><div class="official-form-value">{{ referral.student_name }}</div>
+    <div class="official-form-label">Course/Yr &amp; Blk</div><div class="official-form-value">{{ referral.course_year_block }}</div>
+  </div>
+  <div class="official-form-section">
+    <div class="official-form-label">Reason/s for Referral</div>
+    <div class="official-form-long-text">{{ referral.reason|linebreaksbr }}</div>
+  </div>
+  <div class="official-form-two-column">
+    <div>
+      <div class="signature-line">{{ referral.referrer_name }}</div>
+      <div class="signature-caption">Referrer / Printed Name</div>
+      <div class="official-form-grid compact"><div class="official-form-label">Date</div><div class="official-form-value">{{ referral.referred_on|date:"M j, Y" }}</div></div>
+    </div>
+    <div class="official-form-grid compact">
+      <div class="official-form-label">Received</div><div class="official-form-value">{% if referral.received_date %}{{ referral.received_date|date:"M j, Y" }}{% else %}—{% endif %}</div>
+      <div class="official-form-label">Time</div><div class="official-form-value">{% if referral.received_time %}{{ referral.received_time|time:"g:i A" }}{% else %}—{% endif %}</div>
+    </div>
+  </div>
+  <div class="official-form-subheading">(To be filled up by Guidance/Coordinator)</div>
+  <div class="official-form-grid"><div class="official-form-label">Student Reference No.</div><div class="official-form-value">{{ referral.reference_code }}</div></div>
+  <table class="official-form-table">
+    <thead><tr><th>Action Taken</th><th>Date</th><th>Time</th><th>Remarks</th></tr></thead>
+    <tbody>
+      {% for action in referral.actions %}
+      <tr>
+        <td><span class="check-box">{% if action.recorded %}✓{% endif %}</span>{{ action.label }}</td>
+        <td>{% if action.date %}{{ action.date|date:"M j, Y" }}{% endif %}</td>
+        <td>{% if action.time %}{{ action.time|time:"g:i A" }}{% endif %}</td>
+        <td>{{ action.remarks }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="official-form-grid status-row"><div class="official-form-label">STATUS</div><div class="official-form-value">{{ referral.status_note|default:"—" }}</div></div>
+  {% if referral.is_voided %}<div class="void-reason"><strong>Void reason:</strong> {{ referral.void_reason }}</div>{% endif %}
+</section>
+{% endblock %}

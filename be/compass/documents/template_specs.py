@@ -44,6 +44,22 @@ _TEMPLATE_SPECS = {
         include_accreditation_footer=False,
         show_page_numbers=False,
     ),
+    ("referral_slip", 1): DocumentTemplateSpec(
+        key="referral_slip",
+        version=1,
+        template_name="documents/referrals/referral_slip.html",
+        layout_family=LayoutFamily.COMPACT_FORM,
+        include_accreditation_footer=False,
+        show_page_numbers=False,
+    ),
+    ("call_slip", 1): DocumentTemplateSpec(
+        key="call_slip",
+        version=1,
+        template_name="documents/call_slips/call_slip.html",
+        layout_family=LayoutFamily.COMPACT_FORM,
+        include_accreditation_footer=False,
+        show_page_numbers=False,
+    ),
     ("student_profiling_report", 1): DocumentTemplateSpec(
         key="student_profiling_report",
         version=1,

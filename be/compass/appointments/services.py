@@ -130,6 +130,25 @@ class EligibleCounselor:
 
 
 @dataclass(frozen=True, slots=True)
+class BookableSlot:
+    starts_at: datetime
+    ends_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class BookableSlotList:
+    date: date
+    timezone_name: str
+    duration_minutes: int
+    items: tuple[BookableSlot, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class AppointmentReassignmentCandidate:
+    user: User
+
+
+@dataclass(frozen=True, slots=True)
 class AppointmentHistoryEntry:
     event_type: str
     occurred_at: datetime
@@ -414,6 +433,121 @@ def _has_overlap(
     return queryset.exists()
 
 
+def _candidate_slots(
+    *,
+    windows,
+    duration: timedelta,
+    provider_id: UUID,
+    student_id: UUID,
+    now: datetime,
+    exclude_appointment_id: UUID | None = None,
+) -> tuple[BookableSlot, ...]:
+    if duration <= timedelta(0):
+        raise AppointmentNotSchedulable("The Appointment duration must be positive.")
+    items: list[BookableSlot] = []
+    local_now = now.astimezone(_institution_zone())
+    for window in windows:
+        starts_at = window.starts_at
+        while starts_at + duration <= window.ends_at:
+            ends_at = starts_at + duration
+            if (
+                starts_at > local_now
+                and not _has_overlap(
+                    field="provider_id",
+                    user_id=provider_id,
+                    starts_at=starts_at,
+                    ends_at=ends_at,
+                    exclude_appointment_id=exclude_appointment_id,
+                )
+                and not _has_overlap(
+                    field="student_id",
+                    user_id=student_id,
+                    starts_at=starts_at,
+                    ends_at=ends_at,
+                    exclude_appointment_id=exclude_appointment_id,
+                )
+            ):
+                items.append(
+                    BookableSlot(
+                        starts_at=starts_at,
+                        ends_at=ends_at,
+                    )
+                )
+            starts_at = ends_at
+    return tuple(items)
+
+
+def _base_slot_windows(
+    *,
+    provider_id: UUID,
+    service_id: UUID,
+    delivery_mode: str,
+    target_date: date,
+):
+    if not isinstance(target_date, date) or isinstance(target_date, datetime):
+        raise InvalidAppointmentInput("date must be a calendar date.")
+    try:
+        return compute_base_availability(
+            provider_id=provider_id,
+            service_id=service_id,
+            delivery_mode=delivery_mode,
+            start_date=target_date,
+            end_date=target_date + timedelta(days=1),
+        )
+    except AvailabilityError as exc:
+        raise AppointmentTimeUnavailable(
+            "Current Availability could not provide bookable times for the requested date."
+        ) from exc
+
+
+def list_bookable_slots(
+    *,
+    student: User,
+    service_id: UUID,
+    provider_id: UUID,
+    delivery_mode: str,
+    target_date: date,
+    now: datetime | None = None,
+) -> BookableSlotList:
+    if not is_current_student(student):
+        raise AppointmentCurrentStudentRequired(
+            "Current Student lifecycle is required to discover bookable Appointment times."
+        )
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+    normalized_mode = _normalized_delivery_mode(delivery_mode)
+    provider = User.objects.select_related("role").filter(pk=provider_id).first()
+    if provider is None:
+        raise AppointmentNotSchedulable("The selected Counselor is not available for booking.")
+    _validate_booking_users(student, provider)
+    service = Service.objects.filter(pk=service_id).first()
+    if service is None:
+        raise AppointmentNotSchedulable("The selected Service was not found.")
+    _validate_booking_service(service, provider, normalized_mode)
+    _validate_inventory_prerequisite(service, student)
+    assert service.default_duration_minutes is not None
+    duration = timedelta(minutes=service.default_duration_minutes)
+    base = _base_slot_windows(
+        provider_id=provider.pk,
+        service_id=service.pk,
+        delivery_mode=normalized_mode,
+        target_date=target_date,
+    )
+    return BookableSlotList(
+        date=target_date,
+        timezone_name=base.timezone_name,
+        duration_minutes=service.default_duration_minutes,
+        items=_candidate_slots(
+            windows=base.windows,
+            duration=duration,
+            provider_id=provider.pk,
+            student_id=student.pk,
+            now=current,
+        ),
+    )
+
+
 def _clean_change_reason(value: str | None, *, required: bool) -> str:
     if value is None:
         if required:
@@ -662,6 +796,79 @@ def cancel_appointment(
         return _appointment_queryset().get(pk=item.pk)
 
 
+def list_reschedule_slots(
+    *,
+    appointment_id: UUID,
+    actor: User,
+    target_date: date,
+    administrative: bool,
+    now: datetime | None = None,
+) -> BookableSlotList:
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+    item = _appointment_queryset().filter(pk=appointment_id).first()
+    if item is None:
+        raise AppointmentNotFound("The requested Appointment was not found.")
+
+    if administrative:
+        _require_management_access(actor=actor, item=item)
+    else:
+        if (
+            not actor.is_active
+            or actor.role.code != "STUDENT"
+            or actor.pk != item.student_id
+            or not actor.has_capability("appointments.manage_self")
+        ):
+            raise AppointmentNotFound("The requested Appointment was not found.")
+        if not is_current_student(actor):
+            raise AppointmentCurrentStudentRequired(
+                "Current Student lifecycle is required to reschedule an Appointment."
+            )
+
+    _require_scheduled_before_start(item, now=current)
+    if not administrative and item.cancellation_cutoff_minutes is not None:
+        boundary = item.starts_at - timedelta(minutes=item.cancellation_cutoff_minutes)
+        if current > boundary:
+            raise AppointmentLifecycleConflict("The Appointment reschedule cutoff has passed.")
+
+    from compass.ecounseling.models import ECounselingRoom
+
+    if ECounselingRoom.objects.filter(appointment_id=item.pk).exists():
+        raise AppointmentLifecycleConflict(
+            "This Appointment already has an E-Counseling room binding and cannot be rescheduled."
+        )
+
+    _validate_existing_service(
+        service=item.service,
+        provider=item.provider,
+        delivery_mode=item.delivery_mode,
+    )
+    duration = item.ends_at - item.starts_at
+    duration_minutes = int(duration.total_seconds() // 60)
+    if duration_minutes <= 0 or duration != timedelta(minutes=duration_minutes):
+        raise AppointmentNotSchedulable("The saved Appointment duration is invalid.")
+    base = _base_slot_windows(
+        provider_id=item.provider_id,
+        service_id=item.service_id,
+        delivery_mode=item.delivery_mode,
+        target_date=target_date,
+    )
+    return BookableSlotList(
+        date=target_date,
+        timezone_name=base.timezone_name,
+        duration_minutes=duration_minutes,
+        items=_candidate_slots(
+            windows=base.windows,
+            duration=duration,
+            provider_id=item.provider_id,
+            student_id=item.student_id,
+            now=current,
+            exclude_appointment_id=item.pk,
+        ),
+    )
+
+
 def reschedule_appointment(
     *,
     appointment_id: UUID,
@@ -797,6 +1004,25 @@ def reschedule_appointment(
         return _appointment_queryset().get(pk=item.pk)
 
 
+def _require_reassignment_relationships_clear(item: Appointment) -> None:
+    from compass.counseling.models import CounselingEncounter
+    from compass.ecounseling.models import ECounselingRoom
+    from compass.routine_interviews.models import RoutineInterview
+
+    if RoutineInterview.objects.filter(appointment_id=item.pk).exists():
+        raise AppointmentLifecycleConflict(
+            "An Appointment with a Routine Interview cannot be reassigned."
+        )
+    if CounselingEncounter.objects.filter(appointment_id=item.pk).exists():
+        raise AppointmentLifecycleConflict(
+            "An Appointment with a Counseling Encounter cannot be reassigned."
+        )
+    if ECounselingRoom.objects.filter(appointment_id=item.pk).exists():
+        raise AppointmentLifecycleConflict(
+            "An Appointment with an E-Counseling room cannot be reassigned."
+        )
+
+
 def reassign_appointment(
     *,
     appointment_id: UUID,
@@ -826,22 +1052,7 @@ def reassign_appointment(
         if provider_id == item.provider_id:
             return _appointment_queryset().get(pk=item.pk)
 
-        from compass.counseling.models import CounselingEncounter
-        from compass.ecounseling.models import ECounselingRoom
-        from compass.routine_interviews.models import RoutineInterview
-
-        if RoutineInterview.objects.filter(appointment_id=item.pk).exists():
-            raise AppointmentLifecycleConflict(
-                "An Appointment with a Routine Interview cannot be reassigned."
-            )
-        if CounselingEncounter.objects.filter(appointment_id=item.pk).exists():
-            raise AppointmentLifecycleConflict(
-                "An Appointment with a Counseling Encounter cannot be reassigned."
-            )
-        if ECounselingRoom.objects.filter(appointment_id=item.pk).exists():
-            raise AppointmentLifecycleConflict(
-                "An Appointment with an E-Counseling room cannot be reassigned."
-            )
+        _require_reassignment_relationships_clear(item)
 
         new_provider = (
             User.objects.select_for_update().select_related("role").filter(pk=provider_id).first()
@@ -908,6 +1119,59 @@ def reassign_appointment(
                 target_id=item.pk,
             )
         return _appointment_queryset().get(pk=item.pk)
+
+
+def list_reassignment_candidates(
+    *,
+    appointment_id: UUID,
+    actor: User,
+    now: datetime | None = None,
+) -> tuple[AppointmentReassignmentCandidate, ...]:
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+    item = _appointment_queryset().filter(pk=appointment_id).first()
+    if item is None:
+        raise AppointmentNotFound("The requested Appointment was not found.")
+    _require_management_access(actor=actor, item=item)
+    _require_scheduled_before_start(item, now=current)
+    _require_reassignment_relationships_clear(item)
+    _validate_existing_service(
+        service=item.service,
+        provider=item.provider,
+        delivery_mode=item.delivery_mode,
+    )
+
+    candidates: list[AppointmentReassignmentCandidate] = []
+    providers = (
+        User.objects.filter(is_active=True, role__code="COUNSELOR")
+        .exclude(pk=item.provider_id)
+        .select_related("role")
+        .order_by("last_name", "first_name", "id")
+    )
+    for provider in providers:
+        if not provider_role_eligible(item.service, provider):
+            continue
+        if not _interval_is_available(
+            provider_id=provider.pk,
+            service_id=item.service_id,
+            delivery_mode=item.delivery_mode,
+            starts_at=item.starts_at,
+            ends_at=item.ends_at,
+        ):
+            continue
+        if _has_overlap(
+            field="provider_id",
+            user_id=provider.pk,
+            starts_at=item.starts_at,
+            ends_at=item.ends_at,
+            exclude_appointment_id=item.pk,
+        ):
+            continue
+        candidates.append(AppointmentReassignmentCandidate(user=provider))
+        if len(candidates) >= MAX_ELIGIBLE_COUNSELORS:
+            break
+    return tuple(candidates)
 
 
 def complete_appointment(

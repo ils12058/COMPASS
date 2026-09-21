@@ -1,0 +1,32 @@
+{% extends "documents/layouts/compact_form.html" %}
+{% block title %}Interview Permit / Call Slip{% endblock %}
+{% block body %}
+<section class="official-form call-slip">
+  {% if call_slip.is_voided %}
+    <div class="document-state-banner">VOIDED</div>
+  {% elif call_slip.state == "COMPLETED" %}
+    <div class="document-state-banner subtle">COMPLETED</div>
+  {% endif %}
+  <h1 class="official-form-title">INTERVIEW PERMIT / CALL SLIP</h1>
+  <div class="official-form-grid">
+    <div class="official-form-label">Name</div><div class="official-form-value">{{ call_slip.student_name }}</div>
+    <div class="official-form-label">Course/Year</div><div class="official-form-value">{{ call_slip.course_year }}</div>
+  </div>
+  <div class="call-slip-report">
+    <div><div class="official-form-label">Please report to:</div><div class="call-slip-destination"><span class="check-box">✓</span>{{ call_slip.destination }}</div></div>
+    <div class="official-form-grid compact">
+      <div class="official-form-label">Date</div><div class="official-form-value">{{ call_slip.report_date|date:"M j, Y" }}</div>
+      <div class="official-form-label">Time</div><div class="official-form-value">{{ call_slip.report_time|time:"g:i A" }}</div>
+    </div>
+  </div>
+  <p class="call-slip-instruction">Show this permit to your instructor/professor to seek approval and proceed to the Guidance Counselor's Office.</p>
+  <div class="signature-block"><div class="signature-line">{{ call_slip.issued_by_name }}</div><div class="signature-caption">Guidance Counselor</div></div>
+  <div class="official-form-grid"><div class="official-form-label">Interview Ended</div><div class="official-form-value">{% if call_slip.interview_ended_at %}{{ call_slip.interview_ended_at|date:"M j, Y" }} {{ call_slip.interview_ended_at|time:"g:i A" }}{% else %}—{% endif %}</div></div>
+  {% if call_slip.show_operational_metadata and call_slip.referral_reference %}
+    <div class="official-form-grid compact"><div class="official-form-label">Linked Referral</div><div class="official-form-value">{{ call_slip.referral_reference }}</div></div>
+  {% endif %}
+  {% if call_slip.show_operational_metadata and call_slip.is_voided and call_slip.void_reason %}
+    <div class="void-reason"><strong>Void reason:</strong> {{ call_slip.void_reason }}</div>
+  {% endif %}
+</section>
+{% endblock %}

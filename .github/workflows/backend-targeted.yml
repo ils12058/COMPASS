@@ -173,6 +173,7 @@ jobs:
           tests/test_availability.py
           tests/test_idempotency.py
           tests/test_openapi_contract.py
+          tests/test_final_api_ergonomics.py
       - name: Contract check
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         working-directory: be
