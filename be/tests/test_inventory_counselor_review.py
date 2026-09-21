@@ -324,6 +324,41 @@ def test_inventory_roster_scope_missing_filters_search_and_draft_privacy():
     assert searched.status_code == 200
     assert [row["inventory_id"] for row in searched.json()["items"]] == [str(submitted.pk)]
 
+    exact_student = client.get(
+        "/api/v1/inventory/students",
+        {"student_id": str(submitted_student.pk)},
+    )
+    assert exact_student.status_code == 200
+    assert [row["student"]["id"] for row in exact_student.json()["items"]] == [
+        str(submitted_student.pk)
+    ]
+
+    combined = client.get(
+        "/api/v1/inventory/students",
+        {
+            "student_id": str(submitted_student.pk),
+            "academic_year_id": str(current.pk),
+            "status": "SUBMITTED",
+            "search": "A1-001",
+        },
+    )
+    assert combined.status_code == 200
+    assert [row["inventory_id"] for row in combined.json()["items"]] == [str(submitted.pk)]
+
+    out_of_scope_id = client.get(
+        "/api/v1/inventory/students",
+        {"student_id": str(b1_student.pk)},
+    )
+    assert out_of_scope_id.status_code == 200
+    assert out_of_scope_id.json()["items"] == []
+
+    out_of_scope_search = client.get(
+        "/api/v1/inventory/students",
+        {"search": "B1-001"},
+    )
+    assert out_of_scope_search.status_code == 200
+    assert out_of_scope_search.json()["items"] == []
+
     missing = client.get("/api/v1/inventory/students", {"status": "MISSING"})
     assert missing.status_code == 200
     assert [row["student"]["id"] for row in missing.json()["items"]] == [str(missing_student.pk)]

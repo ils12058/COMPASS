@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 import pytest
 from django.core.management import call_command
@@ -513,3 +514,159 @@ def test_feedback_has_no_normal_update_or_delete_endpoints():
         f"/api/v1/feedback/csm/responses/{csm_id}",
         **headers,
     ).status_code in {404, 405}
+
+
+@pytest.mark.django_db
+def test_customer_feedback_review_filters_name_service_dates_and_pagination():
+    sync_policy()
+    alpha = make_user("review-alpha-feedback@example.edu")
+    alpha.first_name = "Alice"
+    alpha.last_name = "Reviewer"
+    alpha.save(update_fields=["first_name", "last_name", "updated_at"])
+    alpha_client = auth_client(alpha)
+    alpha_id = post_json(
+        alpha_client,
+        "/api/v1/feedback/customer-feedback",
+        valid_f14_payload(),
+    ).json()["id"]
+
+    beta = make_user("review-beta-feedback@example.edu")
+    beta.first_name = "Bruno"
+    beta.last_name = "Reviewer"
+    beta.save(update_fields=["first_name", "last_name", "updated_at"])
+    beta_payload = valid_f14_payload()
+    beta_payload["services_received"] = ["ADMISSION"]
+    beta_id = post_json(
+        auth_client(beta),
+        "/api/v1/feedback/customer-feedback",
+        beta_payload,
+    ).json()["id"]
+
+    zone = timezone.get_current_timezone()
+    CustomerFeedbackResponse.objects.filter(pk=alpha_id).update(
+        submitted_at=timezone.make_aware(datetime(2026, 9, 20, 23, 59), zone)
+    )
+    CustomerFeedbackResponse.objects.filter(pk=beta_id).update(
+        submitted_at=timezone.make_aware(datetime(2026, 9, 21, 0, 0), zone)
+    )
+
+    head = auth_client(make_head("review-feedback-head@example.edu"))
+    searched = head.get(
+        "/api/v1/feedback/customer-feedback/responses",
+        {"search": "alice"},
+    )
+    assert searched.status_code == 200
+    assert [row["id"] for row in searched.json()["items"]] == [alpha_id]
+
+    service = head.get(
+        "/api/v1/feedback/customer-feedback/responses",
+        {"service": "REQUEST_FOR_CERTIFICATION"},
+    )
+    assert service.status_code == 200
+    assert [row["id"] for row in service.json()["items"]] == [alpha_id]
+
+    from_date = head.get(
+        "/api/v1/feedback/customer-feedback/responses",
+        {"submitted_from": "2026-09-21"},
+    )
+    assert [row["id"] for row in from_date.json()["items"]] == [beta_id]
+
+    to_date = head.get(
+        "/api/v1/feedback/customer-feedback/responses",
+        {"submitted_to": "2026-09-20"},
+    )
+    assert [row["id"] for row in to_date.json()["items"]] == [alpha_id]
+
+    paged = head.get(
+        "/api/v1/feedback/customer-feedback/responses",
+        {"page_size": 1},
+    )
+    assert paged.status_code == 200
+    assert len(paged.json()["items"]) == 1
+    assert paged.json()["has_next"] is True
+
+    reversed_range = head.get(
+        "/api/v1/feedback/customer-feedback/responses",
+        {"submitted_from": "2026-09-22", "submitted_to": "2026-09-21"},
+    )
+    assert reversed_range.status_code == 422
+    assert reversed_range.json()["error"]["code"] == "invalid_feedback_request"
+
+    overlong = head.get(
+        "/api/v1/feedback/customer-feedback/responses",
+        {"search": "x" * 161},
+    )
+    assert overlong.status_code == 422
+    assert head.get(
+        f"/api/v1/feedback/customer-feedback/responses/{alpha_id}"
+    ).status_code == 200
+
+
+@pytest.mark.django_db
+def test_csm_review_filters_service_dates_and_preserves_client_type_contract():
+    sync_policy()
+    student = make_user("review-csm@example.edu")
+    client = auth_client(student)
+
+    first = valid_csm_payload()
+    first["client_type"] = "CITIZEN"
+    first["service_availed"] = "Guidance Consultation and Counseling"
+    first_id = post_json(client, "/api/v1/feedback/csm", first).json()["id"]
+
+    second = valid_csm_payload()
+    second["client_type"] = "BUSINESS"
+    second["service_availed"] = "Document Certification"
+    second_id = post_json(client, "/api/v1/feedback/csm", second).json()["id"]
+
+    zone = timezone.get_current_timezone()
+    ClientSatisfactionResponse.objects.filter(pk=first_id).update(
+        submitted_at=timezone.make_aware(datetime(2026, 9, 20, 23, 59), zone)
+    )
+    ClientSatisfactionResponse.objects.filter(pk=second_id).update(
+        submitted_at=timezone.make_aware(datetime(2026, 9, 21, 0, 0), zone)
+    )
+
+    head = auth_client(make_head("review-csm-head@example.edu"))
+    service = head.get(
+        "/api/v1/feedback/csm/responses",
+        {"service": "gUiDaNcE"},
+    )
+    assert service.status_code == 200
+    assert [row["id"] for row in service.json()["items"]] == [first_id]
+
+    client_type = head.get(
+        "/api/v1/feedback/csm/responses",
+        {"client_type": "BUSINESS"},
+    )
+    assert [row["id"] for row in client_type.json()["items"]] == [second_id]
+
+    from_date = head.get(
+        "/api/v1/feedback/csm/responses",
+        {"submitted_from": "2026-09-21"},
+    )
+    assert [row["id"] for row in from_date.json()["items"]] == [second_id]
+
+    to_date = head.get(
+        "/api/v1/feedback/csm/responses",
+        {"submitted_to": "2026-09-20"},
+    )
+    assert [row["id"] for row in to_date.json()["items"]] == [first_id]
+
+    paged = head.get("/api/v1/feedback/csm/responses", {"page_size": 1})
+    assert paged.status_code == 200
+    assert len(paged.json()["items"]) == 1
+    assert paged.json()["has_next"] is True
+
+    reversed_range = head.get(
+        "/api/v1/feedback/csm/responses",
+        {"submitted_from": "2026-09-22", "submitted_to": "2026-09-21"},
+    )
+    assert reversed_range.status_code == 422
+    assert reversed_range.json()["error"]["code"] == "invalid_feedback_request"
+
+    overlong_service = head.get(
+        "/api/v1/feedback/csm/responses",
+        {"service": "x" * 256},
+    )
+    assert overlong_service.status_code == 422
+    assert head.get(f"/api/v1/feedback/csm/responses/{first_id}").status_code == 200

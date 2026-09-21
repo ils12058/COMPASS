@@ -129,6 +129,7 @@ jobs:
           tests/test_profiles.py
           tests/test_profile_photos.py
           tests/test_inventory.py
+          tests/test_inventory_counselor_review.py
           tests/test_inventory_counseling_regression.py
           tests/test_good_moral.py
           tests/test_feedback.py

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 import pytest
 from django.apps import apps
@@ -536,3 +537,135 @@ def test_server_owned_fields_and_unsupported_source_values_are_rejected():
     invalid = valid_unemployed_payload()
     invalid["region_of_origin"] = "BARMM"
     assert put_json(client, "/api/v1/graduate-tracer/me", invalid).status_code == 422
+
+
+@pytest.mark.django_db
+def test_submitted_review_list_filters_identity_dates_employment_and_preserves_draft_privacy():
+    sync_policy()
+    alpha = make_user("review-alpha-gts@example.edu")
+    alpha.institutional_id = "GTS-2026-ALPHA"
+    alpha.first_name = "Alpha"
+    alpha.middle_name = "Middlemark"
+    alpha.last_name = "Tracer"
+    alpha.save(
+        update_fields=[
+            "institutional_id",
+            "first_name",
+            "middle_name",
+            "last_name",
+            "updated_at",
+        ]
+    )
+    alpha_client = auth_client(alpha)
+    assert post_empty(alpha_client, "/api/v1/graduate-tracer/me").status_code == 200
+    alpha_payload = valid_employed_payload()
+    alpha_payload["name"] = "Historical Alpha Graduate"
+    assert put_json(alpha_client, "/api/v1/graduate-tracer/me", alpha_payload).status_code == 200
+    alpha_id = post_empty(alpha_client, "/api/v1/graduate-tracer/me/submit").json()["id"]
+
+    beta = make_user("review-beta-gts@example.edu")
+    beta.institutional_id = "GTS-2026-BETA"
+    beta.first_name = "Beta"
+    beta.last_name = "Tracer"
+    beta.save(
+        update_fields=[
+            "institutional_id",
+            "first_name",
+            "last_name",
+            "updated_at",
+        ]
+    )
+    beta_client = auth_client(beta)
+    assert post_empty(beta_client, "/api/v1/graduate-tracer/me").status_code == 200
+    beta_payload = valid_unemployed_payload()
+    beta_payload["name"] = "Historical Beta Graduate"
+    assert put_json(beta_client, "/api/v1/graduate-tracer/me", beta_payload).status_code == 200
+    beta_id = post_empty(beta_client, "/api/v1/graduate-tracer/me/submit").json()["id"]
+
+    draft = make_user("review-draft-gts@example.edu")
+    draft.institutional_id = "GTS-2026-DRAFT"
+    draft.save(update_fields=["institutional_id", "updated_at"])
+    assert post_empty(auth_client(draft), "/api/v1/graduate-tracer/me").status_code == 200
+
+    zone = timezone.get_current_timezone()
+    alpha_submitted = timezone.make_aware(datetime(2026, 9, 20, 23, 59), zone)
+    beta_submitted = timezone.make_aware(datetime(2026, 9, 21, 0, 0), zone)
+    GraduateTracerResponse.objects.filter(pk=alpha_id).update(submitted_at=alpha_submitted)
+    GraduateTracerResponse.objects.filter(pk=beta_id).update(submitted_at=beta_submitted)
+
+    head = auth_client(make_head("review-list-gts-head@example.edu"))
+    for term in (
+        "GTS-2026-ALPHA",
+        "Alpha",
+        "Middlemark",
+        "Tracer",
+        "Historical Alpha Graduate",
+    ):
+        response = head.get("/api/v1/graduate-tracer/responses", {"search": term})
+        assert response.status_code == 200
+        assert alpha_id in [row["id"] for row in response.json()["items"]]
+
+    exact = head.get(
+        "/api/v1/graduate-tracer/responses",
+        {"student_id": str(alpha.pk)},
+    )
+    assert exact.status_code == 200
+    assert [row["id"] for row in exact.json()["items"]] == [alpha_id]
+    summary = exact.json()["items"][0]
+    assert summary["student_id"] == str(alpha.pk)
+    assert summary["student"] == {
+        "id": str(alpha.pk),
+        "institutional_id": "GTS-2026-ALPHA",
+        "display_name": "Alpha Middlemark Tracer",
+    }
+    assert summary["name"] == "Historical Alpha Graduate"
+
+    from_date = head.get(
+        "/api/v1/graduate-tracer/responses",
+        {"submitted_from": "2026-09-21"},
+    )
+    assert [row["id"] for row in from_date.json()["items"]] == [beta_id]
+
+    to_date = head.get(
+        "/api/v1/graduate-tracer/responses",
+        {"submitted_to": "2026-09-20"},
+    )
+    assert [row["id"] for row in to_date.json()["items"]] == [alpha_id]
+
+    combined_dates = head.get(
+        "/api/v1/graduate-tracer/responses",
+        {"submitted_from": "2026-09-20", "submitted_to": "2026-09-20"},
+    )
+    assert [row["id"] for row in combined_dates.json()["items"]] == [alpha_id]
+
+    employed = head.get(
+        "/api/v1/graduate-tracer/responses",
+        {"current_employment_state": "EMPLOYED"},
+    )
+    assert [row["id"] for row in employed.json()["items"]] == [alpha_id]
+
+    draft_search = head.get(
+        "/api/v1/graduate-tracer/responses",
+        {"search": "GTS-2026-DRAFT"},
+    )
+    assert draft_search.status_code == 200
+    assert draft_search.json()["items"] == []
+
+    paged = head.get("/api/v1/graduate-tracer/responses", {"page_size": 1})
+    assert paged.status_code == 200
+    assert len(paged.json()["items"]) == 1
+    assert paged.json()["has_next"] is True
+
+    reversed_range = head.get(
+        "/api/v1/graduate-tracer/responses",
+        {"submitted_from": "2026-09-22", "submitted_to": "2026-09-21"},
+    )
+    assert reversed_range.status_code == 422
+    assert reversed_range.json()["error"]["code"] == "invalid_graduate_tracer_request"
+
+    overlong = head.get(
+        "/api/v1/graduate-tracer/responses",
+        {"search": "x" * 161},
+    )
+    assert overlong.status_code == 422
+    assert overlong.json()["error"]["code"] == "invalid_graduate_tracer_request"

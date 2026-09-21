@@ -337,6 +337,31 @@ def test_referral_scope_is_current_organization_scope_without_assigned_counselor
     head = make_head()
     now = timezone.now()
 
+    student_a.institutional_id = "REF-A-001"
+    student_a.first_name = "Alpha"
+    student_a.middle_name = "ReferralMiddle"
+    student_a.last_name = "Student"
+    student_a.save(
+        update_fields=[
+            "institutional_id",
+            "first_name",
+            "middle_name",
+            "last_name",
+            "updated_at",
+        ]
+    )
+    student_b.institutional_id = "REF-B-001"
+    student_b.first_name = "Beta"
+    student_b.last_name = "Outside"
+    student_b.save(
+        update_fields=[
+            "institutional_id",
+            "first_name",
+            "last_name",
+            "updated_at",
+        ]
+    )
+
     a = create_for(counselor_a, student_a, key="a", fingerprint="a" * 64, now=now)
     b = create_for(counselor_b, student_b, key="b", fingerprint="b" * 64, now=now)
     gss_item = create_for(gss, student_a, key="gss", fingerprint="c" * 64, now=now)
@@ -345,6 +370,40 @@ def test_referral_scope_is_current_organization_scope_without_assigned_counselor
     assert {item.pk for item in list_referrals(actor=gss).items} == {a.pk, gss_item.pk}
     assert {item.pk for item in list_referrals(actor=counselor_b).items} == {b.pk}
     assert {item.pk for item in list_referrals(actor=head).items} == {a.pk, b.pk, gss_item.pk}
+
+    student_a.first_name = "Current"
+    student_a.middle_name = "LiveMiddle"
+    student_a.last_name = "Identity"
+    student_a.save(
+        update_fields=[
+            "first_name",
+            "middle_name",
+            "last_name",
+            "updated_at",
+        ]
+    )
+
+    assert [item.pk for item in list_referrals(actor=counselor_a, search=a.reference_code).items] == [
+        a.pk
+    ]
+    for term in ("REF-A-001", "Current", "LiveMiddle", "Identity", "Alpha ReferralMiddle"):
+        assert {item.pk for item in list_referrals(actor=counselor_a, search=term).items} == {
+            a.pk,
+            gss_item.pk,
+        }
+    assert {item.pk for item in list_referrals(actor=counselor_a, student_id=student_a.pk).items} == {
+        a.pk,
+        gss_item.pk,
+    }
+    assert list_referrals(actor=counselor_a, search="REF-B-001").items == ()
+    assert list_referrals(actor=counselor_a, student_id=student_b.pk).items == ()
+
+    overlong = auth_client(counselor_a).get(
+        "/api/v1/referrals",
+        {"search": "x" * 161},
+    )
+    assert overlong.status_code == 422
+    assert overlong.json()["error"]["code"] == "invalid_referral_request"
 
     with pytest.raises(ReferralNotFound):
         get_referral(actor=counselor_a, referral_id=b.pk)
