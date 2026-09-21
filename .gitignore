@@ -11,6 +11,8 @@
 **/htmlcov/
 **/staticfiles/
 **/media/
+fe/.env*
+!fe/.env.example
 fe/node_modules/
 fe/.next/
 fe/out/

@@ -36,6 +36,7 @@ from compass.authentication.mfa import (
     TOTPNotConfigured,
     confirm_totp_enrollment,
     disable_totp,
+    has_active_totp_factor,
     regenerate_recovery_codes,
     start_totp_enrollment,
     verify_totp_for_session,
@@ -884,6 +885,20 @@ def current_session(request):
         "authenticated": True,
         "user": _user_summary(user),
         "session": _session_summary(session, current_session_id=session.pk),
+    }
+
+
+@router.get(
+    "/mfa/status",
+    response=response_with_errors(MFAStatusResponse, 401),
+    auth=session_auth,
+    operation_id="authGetMfaStatus",
+    summary="Inspect current MFA status",
+)
+def mfa_status(request):
+    return {
+        "enabled": has_active_totp_factor(request.auth_user.pk),
+        "recent": has_recent_mfa(request.auth_session),
     }
 
 

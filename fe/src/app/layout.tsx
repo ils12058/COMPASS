@@ -24,6 +24,9 @@ export const metadata: Metadata = {
   title: "COMPASS",
   description: "Counseling Office Management Platform and Student Services",
   applicationName: "COMPASS",
+  icons: {
+    icon: "/brand/compass-mark.svg",
+  },
 };
 
 export default function RootLayout({

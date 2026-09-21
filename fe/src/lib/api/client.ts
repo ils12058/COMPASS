@@ -1,3 +1,5 @@
+import { clearCsrfToken, getCsrfToken } from "@/lib/api/csrf";
+
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
 const API_PREFIX = "/api/v1";
 
@@ -48,23 +50,6 @@ function serializeHeaders(headers: Headers): SerializedHeaders {
   return result;
 }
 
-function getCookie(name: string): string | null {
-  if (typeof document === "undefined") {
-    return null;
-  }
-
-  const prefix = `${encodeURIComponent(name)}=`;
-
-  for (const part of document.cookie.split(";")) {
-    const cookie = part.trim();
-    if (cookie.startsWith(prefix)) {
-      return decodeURIComponent(cookie.slice(prefix.length));
-    }
-  }
-
-  return null;
-}
-
 function normalizeApiUrl(url: string): string {
   if (url === API_PREFIX || url.startsWith(`${API_PREFIX}/`)) {
     return url;
@@ -112,6 +97,20 @@ async function parseResponseBody(response: Response): Promise<unknown> {
   return response.blob();
 }
 
+function isCsrfFailure(status: number, data: unknown): boolean {
+  if (status !== 403 || !data || typeof data !== "object" || !("error" in data)) {
+    return false;
+  }
+
+  const error = (data as { error?: unknown }).error;
+  return (
+    !!error &&
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "csrf_failed"
+  );
+}
+
 export async function compassFetch<T>(
   url: string,
   options: RequestInit = {},
@@ -121,10 +120,7 @@ export async function compassFetch<T>(
   const headers = new Headers(options.headers);
 
   if (!SAFE_METHODS.has(method) && !headers.has("X-CSRFToken")) {
-    const csrfToken = getCookie("csrftoken");
-    if (csrfToken) {
-      headers.set("X-CSRFToken", csrfToken);
-    }
+    headers.set("X-CSRFToken", await getCsrfToken());
   }
 
   const response = await fetch(requestUrl, {
@@ -138,6 +134,10 @@ export async function compassFetch<T>(
   const data = await parseResponseBody(response);
 
   if (!response.ok) {
+    if (isCsrfFailure(response.status, data)) {
+      clearCsrfToken();
+    }
+
     throw new CompassApiError({
       status: response.status,
       data,
