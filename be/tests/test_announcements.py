@@ -319,8 +319,6 @@ def test_announcement_api_enforces_management_and_returns_raw_markdown_without_h
     )
     assert staff_create.status_code == 201
 
-
-
 @pytest.mark.django_db
 def test_public_announcement_audience_is_anonymous_only_when_explicitly_public():
     sync_policy()
@@ -385,10 +383,13 @@ def test_public_announcement_audience_is_anonymous_only_when_explicitly_public()
 
     anonymous_rows = list_public_announcements(now=now + timedelta(minutes=1)).items
     assert [item.pk for item in anonymous_rows] == [public_item.pk]
-    assert get_public_announcement(
-        announcement_id=public_item.pk,
-        now=now + timedelta(minutes=1),
-    ).pk == public_item.pk
+    assert (
+        get_public_announcement(
+            announcement_id=public_item.pk,
+            now=now + timedelta(minutes=1),
+        ).pk
+        == public_item.pk
+    )
 
     future_public = create_announcement(
         actor=counselor,
@@ -493,10 +494,13 @@ def test_public_announcement_api_is_anonymous_and_does_not_leak_other_audiences(
     )
     assert public_create.status_code == 201
     public_id = public_create.json()["id"]
-    assert client.post(
-        f"/api/v1/announcements/management/{public_id}/publish",
-        **csrf(client),
-    ).status_code == 200
+    assert (
+        client.post(
+            f"/api/v1/announcements/management/{public_id}/publish",
+            **csrf(client),
+        ).status_code
+        == 200
+    )
 
     private_create = client.post(
         "/api/v1/announcements/management",
@@ -512,10 +516,13 @@ def test_public_announcement_api_is_anonymous_and_does_not_leak_other_audiences(
     )
     assert private_create.status_code == 201
     private_id = private_create.json()["id"]
-    assert client.post(
-        f"/api/v1/announcements/management/{private_id}/publish",
-        **csrf(client),
-    ).status_code == 200
+    assert (
+        client.post(
+            f"/api/v1/announcements/management/{private_id}/publish",
+            **csrf(client),
+        ).status_code
+        == 200
+    )
 
     anonymous = Client()
     listing = anonymous.get("/api/v1/public/announcements?page_size=3")
