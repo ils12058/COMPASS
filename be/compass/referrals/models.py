@@ -56,6 +56,15 @@ class Referral(models.Model):
         related_name="referrals",
     )
     status_note = models.TextField(blank=True, default="")
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="voided_referrals",
+        null=True,
+        blank=True,
+    )
+    void_reason = models.TextField(blank=True, default="", max_length=1000)
     recorded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -80,6 +89,15 @@ class Referral(models.Model):
                 fields=("referred_on", "created_at"),
                 name="referral_referred_created_idx",
             ),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(voided_at__isnull=True, void_reason="")
+                    | (models.Q(voided_at__isnull=False) & ~models.Q(void_reason=""))
+                ),
+                name="referral_void_shape",
+            )
         ]
 
 

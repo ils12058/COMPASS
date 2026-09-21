@@ -13,6 +13,13 @@ from compass.service_catalog.models import DeliveryMode, Service
 class AppointmentStatus(models.TextChoices):
     SCHEDULED = "SCHEDULED", "Scheduled"
     CANCELLED = "CANCELLED", "Cancelled"
+    COMPLETED = "COMPLETED", "Completed"
+    NO_SHOW = "NO_SHOW", "No show"
+
+
+class AppointmentChangeEventType(models.TextChoices):
+    RESCHEDULED = "RESCHEDULED", "Rescheduled"
+    REASSIGNED = "REASSIGNED", "Reassigned"
 
 
 class AppointmentReferenceCounter(models.Model):
@@ -71,6 +78,22 @@ class Appointment(models.Model):
         blank=True,
         related_name="cancelled_appointments",
     )
+    completed_at = models.DateTimeField(null=True, blank=True)
+    completed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="completed_appointments",
+    )
+    no_show_at = models.DateTimeField(null=True, blank=True)
+    no_show_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="no_show_appointments",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -101,9 +124,98 @@ class Appointment(models.Model):
             ),
             models.CheckConstraint(
                 condition=(
-                    models.Q(status=AppointmentStatus.SCHEDULED, cancelled_at__isnull=True)
-                    | models.Q(status=AppointmentStatus.CANCELLED, cancelled_at__isnull=False)
+                    models.Q(
+                        status=AppointmentStatus.SCHEDULED,
+                        cancelled_at__isnull=True,
+                        completed_at__isnull=True,
+                        no_show_at__isnull=True,
+                    )
+                    | models.Q(
+                        status=AppointmentStatus.CANCELLED,
+                        cancelled_at__isnull=False,
+                        completed_at__isnull=True,
+                        no_show_at__isnull=True,
+                    )
+                    | models.Q(
+                        status=AppointmentStatus.COMPLETED,
+                        cancelled_at__isnull=True,
+                        completed_at__isnull=False,
+                        no_show_at__isnull=True,
+                    )
+                    | models.Q(
+                        status=AppointmentStatus.NO_SHOW,
+                        cancelled_at__isnull=True,
+                        completed_at__isnull=True,
+                        no_show_at__isnull=False,
+                    )
                 ),
-                name="appointments_status_cancellation_consistent",
+                name="appointments_status_terminal_consistent",
+            ),
+        ]
+
+
+class AppointmentChangeEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    appointment = models.ForeignKey(
+        Appointment,
+        on_delete=models.PROTECT,
+        related_name="change_events",
+    )
+    event_type = models.CharField(max_length=16, choices=AppointmentChangeEventType.choices)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="appointment_change_events",
+    )
+    occurred_at = models.DateTimeField()
+    reason = models.TextField(blank=True, default="", max_length=1000)
+    previous_starts_at = models.DateTimeField(null=True, blank=True)
+    previous_ends_at = models.DateTimeField(null=True, blank=True)
+    new_starts_at = models.DateTimeField(null=True, blank=True)
+    new_ends_at = models.DateTimeField(null=True, blank=True)
+    previous_provider = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="appointment_reassignments_from",
+    )
+    new_provider = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="appointment_reassignments_to",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("occurred_at", "id")
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        event_type=AppointmentChangeEventType.RESCHEDULED,
+                        previous_starts_at__isnull=False,
+                        previous_ends_at__isnull=False,
+                        new_starts_at__isnull=False,
+                        new_ends_at__isnull=False,
+                        previous_provider__isnull=True,
+                        new_provider__isnull=True,
+                    )
+                    | models.Q(
+                        event_type=AppointmentChangeEventType.REASSIGNED,
+                        previous_starts_at__isnull=True,
+                        previous_ends_at__isnull=True,
+                        new_starts_at__isnull=True,
+                        new_ends_at__isnull=True,
+                        previous_provider__isnull=False,
+                        new_provider__isnull=False,
+                    )
+                ),
+                name="appointment_change_event_shape",
             ),
         ]

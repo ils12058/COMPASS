@@ -208,8 +208,11 @@ def _validate_appointment_link(
     delivery_mode: str,
     require_unused_by: UUID | None = None,
 ) -> None:
-    if appointment.status != AppointmentStatus.SCHEDULED:
-        raise CounselingAppointmentInvalid("The linked Appointment must be SCHEDULED.")
+    if appointment.status not in {
+        AppointmentStatus.SCHEDULED,
+        AppointmentStatus.COMPLETED,
+    }:
+        raise CounselingAppointmentInvalid("The linked Appointment must be SCHEDULED or COMPLETED.")
     if appointment.provider_id != counselor_id:
         raise CounselingAppointmentInvalid(
             "The linked Appointment is assigned to a different Counselor."

@@ -36,6 +36,7 @@ from .services import (
     GoodMoralNotFound,
     GoodMoralNotPermitted,
     InvalidGoodMoralInput,
+    cancel_request,
     create_my_current_student,
     create_my_graduate,
     get_mine,
@@ -74,6 +75,7 @@ class GoodMoralVariantValue(StrEnum):
 class GoodMoralStatusValue(StrEnum):
     REQUESTED = GoodMoralStatus.REQUESTED
     ISSUED = GoodMoralStatus.ISSUED
+    CANCELLED = GoodMoralStatus.CANCELLED
 
 
 class CurrentStudentRequestPayload(StrictSchema):
@@ -85,6 +87,10 @@ class GraduateRequestPayload(StrictSchema):
     degree: str
     major: str = ""
     graduation_date: date
+
+
+class GoodMoralCancellationPayload(StrictSchema):
+    reason: str
 
 
 class GoodMoralCorrectionPayload(StrictSchema):
@@ -125,6 +131,7 @@ class GoodMoralSummaryResponse(StrictSchema):
     status: GoodMoralStatusValue
     applicant_name: str
     issued_at: datetime | None
+    cancelled_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
@@ -219,6 +226,7 @@ def _summary(item) -> dict[str, object]:
         "status": item.status,
         "applicant_name": item.applicant_name_snapshot,
         "issued_at": item.issued_at,
+        "cancelled_at": item.cancelled_at,
         "created_at": item.created_at,
         "updated_at": item.updated_at,
     }
@@ -381,6 +389,31 @@ def good_moral_list_my(request):
     return {"items": [_summary(item) for item in items]}
 
 
+@router.post(
+    "/me/{request_id}/cancel",
+    response=response_with_errors(GoodMoralDetailResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="goodMoralCancelMyRequest",
+)
+def good_moral_cancel_my(
+    request,
+    request_id: UUID,
+    payload: GoodMoralCancellationPayload,
+):
+    _require_student(request, "good_moral.request_self")
+    try:
+        item = cancel_request(
+            actor=request.auth_user,
+            request_id=request_id,
+            reason=payload.reason,
+            self_service=True,
+            context=_context(request),
+        )
+    except GoodMoralError as exc:
+        _raise(exc)
+    return _detail(item)
+
+
 @router.get(
     "/me/{request_id}/pdf",
     response=response_with_errors(None, 401, 403, 404, 409, 503),
@@ -462,6 +495,31 @@ def good_moral_download(request, request_id: UUID):
     except GoodMoralError as exc:
         _raise(exc)
     return _pdf_response(item, context=_context(request), access_mode="GCO")
+
+
+@router.post(
+    "/requests/{request_id}/cancel",
+    response=response_with_errors(GoodMoralDetailResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="goodMoralCancelRequest",
+)
+def good_moral_cancel_request(
+    request,
+    request_id: UUID,
+    payload: GoodMoralCancellationPayload,
+):
+    _require_counselor(request, "good_moral.manage")
+    try:
+        item = cancel_request(
+            actor=request.auth_user,
+            request_id=request_id,
+            reason=payload.reason,
+            self_service=False,
+            context=_context(request),
+        )
+    except GoodMoralError as exc:
+        _raise(exc)
+    return _detail(item)
 
 
 @router.post(

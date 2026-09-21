@@ -25,6 +25,9 @@ class NotificationEvent(StrEnum):
     CALL_SLIP_ISSUED = "call_slip.issued"
     APPOINTMENT_SCHEDULED = "appointment.scheduled"
     APPOINTMENT_CANCELLED = "appointment.cancelled"
+    APPOINTMENT_RESCHEDULED = "appointment.rescheduled"
+    APPOINTMENT_REASSIGNED = "appointment.reassigned"
+    CALL_SLIP_VOIDED = "call_slip.voided"
     GOOD_MORAL_ISSUED = "good_moral.issued"
     EXIT_INTERVIEW_REOPENED = "exit_interview.reopened"
     INVENTORY_REOPENED = "inventory.reopened"
@@ -86,6 +89,42 @@ _EVENT_CATALOG = {
         ),
         email_subject="COMPASS Appointment Cancelled",
         email_template="appointment_cancelled",
+    ),
+    NotificationEvent.APPOINTMENT_RESCHEDULED: NotificationEventDefinition(
+        event=NotificationEvent.APPOINTMENT_RESCHEDULED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Appointment Rescheduled",
+        message=(
+            "A COMPASS Appointment has been rescheduled. "
+            "Sign in to COMPASS to review the updated schedule."
+        ),
+        email_subject="COMPASS Appointment Rescheduled",
+        email_template="appointment_rescheduled",
+    ),
+    NotificationEvent.APPOINTMENT_REASSIGNED: NotificationEventDefinition(
+        event=NotificationEvent.APPOINTMENT_REASSIGNED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Appointment Assignment Updated",
+        message=(
+            "A COMPASS Appointment assignment has changed. "
+            "Sign in to COMPASS to review the current details."
+        ),
+        email_subject="COMPASS Appointment Assignment Updated",
+        email_template="appointment_reassigned",
+    ),
+    NotificationEvent.CALL_SLIP_VOIDED: NotificationEventDefinition(
+        event=NotificationEvent.CALL_SLIP_VOIDED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Call Slip Withdrawn",
+        message=(
+            "A COMPASS Call Slip issued to you has been withdrawn. "
+            "Sign in to COMPASS to review the current record."
+        ),
+        email_subject="COMPASS Call Slip Withdrawn",
+        email_template="call_slip_voided",
     ),
     NotificationEvent.GOOD_MORAL_ISSUED: NotificationEventDefinition(
         event=NotificationEvent.GOOD_MORAL_ISSUED,

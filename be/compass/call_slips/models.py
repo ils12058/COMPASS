@@ -16,6 +16,12 @@ class CallSlipDestinationType(models.TextChoices):
     OTHER = "OTHER", "Other"
 
 
+class CallSlipLifecycleState(models.TextChoices):
+    ACTIVE = "ACTIVE", "Active"
+    COMPLETED = "COMPLETED", "Completed"
+    VOIDED = "VOIDED", "Voided"
+
+
 class CallSlip(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     student = models.ForeignKey(
@@ -25,10 +31,10 @@ class CallSlip(models.Model):
     )
     student_name_snapshot = models.CharField(max_length=512)
     course_year_snapshot = models.CharField(max_length=255)
-    referral = models.OneToOneField(
+    referral = models.ForeignKey(
         Referral,
         on_delete=models.PROTECT,
-        related_name="call_slip",
+        related_name="call_slips",
         null=True,
         blank=True,
     )
@@ -47,6 +53,15 @@ class CallSlip(models.Model):
         related_name="call_slips",
     )
     interview_ended_at = models.DateTimeField(null=True, blank=True)
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="voided_call_slips",
+        null=True,
+        blank=True,
+    )
+    void_reason = models.TextField(blank=True, default="", max_length=1000)
     recorded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -58,6 +73,14 @@ class CallSlip(models.Model):
     creation_request_fingerprint = models.CharField(max_length=64, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def lifecycle_state(self) -> str:
+        if self.voided_at is not None:
+            return CallSlipLifecycleState.VOIDED
+        if self.interview_ended_at is not None:
+            return CallSlipLifecycleState.COMPLETED
+        return CallSlipLifecycleState.ACTIVE
 
     class Meta:
         default_permissions = ()
@@ -79,5 +102,17 @@ class CallSlip(models.Model):
                     )
                 ),
                 name="callslip_destination_consistency",
-            )
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(voided_at__isnull=True, void_reason="")
+                    | (models.Q(voided_at__isnull=False) & ~models.Q(void_reason=""))
+                ),
+                name="callslip_void_shape",
+            ),
+            models.UniqueConstraint(
+                fields=("referral",),
+                condition=models.Q(referral__isnull=False, voided_at__isnull=True),
+                name="callslip_active_referral_uniq",
+            ),
         ]

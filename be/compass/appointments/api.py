@@ -35,6 +35,7 @@ from .services import (
     AppointmentCurrentStudentRequired,
     AppointmentDefaultProviderUnresolved,
     AppointmentError,
+    AppointmentLifecycleConflict,
     AppointmentNotFound,
     AppointmentNotSchedulable,
     AppointmentReferenceConflict,
@@ -42,11 +43,16 @@ from .services import (
     AppointmentTimeUnavailable,
     InvalidAppointmentInput,
     cancel_appointment,
+    complete_appointment,
     create_student_appointment,
     get_appointment_for_actor,
+    get_appointment_history,
     list_eligible_counselors,
     list_managed_appointments,
     list_my_appointments,
+    mark_appointment_no_show,
+    reassign_appointment,
+    reschedule_appointment,
 )
 
 router = Router(tags=["appointments"])
@@ -60,6 +66,17 @@ class StrictSchema(Schema):
 class AppointmentStatus(StrEnum):
     SCHEDULED = "SCHEDULED"
     CANCELLED = "CANCELLED"
+    COMPLETED = "COMPLETED"
+    NO_SHOW = "NO_SHOW"
+
+
+class AppointmentHistoryEventType(StrEnum):
+    CREATED = "CREATED"
+    RESCHEDULED = "RESCHEDULED"
+    REASSIGNED = "REASSIGNED"
+    CANCELLED = "CANCELLED"
+    COMPLETED = "COMPLETED"
+    NO_SHOW = "NO_SHOW"
 
 
 class AppointmentCreateRequest(StrictSchema):
@@ -67,6 +84,16 @@ class AppointmentCreateRequest(StrictSchema):
     provider_id: UUID | None = None
     delivery_mode: DeliveryMode
     starts_at: datetime
+
+
+class AppointmentRescheduleRequest(StrictSchema):
+    starts_at: datetime
+    reason: str = ""
+
+
+class AppointmentReassignRequest(StrictSchema):
+    provider_id: UUID
+    reason: str
 
 
 class ServiceSummaryResponse(StrictSchema):
@@ -92,6 +119,8 @@ class AppointmentResponse(StrictSchema):
     status: AppointmentStatus
     cancellation_cutoff_minutes: int | None
     cancelled_at: datetime | None
+    completed_at: datetime | None
+    no_show_at: datetime | None
     created_at: datetime
 
 
@@ -110,6 +139,28 @@ class EligibleCounselorResponse(StrictSchema):
 
 class EligibleCounselorListResponse(StrictSchema):
     items: list[EligibleCounselorResponse]
+
+
+class AppointmentHistoryActorResponse(StrictSchema):
+    id: UUID
+    display_name: str
+
+
+class AppointmentHistoryEntryResponse(StrictSchema):
+    event_type: AppointmentHistoryEventType
+    occurred_at: datetime
+    actor: AppointmentHistoryActorResponse | None
+    reason: str
+    previous_starts_at: datetime | None
+    previous_ends_at: datetime | None
+    new_starts_at: datetime | None
+    new_ends_at: datetime | None
+    previous_provider: AppointmentHistoryActorResponse | None
+    new_provider: AppointmentHistoryActorResponse | None
+
+
+class AppointmentHistoryResponse(StrictSchema):
+    items: list[AppointmentHistoryEntryResponse]
 
 
 def _context(request) -> AuditContext:
@@ -150,6 +201,8 @@ def _raise(exc: AppointmentError) -> NoReturn:
         raise APIError(409, "appointment_time_unavailable", str(exc)) from exc
     if isinstance(exc, AppointmentTimeConflict):
         raise APIError(409, "appointment_time_conflict", str(exc)) from exc
+    if isinstance(exc, AppointmentLifecycleConflict):
+        raise APIError(409, "appointment_lifecycle_conflict", str(exc)) from exc
     if isinstance(exc, AppointmentCancellationConflict):
         message = str(exc)
         code = (
@@ -193,6 +246,8 @@ def _appointment(item) -> dict[str, object]:
         "status": item.status,
         "cancellation_cutoff_minutes": item.cancellation_cutoff_minutes,
         "cancelled_at": _institutional(item.cancelled_at),
+        "completed_at": _institutional(item.completed_at),
+        "no_show_at": _institutional(item.no_show_at),
         "created_at": _institutional(item.created_at),
     }
 
@@ -467,3 +522,136 @@ def appointments_cancel(request, appointment_id: UUID):
     except AppointmentError as exc:
         _raise(exc)
     return _appointment(item)
+
+
+@router.post(
+    "/{appointment_id}/reschedule",
+    response=response_with_errors(AppointmentResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="appointmentsReschedule",
+)
+def appointments_reschedule(
+    request,
+    appointment_id: UUID,
+    payload: AppointmentRescheduleRequest,
+):
+    actor = request.auth_user
+    self_mode = actor.role.code == "STUDENT" and actor.has_capability("appointments.manage_self")
+    administrative = False
+    if not self_mode:
+        _require(request, "appointments.manage", recent_mfa=True)
+        administrative = True
+    try:
+        item = reschedule_appointment(
+            appointment_id=appointment_id,
+            actor=actor,
+            starts_at=payload.starts_at,
+            reason=payload.reason,
+            administrative=administrative,
+            context=_context(request),
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return _appointment(item)
+
+
+@router.post(
+    "/{appointment_id}/reassign",
+    response=response_with_errors(AppointmentResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="appointmentsReassign",
+)
+def appointments_reassign(
+    request,
+    appointment_id: UUID,
+    payload: AppointmentReassignRequest,
+):
+    _require(request, "appointments.manage", recent_mfa=True)
+    try:
+        item = reassign_appointment(
+            appointment_id=appointment_id,
+            actor=request.auth_user,
+            provider_id=payload.provider_id,
+            reason=payload.reason,
+            context=_context(request),
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return _appointment(item)
+
+
+@router.post(
+    "/{appointment_id}/complete",
+    response=response_with_errors(AppointmentResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="appointmentsComplete",
+)
+def appointments_complete(request, appointment_id: UUID):
+    _require(request, "appointments.manage")
+    try:
+        item = complete_appointment(
+            appointment_id=appointment_id,
+            actor=request.auth_user,
+            context=_context(request),
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return _appointment(item)
+
+
+@router.post(
+    "/{appointment_id}/no-show",
+    response=response_with_errors(AppointmentResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="appointmentsMarkNoShow",
+)
+def appointments_mark_no_show(request, appointment_id: UUID):
+    _require(request, "appointments.manage")
+    try:
+        item = mark_appointment_no_show(
+            appointment_id=appointment_id,
+            actor=request.auth_user,
+            context=_context(request),
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return _appointment(item)
+
+
+@router.get(
+    "/{appointment_id}/history",
+    response=response_with_errors(AppointmentHistoryResponse, 401, 403, 404),
+    auth=session_auth,
+    operation_id="appointmentsGetHistory",
+)
+def appointments_get_history(request, appointment_id: UUID):
+    try:
+        items = get_appointment_history(
+            appointment_id=appointment_id,
+            actor=request.auth_user,
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+
+    def person(user):
+        if user is None:
+            return None
+        return {"id": user.pk, "display_name": user.get_full_name()}
+
+    return {
+        "items": [
+            {
+                "event_type": row.event_type,
+                "occurred_at": _institutional(row.occurred_at),
+                "actor": person(row.actor),
+                "reason": row.reason,
+                "previous_starts_at": _institutional(row.previous_starts_at),
+                "previous_ends_at": _institutional(row.previous_ends_at),
+                "new_starts_at": _institutional(row.new_starts_at),
+                "new_ends_at": _institutional(row.new_ends_at),
+                "previous_provider": person(row.previous_provider),
+                "new_provider": person(row.new_provider),
+            }
+            for row in items
+        ]
+    }
