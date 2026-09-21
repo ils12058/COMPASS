@@ -20,16 +20,18 @@ import {
 } from "@/lib/api/generated/auth/auth";
 import { cn } from "@/lib/utils/cn";
 
-const NAVIGATION = [
-  { href: "/portal", label: "Home" },
-  { href: "/portal/account/security", label: "Account & Security" },
-] as const;
-
 export function PortalShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { session } = useCurrentAuth();
+  const { session, hasCapability } = useCurrentAuth();
+  const canManageContent =
+    hasCapability("announcements.manage") || hasCapability("resources.manage");
+  const navigation = [
+    { href: "/portal", label: "Home" },
+    ...(canManageContent ? [{ href: "/portal/content", label: "Content" }] : []),
+    { href: "/portal/account/security", label: "Account & Security" },
+  ];
   const logout = useAuthLogout();
   const [error, setError] = useState<string | null>(null);
 
@@ -88,7 +90,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="order-3 flex w-full gap-1 sm:order-none sm:ml-4 sm:w-auto" aria-label="Portal">
-            {NAVIGATION.map((item) => {
+            {navigation.map((item) => {
               const active =
                 item.href === "/portal"
                   ? pathname === item.href
