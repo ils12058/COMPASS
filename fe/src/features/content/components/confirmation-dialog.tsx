@@ -27,10 +27,12 @@ export function ConfirmationDialog({
   onConfirm: () => void | Promise<void>;
 }) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
 
   function open() {
+    returnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     dialogRef.current?.showModal();
     window.requestAnimationFrame(() => headingRef.current?.focus());
   }
@@ -51,7 +53,6 @@ export function ConfirmationDialog({
   return (
     <>
       <Button
-        ref={triggerRef}
         variant={confirmVariant === "destructive" ? "destructive" : "primary"}
         onClick={open}
         disabled={disabled || isPending}
@@ -68,7 +69,7 @@ export function ConfirmationDialog({
             close();
           }
         }}
-        onClose={() => triggerRef.current?.focus()}
+        onClose={() => returnFocusRef.current?.focus()}
       >
         <div className="p-6 sm:p-7">
           <h2
