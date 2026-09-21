@@ -121,4 +121,4 @@ jobs:
 
       - name: Diff whitespace check
         run: git diff --check 68a052ab28ef025017afd50505b620ea3858cb02...HEAD
-# exact-head validation after status typing fix
+# clean-branch final focused validation
