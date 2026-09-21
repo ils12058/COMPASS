@@ -1,9 +1,12 @@
 import { ArrowDown, ArrowRight, ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
 
 import { LANDING_PAGE, PUBLIC_SITE } from "@/features/public/config";
+import { AnnouncementPreview } from "@/features/public/homepage/announcement-preview";
+import { ResourcePreview } from "@/features/public/homepage/resource-preview";
+
+import { ArrowLink } from "./preview-primitives";
 
 const CHARACTER_ASSETS = {
   "point-right": {
@@ -45,56 +48,6 @@ function Character({
   );
 }
 
-function ArrowLink({
-  href,
-  children,
-  className = "",
-}: {
-  href: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <Link href={href} className={`landing-content-link ${className}`}>
-      {children}
-      <ArrowUpRight aria-hidden="true" />
-    </Link>
-  );
-}
-
-function PaperSheet({
-  children,
-  className = "",
-  tone = "plain",
-}: {
-  children: ReactNode;
-  className?: string;
-  tone?: "paper" | "plain" | "sage";
-}) {
-  return (
-    <div className={`landing-paper-sheet ${className}`} data-tone={tone}>
-      {children}
-    </div>
-  );
-}
-
-function StickyNote({
-  children,
-  tone,
-  rotation,
-}: {
-  children: ReactNode;
-  tone: string;
-  rotation: string;
-}) {
-  return (
-    <article className="landing-sticky-note" data-tone={tone} data-rotation={rotation}>
-      <span className="landing-sticky-note__tape" aria-hidden="true" />
-      {children}
-    </article>
-  );
-}
-
 function HomepageHero() {
   const { hero } = LANDING_PAGE;
 
@@ -112,7 +65,6 @@ function HomepageHero() {
       <div className="landing-hero__gradient" aria-hidden="true" />
       <div className="public-shell landing-hero__inner">
         <div className="landing-hero__copy">
-          <p className="landing-eyebrow landing-eyebrow--light">{hero.eyebrow}</p>
           <h1 id="landing-hero-heading">
             {hero.title} <span>{hero.highlight}</span>
           </h1>
@@ -185,40 +137,6 @@ function HomepageStart() {
   );
 }
 
-function AnnouncementPreview() {
-  const { announcements } = LANDING_PAGE;
-
-  return (
-    <section
-      className="public-shell landing-section"
-      aria-labelledby="announcements-heading"
-    >
-      <div className="landing-section__heading">
-        <div>
-          <p className="landing-eyebrow">{announcements.eyebrow}</p>
-          <h2 id="announcements-heading">{announcements.title}</h2>
-          <p>{announcements.description}</p>
-        </div>
-        <Link className="landing-heading-link" href={announcements.href}>
-          {announcements.link}
-          <ArrowRight aria-hidden="true" />
-        </Link>
-      </div>
-
-      <div className="landing-notes-grid">
-        {announcements.items.map((item) => (
-          <StickyNote key={item.title} tone={item.tone} rotation={item.rotation}>
-            <p className="landing-content-meta">{item.category}</p>
-            <h3>{item.title}</h3>
-            <p>{item.body}</p>
-            <ArrowLink href={item.href}>Read announcement</ArrowLink>
-          </StickyNote>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function GuidancePreview() {
   const { guidance } = LANDING_PAGE;
 
@@ -240,39 +158,6 @@ function GuidancePreview() {
           {guidance.link}
           <ArrowRight aria-hidden="true" />
         </Link>
-      </div>
-    </section>
-  );
-}
-
-function ResourcePreview() {
-  const { resources } = LANDING_PAGE;
-
-  return (
-    <section className="landing-resources-section" aria-labelledby="resources-heading">
-      <div className="public-shell landing-section">
-        <div className="landing-section__heading">
-          <div>
-            <p className="landing-eyebrow">{resources.eyebrow}</p>
-            <h2 id="resources-heading">{resources.title}</h2>
-            <p>{resources.description}</p>
-          </div>
-          <Link className="landing-heading-link" href={resources.href}>
-            {resources.link}
-            <ArrowRight aria-hidden="true" />
-          </Link>
-        </div>
-
-        <div className="landing-resources-grid">
-          {resources.items.map((item) => (
-            <PaperSheet key={item.title} tone="plain">
-              <p className="landing-content-meta">{item.category}</p>
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-              <ArrowLink href={item.href}>View resource</ArrowLink>
-            </PaperSheet>
-          ))}
-        </div>
       </div>
     </section>
   );
@@ -316,7 +201,7 @@ export function Homepage() {
       <GuidancePreview />
       <ResourcePreview />
       <OfficeContactSection />
-      <p className="sr-only">{PUBLIC_SITE.product} public landing page</p>
+      <p className="sr-only">{PUBLIC_SITE.product} Guidance and Counseling Office home page</p>
     </div>
   );
 }

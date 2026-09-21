@@ -531,7 +531,7 @@
 
 .landing-hero h1 {
   max-width: 11ch;
-  margin: 0.6rem 0 0;
+  margin: 0;
   color: var(--compass-on-brand);
   font-family: var(--compass-font-heading);
   font-size: clamp(3.35rem, 7vw, 6.35rem);
@@ -843,6 +843,80 @@
   letter-spacing: 0.1em;
   line-height: 1.4;
   text-transform: uppercase;
+}
+
+.landing-data-state {
+  margin: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--compass-border);
+  border-radius: var(--compass-radius-lg);
+  background-color: var(--compass-surface);
+  color: var(--compass-text-muted);
+  line-height: 1.55;
+}
+
+.landing-markdown {
+  color: color-mix(in srgb, var(--compass-ink) 82%, transparent);
+  line-height: 1.55;
+}
+
+.landing-markdown--compact {
+  max-height: 8rem;
+  overflow: hidden;
+}
+
+.landing-markdown p {
+  margin: 0.55rem 0 0;
+}
+
+.landing-markdown > :first-child {
+  margin-top: 0;
+}
+
+.landing-markdown h3,
+.landing-markdown h4,
+.landing-markdown h5 {
+  margin: 0.7rem 0 0;
+  color: var(--compass-ink);
+  font-family: var(--compass-font-heading);
+  font-size: 1rem;
+  font-weight: var(--compass-weight-bold);
+  line-height: 1.3;
+}
+
+.landing-sticky-note .landing-markdown h3,
+.landing-paper-sheet .landing-markdown h3 {
+  font-family: var(--compass-font-heading);
+  font-size: 1rem;
+  font-weight: var(--compass-weight-bold);
+}
+
+.landing-markdown ul,
+.landing-markdown ol {
+  margin: 0.6rem 0 0;
+  padding-inline-start: 1.25rem;
+}
+
+.landing-markdown a {
+  color: var(--compass-brand-maroon);
+  font-weight: var(--compass-weight-bold);
+  text-decoration: underline;
+  text-underline-offset: 0.15rem;
+}
+
+.landing-markdown code {
+  border-radius: 0.25rem;
+  background-color: color-mix(in srgb, var(--compass-ink) 8%, transparent);
+  padding: 0.1rem 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+}
+
+.landing-resource-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 1rem;
 }
 
 .landing-notes-grid,
@@ -1209,7 +1283,9 @@ html[data-compass-underline-links="true"] a:not(.public-brand):not(.landing-skip
   .landing-start__character-frame {
     min-height: 10rem;
     max-width: 19rem;
+    justify-content: flex-start;
     margin-bottom: 1rem;
+    margin-inline: 0;
   }
 }
 
@@ -1250,14 +1326,21 @@ html[data-compass-underline-links="true"] a:not(.public-brand):not(.landing-skip
     grid-template-areas:
       "art"
       "copy";
+    grid-template-rows: auto auto;
+    align-content: center;
     min-height: 100svh;
-    gap: 2rem;
-    padding-block: 6rem 2.5rem;
+    gap: 1.25rem;
+    padding-block: 4.5rem 2.5rem;
   }
 
   .landing-hero__art {
-    justify-content: center;
+    align-self: start;
+    justify-content: flex-start;
     transform: none;
+  }
+
+  .landing-hero__copy {
+    padding-block: 0;
   }
 
   .landing-hero__art img {
@@ -1305,7 +1388,7 @@ html[data-compass-underline-links="true"] a:not(.public-brand):not(.landing-skip
   }
 
   .landing-hero__inner {
-    padding-block: 6rem 2.5rem;
+    padding-block: 4rem 2.5rem;
   }
 
   .landing-hero h1 {

@@ -1,4 +1,3 @@
-import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
 import { PublicSiteFooter } from "@/features/public/components/public-site-footer";
 import { PublicSiteHeader } from "@/features/public/components/public-site-header";
 import { Homepage } from "@/features/public/homepage/homepage";
@@ -14,7 +13,6 @@ export default function Home() {
         <Homepage />
       </main>
       <PublicSiteFooter />
-      <AccessibilityControl />
     </div>
   );
 }

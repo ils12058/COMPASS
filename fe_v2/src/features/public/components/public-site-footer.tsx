@@ -13,10 +13,10 @@ export function PublicSiteFooter() {
         <div className="public-footer__identity">
           <PublicBrand footer />
           <p className="public-footer__institution-copy">
-            {PUBLIC_SITE.product} is a service of {PUBLIC_SITE.office} at {PUBLIC_SITE.institution}.
+            Updates, resources, and support from the {PUBLIC_SITE.office} at {PUBLIC_SITE.institution}.
           </p>
           <Link className="public-footer__cta" href="/contact">
-            Contact guidance
+            Contact the office
             <ArrowUpRight aria-hidden="true" />
           </Link>
         </div>
@@ -41,8 +41,7 @@ export function PublicSiteFooter() {
 
       <div className="public-shell public-footer__meta">
         <p>© {year} {PUBLIC_SITE.institution}</p>
-        <p>{PUBLIC_SITE.product} is a service of {PUBLIC_SITE.office}.</p>
-        <p>Developed for {PUBLIC_SITE.institution}.</p>
+        <p>{PUBLIC_SITE.office}</p>
       </div>
     </footer>
   );

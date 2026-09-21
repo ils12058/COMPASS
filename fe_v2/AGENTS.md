@@ -1,6 +1,6 @@
 # COMPASS Frontend Architecture Rules
 
-These rules apply to future work under `fe/`.
+These rules apply to future work under `fe_v2/`.
 
 ## Contract authority
 

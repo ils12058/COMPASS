@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { Providers } from "@/app/providers";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { getInitialPlatformStatus } from "@/lib/server/service-status";
 
 import "@/styles/globals.css";
 import { cn } from "@/lib/utils";
@@ -33,14 +34,16 @@ const caveat = Caveat({
 
 export const metadata: Metadata = {
   title: "COMPASS",
-  description: "Counseling Office Management Platform and Student Services",
+  description:
+    "Guidance and Counseling Office updates, services, and resources for the University of Camarines Norte community.",
   applicationName: "COMPASS",
   icons: {
     icon: "/brand/compass-mark.svg",
   },
   openGraph: {
     title: "COMPASS",
-    description: "Counseling Office Management Platform and Student Services",
+    description:
+      "Guidance and Counseling Office updates, services, and resources for the University of Camarines Norte community.",
     images: [
       {
         url: "/brand/compass-open-graph.jpg",
@@ -50,7 +53,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const initialPlatformStatus = await getInitialPlatformStatus();
+
   return (
     <html
       lang="en"
@@ -58,7 +63,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     >
       <body className="min-h-full bg-background text-foreground">
         <TooltipProvider>
-          <Providers>{children}</Providers>
+          <Providers initialPlatformStatus={initialPlatformStatus}>{children}</Providers>
         </TooltipProvider>
       </body>
     </html>

@@ -90,7 +90,7 @@ export function AccessibilityControl() {
           <PopoverHeader className="compass-accessibility__header">
             <PopoverTitle>Accessibility options</PopoverTitle>
             <PopoverDescription>
-              Adjust how COMPASS looks and moves on this device.
+              Adjust text size, contrast, spacing, link visibility, and motion.
             </PopoverDescription>
           </PopoverHeader>
 
@@ -136,7 +136,7 @@ export function AccessibilityControl() {
             />
             <ToggleSetting
               checked={preferences.motion === "reduced"}
-              description="Follow device settings, or turn this on to reduce motion further."
+              description="Limit animation and movement."
               id="motion"
               label="Reduce motion"
               onCheckedChange={(checked) => {
