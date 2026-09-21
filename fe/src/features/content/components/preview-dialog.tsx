@@ -30,7 +30,7 @@ export function PreviewDialog({
 
   return (
     <>
-      <Button ref={triggerRef} variant="outline" onClick={open}>
+      <Button variant="outline" onClick={open}>
         <Eye aria-hidden="true" className="size-4" />
         Preview
       </Button>
