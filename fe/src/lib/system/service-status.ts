@@ -8,7 +8,10 @@ const BACKEND_STATUSES = new Set([
 ]);
 
 export type ServiceStatusView =
-  | Readonly<{ kind: "unknown" | "operational" | "offline" | "unavailable" }>
+  | Readonly<{ kind: "unknown" }>
+  | Readonly<{ kind: "operational" }>
+  | Readonly<{ kind: "offline" }>
+  | Readonly<{ kind: "unavailable" }>
   | Readonly<{
       kind: "maintenance_scheduled";
       message: string;
