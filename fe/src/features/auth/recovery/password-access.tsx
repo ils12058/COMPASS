@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import {
 type PasswordStage = "request" | "confirm" | "complete";
 
 export function PasswordAccess() {
+  const router = useRouter();
   const requestAccess = useAuthRequestPasswordAccess();
   const confirmAccess = useAuthConfirmPasswordAccess();
 
@@ -124,7 +126,7 @@ export function PasswordAccess() {
             Password setup or recovery is complete. For your security, this step does not sign
             you in automatically.
           </p>
-          <Button onClick={() => window.location.assign("/login")}>Sign in to COMPASS</Button>
+          <Button onClick={() => router.push("/login")}>Sign in to COMPASS</Button>
         </div>
       </AuthShell>
     );
