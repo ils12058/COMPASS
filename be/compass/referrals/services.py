@@ -472,7 +472,6 @@ def get_referral(*, actor: User, referral_id: UUID) -> Referral:
     return item
 
 
-
 _REFERRAL_ACTION_LABELS = {
     ReferralActionType.CALL_PARENT_GUARDIAN: "Call the Parent/Guardian",
     ReferralActionType.SEND_PARENT_NOTIFICATION_LETTER: ('Send "Parent Notification Letter"'),
