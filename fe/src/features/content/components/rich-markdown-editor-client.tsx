@@ -35,6 +35,7 @@ import {
 import {
   type MouseEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -98,6 +99,7 @@ export function RichMarkdownEditorClient({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const crepeRef = useRef<Crepe | null>(null);
   const initialValueRef = useRef(initialValue);
+  const initialDisabledRef = useRef(disabled);
   const onChangeRef = useRef(onChange);
   const ariaLabelRef = useRef(ariaLabel);
   const [ready, setReady] = useState(false);
@@ -107,7 +109,7 @@ export function RichMarkdownEditorClient({
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  function refreshActiveState() {
+  const refreshActiveState = useCallback(() => {
     const crepe = crepeRef.current;
     if (!crepe) {
       return;
@@ -148,7 +150,7 @@ export function RichMarkdownEditorClient({
         };
       }),
     );
-  }
+  }, []);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -193,7 +195,7 @@ export function RichMarkdownEditorClient({
         return;
       }
 
-      crepe.setReadonly(disabled);
+      crepe.setReadonly(initialDisabledRef.current);
       const editable = root.querySelector<HTMLElement>('[contenteditable="true"]');
       if (editable) {
         editable.setAttribute("role", "textbox");
@@ -208,9 +210,7 @@ export function RichMarkdownEditorClient({
     root.addEventListener("keyup", refresh);
     root.addEventListener("mouseup", refresh);
     root.addEventListener("focusin", refresh);
-    root.addEventListener(
-      "paste",
-      (event) => {
+    const handlePaste = (event: ClipboardEvent) => {
         const clipboard = event.clipboardData;
         if (!clipboard) {
           return;
@@ -233,28 +233,26 @@ export function RichMarkdownEditorClient({
           view.dispatch(view.state.tr.insertText(plainText));
           view.focus();
         });
-      },
-      true,
-    );
-    root.addEventListener(
-      "drop",
-      (event) => {
-        if (event.dataTransfer?.files.length) {
-          event.preventDefault();
-        }
-      },
-      true,
-    );
+      };
+    const handleDrop = (event: DragEvent) => {
+      if (event.dataTransfer?.files.length) {
+        event.preventDefault();
+      }
+    };
+    root.addEventListener("paste", handlePaste, true);
+    root.addEventListener("drop", handleDrop, true);
 
     return () => {
       cancelled = true;
       root.removeEventListener("keyup", refresh);
       root.removeEventListener("mouseup", refresh);
       root.removeEventListener("focusin", refresh);
+      root.removeEventListener("paste", handlePaste, true);
+      root.removeEventListener("drop", handleDrop, true);
       crepeRef.current = null;
       void crepe.destroy();
     };
-  }, [disabled]);
+  }, [refreshActiveState]);
 
   useEffect(() => {
     crepeRef.current?.setReadonly(disabled);
