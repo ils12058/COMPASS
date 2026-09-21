@@ -33,12 +33,6 @@
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "unrs-resolver"
-    ]
-  },
   "engines": {
     "node": ">=22.18.0"
   },
