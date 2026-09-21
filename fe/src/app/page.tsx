@@ -6,15 +6,24 @@ export default function Home() {
     <main className="min-h-screen px-5 py-10 sm:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl items-center">
         <section className="max-w-3xl space-y-6">
-          <Image
-            src="/brand/compass-mark.svg"
-            alt=""
-            width={64}
-            height={64}
-            unoptimized
-            priority
-            aria-hidden="true"
-          />
+          <div className="flex items-center gap-3" aria-hidden="true">
+            <Image
+              src="/brand/ucn-logo.png"
+              alt=""
+              width={56}
+              height={52}
+              priority
+            />
+            <span className="h-10 w-px bg-border" />
+            <Image
+              src="/brand/compass-mark.svg"
+              alt=""
+              width={56}
+              height={56}
+              unoptimized
+              priority
+            />
+          </div>
 
           <div className="space-y-3">
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--compass-brand-gold)]">
