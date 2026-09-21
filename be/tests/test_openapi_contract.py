@@ -62,6 +62,7 @@ EXPECTED_OPERATION_IDS = {
     "authVerifyLoginMfa",
     "authLogout",
     "authGetSession",
+    "authGetMfaStatus",
     "authListSessions",
     "authRevokeOtherSessions",
     "authRevokeSession",

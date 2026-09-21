@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "api:generate": "orval --config orval.config.ts",
-    "validate": "pnpm api:generate && pnpm lint && pnpm typecheck && pnpm build"
+    "validate": "pnpm api:generate && pnpm lint && pnpm typecheck && pnpm build",
+    "dev:https": "next dev --experimental-https"
   },
   "dependencies": {
     "@tanstack/react-query": "5.103.1",
@@ -20,7 +21,8 @@
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "tailwind-merge": "3.6.0"
+    "tailwind-merge": "3.6.0",
+    "qrcode.react": "4.2.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",

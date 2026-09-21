@@ -16,7 +16,7 @@ Do not rebuild per-feature server-state machinery from `useEffect`, `AbortContro
 
 ## HTTP and authentication
 
-Browser API traffic stays on same-origin `/api/v1/...` paths. The shared transport owns cookie credentials, CSRF forwarding when a browser CSRF token already exists, response parsing, and structured HTTP errors.
+Browser API traffic stays on same-origin `/api/v1/...` paths. The shared transport owns cookie credentials, in-memory CSRF bootstrap through `authGetCsrf`, response parsing, and structured HTTP errors. It must not depend on a hardcoded CSRF cookie name or automatically replay arbitrary unsafe requests after a CSRF failure.
 
 Django remains authoritative for authentication and authorization. Never add bearer-token, JWT, localStorage, or sessionStorage authentication.
 

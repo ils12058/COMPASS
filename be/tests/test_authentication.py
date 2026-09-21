@@ -452,6 +452,52 @@ def test_totp_enrollment_is_pending_then_returns_one_time_recovery_codes():
 
 
 @pytest.mark.django_db
+def test_mfa_status_reports_enabled_and_recent_state():
+    client = Client()
+    assert client.get("/api/v1/auth/mfa/status").status_code == 401
+
+    user = make_user(email="mfa-status@example.edu")
+    assert login(client, email=user.email, password="correct-password").status_code == 200
+
+    initial = client.get("/api/v1/auth/mfa/status")
+    assert initial.status_code == 200
+    assert initial.json() == {"enabled": False, "recent": False}
+
+    setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {}, headers=csrf_headers(client))
+    assert setup.status_code == 200
+    parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
+    confirmed = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/confirm",
+        {"code": parsed.now()},
+        headers=csrf_headers(client),
+    )
+    assert confirmed.status_code == 200
+
+    enrolled = client.get("/api/v1/auth/mfa/status")
+    assert enrolled.status_code == 200
+    assert enrolled.json() == {"enabled": True, "recent": False}
+
+    future = timezone.now() + timedelta(seconds=settings.AUTH_TOTP_INTERVAL_SECONDS)
+    with (
+        patch("compass.authentication.mfa.timezone.now", return_value=future),
+        patch("compass.authentication.sessions.timezone.now", return_value=future),
+    ):
+        verified = post_json(
+            client,
+            "/api/v1/auth/mfa/totp/verify",
+            {"code": parsed.at(future)},
+            headers=csrf_headers(client),
+        )
+        assert verified.status_code == 200
+        assert verified.json() == {"enabled": True, "recent": True}
+
+        recent = client.get("/api/v1/auth/mfa/status")
+        assert recent.status_code == 200
+        assert recent.json() == {"enabled": True, "recent": True}
+
+
+@pytest.mark.django_db
 @override_settings(AUTH_MFA_REQUIRED_ROLE_CODES=["COUNSELOR"])
 def test_mandatory_mfa_bootstrap_is_challenge_only_until_totp_is_confirmed():
     user = make_user(email="mandatory-mfa@example.edu", role_code="COUNSELOR")
