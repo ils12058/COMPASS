@@ -656,4 +656,3 @@ def test_public_platform_status_is_anonymous_minimal_and_reachable_during_mainte
     restricted = anonymous.get("/api/v1/platform/maintenance")
     assert restricted.status_code == 401
     assert restricted.json()["error"]["code"] == "authentication_required"
-
