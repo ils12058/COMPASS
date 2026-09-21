@@ -57,4 +57,4 @@ jobs:
       - name: Production build
         working-directory: fe
         run: pnpm build
-# validation pass after lint fix
+# validation pass after dialog typing fix
