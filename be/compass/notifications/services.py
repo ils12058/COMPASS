@@ -162,6 +162,14 @@ def mark_my_notification_read(
         return notification
 
 
+def mark_all_my_notifications_read(*, actor: User) -> int:
+    marked_at = timezone.now()
+    return Notification.objects.filter(
+        recipient=actor,
+        read_at__isnull=True,
+    ).update(read_at=marked_at)
+
+
 def update_my_notification_preference(
     *,
     actor: User,
@@ -183,6 +191,7 @@ __all__ = [
     "NotificationPage",
     "create_notification_for_event",
     "list_my_notifications",
+    "mark_all_my_notifications_read",
     "mark_my_notification_read",
     "optional_email_enabled_for",
     "unread_count_for",

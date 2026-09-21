@@ -17,6 +17,7 @@ from compass.audit.actions import (
     REFERRAL_ACTION_RECORDED,
     REFERRAL_CREATED,
     REFERRAL_STATUS_UPDATED,
+    REFERRAL_VOIDED,
 )
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
@@ -38,6 +39,7 @@ MAX_REFERENCE_SEQUENCE = 999_999
 MAX_REASON_LENGTH = 10_000
 MAX_REMARKS_LENGTH = 4_000
 MAX_STATUS_NOTE_LENGTH = 1_000
+MAX_VOID_REASON_LENGTH = 1_000
 
 
 class ReferralError(RuntimeError):
@@ -69,6 +71,10 @@ class ReferralCreationConflict(ReferralError):
 
 
 class ReferralActionConflict(ReferralError):
+    pass
+
+
+class ReferralVoidConflict(ReferralError):
     pass
 
 
@@ -399,6 +405,7 @@ def list_referrals(
     student_id: UUID | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
+    include_voided: bool = False,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ReferralPage:
@@ -412,6 +419,8 @@ def list_referrals(
         raise InvalidReferralInput("from_date must not be after to_date.")
 
     qs = _scope_queryset(_queryset(), actor)
+    if not include_voided:
+        qs = qs.filter(voided_at__isnull=True)
     if search and search.strip():
         qs = qs.filter(reference_code__icontains=search.strip()[:64])
     if student_id is not None:
@@ -452,6 +461,8 @@ def update_status_note(
     cleaned = _clean_optional(status_note, "status_note", MAX_STATUS_NOTE_LENGTH)
     with transaction.atomic():
         item = _lock_scoped_referral(actor=actor, referral_id=referral_id)
+        if item.voided_at is not None:
+            raise ReferralVoidConflict("A voided Referral cannot be changed.")
         if item.status_note == cleaned:
             return _detail_queryset().get(pk=item.pk)
         item.status_note = cleaned
@@ -490,6 +501,8 @@ def record_action(
 
     with transaction.atomic():
         referral = _lock_scoped_referral(actor=actor, referral_id=referral_id)
+        if referral.voided_at is not None:
+            raise ReferralVoidConflict("A voided Referral cannot receive new actions.")
         normalized_occurred = _normalize_occurred_at(
             occurred_at,
             referral=referral,
@@ -527,3 +540,50 @@ def record_action(
             },
         )
         return ReferralAction.objects.select_related("referral", "recorded_by").get(pk=action.pk)
+
+
+def void_referral(
+    *,
+    actor: User,
+    referral_id: UUID,
+    reason: str,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> Referral:
+    _validate_operational_actor(actor)
+    cleaned_reason = _clean_required(reason, "reason", MAX_VOID_REASON_LENGTH)
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidReferralInput("The void time must be timezone-aware.")
+
+    with transaction.atomic():
+        item = _lock_scoped_referral(actor=actor, referral_id=referral_id)
+        if item.voided_at is not None:
+            return _detail_queryset().get(pk=item.pk)
+
+        from compass.call_slips.models import CallSlip
+
+        if CallSlip.objects.filter(
+            referral_id=item.pk,
+            voided_at__isnull=True,
+        ).exists():
+            raise ReferralVoidConflict(
+                "Void the active linked Call Slip before voiding this Referral."
+            )
+
+        item.voided_at = current
+        item.voided_by = actor
+        item.void_reason = cleaned_reason
+        item.save(update_fields=["voided_at", "voided_by", "void_reason", "updated_at"])
+        record_event(
+            context=context,
+            action=REFERRAL_VOIDED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="referrals.referral",
+            target_id=item.pk,
+            metadata={
+                "reference_code": item.reference_code,
+                "transition": "ACTIVE -> VOIDED",
+            },
+        )
+        return _detail_queryset().get(pk=item.pk)

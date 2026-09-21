@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import NoReturn
 from uuid import UUID
 
-from ninja import Router, Schema
+from ninja import File, Router, Schema, UploadedFile
 from pydantic import ConfigDict
 
 from compass.audit.context import AuditContext
@@ -14,7 +14,12 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
-from .profile_photos import profile_photo_url
+from .profile_photos import (
+    ProfilePhotoValidationError,
+    profile_photo_url,
+    remove_profile_photo,
+    set_profile_photo,
+)
 from .profiles import (
     InvalidProfileInput,
     ProfileError,
@@ -54,6 +59,11 @@ class MyProfileUpdateRequest(StrictSchema):
     contact_number: str = ""
     current_address: str = ""
     permanent_address: str = ""
+
+
+class MyProfilePhotoResponse(StrictSchema):
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
 
 
 def _serialize(user) -> dict[str, object]:
@@ -116,3 +126,57 @@ def patch_my_profile(request, payload: MyProfileUpdateRequest):
     except ProfileError as exc:
         _raise_profile_error(exc)
     return _serialize(result.user)
+
+
+@router.put(
+    "/profile/photo",
+    response=response_with_errors(MyProfilePhotoResponse, 401, 403, 422, 503),
+    auth=session_auth,
+    operation_id="profileSetMyPhoto",
+    summary="Set my profile photo",
+)
+def set_my_profile_photo(request, photo: UploadedFile = File(...)):  # noqa: B008
+    user = request.auth_user
+    if not user.is_active:
+        raise APIError(403, "profile_unavailable", "The account profile is unavailable.")
+    try:
+        set_profile_photo(user, photo)
+        url = profile_photo_url(user)
+    except ProfilePhotoValidationError as exc:
+        raise APIError(422, "invalid_profile_photo", str(exc)) from exc
+    except Exception as exc:
+        raise APIError(
+            503,
+            "profile_photo_storage_unavailable",
+            "Profile photo storage is temporarily unavailable.",
+        ) from exc
+    return {
+        "profile_photo_url": url,
+        "profile_photo_updated_at": user.profile_photo_updated_at,
+    }
+
+
+@router.delete(
+    "/profile/photo",
+    response=response_with_errors(MyProfilePhotoResponse, 401, 403, 503),
+    auth=session_auth,
+    operation_id="profileRemoveMyPhoto",
+    summary="Remove my profile photo",
+)
+def remove_my_profile_photo(request):
+    user = request.auth_user
+    if not user.is_active:
+        raise APIError(403, "profile_unavailable", "The account profile is unavailable.")
+    try:
+        remove_profile_photo(user)
+        url = profile_photo_url(user)
+    except Exception as exc:
+        raise APIError(
+            503,
+            "profile_photo_storage_unavailable",
+            "Profile photo storage is temporarily unavailable.",
+        ) from exc
+    return {
+        "profile_photo_url": url,
+        "profile_photo_updated_at": user.profile_photo_updated_at,
+    }

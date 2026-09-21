@@ -27,11 +27,13 @@ from .services import (
     ReferralNotFound,
     ReferralNotPermitted,
     ReferralReferenceConflict,
+    ReferralVoidConflict,
     create_referral,
     get_referral,
     list_referrals,
     record_action,
     update_status_note,
+    void_referral,
 )
 
 router = Router(tags=["referrals"])
@@ -67,6 +69,10 @@ class ReferralActionCreateRequest(StrictSchema):
     remarks: str = ""
 
 
+class ReferralVoidRequest(StrictSchema):
+    reason: str
+
+
 class ReferralPersonSummary(StrictSchema):
     id: UUID
     display_name: str
@@ -96,6 +102,7 @@ class ReferralSummaryResponse(StrictSchema):
     referred_on: date
     received_at: datetime | None
     status_note: str
+    voided_at: datetime | None
     created_at: datetime
 
 
@@ -104,6 +111,7 @@ class ReferralDetailResponse(ReferralSummaryResponse):
     referrer_name: str
     form_revision: ReferralFormRevisionSummary
     actions: list[ReferralActionResponse]
+    void_reason: str
     updated_at: datetime
 
 
@@ -142,6 +150,7 @@ def _raise(exc: ReferralError) -> NoReturn:
             ReferralReferenceConflict,
             ReferralCreationConflict,
             ReferralActionConflict,
+            ReferralVoidConflict,
         ),
     ):
         raise APIError(409, "referral_conflict", str(exc)) from exc
@@ -181,6 +190,7 @@ def _summary(item) -> dict[str, object]:
         "referred_on": item.referred_on,
         "received_at": item.received_at,
         "status_note": item.status_note,
+        "voided_at": item.voided_at,
         "created_at": item.created_at,
     }
 
@@ -192,6 +202,7 @@ def _detail(item) -> dict[str, object]:
         "referrer_name": item.referrer_name,
         "form_revision": _revision(item.form_revision),
         "actions": [_action(action) for action in item.actions.all()],
+        "void_reason": item.void_reason,
         "updated_at": item.updated_at,
     }
 
@@ -251,6 +262,7 @@ def referrals_list(
     student_id: UUID | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
+    include_voided: bool = False,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -262,6 +274,7 @@ def referrals_list(
             student_id=student_id,
             from_date=from_date,
             to_date=to_date,
+            include_voided=include_voided,
             page=page,
             page_size=page_size,
         )
@@ -346,3 +359,23 @@ def referrals_record_action(
     except ReferralError as exc:
         _raise(exc)
     return Status(201, _action(action))
+
+
+@router.post(
+    "/{referral_id}/void",
+    response=response_with_errors(ReferralDetailResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="referralsVoid",
+)
+def referrals_void(request, referral_id: UUID, payload: ReferralVoidRequest):
+    _require(request, "referrals.manage")
+    try:
+        item = void_referral(
+            actor=request.auth_user,
+            referral_id=referral_id,
+            reason=payload.reason,
+            context=_context(request),
+        )
+    except ReferralError as exc:
+        _raise(exc)
+    return _detail(item)

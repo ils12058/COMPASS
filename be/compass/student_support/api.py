@@ -12,10 +12,12 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.student_support.services import (
+    DEFAULT_PAGE_SIZE,
     StudentSupportConfigurationConflict,
     StudentSupportError,
     StudentSupportNotFound,
     get_student_support_context,
+    list_student_support_students,
 )
 
 router = Router(tags=["student-support"])
@@ -33,7 +35,14 @@ class InventoryStatusValue(StrEnum):
 
 class StudentReference(StrictSchema):
     id: UUID
+    institutional_id: str | None = None
     display_name: str
+
+
+class CollegeReference(StrictSchema):
+    id: UUID
+    code: str
+    name: str
 
 
 class AcademicYearReference(StrictSchema):
@@ -54,6 +63,22 @@ class StudentSupportContextResponse(StrictSchema):
     indicators: list[SupportIndicatorResponse]
 
 
+class StudentSupportRosterRowResponse(StrictSchema):
+    student: StudentReference
+    college: CollegeReference | None
+    academic_year: AcademicYearReference
+    inventory_status: InventoryStatusValue
+    available: bool
+    indicators: list[SupportIndicatorResponse]
+
+
+class StudentSupportRosterPageResponse(StrictSchema):
+    items: list[StudentSupportRosterRowResponse]
+    page: int
+    page_size: int
+    has_next: bool
+
+
 def _require_viewer(request) -> None:
     actor = request.auth_user
     if (
@@ -66,6 +91,75 @@ def _require_viewer(request) -> None:
             "permission_denied",
             "Student Support Context access is required.",
         )
+
+
+@router.get(
+    "/students",
+    response=response_with_errors(StudentSupportRosterPageResponse, 401, 403, 409, 422),
+    auth=session_auth,
+    operation_id="studentSupportListStudents",
+)
+def student_support_list_students(
+    request,
+    search: str | None = None,
+    college_id: UUID | None = None,
+    inventory_status: InventoryStatusValue | None = None,
+    indicator: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_viewer(request)
+    try:
+        result = list_student_support_students(
+            actor=request.auth_user,
+            search=search,
+            college_id=college_id,
+            inventory_status=inventory_status.value if inventory_status is not None else None,
+            indicator=indicator,
+            page=page,
+            page_size=page_size,
+        )
+    except StudentSupportNotFound as exc:
+        raise APIError(403, "permission_denied", str(exc)) from exc
+    except StudentSupportConfigurationConflict as exc:
+        code = (
+            "current_academic_year_not_configured"
+            if "Academic Year" in str(exc)
+            else "invalid_student_support_request"
+        )
+        status = 409 if code == "current_academic_year_not_configured" else 422
+        raise APIError(status, code, str(exc)) from exc
+    return {
+        "items": [
+            {
+                "student": {
+                    "id": row.student.pk,
+                    "institutional_id": row.student.institutional_id,
+                    "display_name": row.student.get_full_name(),
+                },
+                "college": (
+                    {
+                        "id": row.college.pk,
+                        "code": row.college.code,
+                        "name": row.college.name,
+                    }
+                    if row.college is not None
+                    else None
+                ),
+                "academic_year": {
+                    "id": row.academic_year.pk,
+                    "label": row.academic_year.label,
+                },
+                "inventory_status": row.inventory_status,
+                "available": row.available,
+                "indicators": [{"code": item.code, "label": item.label} for item in row.indicators],
+            }
+            for row in result.items
+        ],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
 
 
 @router.get(
@@ -87,6 +181,7 @@ def student_support_get_context(request, student_id: UUID):
     return {
         "student": {
             "id": context.student.pk,
+            "institutional_id": context.student.institutional_id,
             "display_name": context.student.get_full_name(),
         },
         "academic_year": {
