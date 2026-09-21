@@ -14,10 +14,12 @@ export function PreviewDialog({
   markdown: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
 
   function open() {
+    returnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     dialogRef.current?.showModal();
     window.requestAnimationFrame(() => headingRef.current?.focus());
   }
@@ -41,7 +43,7 @@ export function PreviewDialog({
             close();
           }
         }}
-        onClose={() => triggerRef.current?.focus()}
+        onClose={() => returnFocusRef.current?.focus()}
       >
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b bg-card p-5">
           <div>
