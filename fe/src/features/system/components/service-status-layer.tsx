@@ -92,6 +92,8 @@ export function ServiceStatusLayer({
     },
   });
 
+  const { refetch } = query;
+
   const backendStatus = useMemo<ServiceStatusView>(() => {
     if (query.data?.data) {
       return normalizeServiceStatus(query.data.data);
@@ -119,7 +121,7 @@ export function ServiceStatusLayer({
     }
 
     const refresh = () => {
-      void query.refetch();
+      void refetch();
     };
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") {
@@ -138,7 +140,7 @@ export function ServiceStatusLayer({
       window.removeEventListener(COMPASS_MAINTENANCE_SIGNAL_EVENT, refresh);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [online, query.refetch]);
+  }, [online, refetch]);
 
   useEffect(() => {
     const delay = nextPollDelay(status);
@@ -147,11 +149,11 @@ export function ServiceStatusLayer({
     }
 
     const timer = window.setTimeout(() => {
-      void query.refetch();
+      void refetch();
     }, delay);
 
     return () => window.clearTimeout(timer);
-  }, [query.refetch, status]);
+  }, [refetch, status]);
 
   useEffect(() => {
     const delay = transitionDelay(status);
@@ -160,11 +162,11 @@ export function ServiceStatusLayer({
     }
 
     const timer = window.setTimeout(() => {
-      void query.refetch();
+      void refetch();
     }, delay);
 
     return () => window.clearTimeout(timer);
-  }, [query.refetch, status]);
+  }, [refetch, status]);
 
   if (
     backendStatus.kind === "maintenance_active" &&
@@ -173,7 +175,7 @@ export function ServiceStatusLayer({
     return (
       <MaintenanceScreen
         status={backendStatus}
-        onRetry={() => void query.refetch()}
+        onRetry={() => void refetch()}
         checking={query.isFetching}
       />
     );
