@@ -26,6 +26,7 @@ from .services import (
     ResourceStorageError,
     archive_resource,
     attach_resource_file,
+    create_managed_resource_download,
     create_public_resource_download,
     create_resource,
     create_resource_download,
@@ -36,6 +37,7 @@ from .services import (
     list_public_resources,
     list_visible_resources,
     publish_resource,
+    remove_draft_resource_file,
     update_resource,
 )
 
@@ -316,6 +318,43 @@ def resources_update(request, resource_id: UUID, payload: ResourceUpdateRequest)
             actor=request.auth_user,
             resource_id=resource_id,
             values=values,
+            context=_context(request),
+        )
+    except ResourceError as exc:
+        _raise(exc)
+    return _managed(item)
+
+
+@router.get(
+    "/management/{resource_id}/file",
+    response=response_with_errors(ResourceDownloadResponse, 401, 403, 404, 409, 503),
+    auth=session_auth,
+    operation_id="resourcesDownloadManagedFile",
+)
+def resources_download_managed_file(request, resource_id: UUID):
+    _require_manager(request)
+    try:
+        result = create_managed_resource_download(resource_id=resource_id)
+    except ResourceError as exc:
+        _raise(exc)
+    return ResourceDownloadResponse(
+        url=result.url,
+        expires_in_seconds=result.expires_in_seconds,
+    )
+
+
+@router.delete(
+    "/management/{resource_id}/file",
+    response=response_with_errors(ResourceManagementResponse, 401, 403, 404, 409),
+    auth=session_auth,
+    operation_id="resourcesRemoveDraftFile",
+)
+def resources_remove_draft_file(request, resource_id: UUID):
+    _require_manager(request)
+    try:
+        item = remove_draft_resource_file(
+            actor=request.auth_user,
+            resource_id=resource_id,
             context=_context(request),
         )
     except ResourceError as exc:

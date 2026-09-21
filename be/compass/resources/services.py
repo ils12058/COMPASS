@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 from io import BytesIO
@@ -18,6 +19,7 @@ from compass.audit.actions import (
     RESOURCE_ARCHIVED,
     RESOURCE_CREATED,
     RESOURCE_FILE_ATTACHED,
+    RESOURCE_FILE_REMOVED,
     RESOURCE_PUBLISHED,
     RESOURCE_UPDATED,
 )
@@ -35,6 +37,8 @@ MAX_TITLE_LENGTH = 200
 MAX_BODY_BYTES = 50 * 1024
 MAX_FILE_BYTES = 10 * 1024 * 1024
 PDF_CONTENT_TYPE = "application/pdf"
+
+logger = logging.getLogger("compass.resources")
 
 
 class ResourceError(RuntimeError):
@@ -499,6 +503,93 @@ def attach_resource_file(
     return get_managed_resource(resource_id=resource_id)
 
 
+def create_managed_resource_download(
+    *,
+    resource_id: UUID,
+    storage: ObjectStorage | None = None,
+) -> ResourceDownload:
+    item = get_managed_resource(resource_id=resource_id)
+    if item.kind != ResourceKind.FILE or not item.storage_key:
+        raise ResourceConflict("The requested Resource does not have an attached management file.")
+    object_storage = storage or ObjectStorage()
+    ttl = settings.RESOURCE_DOWNLOAD_URL_TTL_SECONDS
+    try:
+        url = object_storage.private_url(item.storage_key, expires_seconds=ttl)
+    except Exception as exc:
+        raise ResourceStorageError("Private Resource management download access is unavailable.") from exc
+    return ResourceDownload(url=url, expires_in_seconds=ttl)
+
+
+def remove_draft_resource_file(
+    *,
+    actor: User,
+    resource_id: UUID,
+    context: AuditContext,
+    storage: ObjectStorage | None = None,
+) -> Resource:
+    object_storage = storage or ObjectStorage()
+    old_key = ""
+    with transaction.atomic():
+        item = Resource.objects.select_for_update().filter(pk=resource_id).first()
+        if item is None:
+            raise ResourceNotFound("The requested Resource was not found.")
+        if item.status != PublicationStatus.DRAFT or item.kind != ResourceKind.FILE:
+            raise ResourceConflict("Only a DRAFT FILE Resource attachment may be removed.")
+
+        old_key = item.storage_key
+        if not any(
+            (
+                item.storage_key,
+                item.original_filename,
+                item.content_type,
+                item.size_bytes,
+            )
+        ):
+            return get_managed_resource(resource_id=resource_id)
+
+        item.storage_key = ""
+        item.original_filename = ""
+        item.content_type = ""
+        item.size_bytes = 0
+        item.updated_by = actor
+        item.save(
+            update_fields=[
+                "storage_key",
+                "original_filename",
+                "content_type",
+                "size_bytes",
+                "updated_by",
+                "updated_at",
+            ]
+        )
+        record_event(
+            context=context,
+            action=RESOURCE_FILE_REMOVED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="resources.resource",
+            target_id=item.pk,
+            metadata={
+                "status": item.status,
+                "audience": item.audience,
+                "kind": item.kind,
+                "category": item.category,
+            },
+        )
+
+    if old_key:
+        try:
+            object_storage.delete(old_key)
+        except Exception:
+            logger.warning(
+                "detached Resource object cleanup failed",
+                extra={
+                    "event": "resource_file_cleanup_failed",
+                    "resource_id": str(resource_id),
+                },
+            )
+    return get_managed_resource(resource_id=resource_id)
+
+
 @transaction.atomic
 def publish_resource(
     *,
@@ -624,6 +715,7 @@ __all__ = [
     "ResourceStorageError",
     "archive_resource",
     "attach_resource_file",
+    "create_managed_resource_download",
     "create_public_resource_download",
     "create_resource",
     "create_resource_download",
@@ -634,5 +726,6 @@ __all__ = [
     "list_public_resources",
     "list_visible_resources",
     "publish_resource",
+    "remove_draft_resource_file",
     "update_resource",
 ]
