@@ -73,6 +73,8 @@
   --compass-motion-fast: 120ms;
   --compass-motion-standard: 200ms;
 
+  --compass-status-banner-height: 0px;
+
   --compass-space-1: 0.25rem;
   --compass-space-2: 0.5rem;
   --compass-space-3: 0.75rem;
@@ -85,4 +87,23 @@
   --compass-radius-md: 0.5rem;
   --compass-radius-lg: 0.875rem;
   --compass-radius-xl: 1rem;
+}
+
+
+:root[data-compass-contrast="high"] {
+  --compass-ink: #111416;
+  --compass-text-muted: #30383c;
+  --compass-brand-maroon: #5b1622;
+  --compass-brand-maroon-strong: #3f0d16;
+  --compass-brand-gold: #745006;
+  --compass-support: #405f51;
+  --compass-support-strong: #24483a;
+  --compass-support-soft: #d5e4d7;
+  --compass-body: #fffdf8;
+  --compass-surface: #ffffff;
+  --compass-surface-muted: #e7ece5;
+  --compass-surface-subtle: #f3eee2;
+  --compass-border: #686f70;
+  --compass-border-strong: #383f41;
+  --compass-focus-color: #111416;
 }

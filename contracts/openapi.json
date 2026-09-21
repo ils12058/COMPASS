@@ -12825,6 +12825,57 @@
         "title": "PlatformHealthResponse",
         "type": "object"
       },
+      "PlatformPublicStatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicPlatformStatus"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "PlatformPublicStatusResponse",
+        "type": "object"
+      },
       "PostGraduationFieldValue": {
         "enum": [
           "PROFESSIONAL",
@@ -14130,6 +14181,15 @@
         ],
         "title": "ProviderWeeklyResponse",
         "type": "object"
+      },
+      "PublicPlatformStatus": {
+        "enum": [
+          "operational",
+          "maintenance_scheduled",
+          "maintenance_active"
+        ],
+        "title": "PublicPlatformStatus",
+        "type": "string"
       },
       "RecordingWorkspaceState": {
         "additionalProperties": false,
@@ -35178,6 +35238,28 @@
           }
         ],
         "summary": "Create or replace a Maintenance Mode schedule",
+        "tags": [
+          "platform-operations"
+        ]
+      }
+    },
+    "/api/v1/platform/status": {
+      "get": {
+        "operationId": "platformPublicStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformPublicStatusResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Read public COMPASS service status",
         "tags": [
           "platform-operations"
         ]

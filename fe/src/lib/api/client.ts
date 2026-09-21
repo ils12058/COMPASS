@@ -1,4 +1,6 @@
 import { clearCsrfToken, getCsrfToken } from "@/lib/api/csrf";
+import { getStructuredApiErrorCode } from "@/lib/api/error-payload";
+import { emitMaintenanceStatusRefresh } from "@/lib/system/status-events";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
 const API_PREFIX = "/api/v1";
@@ -136,6 +138,10 @@ export async function compassFetch<T>(
   if (!response.ok) {
     if (isCsrfFailure(response.status, data)) {
       clearCsrfToken();
+    }
+
+    if (getStructuredApiErrorCode(data) === "maintenance_mode") {
+      emitMaintenanceStatusRefresh();
     }
 
     throw new CompassApiError({

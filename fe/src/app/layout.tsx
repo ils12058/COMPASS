@@ -3,6 +3,7 @@ import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { Providers } from "@/app/providers";
+import { getInitialPlatformStatus } from "@/lib/server/service-status";
 
 import "@/styles/globals.css";
 
@@ -39,13 +40,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
+  const initialPlatformStatus = await getInitialPlatformStatus();
+
   return (
     <html lang="en" className={`${plusJakarta.variable} ${outfit.variable}`}>
       <body className="min-h-screen antialiased">
-        <Providers>{children}</Providers>
+        <Providers initialPlatformStatus={initialPlatformStatus}>
+          {children}
+        </Providers>
       </body>
     </html>
   );

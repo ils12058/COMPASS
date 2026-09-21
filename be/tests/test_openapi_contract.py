@@ -23,6 +23,7 @@ EXPECTED_OPERATION_IDS = {
     "healthLive",
     "systemMetadata",
     "healthReady",
+    "platformPublicStatus",
     "platformOperationsHealth",
     "platformOperationsEnvironment",
     "platformOperationsCommandCatalog",
@@ -1507,6 +1508,20 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
 
 def test_platform_operations_openapi_runtime_surface_and_secret_safety() -> None:
     schema = _generated_schema()
+
+    public_status = _operation(schema, "/api/v1/platform/status", "get")
+    assert public_status["operationId"] == "platformPublicStatus"
+    assert public_status["tags"] == ["platform-operations"]
+    assert _response_statuses(public_status) == {200}
+    assert not public_status.get("security")
+
+    public_schema = schema["components"]["schemas"]["PlatformPublicStatusResponse"]
+    assert set(public_schema["properties"]) == {
+        "status",
+        "message",
+        "starts_at",
+        "ends_at",
+    }
 
     read_only = {
         "/api/v1/platform/health": "platformOperationsHealth",
