@@ -1,0 +1,59 @@
+name: Content management focused validation
+
+on:
+  push:
+    branches:
+      - feature/announcements-resources-management
+    paths:
+      - ".github/workflows/content-management-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-content:
+    runs-on: ubuntu-latest
+    env:
+      COMPASS_API_BASE_URL: http://127.0.0.1:8000
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22.18.0"
+          cache: pnpm
+          cache-dependency-path: fe/pnpm-lock.yaml
+
+      - name: Install locked dependencies
+        working-directory: fe
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate API client
+        working-directory: fe
+        run: pnpm api:generate
+
+      - name: Verify content management client
+        working-directory: fe
+        run: |
+          grep -q "useAnnouncementsListManaged" src/lib/api/generated/announcements/announcements.ts
+          grep -q "useResourcesAttachDraftFile" src/lib/api/generated/resources/resources.ts
+
+      - name: Lint
+        working-directory: fe
+        run: pnpm lint
+
+      - name: Typecheck
+        working-directory: fe
+        run: pnpm typecheck
+
+      - name: Production build
+        working-directory: fe
+        run: pnpm build
