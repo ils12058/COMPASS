@@ -57,3 +57,4 @@ jobs:
       - name: Production build
         working-directory: fe
         run: pnpm build
+# validation pass after lint fix
