@@ -85,6 +85,7 @@ export function ServiceStatusLayer({
   );
   const query = usePlatformPublicStatus({
     query: {
+      enabled: online,
       retry: false,
       refetchOnWindowFocus: false,
       staleTime: 30_000,
