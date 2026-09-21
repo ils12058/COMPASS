@@ -326,9 +326,16 @@ class GraduateTracerDetailResponse(GraduateTracerDraftPayload):
     updated_at: datetime
 
 
+class GraduateTracerStudentSummary(StrictSchema):
+    id: UUID
+    institutional_id: str | None
+    display_name: str
+
+
 class GraduateTracerSummaryResponse(StrictSchema):
     id: UUID
     student_id: UUID
+    student: GraduateTracerStudentSummary
     name: str
     current_employment_state: GTSEmploymentStateValue
     instrument_schema_version: int
@@ -482,6 +489,11 @@ def _summary(item) -> dict[str, object]:
     return {
         "id": item.pk,
         "student_id": item.student_id,
+        "student": {
+            "id": item.student_id,
+            "institutional_id": item.student.institutional_id,
+            "display_name": item.student.get_full_name(),
+        },
         "name": item.name_snapshot,
         "current_employment_state": item.current_employment_state,
         "instrument_schema_version": item.instrument_schema_version,
@@ -587,6 +599,11 @@ def graduate_tracer_submit_my_response(request):
 )
 def graduate_tracer_list_responses(
     request,
+    search: str | None = None,
+    student_id: UUID | None = None,
+    submitted_from: date | None = None,
+    submitted_to: date | None = None,
+    current_employment_state: GTSEmploymentStateValue | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -594,6 +611,15 @@ def graduate_tracer_list_responses(
     try:
         result = list_submitted_for_head(
             actor=request.auth_user,
+            search=search,
+            student_id=student_id,
+            submitted_from=submitted_from,
+            submitted_to=submitted_to,
+            current_employment_state=(
+                current_employment_state.value
+                if current_employment_state is not None
+                else None
+            ),
             page=page,
             page_size=page_size,
         )

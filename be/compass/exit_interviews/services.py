@@ -8,6 +8,7 @@ from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -53,6 +54,7 @@ MAX_OTHER_LENGTH = 1000
 MAX_REOPEN_REASON_LENGTH = 1000
 DEFAULT_PAGE_SIZE = 25
 MAX_PAGE_SIZE = 100
+MAX_SEARCH_LENGTH = 160
 
 ROOT_EDITABLE_FIELDS = frozenset(
     {
@@ -782,23 +784,49 @@ def _pagination(page: int, page_size: int) -> tuple[int, int]:
     return page, page_size
 
 
+def _clean_search(search: str | None) -> str:
+    if search is None:
+        return ""
+    if not isinstance(search, str):
+        raise InvalidExitInterviewInput("search must be text.")
+    cleaned = search.strip()
+    if len(cleaned) > MAX_SEARCH_LENGTH:
+        raise InvalidExitInterviewInput(
+            f"search must be at most {MAX_SEARCH_LENGTH} characters."
+        )
+    return cleaned
+
+
 def list_for_head(
     *,
     actor: User,
     academic_year_id: UUID | None = None,
     status: str | None = None,
+    search: str | None = None,
+    student_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ExitInterviewPage:
     _validate_head(actor, "exit_interviews.view")
     page, page_size = _pagination(page, page_size)
+    term = _clean_search(search)
     qs = _queryset()
+    if student_id is not None:
+        qs = qs.filter(student_id=student_id)
     if academic_year_id is not None:
         qs = qs.filter(academic_year_id=academic_year_id)
     if status is not None:
         if status not in ExitInterviewStatus.values:
             raise InvalidExitInterviewInput("status is not supported.")
         qs = qs.filter(status=status)
+    if term:
+        qs = qs.filter(
+            Q(student__institutional_id__icontains=term)
+            | Q(student__first_name__icontains=term)
+            | Q(student__middle_name__icontains=term)
+            | Q(student__last_name__icontains=term)
+            | Q(student_name_snapshot__icontains=term)
+        )
     qs = qs.order_by("-created_at", "id")
     offset = (page - 1) * page_size
     rows = list(qs[offset : offset + page_size + 1])

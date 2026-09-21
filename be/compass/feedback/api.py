@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import IntEnum, StrEnum
 from typing import NoReturn
 from uuid import UUID
@@ -397,6 +397,10 @@ def feedback_submit_customer_feedback(request, payload: CustomerFeedbackSubmitRe
 )
 def feedback_list_customer_feedback_responses(
     request,
+    search: str | None = None,
+    service: CustomerFeedbackServiceValue | None = None,
+    submitted_from: date | None = None,
+    submitted_to: date | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -404,6 +408,10 @@ def feedback_list_customer_feedback_responses(
     try:
         result = list_customer_feedback(
             actor=request.auth_user,
+            search=search,
+            service=service.value if service is not None else None,
+            submitted_from=submitted_from,
+            submitted_to=submitted_to,
             page=page,
             page_size=page_size,
         )
@@ -468,6 +476,9 @@ def feedback_list_csm_responses(
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     client_type: CSMClientTypeValue | None = None,
+    service: str | None = None,
+    submitted_from: date | None = None,
+    submitted_to: date | None = None,
 ):
     _require_viewer(request, "feedback.view_csm")
     try:
@@ -476,6 +487,9 @@ def feedback_list_csm_responses(
             page=page,
             page_size=page_size,
             client_type=client_type.value if client_type is not None else None,
+            service=service,
+            submitted_from=submitted_from,
+            submitted_to=submitted_to,
         )
     except FeedbackError as exc:
         _raise(exc)

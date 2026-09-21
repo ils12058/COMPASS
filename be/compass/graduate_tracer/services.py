@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import StudentLifecycleStatus, User
@@ -50,6 +51,7 @@ MAX_PAGE_SIZE = 100
 MAX_ADDRESS_LENGTH = 2000
 MAX_LONG_TEXT_LENGTH = 4000
 MAX_OTHER_LENGTH = 1000
+MAX_SEARCH_LENGTH = 160
 
 TEXT_FIELD_LIMITS = {
     "name_snapshot": 200,
@@ -832,22 +834,74 @@ def _pagination(page: int, page_size: int) -> tuple[int, int]:
     return page, page_size
 
 
+def _clean_search(search: str | None) -> str:
+    if search is None:
+        return ""
+    if not isinstance(search, str):
+        raise InvalidGraduateTracerInput("search must be text.")
+    cleaned = search.strip()
+    if len(cleaned) > MAX_SEARCH_LENGTH:
+        raise InvalidGraduateTracerInput(
+            f"search must be at most {MAX_SEARCH_LENGTH} characters."
+        )
+    return cleaned
+
+
+def _submission_boundary(value: date, *, following_day: bool = False) -> datetime:
+    if not isinstance(value, date) or isinstance(value, datetime):
+        raise InvalidGraduateTracerInput("submission date filters must be calendar dates.")
+    local_date = value + timedelta(days=1) if following_day else value
+    return timezone.make_aware(
+        datetime.combine(local_date, time.min),
+        timezone.get_current_timezone(),
+    )
+
+
 def list_submitted_for_head(
     *,
     actor: User,
+    search: str | None = None,
+    student_id: UUID | None = None,
+    submitted_from: date | None = None,
+    submitted_to: date | None = None,
+    current_employment_state: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> GraduateTracerPage:
     _validate_viewer(actor)
     page, page_size = _pagination(page, page_size)
-    queryset = (
-        _queryset()
-        .filter(status=GraduateTracerStatus.SUBMITTED)
-        .order_by(
-            "-submitted_at",
-            "id",
+    term = _clean_search(search)
+    if submitted_from is not None and submitted_to is not None and submitted_from > submitted_to:
+        raise InvalidGraduateTracerInput(
+            "submitted_from must be on or before submitted_to."
         )
-    )
+    queryset = _queryset().filter(status=GraduateTracerStatus.SUBMITTED)
+    if student_id is not None:
+        queryset = queryset.filter(student_id=student_id)
+    if term:
+        queryset = queryset.filter(
+            Q(student__institutional_id__icontains=term)
+            | Q(student__first_name__icontains=term)
+            | Q(student__middle_name__icontains=term)
+            | Q(student__last_name__icontains=term)
+            | Q(name_snapshot__icontains=term)
+        )
+    if submitted_from is not None:
+        queryset = queryset.filter(
+            submitted_at__gte=_submission_boundary(submitted_from)
+        )
+    if submitted_to is not None:
+        queryset = queryset.filter(
+            submitted_at__lt=_submission_boundary(submitted_to, following_day=True)
+        )
+    if current_employment_state is not None:
+        employment_state = _choice(
+            current_employment_state,
+            set(GTSEmploymentState.values),
+            "current_employment_state",
+        )
+        queryset = queryset.filter(current_employment_state=employment_state)
+    queryset = queryset.order_by("-submitted_at", "id")
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
     return GraduateTracerPage(

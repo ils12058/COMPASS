@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -46,6 +47,7 @@ MAX_REASON_LENGTH = 10_000
 MAX_REMARKS_LENGTH = 4_000
 MAX_STATUS_NOTE_LENGTH = 1_000
 MAX_VOID_REASON_LENGTH = 1_000
+MAX_SEARCH_LENGTH = 160
 
 
 class ReferralError(RuntimeError):
@@ -224,6 +226,19 @@ def _validate_date(value: date, label: str) -> date:
     if not isinstance(value, date) or isinstance(value, datetime):
         raise InvalidReferralInput(f"{label} must be a date.")
     return value
+
+
+def _clean_search(search: str | None) -> str:
+    if search is None:
+        return ""
+    if not isinstance(search, str):
+        raise InvalidReferralInput("search must be text.")
+    cleaned = search.strip()
+    if len(cleaned) > MAX_SEARCH_LENGTH:
+        raise InvalidReferralInput(
+            f"search must be at most {MAX_SEARCH_LENGTH} characters."
+        )
+    return cleaned
 
 
 def _normalize_received_at(
@@ -427,19 +442,27 @@ def list_referrals(
         _validate_date(to_date, "to_date")
     if from_date is not None and to_date is not None and from_date > to_date:
         raise InvalidReferralInput("from_date must not be after to_date.")
+    term = _clean_search(search)
 
     qs = _scope_queryset(_queryset(), actor)
     if not include_voided:
         qs = qs.filter(voided_at__isnull=True)
-    if search and search.strip():
-        qs = qs.filter(reference_code__icontains=search.strip()[:64])
+    if term:
+        qs = qs.filter(
+            Q(reference_code__icontains=term)
+            | Q(student__institutional_id__icontains=term)
+            | Q(student__first_name__icontains=term)
+            | Q(student__middle_name__icontains=term)
+            | Q(student__last_name__icontains=term)
+            | Q(student_name_snapshot__icontains=term)
+        )
     if student_id is not None:
         qs = qs.filter(student_id=student_id)
     if from_date is not None:
         qs = qs.filter(referred_on__gte=from_date)
     if to_date is not None:
         qs = qs.filter(referred_on__lte=to_date)
-    qs = qs.order_by("-created_at", "reference_code")
+    qs = qs.order_by("-created_at", "reference_code", "id")
     offset = (page - 1) * page_size
     rows = list(qs[offset : offset + page_size + 1])
     return ReferralPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
