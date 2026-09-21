@@ -29,7 +29,7 @@ class OperationalCollegeOption:
 @dataclass(frozen=True, slots=True)
 class OperationalStudentOption:
     id: UUID
-    institutional_id: str
+    institutional_id: str | None
     display_name: str
     college: OperationalCollegeOption | None
 

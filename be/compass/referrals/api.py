@@ -112,7 +112,7 @@ class ReferralStudentCollegeResponse(StrictSchema):
 
 class ReferralStudentOptionResponse(StrictSchema):
     id: UUID
-    institutional_id: str
+    institutional_id: str | None
     display_name: str
     college: ReferralStudentCollegeResponse | None
 

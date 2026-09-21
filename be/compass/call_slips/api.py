@@ -118,7 +118,7 @@ class CallSlipStudentCollegeResponse(StrictSchema):
 
 class CallSlipStudentOptionResponse(StrictSchema):
     id: UUID
-    institutional_id: str
+    institutional_id: str | None
     display_name: str
     college: CallSlipStudentCollegeResponse | None
 

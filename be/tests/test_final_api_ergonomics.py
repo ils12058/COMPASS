@@ -560,14 +560,16 @@ def test_booking_slots_respect_base_exceptions_and_duration_boundaries():
     )
     assert [row.starts_at.hour for row in rows.items] == [9, 11]
 
+    boundary_target = target + timedelta(days=7)
+    boundary_now = boundary_target - timedelta(hours=1)
     configure(provider, admin, start=time(8), end=time(8, 30))
     empty = list_bookable_slots(
         student=student,
         service_id=service.pk,
         provider_id=provider.pk,
         delivery_mode="IN_PERSON",
-        target_date=target.date(),
-        now=now,
+        target_date=boundary_target.date(),
+        now=boundary_now,
     )
     assert empty.items == ()
 
@@ -577,8 +579,8 @@ def test_booking_slots_respect_base_exceptions_and_duration_boundaries():
         service_id=service.pk,
         provider_id=provider.pk,
         delivery_mode="IN_PERSON",
-        target_date=target.date(),
-        now=now,
+        target_date=boundary_target.date(),
+        now=boundary_now,
     )
     assert len(exact.items) == 1
 
@@ -951,7 +953,19 @@ def test_slot_discovery_rejects_non_schedulable_service():
     admin = make_user("slot-policy-admin@example.edu", "IT_ADMIN")
     student = make_user("slot-policy-student@example.edu", "STUDENT")
     provider = make_user("slot-policy-provider@example.edu", "COUNSELOR")
-    service = make_service(admin, policy="NONE")
+    service = create_service(
+        code=f"NO_APPOINTMENT_{uuid4().hex[:8].upper()}",
+        name="No Appointment",
+        appointment_policy="NONE",
+        delivery_modes=["IN_PERSON"],
+        provider_roles=["COUNSELOR"],
+        context=context(admin),
+    )
+    service = set_service_active(
+        service_id=service.pk,
+        is_active=True,
+        context=context(admin),
+    )
     configure(provider, admin)
     target = next_monday()
     with pytest.raises(AppointmentNotSchedulable):
