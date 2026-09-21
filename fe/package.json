@@ -24,7 +24,10 @@
     "tailwind-merge": "3.6.0",
     "qrcode.react": "4.2.0",
     "react-markdown": "10.1.0",
-    "remark-gfm": "4.0.1"
+    "remark-gfm": "4.0.1",
+    "@milkdown/crepe": "7.22.1",
+    "@milkdown/react": "7.22.1",
+    "@milkdown/kit": "7.22.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
