@@ -58,6 +58,9 @@ jobs:
         working-directory: fe
         run: pnpm build
 
+      - name: Diff hygiene
+        run: git diff --check
+
   backend-contract:
     runs-on: ubuntu-latest
     steps:
