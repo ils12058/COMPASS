@@ -12,4 +12,8 @@
 **/staticfiles/
 **/media/
 fe/node_modules/
+fe/.next/
+fe/out/
 fe/dist/
+fe/coverage/
+fe/src/lib/api/generated/
