@@ -63,14 +63,22 @@ export function PortalShell({ children }: { children: ReactNode }) {
       <header className="border-b bg-card">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-4 px-5 py-4 sm:px-8">
           <Link className="flex items-center gap-3 no-underline" href="/portal">
-            <Image
-              src="/brand/compass-mark.svg"
-              alt=""
-              width={42}
-              height={42}
-              unoptimized
-              aria-hidden="true"
-            />
+            <span className="flex items-center gap-2" aria-hidden="true">
+              <Image
+                src="/brand/ucn-logo.png"
+                alt=""
+                width={34}
+                height={31}
+              />
+              <span className="h-7 w-px bg-border" />
+              <Image
+                src="/brand/compass-mark.svg"
+                alt=""
+                width={36}
+                height={36}
+                unoptimized
+              />
+            </span>
             <span>
               <span className="block font-heading text-lg font-bold text-foreground">COMPASS</span>
               <span className="block text-xs text-muted-foreground">
