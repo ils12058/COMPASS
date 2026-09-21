@@ -44,9 +44,13 @@ export function ConfirmationDialog({
   }
 
   async function confirm() {
-    await onConfirm();
-    if (dialogRef.current?.open) {
-      dialogRef.current.close();
+    try {
+      await onConfirm();
+      if (dialogRef.current?.open) {
+        dialogRef.current.close();
+      }
+    } catch {
+      // The parent mutation surface owns the safe error message.
     }
   }
 
