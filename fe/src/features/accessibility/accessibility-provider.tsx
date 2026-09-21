@@ -56,6 +56,7 @@ const EXPECTED_KEYS = [
 let memoryPreferences = DEFAULT_PREFERENCES;
 let cachedRaw: string | null | undefined;
 let cachedPreferences = DEFAULT_PREFERENCES;
+let preferMemorySnapshot = false;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -110,6 +111,10 @@ function parseStoredPreferences(raw: string | null): AccessibilityPreferences {
 }
 
 function getClientSnapshot(): AccessibilityPreferences {
+  if (preferMemorySnapshot) {
+    return memoryPreferences;
+  }
+
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw === cachedRaw) {
@@ -156,8 +161,9 @@ function publishPreferences(preferences: AccessibilityPreferences): void {
 
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+    preferMemorySnapshot = false;
   } catch {
-    // Keep the preference available in memory when browser storage is unavailable.
+    preferMemorySnapshot = true;
   }
 
   window.dispatchEvent(new Event(CHANGE_EVENT));
@@ -169,8 +175,9 @@ function removeStoredPreferences(): void {
 
   try {
     window.localStorage.removeItem(STORAGE_KEY);
+    preferMemorySnapshot = false;
   } catch {
-    // Defaults still apply in memory when browser storage is unavailable.
+    preferMemorySnapshot = true;
   }
 
   window.dispatchEvent(new Event(CHANGE_EVENT));
