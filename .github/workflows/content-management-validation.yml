@@ -57,4 +57,29 @@ jobs:
       - name: Production build
         working-directory: fe
         run: pnpm build
-# validation pass after preview ref fix
+
+  backend-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install locked backend dependencies
+        working-directory: be
+        run: uv sync --frozen
+
+      - name: Lightweight backend contract checks
+        working-directory: be
+        run: |
+          uv run python manage.py check --settings=tests.settings
+          uv run python manage.py makemigrations --check --dry-run --settings=tests.settings
+          uv run python manage.py export_openapi --check --settings=tests.settings
+
+# validation pass after editor lifecycle hardening
