@@ -74,7 +74,6 @@ from compass.resources.services import (
 )
 from compass.service_catalog.services import create_service, set_service_active
 
-
 ZONE = ZoneInfo("Asia/Manila")
 
 
