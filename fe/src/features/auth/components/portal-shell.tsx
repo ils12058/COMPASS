@@ -9,6 +9,7 @@ import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCurrentAuth } from "@/features/auth/hooks/use-current-auth";
 import { roleLabel, userDisplayName } from "@/features/auth/utils/presentation";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { clearCsrfToken } from "@/lib/api/csrf";
 import { CompassApiError } from "@/lib/api/client";
 import {
@@ -18,6 +19,11 @@ import {
   getAuthListTrustedSessionsQueryKey,
   useAuthLogout,
 } from "@/lib/api/generated/auth/auth";
+import {
+  getNotificationsGetPreferencesQueryKey,
+  getNotificationsGetUnreadCountQueryKey,
+  getNotificationsListMineQueryKey,
+} from "@/lib/api/generated/notifications/notifications";
 import { cn } from "@/lib/utils/cn";
 
 export function PortalShell({ children }: { children: ReactNode }) {
@@ -37,6 +43,9 @@ export function PortalShell({ children }: { children: ReactNode }) {
 
   async function finishLogout() {
     clearCsrfToken();
+    queryClient.removeQueries({ queryKey: getNotificationsListMineQueryKey() });
+    queryClient.removeQueries({ queryKey: getNotificationsGetUnreadCountQueryKey() });
+    queryClient.removeQueries({ queryKey: getNotificationsGetPreferencesQueryKey() });
     queryClient.removeQueries({ queryKey: getAuthGetSessionQueryKey() });
     queryClient.removeQueries({ queryKey: getAuthGetMfaStatusQueryKey() });
     queryClient.removeQueries({ queryKey: getAuthListSessionsQueryKey() });
@@ -114,7 +123,8 @@ export function PortalShell({ children }: { children: ReactNode }) {
             })}
           </nav>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <NotificationBell />
             <div className="hidden text-right md:block">
               <p className="text-sm font-semibold">{userDisplayName(session.user)}</p>
               <p className="text-xs text-muted-foreground">{roleLabel(session.user.role)}</p>
