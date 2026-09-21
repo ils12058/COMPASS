@@ -6,6 +6,7 @@ on:
       - feature/global-reliability-accessibility
     paths:
       - "be/compass/platform_ops/api.py"
+      - "be/compass/api/contract.py"
       - "be/tests/test_runtime_maintenance.py"
       - "be/tests/test_openapi_contract.py"
       - ".github/workflows/reliability-contract-bootstrap.yml"
