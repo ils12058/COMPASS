@@ -27,6 +27,16 @@ export const metadata: Metadata = {
   icons: {
     icon: "/brand/compass-mark.svg",
   },
+  openGraph: {
+    title: "COMPASS",
+    description: "Counseling Office Management Platform and Student Services",
+    images: [
+      {
+        url: "/brand/compass-open-graph.jpg",
+        alt: "COMPASS — University of Camarines Norte",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
