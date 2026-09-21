@@ -319,6 +319,7 @@ def test_announcement_api_enforces_management_and_returns_raw_markdown_without_h
     )
     assert staff_create.status_code == 201
 
+
 @pytest.mark.django_db
 def test_public_announcement_audience_is_anonymous_only_when_explicitly_public():
     sync_policy()
