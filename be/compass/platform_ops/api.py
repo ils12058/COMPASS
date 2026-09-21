@@ -125,19 +125,6 @@ class PlatformPublicStatusResponse(StrictSchema):
     ends_at: datetime | None
 
 
-class PublicPlatformStatus(StrEnum):
-    OPERATIONAL = "operational"
-    MAINTENANCE_SCHEDULED = "maintenance_scheduled"
-    MAINTENANCE_ACTIVE = "maintenance_active"
-
-
-class PlatformPublicStatusResponse(StrictSchema):
-    status: PublicPlatformStatus
-    message: str | None
-    starts_at: datetime | None
-    ends_at: datetime | None
-
-
 class MaintenanceResponse(StrictSchema):
     state: str
     source: str
@@ -257,47 +244,6 @@ def _raise_email_error(exc: EmailDeliveryOperationsError) -> NoReturn:
     if isinstance(exc, EmailDeliveryPaginationError):
         raise APIError(422, "invalid_email_delivery_request", str(exc)) from exc
     raise APIError(500, "internal_error", "The EmailDelivery operation failed.") from exc
-
-
-@router.get(
-    "/status",
-    response=PlatformPublicStatusResponse,
-    operation_id="platformPublicStatus",
-    summary="Read public COMPASS service status",
-)
-def platform_public_status(request):
-    snapshot = get_maintenance_snapshot()
-
-    if snapshot.state == "NORMAL":
-        return PlatformPublicStatusResponse(
-            status=PublicPlatformStatus.OPERATIONAL,
-            message=None,
-            starts_at=None,
-            ends_at=None,
-        )
-
-    if snapshot.state == "SCHEDULED":
-        return PlatformPublicStatusResponse(
-            status=PublicPlatformStatus.MAINTENANCE_SCHEDULED,
-            message=snapshot.message,
-            starts_at=snapshot.scheduled_start_at,
-            ends_at=snapshot.scheduled_end_at,
-        )
-
-    return PlatformPublicStatusResponse(
-        status=PublicPlatformStatus.MAINTENANCE_ACTIVE,
-        message=snapshot.message,
-        starts_at=(
-            snapshot.scheduled_start_at
-            if snapshot.source == "SCHEDULED"
-            else None
-        ),
-        ends_at=(
-            snapshot.scheduled_end_at
-            if snapshot.source == "SCHEDULED"
-            else snapshot.manual_expected_end_at
-        ),
-    )
 
 
 @router.get(
