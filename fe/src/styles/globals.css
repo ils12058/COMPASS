@@ -1,60 +1,73 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
-@layer base {
-  * {
-    box-sizing: border-box;
-    border-color: var(--compass-border);
-  }
+@theme inline {
+  --font-sans: var(--font-plus-jakarta);
+  --font-heading: var(--font-outfit);
 
-  html {
-    min-height: 100%;
-    background: var(--compass-body);
-  }
+  --color-ink: var(--compass-ink);
+  --color-muted: var(--compass-muted);
+  --color-on-brand: var(--compass-on-brand);
+  --color-brand: var(--compass-brand);
+  --color-brand-strong: var(--compass-brand-strong);
+  --color-brand-soft: var(--compass-brand-soft);
+  --color-brand-subtle: var(--compass-brand-subtle);
+  --color-gold: var(--compass-gold);
+  --color-support: var(--compass-support);
+  --color-support-strong: var(--compass-support-strong);
+  --color-support-soft: var(--compass-support-soft);
+  --color-success: var(--compass-success);
+  --color-info: var(--compass-info);
+  --color-warning: var(--compass-warning);
+  --color-danger: var(--compass-danger);
+  --color-body: var(--compass-body);
+  --color-surface: var(--compass-surface);
+  --color-surface-raised: var(--compass-surface-raised);
+  --color-surface-muted: var(--compass-surface-muted);
+  --color-surface-subtle: var(--compass-surface-subtle);
+  --color-border: var(--compass-border);
+  --color-border-strong: var(--compass-border-strong);
+  --color-focus: var(--compass-focus);
+  --color-overlay: var(--compass-overlay);
+  --radius-sm: var(--compass-radius-sm);
+  --radius-md: var(--compass-radius-md);
+  --radius-lg: var(--compass-radius-lg);
+  --shadow-dialog: var(--compass-shadow-dialog);
+}
 
-  body {
-    min-height: 100%;
-    margin: 0;
-    background: var(--compass-body);
-    color: var(--compass-ink);
-    font-family: var(--compass-font-ui);
-    line-height: var(--compass-line-height);
-  }
+* {
+  border-color: var(--compass-border);
+}
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    color: var(--compass-ink);
-    font-family: var(--compass-font-heading);
-    font-weight: var(--compass-heading-weight);
-    line-height: var(--compass-line-height-compact);
-  }
+html {
+  background: var(--compass-body);
+}
 
-  a {
-    color: var(--compass-brand-maroon);
-  }
+body {
+  min-height: 100dvh;
+  margin: 0;
+  background: var(--compass-body);
+  color: var(--compass-ink);
+  font-family: var(--font-plus-jakarta), sans-serif;
+  text-rendering: optimizeLegibility;
+}
 
-  a:hover {
-    color: var(--compass-brand-maroon-strong);
-  }
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-outfit), sans-serif;
+}
 
-  :focus-visible {
-    outline: var(--compass-focus-width) solid var(--compass-focus-color);
-    outline-offset: var(--compass-focus-offset);
-  }
+::selection {
+  background: var(--compass-support-soft);
+  color: var(--compass-ink);
+}
 
-  ::selection {
-    background: var(--compass-support-soft);
-    color: var(--compass-ink);
-  }
-
-  button,
-  input {
-    font: inherit;
-  }
+:focus-visible {
+  outline-color: var(--compass-focus);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -66,50 +79,4 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
-}
-
-@media (forced-colors: active) {
-  :focus-visible {
-    outline-color: CanvasText;
-  }
-}
-
-
-html[data-compass-text-size="large"] {
-  font-size: 112.5%;
-}
-
-html[data-compass-text-size="extra-large"] {
-  font-size: 125%;
-}
-
-html[data-compass-spacing="relaxed"] body {
-  line-height: 1.8;
-}
-
-html[data-compass-spacing="relaxed"] :where(p, li, blockquote, dd, dt, label) {
-  letter-spacing: 0.025em;
-  word-spacing: 0.08em;
-  line-height: 1.8;
-}
-
-html[data-compass-underline-links="true"] a:not(.no-underline) {
-  text-decoration-line: underline;
-  text-decoration-thickness: 0.09em;
-  text-underline-offset: 0.18em;
-}
-
-html[data-compass-motion="reduced"] *,
-html[data-compass-motion="reduced"] *::before,
-html[data-compass-motion="reduced"] *::after {
-  scroll-behavior: auto !important;
-  transition-duration: 0.01ms !important;
-  animation-duration: 0.01ms !important;
-  animation-iteration-count: 1 !important;
-}
-
-html[data-compass-status-banner="visible"] body {
-  padding-bottom: calc(
-    var(--compass-status-banner-height) + env(safe-area-inset-bottom)
-  );
 }

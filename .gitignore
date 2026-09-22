@@ -18,4 +18,14 @@ fe/.next/
 fe/out/
 fe/dist/
 fe/coverage/
+fe/*.tsbuildinfo
 fe/src/lib/api/generated/
+archived/**/.env*
+!archived/**/.env.example
+archived/**/node_modules/
+archived/**/.next/
+archived/**/out/
+archived/**/dist/
+archived/**/coverage/
+archived/**/tsconfig.tsbuildinfo
+archived/**/src/lib/api/generated/
