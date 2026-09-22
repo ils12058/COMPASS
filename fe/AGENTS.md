@@ -43,9 +43,48 @@ Do not:
 * revive old workflow assumptions;
 * reuse old copy merely because it exists.
 
-The only automatically preserved visual identity from the prior frontend is the approved palette and typography documented below.
+The only automatically preserved visual identity from the prior frontend is the approved palette, typography, and visual assets documented below.
 
 Everything else must earn its place in the new implementation.
+
+## Approved visual asset exception
+
+The following user-approved COMPASS assets may be reused from the archived frontend in the fresh implementation:
+
+Brand assets:
+
+```text
+public/brand/campus-bg.jpg
+public/brand/compass-mark.svg
+public/brand/compass-open-graph.jpg
+public/brand/ucn-logo.png
+```
+
+Illustrations:
+
+```text
+public/illustrations/gco-character-point-right.png
+public/illustrations/gco-character-point-up.png
+public/illustrations/gco-character-wave.png
+public/illustrations/gco-characters.png
+```
+
+These files are explicit exceptions to the archived-frontend restriction. Their approval does not authorize copying old layouts or other visual architecture.
+
+Use approved assets purposefully.
+
+Do not:
+
+* place character illustrations on every page;
+* use them as decorative filler;
+* repeat the same character in multiple nearby sections;
+* turn administrative screens into mascot-heavy interfaces;
+* distort, recolor, destructively crop, or apply gradients or glows over approved brand marks;
+* use the campus image as an unreadable full-page background.
+
+Preserve the aspect ratio and visual integrity of brand assets.
+
+Character illustrations are appropriate primarily for public-facing, onboarding, empty-state, or friendly informational contexts where they genuinely support the message. They should normally not appear inside dense administrative workspaces.
 
 ---
 
@@ -1046,13 +1085,42 @@ Do not add bounce, spring, hover-lift, or continuous animation merely to make th
 
 # 45. Icons
 
-Use Lucide icons consistently where icons improve comprehension.
+Lucide icons are the default general-purpose icon set for COMPASS.
+
+They may support both functional interface meaning and restrained decoration.
+
+Functional uses include:
+
+* search;
+* filter;
+* calendar;
+* download;
+* external links;
+* notifications;
+* account actions;
+* navigation;
+* status or action affordances.
+
+Decorative use is allowed when it strengthens hierarchy or communicates the subject of a section, but it must remain secondary to the content.
 
 Icons are not decoration quotas.
 
-Do not add an icon to every heading.
+Do not:
 
-Critical actions require text labels unless a universally understood icon has a proper accessible label and the context makes the action unambiguous.
+* add an icon to every heading;
+* create an icon circle for every section or card;
+* use icons merely to fill empty space;
+* use multiple decorative icons around one message;
+* substitute Lucide icons for official COMPASS or UCN brand marks;
+* make iconography the primary visual language of dense administrative pages.
+
+Decorative icons should normally use restrained sizes and semantic token colors.
+
+If an icon is purely decorative, hide it from assistive technology with `aria-hidden="true"`.
+
+If an icon performs an action or conveys information not present in text, provide an accessible name or accompanying text.
+
+Critical actions require text labels unless a universally understood icon has an accessible name and the context makes the action unambiguous.
 
 ---
 

@@ -22,6 +22,9 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "COMPASS",
   description: "COMPASS frontend foundation",
+  icons: {
+    icon: "/brand/compass-mark.svg",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
