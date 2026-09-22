@@ -6,6 +6,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 
+import { useAuthGetSession } from "@/lib/api/generated/auth/auth";
+
 const navigation = [
   { href: "/announcements", label: "Announcements" },
   { href: "/resources", label: "Resources" },
@@ -41,7 +43,7 @@ function Brand() {
   );
 }
 
-function MobileMenu() {
+function MobileMenu({ accountHref, accountLabel }: { accountHref: string; accountLabel: string }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
 
@@ -87,11 +89,11 @@ function MobileMenu() {
               </Link>
             ))}
             <Link
-              href="/login"
+              href={accountHref}
               onClick={() => setOpen(false)}
               className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-4 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
-              Sign in to COMPASS
+              {accountLabel}
             </Link>
           </div>
         </nav>
@@ -102,6 +104,9 @@ function MobileMenu() {
 
 export function PublicHeader() {
   const pathname = usePathname();
+  const session = useAuthGetSession({ query: { retry: false, staleTime: 60_000 } });
+  const authenticated = session.isSuccess && session.data.data.authenticated;
+  const accountHref = authenticated ? "/portal" : "/login";
 
   return (
     <header className="relative z-30 border-b border-border bg-surface-raised">
@@ -119,13 +124,13 @@ export function PublicHeader() {
             </Link>
           ))}
           <Link
-            href="/login"
+            href={accountHref}
             className="ml-2 inline-flex min-h-10 items-center rounded-md border border-brand bg-brand px-4 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
-            Sign in
+            {authenticated ? "Open COMPASS" : "Sign in"}
           </Link>
         </nav>
-        <MobileMenu key={pathname} />
+        <MobileMenu key={pathname} accountHref={accountHref} accountLabel={authenticated ? "Open COMPASS" : "Sign in to COMPASS"} />
       </div>
     </header>
   );
