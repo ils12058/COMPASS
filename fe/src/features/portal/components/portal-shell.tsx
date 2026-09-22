@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { PortalNavigation } from "@/features/portal/components/portal-navigation";
 import { PortalUserMenu } from "@/features/portal/components/portal-user-menu";
 
@@ -33,7 +34,10 @@ export function PortalShell({ children }: { children: ReactNode }) {
               <PortalNavigation onNavigate={() => setMobileOpen(false)} />
             </DialogContent>
           </Dialog>
-          <PortalUserMenu />
+          <div className="flex shrink-0 items-center gap-2">
+            <NotificationBell />
+            <PortalUserMenu />
+          </div>
         </header>
 
         <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-12">{children}</main>
