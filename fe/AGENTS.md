@@ -1058,9 +1058,93 @@ Critical actions require text labels unless a universally understood icon has a 
 
 # 46. Tables and operational lists
 
-When users need to compare multiple structured records, prefer tables or deliberate lists.
+Use a table when users need to scan or compare the same fields across many records.
+
+Typical table examples include:
+
+* accounts;
+* email deliveries;
+* appointments;
+* referrals;
+* call slips;
+* organizational assignments;
+* service records.
+
+Use a list when each record is primarily read as one compact narrative or status item rather than compared column by column.
+
+Typical list examples include:
+
+* notifications;
+* activity history;
+* audit or activity projections;
+* workflow timelines;
+* announcements.
 
 Do not turn dense administrative data into a wall of oversized cards.
+
+Do not use a card grid merely to avoid building a responsive table.
+
+## Table structure
+
+A table must have a clear primary column representing the record identity.
+
+Keep columns limited to information useful for scanning and decision-making. Do not expose every response field as a table column.
+
+Move secondary information to:
+
+* record detail;
+* expandable context;
+* secondary text;
+* a contextual action menu.
+
+Avoid tables wider than necessary.
+
+## Row actions and selection
+
+Use a dedicated actions column only when rows genuinely have multiple contextual actions.
+
+Prefer:
+
+* clicking the primary record link or title to open detail;
+* one clearly visible primary row action when appropriate;
+* an overflow menu for secondary actions.
+
+Do not place five to eight full-size buttons in every row.
+
+Consequential row actions still require the standard confirmation flow.
+
+Do not add checkboxes or bulk-selection UI unless the product explicitly supports a real bulk operation.
+
+Do not create disabled-looking bulk toolbars for future features.
+
+## Responsive tables
+
+Do not automatically convert every table into a card stack on mobile.
+
+For dense administrative data, preserve comparison semantics.
+
+Preferred strategies:
+
+* allow deliberate horizontal scrolling;
+* keep the primary identity column readable;
+* hide or collapse truly secondary columns;
+* move secondary details into the detail page.
+
+Do not duplicate all columns into verbose mobile cards.
+
+## Operational lists
+
+Operational lists should have a consistent row anatomy where useful:
+
+```text
+primary identity
+secondary context
+status
+relevant timestamp
+contextual action
+```
+
+Do not decorate every list row with oversized icons, gradients, cards, or avatars unless those elements communicate actual information.
 
 Lists must account for:
 
@@ -1072,9 +1156,31 @@ Lists must account for:
 * row actions;
 * keyboard/accessibility behavior.
 
-Use stable backend pagination contracts.
+## Pagination
 
-Do not invent a total count if the API does not provide one.
+Use the canonical backend pagination state:
+
+```text
+items
+page
+page_size
+has_next
+```
+
+Do not invent page counts or total records.
+
+When `has_next` is false, disable or omit Next appropriately.
+
+## Empty results
+
+Differentiate between:
+
+* no records existing;
+* no records matching the current filters or search.
+
+For a filtered empty state, provide a clear way to clear or adjust filters.
+
+Do not show a celebratory empty state for routine administrative data.
 
 ---
 
@@ -1085,6 +1191,10 @@ Use backend-supported parameters only.
 Do not fabricate client-side global search over paginated server data and present it as complete.
 
 Keep shareable/list-navigation state in URL search parameters when doing so materially improves navigation and return behavior.
+
+Preserve search and filter state while moving between pages.
+
+Reset to page 1 when a filter or search change invalidates the current page.
 
 Do not add filters merely because a field exists in a response.
 
@@ -1465,129 +1575,7 @@ Do not defer these as generic polish unless the feature specification explicitly
 
 ---
 
-# 68. Table and list selection
-
-Use a table when users need to scan or compare the same fields across many records.
-
-Typical table examples include:
-
-* accounts;
-* email deliveries;
-* appointments;
-* referrals;
-* call slips;
-* organizational assignments;
-* service records.
-
-Use a list when each record is primarily read as one compact narrative or status item rather than compared column by column.
-
-Typical list examples include:
-
-* notifications;
-* activity history;
-* audit or activity projections;
-* workflow timelines;
-* announcements.
-
-Do not use a card grid merely to avoid building a responsive table.
-
-## Table structure
-
-A table must have a clear primary column representing the record identity.
-
-Keep columns limited to information useful for scanning and decision-making. Do not expose every response field as a table column.
-
-Move secondary information to:
-
-* record detail;
-* expandable context;
-* secondary text;
-* a contextual action menu.
-
-Avoid tables wider than necessary.
-
-## Row actions
-
-Use a dedicated actions column only when rows genuinely have multiple contextual actions.
-
-Prefer:
-
-* clicking the primary record link or title to open detail;
-* one clearly visible primary row action when appropriate;
-* an overflow menu for secondary actions.
-
-Do not place five to eight full-size buttons in every row.
-
-Consequential row actions still require the standard confirmation flow.
-
-## Row selection
-
-Do not add checkboxes or bulk-selection UI unless the product explicitly supports a real bulk operation.
-
-Do not create disabled-looking bulk toolbars for future features.
-
-## Responsive tables
-
-Do not automatically convert every table into a card stack on mobile.
-
-For dense administrative data, preserve comparison semantics.
-
-Preferred strategies:
-
-* allow deliberate horizontal scrolling;
-* keep the primary identity column readable;
-* hide or collapse truly secondary columns;
-* move secondary details into the detail page.
-
-Do not duplicate all columns into verbose mobile cards.
-
-## Operational lists
-
-Operational lists should have a consistent row anatomy where useful:
-
-```text
-primary identity
-secondary context
-status
-relevant timestamp
-contextual action
-```
-
-Do not decorate every list row with oversized icons, gradients, cards, or avatars unless those elements communicate actual information.
-
-## Pagination
-
-Use the canonical backend pagination state:
-
-```text
-items
-page
-page_size
-has_next
-```
-
-Do not invent page counts or total records.
-
-When `has_next` is false, disable or omit Next appropriately.
-
-Preserve search and filter state while moving between pages.
-
-Reset to page 1 when a filter or search change invalidates the current page.
-
-## Empty results
-
-Differentiate between:
-
-* no records existing;
-* no records matching the current filters or search.
-
-For a filtered empty state, provide a clear way to clear or adjust filters.
-
-Do not show a celebratory empty state for routine administrative data.
-
----
-
-# 69. Final principle
+# 68. Final principle
 
 COMPASS should feel like carefully designed institutional software.
 
