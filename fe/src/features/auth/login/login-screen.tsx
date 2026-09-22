@@ -23,7 +23,7 @@ import {
   useAuthLogin,
 } from "@/lib/api/generated/auth/auth";
 
-function LoginForm({ nextPath }: { nextPath: string }) {
+function LoginForm({ nextPath, emailChanged }: { nextPath: string; emailChanged: boolean }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const flow = useAuthFlow();
@@ -89,6 +89,12 @@ function LoginForm({ nextPath }: { nextPath: string }) {
 
   return (
     <section aria-labelledby="login-heading">
+      {emailChanged ? (
+        <div role="status" className="mb-7 border-l-4 border-support bg-support-soft p-4 text-sm leading-6 text-ink">
+          <p className="font-semibold">Your sign-in email has been changed.</p>
+          <p>For security, sign in again using your new email.</p>
+        </div>
+      ) : null}
       <h1 id="login-heading" className="font-heading text-3xl font-bold tracking-tight text-ink sm:text-4xl">
         Sign in to COMPASS
       </h1>
@@ -158,7 +164,7 @@ function LoginForm({ nextPath }: { nextPath: string }) {
   );
 }
 
-export function LoginScreen({ nextPath }: { nextPath: string }) {
+export function LoginScreen({ nextPath, emailChanged = false }: { nextPath: string; emailChanged?: boolean }) {
   const router = useRouter();
   const session = useAuthGetSession({ query: { retry: false } });
 
@@ -169,7 +175,7 @@ export function LoginScreen({ nextPath }: { nextPath: string }) {
   if (session.isPending || session.isSuccess) return <AuthSessionLoading />;
 
   const confirmedSignedOut = session.error instanceof CompassApiError && session.error.status === 401;
-  if (confirmedSignedOut) return <LoginForm nextPath={nextPath} />;
+  if (confirmedSignedOut) return <LoginForm nextPath={nextPath} emailChanged={emailChanged} />;
 
   return (
     <AuthFailure

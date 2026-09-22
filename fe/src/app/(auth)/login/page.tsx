@@ -8,9 +8,9 @@ export const metadata: Metadata = { title: "Sign in" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string | string[] }>;
+  searchParams: Promise<{ next?: string | string[]; email_changed?: string | string[] }>;
 }) {
-  const { next } = await searchParams;
+  const { next, email_changed } = await searchParams;
   const requested = Array.isArray(next) ? next[0] : next;
-  return <LoginScreen nextPath={safePortalDestination(requested)} />;
+  return <LoginScreen nextPath={safePortalDestination(requested)} emailChanged={email_changed === "1"} />;
 }
