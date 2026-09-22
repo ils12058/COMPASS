@@ -1,41 +1,13 @@
-@theme inline {
-  --color-background: var(--compass-body);
-  --color-foreground: var(--compass-ink);
-  --color-card: var(--compass-surface);
-  --color-card-foreground: var(--compass-ink);
-  --color-primary: var(--compass-brand-maroon);
-  --color-primary-foreground: var(--compass-on-brand);
-  --color-secondary: var(--compass-surface-muted);
-  --color-secondary-foreground: var(--compass-support-strong);
-  --color-muted: var(--compass-surface-subtle);
-  --color-muted-foreground: var(--compass-text-muted);
-  --color-accent: var(--compass-support-soft);
-  --color-accent-foreground: var(--compass-support-strong);
-  --color-destructive: var(--compass-danger);
-  --color-border: var(--compass-border);
-  --color-input: var(--compass-border);
-  --color-ring: var(--compass-focus-color);
-  --font-sans: var(--compass-font-ui);
-  --font-heading: var(--compass-font-heading);
-  --radius-sm: var(--compass-radius-sm);
-  --radius-md: var(--compass-radius-md);
-  --radius-lg: var(--compass-radius-lg);
-  --radius-xl: var(--compass-radius-xl);
-  --shadow-sm: var(--compass-shadow-sm);
-  --shadow-md: var(--compass-shadow-md);
-}
-
 :root {
-  color-scheme: light;
-
   --compass-ink: #222a2d;
-  --compass-text-muted: #59636a;
+  --compass-muted: #59636a;
   --compass-on-brand: #ffffff;
 
-  --compass-brand-maroon: #6b1f2a;
-  --compass-brand-maroon-strong: #4d1520;
-  --compass-brand-maroon-soft: #8a3340;
-  --compass-brand-gold: #936515;
+  --compass-brand: #6b1f2a;
+  --compass-brand-strong: #4d1520;
+  --compass-brand-soft: #8a3340;
+  --compass-brand-subtle: #f4efe4;
+  --compass-gold: #936515;
 
   --compass-support: #587466;
   --compass-support-strong: #36584b;
@@ -45,65 +17,19 @@
   --compass-info: #326676;
   --compass-warning: #805700;
   --compass-danger: #a52c35;
-
   --compass-body: #f7f3ea;
   --compass-surface: #fffdf8;
   --compass-surface-raised: #ffffff;
   --compass-surface-muted: #edf1e8;
   --compass-surface-subtle: #f4efe4;
+
   --compass-border: #d8d7cb;
   --compass-border-strong: #aeb3aa;
-
-  --compass-font-ui: var(--font-plus-jakarta, "Plus Jakarta Sans"), system-ui, sans-serif;
-  --compass-font-heading: var(--font-outfit, "Outfit"), var(--compass-font-ui);
-
-  --compass-line-height: 1.6;
-  --compass-line-height-compact: 1.3;
-  --compass-weight-medium: 600;
-  --compass-heading-weight: 700;
-  --compass-weight-bold: 700;
-
-  --compass-shadow-sm: 0 1px 3px rgba(34, 42, 45, 0.09);
-  --compass-shadow-md: 0 12px 32px rgba(34, 42, 45, 0.11);
-
-  --compass-focus-color: var(--compass-support-strong);
-  --compass-focus-width: 0.1875rem;
-  --compass-focus-offset: 2px;
-
-  --compass-motion-fast: 120ms;
-  --compass-motion-standard: 200ms;
-
-  --compass-status-banner-height: 0px;
-
-  --compass-space-1: 0.25rem;
-  --compass-space-2: 0.5rem;
-  --compass-space-3: 0.75rem;
-  --compass-space-4: 1rem;
-  --compass-space-5: 1.5rem;
-  --compass-space-6: 2rem;
-  --compass-space-7: 3rem;
+  --compass-focus: #326676;
+  --compass-overlay: rgb(34 42 45 / 55%);
 
   --compass-radius-sm: 0.25rem;
-  --compass-radius-md: 0.5rem;
-  --compass-radius-lg: 0.875rem;
-  --compass-radius-xl: 1rem;
-}
-
-
-:root[data-compass-contrast="high"] {
-  --compass-ink: #111416;
-  --compass-text-muted: #30383c;
-  --compass-brand-maroon: #5b1622;
-  --compass-brand-maroon-strong: #3f0d16;
-  --compass-brand-gold: #745006;
-  --compass-support: #405f51;
-  --compass-support-strong: #24483a;
-  --compass-support-soft: #d5e4d7;
-  --compass-body: #fffdf8;
-  --compass-surface: #ffffff;
-  --compass-surface-muted: #e7ece5;
-  --compass-surface-subtle: #f3eee2;
-  --compass-border: #686f70;
-  --compass-border-strong: #383f41;
-  --compass-focus-color: #111416;
+  --compass-radius-md: 0.375rem;
+  --compass-radius-lg: 0.5rem;
+  --compass-shadow-dialog: 0 18px 48px rgb(34 42 45 / 18%);
 }

@@ -1,48 +1,46 @@
-const CSRF_ENDPOINT = "/api/v1/auth/csrf";
+const CSRF_BOOTSTRAP_PATH = "/api/v1/auth/csrf";
 
-let csrfToken: string | null = null;
-let csrfBootstrap: Promise<string> | null = null;
+let cachedToken: string | undefined;
+let pendingBootstrap: Promise<string> | undefined;
 
-type CsrfPayload = {
-  csrf_token?: unknown;
-};
-
-async function bootstrapCsrfToken(): Promise<string> {
-  const response = await fetch(CSRF_ENDPOINT, {
+async function requestCsrfToken(): Promise<string> {
+  const response = await fetch(CSRF_BOOTSTRAP_PATH, {
     method: "GET",
     credentials: "include",
-    headers: {
-      Accept: "application/json",
-    },
+    headers: { Accept: "application/json" },
   });
 
   if (!response.ok) {
-    throw new Error("Unable to initialize request security.");
+    throw new Error("Request security could not be initialized.");
   }
 
-  const payload = (await response.json()) as CsrfPayload;
-  if (typeof payload.csrf_token !== "string" || !payload.csrf_token) {
-    throw new Error("The request security token was not returned.");
+  const body: unknown = await response.json();
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("csrf_token" in body) ||
+    typeof body.csrf_token !== "string" ||
+    body.csrf_token.length === 0
+  ) {
+    throw new Error("The server did not return a request security token.");
   }
 
-  csrfToken = payload.csrf_token;
-  return csrfToken;
+  cachedToken = body.csrf_token;
+  return cachedToken;
+}
+
+export function clearCsrfToken() {
+  cachedToken = undefined;
 }
 
 export async function getCsrfToken(): Promise<string> {
-  if (csrfToken) {
-    return csrfToken;
+  if (cachedToken) {
+    return cachedToken;
   }
 
-  if (!csrfBootstrap) {
-    csrfBootstrap = bootstrapCsrfToken().finally(() => {
-      csrfBootstrap = null;
-    });
-  }
+  pendingBootstrap ??= requestCsrfToken().finally(() => {
+    pendingBootstrap = undefined;
+  });
 
-  return csrfBootstrap;
-}
-
-export function clearCsrfToken(): void {
-  csrfToken = null;
+  return pendingBootstrap;
 }

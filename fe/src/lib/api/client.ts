@@ -1,116 +1,52 @@
 import { clearCsrfToken, getCsrfToken } from "@/lib/api/csrf";
-import { getStructuredApiErrorCode } from "@/lib/api/error-payload";
-import { emitMaintenanceStatusRefresh } from "@/lib/system/status-events";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 
+const API_ROOT = "/api/v1";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
-const API_PREFIX = "/api/v1";
 
-type SerializedHeaders = Record<string, string>;
-
-export class CompassApiError<T = unknown> extends Error {
-  readonly status: number;
-  readonly data: T;
-  readonly headers: SerializedHeaders;
-  readonly method: string;
-  readonly url: string;
-
-  constructor({
-    status,
-    data,
-    headers,
-    method,
-    url,
-  }: {
-    status: number;
-    data: T;
-    headers: SerializedHeaders;
-    method: string;
-    url: string;
-  }) {
-    super(`COMPASS API request failed with status ${status}`);
-    this.name = "CompassApiError";
-    this.status = status;
-    this.data = data;
-    this.headers = headers;
-    this.method = method;
-    this.url = url;
-  }
-}
-
-export type ErrorType<T> = CompassApiError<T> | TypeError;
+export type ErrorType<T = unknown> = CompassApiError & { body: T };
 export type BodyType<T> = T;
 
-function serializeHeaders(headers: Headers): SerializedHeaders {
-  const result: SerializedHeaders = {};
+function normalizeApiUrl(url: string): string {
+  const normalized = url.startsWith("api/v1") ? `/${url}` : url;
 
+  if (
+    normalized === API_ROOT ||
+    normalized.startsWith(`${API_ROOT}/`) ||
+    normalized.startsWith(`${API_ROOT}?`)
+  ) {
+    return normalized;
+  }
+
+  throw new Error(`API request is outside the COMPASS boundary: ${url}`);
+}
+
+function serializeHeaders(headers: Headers): Record<string, string> {
+  const values: Record<string, string> = {};
   headers.forEach((value, key) => {
     if (key.toLowerCase() !== "set-cookie") {
-      result[key.toLowerCase()] = value;
+      values[key.toLowerCase()] = value;
     }
   });
-
-  return result;
+  return values;
 }
 
-function normalizeApiUrl(url: string): string {
-  if (url === API_PREFIX || url.startsWith(`${API_PREFIX}/`)) {
-    return url;
-  }
-
-  if (url === "api/v1" || url.startsWith("api/v1/")) {
-    return `/${url}`;
-  }
-
-  if (/^https?:\/\//i.test(url)) {
-    const parsed = new URL(url);
-    if (
-      parsed.pathname === API_PREFIX ||
-      parsed.pathname.startsWith(`${API_PREFIX}/`)
-    ) {
-      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-    }
-  }
-
-  throw new Error(
-    `Generated API URL is outside the COMPASS same-origin boundary: ${url}`,
-  );
-}
-
-async function parseResponseBody(response: Response): Promise<unknown> {
-  if ([204, 205, 304].includes(response.status) || !response.body) {
+async function parseBody(response: Response): Promise<unknown> {
+  if (response.status === 204 || response.status === 205 || !response.body) {
     return undefined;
   }
 
   const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-
   if (contentType.includes("json") || contentType.includes("+json")) {
     const text = await response.text();
-    return text ? JSON.parse(text) : undefined;
+    return text.length > 0 ? JSON.parse(text) : undefined;
   }
 
-  if (
-    contentType.startsWith("text/") ||
-    contentType.includes("xml") ||
-    contentType.includes("x-www-form-urlencoded")
-  ) {
+  if (contentType.startsWith("text/") || contentType.includes("xml")) {
     return response.text();
   }
 
   return response.blob();
-}
-
-function isCsrfFailure(status: number, data: unknown): boolean {
-  if (status !== 403 || !data || typeof data !== "object" || !("error" in data)) {
-    return false;
-  }
-
-  const error = (data as { error?: unknown }).error;
-  return (
-    !!error &&
-    typeof error === "object" &&
-    "code" in error &&
-    (error as { code?: unknown }).code === "csrf_failed"
-  );
 }
 
 export async function compassFetch<T>(
@@ -131,22 +67,17 @@ export async function compassFetch<T>(
     headers,
     credentials: "include",
   });
-
+  const body = await parseBody(response);
   const responseHeaders = serializeHeaders(response.headers);
-  const data = await parseResponseBody(response);
 
   if (!response.ok) {
-    if (isCsrfFailure(response.status, data)) {
+    if (response.status === 403 && readApiErrorCode(body) === "csrf_failed") {
       clearCsrfToken();
-    }
-
-    if (getStructuredApiErrorCode(data) === "maintenance_mode") {
-      emitMaintenanceStatusRefresh();
     }
 
     throw new CompassApiError({
       status: response.status,
-      data,
+      body,
       headers: responseHeaders,
       method,
       url: requestUrl,
@@ -154,7 +85,7 @@ export async function compassFetch<T>(
   }
 
   return {
-    data,
+    data: body,
     status: response.status,
     headers: responseHeaders,
   } as T;
