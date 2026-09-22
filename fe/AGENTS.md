@@ -472,8 +472,7 @@ The interface must not resemble generic AI-generated SaaS UI.
 
 Do not default to:
 
-* purple/blue gradient aesthetics;
-* decorative gradients of any color;
+* unrelated, gratuitous, or decorative gradients outside the approved branded treatment;
 * gradient text;
 * glassmorphism;
 * frosted panes;
@@ -497,6 +496,48 @@ Do not default to:
 * motion added only to look premium.
 
 Prefer useful institutional software over visual spectacle.
+
+## Branded gradients
+
+Gradients are not a general COMPASS interface pattern.
+
+A restrained branded gradient using only the approved maroon and support or sage families may be used on:
+
+* the public landing hero;
+* authentication entry surfaces;
+* closely related public or onboarding surfaces where the same visual identity is appropriate.
+
+Preferred color families:
+
+Maroon:
+
+```text
+#4d1520
+#6b1f2a
+```
+
+Support or sage:
+
+```text
+#36584b
+#587466
+```
+
+Do not introduce unrelated blue, purple, cyan, neon, rainbow, or multi-brand gradient combinations.
+
+Do not use branded gradients as default backgrounds for:
+
+* administrative workspaces;
+* tables;
+* cards;
+* dialogs;
+* forms;
+* navigation;
+* ordinary authenticated content sections.
+
+Gradient use must preserve strong text contrast and remain subordinate to content.
+
+Approved campus imagery may be softly blended into these branded background treatments where appropriate. Do not use this exception to obscure the image, reduce readability, or apply gradients over official COMPASS or UCN brand marks.
 
 ---
 
