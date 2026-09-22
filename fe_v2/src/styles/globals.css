@@ -132,6 +132,26 @@ html[data-compass-status-banner="visible"] body {
   pointer-events: none;
 }
 
+.portal-dock {
+  bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+html[data-compass-service-status="offline"] .portal-dock,
+html[data-compass-service-status="unavailable"] .portal-dock,
+html[data-compass-service-status="maintenance_active"] .portal-dock {
+  bottom: calc(6.5rem + env(safe-area-inset-bottom));
+}
+
+.portal-shell__main {
+  padding-bottom: calc(7.5rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 48rem) {
+  .portal-shell__main {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+}
+
 .compass-navigation-progress::after {
   display: block;
   width: 36%;

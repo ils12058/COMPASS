@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { RecoveryCodesPanel } from "@/features/auth/components/recovery-codes-panel";
@@ -16,6 +16,7 @@ import { friendlyAuthError, getApiErrorCode } from "@/features/auth/utils/errors
 import { getSafeInternalPath } from "@/features/auth/utils/redirect";
 import {
   getAuthGetSessionQueryKey,
+  useAuthGetSession,
   useAuthConfirmMandatoryTotpBootstrap,
   useAuthLogin,
   useAuthStartMandatoryTotpBootstrap,
@@ -33,6 +34,13 @@ export function LoginScreen() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const destination = getSafeInternalPath(searchParams.get("next"));
+  const sessionQuery = useAuthGetSession({
+    query: {
+      retry: false,
+      staleTime: 30_000,
+    },
+  });
+  const isAuthenticated = sessionQuery.data?.data.authenticated === true;
 
   const login = useAuthLogin();
   const verifyMfa = useAuthVerifyLoginMfa();
@@ -46,6 +54,12 @@ export function LoginScreen() {
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace(destination);
+    }
+  }, [destination, isAuthenticated, router]);
 
   async function finishAuthentication() {
     await queryClient.invalidateQueries({ queryKey: getAuthGetSessionQueryKey() });
@@ -143,6 +157,16 @@ export function LoginScreen() {
         ),
       );
     }
+  }
+
+  if (sessionQuery.isPending || isAuthenticated) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[var(--compass-body)] p-6">
+        <p className="text-sm text-muted-foreground" role="status">
+          Checking your sign-in…
+        </p>
+      </main>
+    );
   }
 
   if (stage === "mandatory_setup" && totpSetup) {

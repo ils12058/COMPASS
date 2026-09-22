@@ -1,4 +1,4 @@
-const FALLBACK_PATH = "/";
+const FALLBACK_PATH = "/portal";
 const SAFE_ORIGIN = "https://compass.local";
 
 export function getSafeInternalPath(

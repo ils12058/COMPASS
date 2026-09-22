@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { LANDING_PAGE, PUBLIC_SITE } from "@/features/public/config";
+import { PublicAccountLink } from "@/features/public/components/public-account-link";
 import { AnnouncementPreview } from "@/features/public/homepage/announcement-preview";
 import { ResourcePreview } from "@/features/public/homepage/resource-preview";
 
@@ -70,10 +71,13 @@ function HomepageHero() {
           </h1>
           <p className="landing-hero__summary">{hero.description}</p>
           <div className="landing-hero__actions">
-            <Link className="landing-primary-action" href={hero.primaryAction.href}>
-              {hero.primaryAction.label}
+            <PublicAccountLink
+              className="landing-primary-action"
+              signedInLabel="Open workspace"
+              signedOutLabel={hero.primaryAction.label}
+            >
               <ArrowUpRight aria-hidden="true" />
-            </Link>
+            </PublicAccountLink>
             <a
               className="landing-secondary-action landing-secondary-action--light"
               href={hero.secondaryAction.href}
@@ -185,10 +189,13 @@ function OfficeContactSection() {
             <h2 id="office-heading">{office.title}</h2>
             <p>{office.description}</p>
             <div className="landing-office__actions">
-              <Link className="landing-primary-action" href={office.primaryAction.href}>
-                {office.primaryAction.label}
+              <PublicAccountLink
+                className="landing-primary-action"
+                signedInLabel="Open workspace"
+                signedOutLabel={office.primaryAction.label}
+              >
                 <ArrowUpRight aria-hidden="true" />
-              </Link>
+              </PublicAccountLink>
               <Link className="landing-secondary-action" href={office.secondaryAction.href}>
                 {office.secondaryAction.label}
               </Link>

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { PUBLIC_NAVIGATION, PUBLIC_SITE } from "@/features/public/config";
+import { PublicAccountLink } from "@/features/public/components/public-account-link";
 import { PublicBrand } from "@/features/public/components/public-brand";
 
 function isActive(pathname: string | null, href: string) {
@@ -51,9 +52,11 @@ export function PublicSiteHeader({ overlay = false }: { overlay?: boolean }) {
             </ul>
           </nav>
 
-          <Link className="public-auth-action public-auth-action__desktop" href={PUBLIC_SITE.accountHref}>
-            {PUBLIC_SITE.accountLabel.replace(" to COMPASS", "")}
-          </Link>
+          <PublicAccountLink
+            className="public-auth-action public-auth-action__desktop"
+            signedInLabel="Open workspace"
+            signedOutLabel={PUBLIC_SITE.accountLabel.replace(" to COMPASS", "")}
+          />
 
           <div className="public-mobile-nav">
             <DropdownMenu open={mobileOpen} onOpenChange={setMobileOpen} modal={false}>
@@ -92,7 +95,10 @@ export function PublicSiteHeader({ overlay = false }: { overlay?: boolean }) {
                   })}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="public-mobile-nav__item public-mobile-nav__item--auth">
-                    <Link href={PUBLIC_SITE.accountHref}>{PUBLIC_SITE.accountLabel}</Link>
+                    <PublicAccountLink
+                      signedInLabel="Open workspace"
+                      signedOutLabel={PUBLIC_SITE.accountLabel}
+                    />
                   </DropdownMenuItem>
                 </nav>
               </DropdownMenuContent>

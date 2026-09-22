@@ -2,6 +2,7 @@ import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 import { PUBLIC_FOOTER_GROUPS, PUBLIC_SITE } from "@/features/public/config";
+import { PublicAccountLink } from "@/features/public/components/public-account-link";
 import { PublicBrand } from "@/features/public/components/public-brand";
 
 export function PublicSiteFooter() {
@@ -29,7 +30,14 @@ export function PublicSiteFooter() {
                 <ul>
                   {group.links.map((link) => (
                     <li key={link.href}>
-                      <Link href={link.href}>{link.label}</Link>
+                      {link.href === PUBLIC_SITE.accountHref ? (
+                        <PublicAccountLink
+                          signedInLabel="Open workspace"
+                          signedOutLabel={link.label}
+                        />
+                      ) : (
+                        <Link href={link.href}>{link.label}</Link>
+                      )}
                     </li>
                   ))}
                 </ul>
