@@ -32,4 +32,12 @@
   --compass-radius-md: 0.375rem;
   --compass-radius-lg: 0.5rem;
   --compass-shadow-dialog: 0 18px 48px rgb(34 42 45 / 18%);
+
+  --compass-entry-gradient: linear-gradient(
+    118deg,
+    var(--compass-brand-strong) 0%,
+    var(--compass-brand) 47%,
+    var(--compass-support-strong) 100%
+  );
+  --compass-hero-image-opacity: 0.48;
 }
