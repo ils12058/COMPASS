@@ -12,7 +12,7 @@ export default function NotFound() {
           href="/"
           className="mt-6 inline-flex min-h-10 items-center rounded-md text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          Return to the foundation page
+          Return to COMPASS
         </Link>
       </section>
     </main>

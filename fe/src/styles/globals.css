@@ -70,6 +70,107 @@ h6 {
   outline-color: var(--compass-focus);
 }
 
+.public-hero {
+  background: var(--compass-entry-gradient);
+}
+
+.public-hero-campus {
+  background-image: url("/brand/campus-bg.jpg");
+  background-position: 70% 68%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: var(--compass-hero-image-opacity);
+  -webkit-mask-image: linear-gradient(to right, transparent 2%, black 42%, black 100%);
+  mask-image: linear-gradient(to right, transparent 2%, black 42%, black 100%);
+}
+
+.public-markdown {
+  color: var(--compass-ink);
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.public-markdown > * + * {
+  margin-top: 1.25rem;
+}
+
+.public-markdown h2,
+.public-markdown h3,
+.public-markdown h4 {
+  color: var(--compass-ink);
+  font-family: var(--font-outfit), sans-serif;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 2rem;
+}
+
+.public-markdown h2 {
+  font-size: 1.5rem;
+}
+
+.public-markdown h3 {
+  font-size: 1.25rem;
+}
+
+.public-markdown ul,
+.public-markdown ol {
+  padding-left: 1.5rem;
+}
+
+.public-markdown ul {
+  list-style: disc;
+}
+
+.public-markdown ol {
+  list-style: decimal;
+}
+
+.public-markdown li + li {
+  margin-top: 0.4rem;
+}
+
+.public-markdown a {
+  color: var(--compass-brand);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.public-markdown blockquote {
+  border-left: 3px solid var(--compass-support);
+  color: var(--compass-muted);
+  padding-left: 1rem;
+}
+
+.public-markdown code {
+  background: var(--compass-surface-muted);
+  border-radius: var(--compass-radius-sm);
+  font-size: 0.9em;
+  padding: 0.12rem 0.3rem;
+}
+
+.public-markdown pre {
+  background: var(--compass-ink);
+  border-radius: var(--compass-radius-md);
+  color: var(--compass-on-brand);
+  overflow-x: auto;
+  padding: 1rem;
+}
+
+.public-markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+
+@media (max-width: 639px) {
+  .public-hero-campus {
+    background-position: 62% 100%;
+    opacity: 0.28;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 5%, black 58%, black 100%);
+    mask-image: linear-gradient(to bottom, transparent 5%, black 58%, black 100%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
