@@ -1313,6 +1313,7 @@ def test_booking_service_discovery_is_appointment_owned_filtered_and_paginated()
     assert paged["page_size"] == 1
     assert paged["has_next"] is True
 
+
 @pytest.mark.django_db
 @override_settings(TIME_ZONE="Asia/Manila")
 def test_self_appointment_list_ordering_defaults_filters_and_paginates_before_slicing():
@@ -1371,10 +1372,14 @@ def test_self_appointment_list_ordering_defaults_filters_and_paginates_before_sl
     assert [row["id"] for row in explicit_desc] == expected_desc
     assert [row["id"] for row in asc_rows] == expected_asc
 
-    provider_rows = auth_client(provider).get(
-        "/api/v1/appointments/me",
-        {"ordering": "START_ASC"},
-    ).json()["items"]
+    provider_rows = (
+        auth_client(provider)
+        .get(
+            "/api/v1/appointments/me",
+            {"ordering": "START_ASC"},
+        )
+        .json()["items"]
+    )
     assert [row["id"] for row in provider_rows] == expected_asc
 
     first_page = student_client.get(
@@ -1539,4 +1544,3 @@ def test_managed_appointment_ordering_composes_with_search_filters_and_scope():
 
     invalid = client.get("/api/v1/appointments", {"ordering": "RANDOM"})
     assert invalid.status_code == 422
-
