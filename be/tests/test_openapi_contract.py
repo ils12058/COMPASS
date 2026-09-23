@@ -1999,3 +1999,26 @@ def test_appointment_frontend_readiness_openapi_contract() -> None:
     for status in ("401", "403", "422"):
         error_schema = operation["responses"][status]["content"]["application/json"]["schema"]
         assert error_schema["$ref"].endswith("/APIErrorResponse")
+
+
+def test_appointment_list_ordering_openapi_contract() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    ordering_schema = schemas["AppointmentListOrdering"]
+    assert ordering_schema["enum"] == ["START_ASC", "START_DESC"]
+
+    for path, operation_id in (
+        ("/api/v1/appointments/me", "appointmentsListMy"),
+        ("/api/v1/appointments", "appointmentsListManaged"),
+    ):
+        operation = _operation(schema, path, "get")
+        assert operation["operationId"] == operation_id
+        assert _response_statuses(operation) == {200, 401, 403, 422}
+        parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
+        assert "ordering" in parameters
+        ordering = parameters["ordering"]
+        assert ordering["in"] == "query"
+        assert ordering["required"] is False
+        ordering_parameter_schema = ordering["schema"]
+        assert ordering_parameter_schema.get("default") == "START_DESC"

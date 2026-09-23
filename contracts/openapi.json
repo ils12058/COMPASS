@@ -1402,6 +1402,14 @@
         "title": "AppointmentLinkResponse",
         "type": "object"
       },
+      "AppointmentListOrdering": {
+        "enum": [
+          "START_ASC",
+          "START_DESC"
+        ],
+        "title": "AppointmentListOrdering",
+        "type": "string"
+      },
       "AppointmentPageResponse": {
         "additionalProperties": false,
         "properties": {
@@ -21685,6 +21693,24 @@
           },
           {
             "in": "query",
+            "name": "ordering",
+            "required": false,
+            "schema": {
+              "allOf": [
+                {
+                  "enum": [
+                    "START_ASC",
+                    "START_DESC"
+                  ],
+                  "title": "AppointmentListOrdering",
+                  "type": "string"
+                }
+              ],
+              "default": "START_DESC"
+            }
+          },
+          {
+            "in": "query",
             "name": "page",
             "required": false,
             "schema": {
@@ -22199,6 +22225,24 @@
                 }
               ],
               "title": "To Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ordering",
+            "required": false,
+            "schema": {
+              "allOf": [
+                {
+                  "enum": [
+                    "START_ASC",
+                    "START_DESC"
+                  ],
+                  "title": "AppointmentListOrdering",
+                  "type": "string"
+                }
+              ],
+              "default": "START_DESC"
             }
           },
           {

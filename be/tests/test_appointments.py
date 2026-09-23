@@ -24,6 +24,7 @@ from compass.appointments.services import (
     AppointmentCancellationConflict,
     AppointmentCurrentStudentRequired,
     AppointmentDefaultProviderUnresolved,
+    AppointmentListOrdering,
     AppointmentNotSchedulable,
     AppointmentTimeConflict,
     AppointmentTimeUnavailable,
@@ -31,6 +32,7 @@ from compass.appointments.services import (
     create_student_appointment,
     get_appointment_for_actor,
     list_eligible_counselors,
+    list_managed_appointments,
     list_my_appointments,
 )
 from compass.audit.context import AuditContext
@@ -145,6 +147,38 @@ def configure_availability(actor: User, provider: User) -> None:
         provider_id=provider.pk,
         windows=[weekly()],
         context=context(actor),
+    )
+
+
+def create_list_appointment(
+    *,
+    reference_code: str,
+    student: User,
+    provider: User,
+    service: Service,
+    starts_at: datetime,
+    status: str = "SCHEDULED",
+    delivery_mode: str = "IN_PERSON",
+) -> Appointment:
+    terminal = {}
+    if status == "CANCELLED":
+        terminal = {"cancelled_at": timezone.now(), "cancelled_by": student}
+    elif status == "COMPLETED":
+        terminal = {"completed_at": timezone.now(), "completed_by": provider}
+    elif status == "NO_SHOW":
+        terminal = {"no_show_at": timezone.now(), "no_show_by": provider}
+    return Appointment.objects.create(
+        reference_code=reference_code,
+        student=student,
+        provider=provider,
+        service=service,
+        delivery_mode=delivery_mode,
+        starts_at=starts_at,
+        ends_at=starts_at + timedelta(minutes=60),
+        status=status,
+        cancellation_cutoff_minutes=30,
+        created_by=student,
+        **terminal,
     )
 
 
@@ -1278,3 +1312,235 @@ def test_booking_service_discovery_is_appointment_owned_filtered_and_paginated()
     assert paged["page"] == 1
     assert paged["page_size"] == 1
     assert paged["has_next"] is True
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_self_appointment_list_ordering_defaults_filters_and_paginates_before_slicing():
+    sync_policy()
+    admin = make_user("ordering-admin@example.edu", "IT_ADMIN")
+    student = make_user("ordering-student@example.edu", "STUDENT")
+    provider = make_user("ordering-provider@example.edu", "COUNSELOR")
+    service = active_service(admin, code="ORDERING_SELF_SERVICE")
+    start = future_local_start(hour=8)
+
+    appointments = [
+        create_list_appointment(
+            reference_code="APT-ORDER-003",
+            student=student,
+            provider=provider,
+            service=service,
+            starts_at=start + timedelta(hours=3),
+        ),
+        create_list_appointment(
+            reference_code="APT-ORDER-001",
+            student=student,
+            provider=provider,
+            service=service,
+            starts_at=start + timedelta(hours=1),
+        ),
+        create_list_appointment(
+            reference_code="APT-ORDER-004",
+            student=student,
+            provider=provider,
+            service=service,
+            starts_at=start + timedelta(hours=4),
+        ),
+        create_list_appointment(
+            reference_code="APT-ORDER-002",
+            student=student,
+            provider=provider,
+            service=service,
+            starts_at=start + timedelta(hours=2),
+        ),
+    ]
+
+    expected_asc = [str(item.pk) for item in sorted(appointments, key=lambda row: row.starts_at)]
+    expected_desc = list(reversed(expected_asc))
+
+    student_client = auth_client(student)
+    default_rows = student_client.get("/api/v1/appointments/me").json()["items"]
+    explicit_desc = student_client.get(
+        "/api/v1/appointments/me",
+        {"ordering": "START_DESC"},
+    ).json()["items"]
+    asc_rows = student_client.get(
+        "/api/v1/appointments/me",
+        {"ordering": "START_ASC"},
+    ).json()["items"]
+    assert [row["id"] for row in default_rows] == expected_desc
+    assert [row["id"] for row in explicit_desc] == expected_desc
+    assert [row["id"] for row in asc_rows] == expected_asc
+
+    provider_rows = (
+        auth_client(provider)
+        .get(
+            "/api/v1/appointments/me",
+            {"ordering": "START_ASC"},
+        )
+        .json()["items"]
+    )
+    assert [row["id"] for row in provider_rows] == expected_asc
+
+    first_page = student_client.get(
+        "/api/v1/appointments/me",
+        {"ordering": "START_ASC", "page": 1, "page_size": 2},
+    ).json()
+    second_page = student_client.get(
+        "/api/v1/appointments/me",
+        {"ordering": "START_ASC", "page": 2, "page_size": 2},
+    ).json()
+    assert [row["id"] for row in first_page["items"]] == expected_asc[:2]
+    assert [row["id"] for row in second_page["items"]] == expected_asc[2:]
+    assert first_page["has_next"] is True
+    assert second_page["has_next"] is False
+
+    desc_first = student_client.get(
+        "/api/v1/appointments/me",
+        {"ordering": "START_DESC", "page": 1, "page_size": 2},
+    ).json()
+    desc_second = student_client.get(
+        "/api/v1/appointments/me",
+        {"ordering": "START_DESC", "page": 2, "page_size": 2},
+    ).json()
+    assert [row["id"] for row in desc_first["items"]] == expected_desc[:2]
+    assert [row["id"] for row in desc_second["items"]] == expected_desc[2:]
+
+    filtered = student_client.get(
+        "/api/v1/appointments/me",
+        {
+            "status": "SCHEDULED",
+            "from_date": start.date().isoformat(),
+            "to_date": start.date().isoformat(),
+            "ordering": "START_ASC",
+        },
+    ).json()
+    assert [row["id"] for row in filtered["items"]] == expected_asc
+
+    invalid = student_client.get("/api/v1/appointments/me", {"ordering": "RANDOM"})
+    assert invalid.status_code == 422
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_managed_appointment_ordering_composes_with_search_filters_and_scope():
+    sync_policy()
+    admin = make_user("ordering-managed-admin@example.edu", "IT_ADMIN")
+    student = make_user(
+        "ordering-managed-student@example.edu",
+        "STUDENT",
+        institutional_id="2026-ORDER",
+        first_name="Queue",
+        last_name="Student",
+    )
+    outside_student = make_user(
+        "ordering-outside-student@example.edu",
+        "STUDENT",
+        first_name="Queue",
+        last_name="Outside",
+    )
+    provider = make_user("ordering-managed-provider@example.edu", "COUNSELOR")
+    outside_provider = make_user("ordering-outside-provider@example.edu", "COUNSELOR")
+    service = active_service(admin, code="ORDERING_MANAGED_SERVICE")
+    start = future_local_start(hour=8)
+
+    visible = [
+        create_list_appointment(
+            reference_code="APT-MANAGED-003",
+            student=student,
+            provider=provider,
+            service=service,
+            starts_at=start + timedelta(hours=3),
+            delivery_mode="ONLINE",
+        ),
+        create_list_appointment(
+            reference_code="APT-MANAGED-001",
+            student=student,
+            provider=provider,
+            service=service,
+            starts_at=start + timedelta(hours=1),
+            delivery_mode="ONLINE",
+        ),
+        create_list_appointment(
+            reference_code="APT-MANAGED-004",
+            student=student,
+            provider=provider,
+            service=service,
+            starts_at=start + timedelta(hours=4),
+            delivery_mode="ONLINE",
+        ),
+        create_list_appointment(
+            reference_code="APT-MANAGED-002",
+            student=student,
+            provider=provider,
+            service=service,
+            starts_at=start + timedelta(hours=2),
+            delivery_mode="ONLINE",
+        ),
+    ]
+    outside = create_list_appointment(
+        reference_code="APT-MANAGED-OUTSIDE",
+        student=outside_student,
+        provider=outside_provider,
+        service=service,
+        starts_at=start + timedelta(minutes=30),
+        delivery_mode="ONLINE",
+    )
+
+    expected_asc = [str(item.pk) for item in sorted(visible, key=lambda row: row.starts_at)]
+    expected_desc = list(reversed(expected_asc))
+    client = auth_client(provider)
+
+    for ordering, expected in (
+        ("START_ASC", expected_asc),
+        ("START_DESC", expected_desc),
+    ):
+        page_one = client.get(
+            "/api/v1/appointments",
+            {
+                "search": "Queue Student",
+                "status": "SCHEDULED",
+                "delivery_mode": "ONLINE",
+                "from_date": start.date().isoformat(),
+                "to_date": start.date().isoformat(),
+                "ordering": ordering,
+                "page": 1,
+                "page_size": 2,
+            },
+        ).json()
+        page_two = client.get(
+            "/api/v1/appointments",
+            {
+                "search": "Queue Student",
+                "status": "SCHEDULED",
+                "delivery_mode": "ONLINE",
+                "from_date": start.date().isoformat(),
+                "to_date": start.date().isoformat(),
+                "ordering": ordering,
+                "page": 2,
+                "page_size": 2,
+            },
+        ).json()
+        rows = page_one["items"] + page_two["items"]
+        assert [row["id"] for row in rows] == expected
+        assert str(outside.pk) not in {row["id"] for row in rows}
+        assert page_one["has_next"] is True
+        assert page_two["has_next"] is False
+
+    default_rows = client.get(
+        "/api/v1/appointments",
+        {"search": "Queue Student"},
+    ).json()["items"]
+    assert [row["id"] for row in default_rows] == expected_desc
+
+    direct = list_managed_appointments(
+        actor=provider,
+        search="2026-ORDER",
+        ordering=AppointmentListOrdering.START_ASC,
+    )
+    assert [row.pk for row in direct.items] == [
+        item.pk for item in sorted(visible, key=lambda row: row.starts_at)
+    ]
+
+    invalid = client.get("/api/v1/appointments", {"ordering": "RANDOM"})
+    assert invalid.status_code == 422
