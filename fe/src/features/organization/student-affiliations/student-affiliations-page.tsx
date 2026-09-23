@@ -25,6 +25,7 @@ import {
   PageHeading,
   QueryError,
   SearchField,
+  StatusBadge,
   TableSkeleton,
   replaceQueryParam,
   selectClass,
@@ -296,6 +297,9 @@ export function StudentAffiliationsPage() {
                     Student
                   </th>
                   <th scope="col" className="px-4 py-3">
+                    Institutional ID
+                  </th>
+                  <th scope="col" className="px-4 py-3">
                     College
                   </th>
                   <th scope="col" className="px-4 py-3">
@@ -309,9 +313,20 @@ export function StudentAffiliationsPage() {
               <tbody>
                 {list.data.data.items.map((item) => (
                   <tr key={item.student.id} className="border-t border-border">
-                    <th scope="row" className="px-4 py-4 font-semibold text-ink">
-                      {item.student.display_name}
+                    <th scope="row" className="px-4 py-4">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-ink">
+                            {item.student.full_name}
+                          </span>
+                          <StatusBadge active={item.student.is_active} />
+                        </div>
+                        <p className="text-xs text-muted">{item.student.email}</p>
+                      </div>
                     </th>
+                    <td className="px-4 py-4 font-medium text-ink">
+                      {item.student.institutional_id ?? "—"}
+                    </td>
                     <td className="px-4 py-4">{item.college.name}</td>
                     <td className="px-4 py-4">{item.college.campus.name}</td>
                     <td className="px-4 py-2">
@@ -322,7 +337,7 @@ export function StudentAffiliationsPage() {
                             onClick={() =>
                               openSet(
                                 item.student.id,
-                                item.student.display_name,
+                                item.student.full_name,
                                 item.college.id,
                               )
                             }
@@ -335,7 +350,7 @@ export function StudentAffiliationsPage() {
                           onClick={() =>
                             setRemoval({
                               studentId: item.student.id,
-                              label: item.student.display_name,
+                              label: item.student.full_name,
                             })
                           }
                         >
