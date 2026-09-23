@@ -2230,6 +2230,7 @@ def test_routine_interview_candidate_discovery_openapi_contract() -> None:
     ):
         assert forbidden not in serialized
 
+
 def test_counseling_frontend_readiness_openapi_contract() -> None:
     schema = _generated_schema()
     schemas = schema["components"]["schemas"]
@@ -2341,4 +2342,3 @@ def test_counseling_frontend_readiness_openapi_contract() -> None:
         "shared_summary",
     ):
         assert forbidden not in serialized
-
