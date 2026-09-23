@@ -276,6 +276,18 @@ if DAILY_ENABLED and not DAILY_API_KEY:
 if DAILY_ENABLED and not DAILY_WEBHOOK_HMAC:
     raise ValueError("DAILY_WEBHOOK_HMAC is required when DAILY_ENABLED is true")
 
+# Official PSA Philippine Standard Geographic Code reference integration. Missing token/version
+# must not prevent COMPASS startup; PSGC-dependent operations fail through controlled 503 errors.
+PSGC_API_BASE_URL = env("PSGC_API_BASE_URL", "https://classification.psa.gov.ph/psgc")
+PSGC_API_TOKEN = env("PSGC_API_TOKEN", "")
+PSGC_VERSION = env("PSGC_VERSION", "")
+PSGC_HTTP_TIMEOUT_SECONDS = env_float("PSGC_HTTP_TIMEOUT_SECONDS", 5.0)
+PSGC_CACHE_TTL_SECONDS = env_int("PSGC_CACHE_TTL_SECONDS", 86_400)
+if PSGC_HTTP_TIMEOUT_SECONDS <= 0:
+    raise ValueError("PSGC_HTTP_TIMEOUT_SECONDS must be positive")
+if PSGC_CACHE_TTL_SECONDS <= 0:
+    raise ValueError("PSGC_CACHE_TTL_SECONDS must be positive")
+
 # Authentication uses a separate server-managed opaque session rather than Django's signed
 # session cookie. The credential-bearing cookies are scoped to the API and are never readable by
 # browser JavaScript. A deployment may choose SameSite=None for a separately hosted SPA, but it
