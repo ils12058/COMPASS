@@ -638,10 +638,14 @@ def list_encounter_candidates(
     _validate_counselor(counselor)
     page, page_size = _validate_page(page, page_size)
 
-    item = _queryset().filter(
-        pk=routine_interview_id,
-        counselor_id=counselor.pk,
-    ).first()
+    item = (
+        _queryset()
+        .filter(
+            pk=routine_interview_id,
+            counselor_id=counselor.pk,
+        )
+        .first()
+    )
     if item is None:
         raise RoutineInterviewNotFound("The requested Routine Interview was not found.")
     if item.intake_submitted_at is None:
