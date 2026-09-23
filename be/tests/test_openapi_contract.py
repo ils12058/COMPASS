@@ -154,6 +154,7 @@ EXPECTED_OPERATION_IDS = {
     "availabilityCreateProviderException",
     "availabilityRemoveProviderException",
     "availabilityGetProviderEffective",
+    "appointmentsListBookingServices",
     "appointmentsCreateMy",
     "appointmentsListMy",
     "appointmentsListManaged",
@@ -1948,3 +1949,53 @@ def test_availability_provider_discovery_openapi_contract() -> None:
     for status in ("401", "403", "422"):
         error_schema = operation["responses"][status]["content"]["application/json"]["schema"]
         assert error_schema["$ref"].endswith("/APIErrorResponse")
+
+def test_appointment_frontend_readiness_openapi_contract() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    appointment = schemas["AppointmentResponse"]
+    assert "student_id" in appointment["properties"]
+    assert appointment["properties"]["student"]["$ref"].endswith("/AppointmentStudentSummary")
+
+    student = schemas["AppointmentStudentSummary"]
+    assert set(student["properties"]) == {"id", "institutional_id", "display_name"}
+    assert set(student["required"]) == {"id", "institutional_id", "display_name"}
+    assert "email" not in student["properties"]
+    assert "contact_number" not in student["properties"]
+
+    operation = _operation(schema, "/api/v1/appointments/booking/services", "get")
+    assert operation["operationId"] == "appointmentsListBookingServices"
+    assert operation["tags"] == ["appointments"]
+    assert _response_statuses(operation) == {200, 401, 403, 422}
+
+    response_schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert response_schema["$ref"].endswith("/AppointmentBookingServiceListResponse")
+
+    booking_service = schemas["AppointmentBookingServiceSummary"]
+    expected_fields = {
+        "id",
+        "code",
+        "name",
+        "description",
+        "appointment_policy",
+        "delivery_modes",
+        "default_duration_minutes",
+        "cancellation_cutoff_minutes",
+        "requires_current_inventory",
+    }
+    assert set(booking_service["properties"]) == expected_fields
+    assert set(booking_service["required"]) == expected_fields
+    assert "is_active" not in booking_service["properties"]
+    assert "created_at" not in booking_service["properties"]
+    assert "updated_at" not in booking_service["properties"]
+    assert "provider_roles" not in booking_service["properties"]
+
+    booking_list = schemas["AppointmentBookingServiceListResponse"]
+    assert set(booking_list["properties"]) == {"items", "page", "page_size", "has_next"}
+    assert set(booking_list["required"]) == {"items", "page", "page_size", "has_next"}
+
+    for status in ("401", "403", "422"):
+        error_schema = operation["responses"][status]["content"]["application/json"]["schema"]
+        assert error_schema["$ref"].endswith("/APIErrorResponse")
+
