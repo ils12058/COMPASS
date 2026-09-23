@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import NoReturn
+
 from ninja import Router, Schema
 from pydantic import ConfigDict
 
@@ -34,7 +36,7 @@ class PSGCReferenceListResponse(StrictSchema):
     items: list[PSGCReferenceItem]
 
 
-def _raise_psgc(exc: Exception) -> None:
+def _raise_psgc(exc: Exception) -> NoReturn:
     if isinstance(exc, PSGCInvalidRequest):
         raise APIError(422, "invalid_psgc_reference_request", str(exc)) from exc
     if isinstance(
@@ -66,7 +68,12 @@ def reference_data_list_psgc_regions(request):
     try:
         client = PSGCClient.from_settings()
         return _payload(client, client.list_regions())
-    except Exception as exc:
+    except (
+        PSGCConfigurationError,
+        PSGCInvalidRequest,
+        PSGCInvalidResponse,
+        PSGCUnavailable,
+    ) as exc:
         _raise_psgc(exc)
 
 
@@ -80,7 +87,12 @@ def reference_data_list_psgc_provinces(request, region_code: str):
     try:
         client = PSGCClient.from_settings()
         return _payload(client, client.list_provinces(region_code=region_code))
-    except Exception as exc:
+    except (
+        PSGCConfigurationError,
+        PSGCInvalidRequest,
+        PSGCInvalidResponse,
+        PSGCUnavailable,
+    ) as exc:
         _raise_psgc(exc)
 
 
@@ -104,7 +116,12 @@ def reference_data_list_psgc_cities_municipalities(
                 province_code=province_code,
             ),
         )
-    except Exception as exc:
+    except (
+        PSGCConfigurationError,
+        PSGCInvalidRequest,
+        PSGCInvalidResponse,
+        PSGCUnavailable,
+    ) as exc:
         _raise_psgc(exc)
 
 
@@ -121,5 +138,10 @@ def reference_data_list_psgc_barangays(request, city_municipality_code: str):
             client,
             client.list_barangays(city_municipality_code=city_municipality_code),
         )
-    except Exception as exc:
+    except (
+        PSGCConfigurationError,
+        PSGCInvalidRequest,
+        PSGCInvalidResponse,
+        PSGCUnavailable,
+    ) as exc:
         _raise_psgc(exc)
