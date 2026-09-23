@@ -2028,6 +2028,7 @@ def test_appointment_list_ordering_openapi_contract() -> None:
         ordering_parameter_schema = ordering["schema"]
         assert ordering_parameter_schema.get("default") == "START_DESC"
 
+
 def test_inventory_frontend_readiness_openapi_contract() -> None:
     schema = _generated_schema()
     schemas = schema["components"]["schemas"]
@@ -2103,4 +2104,3 @@ def test_inventory_frontend_readiness_openapi_contract() -> None:
     serialized = json.dumps(schema)
     assert "PSGC_API_TOKEN" not in serialized
     assert "PSGC_API_BASE_URL" not in serialized
-
