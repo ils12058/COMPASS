@@ -1090,6 +1090,103 @@
         "title": "AnnualIncomeStatusValue",
         "type": "string"
       },
+      "AppointmentBookingServiceListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AppointmentBookingServiceSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "AppointmentBookingServiceListResponse",
+        "type": "object"
+      },
+      "AppointmentBookingServiceSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment_policy": {
+            "title": "Appointment Policy",
+            "type": "string"
+          },
+          "cancellation_cutoff_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancellation Cutoff Minutes"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "default_duration_minutes": {
+            "title": "Default Duration Minutes",
+            "type": "integer"
+          },
+          "delivery_modes": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryMode"
+            },
+            "title": "Delivery Modes",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "requires_current_inventory": {
+            "title": "Requires Current Inventory",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "appointment_policy",
+          "delivery_modes",
+          "default_duration_minutes",
+          "cancellation_cutoff_minutes",
+          "requires_current_inventory"
+        ],
+        "title": "AppointmentBookingServiceSummary",
+        "type": "object"
+      },
       "AppointmentCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1509,6 +1606,9 @@
           "status": {
             "$ref": "#/components/schemas/AppointmentStatus"
           },
+          "student": {
+            "$ref": "#/components/schemas/AppointmentStudentSummary"
+          },
           "student_id": {
             "format": "uuid",
             "title": "Student Id",
@@ -1519,6 +1619,7 @@
           "id",
           "reference_code",
           "student_id",
+          "student",
           "service",
           "provider",
           "delivery_mode",
@@ -1543,6 +1644,38 @@
         ],
         "title": "AppointmentStatus",
         "type": "string"
+      },
+      "AppointmentStudentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          }
+        },
+        "required": [
+          "id",
+          "institutional_id",
+          "display_name"
+        ],
+        "title": "AppointmentStudentSummary",
+        "type": "object"
       },
       "AppointmentWorkspaceSummary": {
         "additionalProperties": false,
@@ -21805,6 +21938,100 @@
           }
         ],
         "summary": "Appointments List Eligible Counselors",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
+    "/api/v1/appointments/booking/services": {
+      "get": {
+        "operationId": "appointmentsListBookingServices",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentBookingServiceListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments List Booking Services",
         "tags": [
           "appointments"
         ]
