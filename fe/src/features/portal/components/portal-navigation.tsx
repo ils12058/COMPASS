@@ -10,6 +10,9 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = usePortalSession();
   const pathname = usePathname();
   const canManageAccounts = user.capabilities.includes("accounts.manage");
+  const hasOrganization =
+    user.capabilities.includes("organization.view") ||
+    user.capabilities.includes("organization.manage");
 
   return (
     <div className="flex h-full flex-col bg-brand-strong text-on-brand">
@@ -35,7 +38,9 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
           href="/portal"
           onClick={onNavigate}
           aria-current={pathname === "/portal" ? "page" : undefined}
-          className={`flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand ${pathname === "/portal" ? "bg-on-brand/12" : "hover:bg-on-brand/10"}`}
+          className={`flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand ${
+            pathname === "/portal" ? "bg-on-brand/12" : "hover:bg-on-brand/10"
+          }`}
         >
           Home
         </Link>
@@ -50,9 +55,36 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
               aria-current={
                 pathname.startsWith("/portal/accounts") ? "page" : undefined
               }
-              className={`mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand ${pathname.startsWith("/portal/accounts") ? "bg-on-brand/12" : "hover:bg-on-brand/10"}`}
+              className={`mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand ${
+                pathname.startsWith("/portal/accounts")
+                  ? "bg-on-brand/12"
+                  : "hover:bg-on-brand/10"
+              }`}
             >
               Accounts
+            </Link>
+          </div>
+        ) : null}
+        {hasOrganization ? (
+          <div className="mt-7 border-t border-on-brand/15 pt-5">
+            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-on-brand/70">
+              Institution
+            </p>
+            <Link
+              href="/portal/organization"
+              onClick={onNavigate}
+              aria-current={
+                pathname.startsWith("/portal/organization")
+                  ? "page"
+                  : undefined
+              }
+              className={`mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand ${
+                pathname.startsWith("/portal/organization")
+                  ? "bg-on-brand/12"
+                  : "hover:bg-on-brand/10"
+              }`}
+            >
+              Organization
             </Link>
           </div>
         ) : null}
