@@ -11,7 +11,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from compass.accounts.models import User
+from compass.accounts.models import StudentLifecycleStatus, User
 from compass.accounts.services import is_current_student
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.audit.actions import (
@@ -31,20 +31,27 @@ from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     get_active_supported_form_revision,
 )
+from compass.inventory.models import StudentInventory
 from compass.inventory.services import (
     CurrentAcademicYearNotConfigured,
     InventoryConflict,
     require_current_submitted_inventory,
 )
 from compass.notifications.policy import NotificationEvent
+from compass.organization.academic_years import get_current_academic_year
 from compass.notifications.services import create_notification_for_event
 from compass.service_catalog.models import DeliveryMode
 from compass.service_catalog.services import (
     provider_role_eligible,
+    service_allows_provider_role,
     service_supports_delivery_mode,
 )
 
-from .matching import RoutineEncounterMatchIssue, routine_interview_encounter_match_issue
+from .matching import (
+    RoutineEncounterMatchIssue,
+    routine_interview_encounter_match_issue,
+    routine_interview_encounter_matches,
+)
 from .models import RoutineConcern, RoutineInterview
 
 ROUTINE_FORM_FAMILY_KEY = "routine_interview"
@@ -152,6 +159,34 @@ class RoutineInterviewPage:
     has_next: bool
 
 
+@dataclass(frozen=True, slots=True)
+class RoutineDirectCreationOptions:
+    service: object
+    delivery_modes: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class RoutineDirectStudentCandidate:
+    student: User
+    inventory: StudentInventory
+
+
+@dataclass(frozen=True, slots=True)
+class RoutineDirectStudentCandidatePage:
+    items: tuple[RoutineDirectStudentCandidate, ...]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+@dataclass(frozen=True, slots=True)
+class RoutineEncounterCandidatePage:
+    items: tuple[CounselingEncounter, ...]
+    page: int
+    page_size: int
+    has_next: bool
+
+
 def _queryset():
     return RoutineInterview.objects.select_related(
         "student",
@@ -237,7 +272,14 @@ def _optional_form_revision():
         ) from exc
 
 
-def _validate_counseling_service(*, service, counselor: User, delivery_mode: str) -> None:
+def _active_counseling_service(*, for_update: bool = False):
+    try:
+        return get_counseling_service(require_active=True, for_update=for_update)
+    except CounselingConfigurationConflict as exc:
+        raise RoutineInterviewAppointmentInvalid(str(exc)) from exc
+
+
+def _validate_counseling_provider(*, service, counselor: User) -> None:
     if service.code != "COUNSELING" or not service.is_active:
         raise RoutineInterviewAppointmentInvalid(
             "Routine Interview requires the active canonical COUNSELING Service."
@@ -246,10 +288,35 @@ def _validate_counseling_service(*, service, counselor: User, delivery_mode: str
         raise RoutineInterviewAppointmentInvalid(
             "The assigned provider is not eligible for the COUNSELING Service."
         )
+
+
+def _validate_counseling_service(*, service, counselor: User, delivery_mode: str) -> None:
+    _validate_counseling_provider(service=service, counselor=counselor)
     if not service_supports_delivery_mode(service, delivery_mode):
         raise RoutineInterviewAppointmentInvalid(
             "The COUNSELING Service does not support this delivery mode."
         )
+
+
+def _validate_page(page: int, page_size: int) -> tuple[int, int]:
+    if type(page) is not int or page < 1:
+        raise InvalidRoutineInterviewInput("page must be at least 1.")
+    if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
+        raise InvalidRoutineInterviewInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}.")
+    return page, page_size
+
+
+def _clean_search(search: str | None) -> str:
+    if search is None:
+        return ""
+    if not isinstance(search, str):
+        raise InvalidRoutineInterviewInput("search must be text.")
+    cleaned = search.strip()
+    if len(cleaned) > MAX_SEARCH_LENGTH:
+        raise InvalidRoutineInterviewInput(
+            f"search must be at most {MAX_SEARCH_LENGTH} characters."
+        )
+    return cleaned
 
 
 def _safe_creation_metadata(item: RoutineInterview) -> dict[str, object]:
@@ -294,10 +361,7 @@ def ensure_for_appointment(
             raise RoutineInterviewAppointmentInvalid("The Appointment must be SCHEDULED.")
         counselor = appointment.provider
         _validate_counselor(counselor)
-        try:
-            counseling_service = get_counseling_service(require_active=True, for_update=True)
-        except CounselingConfigurationConflict as exc:
-            raise RoutineInterviewAppointmentInvalid(str(exc)) from exc
+        counseling_service = _active_counseling_service(for_update=True)
         if appointment.service_id != counseling_service.pk:
             raise RoutineInterviewAppointmentInvalid(
                 "The Appointment does not use the canonical COUNSELING Service."
@@ -401,10 +465,7 @@ def create_direct(
         _require_current_student(student)
         _validate_counselor(locked_counselor)
 
-        try:
-            service = get_counseling_service(require_active=True, for_update=True)
-        except CounselingConfigurationConflict as exc:
-            raise RoutineInterviewAppointmentInvalid(str(exc)) from exc
+        service = _active_counseling_service(for_update=True)
         _validate_counseling_service(
             service=service,
             counselor=locked_counselor,
@@ -462,6 +523,184 @@ def create_direct(
             target_id=item.pk,
         )
         return _queryset().get(pk=item.pk)
+
+
+def list_my_appointment_candidates(student: User) -> tuple[Appointment, ...]:
+    _validate_student(student)
+    _require_current_student(student)
+    _submitted_inventory(student)
+    _optional_form_revision()
+
+    service = _active_counseling_service()
+    if not service_allows_provider_role(service, "COUNSELOR"):
+        raise RoutineInterviewAppointmentInvalid(
+            "The canonical COUNSELING Service does not permit Counselor providers."
+        )
+    delivery_modes = tuple(
+        service.delivery_mode_assignments.order_by("mode").values_list("mode", flat=True)
+    )
+    if not delivery_modes:
+        raise RoutineInterviewAppointmentInvalid(
+            "The canonical COUNSELING Service has no supported delivery mode."
+        )
+
+    queryset = (
+        Appointment.objects.select_related("provider", "provider__role", "service")
+        .filter(
+            student_id=student.pk,
+            status=AppointmentStatus.SCHEDULED,
+            service_id=service.pk,
+            provider__is_active=True,
+            provider__role__code="COUNSELOR",
+            delivery_mode__in=delivery_modes,
+            routine_interview__isnull=True,
+        )
+        .order_by("starts_at", "id")
+    )
+    return tuple(queryset)
+
+
+def get_direct_creation_options(counselor: User) -> RoutineDirectCreationOptions:
+    _validate_counselor(counselor)
+    service = _active_counseling_service()
+    _validate_counseling_provider(service=service, counselor=counselor)
+    delivery_modes = tuple(
+        service.delivery_mode_assignments.order_by("mode").values_list("mode", flat=True)
+    )
+    if not delivery_modes:
+        raise RoutineInterviewAppointmentInvalid(
+            "The canonical COUNSELING Service has no supported delivery mode."
+        )
+    return RoutineDirectCreationOptions(service=service, delivery_modes=delivery_modes)
+
+
+def list_direct_student_candidates(
+    *,
+    counselor: User,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> RoutineDirectStudentCandidatePage:
+    _validate_counselor(counselor)
+    _optional_form_revision()
+    get_direct_creation_options(counselor)
+    page, page_size = _validate_page(page, page_size)
+    term = _clean_search(search)
+
+    current = get_current_academic_year()
+    if current is None:
+        raise CurrentAcademicYearNotConfigured("No current Academic Year is configured.")
+
+    queryset = StudentInventory.objects.select_related(
+        "student",
+        "student__role",
+        "academic_year",
+    ).filter(
+        academic_year_id=current.pk,
+        submitted_at__isnull=False,
+        student__is_active=True,
+        student__role__code="STUDENT",
+        student__student_lifecycle_status=StudentLifecycleStatus.CURRENT,
+    )
+    for token in term.split():
+        queryset = queryset.filter(
+            Q(student__institutional_id__icontains=token)
+            | Q(student__first_name__icontains=token)
+            | Q(student__middle_name__icontains=token)
+            | Q(student__last_name__icontains=token)
+        )
+    queryset = queryset.order_by(
+        "student__last_name",
+        "student__first_name",
+        "student__middle_name",
+        "student_id",
+    )
+    offset = (page - 1) * page_size
+    rows = list(queryset[offset : offset + page_size + 1])
+    return RoutineDirectStudentCandidatePage(
+        tuple(
+            RoutineDirectStudentCandidate(student=row.student, inventory=row)
+            for row in rows[:page_size]
+        ),
+        page,
+        page_size,
+        len(rows) > page_size,
+    )
+
+
+def list_encounter_candidates(
+    *,
+    counselor: User,
+    routine_interview_id: UUID,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> RoutineEncounterCandidatePage:
+    _validate_counselor(counselor)
+    page, page_size = _validate_page(page, page_size)
+
+    item = _queryset().filter(
+        pk=routine_interview_id,
+        counselor_id=counselor.pk,
+    ).first()
+    if item is None:
+        raise RoutineInterviewNotFound("The requested Routine Interview was not found.")
+    if item.intake_submitted_at is None:
+        raise RoutineInterviewIntakeRequired(
+            "Student Intake must be submitted before Counseling Encounter candidates are available."
+        )
+    if item.evaluation_finalized_at is not None:
+        raise RoutineInterviewEvaluationFinalized(
+            "The Counselor Evaluation is finalized and locked."
+        )
+
+    now = timezone.now()
+    queryset = CounselingEncounter.objects.select_related(
+        "service",
+        "appointment",
+    ).filter(
+        student_id=item.student_id,
+        counselor_id=item.counselor_id,
+        service__code="COUNSELING",
+        delivery_mode=item.delivery_mode,
+        ended_at__lte=now,
+        routine_interview__isnull=True,
+    )
+    if item.appointment_id is not None:
+        queryset = queryset.filter(
+            entry_mode=CounselingEntryMode.APPOINTMENT,
+            appointment_id=item.appointment_id,
+        )
+    else:
+        queryset = queryset.filter(
+            entry_mode=item.entry_mode,
+            appointment__isnull=True,
+        )
+    queryset = queryset.order_by("-ended_at", "id")
+
+    offset = (page - 1) * page_size
+    matched: list[CounselingEncounter] = []
+    seen_matches = 0
+    for encounter in queryset.iterator(chunk_size=max(page_size * 2, 20)):
+        if not routine_interview_encounter_matches(
+            item=item,
+            encounter=encounter,
+            now=now,
+        ):
+            continue
+        if seen_matches < offset:
+            seen_matches += 1
+            continue
+        matched.append(encounter)
+        seen_matches += 1
+        if len(matched) > page_size:
+            break
+
+    return RoutineEncounterCandidatePage(
+        tuple(matched[:page_size]),
+        page,
+        page_size,
+        len(matched) > page_size,
+    )
 
 
 def list_mine(student: User) -> tuple[RoutineInterview, ...]:
