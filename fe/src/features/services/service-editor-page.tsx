@@ -91,6 +91,7 @@ function ServiceForm({
   submitLabel,
   pendingLabel,
   messages,
+  codeReadOnly = false,
   onSubmit,
 }: {
   initial: ServiceFormState;
@@ -100,7 +101,8 @@ function ServiceForm({
   submitLabel: string;
   pendingLabel: string;
   messages: ReactNode;
-  codeReadOnly?: boolean;\n  onSubmit: (values: ServiceFormState) => Promise<void>;
+  codeReadOnly?: boolean;
+  onSubmit: (values: ServiceFormState) => Promise<void>;
 }) {
   const [values, setValues] = useState(initial);
   const appointmentEnabled =
@@ -592,6 +594,7 @@ export function EditServicePage() {
         submitLabel="Save changes"
         pendingLabel="Saving…"
         messages={action.messages}
+        codeReadOnly
         onSubmit={submit}
       />
       {action.stepUpDialog}
