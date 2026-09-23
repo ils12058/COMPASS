@@ -44,6 +44,7 @@ from compass.organization.models import (
     CounselorResponsibility,
     StudentAffiliation,
 )
+from compass.service_catalog.models import Service, ServiceDeliveryMode
 from compass.service_catalog.services import create_service, set_service_active, update_service
 
 
@@ -51,13 +52,24 @@ def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)
 
 
-def make_user(email: str, role: str, *, active: bool = True) -> User:
+def make_user(
+    email: str,
+    role: str,
+    *,
+    active: bool = True,
+    institutional_id: str | None = None,
+    first_name: str | None = None,
+    middle_name: str = "",
+    last_name: str | None = None,
+) -> User:
     return User.objects.create_user(
         email=email,
         password="a-test-password",
         role=Role.objects.get(code=role),
-        first_name=email.split("@")[0].title(),
-        last_name="User",
+        first_name=first_name or email.split("@")[0].title(),
+        middle_name=middle_name,
+        last_name=last_name or "User",
+        institutional_id=institutional_id,
         is_active=active,
     )
 
@@ -111,6 +123,7 @@ def active_service(
     cutoff: int | None = 30,
     delivery_modes=None,
     provider_roles=None,
+    requires_current_inventory: bool = False,
 ):
     service = create_service(
         code=code,
@@ -118,6 +131,7 @@ def active_service(
         appointment_policy=policy,
         default_duration_minutes=duration,
         cancellation_cutoff_minutes=cutoff,
+        requires_current_inventory=requires_current_inventory,
         delivery_modes=delivery_modes or ["IN_PERSON", "ONLINE"],
         provider_roles=provider_roles or ["COUNSELOR"],
         context=context(actor),
@@ -995,3 +1009,272 @@ def test_non_current_student_cannot_book_but_can_read_and_cancel_existing(status
         context=context(student),
     )
     assert cancelled.status == "CANCELLED"
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_appointment_responses_expose_narrow_student_projection_consistently():
+    sync_policy()
+    admin = make_user("projection-admin@example.edu", "IT_ADMIN")
+    student = make_user(
+        "reynan@example.edu",
+        "STUDENT",
+        institutional_id="2023-12345",
+        first_name="Reynan",
+        middle_name="Santos",
+        last_name="Tolentino",
+    )
+    student_without_id = make_user(
+        "no-id@example.edu",
+        "STUDENT",
+        first_name="No",
+        last_name="Identifier",
+    )
+    provider = make_user("projection-provider@example.edu", "COUNSELOR")
+    head = make_user("projection-head@example.edu", "COUNSELOR")
+    UserDesignation.objects.create(
+        user=head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+    service = active_service(admin, code="PROJECTION_SERVICE")
+    configure_availability(admin, provider)
+    start = future_local_start()
+
+    item = create_student_appointment(
+        student=student,
+        service_id=service.pk,
+        provider_id=provider.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=start,
+        context=context(student),
+        now=start - timedelta(days=1),
+    )
+    second = create_student_appointment(
+        student=student_without_id,
+        service_id=service.pk,
+        provider_id=provider.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=start + timedelta(hours=2),
+        context=context(student_without_id),
+        now=start - timedelta(days=1),
+    )
+    student.is_active = False
+    student.save(update_fields=["is_active", "updated_at"])
+
+    expected = {
+        "id": str(student.pk),
+        "institutional_id": "2023-12345",
+        "display_name": "Reynan Santos Tolentino",
+    }
+    provider_rows = auth_client(provider).get("/api/v1/appointments/me").json()["items"]
+    managed_rows = auth_client(head).get("/api/v1/appointments").json()["items"]
+    detail = auth_client(head).get(f"/api/v1/appointments/{item.pk}").json()
+
+    provider_row = next(row for row in provider_rows if row["id"] == str(item.pk))
+    managed_row = next(row for row in managed_rows if row["id"] == str(item.pk))
+    for row in (provider_row, managed_row, detail):
+        assert row["student_id"] == str(student.pk)
+        assert row["student"] == expected
+        assert set(row["student"]) == {"id", "institutional_id", "display_name"}
+
+    second_row = next(row for row in managed_rows if row["id"] == str(second.pk))
+    assert second_row["student"]["institutional_id"] is None
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_managed_appointment_search_is_student_aware_composable_and_scope_preserving():
+    sync_policy()
+    admin = make_user("search-admin@example.edu", "IT_ADMIN")
+    student = make_user(
+        "search-target@example.edu",
+        "STUDENT",
+        institutional_id="2023-54321",
+        first_name="Reynan",
+        middle_name="Santos",
+        last_name="Tolentino",
+    )
+    outside_student = make_user(
+        "search-outside@example.edu",
+        "STUDENT",
+        institutional_id="2024-99999",
+        first_name="Reynan",
+        middle_name="Outside",
+        last_name="Scope",
+    )
+    provider = make_user("search-provider@example.edu", "COUNSELOR")
+    outside_provider = make_user("search-outside-provider@example.edu", "COUNSELOR")
+    head = make_user("search-head@example.edu", "COUNSELOR")
+    UserDesignation.objects.create(
+        user=head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+    service = active_service(admin, code="SEARCH_SERVICE")
+    configure_availability(admin, provider)
+    configure_availability(admin, outside_provider)
+    start = future_local_start()
+
+    target = create_student_appointment(
+        student=student,
+        service_id=service.pk,
+        provider_id=provider.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=start,
+        context=context(student),
+        now=start - timedelta(days=1),
+    )
+    outside = create_student_appointment(
+        student=outside_student,
+        service_id=service.pk,
+        provider_id=outside_provider.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=start,
+        context=context(outside_student),
+        now=start - timedelta(days=1),
+    )
+
+    head_client = auth_client(head)
+    for search in (
+        target.reference_code,
+        "2023-54321",
+        "Reynan",
+        "Santos",
+        "Tolentino",
+        "Reynan Tolentino",
+    ):
+        rows = head_client.get("/api/v1/appointments", {"search": search}).json()["items"]
+        assert str(target.pk) in {row["id"] for row in rows}
+
+    unmatched = head_client.get("/api/v1/appointments", {"search": "No Such Student"})
+    assert unmatched.status_code == 200
+    assert unmatched.json()["items"] == []
+
+    cancel_appointment(
+        appointment_id=target.pk,
+        actor=head,
+        administrative=True,
+        context=context(head),
+    )
+    composed = head_client.get(
+        "/api/v1/appointments",
+        {"search": "Tolentino", "status": "SCHEDULED"},
+    )
+    assert composed.status_code == 200
+    assert composed.json()["items"] == []
+
+    first_page = head_client.get(
+        "/api/v1/appointments",
+        {"search": "Reynan", "page": 1, "page_size": 1},
+    ).json()
+    assert len(first_page["items"]) == 1
+    assert first_page["has_next"] is True
+
+    provider_client = auth_client(provider)
+    scoped = provider_client.get("/api/v1/appointments", {"search": "Outside Scope"})
+    assert scoped.status_code == 200
+    assert str(outside.pk) not in {row["id"] for row in scoped.json()["items"]}
+
+
+@pytest.mark.django_db
+def test_booking_service_discovery_is_appointment_owned_filtered_and_paginated():
+    sync_policy()
+    admin = make_user("booking-services-admin@example.edu", "IT_ADMIN")
+    student = make_user("booking-services-student@example.edu", "STUDENT")
+    counselor = make_user("booking-services-counselor@example.edu", "COUNSELOR")
+
+    services_view = Capability.objects.filter(code="services.view").first()
+    if services_view is not None:
+        UserCapabilityOverride.objects.update_or_create(
+            user=student,
+            capability=services_view,
+            defaults={"effect": "REVOKE", "reason": "Appointment discovery isolation test"},
+        )
+    assert not student.has_capability("services.view")
+    assert not student.has_capability("accounts.manage")
+    assert not student.has_capability("organization.manage")
+
+    optional = active_service(
+        admin,
+        code="BOOK_OPTIONAL",
+        policy="OPTIONAL",
+        delivery_modes=["IN_PERSON"],
+    )
+    required = active_service(
+        admin,
+        code="BOOK_REQUIRED",
+        policy="REQUIRED",
+        delivery_modes=["ONLINE"],
+        requires_current_inventory=True,
+    )
+    active_service(
+        admin,
+        code="BOOK_NONE",
+        policy="NONE",
+        cutoff=None,
+        delivery_modes=["IN_PERSON"],
+    )
+    inactive = create_service(
+        code="BOOK_INACTIVE",
+        name="Book Inactive",
+        appointment_policy="OPTIONAL",
+        default_duration_minutes=60,
+        cancellation_cutoff_minutes=30,
+        delivery_modes=["IN_PERSON"],
+        provider_roles=["COUNSELOR"],
+        context=context(admin),
+    )
+    invalid_provider = Service.objects.create(
+        code="BOOK_NO_COUNSELOR",
+        name="Book No Counselor",
+        appointment_policy="OPTIONAL",
+        default_duration_minutes=60,
+        cancellation_cutoff_minutes=30,
+        is_active=True,
+    )
+    ServiceDeliveryMode.objects.create(service=invalid_provider, mode="IN_PERSON")
+
+    anonymous = Client().get("/api/v1/appointments/booking/services")
+    assert anonymous.status_code == 401
+    denied = auth_client(counselor).get("/api/v1/appointments/booking/services")
+    assert denied.status_code == 403
+
+    client = auth_client(student)
+    response = client.get("/api/v1/appointments/booking/services")
+    assert response.status_code == 200
+    payload = response.json()
+    by_code = {row["code"]: row for row in payload["items"]}
+    assert set(by_code) == {"BOOK_OPTIONAL", "BOOK_REQUIRED"}
+    assert optional.code in by_code
+    assert required.code in by_code
+    assert inactive.code not in by_code
+    assert "BOOK_NONE" not in by_code
+    assert invalid_provider.code not in by_code
+
+    required_row = by_code["BOOK_REQUIRED"]
+    assert required_row["requires_current_inventory"] is True
+    assert set(required_row) == {
+        "id",
+        "code",
+        "name",
+        "description",
+        "appointment_policy",
+        "delivery_modes",
+        "default_duration_minutes",
+        "cancellation_cutoff_minutes",
+        "requires_current_inventory",
+    }
+
+    searched = client.get(
+        "/api/v1/appointments/booking/services",
+        {"search": "required"},
+    ).json()
+    assert [row["code"] for row in searched["items"]] == ["BOOK_REQUIRED"]
+
+    paged = client.get(
+        "/api/v1/appointments/booking/services",
+        {"page": 1, "page_size": 1},
+    ).json()
+    assert len(paged["items"]) == 1
+    assert paged["page"] == 1
+    assert paged["page_size"] == 1
+    assert paged["has_next"] is True
