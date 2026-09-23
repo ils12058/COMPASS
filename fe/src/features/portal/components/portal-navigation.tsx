@@ -13,6 +13,7 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const hasOrganization =
     user.capabilities.includes("organization.view") ||
     user.capabilities.includes("organization.manage");
+  const hasServices = user.capabilities.includes("services.view");
 
   return (
     <div className="flex h-full flex-col bg-brand-strong text-on-brand">
@@ -85,6 +86,27 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
               }`}
             >
               Organization
+            </Link>
+          </div>
+        ) : null}
+        {hasServices ? (
+          <div className="mt-7 border-t border-on-brand/15 pt-5">
+            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-on-brand/70">
+              Guidance Services
+            </p>
+            <Link
+              href="/portal/services"
+              onClick={onNavigate}
+              aria-current={
+                pathname.startsWith("/portal/services") ? "page" : undefined
+              }
+              className={`mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand ${
+                pathname.startsWith("/portal/services")
+                  ? "bg-on-brand/12"
+                  : "hover:bg-on-brand/10"
+              }`}
+            >
+              Services
             </Link>
           </div>
         ) : null}
