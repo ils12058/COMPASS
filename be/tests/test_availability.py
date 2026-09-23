@@ -901,7 +901,7 @@ def test_provider_discovery_supports_search_and_canonical_pagination():
 
 
 @pytest.mark.django_db
-def test_provider_discovery_exposes_only_legacy_gss_with_availability_and_does_not_broaden_eligibility():
+def test_provider_discovery_limits_gss_to_legacy_cleanup_without_broadening_eligibility():
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     clean_gss = make_user(
