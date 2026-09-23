@@ -129,7 +129,7 @@ export function UnavailabilitySection({
   const [reason, setReason] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const now = Date.now();
+  const [now] = useState(() => Date.now());
   const upcoming = useMemo(
     () =>
       items.filter((item) => {
