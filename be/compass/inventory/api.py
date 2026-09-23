@@ -54,12 +54,14 @@ from .services import (
     InventoryNotFound,
     InventoryNotPermitted,
     InventoryNotSubmitted,
+    InventoryPSGCUnavailable,
     InventoryStatus,
     ensure_current_inventory,
     get_current_inventory,
     get_current_inventory_status,
     get_inventory_for_counselor,
     get_my_inventory_history_item,
+    get_pending_correction,
     list_inventory_students,
     list_my_inventory_history,
     list_student_inventory_history,
@@ -471,6 +473,11 @@ class FormRevisionSummary(StrictSchema):
     internal_schema_version: int
 
 
+class InventoryCorrectionSummary(StrictSchema):
+    requested_at: datetime
+    message: str
+
+
 class InventoryStatusResponse(StrictSchema):
     academic_year: AcademicYearSummary
     status: InventoryStatusValue
@@ -478,6 +485,8 @@ class InventoryStatusResponse(StrictSchema):
     first_submitted_at: datetime | None
     last_submitted_at: datetime | None
     form_revision: FormRevisionSummary | None
+    correction_pending: bool
+    latest_correction: InventoryCorrectionSummary | None
 
 
 class InventorySummaryResponse(StrictSchema):
@@ -488,6 +497,7 @@ class InventorySummaryResponse(StrictSchema):
     first_submitted_at: datetime | None
     last_submitted_at: datetime | None
     form_revision: FormRevisionSummary
+    correction_pending: bool
 
 
 class InventoryResponse(InventoryPayload):
@@ -499,6 +509,8 @@ class InventoryResponse(InventoryPayload):
     first_submitted_at: datetime | None
     last_submitted_at: datetime | None
     form_revision: FormRevisionSummary
+    correction_pending: bool
+    latest_correction: InventoryCorrectionSummary | None
 
 
 class InventoryHistoryResponse(StrictSchema):
@@ -552,7 +564,14 @@ class CounselorInventoryDetailResponse(InventoryResponse):
 
 
 class InventoryReopenRequest(StrictSchema):
-    reason: str = Field(min_length=1, max_length=1000)
+    reason: str = Field(
+        min_length=1,
+        max_length=1000,
+        description=(
+            "Student-visible correction guidance explaining what must be corrected before "
+            "resubmission."
+        ),
+    )
 
 
 def _context(request) -> AuditContext:
@@ -590,6 +609,12 @@ def _raise(exc: InventoryError) -> NoReturn:
         raise APIError(409, "current_academic_year_not_configured", str(exc)) from exc
     if isinstance(exc, InventoryFormRevisionNotConfigured):
         raise APIError(409, "inventory_form_revision_not_configured", str(exc)) from exc
+    if isinstance(exc, InventoryPSGCUnavailable):
+        raise APIError(
+            503,
+            "psgc_reference_unavailable",
+            "Official PSGC validation is temporarily unavailable.",
+        ) from exc
     if isinstance(exc, InventoryConflict):
         raise APIError(409, "inventory_conflict", str(exc)) from exc
     if isinstance(exc, InvalidInventoryInput):
@@ -618,6 +643,13 @@ def _status(item) -> str:
 
 def _optional_choice(value):
     return value or None
+
+
+def _correction(item) -> tuple[bool, dict[str, object] | None]:
+    event = get_pending_correction(item)
+    if event is None:
+        return False, None
+    return True, {"requested_at": event.reopened_at, "message": event.reason}
 
 
 def _child_rows(item, relation: str, fields: tuple[str, ...]) -> list[dict[str, object]]:
@@ -814,6 +846,9 @@ def _inventory(item) -> dict[str, object]:
         "mother_life_status": _optional_choice(profile.mother_life_status),
         "father_life_status": _optional_choice(profile.father_life_status),
     }
+    correction_pending, latest_correction = _correction(item)
+    data["correction_pending"] = correction_pending
+    data["latest_correction"] = latest_correction
     return data
 
 
@@ -917,6 +952,7 @@ def inventory_get_my_status(request):
     except InventoryError as exc:
         _raise(exc)
     item = result.inventory
+    correction_pending, latest_correction = _correction(item)
     return {
         "academic_year": _academic_year(result.academic_year),
         "status": result.status,
@@ -924,6 +960,8 @@ def inventory_get_my_status(request):
         "first_submitted_at": item.first_submitted_at if item is not None else None,
         "last_submitted_at": item.last_submitted_at if item is not None else None,
         "form_revision": _revision(item.form_revision) if item is not None else None,
+        "correction_pending": correction_pending,
+        "latest_correction": latest_correction,
     }
 
 
@@ -975,7 +1013,7 @@ def inventory_update_my_current(request, payload: InventoryPayload):
 
 @router.post(
     "/me/current/submit",
-    response=response_with_errors(InventoryResponse, 401, 403, 404, 409, 422),
+    response=response_with_errors(InventoryResponse, 401, 403, 404, 409, 422, 503),
     auth=session_auth,
     operation_id="inventorySubmitMyCurrent",
 )
@@ -1007,6 +1045,7 @@ def inventory_list_my_history(request):
                 "first_submitted_at": item.first_submitted_at,
                 "last_submitted_at": item.last_submitted_at,
                 "form_revision": _revision(item.form_revision),
+                "correction_pending": get_pending_correction(item) is not None,
             }
             for item in list_my_inventory_history(request.auth_user)
         ]

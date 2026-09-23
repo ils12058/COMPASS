@@ -32,6 +32,7 @@ from compass.organization.academic_years_api import router as academic_years_rou
 from compass.organization.api import router as organization_router
 from compass.platform_ops.api import router as platform_operations_router
 from compass.privacy_governance.api import router as privacy_governance_router
+from compass.reference_data.api import router as reference_data_router
 from compass.referrals.api import router as referrals_router
 from compass.reports.api import router as reports_router
 from compass.resources.api import public_router as public_resources_router
@@ -89,6 +90,10 @@ api = NinjaAPI(
             {
                 "name": "inventory",
                 "description": "Student annual Individual Inventory self-service.",
+            },
+            {
+                "name": "reference-data",
+                "description": "Authenticated normalized external reference data used by COMPASS.",
             },
             {
                 "name": "student-support",
@@ -204,6 +209,7 @@ api.add_router("/counseling/context", counseling_context_router)
 api.add_router("/academic-years", academic_years_router)
 api.add_router("/institutional-forms", institutional_forms_router)
 api.add_router("/inventory", inventory_router)
+api.add_router("/reference-data/psgc", reference_data_router)
 api.add_router("/student-support", student_support_router)
 api.add_router("/reports", reports_router)
 api.add_router("/good-moral", good_moral_router)
