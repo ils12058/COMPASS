@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 
 import { hasAvailabilityWorkspace } from "@/features/availability/availability-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
+import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import {
   canManageOrganization,
   canViewAcademicYears,
@@ -27,7 +28,9 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const hasServices = user.capabilities.includes("services.view");
   const hasAvailability = hasAvailabilityWorkspace(user);
   const hasAppointments = getAppointmentAccess(user).hasWorkspace;
-  const hasGuidanceServices = hasServices || hasAvailability || hasAppointments;
+  const hasInventory = getInventoryAccess(user).hasWorkspace;
+  const hasGuidanceServices =
+    hasServices || hasAvailability || hasAppointments || hasInventory;
   const hasPlatformOperations = user.capabilities.includes(
     "platform_operations.view",
   );
@@ -207,6 +210,23 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
                 }
               >
                 Availability
+              </Link>
+            ) : null}
+            {hasInventory ? (
+              <Link
+                href="/portal/inventory"
+                onClick={onNavigate}
+                aria-current={
+                  pathname.startsWith("/portal/inventory") ? "page" : undefined
+                }
+                className={
+                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                  (pathname.startsWith("/portal/inventory")
+                    ? "bg-on-brand/12"
+                    : "hover:bg-on-brand/10")
+                }
+              >
+                Individual Inventory
               </Link>
             ) : null}
           </div>
