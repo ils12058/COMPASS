@@ -36,6 +36,7 @@ from .services import (
     AppointmentDefaultProviderUnresolved,
     AppointmentError,
     AppointmentLifecycleConflict,
+    AppointmentListOrdering,
     AppointmentNotFound,
     AppointmentNotSchedulable,
     AppointmentReferenceConflict,
@@ -366,6 +367,7 @@ def appointments_list_my(
     status: AppointmentStatus | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
+    ordering: AppointmentListOrdering = AppointmentListOrdering.START_DESC,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -376,6 +378,7 @@ def appointments_list_my(
             status=status.value if status else None,
             from_date=from_date,
             to_date=to_date,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -603,6 +606,7 @@ def appointments_list_managed(
     from_date: date | None = None,
     to_date: date | None = None,
     search: str | None = None,
+    ordering: AppointmentListOrdering = AppointmentListOrdering.START_DESC,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -618,6 +622,7 @@ def appointments_list_managed(
             from_date=from_date,
             to_date=to_date,
             search=search,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
