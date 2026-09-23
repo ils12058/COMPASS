@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,8 +99,8 @@ function ServiceForm({
   submitting: boolean;
   submitLabel: string;
   pendingLabel: string;
-  messages: React.ReactNode;
-  onSubmit: (values: ServiceFormState) => Promise<void>;
+  messages: ReactNode;
+  codeReadOnly?: boolean;\n  onSubmit: (values: ServiceFormState) => Promise<void>;
 }) {
   const [values, setValues] = useState(initial);
   const appointmentEnabled =
@@ -136,7 +136,7 @@ function ServiceForm({
               id="service-code"
               required
               maxLength={64}
-              readOnly={Boolean(initial.code && initial.code === values.code && active !== false) && false}
+              readOnly={codeReadOnly}
               value={values.code}
               onChange={(event) =>
                 setValues((current) => ({
