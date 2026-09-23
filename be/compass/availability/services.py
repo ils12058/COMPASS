@@ -257,9 +257,7 @@ def list_availability_providers(
     if type(page) is not int or page < 1:
         raise InvalidAvailabilityInput("page must be a positive integer")
     if type(page_size) is not int or not 1 <= page_size <= MAX_PROVIDER_PAGE_SIZE:
-        raise InvalidAvailabilityInput(
-            f"page_size must be between 1 and {MAX_PROVIDER_PAGE_SIZE}"
-        )
+        raise InvalidAvailabilityInput(f"page_size must be between 1 and {MAX_PROVIDER_PAGE_SIZE}")
 
     term = ""
     if search is not None:
@@ -278,9 +276,7 @@ def list_availability_providers(
     )
     if term:
         queryset = queryset.filter(
-            Q(first_name__icontains=term)
-            | Q(last_name__icontains=term)
-            | Q(email__icontains=term)
+            Q(first_name__icontains=term) | Q(last_name__icontains=term) | Q(email__icontains=term)
         )
 
     offset = (page - 1) * page_size
