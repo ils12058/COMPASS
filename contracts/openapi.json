@@ -4551,6 +4551,10 @@
             "title": "Contact Number",
             "type": "string"
           },
+          "correction_pending": {
+            "title": "Correction Pending",
+            "type": "boolean"
+          },
           "course_choice_other": {
             "default": "",
             "title": "Course Choice Other",
@@ -4900,6 +4904,16 @@
             ],
             "title": "Last Submitted At"
           },
+          "latest_correction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InventoryCorrectionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "living_arrangement": {
             "anyOf": [
               {
@@ -5189,6 +5203,8 @@
           "first_submitted_at",
           "last_submitted_at",
           "form_revision",
+          "correction_pending",
+          "latest_correction",
           "student"
         ],
         "title": "CounselorInventoryDetailResponse",
@@ -10712,6 +10728,26 @@
         "title": "InterestValue",
         "type": "string"
       },
+      "InventoryCorrectionSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requested_at",
+          "message"
+        ],
+        "title": "InventoryCorrectionSummary",
+        "type": "object"
+      },
       "InventoryCoverage": {
         "additionalProperties": false,
         "properties": {
@@ -11503,6 +11539,7 @@
         "additionalProperties": false,
         "properties": {
           "reason": {
+            "description": "Student-visible correction guidance explaining what must be corrected before resubmission.",
             "maxLength": 1000,
             "minLength": 1,
             "title": "Reason",
@@ -11586,6 +11623,10 @@
             "default": "",
             "title": "Contact Number",
             "type": "string"
+          },
+          "correction_pending": {
+            "title": "Correction Pending",
+            "type": "boolean"
           },
           "course_choice_other": {
             "default": "",
@@ -11936,6 +11977,16 @@
             ],
             "title": "Last Submitted At"
           },
+          "latest_correction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InventoryCorrectionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "living_arrangement": {
             "anyOf": [
               {
@@ -12221,7 +12272,9 @@
           "submitted_at",
           "first_submitted_at",
           "last_submitted_at",
-          "form_revision"
+          "form_revision",
+          "correction_pending",
+          "latest_correction"
         ],
         "title": "InventoryResponse",
         "type": "object"
@@ -12231,6 +12284,10 @@
         "properties": {
           "academic_year": {
             "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "correction_pending": {
+            "title": "Correction Pending",
+            "type": "boolean"
           },
           "first_submitted_at": {
             "anyOf": [
@@ -12266,6 +12323,16 @@
             ],
             "title": "Last Submitted At"
           },
+          "latest_correction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InventoryCorrectionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "status": {
             "$ref": "#/components/schemas/InventoryStatusValue"
           },
@@ -12288,7 +12355,9 @@
           "submitted_at",
           "first_submitted_at",
           "last_submitted_at",
-          "form_revision"
+          "form_revision",
+          "correction_pending",
+          "latest_correction"
         ],
         "title": "InventoryStatusResponse",
         "type": "object"
@@ -12339,6 +12408,10 @@
         "properties": {
           "academic_year": {
             "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "correction_pending": {
+            "title": "Correction Pending",
+            "type": "boolean"
           },
           "first_submitted_at": {
             "anyOf": [
@@ -12395,7 +12468,8 @@
           "submitted_at",
           "first_submitted_at",
           "last_submitted_at",
-          "form_revision"
+          "form_revision",
+          "correction_pending"
         ],
         "title": "InventorySummaryResponse",
         "type": "object"
@@ -13401,6 +13475,47 @@
           "removed"
         ],
         "title": "OverrideRemovalResponse",
+        "type": "object"
+      },
+      "PSGCReferenceItem": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "PSGCReferenceItem",
+        "type": "object"
+      },
+      "PSGCReferenceListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PSGCReferenceItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "items"
+        ],
+        "title": "PSGCReferenceListResponse",
         "type": "object"
       },
       "PWDStatusValue": {
@@ -33698,6 +33813,16 @@
               }
             },
             "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         },
         "security": [
@@ -39989,6 +40114,280 @@
         ]
       }
     },
+    "/api/v1/reference-data/psgc/barangays": {
+      "get": {
+        "operationId": "referenceDataListPSGCBarangays",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "city_municipality_code",
+            "required": true,
+            "schema": {
+              "title": "City Municipality Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PSGCReferenceListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Reference Data List Psgc Barangays",
+        "tags": [
+          "reference-data"
+        ]
+      }
+    },
+    "/api/v1/reference-data/psgc/cities-municipalities": {
+      "get": {
+        "operationId": "referenceDataListPSGCCitiesMunicipalities",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "region_code",
+            "required": true,
+            "schema": {
+              "title": "Region Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "province_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Province Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PSGCReferenceListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Reference Data List Psgc Cities Municipalities",
+        "tags": [
+          "reference-data"
+        ]
+      }
+    },
+    "/api/v1/reference-data/psgc/provinces": {
+      "get": {
+        "operationId": "referenceDataListPSGCProvinces",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "region_code",
+            "required": true,
+            "schema": {
+              "title": "Region Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PSGCReferenceListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Reference Data List Psgc Provinces",
+        "tags": [
+          "reference-data"
+        ]
+      }
+    },
+    "/api/v1/reference-data/psgc/regions": {
+      "get": {
+        "operationId": "referenceDataListPSGCRegions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PSGCReferenceListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Reference Data List Psgc Regions",
+        "tags": [
+          "reference-data"
+        ]
+      }
+    },
     "/api/v1/referrals": {
       "get": {
         "operationId": "referralsList",
@@ -44275,6 +44674,10 @@
     {
       "description": "Student annual Individual Inventory self-service.",
       "name": "inventory"
+    },
+    {
+      "description": "Authenticated normalized external reference data used by COMPASS.",
+      "name": "reference-data"
     },
     {
       "description": "Privacy-minimized Student Support context within Guidance scope.",
