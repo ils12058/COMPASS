@@ -832,6 +832,7 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
     sync_policy()
     admin = make_user("readiness-admin@example.edu", "IT_ADMIN")
     counselor = make_user("readiness-counselor@example.edu", "COUNSELOR")
+    default_counselor = make_user("readiness-default@example.edu", "COUNSELOR")
     other = make_user("readiness-other@example.edu", "COUNSELOR")
     student = make_user(
         "readiness-student@example.edu",
@@ -861,6 +862,10 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
         name="Readiness Counselor College",
     )
     StudentAffiliation.objects.create(student=student, college=student_college)
+    CounselorResponsibility.objects.create(
+        college=student_college,
+        counselor=default_counselor,
+    )
     CounselorResponsibility.objects.create(college=counselor_college, counselor=counselor)
 
     service = create_counseling_service(admin, delivery_modes=["IN_PERSON"])
@@ -1010,6 +1015,18 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
         context=context(counselor),
     )
     assert created.appointment_id == scheduled.pk
+
+    completed_started, completed_ended = actual_times(minutes=35)
+    completed_created = create_encounter(
+        counselor=counselor,
+        entry_mode="APPOINTMENT",
+        appointment_id=completed.pk,
+        started_at=completed_started,
+        ended_at=completed_ended,
+        context=context(counselor),
+    )
+    assert completed_created.appointment_id == completed.pk
+    assert completed_created.appointment.status == AppointmentStatus.COMPLETED
 
     UserCapabilityOverride.objects.create(
         user=other,
