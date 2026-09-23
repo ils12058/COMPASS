@@ -28,6 +28,15 @@ from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
 )
+from compass.integrations.psgc import (
+    PSGCClient,
+    PSGCConfigurationError,
+    PSGCInvalidRequest,
+    PSGCInvalidResponse,
+    PSGCReference,
+    PSGCReferenceNotFound,
+    PSGCUnavailable,
+)
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.academic_years import get_current_academic_year
@@ -184,6 +193,10 @@ class InventoryNotPermitted(InventoryError):
 
 
 class InventoryNotSubmitted(InventoryConflict):
+    pass
+
+
+class InventoryPSGCUnavailable(InventoryError):
     pass
 
 
@@ -443,13 +456,15 @@ def _validate_roster_filters(
     return program
 
 
+def get_pending_correction(item: StudentInventory | None) -> InventoryReopenEvent | None:
+    if item is None or item.submitted_at is not None or item.first_submitted_at is None:
+        return None
+    events = list(item.reopen_events.all())
+    return events[-1] if events else None
+
+
 def _correction_pending(item: StudentInventory | None) -> bool:
-    return bool(
-        item is not None
-        and item.submitted_at is None
-        and item.first_submitted_at is not None
-        and item.reopen_events.exists()
-    )
+    return get_pending_correction(item) is not None
 
 
 def _require_current_student(student: User) -> None:
@@ -1084,6 +1099,87 @@ def replace_current_inventory(
         return _inventory_queryset().get(pk=item.pk)
 
 
+def _validate_and_canonicalize_geography(item: StudentInventory) -> None:
+    rows = [row for row in item.geographic_locations.all() if not row.not_specified]
+    if not rows:
+        return
+
+    try:
+        client = PSGCClient.from_settings()
+    except PSGCConfigurationError as exc:
+        raise InventoryPSGCUnavailable(
+            "Official PSGC validation is not configured for structured Inventory submission."
+        ) from exc
+
+    region_cache: dict[str, PSGCReference] = {}
+    province_cache: dict[tuple[str, str], PSGCReference] = {}
+    city_cache: dict[tuple[str, str, str], PSGCReference] = {}
+    barangay_cache: dict[tuple[str, str], PSGCReference] = {}
+
+    try:
+        for row in rows:
+            region_code = row.region_psgc_code.strip()
+            province_code = row.province_psgc_code.strip()
+            city_code = row.city_municipality_psgc_code.strip()
+            barangay_code = row.barangay_psgc_code.strip()
+
+            region = region_cache.get(region_code)
+            if region is None:
+                region = client.require_region(region_code)
+                region_cache[region_code] = region
+
+            province = None
+            if province_code:
+                province_key = (region_code, province_code)
+                province = province_cache.get(province_key)
+                if province is None:
+                    province = client.require_province(
+                        region_code=region_code,
+                        province_code=province_code,
+                    )
+                    province_cache[province_key] = province
+
+            city_key = (region_code, province_code, city_code)
+            city = city_cache.get(city_key)
+            if city is None:
+                city = client.require_city_municipality(
+                    region_code=region_code,
+                    province_code=province_code or None,
+                    city_municipality_code=city_code,
+                )
+                city_cache[city_key] = city
+
+            barangay = None
+            if barangay_code:
+                barangay_key = (city_code, barangay_code)
+                barangay = barangay_cache.get(barangay_key)
+                if barangay is None:
+                    barangay = client.require_barangay(
+                        city_municipality_code=city_code,
+                        barangay_code=barangay_code,
+                    )
+                    barangay_cache[barangay_key] = barangay
+
+            row.region_name_snapshot = region.name
+            row.province_name_snapshot = province.name if province is not None else ""
+            row.city_municipality_name_snapshot = city.name
+            row.barangay_name_snapshot = barangay.name if barangay is not None else ""
+            row.save(
+                update_fields=[
+                    "region_name_snapshot",
+                    "province_name_snapshot",
+                    "city_municipality_name_snapshot",
+                    "barangay_name_snapshot",
+                ]
+            )
+    except (PSGCInvalidRequest, PSGCReferenceNotFound) as exc:
+        raise InvalidInventoryInput(str(exc)) from exc
+    except (PSGCConfigurationError, PSGCUnavailable, PSGCInvalidResponse) as exc:
+        raise InventoryPSGCUnavailable(
+            "Official PSGC validation could not be completed."
+        ) from exc
+
+
 def submit_current_inventory(
     *,
     student: User,
@@ -1117,6 +1213,7 @@ def submit_current_inventory(
         if locked_student.institutional_id is not None:
             item.student_number = locked_student.institutional_id
         _validate_submission(item, profile)
+        _validate_and_canonicalize_geography(item)
         submitted_at = timezone.now()
         is_resubmission = item.first_submitted_at is not None
         if item.first_submitted_at is None:
