@@ -5250,7 +5250,7 @@
             "$ref": "#/components/schemas/CollegeSummary"
           },
           "counselor": {
-            "$ref": "#/components/schemas/PersonSummary"
+            "$ref": "#/components/schemas/OrganizationPersonSummary"
           }
         },
         "required": [
@@ -13092,6 +13092,53 @@
         "title": "OrganizationMembershipPayload",
         "type": "object"
       },
+      "OrganizationPersonSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "institutional_id",
+          "full_name",
+          "email",
+          "role",
+          "is_active"
+        ],
+        "title": "OrganizationPersonSummary",
+        "type": "object"
+      },
       "OrganizationReference": {
         "additionalProperties": false,
         "properties": {
@@ -13331,7 +13378,7 @@
           },
           "items": {
             "items": {
-              "$ref": "#/components/schemas/PersonSummary"
+              "$ref": "#/components/schemas/OrganizationPersonSummary"
             },
             "title": "Items",
             "type": "array"
@@ -17085,10 +17132,10 @@
         "additionalProperties": false,
         "properties": {
           "staff": {
-            "$ref": "#/components/schemas/PersonSummary"
+            "$ref": "#/components/schemas/OrganizationPersonSummary"
           },
           "supervisor": {
-            "$ref": "#/components/schemas/PersonSummary"
+            "$ref": "#/components/schemas/OrganizationPersonSummary"
           }
         },
         "required": [
@@ -17167,7 +17214,7 @@
             "$ref": "#/components/schemas/CollegeSummary"
           },
           "student": {
-            "$ref": "#/components/schemas/PersonSummary"
+            "$ref": "#/components/schemas/OrganizationPersonSummary"
           }
         },
         "required": [
