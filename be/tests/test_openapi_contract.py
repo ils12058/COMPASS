@@ -2000,6 +2000,7 @@ def test_appointment_frontend_readiness_openapi_contract() -> None:
         error_schema = operation["responses"][status]["content"]["application/json"]["schema"]
         assert error_schema["$ref"].endswith("/APIErrorResponse")
 
+
 def test_appointment_list_ordering_openapi_contract() -> None:
     schema = _generated_schema()
     schemas = schema["components"]["schemas"]
@@ -2022,4 +2023,3 @@ def test_appointment_list_ordering_openapi_contract() -> None:
         ordering_parameter_schema = ordering["schema"]
         assert ordering_parameter_schema["$ref"].endswith("/AppointmentListOrdering")
         assert ordering_parameter_schema.get("default") == "START_DESC"
-
