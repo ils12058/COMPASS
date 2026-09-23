@@ -174,7 +174,22 @@ def make_appointment(
     starts_at,
     status: str = AppointmentStatus.SCHEDULED,
 ) -> Appointment:
-    cancelled = status == AppointmentStatus.CANCELLED
+    terminal = {}
+    if status == AppointmentStatus.CANCELLED:
+        terminal = {
+            "cancelled_at": starts_at - timedelta(hours=1),
+            "cancelled_by": student,
+        }
+    elif status == AppointmentStatus.COMPLETED:
+        terminal = {
+            "completed_at": starts_at + timedelta(hours=1),
+            "completed_by": counselor,
+        }
+    elif status == AppointmentStatus.NO_SHOW:
+        terminal = {
+            "no_show_at": starts_at + timedelta(hours=1),
+            "no_show_by": counselor,
+        }
     return Appointment.objects.create(
         reference_code=f"APT-2099-{Appointment.objects.count() + 1:06d}",
         student=student,
@@ -186,8 +201,7 @@ def make_appointment(
         status=status,
         cancellation_cutoff_minutes=30,
         created_by=student,
-        cancelled_at=starts_at - timedelta(hours=1) if cancelled else None,
-        cancelled_by=student if cancelled else None,
+        **terminal,
     )
 
 
