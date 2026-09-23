@@ -192,6 +192,31 @@ def test_inventory_reopen_resubmit_preserves_history_and_hides_draft_from_guidan
     assert submitted.last_submitted_at == first_timestamp
     assert InventoryReopenEvent.objects.filter(inventory=submitted).count() == 1
 
+    student_client = auth_client(student)
+    student_status = student_client.get("/api/v1/inventory/me/status")
+    assert student_status.status_code == 200
+    assert student_status.json()["correction_pending"] is True
+    assert student_status.json()["latest_correction"]["message"] == (
+        "Please correct the annual record."
+    )
+    assert set(student_status.json()["latest_correction"]) == {"requested_at", "message"}
+
+    student_current = student_client.get("/api/v1/inventory/me/current")
+    assert student_current.status_code == 200
+    assert student_current.json()["correction_pending"] is True
+    assert student_current.json()["latest_correction"]["message"] == (
+        "Please correct the annual record."
+    )
+    assert "reopened_by" not in student_current.json()["latest_correction"]
+
+    student_history = student_client.get("/api/v1/inventory/me/history")
+    assert student_history.status_code == 200
+    current_summary = next(
+        row for row in student_history.json()["items"] if row["id"] == str(submitted.pk)
+    )
+    assert current_summary["correction_pending"] is True
+    assert "latest_correction" not in current_summary
+
     notification = Notification.objects.get(
         recipient=student,
         event_code="inventory.reopened",
@@ -232,6 +257,17 @@ def test_inventory_reopen_resubmit_preserves_history_and_hides_draft_from_guidan
         ).count()
         == 1
     )
+    assert InventoryReopenEvent.objects.filter(inventory=resubmitted).count() == 1
+
+    resolved_status = student_client.get("/api/v1/inventory/me/status")
+    assert resolved_status.status_code == 200
+    assert resolved_status.json()["correction_pending"] is False
+    assert resolved_status.json()["latest_correction"] is None
+
+    resolved_current = student_client.get("/api/v1/inventory/me/current")
+    assert resolved_current.status_code == 200
+    assert resolved_current.json()["correction_pending"] is False
+    assert resolved_current.json()["latest_correction"] is None
 
     support_after = get_student_support_context(actor=counselor, student_id=student.pk)
     assert support_after.inventory_status == "SUBMITTED"
