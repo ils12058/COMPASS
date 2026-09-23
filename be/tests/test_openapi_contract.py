@@ -170,6 +170,9 @@ EXPECTED_OPERATION_IDS = {
     "appointmentsListRescheduleSlots",
     "appointmentsListReassignmentCandidates",
     "counselingCreateEncounter",
+    "counselingGetEncounterCreationOptions",
+    "counselingListAppointmentCandidates",
+    "counselingListEncounterAppointmentCandidates",
     "counselingListMyEncounters",
     "counselingGetEncounter",
     "counselingUpdateEncounter",
@@ -2226,3 +2229,116 @@ def test_routine_interview_candidate_discovery_openapi_contract() -> None:
         "audit",
     ):
         assert forbidden not in serialized
+
+def test_counseling_frontend_readiness_openapi_contract() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    expected = {
+        "/api/v1/counseling/encounter-options": (
+            "counselingGetEncounterCreationOptions",
+            {200, 401, 403, 409},
+        ),
+        "/api/v1/counseling/appointment-candidates": (
+            "counselingListAppointmentCandidates",
+            {200, 401, 403, 409, 422},
+        ),
+        "/api/v1/counseling/encounters/{encounter_id}/appointment-candidates": (
+            "counselingListEncounterAppointmentCandidates",
+            {200, 401, 403, 404, 409, 422},
+        ),
+    }
+    for path, (operation_id, statuses) in expected.items():
+        operation = _operation(schema, path, "get")
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["counseling"]
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        assert statuses <= _response_statuses(operation)
+        for status in statuses - {200}:
+            error = operation["responses"][str(status)]["content"]["application/json"]["schema"]
+            assert error["$ref"].endswith("/APIErrorResponse")
+
+    options = schemas["CounselingEncounterCreationOptions"]
+    assert set(options["properties"]) == {"service", "delivery_modes"}
+
+    appointment = schemas["CounselingAppointmentCandidate"]
+    assert set(appointment["properties"]) == {
+        "id",
+        "reference_code",
+        "student",
+        "delivery_mode",
+        "starts_at",
+        "ends_at",
+        "status",
+    }
+    appointment_student = schemas["CounselingAppointmentCandidateStudent"]
+    assert set(appointment_student["properties"]) == {
+        "id",
+        "institutional_id",
+        "display_name",
+    }
+
+    correction = schemas["CounselingEncounterAppointmentCandidate"]
+    assert set(correction["properties"]) == {
+        "id",
+        "reference_code",
+        "delivery_mode",
+        "starts_at",
+        "ends_at",
+        "status",
+    }
+
+    student = schemas["CounselingStudentResponse"]
+    assert set(student["properties"]) == {
+        "id",
+        "institutional_id",
+        "display_name",
+    }
+
+    student_list = _operation(schema, "/api/v1/counseling/students", "get")
+    assert student_list["operationId"] == "counselingListStudents"
+    assert {parameter["name"] for parameter in student_list["parameters"]} == {
+        "search",
+        "page",
+        "page_size",
+    }
+
+    new_candidates = _operation(schema, "/api/v1/counseling/appointment-candidates", "get")
+    assert {parameter["name"] for parameter in new_candidates["parameters"]} == {
+        "search",
+        "page",
+        "page_size",
+    }
+
+    correction_candidates = _operation(
+        schema,
+        "/api/v1/counseling/encounters/{encounter_id}/appointment-candidates",
+        "get",
+    )
+    assert {parameter["name"] for parameter in correction_candidates["parameters"]} == {
+        "encounter_id",
+        "page",
+        "page_size",
+    }
+
+    serialized = json.dumps(
+        {
+            "options": options,
+            "appointment": appointment,
+            "appointment_student": appointment_student,
+            "correction": correction,
+            "student": student,
+        }
+    ).lower()
+    for forbidden in (
+        "email",
+        "phone",
+        "address",
+        "history",
+        "reason",
+        "audit",
+        "support_profile",
+        "shared_summary",
+    ):
+        assert forbidden not in serialized
+
