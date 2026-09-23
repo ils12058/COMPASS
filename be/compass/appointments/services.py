@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from enum import StrEnum
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -58,6 +59,11 @@ MAX_REFERENCE_SEQUENCE = 999_999
 MAX_CHANGE_REASON_LENGTH = 1000
 MAX_SEARCH_LENGTH = 160
 PROVIDER_ROLE_CODES = ELIGIBLE_PROVIDER_ROLE_CODES
+
+
+class AppointmentListOrdering(StrEnum):
+    START_ASC = "START_ASC"
+    START_DESC = "START_DESC"
 
 
 class AppointmentError(RuntimeError):
@@ -196,6 +202,22 @@ def _normalized_status(value: str | AppointmentStatus | None) -> str | None:
     return str(normalized)
 
 
+def _normalized_list_ordering(
+    value: str | AppointmentListOrdering,
+) -> AppointmentListOrdering:
+    normalized = value.value if isinstance(value, AppointmentListOrdering) else value
+    try:
+        return AppointmentListOrdering(normalized)
+    except (TypeError, ValueError) as exc:
+        raise InvalidAppointmentInput("ordering must be START_ASC or START_DESC") from exc
+
+
+def _ordering_fields(ordering: AppointmentListOrdering) -> tuple[str, str]:
+    if ordering == AppointmentListOrdering.START_ASC:
+        return "starts_at", "reference_code"
+    return "-starts_at", "reference_code"
+
+
 def _pagination(page: int, page_size: int) -> tuple[int, int]:
     if type(page) is not int or page < 1:
         raise InvalidAppointmentInput("page must be a positive integer")
@@ -261,10 +283,12 @@ def list_my_appointments(
     status: str | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
+    ordering: str | AppointmentListOrdering = AppointmentListOrdering.START_DESC,
     page: int = DEFAULT_PAGE_SIZE // DEFAULT_PAGE_SIZE,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> AppointmentPage:
     normalized_status = _normalized_status(status)
+    normalized_ordering = _normalized_list_ordering(ordering)
     qs = _appointment_queryset()
     if actor.role.code == "STUDENT":
         qs = qs.filter(student_id=actor.pk)
@@ -275,7 +299,11 @@ def list_my_appointments(
     if normalized_status is not None:
         qs = qs.filter(status=normalized_status)
     qs = _apply_date_filters(qs, from_date=from_date, to_date=to_date)
-    return _page(qs.order_by("-starts_at", "reference_code"), page=page, page_size=page_size)
+    return _page(
+        qs.order_by(*_ordering_fields(normalized_ordering)),
+        page=page,
+        page_size=page_size,
+    )
 
 
 def list_managed_appointments(
@@ -289,10 +317,12 @@ def list_managed_appointments(
     from_date: date | None = None,
     to_date: date | None = None,
     search: str | None = None,
+    ordering: str | AppointmentListOrdering = AppointmentListOrdering.START_DESC,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> AppointmentPage:
     normalized_status = _normalized_status(status)
+    normalized_ordering = _normalized_list_ordering(ordering)
     normalized_mode = (
         _normalized_delivery_mode(delivery_mode) if delivery_mode is not None else None
     )
@@ -319,7 +349,11 @@ def list_managed_appointments(
                 | Q(student__middle_name__icontains=token)
                 | Q(student__last_name__icontains=token)
             )
-    return _page(qs.order_by("-starts_at", "reference_code"), page=page, page_size=page_size)
+    return _page(
+        qs.order_by(*_ordering_fields(normalized_ordering)),
+        page=page,
+        page_size=page_size,
+    )
 
 
 def list_booking_services(
