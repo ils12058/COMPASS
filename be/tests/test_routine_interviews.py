@@ -17,6 +17,7 @@ from compass.accounts.models import (
     User,
     UserDesignation,
 )
+from compass.accounts.services import set_user_capability_override
 from compass.appointments.models import Appointment
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
@@ -42,6 +43,7 @@ from compass.organization.models import (
     Program,
     StudentAffiliation,
 )
+from compass.routine_interviews.matching import routine_interview_encounter_matches
 from compass.routine_interviews.models import RoutineInterview
 from compass.routine_interviews.services import (
     InvalidRoutineInterviewInput,
@@ -56,6 +58,7 @@ from compass.routine_interviews.services import (
     ensure_for_appointment,
     finalize_assigned_evaluation,
     get_mine,
+    list_encounter_candidates,
     replace_assigned_evaluation,
     replace_my_intake,
     submit_my_intake,
@@ -896,3 +899,663 @@ def test_counselor_routine_queue_is_assigned_paginated_filtered_and_identity_sea
     )
     assert auth_client(other).get("/api/v1/routine-interviews").status_code == 200
     assert auth_client(gss).get("/api/v1/routine-interviews").status_code == 403
+
+@pytest.mark.django_db
+def test_student_appointment_candidate_discovery_is_routine_owned_filtered_private_and_stable():
+    sync_policy()
+    admin = make_user("candidate-admin@example.edu", "IT_ADMIN")
+    student = make_user("candidate.student@example.edu", "STUDENT")
+    other_student = make_user("candidate.other@example.edu", "STUDENT")
+    counselor = make_user("candidate.counselor@example.edu", "COUNSELOR")
+    configure_year(admin)
+    submit_inventory(student, student)
+    service = create_counseling_service(admin, modes=["IN_PERSON"])
+
+    # Prove this endpoint owns its discovery authority rather than depending on Appointment or
+    # Inventory read capabilities.
+    for capability in (
+        "appointments.view_self",
+        "appointments.manage_self",
+        "inventory.view_self",
+    ):
+        set_user_capability_override(
+            user=student,
+            capability=capability,
+            effect="REVOKE",
+            reason="Routine candidate discovery regression test.",
+            created_by=admin,
+        )
+
+    older = make_appointment(student=student, counselor=counselor, service=service)
+    older.starts_at = timezone.now() - timedelta(days=2)
+    older.ends_at = older.starts_at + timedelta(hours=1)
+    older.save(update_fields=["starts_at", "ends_at", "updated_at"])
+
+    newer = make_appointment(student=student, counselor=counselor, service=service)
+    another_student = make_appointment(
+        student=other_student,
+        counselor=counselor,
+        service=service,
+    )
+
+    cancelled = make_appointment(student=student, counselor=counselor, service=service)
+    cancelled.status = "CANCELLED"
+    cancelled.cancelled_at = timezone.now()
+    cancelled.save(update_fields=["status", "cancelled_at", "updated_at"])
+
+    completed = make_appointment(student=student, counselor=counselor, service=service)
+    completed.status = "COMPLETED"
+    completed.completed_at = timezone.now()
+    completed.save(update_fields=["status", "completed_at", "updated_at"])
+
+    no_show = make_appointment(student=student, counselor=counselor, service=service)
+    no_show.status = "NO_SHOW"
+    no_show.no_show_at = timezone.now()
+    no_show.save(update_fields=["status", "no_show_at", "updated_at"])
+
+    other_service = create_service(
+        code="OTHER_SERVICE",
+        name="Other Service",
+        appointment_policy="OPTIONAL",
+        default_duration_minutes=60,
+        cancellation_cutoff_minutes=30,
+        delivery_modes=["IN_PERSON"],
+        provider_roles=["COUNSELOR"],
+        context=context(admin),
+    )
+    other_service = set_service_active(
+        service_id=other_service.pk,
+        is_active=True,
+        context=context(admin),
+    )
+    non_counseling = make_appointment(
+        student=student,
+        counselor=counselor,
+        service=other_service,
+    )
+
+    bound = make_appointment(student=student, counselor=counselor, service=service)
+    ensure_for_appointment(
+        student=student,
+        appointment_id=bound.pk,
+        context=context(student),
+    )
+
+    client = auth_client(student)
+    response = client.get("/api/v1/routine-interviews/me/appointment-candidates")
+    assert response.status_code == 200
+    body = response.json()
+    assert [row["id"] for row in body["items"]] == [str(older.pk), str(newer.pk)]
+    assert set(body["items"][0]) == {
+        "id",
+        "reference_code",
+        "counselor",
+        "delivery_mode",
+        "starts_at",
+        "ends_at",
+    }
+    assert set(body["items"][0]["counselor"]) == {"id", "display_name"}
+    serialized = json.dumps(body)
+    assert counselor.email not in serialized
+    assert "cancellation" not in serialized.lower()
+    assert str(another_student.pk) not in serialized
+    assert str(cancelled.pk) not in serialized
+    assert str(completed.pk) not in serialized
+    assert str(no_show.pk) not in serialized
+    assert str(non_counseling.pk) not in serialized
+    assert str(bound.pk) not in serialized
+
+    assert auth_client(counselor).get(
+        "/api/v1/routine-interviews/me/appointment-candidates"
+    ).status_code == 403
+    assert Client().get("/api/v1/routine-interviews/me/appointment-candidates").status_code == 401
+
+    set_user_capability_override(
+        user=student,
+        capability="routine_interviews.manage_self",
+        effect="REVOKE",
+        reason="Routine candidate capability regression test.",
+        created_by=admin,
+    )
+    assert client.get("/api/v1/routine-interviews/me/appointment-candidates").status_code == 403
+
+
+@pytest.mark.django_db
+def test_student_appointment_candidate_prerequisite_conflicts_are_not_silent_empty_lists():
+    sync_policy()
+    admin = make_user("prereq-admin@example.edu", "IT_ADMIN")
+    student = make_user("prereq.student@example.edu", "STUDENT")
+    counselor = make_user("prereq.counselor@example.edu", "COUNSELOR")
+    service = create_counseling_service(admin)
+    make_appointment(student=student, counselor=counselor, service=service)
+    client = auth_client(student)
+
+    no_year = client.get("/api/v1/routine-interviews/me/appointment-candidates")
+    assert no_year.status_code == 409
+    assert no_year.json()["error"]["code"] == "current_academic_year_not_configured"
+
+    configure_year(admin)
+    missing_inventory = client.get("/api/v1/routine-interviews/me/appointment-candidates")
+    assert missing_inventory.status_code == 409
+    assert missing_inventory.json()["error"]["code"] == "routine_interview_inventory_required"
+
+    ensure_current_inventory(student=student, context=context(student))
+    program = configure_program()
+    replace_current_inventory(
+        student=student,
+        values=minimum_normalized_inventory_values(program_id=program.pk),
+    )
+    draft_inventory = client.get("/api/v1/routine-interviews/me/appointment-candidates")
+    assert draft_inventory.status_code == 409
+    assert draft_inventory.json()["error"]["code"] == "routine_interview_inventory_required"
+
+    student.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
+    student.save(update_fields=["student_lifecycle_status", "updated_at"])
+    non_current = client.get("/api/v1/routine-interviews/me/appointment-candidates")
+    assert non_current.status_code == 409
+    assert non_current.json()["error"]["code"] == "current_student_required"
+
+
+@pytest.mark.django_db
+def test_direct_options_and_student_candidates_preserve_create_direct_authority_without_org_scope():
+    sync_policy()
+    admin = make_user("direct-ready-admin@example.edu", "IT_ADMIN")
+    counselor = make_user("direct.ready.counselor@example.edu", "COUNSELOR")
+    student = make_user("alpha.ready.student@example.edu", "STUDENT")
+    student.institutional_id = "RI-DIRECT-001"
+    student.middle_name = "Middle"
+    student.save(update_fields=["institutional_id", "middle_name", "updated_at"])
+    configure_year(admin)
+    submitted = submit_inventory(student, student, course="BSIS", major="Data")
+    service = create_counseling_service(admin, modes=["ONLINE"])
+
+    StudentAffiliation.objects.create(student=student, college=submitted.program.college)
+    other_campus = Campus.objects.create(code="OTHER-CAMP", name="Other Campus")
+    other_college = College.objects.create(
+        campus=other_campus,
+        code="OTHER-COL",
+        name="Other College",
+    )
+    CounselorResponsibility.objects.create(college=other_college, counselor=counselor)
+
+    missing = make_user("missing.ready.student@example.edu", "STUDENT")
+    draft = make_user("draft.ready.student@example.edu", "STUDENT")
+    graduated = make_user("graduated.ready.student@example.edu", "STUDENT")
+    inactive = make_user("inactive.ready.student@example.edu", "STUDENT")
+
+    ensure_current_inventory(student=draft, context=context(draft))
+    replace_current_inventory(
+        student=draft,
+        values=minimum_normalized_inventory_values(program_id=submitted.program_id),
+    )
+    for candidate in (graduated, inactive):
+        ensure_current_inventory(student=candidate, context=context(candidate))
+        replace_current_inventory(
+            student=candidate,
+            values=minimum_normalized_inventory_values(program_id=submitted.program_id),
+        )
+        submit_current_inventory(student=candidate, context=context(candidate))
+    graduated.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
+    graduated.save(update_fields=["student_lifecycle_status", "updated_at"])
+    inactive.is_active = False
+    inactive.save(update_fields=["is_active", "updated_at"])
+
+    client = auth_client(counselor)
+    options = client.get("/api/v1/routine-interviews/direct/options")
+    assert options.status_code == 200
+    assert options.json()["service"] == {
+        "id": str(service.pk),
+        "code": "COUNSELING",
+        "name": service.name,
+    }
+    assert options.json()["delivery_modes"] == ["ONLINE"]
+
+    listing = client.get(
+        "/api/v1/routine-interviews/direct/student-candidates",
+        {"search": "RI-DIRECT Middle", "page": 1, "page_size": 1},
+    )
+    assert listing.status_code == 200
+    assert [row["id"] for row in listing.json()["items"]] == [str(student.pk)]
+    row = listing.json()["items"][0]
+    assert set(row) == {"id", "institutional_id", "display_name", "inventory_context"}
+    assert set(row["inventory_context"]) == {
+        "id",
+        "academic_year",
+        "full_name",
+        "course",
+        "major",
+    }
+    serialized = json.dumps(listing.json())
+    for forbidden in (
+        student.email,
+        "support_profile",
+        "current_concerns",
+        "current_fears",
+        "current_address",
+        "contact_number",
+    ):
+        assert forbidden not in serialized
+
+    unfiltered = client.get("/api/v1/routine-interviews/direct/student-candidates")
+    assert unfiltered.status_code == 200
+    ids = {row["id"] for row in unfiltered.json()["items"]}
+    assert str(student.pk) in ids
+    assert str(missing.pk) not in ids
+    assert str(draft.pk) not in ids
+    assert str(graduated.pk) not in ids
+    assert str(inactive.pk) not in ids
+
+    created = client.post(
+        "/api/v1/routine-interviews",
+        data=json.dumps(
+            {
+                "student_id": str(student.pk),
+                "entry_mode": "WALK_IN",
+                "delivery_mode": "ONLINE",
+            }
+        ),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="direct-readiness-key",
+        **csrf(client),
+    )
+    assert created.status_code == 201
+
+    assert auth_client(student).get("/api/v1/routine-interviews/direct/options").status_code == 403
+    set_user_capability_override(
+        user=counselor,
+        capability="routine_interviews.manage_assigned",
+        effect="REVOKE",
+        reason="Routine direct discovery capability regression test.",
+        created_by=admin,
+    )
+    assert client.get("/api/v1/routine-interviews/direct/options").status_code == 403
+    assert (
+        client.get("/api/v1/routine-interviews/direct/student-candidates").status_code == 403
+    )
+
+
+@pytest.mark.django_db
+def test_direct_options_fail_when_counselor_is_not_canonical_service_provider():
+    sync_policy()
+    admin = make_user("direct-config-admin@example.edu", "IT_ADMIN")
+    counselor = make_user("direct-config-counselor@example.edu", "COUNSELOR")
+    create_counseling_service(admin)
+    service = create_counseling_service if False else None
+    del service
+
+    from compass.service_catalog.models import ServiceProviderRole
+
+    ServiceProviderRole.objects.filter(service__code="COUNSELING").delete()
+    response = auth_client(counselor).get("/api/v1/routine-interviews/direct/options")
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "routine_interview_appointment_invalid"
+
+
+@pytest.mark.django_db
+def test_direct_encounter_candidates_use_shared_matching_privacy_order_and_finalized_lock():
+    sync_policy()
+    admin = make_user("encounter-admin@example.edu", "IT_ADMIN")
+    student = make_user("encounter.student@example.edu", "STUDENT")
+    other_student = make_user("encounter.other.student@example.edu", "STUDENT")
+    counselor = make_user("encounter.counselor@example.edu", "COUNSELOR")
+    other_counselor = make_user("encounter.other.counselor@example.edu", "COUNSELOR")
+    configure_year(admin)
+    submit_inventory(student, student)
+    service = create_counseling_service(admin)
+    item = direct_routine(counselor=counselor, student=student, mode="WALK_IN")
+
+    before_submit = auth_client(counselor).get(
+        f"/api/v1/routine-interviews/{item.pk}/encounter-candidates"
+    )
+    assert before_submit.status_code == 409
+    assert before_submit.json()["error"]["code"] == "routine_interview_intake_required"
+    assigned_draft = auth_client(counselor).get(f"/api/v1/routine-interviews/{item.pk}")
+    assert assigned_draft.status_code == 200
+    assert assigned_draft.json()["intake"] is None
+
+    replace_my_intake(
+        student=student,
+        routine_interview_id=item.pk,
+        values={
+            "college_experience": "Private submitted intake",
+            "concerns": ["SUICIDAL_THOUGHT_TENDENCY"],
+        },
+    )
+    submit_my_intake(student=student, routine_interview_id=item.pk, context=context(student))
+
+    end = timezone.now() - timedelta(minutes=5)
+    older = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        appointment=None,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=end - timedelta(minutes=50),
+        ended_at=end - timedelta(minutes=20),
+        created_by=counselor,
+    )
+    newer = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        appointment=None,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=end - timedelta(minutes=15),
+        ended_at=end,
+        created_by=counselor,
+    )
+    wrong_student = CounselingEncounter.objects.create(
+        student=other_student,
+        counselor=counselor,
+        service=service,
+        appointment=None,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=end - timedelta(minutes=30),
+        ended_at=end,
+        created_by=counselor,
+    )
+    wrong_counselor = CounselingEncounter.objects.create(
+        student=student,
+        counselor=other_counselor,
+        service=service,
+        appointment=None,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=end - timedelta(minutes=30),
+        ended_at=end,
+        created_by=other_counselor,
+    )
+    wrong_entry = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        appointment=None,
+        entry_mode="REFERRED",
+        delivery_mode="IN_PERSON",
+        started_at=end - timedelta(minutes=30),
+        ended_at=end,
+        created_by=counselor,
+    )
+    wrong_delivery = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        appointment=None,
+        entry_mode="WALK_IN",
+        delivery_mode="ONLINE",
+        started_at=end - timedelta(minutes=30),
+        ended_at=end,
+        created_by=counselor,
+    )
+    future = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        appointment=None,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=timezone.now() + timedelta(minutes=5),
+        ended_at=timezone.now() + timedelta(minutes=35),
+        created_by=counselor,
+    )
+    appointment = make_appointment(student=student, counselor=counselor, service=service)
+    appointment_backed = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        appointment=appointment,
+        entry_mode="APPOINTMENT",
+        delivery_mode="IN_PERSON",
+        started_at=end - timedelta(minutes=30),
+        ended_at=end,
+        created_by=counselor,
+    )
+
+    other_routine = direct_routine(
+        counselor=counselor,
+        student=student,
+        mode="WALK_IN",
+        key="used-routine",
+    )
+    replace_my_intake(
+        student=student,
+        routine_interview_id=other_routine.pk,
+        values={"academic_goals": "Other submitted routine"},
+    )
+    submit_my_intake(
+        student=student,
+        routine_interview_id=other_routine.pk,
+        context=context(student),
+    )
+    used = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        appointment=None,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=end - timedelta(hours=2),
+        ended_at=end - timedelta(hours=1),
+        created_by=counselor,
+    )
+    finalize_assigned_evaluation(
+        counselor=counselor,
+        routine_interview_id=other_routine.pk,
+        encounter_id=used.pk,
+        context=context(counselor),
+    )
+
+    client = auth_client(counselor)
+    page_one = client.get(
+        f"/api/v1/routine-interviews/{item.pk}/encounter-candidates",
+        {"page": 1, "page_size": 1},
+    )
+    assert page_one.status_code == 200
+    assert [row["id"] for row in page_one.json()["items"]] == [str(newer.pk)]
+    assert page_one.json()["has_next"] is True
+    page_two = client.get(
+        f"/api/v1/routine-interviews/{item.pk}/encounter-candidates",
+        {"page": 2, "page_size": 1},
+    )
+    assert page_two.status_code == 200
+    assert [row["id"] for row in page_two.json()["items"]] == [str(older.pk)]
+
+    serialized = json.dumps(page_one.json())
+    for forbidden in (
+        "Private submitted intake",
+        "SUICIDAL",
+        "special_concern",
+        "recommendations",
+        "shared_summary",
+        "audit",
+        student.email,
+    ):
+        assert forbidden not in serialized.lower() if forbidden.islower() else forbidden not in serialized
+    assert set(page_one.json()["items"][0]) == {
+        "id",
+        "entry_mode",
+        "delivery_mode",
+        "started_at",
+        "ended_at",
+        "appointment",
+    }
+
+    for excluded in (
+        wrong_student,
+        wrong_counselor,
+        wrong_entry,
+        wrong_delivery,
+        future,
+        appointment_backed,
+        used,
+    ):
+        assert str(excluded.pk) not in json.dumps(
+            page_one.json()["items"] + page_two.json()["items"]
+        )
+
+    service_page = list_encounter_candidates(
+        counselor=counselor,
+        routine_interview_id=item.pk,
+        page=1,
+        page_size=10,
+    )
+    assert all(
+        routine_interview_encounter_matches(item=item, encounter=encounter)
+        for encounter in service_page.items
+    )
+
+    assert auth_client(other_counselor).get(
+        f"/api/v1/routine-interviews/{item.pk}/encounter-candidates"
+    ).status_code == 404
+
+    finalized = finalize_assigned_evaluation(
+        counselor=counselor,
+        routine_interview_id=item.pk,
+        encounter_id=newer.pk,
+        context=context(counselor),
+    )
+    assert finalized.counseling_encounter_id == newer.pk
+    locked = client.get(f"/api/v1/routine-interviews/{item.pk}/encounter-candidates")
+    assert locked.status_code == 409
+    assert locked.json()["error"]["code"] == "routine_interview_evaluation_finalized"
+
+
+@pytest.mark.django_db
+def test_appointment_encounter_candidates_require_exact_appointment_and_support_auto_finalize():
+    sync_policy()
+    admin = make_user("appointment-match-admin@example.edu", "IT_ADMIN")
+    student = make_user("appointment.match.student@example.edu", "STUDENT")
+    counselor = make_user("appointment.match.counselor@example.edu", "COUNSELOR")
+    configure_year(admin)
+    submit_inventory(student, student)
+    service = create_counseling_service(admin)
+
+    appointment = make_appointment(student=student, counselor=counselor, service=service)
+    item = ensure_for_appointment(
+        student=student,
+        appointment_id=appointment.pk,
+        context=context(student),
+    )
+    replace_my_intake(
+        student=student,
+        routine_interview_id=item.pk,
+        values={"career_goals": "Submitted appointment-backed intake"},
+    )
+    submit_my_intake(student=student, routine_interview_id=item.pk, context=context(student))
+
+    end = timezone.now() - timedelta(minutes=5)
+    valid = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        appointment=appointment,
+        entry_mode="APPOINTMENT",
+        delivery_mode="IN_PERSON",
+        started_at=end - timedelta(minutes=30),
+        ended_at=end,
+        created_by=counselor,
+    )
+    another_appointment = make_appointment(
+        student=student,
+        counselor=counselor,
+        service=service,
+    )
+    wrong_appointment = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        appointment=another_appointment,
+        entry_mode="APPOINTMENT",
+        delivery_mode="IN_PERSON",
+        started_at=end - timedelta(minutes=40),
+        ended_at=end - timedelta(minutes=10),
+        created_by=counselor,
+    )
+    direct = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        appointment=None,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=end - timedelta(minutes=45),
+        ended_at=end - timedelta(minutes=15),
+        created_by=counselor,
+    )
+
+    client = auth_client(counselor)
+    candidates = client.get(
+        f"/api/v1/routine-interviews/{item.pk}/encounter-candidates"
+    )
+    assert candidates.status_code == 200
+    assert [row["id"] for row in candidates.json()["items"]] == [str(valid.pk)]
+    assert candidates.json()["items"][0]["appointment"]["id"] == str(appointment.pk)
+    assert str(wrong_appointment.pk) not in json.dumps(candidates.json())
+    assert str(direct.pk) not in json.dumps(candidates.json())
+
+    finalized = finalize_assigned_evaluation(
+        counselor=counselor,
+        routine_interview_id=item.pk,
+        encounter_id=None,
+        context=context(counselor),
+    )
+    assert finalized.counseling_encounter_id == valid.pk
+
+
+@pytest.mark.django_db
+def test_encounter_candidate_discovery_is_advisory_and_finalization_remains_concurrency_authority():
+    sync_policy()
+    admin = make_user("advisory-admin@example.edu", "IT_ADMIN")
+    student = make_user("advisory.student@example.edu", "STUDENT")
+    counselor = make_user("advisory.counselor@example.edu", "COUNSELOR")
+    configure_year(admin)
+    submit_inventory(student, student)
+    service = create_counseling_service(admin)
+
+    first = direct_routine(counselor=counselor, student=student, key="advisory-first")
+    second = direct_routine(counselor=counselor, student=student, key="advisory-second")
+    for item in (first, second):
+        replace_my_intake(
+            student=student,
+            routine_interview_id=item.pk,
+            values={"college_experience": f"Submitted {item.pk}"},
+        )
+        submit_my_intake(student=student, routine_interview_id=item.pk, context=context(student))
+
+    end = timezone.now() - timedelta(minutes=5)
+    encounter = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        appointment=None,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=end - timedelta(minutes=30),
+        ended_at=end,
+        created_by=counselor,
+    )
+    discovered = list_encounter_candidates(
+        counselor=counselor,
+        routine_interview_id=first.pk,
+        page=1,
+        page_size=20,
+    )
+    assert [row.pk for row in discovered.items] == [encounter.pk]
+
+    finalize_assigned_evaluation(
+        counselor=counselor,
+        routine_interview_id=second.pk,
+        encounter_id=encounter.pk,
+        context=context(counselor),
+    )
+    with pytest.raises(RoutineInterviewEncounterMismatch, match="already linked"):
+        finalize_assigned_evaluation(
+            counselor=counselor,
+            routine_interview_id=first.pk,
+            encounter_id=encounter.pk,
+            context=context(counselor),
+        )
+
