@@ -28,7 +28,10 @@ from .services import (
     InvalidCounselingInput,
     _institution_zone,
     create_encounter,
+    get_encounter_creation_options,
     get_encounter_for_actor,
+    list_appointment_candidates,
+    list_encounter_appointment_candidates,
     list_my_encounters,
     list_students,
     update_encounter,
@@ -118,7 +121,52 @@ class CounselingEncounterPageResponse(StrictSchema):
 
 class CounselingStudentResponse(StrictSchema):
     id: UUID
+    institutional_id: str | None
     display_name: str
+
+
+class CounselingEncounterCreationOptions(StrictSchema):
+    service: ServiceSummaryResponse
+    delivery_modes: list[DeliveryMode]
+
+
+class CounselingAppointmentCandidateStudent(StrictSchema):
+    id: UUID
+    institutional_id: str | None
+    display_name: str
+
+
+class CounselingAppointmentCandidate(StrictSchema):
+    id: UUID
+    reference_code: str
+    student: CounselingAppointmentCandidateStudent
+    delivery_mode: DeliveryMode
+    starts_at: datetime
+    ends_at: datetime
+    status: str
+
+
+class CounselingAppointmentCandidatePage(StrictSchema):
+    items: list[CounselingAppointmentCandidate]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class CounselingEncounterAppointmentCandidate(StrictSchema):
+    id: UUID
+    reference_code: str
+    delivery_mode: DeliveryMode
+    starts_at: datetime
+    ends_at: datetime
+    status: str
+
+
+class CounselingEncounterAppointmentCandidatePage(StrictSchema):
+    items: list[CounselingEncounterAppointmentCandidate]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 class CounselingStudentPageResponse(StrictSchema):
@@ -235,6 +283,33 @@ def _encounter(item) -> dict[str, object]:
     }
 
 
+def _appointment_candidate(item) -> dict[str, object]:
+    return {
+        "id": item.pk,
+        "reference_code": item.reference_code,
+        "student": {
+            "id": item.student_id,
+            "institutional_id": item.student.institutional_id,
+            "display_name": item.student.get_full_name(),
+        },
+        "delivery_mode": item.delivery_mode,
+        "starts_at": _institutional(item.starts_at),
+        "ends_at": _institutional(item.ends_at),
+        "status": item.status,
+    }
+
+
+def _encounter_appointment_candidate(item) -> dict[str, object]:
+    return {
+        "id": item.pk,
+        "reference_code": item.reference_code,
+        "delivery_mode": item.delivery_mode,
+        "starts_at": _institutional(item.starts_at),
+        "ends_at": _institutional(item.ends_at),
+        "status": item.status,
+    }
+
+
 def _assigned_shared_summary(item) -> dict[str, object]:
     return {
         "id": item.pk,
@@ -257,6 +332,58 @@ def _student_shared_summary(item) -> dict[str, object]:
 
 
 @router.get(
+    "/encounter-options",
+    response=response_with_errors(CounselingEncounterCreationOptions, 401, 403, 409),
+    auth=session_auth,
+    operation_id="counselingGetEncounterCreationOptions",
+)
+def counseling_get_encounter_creation_options(request):
+    _require_counselor(request, "counseling.manage_assigned")
+    try:
+        result = get_encounter_creation_options(request.auth_user)
+    except CounselingError as exc:
+        _raise(exc)
+    return {
+        "service": {
+            "id": result.service.pk,
+            "code": result.service.code,
+            "name": result.service.name,
+        },
+        "delivery_modes": list(result.delivery_modes),
+    }
+
+
+@router.get(
+    "/appointment-candidates",
+    response=response_with_errors(CounselingAppointmentCandidatePage, 401, 403, 409, 422),
+    auth=session_auth,
+    operation_id="counselingListAppointmentCandidates",
+)
+def counseling_list_appointment_candidates(
+    request,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_counselor(request, "counseling.manage_assigned")
+    try:
+        result = list_appointment_candidates(
+            counselor=request.auth_user,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except CounselingError as exc:
+        _raise(exc)
+    return {
+        "items": [_appointment_candidate(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.get(
     "/students",
     response=response_with_errors(CounselingStudentPageResponse, 401, 403, 422),
     auth=session_auth,
@@ -275,7 +402,12 @@ def counseling_list_students(
         _raise(exc)
     return {
         "items": [
-            {"id": student.pk, "display_name": student.get_full_name()} for student in result.items
+            {
+                "id": student.pk,
+                "institutional_id": student.institutional_id,
+                "display_name": student.get_full_name(),
+            }
+            for student in result.items
         ],
         "page": result.page,
         "page_size": result.page_size,
@@ -393,6 +525,43 @@ def counseling_create_encounter(request, payload: CounselingCreateRequest):
     except CounselingError as exc:
         _raise(exc)
     return 201, _encounter(item)
+
+
+@router.get(
+    "/encounters/{encounter_id}/appointment-candidates",
+    response=response_with_errors(
+        CounselingEncounterAppointmentCandidatePage,
+        401,
+        403,
+        404,
+        409,
+        422,
+    ),
+    auth=session_auth,
+    operation_id="counselingListEncounterAppointmentCandidates",
+)
+def counseling_list_encounter_appointment_candidates(
+    request,
+    encounter_id: UUID,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_counselor(request, "counseling.manage_assigned")
+    try:
+        result = list_encounter_appointment_candidates(
+            counselor=request.auth_user,
+            encounter_id=encounter_id,
+            page=page,
+            page_size=page_size,
+        )
+    except CounselingError as exc:
+        _raise(exc)
+    return {
+        "items": [_encounter_appointment_candidate(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
 
 
 @router.get(
