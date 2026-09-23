@@ -1175,9 +1175,7 @@ def _validate_and_canonicalize_geography(item: StudentInventory) -> None:
     except (PSGCInvalidRequest, PSGCReferenceNotFound) as exc:
         raise InvalidInventoryInput(str(exc)) from exc
     except (PSGCConfigurationError, PSGCUnavailable, PSGCInvalidResponse) as exc:
-        raise InventoryPSGCUnavailable(
-            "Official PSGC validation could not be completed."
-        ) from exc
+        raise InventoryPSGCUnavailable("Official PSGC validation could not be completed.") from exc
 
 
 def submit_current_inventory(
