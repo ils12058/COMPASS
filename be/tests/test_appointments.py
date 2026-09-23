@@ -1149,8 +1149,12 @@ def test_managed_appointment_search_is_student_aware_composable_and_scope_preser
     assert unmatched.status_code == 200
     assert unmatched.json()["items"] == []
 
-    target.status = "CANCELLED"
-    target.save(update_fields=["status", "updated_at"])
+    cancel_appointment(
+        appointment_id=target.pk,
+        actor=head,
+        administrative=True,
+        context=context(head),
+    )
     composed = head_client.get(
         "/api/v1/appointments",
         {"search": "Tolentino", "status": "SCHEDULED"},
