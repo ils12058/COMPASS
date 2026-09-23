@@ -56,6 +56,7 @@ MAX_PAGE_SIZE = 50
 MAX_ELIGIBLE_COUNSELORS = 50
 MAX_REFERENCE_SEQUENCE = 999_999
 MAX_CHANGE_REASON_LENGTH = 1000
+MAX_SEARCH_LENGTH = 160
 PROVIDER_ROLE_CODES = ELIGIBLE_PROVIDER_ROLE_CODES
 
 
@@ -118,6 +119,14 @@ class AppointmentCurrentAcademicYearNotConfigured(AppointmentError):
 @dataclass(frozen=True, slots=True)
 class AppointmentPage:
     items: tuple[Appointment, ...]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+@dataclass(frozen=True, slots=True)
+class AppointmentBookingServicePage:
+    items: tuple[Service, ...]
     page: int
     page_size: int
     has_next: bool
@@ -298,10 +307,55 @@ def list_managed_appointments(
         qs = qs.filter(service_id=service_id)
     if normalized_mode is not None:
         qs = qs.filter(delivery_mode=normalized_mode)
-    if search and search.strip():
-        qs = qs.filter(reference_code__icontains=search.strip()[:64])
     qs = _apply_date_filters(qs, from_date=from_date, to_date=to_date)
+    if search is not None:
+        if not isinstance(search, str):
+            raise InvalidAppointmentInput("search must be text")
+        for token in search.strip()[:MAX_SEARCH_LENGTH].split():
+            qs = qs.filter(
+                Q(reference_code__icontains=token)
+                | Q(student__institutional_id__icontains=token)
+                | Q(student__first_name__icontains=token)
+                | Q(student__middle_name__icontains=token)
+                | Q(student__last_name__icontains=token)
+            )
     return _page(qs.order_by("-starts_at", "reference_code"), page=page, page_size=page_size)
+
+
+def list_booking_services(
+    *,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> AppointmentBookingServicePage:
+    page, page_size = _pagination(page, page_size)
+    qs = (
+        Service.objects.filter(
+            is_active=True,
+            default_duration_minutes__isnull=False,
+            provider_role_assignments__role__code__in=ELIGIBLE_PROVIDER_ROLE_CODES,
+            delivery_mode_assignments__mode__in=DeliveryMode.values,
+        )
+        .exclude(appointment_policy=AppointmentPolicy.NONE)
+        .prefetch_related("delivery_mode_assignments")
+        .distinct()
+        .order_by("code", "id")
+    )
+    if search is not None:
+        if not isinstance(search, str):
+            raise InvalidAppointmentInput("search must be text")
+        term = search.strip()[:MAX_SEARCH_LENGTH]
+        if term:
+            qs = qs.filter(Q(code__icontains=term) | Q(name__icontains=term))
+
+    offset = (page - 1) * page_size
+    rows = list(qs[offset : offset + page_size + 1])
+    return AppointmentBookingServicePage(
+        tuple(rows[:page_size]),
+        page,
+        page_size,
+        len(rows) > page_size,
+    )
 
 
 def get_appointment_for_actor(*, appointment_id: UUID, actor: User) -> Appointment:
