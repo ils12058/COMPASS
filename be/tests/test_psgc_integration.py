@@ -108,8 +108,7 @@ def test_psgc_client_uses_configured_version_token_and_parses_reference_levels(m
         ("0500000000", "Region V")
     ]
     assert [
-        (item.code, item.name)
-        for item in service.list_provinces(region_code="0500000000")
+        (item.code, item.name) for item in service.list_provinces(region_code="0500000000")
     ] == [("0501600000", "Camarines Norte")]
     assert [
         (item.code, item.name)
