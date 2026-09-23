@@ -790,7 +790,7 @@ def list_people(
     if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
         raise InvalidOrganizationInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
     qs = (
-        User.objects.filter(role__code=role)
+        User.objects.filter(role__code=role, is_active=True)
         .select_related("role")
         .order_by("last_name", "first_name", "id")
     )
