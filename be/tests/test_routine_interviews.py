@@ -901,6 +901,7 @@ def test_counselor_routine_queue_is_assigned_paginated_filtered_and_identity_sea
     assert auth_client(other).get("/api/v1/routine-interviews").status_code == 200
     assert auth_client(gss).get("/api/v1/routine-interviews").status_code == 403
 
+
 @pytest.mark.django_db
 def test_student_appointment_candidate_discovery_is_routine_owned_filtered_private_and_stable():
     sync_policy()
@@ -1026,9 +1027,12 @@ def test_student_appointment_candidate_discovery_is_routine_owned_filtered_priva
     assert str(non_counseling.pk) not in serialized
     assert str(bound.pk) not in serialized
 
-    assert auth_client(counselor).get(
-        "/api/v1/routine-interviews/me/appointment-candidates"
-    ).status_code == 403
+    assert (
+        auth_client(counselor)
+        .get("/api/v1/routine-interviews/me/appointment-candidates")
+        .status_code
+        == 403
+    )
     assert Client().get("/api/v1/routine-interviews/me/appointment-candidates").status_code == 401
 
     set_user_capability_override(
@@ -1087,9 +1091,7 @@ def test_student_appointment_candidate_prerequisite_conflicts_are_not_silent_emp
         internal_schema_version=999,
         status="ACTIVE",
     )
-    unsupported_revision = client.get(
-        "/api/v1/routine-interviews/me/appointment-candidates"
-    )
+    unsupported_revision = client.get("/api/v1/routine-interviews/me/appointment-candidates")
     assert unsupported_revision.status_code == 409
     assert (
         unsupported_revision.json()["error"]["code"]
@@ -1216,9 +1218,7 @@ def test_direct_options_and_student_candidates_preserve_create_direct_authority_
         created_by=admin,
     )
     assert client.get("/api/v1/routine-interviews/direct/options").status_code == 403
-    assert (
-        client.get("/api/v1/routine-interviews/direct/student-candidates").status_code == 403
-    )
+    assert client.get("/api/v1/routine-interviews/direct/student-candidates").status_code == 403
 
 
 @pytest.mark.django_db
@@ -1485,9 +1485,12 @@ def test_direct_encounter_candidates_use_shared_matching_privacy_order_and_final
         for encounter in service_page.items
     )
 
-    assert auth_client(other_counselor).get(
-        f"/api/v1/routine-interviews/{item.pk}/encounter-candidates"
-    ).status_code == 404
+    assert (
+        auth_client(other_counselor)
+        .get(f"/api/v1/routine-interviews/{item.pk}/encounter-candidates")
+        .status_code
+        == 404
+    )
 
     finalized = finalize_assigned_evaluation(
         counselor=counselor,
@@ -1565,9 +1568,7 @@ def test_appointment_encounter_candidates_require_exact_appointment_and_support_
     )
 
     client = auth_client(counselor)
-    candidates = client.get(
-        f"/api/v1/routine-interviews/{item.pk}/encounter-candidates"
-    )
+    candidates = client.get(f"/api/v1/routine-interviews/{item.pk}/encounter-candidates")
     assert candidates.status_code == 200
     assert [row["id"] for row in candidates.json()["items"]] == [str(valid.pk)]
     assert candidates.json()["items"][0]["appointment"]["id"] == str(appointment.pk)
@@ -1636,4 +1637,3 @@ def test_encounter_candidate_discovery_is_advisory_and_finalization_remains_conc
             encounter_id=encounter.pk,
             context=context(counselor),
         )
-
