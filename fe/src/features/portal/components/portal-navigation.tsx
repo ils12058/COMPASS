@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { hasAvailabilityWorkspace } from "@/features/availability/availability-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 
 export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
@@ -14,6 +15,8 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
     user.capabilities.includes("organization.view") ||
     user.capabilities.includes("organization.manage");
   const hasServices = user.capabilities.includes("services.view");
+  const hasAvailability = hasAvailabilityWorkspace(user);
+  const hasGuidanceServices = hasServices || hasAvailability;
 
   return (
     <div className="flex h-full flex-col bg-brand-strong text-on-brand">
@@ -39,9 +42,12 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
           href="/portal"
           onClick={onNavigate}
           aria-current={pathname === "/portal" ? "page" : undefined}
-          className={`flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand ${
-            pathname === "/portal" ? "bg-on-brand/12" : "hover:bg-on-brand/10"
-          }`}
+          className={
+            "flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+            (pathname === "/portal"
+              ? "bg-on-brand/12"
+              : "hover:bg-on-brand/10")
+          }
         >
           Home
         </Link>
@@ -56,11 +62,12 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
               aria-current={
                 pathname.startsWith("/portal/accounts") ? "page" : undefined
               }
-              className={`mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand ${
-                pathname.startsWith("/portal/accounts")
+              className={
+                "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                (pathname.startsWith("/portal/accounts")
                   ? "bg-on-brand/12"
-                  : "hover:bg-on-brand/10"
-              }`}
+                  : "hover:bg-on-brand/10")
+              }
             >
               Accounts
             </Link>
@@ -79,35 +86,60 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
                   ? "page"
                   : undefined
               }
-              className={`mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand ${
-                pathname.startsWith("/portal/organization")
+              className={
+                "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                (pathname.startsWith("/portal/organization")
                   ? "bg-on-brand/12"
-                  : "hover:bg-on-brand/10"
-              }`}
+                  : "hover:bg-on-brand/10")
+              }
             >
               Organization
             </Link>
           </div>
         ) : null}
-        {hasServices ? (
+        {hasGuidanceServices ? (
           <div className="mt-7 border-t border-on-brand/15 pt-5">
             <p className="px-3 text-xs font-semibold uppercase tracking-wider text-on-brand/70">
               Guidance Services
             </p>
-            <Link
-              href="/portal/services"
-              onClick={onNavigate}
-              aria-current={
-                pathname.startsWith("/portal/services") ? "page" : undefined
-              }
-              className={`mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand ${
-                pathname.startsWith("/portal/services")
-                  ? "bg-on-brand/12"
-                  : "hover:bg-on-brand/10"
-              }`}
-            >
-              Services
-            </Link>
+            {hasServices ? (
+              <Link
+                href="/portal/services"
+                onClick={onNavigate}
+                aria-current={
+                  pathname.startsWith("/portal/services")
+                    ? "page"
+                    : undefined
+                }
+                className={
+                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                  (pathname.startsWith("/portal/services")
+                    ? "bg-on-brand/12"
+                    : "hover:bg-on-brand/10")
+                }
+              >
+                Services
+              </Link>
+            ) : null}
+            {hasAvailability ? (
+              <Link
+                href="/portal/availability"
+                onClick={onNavigate}
+                aria-current={
+                  pathname.startsWith("/portal/availability")
+                    ? "page"
+                    : undefined
+                }
+                className={
+                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                  (pathname.startsWith("/portal/availability")
+                    ? "bg-on-brand/12"
+                    : "hover:bg-on-brand/10")
+                }
+              >
+                Availability
+              </Link>
+            ) : null}
           </div>
         ) : null}
       </nav>
