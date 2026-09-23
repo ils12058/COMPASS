@@ -1901,3 +1901,49 @@ def test_privacy_governance_openapi_is_purpose_built_and_has_no_delete_or_global
         "session_token",
     ):
         assert forbidden not in serialized
+
+
+def test_availability_provider_discovery_openapi_contract() -> None:
+    schema = _generated_schema()
+    operation = _operation(schema, "/api/v1/availability/providers", "get")
+    assert operation["operationId"] == "availabilityListProviders"
+    assert operation["tags"] == ["availability"]
+    assert _response_statuses(operation) == {200, 401, 403, 422}
+
+    response_schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert response_schema["$ref"].endswith("/AvailabilityProviderListResponse")
+
+    schemas = schema["components"]["schemas"]
+    provider = schemas["AvailabilityProviderSummary"]
+    assert set(provider["properties"]) == {
+        "id",
+        "full_name",
+        "email",
+        "role",
+        "is_active",
+    }
+    assert set(provider["required"]) == {
+        "id",
+        "full_name",
+        "email",
+        "role",
+        "is_active",
+    }
+
+    provider_list = schemas["AvailabilityProviderListResponse"]
+    assert set(provider_list["properties"]) == {
+        "items",
+        "page",
+        "page_size",
+        "has_next",
+    }
+    assert set(provider_list["required"]) == {
+        "items",
+        "page",
+        "page_size",
+        "has_next",
+    }
+
+    for status in ("401", "403", "422"):
+        error_schema = operation["responses"][status]["content"]["application/json"]["schema"]
+        assert error_schema["$ref"].endswith("/APIErrorResponse")
