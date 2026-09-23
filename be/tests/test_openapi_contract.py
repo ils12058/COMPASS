@@ -147,6 +147,7 @@ EXPECTED_OPERATION_IDS = {
     "availabilityListMyExceptions",
     "availabilityCreateMyException",
     "availabilityRemoveMyException",
+    "availabilityListProviders",
     "availabilityGetProviderWeekly",
     "availabilityReplaceProviderWeekly",
     "availabilityListProviderExceptions",
