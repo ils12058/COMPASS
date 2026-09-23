@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import {
   AlertDialog,
@@ -160,30 +160,6 @@ export function WeeklyScheduleEditor({
   const [dirty, setDirty] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [clearOpen, setClearOpen] = useState(false);
-
-  const canonicalSignature = useMemo(
-    () =>
-      windows
-        .map(
-          (window) =>
-            window.id +
-            ":" +
-            window.weekday +
-            ":" +
-            window.start_time +
-            ":" +
-            window.end_time +
-            ":" +
-            window.mode_scope,
-        )
-        .join("|"),
-    [windows],
-  );
-
-  useEffect(() => {
-    if (dirty) return;
-    setDraft(draftFromWindows(windows));
-  }, [canonicalSignature, dirty, windows]);
 
   function updateWindow(
     key: string,
