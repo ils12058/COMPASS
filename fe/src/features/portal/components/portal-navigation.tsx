@@ -6,6 +6,13 @@ import { usePathname } from "next/navigation";
 
 import { hasAvailabilityWorkspace } from "@/features/availability/availability-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
+import {
+  canManageOrganization,
+  canViewAcademicYears,
+  canViewInstitutionalForms,
+  canViewOrganization,
+  hasInstitutionWorkspace,
+} from "@/features/institution-configuration/institution-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 
 export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
@@ -13,8 +20,10 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const canManageAccounts = user.capabilities.includes("accounts.manage");
   const hasOrganization =
-    user.capabilities.includes("organization.view") ||
-    user.capabilities.includes("organization.manage");
+    canViewOrganization(user) || canManageOrganization(user);
+  const hasAcademicYears = canViewAcademicYears(user);
+  const hasInstitutionalForms = canViewInstitutionalForms(user);
+  const hasInstitution = hasInstitutionWorkspace(user);
   const hasServices = user.capabilities.includes("services.view");
   const hasAvailability = hasAvailabilityWorkspace(user);
   const hasAppointments = getAppointmentAccess(user).hasWorkspace;
@@ -78,28 +87,66 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
             </Link>
           </div>
         ) : null}
-        {hasOrganization ? (
+        {hasInstitution ? (
           <div className="mt-7 border-t border-on-brand/15 pt-5">
             <p className="px-3 text-xs font-semibold uppercase tracking-wider text-on-brand/70">
               Institution
             </p>
-            <Link
-              href="/portal/organization"
-              onClick={onNavigate}
-              aria-current={
-                pathname.startsWith("/portal/organization")
-                  ? "page"
-                  : undefined
-              }
-              className={
-                "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                (pathname.startsWith("/portal/organization")
-                  ? "bg-on-brand/12"
-                  : "hover:bg-on-brand/10")
-              }
-            >
-              Organization
-            </Link>
+            {hasOrganization ? (
+              <Link
+                href="/portal/organization"
+                onClick={onNavigate}
+                aria-current={
+                  pathname.startsWith("/portal/organization")
+                    ? "page"
+                    : undefined
+                }
+                className={
+                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                  (pathname.startsWith("/portal/organization")
+                    ? "bg-on-brand/12"
+                    : "hover:bg-on-brand/10")
+                }
+              >
+                Organization
+              </Link>
+            ) : null}
+            {hasAcademicYears ? (
+              <Link
+                href="/portal/academic-years"
+                onClick={onNavigate}
+                aria-current={
+                  pathname === "/portal/academic-years" ? "page" : undefined
+                }
+                className={
+                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                  (pathname === "/portal/academic-years"
+                    ? "bg-on-brand/12"
+                    : "hover:bg-on-brand/10")
+                }
+              >
+                Academic Years
+              </Link>
+            ) : null}
+            {hasInstitutionalForms ? (
+              <Link
+                href="/portal/institutional-forms"
+                onClick={onNavigate}
+                aria-current={
+                  pathname === "/portal/institutional-forms"
+                    ? "page"
+                    : undefined
+                }
+                className={
+                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                  (pathname === "/portal/institutional-forms"
+                    ? "bg-on-brand/12"
+                    : "hover:bg-on-brand/10")
+                }
+              >
+                Institutional Forms
+              </Link>
+            ) : null}
           </div>
         ) : null}
         {hasGuidanceServices ? (
