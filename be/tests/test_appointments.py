@@ -1010,6 +1010,7 @@ def test_non_current_student_cannot_book_but_can_read_and_cancel_existing(status
     )
     assert cancelled.status == "CANCELLED"
 
+
 @pytest.mark.django_db
 @override_settings(TIME_ZONE="Asia/Manila")
 def test_appointment_responses_expose_narrow_student_projection_consistently():
@@ -1273,4 +1274,3 @@ def test_booking_service_discovery_is_appointment_owned_filtered_and_paginated()
     assert paged["page"] == 1
     assert paged["page_size"] == 1
     assert paged["has_next"] is True
-
