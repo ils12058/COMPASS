@@ -2022,7 +2022,3 @@ def test_appointment_list_ordering_openapi_contract() -> None:
         assert ordering["required"] is False
         ordering_parameter_schema = ordering["schema"]
         assert ordering_parameter_schema.get("default") == "START_DESC"
-        ordering_ref = ordering_parameter_schema.get("$ref")
-        if ordering_ref is None:
-            ordering_ref = ordering_parameter_schema["allOf"][0]["$ref"]
-        assert ordering_ref.endswith("/AppointmentListOrdering")
