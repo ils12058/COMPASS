@@ -71,7 +71,7 @@ export function useOrganizationAction() {
     }
   }
 
-  const feedback = (
+  const messages = (
     <>
       {error ? (
         <p role="alert" className="mt-4 text-sm text-danger">
@@ -83,17 +83,20 @@ export function useOrganizationAction() {
           {notice}
         </p>
       ) : null}
-      <StepUpDialog
-        open={stepUpOpen}
-        onOpenChange={setStepUpOpen}
-        onVerified={() => {
-          setNotice("Verification complete. Submit the action again to continue.");
-          const resume = afterStepUp;
-          setAfterStepUp(null);
-          resume?.();
-        }}
-      />
     </>
+  );
+
+  const stepUpDialog = (
+    <StepUpDialog
+      open={stepUpOpen}
+      onOpenChange={setStepUpOpen}
+      onVerified={() => {
+        setNotice("Verification complete. Submit the action again to continue.");
+        const resume = afterStepUp;
+        setAfterStepUp(null);
+        resume?.();
+      }}
+    />
   );
 
   return {
@@ -102,7 +105,7 @@ export function useOrganizationAction() {
     setError,
     setNotice,
     run,
-    feedback,
-    stepUpOpen,
+    messages,
+    stepUpDialog,
   };
 }
