@@ -48,6 +48,7 @@ from .services import (
     get_appointment_for_actor,
     get_appointment_history,
     list_bookable_slots,
+    list_booking_services,
     list_eligible_counselors,
     list_managed_appointments,
     list_my_appointments,
@@ -110,10 +111,36 @@ class ProviderSummaryResponse(StrictSchema):
     display_name: str
 
 
+class AppointmentStudentSummary(StrictSchema):
+    id: UUID
+    institutional_id: str | None
+    display_name: str
+
+
+class AppointmentBookingServiceSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+    description: str
+    appointment_policy: str
+    delivery_modes: list[DeliveryMode]
+    default_duration_minutes: int
+    cancellation_cutoff_minutes: int | None
+    requires_current_inventory: bool
+
+
+class AppointmentBookingServiceListResponse(StrictSchema):
+    items: list[AppointmentBookingServiceSummary]
+    page: int
+    page_size: int
+    has_next: bool
+
+
 class AppointmentResponse(StrictSchema):
     id: UUID
     reference_code: str
     student_id: UUID
+    student: AppointmentStudentSummary
     service: ServiceSummaryResponse
     provider: ProviderSummaryResponse
     delivery_mode: DeliveryMode
@@ -255,6 +282,11 @@ def _appointment(item) -> dict[str, object]:
         "id": item.pk,
         "reference_code": item.reference_code,
         "student_id": item.student_id,
+        "student": {
+            "id": item.student_id,
+            "institutional_id": item.student.institutional_id,
+            "display_name": item.student.get_full_name(),
+        },
         "service": {
             "id": item.service_id,
             "code": item.service.code,
@@ -273,6 +305,20 @@ def _appointment(item) -> dict[str, object]:
         "completed_at": _institutional(item.completed_at),
         "no_show_at": _institutional(item.no_show_at),
         "created_at": _institutional(item.created_at),
+    }
+
+
+def _booking_service(item) -> dict[str, object]:
+    return {
+        "id": item.pk,
+        "code": item.code,
+        "name": item.name,
+        "description": item.description,
+        "appointment_policy": item.appointment_policy,
+        "delivery_modes": [assignment.mode for assignment in item.delivery_mode_assignments.all()],
+        "default_duration_minutes": item.default_duration_minutes,
+        "cancellation_cutoff_minutes": item.cancellation_cutoff_minutes,
+        "requires_current_inventory": item.requires_current_inventory,
     }
 
 
@@ -337,6 +383,38 @@ def appointments_list_my(
         _raise(exc)
     return {
         "items": [_appointment(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.get(
+    "/booking/services",
+    response=response_with_errors(AppointmentBookingServiceListResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="appointmentsListBookingServices",
+)
+def appointments_list_booking_services(
+    request,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    user = request.auth_user
+    if not user.is_active or user.role.code != "STUDENT":
+        raise APIError(403, "permission_denied", "Active Student booking access is required.")
+    if not (
+        user.has_capability("appointments.view_self")
+        or user.has_capability("appointments.manage_self")
+    ):
+        raise APIError(403, "permission_denied", "Appointment self-service access is required.")
+    try:
+        result = list_booking_services(search=search, page=page, page_size=page_size)
+    except AppointmentError as exc:
+        _raise(exc)
+    return {
+        "items": [_booking_service(item) for item in result.items],
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
