@@ -14,11 +14,12 @@ from compass.accounts.models import (
     Capability,
     Designation,
     Role,
+    StudentLifecycleStatus,
     User,
     UserCapabilityOverride,
     UserDesignation,
 )
-from compass.appointments.models import Appointment
+from compass.appointments.models import Appointment, AppointmentStatus
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
@@ -31,6 +32,9 @@ from compass.counseling.services import (
     CounselingNotFound,
     CounselingNotPermitted,
     create_encounter,
+    get_encounter_creation_options,
+    list_appointment_candidates,
+    list_encounter_appointment_candidates,
     update_encounter,
 )
 from compass.notifications.models import EmailDelivery, Notification
@@ -116,8 +120,21 @@ def make_appointment(
 ):
     start = timezone.now() - timedelta(hours=2)
     kwargs = {}
-    if status == "CANCELLED":
-        kwargs = {"cancelled_at": timezone.now() - timedelta(hours=3), "cancelled_by": student}
+    if status == AppointmentStatus.CANCELLED:
+        kwargs = {
+            "cancelled_at": timezone.now() - timedelta(hours=3),
+            "cancelled_by": student,
+        }
+    elif status == AppointmentStatus.COMPLETED:
+        kwargs = {
+            "completed_at": timezone.now() - timedelta(minutes=30),
+            "completed_by": provider,
+        }
+    elif status == AppointmentStatus.NO_SHOW:
+        kwargs = {
+            "no_show_at": timezone.now() - timedelta(minutes=30),
+            "no_show_by": provider,
+        }
     return Appointment.objects.create(
         reference_code=f"APT-2026-{Appointment.objects.count() + 1:06d}",
         student=student,
