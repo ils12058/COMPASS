@@ -2109,6 +2109,7 @@ def test_inventory_frontend_readiness_openapi_contract() -> None:
     assert "PSGC_API_TOKEN" not in serialized
     assert "PSGC_API_BASE_URL" not in serialized
 
+
 def test_routine_interview_candidate_discovery_openapi_contract() -> None:
     schema = _generated_schema()
     schemas = schema["components"]["schemas"]
@@ -2225,4 +2226,3 @@ def test_routine_interview_candidate_discovery_openapi_contract() -> None:
         "audit",
     ):
         assert forbidden not in serialized
-
