@@ -332,11 +332,11 @@ def list_booking_services(
     qs = (
         Service.objects.filter(
             is_active=True,
+            appointment_policy__in=(AppointmentPolicy.OPTIONAL, AppointmentPolicy.REQUIRED),
             default_duration_minutes__isnull=False,
             provider_role_assignments__role__code__in=ELIGIBLE_PROVIDER_ROLE_CODES,
             delivery_mode_assignments__mode__in=DeliveryMode.values,
         )
-        .exclude(appointment_policy=AppointmentPolicy.NONE)
         .prefetch_related("delivery_mode_assignments")
         .distinct()
         .order_by("code", "id")
