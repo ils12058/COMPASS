@@ -562,6 +562,7 @@ def list_my_appointment_candidates(student: User) -> tuple[Appointment, ...]:
 
 def get_direct_creation_options(counselor: User) -> RoutineDirectCreationOptions:
     _validate_counselor(counselor)
+    _optional_form_revision()
     service = _active_counseling_service()
     _validate_counseling_provider(service=service, counselor=counselor)
     delivery_modes = tuple(
