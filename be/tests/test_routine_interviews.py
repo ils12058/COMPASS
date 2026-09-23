@@ -63,6 +63,7 @@ from compass.routine_interviews.services import (
     replace_my_intake,
     submit_my_intake,
 )
+from compass.service_catalog.models import ServiceProviderRole
 from compass.service_catalog.services import create_service, set_service_active
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
@@ -932,6 +933,24 @@ def test_student_appointment_candidate_discovery_is_routine_owned_filtered_priva
     older.save(update_fields=["starts_at", "ends_at", "updated_at"])
 
     newer = make_appointment(student=student, counselor=counselor, service=service)
+
+    inactive_counselor = make_user(
+        "candidate.inactive.counselor@example.edu",
+        "COUNSELOR",
+        active=False,
+    )
+    inactive_provider = make_appointment(
+        student=student,
+        counselor=inactive_counselor,
+        service=service,
+    )
+    unsupported_mode = make_appointment(
+        student=student,
+        counselor=counselor,
+        service=service,
+        mode="ONLINE",
+    )
+
     another_student = make_appointment(
         student=other_student,
         counselor=counselor,
@@ -999,6 +1018,8 @@ def test_student_appointment_candidate_discovery_is_routine_owned_filtered_priva
     assert counselor.email not in serialized
     assert "cancellation" not in serialized.lower()
     assert str(another_student.pk) not in serialized
+    assert str(inactive_provider.pk) not in serialized
+    assert str(unsupported_mode.pk) not in serialized
     assert str(cancelled.pk) not in serialized
     assert str(completed.pk) not in serialized
     assert str(no_show.pk) not in serialized
@@ -1055,6 +1076,26 @@ def test_student_appointment_candidate_prerequisite_conflicts_are_not_silent_emp
     assert non_current.status_code == 409
     assert non_current.json()["error"]["code"] == "current_student_required"
 
+    student.student_lifecycle_status = StudentLifecycleStatus.CURRENT
+    student.save(update_fields=["student_lifecycle_status", "updated_at"])
+    submit_current_inventory(student=student, context=context(student))
+    family = FormFamily.objects.get(key="routine_interview")
+    FormRevision.objects.create(
+        family=family,
+        official_code="UNSUPPORTED-ROUTINE",
+        official_revision="X",
+        internal_schema_version=999,
+        status="ACTIVE",
+    )
+    unsupported_revision = client.get(
+        "/api/v1/routine-interviews/me/appointment-candidates"
+    )
+    assert unsupported_revision.status_code == 409
+    assert (
+        unsupported_revision.json()["error"]["code"]
+        == "routine_interview_form_revision_unsupported"
+    )
+
 
 @pytest.mark.django_db
 def test_direct_options_and_student_candidates_preserve_create_direct_authority_without_org_scope():
@@ -1081,6 +1122,7 @@ def test_direct_options_and_student_candidates_preserve_create_direct_authority_
     missing = make_user("missing.ready.student@example.edu", "STUDENT")
     draft = make_user("draft.ready.student@example.edu", "STUDENT")
     graduated = make_user("graduated.ready.student@example.edu", "STUDENT")
+    former = make_user("former.ready.student@example.edu", "STUDENT")
     inactive = make_user("inactive.ready.student@example.edu", "STUDENT")
 
     ensure_current_inventory(student=draft, context=context(draft))
@@ -1088,7 +1130,7 @@ def test_direct_options_and_student_candidates_preserve_create_direct_authority_
         student=draft,
         values=minimum_normalized_inventory_values(program_id=submitted.program_id),
     )
-    for candidate in (graduated, inactive):
+    for candidate in (graduated, former, inactive):
         ensure_current_inventory(student=candidate, context=context(candidate))
         replace_current_inventory(
             student=candidate,
@@ -1097,6 +1139,8 @@ def test_direct_options_and_student_candidates_preserve_create_direct_authority_
         submit_current_inventory(student=candidate, context=context(candidate))
     graduated.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
     graduated.save(update_fields=["student_lifecycle_status", "updated_at"])
+    former.student_lifecycle_status = StudentLifecycleStatus.FORMER
+    former.save(update_fields=["student_lifecycle_status", "updated_at"])
     inactive.is_active = False
     inactive.save(update_fields=["is_active", "updated_at"])
 
@@ -1143,7 +1187,10 @@ def test_direct_options_and_student_candidates_preserve_create_direct_authority_
     assert str(missing.pk) not in ids
     assert str(draft.pk) not in ids
     assert str(graduated.pk) not in ids
+    assert str(former.pk) not in ids
     assert str(inactive.pk) not in ids
+    assert RoutineInterview.objects.count() == 0
+    assert CounselingEncounter.objects.count() == 0
 
     created = client.post(
         "/api/v1/routine-interviews",
@@ -1179,16 +1226,19 @@ def test_direct_options_fail_when_counselor_is_not_canonical_service_provider():
     sync_policy()
     admin = make_user("direct-config-admin@example.edu", "IT_ADMIN")
     counselor = make_user("direct-config-counselor@example.edu", "COUNSELOR")
-    create_counseling_service(admin)
-    service = create_counseling_service if False else None
-    del service
+    service = create_counseling_service(admin)
+    client = auth_client(counselor)
 
-    from compass.service_catalog.models import ServiceProviderRole
+    set_service_active(service_id=service.pk, is_active=False, context=context(admin))
+    inactive = client.get("/api/v1/routine-interviews/direct/options")
+    assert inactive.status_code == 409
+    assert inactive.json()["error"]["code"] == "routine_interview_appointment_invalid"
 
-    ServiceProviderRole.objects.filter(service__code="COUNSELING").delete()
-    response = auth_client(counselor).get("/api/v1/routine-interviews/direct/options")
-    assert response.status_code == 409
-    assert response.json()["error"]["code"] == "routine_interview_appointment_invalid"
+    set_service_active(service_id=service.pk, is_active=True, context=context(admin))
+    ServiceProviderRole.objects.filter(service_id=service.pk).delete()
+    ineligible = client.get("/api/v1/routine-interviews/direct/options")
+    assert ineligible.status_code == 409
+    assert ineligible.json()["error"]["code"] == "routine_interview_appointment_invalid"
 
 
 @pytest.mark.django_db
@@ -1222,6 +1272,22 @@ def test_direct_encounter_candidates_use_shared_matching_privacy_order_and_final
         },
     )
     submit_my_intake(student=student, routine_interview_id=item.pk, context=context(student))
+
+    other_service = create_service(
+        code="OTHER_ROUTINE_SERVICE",
+        name="Other Routine Service",
+        appointment_policy="NONE",
+        default_duration_minutes=None,
+        cancellation_cutoff_minutes=None,
+        delivery_modes=["IN_PERSON"],
+        provider_roles=["COUNSELOR"],
+        context=context(admin),
+    )
+    other_service = set_service_active(
+        service_id=other_service.pk,
+        is_active=True,
+        context=context(admin),
+    )
 
     end = timezone.now() - timedelta(minutes=5)
     older = CounselingEncounter.objects.create(
@@ -1286,6 +1352,17 @@ def test_direct_encounter_candidates_use_shared_matching_privacy_order_and_final
         appointment=None,
         entry_mode="WALK_IN",
         delivery_mode="ONLINE",
+        started_at=end - timedelta(minutes=30),
+        ended_at=end,
+        created_by=counselor,
+    )
+    wrong_service = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=other_service,
+        appointment=None,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
         started_at=end - timedelta(minutes=30),
         ended_at=end,
         created_by=counselor,
@@ -1363,17 +1440,17 @@ def test_direct_encounter_candidates_use_shared_matching_privacy_order_and_final
     assert page_two.status_code == 200
     assert [row["id"] for row in page_two.json()["items"]] == [str(older.pk)]
 
-    serialized = json.dumps(page_one.json())
+    serialized = json.dumps(page_one.json()).lower()
     for forbidden in (
-        "Private submitted intake",
-        "SUICIDAL",
+        "private submitted intake",
+        "suicidal",
         "special_concern",
         "recommendations",
         "shared_summary",
         "audit",
-        student.email,
+        student.email.lower(),
     ):
-        assert forbidden not in serialized.lower() if forbidden.islower() else forbidden not in serialized
+        assert forbidden not in serialized
     assert set(page_one.json()["items"][0]) == {
         "id",
         "entry_mode",
@@ -1388,6 +1465,7 @@ def test_direct_encounter_candidates_use_shared_matching_privacy_order_and_final
         wrong_counselor,
         wrong_entry,
         wrong_delivery,
+        wrong_service,
         future,
         appointment_backed,
         used,
