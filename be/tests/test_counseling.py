@@ -863,6 +863,18 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
     CounselorResponsibility.objects.create(college=counselor_college, counselor=counselor)
 
     service = create_counseling_service(admin, delivery_modes=["IN_PERSON"])
+    for capability_code in (
+        "appointments.manage",
+        "organization.view",
+        "inventory.view",
+    ):
+        UserCapabilityOverride.objects.create(
+            user=counselor,
+            capability=Capability.objects.get(code=capability_code),
+            effect="REVOKE",
+            reason="Counseling-owned discovery must not depend on generic access.",
+        )
+
     other_service = create_service(
         code="OTHER_APPOINTMENT_SERVICE",
         name="Other Appointment Service",
