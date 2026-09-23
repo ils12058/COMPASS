@@ -397,6 +397,49 @@ def test_success_response_bodies_are_explicitly_documented() -> None:
                 )
 
 
+def test_organization_person_projection_schema_is_dedicated_and_complete() -> None:
+    schema = _generated_schema()
+    components = schema["components"]["schemas"]
+    person = components["OrganizationPersonSummary"]
+
+    expected_fields = {
+        "id",
+        "institutional_id",
+        "full_name",
+        "email",
+        "role",
+        "is_active",
+    }
+    assert set(person["properties"]) == expected_fields
+    assert person["required"] == [
+        "id",
+        "institutional_id",
+        "full_name",
+        "email",
+        "role",
+        "is_active",
+    ]
+    assert {
+        option["type"] for option in person["properties"]["institutional_id"]["anyOf"]
+    } == {"string", "null"}
+
+    # Other domains intentionally keep their minimal person projection.
+    assert set(components["PersonSummary"]["properties"]) == {"id", "display_name"}
+
+    organization_ref = "#/components/schemas/OrganizationPersonSummary"
+    assert (
+        components["PersonListResponse"]["properties"]["items"]["items"]["$ref"]
+        == organization_ref
+    )
+    for response_name, field_names in {
+        "CounselorResponsibilityResponse": ("counselor",),
+        "StaffSupervisionResponse": ("staff", "supervisor"),
+        "StudentAffiliationResponse": ("student",),
+    }.items():
+        for field_name in field_names:
+            assert components[response_name]["properties"][field_name]["$ref"] == organization_ref
+
+
 def test_generated_schema_matches_committed_contract() -> None:
     assert CONTRACT_PATH.is_file()
     committed = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
