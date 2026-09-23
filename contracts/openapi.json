@@ -16430,6 +16430,63 @@
         "title": "RoutineAcademicYearSummary",
         "type": "object"
       },
+      "RoutineAppointmentCandidate": {
+        "additionalProperties": false,
+        "properties": {
+          "counselor": {
+            "$ref": "#/components/schemas/RoutinePersonSummary"
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "counselor",
+          "delivery_mode",
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "RoutineAppointmentCandidate",
+        "type": "object"
+      },
+      "RoutineAppointmentCandidateListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RoutineAppointmentCandidate"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "RoutineAppointmentCandidateListResponse",
+        "type": "object"
+      },
       "RoutineAppointmentEnsureRequest": {
         "additionalProperties": false,
         "properties": {
@@ -16516,6 +16573,173 @@
           "delivery_mode"
         ],
         "title": "RoutineDirectCreateRequest",
+        "type": "object"
+      },
+      "RoutineDirectCreationOptions": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_modes": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryMode"
+            },
+            "title": "Delivery Modes",
+            "type": "array"
+          },
+          "service": {
+            "$ref": "#/components/schemas/RoutineServiceSummary"
+          }
+        },
+        "required": [
+          "service",
+          "delivery_modes"
+        ],
+        "title": "RoutineDirectCreationOptions",
+        "type": "object"
+      },
+      "RoutineDirectStudentCandidate": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          },
+          "inventory_context": {
+            "$ref": "#/components/schemas/RoutineInventoryContext"
+          }
+        },
+        "required": [
+          "id",
+          "institutional_id",
+          "display_name",
+          "inventory_context"
+        ],
+        "title": "RoutineDirectStudentCandidate",
+        "type": "object"
+      },
+      "RoutineDirectStudentCandidatePage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RoutineDirectStudentCandidate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "RoutineDirectStudentCandidatePage",
+        "type": "object"
+      },
+      "RoutineEncounterCandidate": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineAppointmentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "entry_mode": {
+            "$ref": "#/components/schemas/RoutineEntryMode"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "entry_mode",
+          "delivery_mode",
+          "started_at",
+          "ended_at",
+          "appointment"
+        ],
+        "title": "RoutineEncounterCandidate",
+        "type": "object"
+      },
+      "RoutineEncounterCandidatePage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RoutineEncounterCandidate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "RoutineEncounterCandidatePage",
         "type": "object"
       },
       "RoutineEncounterSummary": {
@@ -16880,6 +17104,31 @@
           "id"
         ],
         "title": "RoutineReferenceResponse",
+        "type": "object"
+      },
+      "RoutineServiceSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "RoutineServiceSummary",
         "type": "object"
       },
       "SelfAssessmentItemValue": {
@@ -43172,6 +43421,167 @@
         ]
       }
     },
+    "/api/v1/routine-interviews/direct/options": {
+      "get": {
+        "operationId": "routineInterviewsGetDirectCreationOptions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineDirectCreationOptions"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews Get Direct Creation Options",
+        "tags": [
+          "routine-interviews"
+        ]
+      }
+    },
+    "/api/v1/routine-interviews/direct/student-candidates": {
+      "get": {
+        "operationId": "routineInterviewsListDirectStudentCandidates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineDirectStudentCandidatePage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews List Direct Student Candidates",
+        "tags": [
+          "routine-interviews"
+        ]
+      }
+    },
     "/api/v1/routine-interviews/me": {
       "get": {
         "operationId": "routineInterviewsListMine",
@@ -43299,6 +43709,63 @@
           }
         ],
         "summary": "Routine Interviews Ensure My For Appointment",
+        "tags": [
+          "routine-interviews"
+        ]
+      }
+    },
+    "/api/v1/routine-interviews/me/appointment-candidates": {
+      "get": {
+        "operationId": "routineInterviewsListMyAppointmentCandidates",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineAppointmentCandidateListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews List My Appointment Candidates",
         "tags": [
           "routine-interviews"
         ]
@@ -43641,6 +44108,114 @@
           }
         ],
         "summary": "Routine Interviews Get Assigned",
+        "tags": [
+          "routine-interviews"
+        ]
+      }
+    },
+    "/api/v1/routine-interviews/{routine_interview_id}/encounter-candidates": {
+      "get": {
+        "operationId": "routineInterviewsListEncounterCandidates",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "routine_interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Routine Interview Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineEncounterCandidatePage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Routine Interviews List Encounter Candidates",
         "tags": [
           "routine-interviews"
         ]

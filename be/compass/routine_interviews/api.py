@@ -41,9 +41,13 @@ from .services import (
     ensure_for_appointment,
     finalize_assigned_evaluation,
     get_assigned,
+    get_direct_creation_options,
     get_mine,
     list_assigned,
+    list_direct_student_candidates,
+    list_encounter_candidates,
     list_mine,
+    list_my_appointment_candidates,
     replace_assigned_evaluation,
     replace_my_intake,
     submit_my_intake,
@@ -178,6 +182,60 @@ class RoutineEncounterSummary(StrictSchema):
     id: UUID
     started_at: datetime
     ended_at: datetime
+
+
+class RoutineAppointmentCandidate(StrictSchema):
+    id: UUID
+    reference_code: str
+    counselor: RoutinePersonSummary
+    delivery_mode: DeliveryMode
+    starts_at: datetime
+    ends_at: datetime
+
+
+class RoutineAppointmentCandidateListResponse(StrictSchema):
+    items: list[RoutineAppointmentCandidate]
+
+
+class RoutineServiceSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
+class RoutineDirectCreationOptions(StrictSchema):
+    service: RoutineServiceSummary
+    delivery_modes: list[DeliveryMode]
+
+
+class RoutineDirectStudentCandidate(StrictSchema):
+    id: UUID
+    institutional_id: str | None
+    display_name: str
+    inventory_context: RoutineInventoryContext
+
+
+class RoutineDirectStudentCandidatePage(StrictSchema):
+    items: list[RoutineDirectStudentCandidate]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class RoutineEncounterCandidate(StrictSchema):
+    id: UUID
+    entry_mode: RoutineEntryMode
+    delivery_mode: DeliveryMode
+    started_at: datetime
+    ended_at: datetime
+    appointment: RoutineAppointmentSummary | None
+
+
+class RoutineEncounterCandidatePage(StrictSchema):
+    items: list[RoutineEncounterCandidate]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 class StudentRoutineSummaryResponse(StrictSchema):
@@ -335,6 +393,19 @@ def _inventory_context(item) -> dict[str, object]:
     }
 
 
+def _inventory_candidate_context(inventory, student) -> dict[str, object]:
+    return {
+        "id": inventory.pk,
+        "academic_year": {
+            "id": inventory.academic_year_id,
+            "label": inventory.academic_year.label,
+        },
+        "full_name": inventory.full_name_snapshot or student.get_full_name(),
+        "course": inventory.course_currently_enrolled,
+        "major": inventory.major,
+    }
+
+
 def _appointment(item) -> dict[str, object] | None:
     appointment = item.appointment
     if appointment is None:
@@ -355,6 +426,47 @@ def _encounter(item) -> dict[str, object] | None:
         "id": encounter.pk,
         "started_at": encounter.started_at,
         "ended_at": encounter.ended_at,
+    }
+
+
+def _appointment_candidate(item) -> dict[str, object]:
+    return {
+        "id": item.pk,
+        "reference_code": item.reference_code,
+        "counselor": _person(item.provider),
+        "delivery_mode": item.delivery_mode,
+        "starts_at": item.starts_at,
+        "ends_at": item.ends_at,
+    }
+
+
+def _direct_student_candidate(item) -> dict[str, object]:
+    return {
+        "id": item.student.pk,
+        "institutional_id": item.student.institutional_id,
+        "display_name": item.student.get_full_name(),
+        "inventory_context": _inventory_candidate_context(item.inventory, item.student),
+    }
+
+
+def _encounter_candidate(item) -> dict[str, object]:
+    appointment = item.appointment
+    return {
+        "id": item.pk,
+        "entry_mode": item.entry_mode,
+        "delivery_mode": item.delivery_mode,
+        "started_at": item.started_at,
+        "ended_at": item.ended_at,
+        "appointment": (
+            {
+                "id": appointment.pk,
+                "reference_code": appointment.reference_code,
+                "starts_at": appointment.starts_at,
+                "ends_at": appointment.ends_at,
+            }
+            if appointment is not None
+            else None
+        ),
     }
 
 
@@ -494,6 +606,26 @@ def routine_interviews_create_direct(
 
 
 @router.get(
+    "/me/appointment-candidates",
+    response=response_with_errors(
+        RoutineAppointmentCandidateListResponse,
+        401,
+        403,
+        409,
+    ),
+    auth=session_auth,
+    operation_id="routineInterviewsListMyAppointmentCandidates",
+)
+def routine_interviews_list_my_appointment_candidates(request):
+    _require_student(request, "routine_interviews.manage_self")
+    try:
+        items = list_my_appointment_candidates(request.auth_user)
+    except (RoutineInterviewError, CurrentAcademicYearNotConfigured) as exc:
+        _raise(exc)
+    return {"items": [_appointment_candidate(item) for item in items]}
+
+
+@router.get(
     "/me",
     response=response_with_errors(StudentRoutineListResponse, 401, 403),
     auth=session_auth,
@@ -569,6 +701,64 @@ def routine_interviews_submit_my_intake(request, routine_interview_id: UUID):
 
 
 @router.get(
+    "/direct/options",
+    response=response_with_errors(RoutineDirectCreationOptions, 401, 403, 409),
+    auth=session_auth,
+    operation_id="routineInterviewsGetDirectCreationOptions",
+)
+def routine_interviews_get_direct_creation_options(request):
+    _require_counselor(request, "routine_interviews.manage_assigned")
+    try:
+        result = get_direct_creation_options(request.auth_user)
+    except RoutineInterviewError as exc:
+        _raise(exc)
+    return {
+        "service": {
+            "id": result.service.pk,
+            "code": result.service.code,
+            "name": result.service.name,
+        },
+        "delivery_modes": list(result.delivery_modes),
+    }
+
+
+@router.get(
+    "/direct/student-candidates",
+    response=response_with_errors(
+        RoutineDirectStudentCandidatePage,
+        401,
+        403,
+        409,
+        422,
+    ),
+    auth=session_auth,
+    operation_id="routineInterviewsListDirectStudentCandidates",
+)
+def routine_interviews_list_direct_student_candidates(
+    request,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_counselor(request, "routine_interviews.manage_assigned")
+    try:
+        result = list_direct_student_candidates(
+            counselor=request.auth_user,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except (RoutineInterviewError, CurrentAcademicYearNotConfigured) as exc:
+        _raise(exc)
+    return {
+        "items": [_direct_student_candidate(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.get(
     "",
     response=response_with_errors(CounselorRoutinePageResponse, 401, 403, 422),
     auth=session_auth,
@@ -602,6 +792,43 @@ def routine_interviews_list_assigned(
         _raise(exc)
     return {
         "items": [_counselor_summary(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.get(
+    "/{routine_interview_id}/encounter-candidates",
+    response=response_with_errors(
+        RoutineEncounterCandidatePage,
+        401,
+        403,
+        404,
+        409,
+        422,
+    ),
+    auth=session_auth,
+    operation_id="routineInterviewsListEncounterCandidates",
+)
+def routine_interviews_list_encounter_candidates(
+    request,
+    routine_interview_id: UUID,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_counselor(request, "routine_interviews.manage_assigned")
+    try:
+        result = list_encounter_candidates(
+            counselor=request.auth_user,
+            routine_interview_id=routine_interview_id,
+            page=page,
+            page_size=page_size,
+        )
+    except RoutineInterviewError as exc:
+        _raise(exc)
+    return {
+        "items": [_encounter_candidate(item) for item in result.items],
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
