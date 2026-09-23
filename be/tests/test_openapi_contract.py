@@ -419,17 +419,17 @@ def test_organization_person_projection_schema_is_dedicated_and_complete() -> No
         "role",
         "is_active",
     ]
-    assert {
-        option["type"] for option in person["properties"]["institutional_id"]["anyOf"]
-    } == {"string", "null"}
+    assert {option["type"] for option in person["properties"]["institutional_id"]["anyOf"]} == {
+        "string",
+        "null",
+    }
 
     # Other domains intentionally keep their minimal person projection.
     assert set(components["PersonSummary"]["properties"]) == {"id", "display_name"}
 
     organization_ref = "#/components/schemas/OrganizationPersonSummary"
     assert (
-        components["PersonListResponse"]["properties"]["items"]["items"]["$ref"]
-        == organization_ref
+        components["PersonListResponse"]["properties"]["items"]["items"]["$ref"] == organization_ref
     )
     for response_name, field_names in {
         "CounselorResponsibilityResponse": ("counselor",),
