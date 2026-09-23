@@ -43,6 +43,8 @@ from .models import (
 
 MAX_EFFECTIVE_QUERY_DAYS = 31
 MAX_EXCEPTION_REASON_LENGTH = 255
+DEFAULT_PROVIDER_PAGE_SIZE = 20
+MAX_PROVIDER_PAGE_SIZE = 50
 OFFICE_ADVISORY_LOCK_KEY = 1_127_914_579
 
 WEEKDAY_TO_INDEX = {
@@ -104,6 +106,14 @@ class BaseAvailabilityResult:
     start_date: date
     end_date: date
     windows: tuple[Interval, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class AvailabilityProviderPage:
+    items: tuple[User, ...]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 def _mode_value(value: object) -> str:
@@ -236,6 +246,47 @@ def _validate_provider_for_new_configuration(provider: User) -> None:
         raise AvailabilityNotApplicable(
             "Availability may only be configured for Counselor providers."
         )
+
+
+def list_availability_providers(
+    *,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PROVIDER_PAGE_SIZE,
+) -> AvailabilityProviderPage:
+    if type(page) is not int or page < 1:
+        raise InvalidAvailabilityInput("page must be a positive integer")
+    if type(page_size) is not int or not 1 <= page_size <= MAX_PROVIDER_PAGE_SIZE:
+        raise InvalidAvailabilityInput(f"page_size must be between 1 and {MAX_PROVIDER_PAGE_SIZE}")
+
+    term = ""
+    if search is not None:
+        if not isinstance(search, str):
+            raise InvalidAvailabilityInput("search must be text")
+        term = search.strip()[:254]
+
+    legacy_gss = Q(role__code="GUIDANCE_SERVICES_STAFF") & (
+        Q(availability_windows__isnull=False) | Q(unavailability_exceptions__isnull=False)
+    )
+    queryset = (
+        User.objects.select_related("role")
+        .filter(Q(role__code="COUNSELOR") | legacy_gss)
+        .distinct()
+        .order_by("last_name", "first_name", "id")
+    )
+    if term:
+        queryset = queryset.filter(
+            Q(first_name__icontains=term) | Q(last_name__icontains=term) | Q(email__icontains=term)
+        )
+
+    offset = (page - 1) * page_size
+    rows = list(queryset[offset : offset + page_size + 1])
+    return AvailabilityProviderPage(
+        tuple(rows[:page_size]),
+        page,
+        page_size,
+        len(rows) > page_size,
+    )
 
 
 def list_office_weekly() -> tuple[OfficeAvailabilityWindow, ...]:

@@ -18,6 +18,7 @@ from compass.common.errors import APIError
 from compass.service_catalog.api import DeliveryMode
 
 from .services import (
+    DEFAULT_PROVIDER_PAGE_SIZE,
     AvailabilityConflict,
     AvailabilityError,
     AvailabilityNotApplicable,
@@ -26,6 +27,7 @@ from .services import (
     compute_base_availability,
     create_office_exception,
     create_provider_exception,
+    list_availability_providers,
     list_office_exceptions,
     list_office_weekly,
     list_provider_exceptions,
@@ -85,6 +87,21 @@ class OfficeWeeklyResponse(StrictSchema):
 class ProviderWeeklyResponse(StrictSchema):
     provider_id: UUID
     windows: list[WeeklyWindowResponse]
+
+
+class AvailabilityProviderSummary(StrictSchema):
+    id: UUID
+    full_name: str
+    email: str
+    role: str
+    is_active: bool
+
+
+class AvailabilityProviderListResponse(StrictSchema):
+    items: list[AvailabilityProviderSummary]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 class ExceptionCreateRequest(StrictSchema):
@@ -180,6 +197,16 @@ def _raise(exc: AvailabilityError) -> NoReturn:
     raise APIError(
         500, "internal_error", "The Availability operation could not be completed."
     ) from exc
+
+
+def _provider_summary(user) -> dict[str, object]:
+    return {
+        "id": user.pk,
+        "full_name": user.get_full_name(),
+        "email": user.email,
+        "role": user.role.code,
+        "is_active": user.is_active,
+    }
 
 
 def _window(item) -> dict[str, object]:
@@ -375,6 +402,35 @@ def my_exception_remove(request, exception_id: UUID):
     if not removed:
         raise APIError(404, "availability_resource_not_found", "The exception was not found.")
     return {"removed": True}
+
+
+@router.get(
+    "/providers",
+    response=response_with_errors(AvailabilityProviderListResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="availabilityListProviders",
+)
+def providers_list(
+    request,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PROVIDER_PAGE_SIZE,
+):
+    _require(request, "availability.manage")
+    try:
+        result = list_availability_providers(
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except AvailabilityError as exc:
+        _raise(exc)
+    return {
+        "items": [_provider_summary(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
 
 
 @router.get(
