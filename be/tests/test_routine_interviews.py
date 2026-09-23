@@ -1240,6 +1240,25 @@ def test_direct_options_fail_when_counselor_is_not_canonical_service_provider():
     assert ineligible.status_code == 409
     assert ineligible.json()["error"]["code"] == "routine_interview_appointment_invalid"
 
+    ServiceProviderRole.objects.create(
+        service=service,
+        role=Role.objects.get(code="COUNSELOR"),
+    )
+    family = FormFamily.objects.get(key="routine_interview")
+    FormRevision.objects.create(
+        family=family,
+        official_code="UNSUPPORTED-DIRECT-OPTIONS",
+        official_revision="X",
+        internal_schema_version=999,
+        status="ACTIVE",
+    )
+    unsupported_revision = client.get("/api/v1/routine-interviews/direct/options")
+    assert unsupported_revision.status_code == 409
+    assert (
+        unsupported_revision.json()["error"]["code"]
+        == "routine_interview_form_revision_unsupported"
+    )
+
 
 @pytest.mark.django_db
 def test_direct_encounter_candidates_use_shared_matching_privacy_order_and_finalized_lock():
