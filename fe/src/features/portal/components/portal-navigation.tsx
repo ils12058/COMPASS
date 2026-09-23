@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { hasAvailabilityWorkspace } from "@/features/availability/availability-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
+import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import {
   canManageOrganization,
   canViewAcademicYears,
@@ -29,8 +30,13 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const hasAvailability = hasAvailabilityWorkspace(user);
   const hasAppointments = getAppointmentAccess(user).hasWorkspace;
   const hasInventory = getInventoryAccess(user).hasWorkspace;
+  const routineAccess = getRoutineInterviewAccess(user);
   const hasGuidanceServices =
-    hasServices || hasAvailability || hasAppointments || hasInventory;
+    hasServices ||
+    hasAvailability ||
+    hasAppointments ||
+    hasInventory ||
+    routineAccess.hasWorkspace;
   const hasPlatformOperations = user.capabilities.includes(
     "platform_operations.view",
   );
@@ -227,6 +233,25 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
                 }
               >
                 Individual Inventory
+              </Link>
+            ) : null}
+            {routineAccess.hasWorkspace ? (
+              <Link
+                href="/portal/routine-interviews"
+                onClick={onNavigate}
+                aria-current={
+                  pathname.startsWith("/portal/routine-interviews")
+                    ? "page"
+                    : undefined
+                }
+                className={
+                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                  (pathname.startsWith("/portal/routine-interviews")
+                    ? "bg-on-brand/12"
+                    : "hover:bg-on-brand/10")
+                }
+              >
+                Routine Interviews
               </Link>
             ) : null}
           </div>

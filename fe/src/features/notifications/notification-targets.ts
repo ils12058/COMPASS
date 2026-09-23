@@ -11,5 +11,11 @@ export function notificationDestination(notification: NotificationResponse, curr
     // reloads the canonical self-service status and record before rendering.
     return "/portal/inventory/current";
   }
+  if (
+    notification.target_type === "ROUTINE_INTERVIEW" &&
+    notification.target_id
+  ) {
+    return "/portal/routine-interviews/" + notification.target_id;
+  }
   return null;
 }
