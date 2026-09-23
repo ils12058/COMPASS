@@ -45,13 +45,20 @@ def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)
 
 
-def make_user(email: str, role: str, *, active: bool = True) -> User:
+def make_user(
+    email: str,
+    role: str,
+    *,
+    active: bool = True,
+    first_name: str = "Test",
+    last_name: str = "User",
+) -> User:
     return User.objects.create_user(
         email=email,
         password="a-test-password",
         role=Role.objects.get(code=role),
-        first_name="Test",
-        last_name="User",
+        first_name=first_name,
+        last_name=last_name,
         is_active=active,
     )
 
@@ -785,3 +792,170 @@ def test_exception_database_constraints_reject_nonpositive_ranges():
                 mode_scope="ALL",
                 created_by=actor,
             )
+
+
+@pytest.mark.django_db
+def test_provider_discovery_requires_only_availability_manage_and_includes_inactive_counselor():
+    sync_policy()
+    manager = make_user(
+        "manager@example.edu",
+        "COUNSELOR",
+        first_name="Morgan",
+        last_name="Manager",
+    )
+    UserCapabilityOverride.objects.create(
+        user=manager,
+        capability=Capability.objects.get(code="availability.manage"),
+        effect="GRANT",
+        reason="availability administration",
+    )
+    inactive = make_user(
+        "inactive@example.edu",
+        "COUNSELOR",
+        active=False,
+        first_name="Ina",
+        last_name="Inactive",
+    )
+
+    assert manager.has_capability("availability.manage")
+    assert not manager.has_capability("organization.manage")
+    assert not manager.has_capability("accounts.manage")
+
+    response = auth_client(manager).get("/api/v1/availability/providers")
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body) == {"items", "page", "page_size", "has_next"}
+    assert body["page"] == 1
+    assert body["page_size"] == 20
+
+    by_id = {item["id"]: item for item in body["items"]}
+    assert str(inactive.pk) in by_id
+    assert by_id[str(inactive.pk)]["is_active"] is False
+    assert by_id[str(inactive.pk)]["role"] == "COUNSELOR"
+    assert set(by_id[str(inactive.pk)]) == {
+        "id",
+        "full_name",
+        "email",
+        "role",
+        "is_active",
+    }
+
+
+@pytest.mark.django_db
+def test_provider_discovery_denies_ordinary_counselor_without_manage():
+    sync_policy()
+    counselor = make_user("ordinary@example.edu", "COUNSELOR")
+    assert not counselor.has_capability("availability.manage")
+
+    response = auth_client(counselor).get("/api/v1/availability/providers")
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "permission_denied"
+
+
+@pytest.mark.django_db
+def test_provider_discovery_supports_search_and_canonical_pagination():
+    sync_policy()
+    admin = make_user("admin@example.edu", "IT_ADMIN")
+    alpha = make_user(
+        "alpha.counselor@example.edu",
+        "COUNSELOR",
+        first_name="Alice",
+        last_name="Alpha",
+    )
+    beta = make_user(
+        "beta.counselor@example.edu",
+        "COUNSELOR",
+        first_name="Bob",
+        last_name="Beta",
+    )
+    gamma = make_user(
+        "gamma.counselor@example.edu",
+        "COUNSELOR",
+        first_name="Carol",
+        last_name="Gamma",
+    )
+    client = auth_client(admin)
+
+    by_last_name = client.get("/api/v1/availability/providers", {"search": "Beta"})
+    assert by_last_name.status_code == 200
+    assert [item["id"] for item in by_last_name.json()["items"]] == [str(beta.pk)]
+
+    by_first_name = client.get("/api/v1/availability/providers", {"search": "Carol"})
+    assert [item["id"] for item in by_first_name.json()["items"]] == [str(gamma.pk)]
+
+    by_email = client.get(
+        "/api/v1/availability/providers",
+        {"search": "alpha.counselor@example.edu"},
+    )
+    assert [item["id"] for item in by_email.json()["items"]] == [str(alpha.pk)]
+
+    first_page = client.get("/api/v1/availability/providers", {"page": 1, "page_size": 2})
+    assert first_page.status_code == 200
+    assert len(first_page.json()["items"]) == 2
+    assert first_page.json()["has_next"] is True
+
+    second_page = client.get("/api/v1/availability/providers", {"page": 2, "page_size": 2})
+    assert second_page.status_code == 200
+    assert len(second_page.json()["items"]) == 1
+    assert second_page.json()["has_next"] is False
+
+
+@pytest.mark.django_db
+def test_provider_discovery_exposes_only_legacy_gss_with_availability_and_does_not_broaden_eligibility():
+    sync_policy()
+    admin = make_user("admin@example.edu", "IT_ADMIN")
+    clean_gss = make_user(
+        "clean-gss@example.edu",
+        "GUIDANCE_SERVICES_STAFF",
+        first_name="Clean",
+        last_name="Staff",
+    )
+    legacy_gss = make_user(
+        "legacy-gss@example.edu",
+        "GUIDANCE_SERVICES_STAFF",
+        first_name="Legacy",
+        last_name="Staff",
+    )
+    ProviderAvailabilityWindow.objects.create(
+        provider=legacy_gss,
+        weekday="MONDAY",
+        start_time=time(8),
+        end_time=time(12),
+        mode_scope="ALL",
+    )
+
+    client = auth_client(admin, recent_mfa=True)
+    response = client.get("/api/v1/availability/providers")
+    assert response.status_code == 200
+    ids = {item["id"] for item in response.json()["items"]}
+    assert str(legacy_gss.pk) in ids
+    assert str(clean_gss.pk) not in ids
+
+    rejected = client.put(
+        f"/api/v1/availability/providers/{legacy_gss.pk}/weekly",
+        data=json.dumps(
+            {
+                "windows": [
+                    {
+                        "weekday": "TUESDAY",
+                        "start_time": "08:00",
+                        "end_time": "12:00",
+                        "mode_scope": "ALL",
+                    }
+                ]
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert rejected.status_code == 409
+    assert rejected.json()["error"]["code"] == "availability_not_applicable"
+
+    cleaned = client.put(
+        f"/api/v1/availability/providers/{legacy_gss.pk}/weekly",
+        data=json.dumps({"windows": []}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert cleaned.status_code == 200
+    assert cleaned.json()["windows"] == []
