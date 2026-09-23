@@ -38,9 +38,9 @@ from compass.inventory.services import (
     require_current_submitted_inventory,
 )
 from compass.notifications.policy import NotificationEvent
-from compass.organization.academic_years import get_current_academic_year
 from compass.notifications.services import create_notification_for_event
-from compass.service_catalog.models import DeliveryMode
+from compass.organization.academic_years import get_current_academic_year
+from compass.service_catalog.models import DeliveryMode, Service
 from compass.service_catalog.services import (
     provider_role_eligible,
     service_allows_provider_role,
@@ -161,7 +161,7 @@ class RoutineInterviewPage:
 
 @dataclass(frozen=True, slots=True)
 class RoutineDirectCreationOptions:
-    service: object
+    service: Service
     delivery_modes: tuple[str, ...]
 
 
