@@ -826,6 +826,7 @@ def test_head_designation_has_no_blanket_read_and_patch_cannot_change_identity()
     )
     assert response.status_code == 422
 
+
 @pytest.mark.django_db
 def test_encounter_options_and_new_appointment_candidates_mirror_creation_authority():
     sync_policy()
@@ -1179,9 +1180,7 @@ def test_historical_encounter_appointment_candidates_mirror_update_authority():
     service.provider_role_assignments.all().delete()
 
     client = auth_client(counselor)
-    response = client.get(
-        f"/api/v1/counseling/encounters/{item.pk}/appointment-candidates"
-    )
+    response = client.get(f"/api/v1/counseling/encounters/{item.pk}/appointment-candidates")
     assert response.status_code == 200
     ids = {row["id"] for row in response.json()["items"]}
     assert ids == {str(current.pk), str(alternative.pk)}
@@ -1230,4 +1229,3 @@ def test_historical_encounter_appointment_candidates_mirror_update_authority():
     )
     assert corrected.appointment_id == alternative.pk
     assert corrected.delivery_mode == "ONLINE"
-
