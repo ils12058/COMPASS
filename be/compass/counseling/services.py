@@ -214,9 +214,7 @@ def _validate_service_for_new_encounter(
 
 
 def _configured_delivery_modes(service: Service) -> tuple[str, ...]:
-    return tuple(
-        service.delivery_mode_assignments.order_by("mode").values_list("mode", flat=True)
-    )
+    return tuple(service.delivery_mode_assignments.order_by("mode").values_list("mode", flat=True))
 
 
 def _clean_search(search: str | None) -> str:
@@ -518,11 +516,7 @@ def list_encounter_appointment_candidates(
     _validate_active_counselor(counselor)
     page, page_size = _validate_page(page, page_size)
 
-    encounter = (
-        _encounter_queryset()
-        .filter(pk=encounter_id, counselor_id=counselor.pk)
-        .first()
-    )
+    encounter = _encounter_queryset().filter(pk=encounter_id, counselor_id=counselor.pk).first()
     if encounter is None:
         raise CounselingNotFound("The requested Counseling Encounter was not found.")
     if encounter.service.code != COUNSELING_SERVICE_CODE:
