@@ -105,8 +105,15 @@ export function PeoplePicker({
                   checked={value === person.id}
                   onChange={() => onChange(person.id)}
                 />
-                <span className="text-sm font-medium text-ink">
-                  {person.display_name}
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-ink">
+                    {person.full_name}
+                  </span>
+                  <span className="block truncate text-xs text-muted">
+                    {person.institutional_id
+                      ? `${person.institutional_id} · ${person.email}`
+                      : person.email}
+                  </span>
                 </span>
               </label>
             ))}
