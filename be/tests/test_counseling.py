@@ -1043,6 +1043,23 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
 
 
 @pytest.mark.django_db
+def test_encounter_options_fail_explicitly_for_missing_or_inactive_canonical_service():
+    sync_policy()
+    admin = make_user("options-config-admin@example.edu", "IT_ADMIN")
+    counselor = make_user("options-config-counselor@example.edu", "COUNSELOR")
+    client = auth_client(counselor)
+
+    missing = client.get("/api/v1/counseling/encounter-options")
+    assert missing.status_code == 409
+    assert missing.json()["error"]["code"] == "counseling_service_not_configured"
+
+    create_counseling_service(admin, active=False)
+    inactive = client.get("/api/v1/counseling/encounter-options")
+    assert inactive.status_code == 409
+    assert inactive.json()["error"]["code"] == "counseling_service_not_configured"
+
+
+@pytest.mark.django_db
 def test_counseling_student_search_includes_institutional_id_without_org_or_lifecycle_scope():
     sync_policy()
     admin = make_user("student-search-admin@example.edu", "IT_ADMIN")
