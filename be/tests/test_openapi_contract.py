@@ -203,6 +203,10 @@ EXPECTED_OPERATION_IDS = {
     "inventoryListStudentHistory",
     "inventoryGetRecord",
     "inventoryReopenRecord",
+    "referenceDataListPSGCRegions",
+    "referenceDataListPSGCProvinces",
+    "referenceDataListPSGCCitiesMunicipalities",
+    "referenceDataListPSGCBarangays",
     "studentSupportGetContext",
     "studentSupportListStudents",
     "reportsGetStudentProfile",
@@ -493,6 +497,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "academic-years",
         "institutional-forms",
         "inventory",
+        "reference-data",
         "student-support",
         "reports",
         "good-moral",
@@ -2022,3 +2027,80 @@ def test_appointment_list_ordering_openapi_contract() -> None:
         assert ordering["required"] is False
         ordering_parameter_schema = ordering["schema"]
         assert ordering_parameter_schema.get("default") == "START_DESC"
+
+def test_inventory_frontend_readiness_openapi_contract() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    expected_reference_operations = {
+        "/api/v1/reference-data/psgc/regions": "referenceDataListPSGCRegions",
+        "/api/v1/reference-data/psgc/provinces": "referenceDataListPSGCProvinces",
+        "/api/v1/reference-data/psgc/cities-municipalities": (
+            "referenceDataListPSGCCitiesMunicipalities"
+        ),
+        "/api/v1/reference-data/psgc/barangays": "referenceDataListPSGCBarangays",
+    }
+    for path, operation_id in expected_reference_operations.items():
+        operation = _operation(schema, path, "get")
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["reference-data"]
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        assert _response_statuses(operation) == {200, 401, 422, 503}
+        response = operation["responses"]["200"]["content"]["application/json"]["schema"]
+        assert response["$ref"].endswith("/PSGCReferenceListResponse")
+        for status in ("401", "422", "503"):
+            error = operation["responses"][status]["content"]["application/json"]["schema"]
+            assert error["$ref"].endswith("/APIErrorResponse")
+
+    reference_item = schemas["PSGCReferenceItem"]
+    assert set(reference_item["properties"]) == {"code", "name"}
+    assert set(reference_item["required"]) == {"code", "name"}
+
+    reference_list = schemas["PSGCReferenceListResponse"]
+    assert set(reference_list["properties"]) == {"version", "items"}
+    assert set(reference_list["required"]) == {"version", "items"}
+
+    provinces = _operation(schema, "/api/v1/reference-data/psgc/provinces", "get")
+    province_parameters = {parameter["name"]: parameter for parameter in provinces["parameters"]}
+    assert province_parameters["region_code"]["required"] is True
+
+    cities = _operation(
+        schema,
+        "/api/v1/reference-data/psgc/cities-municipalities",
+        "get",
+    )
+    city_parameters = {parameter["name"]: parameter for parameter in cities["parameters"]}
+    assert city_parameters["region_code"]["required"] is True
+    assert city_parameters["province_code"]["required"] is False
+
+    barangays = _operation(schema, "/api/v1/reference-data/psgc/barangays", "get")
+    barangay_parameters = {parameter["name"]: parameter for parameter in barangays["parameters"]}
+    assert barangay_parameters["city_municipality_code"]["required"] is True
+
+    correction = schemas["InventoryCorrectionSummary"]
+    assert set(correction["properties"]) == {"requested_at", "message"}
+    assert set(correction["required"]) == {"requested_at", "message"}
+    assert "reopened_by" not in correction["properties"]
+    assert "email" not in correction["properties"]
+
+    status = schemas["InventoryStatusResponse"]
+    assert {"correction_pending", "latest_correction"} <= set(status["properties"])
+
+    inventory = schemas["InventoryResponse"]
+    assert {"correction_pending", "latest_correction"} <= set(inventory["properties"])
+
+    summary = schemas["InventorySummaryResponse"]
+    assert "correction_pending" in summary["properties"]
+    assert "latest_correction" not in summary["properties"]
+
+    reopen = schemas["InventoryReopenRequest"]
+    reason = reopen["properties"]["reason"]
+    assert "Student-visible correction guidance" in reason["description"]
+
+    submit = _operation(schema, "/api/v1/inventory/me/current/submit", "post")
+    assert _response_statuses(submit) == {200, 401, 403, 404, 409, 422, 503}
+
+    serialized = json.dumps(schema)
+    assert "PSGC_API_TOKEN" not in serialized
+    assert "PSGC_API_BASE_URL" not in serialized
+
