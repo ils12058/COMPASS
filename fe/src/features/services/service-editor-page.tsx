@@ -441,10 +441,7 @@ export function CreateServicePage() {
       description: values.description,
       appointment_policy: values.appointmentPolicy,
       default_duration_minutes: nullableInteger(values.defaultDuration),
-      cancellation_cutoff_minutes:
-        values.appointmentPolicy === AppointmentPolicy.NONE
-          ? null
-          : nullableInteger(values.cancellationCutoff),
+      cancellation_cutoff_minutes: nullableInteger(values.cancellationCutoff),
       requires_current_inventory: values.requiresCurrentInventory,
       delivery_modes: configuredDeliveryModes(values),
       provider_roles: values.counselor
@@ -519,10 +516,7 @@ export function EditServicePage() {
   async function submit(values: ServiceFormState) {
     const changes: ServiceUpdateRequest = {};
     const nextDuration = nullableInteger(values.defaultDuration);
-    const nextCutoff =
-      values.appointmentPolicy === AppointmentPolicy.NONE
-        ? null
-        : nullableInteger(values.cancellationCutoff);
+    const nextCutoff = nullableInteger(values.cancellationCutoff);
     const nextModes = configuredDeliveryModes(values);
     const hadCounselor = service.provider_roles.includes(
       ProviderRoleCode.COUNSELOR,
