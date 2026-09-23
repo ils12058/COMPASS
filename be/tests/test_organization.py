@@ -252,6 +252,7 @@ def test_default_routing_prefers_college_then_head_and_reports_head_ambiguity():
 @pytest.mark.django_db
 def test_disabled_supervisor_keeps_relationship_but_staff_operational_scope_is_empty():
     sync_policy()
+    admin = make_user("relationship-admin@example.edu", "IT_ADMIN")
     campus = Campus.objects.create(code="M", name="Main")
     college = College.objects.create(campus=campus, code="C", name="College")
     counselor = make_user("c@example.edu", "COUNSELOR")
@@ -263,6 +264,11 @@ def test_disabled_supervisor_keeps_relationship_but_staff_operational_scope_is_e
     counselor.save(update_fields=["is_active", "updated_at"])
     assert StaffSupervision.objects.filter(staff=staff).exists()
     assert effective_responsibility_colleges(staff) == ()
+
+    response = auth_client(admin).get("/api/v1/organization/staff-supervisions")
+    assert response.status_code == 200
+    assert response.json()["items"][0]["supervisor"]["id"] == str(counselor.pk)
+    assert response.json()["items"][0]["supervisor"]["is_active"] is False
 
 
 @pytest.mark.django_db
@@ -382,6 +388,37 @@ def test_manager_api_uses_capability_and_recent_mfa_not_role_shortcut():
 
 
 @pytest.mark.django_db
+def test_eligible_people_projection_is_complete_and_excludes_inactive_users():
+    sync_policy()
+    admin = make_user("people-admin@example.edu", "IT_ADMIN")
+    active = make_user("active-counselor@example.edu", "COUNSELOR")
+    inactive = make_user("inactive-counselor@example.edu", "COUNSELOR", active=False)
+    active.institutional_id = "EMP-001"
+    active.first_name = "Active"
+    active.last_name = "Counselor"
+    active.save(update_fields=["institutional_id", "first_name", "last_name", "updated_at"])
+
+    response = auth_client(admin).get(
+        "/api/v1/organization/people",
+        {"role": "COUNSELOR"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["items"] == [
+        {
+            "id": str(active.pk),
+            "institutional_id": "EMP-001",
+            "full_name": "Active Counselor",
+            "email": active.email,
+            "role": "COUNSELOR",
+            "is_active": True,
+        }
+    ]
+    assert str(inactive.pk) not in {item["id"] for item in payload["items"]}
+
+
+@pytest.mark.django_db
 def test_dpo_institutional_officer_is_never_head_guidance_fallback():
     sync_policy()
     campus = Campus.objects.create(code="DPO-FALLBACK", name="DPO Fallback")
@@ -442,6 +479,7 @@ def test_student_affiliation_collection_is_paginated_searchable_and_filterable()
     )
     assert searched.status_code == 200
     assert [row["student"]["id"] for row in searched.json()["items"]] == [str(students[1].pk)]
+    assert searched.json()["items"][0]["student"]["institutional_id"] == "AFF-002"
 
     by_college = client.get(
         "/api/v1/organization/student-affiliations",
