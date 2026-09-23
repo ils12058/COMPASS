@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { hasAvailabilityWorkspace } from "@/features/availability/availability-shared";
+import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 
 export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
@@ -16,7 +17,8 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
     user.capabilities.includes("organization.manage");
   const hasServices = user.capabilities.includes("services.view");
   const hasAvailability = hasAvailabilityWorkspace(user);
-  const hasGuidanceServices = hasServices || hasAvailability;
+  const hasAppointments = getAppointmentAccess(user).hasWorkspace;
+  const hasGuidanceServices = hasServices || hasAvailability || hasAppointments;
   const hasPlatformOperations = user.capabilities.includes(
     "platform_operations.view",
   );
@@ -122,6 +124,23 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
                 }
               >
                 Services
+              </Link>
+            ) : null}
+            {hasAppointments ? (
+              <Link
+                href="/portal/appointments"
+                onClick={onNavigate}
+                aria-current={
+                  pathname.startsWith("/portal/appointments") ? "page" : undefined
+                }
+                className={
+                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                  (pathname.startsWith("/portal/appointments")
+                    ? "bg-on-brand/12"
+                    : "hover:bg-on-brand/10")
+                }
+              >
+                Appointments
               </Link>
             ) : null}
             {hasAvailability ? (
