@@ -1533,7 +1533,9 @@ def test_managed_appointment_ordering_composes_with_search_filters_and_scope():
         search="2026-ORDER",
         ordering=AppointmentListOrdering.START_ASC,
     )
-    assert [row.pk for row in direct.items] == [item.pk for item in sorted(visible, key=lambda x: x.starts_at)]
+    assert [row.pk for row in direct.items] == [
+        item.pk for item in sorted(visible, key=lambda row: row.starts_at)
+    ]
 
     invalid = client.get("/api/v1/appointments", {"ordering": "RANDOM"})
     assert invalid.status_code == 422
