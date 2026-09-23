@@ -120,8 +120,9 @@ class ProgramUpdateRequest(StrictSchema):
     name: str | None = None
 
 
-class PersonSummary(StrictSchema):
+class OrganizationPersonSummary(StrictSchema):
     id: UUID
+    institutional_id: str | None
     full_name: str
     email: str
     role: str
@@ -129,7 +130,7 @@ class PersonSummary(StrictSchema):
 
 
 class PersonListResponse(StrictSchema):
-    items: list[PersonSummary]
+    items: list[OrganizationPersonSummary]
     page: int
     page_size: int
     has_next: bool
@@ -149,7 +150,7 @@ class StudentAffiliationRequest(StrictSchema):
 
 class CounselorResponsibilityResponse(StrictSchema):
     college: CollegeSummary
-    counselor: PersonSummary
+    counselor: OrganizationPersonSummary
 
 
 class CounselorResponsibilityListResponse(StrictSchema):
@@ -157,8 +158,8 @@ class CounselorResponsibilityListResponse(StrictSchema):
 
 
 class StaffSupervisionResponse(StrictSchema):
-    staff: PersonSummary
-    supervisor: PersonSummary
+    staff: OrganizationPersonSummary
+    supervisor: OrganizationPersonSummary
 
 
 class StaffSupervisionListResponse(StrictSchema):
@@ -166,7 +167,7 @@ class StaffSupervisionListResponse(StrictSchema):
 
 
 class StudentAffiliationResponse(StrictSchema):
-    student: PersonSummary
+    student: OrganizationPersonSummary
     college: CollegeSummary
 
 
@@ -245,6 +246,7 @@ def _program(program) -> dict[str, object]:
 def _person(user) -> dict[str, object]:
     return {
         "id": user.pk,
+        "institutional_id": user.institutional_id,
         "full_name": user.get_full_name(),
         "email": user.email,
         "role": user.role.code,
