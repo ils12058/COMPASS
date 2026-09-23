@@ -224,10 +224,6 @@ export function ServicesSearchField() {
   const [value, setValue] = useState(current);
 
   useEffect(() => {
-    setValue(current);
-  }, [current]);
-
-  useEffect(() => {
     if (value === current) return;
     const timer = window.setTimeout(() => {
       const next = new URLSearchParams(searchParams.toString());
