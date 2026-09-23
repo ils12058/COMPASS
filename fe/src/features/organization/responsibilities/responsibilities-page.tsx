@@ -22,6 +22,7 @@ import { PeoplePicker } from "@/features/organization/components/people-picker";
 import {
   PageHeading,
   QueryError,
+  StatusBadge,
   TableSkeleton,
 } from "@/features/organization/components/organization-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -290,7 +291,21 @@ export function ResponsibilitiesPage() {
                     </th>
                     <td className="px-4 py-4">{college.campus.name}</td>
                     <td className="px-4 py-4">
-                      {assignment?.counselor.display_name ?? "Not assigned"}
+                      {assignment ? (
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-ink">
+                              {assignment.counselor.full_name}
+                            </span>
+                            <StatusBadge active={assignment.counselor.is_active} />
+                          </div>
+                          <p className="text-xs text-muted">
+                            {assignment.counselor.email}
+                          </p>
+                        </div>
+                      ) : (
+                        "Not assigned"
+                      )}
                     </td>
                     <td className="px-4 py-2">
                       <div className="flex justify-end gap-1">
@@ -388,11 +403,27 @@ export function ResponsibilitiesPage() {
               <tbody>
                 {supervisions.data.data.items.map((item) => (
                   <tr key={item.staff.id} className="border-t border-border">
-                    <th scope="row" className="px-4 py-4 font-semibold text-ink">
-                      {item.staff.display_name}
+                    <th scope="row" className="px-4 py-4">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-ink">
+                            {item.staff.full_name}
+                          </span>
+                          <StatusBadge active={item.staff.is_active} />
+                        </div>
+                        <p className="text-xs text-muted">{item.staff.email}</p>
+                      </div>
                     </th>
                     <td className="px-4 py-4">
-                      {item.supervisor.display_name}
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium text-ink">
+                            {item.supervisor.full_name}
+                          </span>
+                          <StatusBadge active={item.supervisor.is_active} />
+                        </div>
+                        <p className="text-xs text-muted">{item.supervisor.email}</p>
+                      </div>
                     </td>
                     <td className="px-4 py-2">
                       <div className="flex justify-end gap-1">
@@ -401,7 +432,7 @@ export function ResponsibilitiesPage() {
                           onClick={() =>
                             openStaff(
                               item.staff.id,
-                              item.staff.display_name,
+                              item.staff.full_name,
                               item.supervisor.id,
                             )
                           }
@@ -413,7 +444,7 @@ export function ResponsibilitiesPage() {
                           onClick={() =>
                             setStaffRemoval({
                               staffId: item.staff.id,
-                              label: item.staff.display_name,
+                              label: item.staff.full_name,
                             })
                           }
                         >
