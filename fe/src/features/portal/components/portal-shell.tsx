@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
+import { PublicMaintenanceNotice } from "@/features/platform/platform-public-maintenance-notice";
 import { PortalNavigation } from "@/features/portal/components/portal-navigation";
 import { PortalUserMenu } from "@/features/portal/components/portal-user-menu";
 
@@ -40,7 +41,10 @@ export function PortalShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-12">{children}</main>
+        <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-12">
+          <PublicMaintenanceNotice />
+          {children}
+        </main>
       </div>
     </div>
   );

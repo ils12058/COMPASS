@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { PublicMaintenanceNotice } from "@/features/platform/platform-public-maintenance-notice";
+
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-dvh bg-surface lg:grid-cols-[minmax(0,1.05fr)_minmax(24rem,0.95fr)]">
@@ -17,6 +19,10 @@ export function AuthShell({ children }: { children: ReactNode }) {
           <Image src="/brand/compass-mark.svg" width={34} height={34} alt="" aria-hidden="true" />
           <span className="font-heading text-lg font-bold tracking-[0.08em] text-brand-strong">COMPASS</span>
         </Link>
+
+        <div className="mx-auto mt-7 w-full max-w-md">
+          <PublicMaintenanceNotice />
+        </div>
 
         <div className="flex flex-1 items-center py-10">
           <div className="w-full max-w-md">{children}</div>
