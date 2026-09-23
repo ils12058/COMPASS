@@ -130,6 +130,7 @@ export function MyAvailabilityPage() {
           />
         ) : (
           <WeeklyScheduleEditor
+            key={weekly.data.data.windows.map((window) => window.id).join("|")}
             windows={weekly.data.data.windows}
             canMutate={canMutate}
             pending={replaceWeekly.isPending}
@@ -259,6 +260,7 @@ export function OfficeAvailabilityPage() {
           />
         ) : (
           <WeeklyScheduleEditor
+            key={weekly.data.data.windows.map((window) => window.id).join("|")}
             windows={weekly.data.data.windows}
             canMutate
             pending={replaceWeekly.isPending}
@@ -428,6 +430,7 @@ function ProviderWorkspace({
           />
         ) : (
           <WeeklyScheduleEditor
+            key={weekly.data.data.windows.map((window) => window.id).join("|")}
             windows={weekly.data.data.windows}
             canMutate
             cleanupOnly={!operational}
