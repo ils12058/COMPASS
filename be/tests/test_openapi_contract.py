@@ -251,6 +251,10 @@ EXPECTED_OPERATION_IDS = {
     "exitInterviewsReopen",
     "routineInterviewsEnsureMyForAppointment",
     "routineInterviewsCreateDirect",
+    "routineInterviewsListMyAppointmentCandidates",
+    "routineInterviewsGetDirectCreationOptions",
+    "routineInterviewsListDirectStudentCandidates",
+    "routineInterviewsListEncounterCandidates",
     "routineInterviewsListMine",
     "routineInterviewsGetMine",
     "routineInterviewsReplaceMyIntake",
@@ -2104,3 +2108,121 @@ def test_inventory_frontend_readiness_openapi_contract() -> None:
     serialized = json.dumps(schema)
     assert "PSGC_API_TOKEN" not in serialized
     assert "PSGC_API_BASE_URL" not in serialized
+
+def test_routine_interview_candidate_discovery_openapi_contract() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    expected = {
+        "/api/v1/routine-interviews/me/appointment-candidates": (
+            "routineInterviewsListMyAppointmentCandidates",
+            {200, 401, 403, 409},
+        ),
+        "/api/v1/routine-interviews/direct/options": (
+            "routineInterviewsGetDirectCreationOptions",
+            {200, 401, 403, 409},
+        ),
+        "/api/v1/routine-interviews/direct/student-candidates": (
+            "routineInterviewsListDirectStudentCandidates",
+            {200, 401, 403, 409, 422},
+        ),
+        "/api/v1/routine-interviews/{routine_interview_id}/encounter-candidates": (
+            "routineInterviewsListEncounterCandidates",
+            {200, 401, 403, 404, 409, 422},
+        ),
+    }
+    for path, (operation_id, statuses) in expected.items():
+        operation = _operation(schema, path, "get")
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["routine-interviews"]
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        assert statuses <= _response_statuses(operation)
+        for status in statuses - {200}:
+            response_schema = operation["responses"][str(status)]["content"]["application/json"][
+                "schema"
+            ]
+            assert response_schema["$ref"].endswith("/APIErrorResponse")
+
+    direct_students = _operation(
+        schema,
+        "/api/v1/routine-interviews/direct/student-candidates",
+        "get",
+    )
+    assert {parameter["name"] for parameter in direct_students["parameters"]} == {
+        "search",
+        "page",
+        "page_size",
+    }
+
+    encounter_candidates = _operation(
+        schema,
+        "/api/v1/routine-interviews/{routine_interview_id}/encounter-candidates",
+        "get",
+    )
+    assert {parameter["name"] for parameter in encounter_candidates["parameters"]} == {
+        "routine_interview_id",
+        "page",
+        "page_size",
+    }
+
+    appointment = schemas["RoutineAppointmentCandidate"]
+    assert set(appointment["properties"]) == {
+        "id",
+        "reference_code",
+        "counselor",
+        "delivery_mode",
+        "starts_at",
+        "ends_at",
+    }
+
+    options = schemas["RoutineDirectCreationOptions"]
+    assert set(options["properties"]) == {"service", "delivery_modes"}
+    service = schemas["RoutineServiceSummary"]
+    assert set(service["properties"]) == {"id", "code", "name"}
+
+    student = schemas["RoutineDirectStudentCandidate"]
+    assert set(student["properties"]) == {
+        "id",
+        "institutional_id",
+        "display_name",
+        "inventory_context",
+    }
+    assert set(schemas["RoutineInventoryContext"]["properties"]) == {
+        "id",
+        "academic_year",
+        "full_name",
+        "course",
+        "major",
+    }
+
+    encounter = schemas["RoutineEncounterCandidate"]
+    assert set(encounter["properties"]) == {
+        "id",
+        "entry_mode",
+        "delivery_mode",
+        "started_at",
+        "ended_at",
+        "appointment",
+    }
+
+    serialized = json.dumps(
+        {
+            "appointment": appointment,
+            "student": student,
+            "encounter": encounter,
+        }
+    ).lower()
+    for forbidden in (
+        "email",
+        "phone",
+        "address",
+        "support_profile",
+        "concerns",
+        "suicidal",
+        "special_concern",
+        "recommendations",
+        "shared_summary",
+        "audit",
+    ):
+        assert forbidden not in serialized
+
