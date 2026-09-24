@@ -26,5 +26,8 @@ export function notificationDestination(notification: NotificationResponse, curr
   if (notification.target_type === "E_COUNSELING" && notification.target_id) {
     return "/portal/e-counseling/" + notification.target_id;
   }
+  if (notification.target_type === "CALL_SLIP" && notification.target_id) {
+    return "/portal/call-slips/" + notification.target_id;
+  }
   return null;
 }
