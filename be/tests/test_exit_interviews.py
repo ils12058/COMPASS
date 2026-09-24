@@ -906,9 +906,7 @@ def test_reopen_does_not_refresh_profile_or_inventory_snapshots():
 
     # The Student-private reopened draft retains saved form-local values rather than
     # refreshing from today's profile or Inventory.
-    student_draft = student_client.get(
-        f"/api/v1/exit-interviews/me/{submitted['id']}"
-    )
+    student_draft = student_client.get(f"/api/v1/exit-interviews/me/{submitted['id']}")
     assert student_draft.status_code == 200
     assert student_draft.json()["student_name"] == "Form Local Student"
     assert student_draft.json()["course"] == "BS Information Systems"
