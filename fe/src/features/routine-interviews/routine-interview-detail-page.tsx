@@ -12,6 +12,7 @@ import {
   RoutineCounselorEvaluationWorkspace,
 } from "@/features/routine-interviews/routine-counselor-evaluation";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
+import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import {
   RoutineContextSummary,
   RoutinePageHeading,
@@ -40,12 +41,13 @@ export function RoutineInterviewDetailPage({
 }) {
   const { user } = usePortalSession();
   const access = getRoutineInterviewAccess(user);
+  const counselingAccess = getCounselingAccess(user);
 
   if (access.isStudent && access.canViewSelf) {
     return <StudentRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageSelf} />;
   }
   if (access.isCounselor && (access.canViewAssigned || access.canManageAssigned)) {
-    return <CounselorRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageAssigned} />;
+    return <CounselorRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageAssigned} canOpenCounselingWorkspace={counselingAccess.canViewAssigned || counselingAccess.canManageAssigned} />;
   }
   return <RoutineUnavailable message="This Routine Interview is not available within your current access." />;
 }
@@ -120,9 +122,11 @@ function StudentRoutineDetail({
 function CounselorRoutineDetail({
   routineInterviewId,
   canManage,
+  canOpenCounselingWorkspace,
 }: {
   routineInterviewId: string;
   canManage: boolean;
+  canOpenCounselingWorkspace: boolean;
 }) {
   const query = useRoutineInterviewsGetAssigned(routineInterviewId, {
     query: { retry: false },
@@ -141,12 +145,20 @@ function CounselorRoutineDetail({
     );
   }
 
+  const workspaceHref = canOpenCounselingWorkspace
+    ? detail.appointment
+      ? `/portal/counseling/workspace/appointment/${detail.appointment.id}`
+      : detail.intake_status === "SUBMITTED" && ["WALK_IN", "CALLED_IN", "REFERRED"].includes(detail.entry_mode)
+        ? `/portal/counseling/workspace/routine-interview/${detail.id}`
+        : null
+    : null;
+
   return (
     <div>
       <RoutinePageHeading
         title="Routine Interview"
         description="Review the Student-authored Intake separately from the Counselor Evaluation."
-        action={<RoutineBackLink />}
+        action={<div className="flex flex-wrap gap-2">{workspaceHref ? <Link href={workspaceHref} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open Counseling workspace</Link> : null}<RoutineBackLink /></div>}
       />
       <RoutineContextSummary
         personName={detail.inventory_context.full_name}
