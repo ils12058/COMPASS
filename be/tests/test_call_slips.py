@@ -1363,7 +1363,9 @@ def test_atomic_referral_call_slip_reuses_existing_action_and_only_accepts_match
     )
     assert created.referral_id == null_referral.pk
     assert ReferralAction.objects.filter(referral=null_referral).count() == 1
-    assert AuditEvent.objects.filter(action="referral.action_recorded").count() == before_action_audits
+    assert (
+        AuditEvent.objects.filter(action="referral.action_recorded").count() == before_action_audits
+    )
 
     matching_referral = create_referral_for(
         head,
@@ -1911,4 +1913,3 @@ def test_atomic_referral_call_slip_rejects_void_referral_bad_action_chronology_a
     )
     assert missing_key.status_code == 422
     assert not ReferralAction.objects.filter(referral=missing_key_referral).exists()
-
