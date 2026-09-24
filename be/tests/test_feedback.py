@@ -767,3 +767,486 @@ def test_csm_review_filters_service_dates_and_preserves_client_type_contract():
     )
     assert overlong_service.status_code == 422
     assert head.get(f"/api/v1/feedback/csm/responses/{first_id}").status_code == 200
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("path", "payload_factory"),
+    [
+        ("/api/v1/feedback/customer-feedback", valid_f14_payload),
+        ("/api/v1/feedback/csm", valid_csm_payload),
+    ],
+)
+def test_feedback_submission_requires_idempotency_key(path, payload_factory):
+    sync_policy()
+    student = make_user("missing-idempotency-key@example.edu")
+    client = auth_client(student)
+
+    response = client.post(
+        path,
+        data=json.dumps(payload_factory()),
+        content_type="application/json",
+        **csrf(client),
+    )
+
+    assert response.status_code == 422
+    assert CustomerFeedbackResponse.objects.count() == 0
+    assert ClientSatisfactionResponse.objects.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("instrument", ["customer_feedback", "csm"])
+def test_feedback_exact_replay_returns_original_success_once(monkeypatch, instrument):
+    sync_policy()
+    student = make_user(f"replay-{instrument}@example.edu")
+    client = auth_client(student)
+    redis = FakeRedis()
+    store = RedisIdempotencyStore(redis, ttl_seconds=60)
+    use_idempotency_store(monkeypatch, store)
+
+    if instrument == "customer_feedback":
+        path = "/api/v1/feedback/customer-feedback"
+        payload = valid_f14_payload()
+        model = CustomerFeedbackResponse
+        action = "feedback.customer_feedback_submitted"
+    else:
+        path = "/api/v1/feedback/csm"
+        payload = valid_csm_payload()
+        model = ClientSatisfactionResponse
+        action = "feedback.csm_submitted"
+
+    key = f"exact-replay-{instrument}"
+    first = post_json(client, path, payload, idempotency_key=key)
+    replay = post_json(client, path, payload, idempotency_key=key)
+
+    assert first.status_code == 201
+    assert replay.status_code == 201
+    assert replay.content == first.content
+    assert replay["Content-Type"] == first["Content-Type"]
+    assert replay.json() == first.json()
+    assert set(first.json()) == {"id", "submitted_at", "submitted"}
+    assert first.json()["submitted"] is True
+    assert model.objects.count() == 1
+    assert AuditEvent.objects.filter(action=action).count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("instrument", ["customer_feedback", "csm"])
+def test_feedback_same_key_different_body_conflicts_without_second_mutation(monkeypatch, instrument):
+    sync_policy()
+    student = make_user(f"conflict-{instrument}@example.edu")
+    client = auth_client(student)
+    store = RedisIdempotencyStore(FakeRedis(), ttl_seconds=60)
+    use_idempotency_store(monkeypatch, store)
+
+    if instrument == "customer_feedback":
+        path = "/api/v1/feedback/customer-feedback"
+        first_payload = valid_f14_payload()
+        second_payload = {**first_payload, "office_visit_count": 3}
+        model = CustomerFeedbackResponse
+        action = "feedback.customer_feedback_submitted"
+    else:
+        path = "/api/v1/feedback/csm"
+        first_payload = valid_csm_payload()
+        second_payload = {**first_payload, "age": 22}
+        model = ClientSatisfactionResponse
+        action = "feedback.csm_submitted"
+
+    key = f"conflict-{instrument}"
+    assert post_json(client, path, first_payload, idempotency_key=key).status_code == 201
+    conflict = post_json(client, path, second_payload, idempotency_key=key)
+
+    assert conflict.status_code == 409
+    assert conflict.json()["error"]["code"] == "idempotency_key_conflict"
+    assert model.objects.count() == 1
+    assert AuditEvent.objects.filter(action=action).count() == 1
+
+
+@pytest.mark.django_db
+def test_feedback_same_key_is_independent_across_actors(monkeypatch):
+    sync_policy()
+    first_student = make_user("same-key-actor-a@example.edu")
+    second_student = make_user("same-key-actor-b@example.edu")
+    store = RedisIdempotencyStore(FakeRedis(), ttl_seconds=60)
+    use_idempotency_store(monkeypatch, store)
+    key = "same-key-different-actor"
+    payload = valid_csm_payload()
+
+    first = post_json(
+        auth_client(first_student),
+        "/api/v1/feedback/csm",
+        payload,
+        idempotency_key=key,
+    )
+    second = post_json(
+        auth_client(second_student),
+        "/api/v1/feedback/csm",
+        payload,
+        idempotency_key=key,
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert first.json()["id"] != second.json()["id"]
+    assert ClientSatisfactionResponse.objects.count() == 2
+    assert AuditEvent.objects.filter(action="feedback.csm_submitted").count() == 2
+
+
+@pytest.mark.django_db
+def test_feedback_same_key_is_independent_across_feedback_routes(monkeypatch):
+    sync_policy()
+    student = make_user("same-key-route@example.edu")
+    client = auth_client(student)
+    redis = FakeRedis()
+    store = RedisIdempotencyStore(redis, ttl_seconds=60)
+    use_idempotency_store(monkeypatch, store)
+    key = "same-key-different-feedback-route"
+
+    f14 = post_json(
+        client,
+        "/api/v1/feedback/customer-feedback",
+        valid_f14_payload(),
+        idempotency_key=key,
+    )
+    csm = post_json(
+        client,
+        "/api/v1/feedback/csm",
+        valid_csm_payload(),
+        idempotency_key=key,
+    )
+
+    assert f14.status_code == 201
+    assert csm.status_code == 201
+    assert CustomerFeedbackResponse.objects.count() == 1
+    assert ClientSatisfactionResponse.objects.count() == 1
+    assert len(redis.records) == 2
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("instrument", ["customer_feedback", "csm"])
+def test_feedback_new_key_allows_new_legitimate_submission(monkeypatch, instrument):
+    sync_policy()
+    student = make_user(f"new-key-{instrument}@example.edu")
+    client = auth_client(student)
+    store = RedisIdempotencyStore(FakeRedis(), ttl_seconds=60)
+    use_idempotency_store(monkeypatch, store)
+
+    if instrument == "customer_feedback":
+        path = "/api/v1/feedback/customer-feedback"
+        payload = valid_f14_payload()
+        model = CustomerFeedbackResponse
+    else:
+        path = "/api/v1/feedback/csm"
+        payload = valid_csm_payload()
+        model = ClientSatisfactionResponse
+
+    first = post_json(client, path, payload, idempotency_key=f"{instrument}-intent-a")
+    second = post_json(client, path, payload, idempotency_key=f"{instrument}-intent-b")
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert first.json()["id"] != second.json()["id"]
+    assert model.objects.count() == 2
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("path", "payload_factory"),
+    [
+        ("/api/v1/feedback/customer-feedback", valid_f14_payload),
+        ("/api/v1/feedback/csm", valid_csm_payload),
+    ],
+)
+def test_feedback_in_progress_request_does_not_mutate(monkeypatch, path, payload_factory):
+    sync_policy()
+    student = make_user("in-progress-feedback@example.edu")
+    client = auth_client(student)
+    store = ControlledIdempotencyStore(outcome="in_progress")
+    use_idempotency_store(monkeypatch, store)
+
+    response = post_json(
+        client,
+        path,
+        payload_factory(),
+        idempotency_key="feedback-in-progress",
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "idempotency_in_progress"
+    assert store.begin_calls == 1
+    assert store.complete_calls == 0
+    assert store.abandon_calls == 0
+    assert CustomerFeedbackResponse.objects.count() == 0
+    assert ClientSatisfactionResponse.objects.count() == 0
+    assert not AuditEvent.objects.filter(
+        action__in=["feedback.customer_feedback_submitted", "feedback.csm_submitted"]
+    ).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("path", "payload_factory"),
+    [
+        ("/api/v1/feedback/customer-feedback", valid_f14_payload),
+        ("/api/v1/feedback/csm", valid_csm_payload),
+    ],
+)
+def test_feedback_idempotency_unavailable_before_execution_fails_closed(
+    monkeypatch,
+    path,
+    payload_factory,
+):
+    sync_policy()
+    student = make_user("unavailable-feedback@example.edu")
+    client = auth_client(student)
+    store = ControlledIdempotencyStore(
+        begin_error=IdempotencyUnavailable("Redis unavailable")
+    )
+    use_idempotency_store(monkeypatch, store)
+
+    response = post_json(
+        client,
+        path,
+        payload_factory(),
+        idempotency_key="feedback-unavailable",
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "idempotency_unavailable"
+    assert CustomerFeedbackResponse.objects.count() == 0
+    assert ClientSatisfactionResponse.objects.count() == 0
+    assert not AuditEvent.objects.filter(
+        action__in=["feedback.customer_feedback_submitted", "feedback.csm_submitted"]
+    ).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("path", "payload_factory"),
+    [
+        ("/api/v1/feedback/customer-feedback", valid_f14_payload),
+        ("/api/v1/feedback/csm", valid_csm_payload),
+    ],
+)
+def test_feedback_invalid_idempotency_key_does_not_mutate(
+    monkeypatch,
+    path,
+    payload_factory,
+):
+    sync_policy()
+    student = make_user("invalid-key-feedback@example.edu")
+    client = auth_client(student)
+    use_idempotency_store(
+        monkeypatch,
+        RedisIdempotencyStore(FakeRedis(), ttl_seconds=60),
+    )
+
+    response = post_json(
+        client,
+        path,
+        payload_factory(),
+        idempotency_key=" invalid-key ",
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_idempotency_key"
+    assert CustomerFeedbackResponse.objects.count() == 0
+    assert ClientSatisfactionResponse.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_customer_feedback_domain_failure_abandons_key_for_retry(monkeypatch):
+    sync_policy()
+    student = make_user("f14-abandon@example.edu")
+    client = auth_client(student)
+    redis = FakeRedis()
+    store = RedisIdempotencyStore(redis, ttl_seconds=60)
+    use_idempotency_store(monkeypatch, store)
+    revision = FormRevision.objects.get(family__key="customer_feedback")
+    revision.status = "INACTIVE"
+    revision.save(update_fields=["status", "updated_at"])
+    key = "f14-domain-failure-release"
+    payload = valid_f14_payload()
+
+    failed = post_json(client, "/api/v1/feedback/customer-feedback", payload, idempotency_key=key)
+    assert failed.status_code == 409
+    assert failed.json()["error"]["code"] == "feedback_configuration_conflict"
+    assert redis.records == {}
+    assert CustomerFeedbackResponse.objects.count() == 0
+
+    revision.status = "ACTIVE"
+    revision.save(update_fields=["status", "updated_at"])
+    retried = post_json(client, "/api/v1/feedback/customer-feedback", payload, idempotency_key=key)
+
+    assert retried.status_code == 201
+    assert CustomerFeedbackResponse.objects.count() == 1
+    assert AuditEvent.objects.filter(action="feedback.customer_feedback_submitted").count() == 1
+
+
+@pytest.mark.django_db
+def test_csm_domain_validation_abandons_key_for_corrected_retry(monkeypatch):
+    sync_policy()
+    student = make_user("csm-abandon@example.edu")
+    client = auth_client(student)
+    redis = FakeRedis()
+    store = RedisIdempotencyStore(redis, ttl_seconds=60)
+    use_idempotency_store(monkeypatch, store)
+    key = "csm-domain-failure-release"
+    invalid = valid_csm_payload()
+    invalid.update({"cc1": 4, "cc2": 1, "cc3": 4})
+
+    failed = post_json(client, "/api/v1/feedback/csm", invalid, idempotency_key=key)
+    assert failed.status_code == 422
+    assert failed.json()["error"]["code"] == "invalid_feedback_request"
+    assert redis.records == {}
+    assert ClientSatisfactionResponse.objects.count() == 0
+
+    corrected = valid_csm_payload()
+    corrected.update({"cc1": 4, "cc2": 5, "cc3": 4})
+    retried = post_json(client, "/api/v1/feedback/csm", corrected, idempotency_key=key)
+
+    assert retried.status_code == 201
+    assert ClientSatisfactionResponse.objects.count() == 1
+    assert AuditEvent.objects.filter(action="feedback.csm_submitted").count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("instrument", ["customer_feedback", "csm"])
+def test_feedback_complete_failure_returns_uncertain_503_without_rollback(
+    monkeypatch,
+    instrument,
+):
+    sync_policy()
+    student = make_user(f"complete-failure-{instrument}@example.edu")
+    client = auth_client(student)
+    store = ControlledIdempotencyStore(
+        complete_error=IdempotencyUnavailable("completion unavailable")
+    )
+    use_idempotency_store(monkeypatch, store)
+
+    if instrument == "customer_feedback":
+        path = "/api/v1/feedback/customer-feedback"
+        payload = valid_f14_payload()
+        model = CustomerFeedbackResponse
+        action = "feedback.customer_feedback_submitted"
+    else:
+        path = "/api/v1/feedback/csm"
+        payload = valid_csm_payload()
+        model = ClientSatisfactionResponse
+        action = "feedback.csm_submitted"
+
+    response = post_json(
+        client,
+        path,
+        payload,
+        idempotency_key=f"complete-failure-{instrument}",
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "idempotency_unavailable"
+    assert store.begin_calls == 1
+    assert store.complete_calls == 1
+    assert store.abandon_calls == 0
+    assert model.objects.count() == 1
+    assert AuditEvent.objects.filter(action=action).count() == 1
+
+
+@pytest.mark.django_db
+def test_feedback_abandon_failure_returns_idempotency_unavailable(monkeypatch):
+    sync_policy()
+    student = make_user("abandon-failure@example.edu")
+    client = auth_client(student)
+    store = ControlledIdempotencyStore(
+        abandon_error=IdempotencyUnavailable("abandon unavailable")
+    )
+    use_idempotency_store(monkeypatch, store)
+    invalid = valid_csm_payload()
+    invalid.update({"cc1": 4, "cc2": 1, "cc3": 4})
+
+    response = post_json(
+        client,
+        "/api/v1/feedback/csm",
+        invalid,
+        idempotency_key="abandon-failure",
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "idempotency_unavailable"
+    assert store.abandon_calls == 1
+    assert ClientSatisfactionResponse.objects.count() == 0
+    assert not AuditEvent.objects.filter(action="feedback.csm_submitted").exists()
+
+
+@pytest.mark.django_db
+def test_feedback_replay_storage_contains_only_submission_response_and_digests(monkeypatch):
+    sync_policy()
+    student = make_user("privacy-replay@example.edu")
+    student.current_address = "Sensitive Home Address"
+    student.contact_number = "09991234567"
+    student.save(update_fields=["current_address", "contact_number", "updated_at"])
+    client = auth_client(student)
+    redis = FakeRedis()
+    store = RedisIdempotencyStore(redis, ttl_seconds=60)
+    use_idempotency_store(monkeypatch, store)
+
+    f14_payload = valid_f14_payload()
+    f14_payload["additional_feedback"] = "Sensitive F14 answer"
+    csm_payload = valid_csm_payload()
+    csm_payload["suggestions"] = "Sensitive CSM suggestion"
+    csm_payload["email"] = "optional-sensitive@example.edu"
+    raw_key = "raw-feedback-key-must-not-persist"
+
+    assert (
+        post_json(
+            client,
+            "/api/v1/feedback/customer-feedback",
+            f14_payload,
+            idempotency_key=raw_key,
+        ).status_code
+        == 201
+    )
+    assert (
+        post_json(
+            client,
+            "/api/v1/feedback/csm",
+            csm_payload,
+            idempotency_key=raw_key,
+        ).status_code
+        == 201
+    )
+
+    assert len(redis.records) == 2
+    for redis_key, encoded in redis.records.items():
+        record = json.loads(encoded)
+        assert raw_key not in redis_key
+        assert raw_key not in encoded
+        assert len(record["fingerprint"]) == 64
+        assert all(char in "0123456789abcdef" for char in record["fingerprint"])
+        replay_body = json.loads(base64.b64decode(record["body_b64"]))
+        assert set(replay_body) == {"id", "submitted_at", "submitted"}
+        assert replay_body["submitted"] is True
+
+    serialized_records = json.dumps(redis.records)
+    for forbidden in (
+        "Sensitive F14 answer",
+        "Sensitive CSM suggestion",
+        "optional-sensitive@example.edu",
+        "Sensitive Home Address",
+        "09991234567",
+        student.email,
+    ):
+        assert forbidden not in serialized_records
+
+    audit_metadata = json.dumps(
+        list(
+            AuditEvent.objects.filter(
+                action__in=[
+                    "feedback.customer_feedback_submitted",
+                    "feedback.csm_submitted",
+                ]
+            ).values_list("metadata", flat=True)
+        )
+    )
+    assert raw_key not in audit_metadata
+    assert raw_key not in str(CustomerFeedbackResponse.objects.get().__dict__)
+    assert raw_key not in str(ClientSatisfactionResponse.objects.get().__dict__)
+
