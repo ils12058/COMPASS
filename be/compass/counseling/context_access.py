@@ -97,7 +97,11 @@ def _resolve_appointment_context(
         appointment is None
         or appointment.service.code != COUNSELING_SERVICE_CODE
         or appointment.provider_id != actor.pk
-        or appointment.status != AppointmentStatus.SCHEDULED
+        or appointment.status
+        not in {
+            AppointmentStatus.SCHEDULED,
+            AppointmentStatus.COMPLETED,
+        }
     ):
         raise _not_found()
 

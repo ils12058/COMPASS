@@ -3830,6 +3830,115 @@
         "title": "ContextSupportIndicatorResponse",
         "type": "object"
       },
+      "CounselingAppointmentCandidate": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "student": {
+            "$ref": "#/components/schemas/CounselingAppointmentCandidateStudent"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "student",
+          "delivery_mode",
+          "starts_at",
+          "ends_at",
+          "status"
+        ],
+        "title": "CounselingAppointmentCandidate",
+        "type": "object"
+      },
+      "CounselingAppointmentCandidatePage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CounselingAppointmentCandidate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CounselingAppointmentCandidatePage",
+        "type": "object"
+      },
+      "CounselingAppointmentCandidateStudent": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          }
+        },
+        "required": [
+          "id",
+          "institutional_id",
+          "display_name"
+        ],
+        "title": "CounselingAppointmentCandidateStudent",
+        "type": "object"
+      },
       "CounselingAssignedSharedSummaryResponse": {
         "additionalProperties": false,
         "properties": {
@@ -4135,6 +4244,100 @@
         "title": "CounselingCreateRequest",
         "type": "object"
       },
+      "CounselingEncounterAppointmentCandidate": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "delivery_mode",
+          "starts_at",
+          "ends_at",
+          "status"
+        ],
+        "title": "CounselingEncounterAppointmentCandidate",
+        "type": "object"
+      },
+      "CounselingEncounterAppointmentCandidatePage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CounselingEncounterAppointmentCandidate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CounselingEncounterAppointmentCandidatePage",
+        "type": "object"
+      },
+      "CounselingEncounterCreationOptions": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_modes": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryMode"
+            },
+            "title": "Delivery Modes",
+            "type": "array"
+          },
+          "service": {
+            "$ref": "#/components/schemas/ServiceSummaryResponse"
+          }
+        },
+        "required": [
+          "service",
+          "delivery_modes"
+        ],
+        "title": "CounselingEncounterCreationOptions",
+        "type": "object"
+      },
       "CounselingEncounterPageResponse": {
         "additionalProperties": false,
         "properties": {
@@ -4324,10 +4527,22 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
           }
         },
         "required": [
           "id",
+          "institutional_id",
           "display_name"
         ],
         "title": "CounselingStudentResponse",
@@ -27561,6 +27776,110 @@
         ]
       }
     },
+    "/api/v1/counseling/appointment-candidates": {
+      "get": {
+        "operationId": "counselingListAppointmentCandidates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingAppointmentCandidatePage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling List Appointment Candidates",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
     "/api/v1/counseling/context/{anchor_type}/{anchor_id}": {
       "get": {
         "operationId": "counselingContextGetOverview",
@@ -28036,6 +28355,63 @@
         ]
       }
     },
+    "/api/v1/counseling/encounter-options": {
+      "get": {
+        "operationId": "counselingGetEncounterCreationOptions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingEncounterCreationOptions"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Get Encounter Creation Options",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
     "/api/v1/counseling/encounters": {
       "post": {
         "operationId": "counselingCreateEncounter",
@@ -28282,6 +28658,114 @@
           }
         ],
         "summary": "Counseling Update Encounter",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/encounters/{encounter_id}/appointment-candidates": {
+      "get": {
+        "operationId": "counselingListEncounterAppointmentCandidates",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "encounter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Encounter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingEncounterAppointmentCandidatePage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling List Encounter Appointment Candidates",
         "tags": [
           "counseling"
         ]

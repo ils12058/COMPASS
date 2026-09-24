@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -77,6 +77,20 @@ class CounselingPage:
 @dataclass(frozen=True, slots=True)
 class StudentPage:
     items: tuple[User, ...]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+@dataclass(frozen=True, slots=True)
+class CounselingEncounterCreationOptions:
+    service: Service
+    delivery_modes: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class CounselingAppointmentCandidatePage:
+    items: tuple[Appointment, ...]
     page: int
     page_size: int
     has_next: bool
@@ -197,6 +211,23 @@ def _validate_service_for_new_encounter(
         raise CounselingNotPermitted(
             "The COUNSELING Service does not support the requested delivery mode."
         )
+
+
+def _configured_delivery_modes(service: Service) -> tuple[str, ...]:
+    return tuple(service.delivery_mode_assignments.order_by("mode").values_list("mode", flat=True))
+
+
+def _clean_search(search: str | None) -> str:
+    if search is None:
+        return ""
+    if not isinstance(search, str):
+        raise InvalidCounselingInput("search must be text")
+    cleaned = search.strip()
+    if len(cleaned) > MAX_STUDENT_SEARCH_LENGTH:
+        raise InvalidCounselingInput(
+            f"search must be at most {MAX_STUDENT_SEARCH_LENGTH} characters"
+        )
+    return cleaned
 
 
 def _validate_appointment_link(
@@ -404,6 +435,126 @@ def _date_bounds(
     return start, end
 
 
+def get_encounter_creation_options(
+    counselor: User,
+) -> CounselingEncounterCreationOptions:
+    _validate_active_counselor(counselor)
+    service = get_counseling_service(require_active=True)
+    if not provider_role_eligible(service, counselor):
+        raise CounselingNotPermitted("The COUNSELING Service does not permit this Counselor.")
+    delivery_modes = _configured_delivery_modes(service)
+    if not delivery_modes:
+        raise CounselingConfigurationConflict(
+            "The canonical COUNSELING Service has no configured delivery mode."
+        )
+    return CounselingEncounterCreationOptions(
+        service=service,
+        delivery_modes=delivery_modes,
+    )
+
+
+def list_appointment_candidates(
+    *,
+    counselor: User,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> CounselingAppointmentCandidatePage:
+    _validate_active_counselor(counselor)
+    page, page_size = _validate_page(page, page_size)
+    term = _clean_search(search)
+
+    options = get_encounter_creation_options(counselor)
+    delivery_modes = options.delivery_modes
+
+    used = CounselingEncounter.objects.filter(appointment_id=OuterRef("pk"))
+    queryset = (
+        Appointment.objects.select_related(
+            "student",
+            "student__role",
+            "provider",
+            "provider__role",
+            "service",
+        )
+        .filter(
+            provider_id=counselor.pk,
+            student__is_active=True,
+            student__role__code="STUDENT",
+            service_id=options.service.pk,
+            status__in=(AppointmentStatus.SCHEDULED, AppointmentStatus.COMPLETED),
+            delivery_mode__in=delivery_modes,
+        )
+        .annotate(_counseling_encounter_exists=Exists(used))
+        .filter(_counseling_encounter_exists=False)
+    )
+    for token in term.split():
+        queryset = queryset.filter(
+            Q(reference_code__icontains=token)
+            | Q(student__institutional_id__icontains=token)
+            | Q(student__first_name__icontains=token)
+            | Q(student__middle_name__icontains=token)
+            | Q(student__last_name__icontains=token)
+        )
+    queryset = queryset.order_by("-starts_at", "id")
+    offset = (page - 1) * page_size
+    rows = list(queryset[offset : offset + page_size + 1])
+    return CounselingAppointmentCandidatePage(
+        items=tuple(rows[:page_size]),
+        page=page,
+        page_size=page_size,
+        has_next=len(rows) > page_size,
+    )
+
+
+def list_encounter_appointment_candidates(
+    *,
+    counselor: User,
+    encounter_id: UUID,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> CounselingAppointmentCandidatePage:
+    _validate_active_counselor(counselor)
+    page, page_size = _validate_page(page, page_size)
+
+    encounter = _encounter_queryset().filter(pk=encounter_id, counselor_id=counselor.pk).first()
+    if encounter is None:
+        raise CounselingNotFound("The requested Counseling Encounter was not found.")
+    if encounter.service.code != COUNSELING_SERVICE_CODE:
+        raise CounselingConfigurationConflict(
+            "The Encounter is not bound to the canonical COUNSELING Service."
+        )
+
+    used_elsewhere = CounselingEncounter.objects.filter(
+        appointment_id=OuterRef("pk"),
+    ).exclude(pk=encounter.pk)
+    queryset = (
+        Appointment.objects.select_related(
+            "student",
+            "student__role",
+            "provider",
+            "provider__role",
+            "service",
+        )
+        .filter(
+            provider_id=encounter.counselor_id,
+            student_id=encounter.student_id,
+            service_id=encounter.service_id,
+            status__in=(AppointmentStatus.SCHEDULED, AppointmentStatus.COMPLETED),
+        )
+        .annotate(_counseling_encounter_exists=Exists(used_elsewhere))
+        .filter(_counseling_encounter_exists=False)
+        .order_by("-starts_at", "id")
+    )
+    offset = (page - 1) * page_size
+    rows = list(queryset[offset : offset + page_size + 1])
+    return CounselingAppointmentCandidatePage(
+        items=tuple(rows[:page_size]),
+        page=page,
+        page_size=page_size,
+        has_next=len(rows) > page_size,
+    )
+
+
 def list_my_encounters(
     *,
     counselor: User,
@@ -446,13 +597,14 @@ def list_students(
     *, search: str | None = None, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE
 ) -> StudentPage:
     page, page_size = _validate_page(page, page_size)
+    term = _clean_search(search)
     qs = User.objects.filter(is_active=True, role__code="STUDENT").select_related("role")
-    if search and search.strip():
-        term = search.strip()[:MAX_STUDENT_SEARCH_LENGTH]
+    for token in term.split():
         qs = qs.filter(
-            Q(first_name__icontains=term)
-            | Q(middle_name__icontains=term)
-            | Q(last_name__icontains=term)
+            Q(institutional_id__icontains=token)
+            | Q(first_name__icontains=token)
+            | Q(middle_name__icontains=token)
+            | Q(last_name__icontains=token)
         )
     qs = qs.order_by("last_name", "first_name", "middle_name", "id")
     offset = (page - 1) * page_size
