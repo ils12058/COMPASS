@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import {
   formatAppointmentTime,
 } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
+import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   AppointmentStatus,
@@ -172,6 +174,7 @@ function ActionConfirmation({
 function DetailContent({ appointmentId }: { appointmentId: string }) {
   const { user } = usePortalSession();
   const access = getAppointmentAccess(user);
+  const counselingAccess = getCounselingAccess(user);
   const queryClient = useQueryClient();
   const appointmentQuery = useAppointmentsGet(appointmentId, { query: { retry: false } });
   const historyQuery = useAppointmentsGetHistory(appointmentId, {
@@ -413,6 +416,18 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         title="Appointment details"
         description={appointment.reference_code}
       />
+
+      {counselingAccess.isCounselor &&
+      (counselingAccess.canViewAssigned || counselingAccess.canManageAssigned) &&
+      appointment.service.code === "COUNSELING" &&
+      appointment.provider.id === user.id &&
+      (appointment.status === AppointmentStatus.SCHEDULED || appointment.status === AppointmentStatus.COMPLETED) ? (
+        <p className="mb-4">
+          <Link href={`/portal/counseling/workspace/appointment/${appointment.id}`} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+            Open Counseling workspace
+          </Link>
+        </p>
+      ) : null}
 
       {notice ? <p role="status" className="mb-4 text-sm text-success">{notice}</p> : null}
       {error ? <p role="alert" className="mb-4 text-sm text-danger">{error}</p> : null}

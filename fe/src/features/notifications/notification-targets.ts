@@ -17,5 +17,11 @@ export function notificationDestination(notification: NotificationResponse, curr
   ) {
     return "/portal/routine-interviews/" + notification.target_id;
   }
+  if (
+    notification.target_type === "COUNSELING_SHARED_SUMMARY" &&
+    notification.target_id
+  ) {
+    return "/portal/counseling/summaries/" + notification.target_id;
+  }
   return null;
 }
