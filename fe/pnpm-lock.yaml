@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@daily-co/daily-js':
+        specifier: 0.92.2
+        version: 0.92.2
       '@radix-ui/react-alert-dialog':
         specifier: 1.1.23
         version: 1.1.23(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -137,6 +140,10 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
+  '@babel/runtime@7.29.7':
+    resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
+    engines: {node: '>=6.9.0'}
+
   '@babel/template@7.29.7':
     resolution: {integrity: sha512-puq+Gf35oI24FeN11LkoUQFqv9uwNeWpxXZi/Ji3rRIoKAzKnxRaZ+Gkj0vKS9ZCiTESfng1N9LyOyXvo+m+Gg==}
     engines: {node: '>=6.9.0'}
@@ -153,6 +160,10 @@ packages:
     resolution: {integrity: sha512-yeJlba62xqmkgELUsn7356MEnzLLu/fw2x4lofFqGnXh6YysRdEs2BaLeLtg1+KU0AXvMeqQvTTp+3hBEBK+EA==}
     peerDependencies:
       commander: ~15.0.0
+
+  '@daily-co/daily-js@0.92.2':
+    resolution: {integrity: sha512-YuZGsBzKKfPFdKg2osTUrm53VkLoNdrtAyx/+R9MZrd1bJ4E2SC/ie3SugYaSpp30yzy/6qSLkH7dgLk5a8cvg==}
+    engines: {node: '>=22.14.0'}
 
   '@emnapi/core@1.10.0':
     resolution: {integrity: sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw==}
@@ -1039,6 +1050,30 @@ packages:
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
 
+  '@sentry-internal/browser-utils@8.55.2':
+    resolution: {integrity: sha512-GnKod+gL/Y+1FUM/RGV8q6le1CoyiGbT40MitEK7eVwWe+bfTRq1gN7ioupyHFMUg1RlQkDQ4/sENmio/uow5A==}
+    engines: {node: '>=14.18'}
+
+  '@sentry-internal/feedback@8.55.2':
+    resolution: {integrity: sha512-XQy//NWbL0mLLM5w8wNDWMNpXz39VUyW2397dUrH8++kR63WhUVAvTOtL0o0GMVadSAzl1b08oHP9zSUNFQwcg==}
+    engines: {node: '>=14.18'}
+
+  '@sentry-internal/replay-canvas@8.55.2':
+    resolution: {integrity: sha512-P/jGiuR7dRLG9IzD/463fLgiibyYceauav/9prRG0ZxJm1AtuO02OKball2Fs3bbzdzwHCTlcsUuL2ivDF4b5A==}
+    engines: {node: '>=14.18'}
+
+  '@sentry-internal/replay@8.55.2':
+    resolution: {integrity: sha512-+W43Z697EVe/OgpGW07B773sa8xO1UbpnW0Cr+E+3FMDb6ZbXlaBUoagPTUkkQPdwBe35SDh6r8y2M3EOPGbxg==}
+    engines: {node: '>=14.18'}
+
+  '@sentry/browser@8.55.2':
+    resolution: {integrity: sha512-xHuPIEKhx9zw5quWvv4YgZprnwoVMCfxIhmOIf6KJ9iizyUHeUDcKpLS59xERroqwX4RpvK+l/27AZu4zfZlzQ==}
+    engines: {node: '>=14.18'}
+
+  '@sentry/core@8.55.2':
+    resolution: {integrity: sha512-YlEBwybUcOQ/KjMHDmof1vwweVnBtBxYlQp7DE3fOdtW4pqqdHWTnTntQs4VgYfxzjJYgtkd9LHlGtg8qy+JVQ==}
+    engines: {node: '>=14.18'}
+
   '@shikijs/engine-oniguruma@3.23.0':
     resolution: {integrity: sha512-1nWINwKXxKKLqPibT5f4pAFLej9oZzQTsby8942OTlsJzOBZ0MWKiwzMsd+jhzu8YPCHAswGnnN1YtQfirL35g==}
 
@@ -1500,6 +1535,9 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
+  bowser@2.14.1:
+    resolution: {integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==}
+
   brace-expansion@1.1.21:
     resolution: {integrity: sha512-9zeA+KLZNNzglF2TPKRQEDyx6Yby7daAkuy8MiPzpXPsYDWi/DRM8jmwUDxokQjYqBpv5DgPiwD4h4ZZSy1Ujw==}
 
@@ -1852,6 +1890,10 @@ packages:
   esutils@2.0.3:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
+
+  events@3.3.0:
+    resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
+    engines: {node: '>=0.8.x'}
 
   execa@9.6.1:
     resolution: {integrity: sha512-9Be3ZoN4LmYR90tUoVu2te2BsbzHfhJyfEiAVfz7N5/zv+jduIfLrV2xdQXOHbaD6KgpGdO9PRPM1Y4Q9QkPkA==}
@@ -3241,6 +3283,8 @@ snapshots:
     dependencies:
       '@babel/types': 7.29.8
 
+  '@babel/runtime@7.29.7': {}
+
   '@babel/template@7.29.7':
     dependencies:
       '@babel/code-frame': 7.29.7
@@ -3267,6 +3311,14 @@ snapshots:
   '@commander-js/extra-typings@15.0.0(commander@15.0.0)':
     dependencies:
       commander: 15.0.0
+
+  '@daily-co/daily-js@0.92.2':
+    dependencies:
+      '@babel/runtime': 7.29.7
+      '@sentry/browser': 8.55.2
+      bowser: 2.14.1
+      dequal: 2.0.3
+      events: 3.3.0
 
   '@emnapi/core@1.10.0':
     dependencies:
@@ -4075,6 +4127,34 @@ snapshots:
 
   '@sec-ant/readable-stream@0.4.1': {}
 
+  '@sentry-internal/browser-utils@8.55.2':
+    dependencies:
+      '@sentry/core': 8.55.2
+
+  '@sentry-internal/feedback@8.55.2':
+    dependencies:
+      '@sentry/core': 8.55.2
+
+  '@sentry-internal/replay-canvas@8.55.2':
+    dependencies:
+      '@sentry-internal/replay': 8.55.2
+      '@sentry/core': 8.55.2
+
+  '@sentry-internal/replay@8.55.2':
+    dependencies:
+      '@sentry-internal/browser-utils': 8.55.2
+      '@sentry/core': 8.55.2
+
+  '@sentry/browser@8.55.2':
+    dependencies:
+      '@sentry-internal/browser-utils': 8.55.2
+      '@sentry-internal/feedback': 8.55.2
+      '@sentry-internal/replay': 8.55.2
+      '@sentry-internal/replay-canvas': 8.55.2
+      '@sentry/core': 8.55.2
+
+  '@sentry/core@8.55.2': {}
+
   '@shikijs/engine-oniguruma@3.23.0':
     dependencies:
       '@shikijs/types': 3.23.0
@@ -4511,6 +4591,8 @@ snapshots:
   balanced-match@4.0.4: {}
 
   baseline-browser-mapping@2.11.25: {}
+
+  bowser@2.14.1: {}
 
   brace-expansion@1.1.21:
     dependencies:
@@ -5036,6 +5118,8 @@ snapshots:
   estree-util-is-identifier-name@3.0.0: {}
 
   esutils@2.0.3: {}
+
+  events@3.3.0: {}
 
   execa@9.6.1:
     dependencies:

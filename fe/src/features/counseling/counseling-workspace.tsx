@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -121,28 +121,11 @@ function CounselingWorkspaceContent({
   access: ReturnType<typeof getCounselingAccess>;
   onRefreshOverview: () => unknown;
 }) {
-  const { user } = usePortalSession();
   const queryClient = useQueryClient();
-  const routineAccess = getRoutineInterviewAccess(user);
-  const [activeTab, setActiveTab] = useState<ContextTabId>("OVERVIEW");
   const [recordOpen, setRecordOpen] = useState(false);
   const [recordUncertain, setRecordUncertain] = useState(false);
-  const available = new Set(overview.available_sections);
-  const tabs: ContextTab[] = [
-    { id: "OVERVIEW", label: "Overview" },
-    ...(overview.routine_interview ? [{ id: "ROUTINE" as const, label: "Routine Interview" }] : []),
-    ...(available.has("INVENTORY") ? [{ id: "INVENTORY" as const, label: "Inventory" }] : []),
-    ...(available.has("SUPPORT_INDICATORS") ? [{ id: "SUPPORT_INDICATORS" as const, label: "Support" }] : []),
-    ...(available.has("HISTORY") ? [{ id: "HISTORY" as const, label: "History" }] : []),
-    ...(available.has("SHARED_SUMMARIES") ? [{ id: "SHARED_SUMMARIES" as const, label: "Shared Summaries" }] : []),
-  ];
-  const tabIs = (tab: ContextTabId) => activeTab === tab;
-  const inventory = useCounselingContextGetInventory(anchorType, anchorId, { query: { enabled: tabIs("INVENTORY") && available.has("INVENTORY"), retry: false } });
-  const support = useCounselingContextGetSupportIndicators(anchorType, anchorId, { query: { enabled: tabIs("SUPPORT_INDICATORS") && available.has("SUPPORT_INDICATORS"), retry: false } });
-  const history = useCounselingContextListHistory(anchorType, anchorId, { limit: 20 }, { query: { enabled: tabIs("HISTORY") && available.has("HISTORY"), retry: false } });
-  const previousSummaries = useCounselingContextListSharedSummaries(anchorType, anchorId, { limit: 20 }, { query: { enabled: tabIs("SHARED_SUMMARIES") && available.has("SHARED_SUMMARIES") && access.canViewAssignedSummaries, retry: false } });
-  const routine = useRoutineInterviewsGetAssigned(overview.routine_interview?.id ?? "", { query: { enabled: tabIs("ROUTINE") && Boolean(overview.routine_interview), retry: false } });
-  const contextExpired = [inventory.error, support.error, history.error, previousSummaries.error].some((error) => counselingErrorCode(error) === "counseling_context_not_found");
+  const [contextExpired, setContextExpired] = useState(false);
+  const [contextPanelRevision, setContextPanelRevision] = useState(0);
 
   const directMode = anchorType === CounselingContextAnchorType.ROUTINE_INTERVIEW ? directEntryMode(overview.entry_mode) : undefined;
   const directDelivery = isDeliveryMode(overview.delivery_mode) ? overview.delivery_mode : null;
@@ -172,26 +155,12 @@ function CounselingWorkspaceContent({
         : []),
     ]);
     setRecordOpen(false);
-    setActiveTab("OVERVIEW");
+    setContextPanelRevision((revision) => revision + 1);
     await onRefreshOverview();
   }
 
   async function handlePublished() {
     await queryClient.invalidateQueries({ queryKey: getCounselingContextListSharedSummariesQueryKey(anchorType, anchorId, { limit: 20 }) });
-  }
-
-  function handleTabKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    const current = tabs.findIndex((tab) => tab.id === activeTab);
-    let next = current;
-    if (event.key === "ArrowRight") next = (current + 1) % tabs.length;
-    else if (event.key === "ArrowLeft") next = (current - 1 + tabs.length) % tabs.length;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = tabs.length - 1;
-    else return;
-    event.preventDefault();
-    const tab = tabs[next];
-    setActiveTab(tab.id);
-    document.getElementById(`counseling-context-tab-${tab.id}`)?.focus();
   }
 
   return (
@@ -217,23 +186,95 @@ function CounselingWorkspaceContent({
             ) : null}
           </section>
 
-          <section className="min-w-0" aria-label="Student Counseling context">
-            <h2 className="font-heading text-xl font-semibold text-ink">Student context</h2>
-            <div role="tablist" aria-label="Counseling context sections" onKeyDown={handleTabKeyDown} className="mt-4 flex max-w-full gap-1 overflow-x-auto border-b border-border" >
-              {tabs.map((tab) => <button key={tab.id} id={`counseling-context-tab-${tab.id}`} type="button" role="tab" aria-selected={activeTab === tab.id} aria-controls="counseling-context-panel" tabIndex={activeTab === tab.id ? 0 : -1} onClick={() => setActiveTab(tab.id)} className={`min-h-10 shrink-0 border-b-2 px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${activeTab === tab.id ? "border-brand text-brand" : "border-transparent text-muted hover:text-ink"}`}>{tab.label}</button>)}
-            </div>
-            <div id="counseling-context-panel" role="tabpanel" aria-labelledby={`counseling-context-tab-${activeTab}`} tabIndex={0} className="min-w-0 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-              {activeTab === "OVERVIEW" ? <ContextOverview overview={overview} /> : null}
-              {activeTab === "ROUTINE" ? <RoutineContext routine={routine} canManage={routineAccess.canManageAssigned} /> : null}
-              {activeTab === "INVENTORY" ? <InventoryContext query={inventory} overview={overview} /> : null}
-              {activeTab === "SUPPORT_INDICATORS" ? <SupportContext query={support} /> : null}
-              {activeTab === "HISTORY" ? <HistoryContext query={history} /> : null}
-              {activeTab === "SHARED_SUMMARIES" ? <SharedSummariesContext query={previousSummaries} overview={overview} access={access} onPublished={() => void handlePublished()} /> : null}
-            </div>
-          </section>
+          <CounselingContextPanel
+            key={`${anchorType}-${anchorId}-${contextPanelRevision}`}
+            anchorType={anchorType}
+            anchorId={anchorId}
+            overview={overview}
+            access={access}
+            onPublished={handlePublished}
+            onContextExpiredChange={setContextExpired}
+          />
         </div>
       )}
     </div>
+  );
+}
+
+export function CounselingContextPanel({
+  anchorType,
+  anchorId,
+  overview,
+  access,
+  onPublished,
+  onContextExpiredChange,
+}: {
+  anchorType: CounselingContextAnchorType;
+  anchorId: string;
+  overview: CounselingContextOverviewResponse;
+  access: ReturnType<typeof getCounselingAccess>;
+  onPublished?: () => unknown;
+  onContextExpiredChange?: (expired: boolean) => void;
+}) {
+  const { user } = usePortalSession();
+  const routineAccess = getRoutineInterviewAccess(user);
+  const [activeTab, setActiveTab] = useState<ContextTabId>("OVERVIEW");
+  const available = new Set(overview.available_sections);
+  const tabs: ContextTab[] = [
+    { id: "OVERVIEW", label: "Overview" },
+    ...(overview.routine_interview ? [{ id: "ROUTINE" as const, label: "Routine Interview" }] : []),
+    ...(available.has("INVENTORY") ? [{ id: "INVENTORY" as const, label: "Inventory" }] : []),
+    ...(available.has("SUPPORT_INDICATORS") ? [{ id: "SUPPORT_INDICATORS" as const, label: "Support" }] : []),
+    ...(available.has("HISTORY") ? [{ id: "HISTORY" as const, label: "History" }] : []),
+    ...(available.has("SHARED_SUMMARIES") ? [{ id: "SHARED_SUMMARIES" as const, label: "Shared Summaries" }] : []),
+  ];
+  const tabIs = (tab: ContextTabId) => activeTab === tab;
+  const inventory = useCounselingContextGetInventory(anchorType, anchorId, { query: { enabled: tabIs("INVENTORY") && available.has("INVENTORY"), retry: false } });
+  const support = useCounselingContextGetSupportIndicators(anchorType, anchorId, { query: { enabled: tabIs("SUPPORT_INDICATORS") && available.has("SUPPORT_INDICATORS"), retry: false } });
+  const history = useCounselingContextListHistory(anchorType, anchorId, { limit: 20 }, { query: { enabled: tabIs("HISTORY") && available.has("HISTORY"), retry: false } });
+  const previousSummaries = useCounselingContextListSharedSummaries(anchorType, anchorId, { limit: 20 }, { query: { enabled: tabIs("SHARED_SUMMARIES") && available.has("SHARED_SUMMARIES") && access.canViewAssignedSummaries, retry: false } });
+  const routine = useRoutineInterviewsGetAssigned(overview.routine_interview?.id ?? "", { query: { enabled: tabIs("ROUTINE") && Boolean(overview.routine_interview), retry: false } });
+  const contextExpired = [inventory.error, support.error, history.error, previousSummaries.error].some((error) => counselingErrorCode(error) === "counseling_context_not_found");
+
+  useEffect(() => {
+    onContextExpiredChange?.(contextExpired);
+  }, [contextExpired, onContextExpiredChange]);
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const current = tabs.findIndex((tab) => tab.id === activeTab);
+    let next = current;
+    if (event.key === "ArrowRight") next = (current + 1) % tabs.length;
+    else if (event.key === "ArrowLeft") next = (current - 1 + tabs.length) % tabs.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = tabs.length - 1;
+    else return;
+    event.preventDefault();
+    const tab = tabs[next];
+    setActiveTab(tab.id);
+    document.getElementById(`counseling-context-tab-${tab.id}`)?.focus();
+  }
+
+  return (
+    <section className="min-w-0" aria-label="Student Counseling context">
+      <h2 className="font-heading text-xl font-semibold text-ink">Student context</h2>
+      {contextExpired ? (
+        <div role="status" className="mt-4 border-y border-border py-5"><p className="text-sm text-muted">Counseling context is not currently available.</p></div>
+      ) : (
+        <>
+          <div role="tablist" aria-label="Counseling context sections" onKeyDown={handleTabKeyDown} className="mt-4 flex max-w-full gap-1 overflow-x-auto border-b border-border">
+            {tabs.map((tab) => <button key={tab.id} id={`counseling-context-tab-${tab.id}`} type="button" role="tab" aria-selected={activeTab === tab.id} aria-controls="counseling-context-panel" tabIndex={activeTab === tab.id ? 0 : -1} onClick={() => setActiveTab(tab.id)} className={`min-h-10 shrink-0 border-b-2 px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${activeTab === tab.id ? "border-brand text-brand" : "border-transparent text-muted hover:text-ink"}`}>{tab.label}</button>)}
+          </div>
+          <div id="counseling-context-panel" role="tabpanel" aria-labelledby={`counseling-context-tab-${activeTab}`} tabIndex={0} className="min-w-0 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+            {activeTab === "OVERVIEW" ? <ContextOverview overview={overview} /> : null}
+            {activeTab === "ROUTINE" ? <RoutineContext routine={routine} canManage={routineAccess.canManageAssigned} /> : null}
+            {activeTab === "INVENTORY" ? <InventoryContext query={inventory} overview={overview} /> : null}
+            {activeTab === "SUPPORT_INDICATORS" ? <SupportContext query={support} /> : null}
+            {activeTab === "HISTORY" ? <HistoryContext query={history} /> : null}
+            {activeTab === "SHARED_SUMMARIES" ? <SharedSummariesContext query={previousSummaries} overview={overview} access={access} onPublished={() => void onPublished?.()} /> : null}
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 

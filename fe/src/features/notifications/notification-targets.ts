@@ -23,5 +23,8 @@ export function notificationDestination(notification: NotificationResponse, curr
   ) {
     return "/portal/counseling/summaries/" + notification.target_id;
   }
+  if (notification.target_type === "E_COUNSELING" && notification.target_id) {
+    return "/portal/e-counseling/" + notification.target_id;
+  }
   return null;
 }

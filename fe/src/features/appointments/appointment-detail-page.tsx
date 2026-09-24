@@ -28,9 +28,11 @@ import {
 } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
+import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   AppointmentStatus,
+  DeliveryMode,
   type BookableSlotResponse,
 } from "@/lib/api/generated/model";
 import {
@@ -175,6 +177,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const { user } = usePortalSession();
   const access = getAppointmentAccess(user);
   const counselingAccess = getCounselingAccess(user);
+  const ecounselingAccess = getECounselingAccess(user);
   const queryClient = useQueryClient();
   const appointmentQuery = useAppointmentsGet(appointmentId, { query: { retry: false } });
   const historyQuery = useAppointmentsGetHistory(appointmentId, {
@@ -425,6 +428,18 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         <p className="mb-4">
           <Link href={`/portal/counseling/workspace/appointment/${appointment.id}`} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
             Open Counseling workspace
+          </Link>
+        </p>
+      ) : null}
+
+      {appointment.status === AppointmentStatus.SCHEDULED &&
+      appointment.service.code === "COUNSELING" &&
+      appointment.delivery_mode === DeliveryMode.ONLINE &&
+      ((ecounselingAccess.isStudent && ecounselingAccess.canViewSelf && appointment.student.id === user.id) ||
+        (ecounselingAccess.isCounselor && ecounselingAccess.canViewAssigned && appointment.provider.id === user.id)) ? (
+        <p className="mb-4">
+          <Link href={`/portal/e-counseling/${appointment.id}`} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+            Open E-Counseling
           </Link>
         </p>
       ) : null}
