@@ -26,8 +26,10 @@ from compass.call_slips.services import (
     CallSlipReferralConflict,
     InvalidCallSlipInput,
     create_call_slip,
+    create_call_slip_from_referral,
     list_call_slips,
     record_interview_ended,
+    void_call_slip,
 )
 from compass.counseling.models import CounselingEncounter, CounselingSharedSummary
 from compass.ecounseling.models import ECounselingRoom
@@ -43,8 +45,8 @@ from compass.organization.models import (
     StaffSupervision,
     StudentAffiliation,
 )
-from compass.referrals.models import ReferralAction
-from compass.referrals.services import create_referral, record_action
+from compass.referrals.models import ReferralAction, ReferralActionType
+from compass.referrals.services import create_referral, record_action, void_referral
 from compass.routine_interviews.models import RoutineInterview
 
 
@@ -164,6 +166,62 @@ def create_referral_for(actor: User, student: User, *, key: str, fingerprint: st
         request_fingerprint=fingerprint,
         context=audit_context(actor),
         now=now,
+    )
+
+
+def composite_payload(
+    *,
+    course_year: str = "BSIS 4",
+    destination_type: str = "GUIDANCE_OFFICE",
+    other_destination: str = "",
+    report_at: datetime | None = None,
+    notify_student: bool = True,
+    action_occurred_at: datetime | None = None,
+    action_remarks: str = "Issued from Referral",
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "course_year": course_year,
+        "destination_type": destination_type,
+        "other_destination": other_destination,
+        "report_at": (report_at or (timezone.now() + timedelta(hours=2))).isoformat(),
+        "notify_student": notify_student,
+        "action": None,
+    }
+    if action_occurred_at is not None:
+        payload["action"] = {
+            "occurred_at": action_occurred_at.isoformat(),
+            "remarks": action_remarks,
+        }
+    return payload
+
+
+def create_from_referral_for(
+    actor: User,
+    referral,
+    *,
+    key: str,
+    fingerprint: str,
+    course_year: str = "BSIS 4",
+    destination_type: str = "GUIDANCE_OFFICE",
+    other_destination: str = "",
+    report_at: datetime | None = None,
+    notify_student: bool = False,
+    action_occurred_at: datetime | None = None,
+    action_remarks: str | None = None,
+):
+    return create_call_slip_from_referral(
+        actor=actor,
+        referral_id=referral.pk,
+        course_year=course_year,
+        destination_type=destination_type,
+        other_destination=other_destination,
+        report_at=report_at or (timezone.now() + timedelta(hours=2)),
+        notify_student=notify_student,
+        action_occurred_at=action_occurred_at,
+        action_remarks=action_remarks,
+        idempotency_key=key,
+        request_fingerprint=fingerprint,
+        context=audit_context(actor),
     )
 
 
