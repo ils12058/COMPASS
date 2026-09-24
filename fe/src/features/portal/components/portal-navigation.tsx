@@ -6,9 +6,11 @@ import { usePathname } from "next/navigation";
 
 import { hasAvailabilityWorkspace } from "@/features/availability/availability-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
+import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
+import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import {
   canManageOrganization,
@@ -34,6 +36,8 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const hasInventory = getInventoryAccess(user).hasWorkspace;
   const routineAccess = getRoutineInterviewAccess(user);
   const hasCounseling = getCounselingAccess(user).hasWorkspace;
+  const referralAccess = getReferralAccess(user);
+  const callSlipAccess = getCallSlipAccess(user);
   const feedbackAccess = getFeedbackAccess(user);
   const hasGuidanceServices =
     hasServices ||
@@ -42,6 +46,8 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
     hasInventory ||
     routineAccess.hasWorkspace ||
     hasCounseling ||
+    referralAccess.hasWorkspace ||
+    callSlipAccess.hasWorkspace ||
     feedbackAccess.hasWorkspace;
   const hasPlatformOperations = user.capabilities.includes(
     "platform_operations.view",
@@ -271,6 +277,36 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
                 }
               >
                 Counseling
+              </Link>
+            ) : null}
+            {referralAccess.hasWorkspace ? (
+              <Link
+                href="/portal/referrals"
+                onClick={onNavigate}
+                aria-current={pathname.startsWith("/portal/referrals") ? "page" : undefined}
+                className={
+                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                  (pathname.startsWith("/portal/referrals")
+                    ? "bg-on-brand/12"
+                    : "hover:bg-on-brand/10")
+                }
+              >
+                Referrals
+              </Link>
+            ) : null}
+            {callSlipAccess.hasWorkspace ? (
+              <Link
+                href="/portal/call-slips"
+                onClick={onNavigate}
+                aria-current={pathname.startsWith("/portal/call-slips") ? "page" : undefined}
+                className={
+                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                  (pathname.startsWith("/portal/call-slips")
+                    ? "bg-on-brand/12"
+                    : "hover:bg-on-brand/10")
+                }
+              >
+                Call Slips
               </Link>
             ) : null}
             {feedbackAccess.hasWorkspace ? (
