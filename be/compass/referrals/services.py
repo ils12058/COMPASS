@@ -673,6 +673,7 @@ def record_action(
     )
     if normalized_type not in ReferralActionType.values:
         raise InvalidReferralInput("action_type is not supported.")
+    cleaned_remarks = _clean_optional(remarks, "remarks", MAX_REMARKS_LENGTH)
     current = now or timezone.now()
     if timezone.is_naive(current):
         raise InvalidReferralInput("The server action time must be timezone-aware.")
@@ -681,10 +682,9 @@ def record_action(
         referral = _lock_scoped_referral(actor=actor, referral_id=referral_id)
         if referral.voided_at is not None:
             raise ReferralVoidConflict("A voided Referral cannot receive new actions.")
-        normalized_occurred, cleaned_remarks = _normalize_action_values(
+        normalized_occurred = _normalize_occurred_at(
+            occurred_at,
             referral=referral,
-            occurred_at=occurred_at,
-            remarks=remarks,
             now=current,
         )
         return _create_action_locked(
