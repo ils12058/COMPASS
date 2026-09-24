@@ -96,6 +96,10 @@ class ExitInterviewNotFound(ExitInterviewError):
     pass
 
 
+class ExitInterviewNotSubmitted(ExitInterviewError):
+    pass
+
+
 class ExitInterviewConflict(ExitInterviewError):
     pass
 
@@ -128,18 +132,27 @@ class ExitInterviewPage:
     has_next: bool
 
 
-def _queryset():
+def _summary_queryset():
     return ExitInterview.objects.select_related(
         "student",
-        "student__role",
         "academic_year",
-        "inventory",
-        "inventory__academic_year",
-    ).prefetch_related(
-        "self_assessment_ratings",
-        "college_feedback_ratings",
-        "reopen_events",
-        "reopen_events__reopened_by",
+    )
+
+
+def _detail_queryset():
+    return (
+        _summary_queryset()
+        .select_related(
+            "student__role",
+            "inventory",
+            "inventory__academic_year",
+        )
+        .prefetch_related(
+            "self_assessment_ratings",
+            "college_feedback_ratings",
+            "reopen_events",
+            "reopen_events__reopened_by",
+        )
     )
 
 
@@ -501,7 +514,7 @@ def ensure_my_current(
             .first()
         )
         if existing is not None:
-            return _queryset().get(pk=existing.pk)
+            return _detail_queryset().get(pk=existing.pk)
 
         profile = get_person_profile_context(locked_student)
         reference_date = timezone.localdate()
@@ -529,9 +542,9 @@ def ensure_my_current(
                 raise ExitInterviewConflict(
                     "The current Exit Interview could not be created safely; retry the request."
                 ) from None
-            return _queryset().get(pk=concurrent.pk)
+            return _detail_queryset().get(pk=concurrent.pk)
 
-        item_for_audit = _queryset().get(pk=item.pk)
+        item_for_audit = _detail_queryset().get(pk=item.pk)
         record_event(
             context=context,
             action=EXIT_INTERVIEW_CREATED,
@@ -546,7 +559,7 @@ def ensure_my_current(
 def get_my_current(student: User) -> ExitInterview:
     _validate_student(student)
     current = _current_year()
-    item = _queryset().filter(student_id=student.pk, academic_year_id=current.pk).first()
+    item = _detail_queryset().filter(student_id=student.pk, academic_year_id=current.pk).first()
     if item is None:
         raise ExitInterviewNotFound("The current Academic Year Exit Interview was not found.")
     return item
@@ -554,12 +567,12 @@ def get_my_current(student: User) -> ExitInterview:
 
 def list_mine(student: User) -> tuple[ExitInterview, ...]:
     _validate_student(student)
-    return tuple(_queryset().filter(student_id=student.pk).order_by("-created_at", "id"))
+    return tuple(_summary_queryset().filter(student_id=student.pk).order_by("-created_at", "id"))
 
 
 def get_mine(*, student: User, exit_interview_id: UUID) -> ExitInterview:
     _validate_student(student)
-    item = _queryset().filter(pk=exit_interview_id, student_id=student.pk).first()
+    item = _detail_queryset().filter(pk=exit_interview_id, student_id=student.pk).first()
     if item is None:
         raise ExitInterviewNotFound("The requested Exit Interview was not found.")
     return item
@@ -597,7 +610,7 @@ def replace_my_current(*, student: User, values: dict[str, object]) -> ExitInter
             ) from exc
         item.save(update_fields=[*normalized.keys(), "updated_at"])
         _replace_ratings(item, values)
-        return _queryset().get(pk=item.pk)
+        return _detail_queryset().get(pk=item.pk)
 
 
 def replace_mine(
@@ -638,7 +651,7 @@ def replace_mine(
             ) from exc
         item.save(update_fields=[*normalized.keys(), "updated_at"])
         _replace_ratings(item, values)
-        return _queryset().get(pk=item.pk)
+        return _detail_queryset().get(pk=item.pk)
 
 
 def _validate_submission(item: ExitInterview) -> None:
@@ -692,7 +705,7 @@ def submit_my_current(
         if item is None:
             raise ExitInterviewNotFound("The current Academic Year Exit Interview was not found.")
         if item.status == ExitInterviewStatus.SUBMITTED:
-            return _queryset().get(pk=item.pk)
+            return _detail_queryset().get(pk=item.pk)
 
         _validate_submission(item)
         first_submission = item.first_submitted_at is None
@@ -717,7 +730,7 @@ def submit_my_current(
             target_id=item.pk,
             metadata=_safe_metadata(item, transition="DRAFT -> SUBMITTED"),
         )
-        return _queryset().get(pk=item.pk)
+        return _detail_queryset().get(pk=item.pk)
 
 
 def submit_mine(
@@ -748,7 +761,7 @@ def submit_mine(
         if item is None:
             raise ExitInterviewNotFound("The requested Exit Interview was not found.")
         if item.status == ExitInterviewStatus.SUBMITTED:
-            return _queryset().get(pk=item.pk)
+            return _detail_queryset().get(pk=item.pk)
 
         _validate_submission(item)
         first_submission = item.first_submitted_at is None
@@ -773,7 +786,7 @@ def submit_mine(
             target_id=item.pk,
             metadata=_safe_metadata(item, transition="DRAFT -> SUBMITTED"),
         )
-        return _queryset().get(pk=item.pk)
+        return _detail_queryset().get(pk=item.pk)
 
 
 def _pagination(page: int, page_size: int) -> tuple[int, int]:
@@ -808,7 +821,7 @@ def list_for_head(
     _validate_head(actor, "exit_interviews.view")
     page, page_size = _pagination(page, page_size)
     term = _clean_search(search)
-    qs = _queryset()
+    qs = _summary_queryset()
     if student_id is not None:
         qs = qs.filter(student_id=student_id)
     if academic_year_id is not None:
@@ -833,10 +846,14 @@ def list_for_head(
 
 def get_for_head(*, actor: User, exit_interview_id: UUID) -> ExitInterview:
     _validate_head(actor, "exit_interviews.view")
-    item = _queryset().filter(pk=exit_interview_id).first()
+    item = _summary_queryset().filter(pk=exit_interview_id).first()
     if item is None:
         raise ExitInterviewNotFound("The requested Exit Interview was not found.")
-    return item
+    if item.status != ExitInterviewStatus.SUBMITTED:
+        raise ExitInterviewNotSubmitted(
+            "Only submitted Exit Interviews are available for Head Guidance review."
+        )
+    return _detail_queryset().get(pk=item.pk)
 
 
 def reopen_for_correction(
@@ -899,4 +916,4 @@ def reopen_for_correction(
             target_type="EXIT_INTERVIEW",
             target_id=item.pk,
         )
-        return _queryset().get(pk=item.pk)
+        return _summary_queryset().get(pk=item.pk)

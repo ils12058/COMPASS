@@ -328,8 +328,16 @@ Capability names express action, not scope implementation.
 
 Student self routes contain no arbitrary student_id selector.
 
-Head list is a summary projection and does not bulk expose answer/rating/comment content. Head detail
-is purpose-built operational oversight. No CSV/export/analytics/staff-ranking API is introduced.
+Head list is a summary projection and does not bulk expose answer/rating/comment content. A Student
+DRAFT is a private working response: Head Guidance may see its existing summary metadata in the review
+list, but full response detail is available to Head Guidance only while the record is SUBMITTED.
+
+Reopening returns the record to Student-private DRAFT correction state. While it remains DRAFT, Head
+Guidance full detail is unavailable; after the Student resubmits, full Head review becomes available
+again. The Student owner retains full DRAFT detail under the existing self-service and lifecycle rules.
+
+Head detail remains purpose-built operational oversight. No CSV/export/analytics/staff-ranking API is
+introduced.
 
 ### Audit and activity
 
@@ -369,8 +377,13 @@ Creating, saving, submitting, reopening, or resubmitting an Exit Interview does 
 
 Good Moral is not an Exit Interview prerequisite in either direction.
 
-No notification/email, PDF output, GeneratedDocument persistence, sentiment analysis, analytics,
-Graduate Tracer, Alumni workflow, Customer Feedback/CSM model reuse, or SIS expansion is introduced.
+The original Exit Interview foundation introduced no notification/email. ADR-046 later added the
+mandatory privacy-safe `exit_interview.reopened` Notification/email for a successful SUBMITTED ->
+DRAFT correction reopen; ADR-046 remains authoritative for its delivery, privacy, and deduplication
+semantics.
+
+No PDF output, GeneratedDocument persistence, sentiment analysis, analytics, Graduate Tracer, Alumni
+workflow, Customer Feedback/CSM model reuse, or SIS expansion is introduced.
 
 ### API
 

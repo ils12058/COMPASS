@@ -35,6 +35,7 @@ from .services import (
     ExitInterviewInventoryRequired,
     ExitInterviewNotFound,
     ExitInterviewNotPermitted,
+    ExitInterviewNotSubmitted,
     InvalidExitInterviewInput,
     ensure_my_current,
     get_for_head,
@@ -306,6 +307,8 @@ def _raise(exc: ExitInterviewError) -> NoReturn:
         raise APIError(409, "current_student_required", str(exc)) from exc
     if isinstance(exc, ExitInterviewNotFound):
         raise APIError(404, "exit_interview_not_found", str(exc)) from exc
+    if isinstance(exc, ExitInterviewNotSubmitted):
+        raise APIError(409, "exit_interview_not_submitted", str(exc)) from exc
     if isinstance(exc, ExitInterviewNotPermitted):
         raise APIError(403, "permission_denied", str(exc)) from exc
     if isinstance(exc, ExitInterviewCurrentAcademicYearNotConfigured):
@@ -636,7 +639,7 @@ def exit_interviews_list(
 
 @router.get(
     "/{exit_interview_id}",
-    response=response_with_errors(ExitInterviewDetailResponse, 401, 403, 404, 422),
+    response=response_with_errors(ExitInterviewDetailResponse, 401, 403, 404, 409, 422),
     auth=session_auth,
     operation_id="exitInterviewsGet",
 )
@@ -651,7 +654,7 @@ def exit_interviews_get(request, exit_interview_id: UUID):
 
 @router.post(
     "/{exit_interview_id}/reopen",
-    response=response_with_errors(ExitInterviewDetailResponse, 401, 403, 404, 409, 422),
+    response=response_with_errors(ExitInterviewSummaryResponse, 401, 403, 404, 409, 422),
     auth=session_auth,
     operation_id="exitInterviewsReopen",
 )
@@ -670,4 +673,4 @@ def exit_interviews_reopen(
         )
     except ExitInterviewError as exc:
         _raise(exc)
-    return _detail(item)
+    return _summary(item)
