@@ -24,7 +24,6 @@ from compass.common.idempotency import (
     IdempotencyReservation,
     IdempotencyUnavailable,
     RedisIdempotencyStore,
-    request_fingerprint,
 )
 from compass.feedback import api as feedback_api
 from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
