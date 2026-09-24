@@ -1617,7 +1617,7 @@ def test_atomic_referral_call_slip_nonvoided_link_blocks_and_voided_link_allows_
         remarks="Existing source action",
         context=audit_context(head),
     )
-    active = create_for(
+    create_for(
         head,
         student,
         key="active-linked",
