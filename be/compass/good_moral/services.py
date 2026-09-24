@@ -181,9 +181,7 @@ def _existing_creation_locked(
     fingerprint: str,
 ) -> GoodMoralRequest | None:
     existing = (
-        GoodMoralRequest.objects.select_for_update()
-        .filter(creation_key_digest=digest)
-        .first()
+        GoodMoralRequest.objects.select_for_update().filter(creation_key_digest=digest).first()
     )
     if existing is None:
         return None
