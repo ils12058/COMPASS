@@ -7,13 +7,23 @@ from enum import IntEnum, StrEnum
 from typing import NoReturn
 from uuid import UUID
 
-from ninja import Router, Schema, Status
+from django.core.serializers.json import DjangoJSONEncoder
+from django.http import HttpResponse, JsonResponse
+from ninja import Header, Router, Schema
 from pydantic import ConfigDict, Field
 
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.common.idempotency import (
+    IdempotencyConflict,
+    IdempotencyOwnershipError,
+    IdempotencyUnavailable,
+    RedisIdempotencyStore,
+    StoredResponse,
+    request_fingerprint,
+)
 
 from .models import (
     CSMCC1,
@@ -42,6 +52,9 @@ from .services import (
 )
 
 router = Router(tags=["feedback"])
+
+CUSTOMER_FEEDBACK_SUBMISSION_ROUTE = "/api/v1/feedback/customer-feedback"
+CSM_SUBMISSION_ROUTE = "/api/v1/feedback/csm"
 
 
 class StrictSchema(Schema):
@@ -285,6 +298,96 @@ def _submission(item) -> dict[str, object]:
     return {"id": item.pk, "submitted_at": item.submitted_at, "submitted": True}
 
 
+def _json_response(payload: dict[str, object], *, status: int) -> JsonResponse:
+    return JsonResponse(payload, status=status, encoder=DjangoJSONEncoder)
+
+
+def _begin_submission_idempotency(
+    request,
+    *,
+    route: str,
+    idempotency_key: str,
+):
+    store = RedisIdempotencyStore.from_settings()
+    fingerprint = request_fingerprint(
+        method="POST",
+        route=route,
+        query_string=request.META.get("QUERY_STRING", ""),
+        body=request.body,
+    )
+    try:
+        decision = store.begin(
+            actor_id=str(request.auth_user.pk),
+            method="POST",
+            route=route,
+            key=idempotency_key,
+            fingerprint=fingerprint,
+        )
+    except ValueError as exc:
+        raise APIError(422, "invalid_idempotency_key", str(exc)) from exc
+    except IdempotencyConflict as exc:
+        raise APIError(
+            409,
+            "idempotency_key_conflict",
+            "The Idempotency-Key was already used for a different Feedback submission.",
+        ) from exc
+    except IdempotencyUnavailable as exc:
+        raise APIError(
+            503,
+            "idempotency_unavailable",
+            "The Feedback submission replay boundary is temporarily unavailable.",
+        ) from exc
+
+    if decision.outcome == "replay":
+        assert decision.response is not None
+        return (
+            store,
+            decision,
+            HttpResponse(
+                decision.response.body,
+                status=decision.response.status_code,
+                content_type=decision.response.content_type,
+            ),
+        )
+    if decision.outcome == "in_progress":
+        raise APIError(
+            409,
+            "idempotency_in_progress",
+            "A Feedback submission with this Idempotency-Key is already in progress.",
+        )
+    assert decision.reservation is not None
+    return store, decision, None
+
+
+def _complete_submission_or_503(store, reservation, response: HttpResponse) -> None:
+    try:
+        store.complete(
+            reservation,
+            StoredResponse(
+                status_code=response.status_code,
+                body=bytes(response.content),
+                content_type=response.get("Content-Type", "application/json"),
+            ),
+        )
+    except (IdempotencyUnavailable, IdempotencyOwnershipError, ValueError) as exc:
+        raise APIError(
+            503,
+            "idempotency_unavailable",
+            "The Feedback submission replay boundary could not be completed safely.",
+        ) from exc
+
+
+def _abandon_submission_or_503(store, reservation) -> None:
+    try:
+        store.abandon(reservation)
+    except (IdempotencyUnavailable, IdempotencyOwnershipError) as exc:
+        raise APIError(
+            503,
+            "idempotency_unavailable",
+            "The Feedback submission replay boundary could not be released safely.",
+        ) from exc
+
+
 def _customer_summary(item) -> dict[str, object]:
     return {
         "id": item.pk,
@@ -371,13 +474,27 @@ def _csm_detail(item) -> dict[str, object]:
         403,
         409,
         422,
+        503,
         success_status=201,
     ),
     auth=session_auth,
     operation_id="feedbackSubmitCustomerFeedback",
 )
-def feedback_submit_customer_feedback(request, payload: CustomerFeedbackSubmitRequest):
+def feedback_submit_customer_feedback(
+    request,
+    payload: CustomerFeedbackSubmitRequest,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
     _require_student(request, "feedback.submit_customer_feedback")
+    store, decision, replay = _begin_submission_idempotency(
+        request,
+        route=CUSTOMER_FEEDBACK_SUBMISSION_ROUTE,
+        idempotency_key=idempotency_key,
+    )
+    if replay is not None:
+        return replay
+    assert decision.reservation is not None
+
     try:
         item = create_customer_feedback(
             student=request.auth_user,
@@ -385,8 +502,12 @@ def feedback_submit_customer_feedback(request, payload: CustomerFeedbackSubmitRe
             context=_context(request),
         )
     except FeedbackError as exc:
+        _abandon_submission_or_503(store, decision.reservation)
         _raise(exc)
-    return Status(201, _submission(item))
+
+    response = _json_response(_submission(item), status=201)
+    _complete_submission_or_503(store, decision.reservation, response)
+    return response
 
 
 @router.get(
@@ -446,14 +567,29 @@ def feedback_get_customer_feedback_response(request, response_id: UUID):
         FeedbackSubmissionResponse,
         401,
         403,
+        409,
         422,
+        503,
         success_status=201,
     ),
     auth=session_auth,
     operation_id="feedbackSubmitCsm",
 )
-def feedback_submit_csm(request, payload: CSMSubmitRequest):
+def feedback_submit_csm(
+    request,
+    payload: CSMSubmitRequest,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
     _require_student(request, "feedback.submit_csm")
+    store, decision, replay = _begin_submission_idempotency(
+        request,
+        route=CSM_SUBMISSION_ROUTE,
+        idempotency_key=idempotency_key,
+    )
+    if replay is not None:
+        return replay
+    assert decision.reservation is not None
+
     try:
         item = create_csm_response(
             student=request.auth_user,
@@ -461,8 +597,12 @@ def feedback_submit_csm(request, payload: CSMSubmitRequest):
             context=_context(request),
         )
     except FeedbackError as exc:
+        _abandon_submission_or_503(store, decision.reservation)
         _raise(exc)
-    return Status(201, _submission(item))
+
+    response = _json_response(_submission(item), status=201)
+    _complete_submission_or_503(store, decision.reservation, response)
+    return response
 
 
 @router.get(
