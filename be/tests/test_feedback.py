@@ -767,6 +767,7 @@ def test_csm_review_filters_service_dates_and_preserves_client_type_contract():
     assert overlong_service.status_code == 422
     assert head.get(f"/api/v1/feedback/csm/responses/{first_id}").status_code == 200
 
+
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     ("path", "payload_factory"),
@@ -830,7 +831,9 @@ def test_feedback_exact_replay_returns_original_success_once(monkeypatch, instru
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("instrument", ["customer_feedback", "csm"])
-def test_feedback_same_key_different_body_conflicts_without_second_mutation(monkeypatch, instrument):
+def test_feedback_same_key_different_body_conflicts_without_second_mutation(
+    monkeypatch, instrument
+):
     sync_policy()
     student = make_user(f"conflict-{instrument}@example.edu")
     client = auth_client(student)
@@ -997,9 +1000,7 @@ def test_feedback_idempotency_unavailable_before_execution_fails_closed(
     sync_policy()
     student = make_user("unavailable-feedback@example.edu")
     client = auth_client(student)
-    store = ControlledIdempotencyStore(
-        begin_error=IdempotencyUnavailable("Redis unavailable")
-    )
+    store = ControlledIdempotencyStore(begin_error=IdempotencyUnavailable("Redis unavailable"))
     use_idempotency_store(monkeypatch, store)
 
     response = post_json(
@@ -1154,9 +1155,7 @@ def test_feedback_abandon_failure_returns_idempotency_unavailable(monkeypatch):
     sync_policy()
     student = make_user("abandon-failure@example.edu")
     client = auth_client(student)
-    store = ControlledIdempotencyStore(
-        abandon_error=IdempotencyUnavailable("abandon unavailable")
-    )
+    store = ControlledIdempotencyStore(abandon_error=IdempotencyUnavailable("abandon unavailable"))
     use_idempotency_store(monkeypatch, store)
     invalid = valid_csm_payload()
     invalid.update({"cc1": 4, "cc2": 1, "cc3": 4})
@@ -1248,4 +1247,3 @@ def test_feedback_replay_storage_contains_only_submission_response_and_digests(m
     assert raw_key not in audit_metadata
     assert raw_key not in str(CustomerFeedbackResponse.objects.get().__dict__)
     assert raw_key not in str(ClientSatisfactionResponse.objects.get().__dict__)
-
