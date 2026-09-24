@@ -29,5 +29,11 @@ export function notificationDestination(notification: NotificationResponse, curr
   if (notification.target_type === "CALL_SLIP" && notification.target_id) {
     return "/portal/call-slips/" + notification.target_id;
   }
+  if (notification.target_type === "GOOD_MORAL" && notification.target_id) {
+    return "/portal/good-moral/" + notification.target_id;
+  }
+  if (notification.target_type === "FEEDBACK") {
+    return "/portal/feedback";
+  }
   return null;
 }
