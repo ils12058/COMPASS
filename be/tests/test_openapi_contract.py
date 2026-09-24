@@ -2483,4 +2483,3 @@ def test_good_moral_request_creation_idempotency_openapi_contract() -> None:
                 "schema"
             ]
             assert error_schema["$ref"].endswith("/APIErrorResponse")
-
