@@ -478,9 +478,7 @@ def _create_new_call_slip_locked(
     context: AuditContext,
 ) -> CallSlip:
     issuer = _resolve_issuer_locked(actor)
-    student = (
-        User.objects.select_for_update().select_related("role").filter(pk=student_id).first()
-    )
+    student = User.objects.select_for_update().select_related("role").filter(pk=student_id).first()
     student = _validate_student(student)
     if not _student_in_scope(actor, student.pk):
         raise CallSlipNotPermitted(
@@ -602,9 +600,7 @@ def _lock_referral_for_atomic_issuance(*, actor: User, referral_id: UUID) -> Ref
         referral_id=referral.pk,
         voided_at__isnull=True,
     ).exists():
-        raise CallSlipReferralConflict(
-            "The linked Referral already has a non-voided Call Slip."
-        )
+        raise CallSlipReferralConflict("The linked Referral already has a non-voided Call Slip.")
     return referral
 
 
