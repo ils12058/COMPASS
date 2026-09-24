@@ -597,6 +597,66 @@ def update_status_note(
         return _detail_queryset().get(pk=item.pk)
 
 
+def _normalize_action_values(
+    *,
+    referral: Referral,
+    occurred_at: datetime,
+    remarks: str,
+    now: datetime,
+) -> tuple[datetime, str]:
+    return (
+        _normalize_occurred_at(
+            occurred_at,
+            referral=referral,
+            now=now,
+        ),
+        _clean_optional(remarks, "remarks", MAX_REMARKS_LENGTH),
+    )
+
+
+def _create_action_locked(
+    *,
+    actor: User,
+    referral: Referral,
+    action_type: str,
+    occurred_at: datetime,
+    remarks: str,
+    context: AuditContext,
+) -> ReferralAction:
+    if ReferralAction.objects.filter(
+        referral_id=referral.pk,
+        action_type=action_type,
+    ).exists():
+        raise ReferralActionConflict(
+            "This Referral action type has already been recorded for the source Referral."
+        )
+    try:
+        with transaction.atomic():
+            action = ReferralAction.objects.create(
+                referral=referral,
+                action_type=action_type,
+                occurred_at=occurred_at,
+                remarks=remarks,
+                recorded_by=actor,
+            )
+    except IntegrityError as exc:
+        raise ReferralActionConflict(
+            "This Referral action type has already been recorded for the source Referral."
+        ) from exc
+    record_event(
+        context=context,
+        action=REFERRAL_ACTION_RECORDED,
+        outcome=AuditOutcome.SUCCESS,
+        target_type="referrals.referralaction",
+        target_id=action.pk,
+        metadata={
+            "reference_code": referral.reference_code,
+            "action_type": action_type,
+        },
+    )
+    return ReferralAction.objects.select_related("referral", "recorded_by").get(pk=action.pk)
+
+
 def record_action(
     *,
     actor: User,
@@ -613,7 +673,6 @@ def record_action(
     )
     if normalized_type not in ReferralActionType.values:
         raise InvalidReferralInput("action_type is not supported.")
-    cleaned_remarks = _clean_optional(remarks, "remarks", MAX_REMARKS_LENGTH)
     current = now or timezone.now()
     if timezone.is_naive(current):
         raise InvalidReferralInput("The server action time must be timezone-aware.")
@@ -622,43 +681,92 @@ def record_action(
         referral = _lock_scoped_referral(actor=actor, referral_id=referral_id)
         if referral.voided_at is not None:
             raise ReferralVoidConflict("A voided Referral cannot receive new actions.")
-        normalized_occurred = _normalize_occurred_at(
-            occurred_at,
+        normalized_occurred, cleaned_remarks = _normalize_action_values(
             referral=referral,
+            occurred_at=occurred_at,
+            remarks=remarks,
             now=current,
         )
-        if ReferralAction.objects.filter(
-            referral_id=referral.pk,
+        return _create_action_locked(
+            actor=actor,
+            referral=referral,
             action_type=normalized_type,
-        ).exists():
-            raise ReferralActionConflict(
-                "This Referral action type has already been recorded for the source Referral."
-            )
-        try:
-            with transaction.atomic():
-                action = ReferralAction.objects.create(
-                    referral=referral,
-                    action_type=normalized_type,
-                    occurred_at=normalized_occurred,
-                    remarks=cleaned_remarks,
-                    recorded_by=actor,
-                )
-        except IntegrityError as exc:
-            raise ReferralActionConflict(
-                "This Referral action type has already been recorded for the source Referral."
-            ) from exc
-        record_event(
+            occurred_at=normalized_occurred,
+            remarks=cleaned_remarks,
             context=context,
-            action=REFERRAL_ACTION_RECORDED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="referrals.referralaction",
-            target_id=action.pk,
-            metadata={
-                "reference_code": referral.reference_code,
-                "action_type": normalized_type,
-            },
         )
-        return ReferralAction.objects.select_related("referral", "recorded_by").get(pk=action.pk)
+
+
+def ensure_call_slip_action(
+    *,
+    actor: User,
+    referral_id: UUID,
+    occurred_at: datetime | None,
+    remarks: str | None,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> tuple[Referral, ReferralAction, bool]:
+    """Ensure the canonical source Call-Slip action exists without rewriting history."""
+
+    _validate_operational_actor(actor)
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidReferralInput("The server action time must be timezone-aware.")
+
+    with transaction.atomic():
+        referral = _lock_scoped_referral(actor=actor, referral_id=referral_id)
+        if referral.voided_at is not None:
+            raise ReferralVoidConflict("A voided Referral cannot receive new actions.")
+
+        existing = (
+            ReferralAction.objects.select_for_update()
+            .filter(
+                referral_id=referral.pk,
+                action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT,
+            )
+            .first()
+        )
+        if existing is not None:
+            if occurred_at is None and remarks is None:
+                return referral, existing, False
+            if occurred_at is None:
+                raise InvalidReferralInput(
+                    "action.occurred_at is required when action input is supplied."
+                )
+            normalized_occurred, cleaned_remarks = _normalize_action_values(
+                referral=referral,
+                occurred_at=occurred_at,
+                remarks=remarks or "",
+                now=current,
+            )
+            if (
+                existing.occurred_at != normalized_occurred
+                or existing.remarks != cleaned_remarks
+            ):
+                raise ReferralActionConflict(
+                    "The supplied Call-Slip Referral action conflicts with the existing source action."
+                )
+            return referral, existing, False
+
+        if occurred_at is None:
+            raise ReferralActionConflict(
+                "The Referral must include explicit Call-Slip action input before issuance."
+            )
+        normalized_occurred, cleaned_remarks = _normalize_action_values(
+            referral=referral,
+            occurred_at=occurred_at,
+            remarks=remarks or "",
+            now=current,
+        )
+        action = _create_action_locked(
+            actor=actor,
+            referral=referral,
+            action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT,
+            occurred_at=normalized_occurred,
+            remarks=cleaned_remarks,
+            context=context,
+        )
+        return referral, action, True
 
 
 def void_referral(
