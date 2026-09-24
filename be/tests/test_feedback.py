@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 import json
+import uuid
 from datetime import datetime
 
 import pytest
@@ -17,6 +19,13 @@ from compass.accounts.models import (
 )
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.common.idempotency import (
+    IdempotencyDecision,
+    IdempotencyReservation,
+    IdempotencyUnavailable,
+    RedisIdempotencyStore,
+    request_fingerprint,
+)
 from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
 from compass.institutional_forms.models import FormFamily, FormRevision
 
@@ -119,11 +128,18 @@ def valid_csm_payload() -> dict[str, object]:
     }
 
 
-def post_json(client: Client, path: str, payload: dict[str, object]):
+def post_json(
+    client: Client,
+    path: str,
+    payload: dict[str, object],
+    *,
+    idempotency_key: str | None = None,
+):
     return client.post(
         path,
         data=json.dumps(payload),
         content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY=idempotency_key or f"feedback-{uuid.uuid4()}",
         **csrf(client),
     )
 
