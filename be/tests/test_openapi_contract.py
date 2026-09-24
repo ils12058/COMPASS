@@ -348,6 +348,38 @@ def _response_statuses(operation: dict) -> set[int]:
     return {int(status) for status in operation["responses"]}
 
 
+def test_exit_interview_head_review_contract_protects_drafts_and_reopen_response() -> None:
+    schema = _generated_schema()
+
+    detail = _operation(
+        schema,
+        "/api/v1/exit-interviews/{exit_interview_id}",
+        "get",
+    )
+    assert detail["operationId"] == "exitInterviewsGet"
+    assert {200, 401, 403, 404, 409, 422} <= _response_statuses(detail)
+    assert detail["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/ExitInterviewDetailResponse"
+    )
+    assert detail["responses"]["409"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/APIErrorResponse"
+    )
+
+    reopen = _operation(
+        schema,
+        "/api/v1/exit-interviews/{exit_interview_id}/reopen",
+        "post",
+    )
+    assert reopen["operationId"] == "exitInterviewsReopen"
+    assert {200, 401, 403, 404, 409, 422} <= _response_statuses(reopen)
+    assert reopen["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/ExitInterviewSummaryResponse"
+    )
+    for status in (401, 403, 404, 409, 422):
+        response_schema = reopen["responses"][str(status)]["content"]["application/json"]["schema"]
+        assert response_schema["$ref"].endswith("/APIErrorResponse")
+
+
 PDF_DOWNLOAD_PATHS = (
     "/api/v1/referrals/{referral_id}/pdf",
     "/api/v1/call-slips/{call_slip_id}/pdf",
