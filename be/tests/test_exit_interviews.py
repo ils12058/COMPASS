@@ -656,6 +656,48 @@ def test_submitted_record_is_locked_against_student_put():
 
 
 @pytest.mark.django_db
+def test_student_draft_is_private_from_head_detail_but_visible_in_summary_list():
+    sync_policy()
+    student = make_user("draft-private@example.edu")
+    current = make_year()
+    make_inventory(student, current)
+    student_client = auth_client(student)
+    assert ensure_api(student_client).status_code == 200
+
+    saved = put_api(student_client, valid_payload())
+    assert saved.status_code == 200
+    exit_id = saved.json()["id"]
+
+    mine = student_client.get("/api/v1/exit-interviews/me/current")
+    assert mine.status_code == 200
+    assert mine.json()["suggestions_recommendations"] == "Suggestion"
+    assert len(mine.json()["self_assessment_ratings"]) == 15
+    assert len(mine.json()["college_feedback_ratings"]) == 26
+
+    head_client = auth_client(make_head("draft-private-head@example.edu"))
+    listing = head_client.get("/api/v1/exit-interviews")
+    assert listing.status_code == 200
+    assert len(listing.json()["items"]) == 1
+    summary = listing.json()["items"][0]
+    assert summary["id"] == exit_id
+    assert summary["status"] == "DRAFT"
+    for field in (
+        "self_assessment_ratings",
+        "college_feedback_ratings",
+        "dean_comments",
+        "suggestions_recommendations",
+        "home_address",
+        "career_modes",
+    ):
+        assert field not in summary
+
+    detail = head_client.get(f"/api/v1/exit-interviews/{exit_id}")
+    assert detail.status_code == 409
+    assert detail.json()["error"]["code"] == "exit_interview_not_submitted"
+    assert "Suggestion" not in json.dumps(detail.json())
+
+
+@pytest.mark.django_db
 def test_only_head_may_read_all_and_reopen_with_required_reason():
     sync_policy()
     student = make_user("reopen-owner@example.edu")
@@ -714,11 +756,27 @@ def test_only_head_may_read_all_and_reopen_with_required_reason():
         **csrf(head_client),
     )
     assert reopened.status_code == 200
-    assert reopened.json()["status"] == "DRAFT"
-    assert len(reopened.json()["reopen_events"]) == 1
-    assert reopened.json()["reopen_events"][0]["reason"] == (
-        "Student requested a factual correction."
-    )
+    reopened_body = reopened.json()
+    assert reopened_body["status"] == "DRAFT"
+    for field in (
+        "self_assessment_ratings",
+        "college_feedback_ratings",
+        "dean_comments",
+        "suggestions_recommendations",
+        "home_address",
+        "career_modes",
+        "reopen_events",
+    ):
+        assert field not in reopened_body
+
+    head_draft_detail = head_client.get(f"/api/v1/exit-interviews/{exit_id}")
+    assert head_draft_detail.status_code == 409
+    assert head_draft_detail.json()["error"]["code"] == "exit_interview_not_submitted"
+
+    listing_after_reopen = head_client.get("/api/v1/exit-interviews")
+    assert listing_after_reopen.status_code == 200
+    assert listing_after_reopen.json()["items"][0]["status"] == "DRAFT"
+
     reopen_event = ExitInterviewReopenEvent.objects.get(exit_interview_id=exit_id)
     notification = Notification.objects.get(
         recipient=student,
@@ -775,6 +833,13 @@ def test_reopen_and_resubmit_preserve_first_submission_and_append_correction_his
         ).count()
         == 1
     )
+
+    head_detail = head_client.get(f"/api/v1/exit-interviews/{exit_id}")
+    assert head_detail.status_code == 200
+    assert head_detail.json()["suggestions_recommendations"] == "Corrected historical response"
+    assert [event["reason"] for event in head_detail.json()["reopen_events"]] == [
+        "First correction"
+    ]
 
     assert (
         head_client.post(
@@ -837,10 +902,17 @@ def test_reopen_does_not_refresh_profile_or_inventory_snapshots():
         **csrf(head_client),
     )
     assert reopened.status_code == 200
-    # The saved submitted form-local values remain, not today's profile or Inventory.
-    assert reopened.json()["student_name"] == "Form Local Student"
-    assert reopened.json()["course"] == "BS Information Systems"
-    assert reopened.json()["home_address"] == "Line 1\nLine 2"
+    assert reopened.json()["status"] == "DRAFT"
+
+    # The Student-private reopened draft retains saved form-local values rather than
+    # refreshing from today's profile or Inventory.
+    student_draft = student_client.get(
+        f"/api/v1/exit-interviews/me/{submitted['id']}"
+    )
+    assert student_draft.status_code == 200
+    assert student_draft.json()["student_name"] == "Form Local Student"
+    assert student_draft.json()["course"] == "BS Information Systems"
+    assert student_draft.json()["home_address"] == "Line 1\nLine 2"
     assert original["student_name"] == "Original Name"
 
 
