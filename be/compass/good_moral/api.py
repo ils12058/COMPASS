@@ -9,7 +9,7 @@ from typing import NoReturn
 from uuid import UUID
 
 from django.http import HttpResponse
-from ninja import Router, Schema, Status
+from ninja import Header, Router, Schema, Status
 from pydantic import ConfigDict
 
 from compass.audit.context import AuditContext
@@ -17,6 +17,7 @@ from compass.authentication.api import session_auth
 from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.common.idempotency import request_fingerprint
 from compass.privacy_governance.releases import (
     ReleaseAuditUnavailable,
     record_good_moral_release,
@@ -49,6 +50,9 @@ from .services import (
 )
 
 router = Router(tags=["good-moral"])
+
+CURRENT_STUDENT_CREATE_ROUTE = "/api/v1/good-moral/me/requests/current-student"
+GRADUATE_CREATE_ROUTE = "/api/v1/good-moral/me/requests/graduate"
 
 PDF_SUCCESS_OPENAPI = {
     "responses": {
@@ -332,13 +336,25 @@ def _pdf_response(
     auth=session_auth,
     operation_id="goodMoralCreateMyCurrentStudentRequest",
 )
-def good_moral_create_my_current_student(request, payload: CurrentStudentRequestPayload):
+def good_moral_create_my_current_student(
+    request,
+    payload: CurrentStudentRequestPayload,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
     _require_student(request, "good_moral.request_self")
+    fingerprint = request_fingerprint(
+        method="POST",
+        route=CURRENT_STUDENT_CREATE_ROUTE,
+        query_string=request.META.get("QUERY_STRING", ""),
+        body=request.body,
+    )
     try:
         item = create_my_current_student(
             student=request.auth_user,
             year_level=payload.year_level,
             semester=payload.semester,
+            idempotency_key=idempotency_key,
+            request_fingerprint=fingerprint,
             context=_context(request),
         )
     except GoodMoralError as exc:
@@ -359,14 +375,26 @@ def good_moral_create_my_current_student(request, payload: CurrentStudentRequest
     auth=session_auth,
     operation_id="goodMoralCreateMyGraduateRequest",
 )
-def good_moral_create_my_graduate(request, payload: GraduateRequestPayload):
+def good_moral_create_my_graduate(
+    request,
+    payload: GraduateRequestPayload,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
     _require_student(request, "good_moral.request_self")
+    fingerprint = request_fingerprint(
+        method="POST",
+        route=GRADUATE_CREATE_ROUTE,
+        query_string=request.META.get("QUERY_STRING", ""),
+        body=request.body,
+    )
     try:
         item = create_my_graduate(
             student=request.auth_user,
             degree=payload.degree,
             major=payload.major,
             graduation_date=payload.graduation_date,
+            idempotency_key=idempotency_key,
+            request_fingerprint=fingerprint,
             context=_context(request),
         )
     except GoodMoralError as exc:

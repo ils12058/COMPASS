@@ -32487,7 +32487,17 @@
     "/api/v1/good-moral/me/requests/current-student": {
       "post": {
         "operationId": "goodMoralCreateMyCurrentStudentRequest",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -32564,7 +32574,17 @@
     "/api/v1/good-moral/me/requests/graduate": {
       "post": {
         "operationId": "goodMoralCreateMyGraduateRequest",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {

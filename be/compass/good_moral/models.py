@@ -103,6 +103,9 @@ class GoodMoralRequest(models.Model):
     )
     cancellation_reason = models.TextField(blank=True, default="", max_length=1000)
 
+    creation_key_digest = models.CharField(max_length=64, unique=True, null=True, blank=True)
+    creation_request_fingerprint = models.CharField(max_length=64, null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
