@@ -2442,3 +2442,45 @@ def test_referral_call_slip_atomic_issuance_openapi_contract() -> None:
     assert existing["operationId"] == "callSlipsCreate"
     existing_request = existing["requestBody"]["content"]["application/json"]["schema"]
     assert existing_request["$ref"].endswith("/CallSlipCreateRequest")
+
+
+def test_good_moral_request_creation_idempotency_openapi_contract() -> None:
+    schema = _generated_schema()
+    expected = {
+        "/api/v1/good-moral/me/requests/current-student": (
+            "goodMoralCreateMyCurrentStudentRequest",
+            "CurrentStudentRequestPayload",
+        ),
+        "/api/v1/good-moral/me/requests/graduate": (
+            "goodMoralCreateMyGraduateRequest",
+            "GraduateRequestPayload",
+        ),
+    }
+
+    for path, (operation_id, request_schema_name) in expected.items():
+        operation = _operation(schema, path, "post")
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["good-moral"]
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        assert _response_statuses(operation) == {201, 401, 403, 409, 422}
+
+        headers = [
+            parameter
+            for parameter in operation["parameters"]
+            if parameter["in"] == "header" and parameter["name"] == "Idempotency-Key"
+        ]
+        assert len(headers) == 1
+        assert headers[0]["required"] is True
+        assert headers[0]["schema"]["type"] == "string"
+
+        request_schema = operation["requestBody"]["content"]["application/json"]["schema"]
+        assert request_schema["$ref"].endswith(f"/{request_schema_name}")
+        success_schema = operation["responses"]["201"]["content"]["application/json"]["schema"]
+        assert success_schema["$ref"].endswith("/GoodMoralDetailResponse")
+
+        for status in (401, 403, 409, 422):
+            error_schema = operation["responses"][str(status)]["content"]["application/json"][
+                "schema"
+            ]
+            assert error_schema["$ref"].endswith("/APIErrorResponse")
+
