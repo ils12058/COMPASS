@@ -140,15 +140,19 @@ def _summary_queryset():
 
 
 def _detail_queryset():
-    return _summary_queryset().select_related(
-        "student__role",
-        "inventory",
-        "inventory__academic_year",
-    ).prefetch_related(
-        "self_assessment_ratings",
-        "college_feedback_ratings",
-        "reopen_events",
-        "reopen_events__reopened_by",
+    return (
+        _summary_queryset()
+        .select_related(
+            "student__role",
+            "inventory",
+            "inventory__academic_year",
+        )
+        .prefetch_related(
+            "self_assessment_ratings",
+            "college_feedback_ratings",
+            "reopen_events",
+            "reopen_events__reopened_by",
+        )
     )
 
 
