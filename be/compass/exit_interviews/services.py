@@ -132,15 +132,15 @@ class ExitInterviewPage:
     has_next: bool
 
 
-def _summary_detail_queryset():
+def _summary_queryset():
     return ExitInterview.objects.select_related(
         "student",
         "academic_year",
     )
 
 
-def _detail_detail_queryset():
-    return _summary_detail_queryset().select_related(
+def _detail_queryset():
+    return _summary_queryset().select_related(
         "student__role",
         "inventory",
         "inventory__academic_year",
