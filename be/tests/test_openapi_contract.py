@@ -275,6 +275,7 @@ EXPECTED_OPERATION_IDS = {
     "referralsListEligibleStudents",
     "referralsDownloadPdf",
     "callSlipsCreate",
+    "callSlipsCreateFromReferral",
     "callSlipsList",
     "callSlipsGet",
     "callSlipsListMy",
@@ -2384,3 +2385,60 @@ def test_feedback_submission_idempotency_openapi_contract() -> None:
     assert csm["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith(
         "/CSMSubmitRequest"
     )
+
+
+def test_referral_call_slip_atomic_issuance_openapi_contract() -> None:
+    schema = _generated_schema()
+    path = "/api/v1/call-slips/from-referral/{referral_id}"
+    assert set(schema["paths"][path]) == {"post"}
+
+    operation = _operation(schema, path, "post")
+    assert operation["operationId"] == "callSlipsCreateFromReferral"
+    assert operation["tags"] == ["call-slips"]
+    assert operation["security"] == [{"OpaqueSessionAuth": []}]
+    assert {201, 401, 403, 404, 409, 422} <= _response_statuses(operation)
+
+    parameters = {
+        (parameter["in"], parameter["name"]): parameter for parameter in operation["parameters"]
+    }
+    referral_id = parameters[("path", "referral_id")]
+    assert referral_id["required"] is True
+    assert referral_id["schema"]["format"] == "uuid"
+
+    idempotency_key = parameters[("header", "Idempotency-Key")]
+    assert idempotency_key["required"] is True
+    assert idempotency_key["schema"]["type"] == "string"
+
+    request_schema = operation["requestBody"]["content"]["application/json"]["schema"]
+    assert request_schema["$ref"].endswith("/CallSlipCreateFromReferralRequest")
+    request = schema["components"]["schemas"]["CallSlipCreateFromReferralRequest"]
+    assert set(request["properties"]) == {
+        "course_year",
+        "destination_type",
+        "other_destination",
+        "report_at",
+        "notify_student",
+        "action",
+    }
+    assert {
+        "student_id",
+        "referral_id",
+        "issued_by_id",
+        "recorded_by_id",
+        "student_name",
+        "issuer_name",
+    }.isdisjoint(request["properties"])
+
+    action = schema["components"]["schemas"]["CallSlipReferralActionInput"]
+    assert set(action["properties"]) == {"occurred_at", "remarks"}
+
+    success = operation["responses"]["201"]["content"]["application/json"]["schema"]
+    assert success["$ref"].endswith("/CallSlipOperationalResponse")
+    for status in (401, 403, 404, 409, 422):
+        error = operation["responses"][str(status)]["content"]["application/json"]["schema"]
+        assert error["$ref"].endswith("/APIErrorResponse")
+
+    existing = _operation(schema, "/api/v1/call-slips", "post")
+    assert existing["operationId"] == "callSlipsCreate"
+    existing_request = existing["requestBody"]["content"]["application/json"]["schema"]
+    assert existing_request["$ref"].endswith("/CallSlipCreateRequest")

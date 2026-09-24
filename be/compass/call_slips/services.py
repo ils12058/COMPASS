@@ -37,6 +37,15 @@ from compass.operational_students import (
 from compass.organization.access_scope import resolve_organizational_access_scope
 from compass.organization.models import StaffSupervision, StudentAffiliation
 from compass.referrals.models import Referral, ReferralAction, ReferralActionType
+from compass.referrals.services import (
+    InvalidReferralInput,
+    ReferralActionConflict,
+    ReferralError,
+    ReferralNotFound,
+    ReferralNotPermitted,
+    ReferralVoidConflict,
+    ensure_call_slip_action,
+)
 
 from .models import CallSlip, CallSlipDestinationType
 
@@ -96,6 +105,16 @@ class CallSlipPage:
     page: int
     page_size: int
     has_next: bool
+
+
+@dataclass(frozen=True, slots=True)
+class _CallSlipCreationInput:
+    fingerprint: str
+    course_snapshot: str
+    destination_type: str
+    other_destination: str
+    report_at: datetime
+    digest: str
 
 
 def _institution_zone() -> ZoneInfo:
@@ -325,6 +344,67 @@ def _active_call_slip_revision():
         ) from exc
 
 
+def _prepare_creation_input(
+    *,
+    actor: User,
+    course_year: str,
+    destination_type: str | CallSlipDestinationType,
+    other_destination: str,
+    report_at: datetime,
+    idempotency_key: str,
+    request_fingerprint: str,
+) -> _CallSlipCreationInput:
+    _validate_operational_actor(actor)
+    key = _validate_idempotency_key(idempotency_key)
+    fingerprint = _validate_fingerprint(request_fingerprint)
+    course_snapshot = _clean_required(
+        course_year,
+        "course_year",
+        MAX_COURSE_YEAR_LENGTH,
+    )
+    normalized_destination, cleaned_other = _normalize_destination(
+        destination_type,
+        other_destination,
+    )
+    normalized_report_at = _normalize_report_at(report_at)
+    return _CallSlipCreationInput(
+        fingerprint=fingerprint,
+        course_snapshot=course_snapshot,
+        destination_type=normalized_destination,
+        other_destination=cleaned_other,
+        report_at=normalized_report_at,
+        digest=_creation_digest(actor_id=actor.pk, key=key),
+    )
+
+
+def _lock_creation_actor(actor: User) -> User:
+    locked_actor = (
+        User.objects.select_for_update().select_related("role").filter(pk=actor.pk).first()
+    )
+    if locked_actor is None:
+        raise CallSlipNotPermitted("The authenticated Guidance actor no longer exists.")
+    _validate_operational_actor(locked_actor)
+    return locked_actor
+
+
+def _existing_creation_locked(
+    *,
+    actor: User,
+    digest: str,
+    fingerprint: str,
+) -> CallSlip | None:
+    existing = CallSlip.objects.select_for_update().filter(creation_key_digest=digest).first()
+    if existing is None:
+        return None
+    if existing.creation_request_fingerprint != fingerprint:
+        raise CallSlipCreationConflict(
+            "The Idempotency-Key was already used for a different Call Slip request."
+        )
+    if not _student_in_scope(actor, existing.student_id):
+        raise CallSlipNotFound("The requested Call Slip was not found.")
+    return _queryset().get(pk=existing.pk)
+
+
 def _resolve_issuer_locked(actor: User) -> User:
     if actor.role.code == "COUNSELOR":
         return actor
@@ -388,6 +468,85 @@ def _safe_audit_metadata(item: CallSlip) -> dict[str, object]:
     }
 
 
+def _create_new_call_slip_locked(
+    *,
+    actor: User,
+    student_id: UUID,
+    prepared: _CallSlipCreationInput,
+    referral_id: UUID | None,
+    notify_student: bool,
+    context: AuditContext,
+) -> CallSlip:
+    issuer = _resolve_issuer_locked(actor)
+    student = User.objects.select_for_update().select_related("role").filter(pk=student_id).first()
+    student = _validate_student(student)
+    if not _student_in_scope(actor, student.pk):
+        raise CallSlipNotPermitted(
+            "The selected Student is outside the authenticated Guidance actor's Call Slip scope."
+        )
+
+    referral = None
+    if referral_id is not None:
+        referral = _lock_linked_referral(
+            actor=actor,
+            referral_id=referral_id,
+            student_id=student.pk,
+        )
+
+    revision = _active_call_slip_revision()
+    try:
+        with transaction.atomic():
+            item = CallSlip.objects.create(
+                student=student,
+                student_name_snapshot=student.get_full_name(),
+                course_year_snapshot=prepared.course_snapshot,
+                referral=referral,
+                destination_type=prepared.destination_type,
+                other_destination=prepared.other_destination,
+                report_at=prepared.report_at,
+                issued_by=issuer,
+                issued_by_name_snapshot=issuer.get_full_name(),
+                form_revision=revision,
+                recorded_by=actor,
+                creation_key_digest=prepared.digest,
+                creation_request_fingerprint=prepared.fingerprint,
+            )
+    except IntegrityError as exc:
+        if (
+            referral is not None
+            and CallSlip.objects.filter(
+                referral_id=referral.pk,
+                voided_at__isnull=True,
+            ).exists()
+        ):
+            raise CallSlipReferralConflict(
+                "The linked Referral already has a non-voided Call Slip."
+            ) from exc
+        raise CallSlipCreationConflict(
+            "The Call Slip could not be created because its creation identity conflicted."
+        ) from exc
+
+    item_for_audit = _queryset().get(pk=item.pk)
+    record_event(
+        context=context,
+        action=CALL_SLIP_CREATED,
+        outcome=AuditOutcome.SUCCESS,
+        target_type="callslips.callslip",
+        target_id=item.pk,
+        metadata=_safe_audit_metadata(item_for_audit),
+    )
+    if notify_student:
+        create_notification_for_event(
+            recipient=student,
+            event=NotificationEvent.CALL_SLIP_ISSUED,
+            source_type="call_slip",
+            source_id=item.pk,
+            target_type="CALL_SLIP",
+            target_id=item.pk,
+        )
+    return item_for_audit
+
+
 def create_call_slip(
     *,
     actor: User,
@@ -402,110 +561,120 @@ def create_call_slip(
     request_fingerprint: str,
     context: AuditContext,
 ) -> CallSlip:
-    _validate_operational_actor(actor)
-    key = _validate_idempotency_key(idempotency_key)
-    fingerprint = _validate_fingerprint(request_fingerprint)
-    course_snapshot = _clean_required(
-        course_year,
-        "course_year",
-        MAX_COURSE_YEAR_LENGTH,
+    prepared = _prepare_creation_input(
+        actor=actor,
+        course_year=course_year,
+        destination_type=destination_type,
+        other_destination=other_destination,
+        report_at=report_at,
+        idempotency_key=idempotency_key,
+        request_fingerprint=request_fingerprint,
     )
-    normalized_destination, cleaned_other = _normalize_destination(
-        destination_type,
-        other_destination,
-    )
-    normalized_report_at = _normalize_report_at(report_at)
-    digest = _creation_digest(actor_id=actor.pk, key=key)
 
     with transaction.atomic():
-        locked_actor = (
-            User.objects.select_for_update().select_related("role").filter(pk=actor.pk).first()
+        locked_actor = _lock_creation_actor(actor)
+        existing = _existing_creation_locked(
+            actor=locked_actor,
+            digest=prepared.digest,
+            fingerprint=prepared.fingerprint,
         )
-        if locked_actor is None:
-            raise CallSlipNotPermitted("The authenticated Guidance actor no longer exists.")
-        _validate_operational_actor(locked_actor)
-
-        existing = CallSlip.objects.select_for_update().filter(creation_key_digest=digest).first()
         if existing is not None:
-            if existing.creation_request_fingerprint != fingerprint:
-                raise CallSlipCreationConflict(
-                    "The Idempotency-Key was already used for a different Call Slip request."
-                )
-            if not _student_in_scope(locked_actor, existing.student_id):
-                raise CallSlipNotFound("The requested Call Slip was not found.")
-            return _queryset().get(pk=existing.pk)
-
-        issuer = _resolve_issuer_locked(locked_actor)
-        student = (
-            User.objects.select_for_update().select_related("role").filter(pk=student_id).first()
-        )
-        student = _validate_student(student)
-        if not _student_in_scope(locked_actor, student.pk):
-            raise CallSlipNotPermitted(
-                "The selected Student is outside the authenticated Guidance actor's "
-                "Call Slip scope."
-            )
-
-        referral = None
-        if referral_id is not None:
-            referral = _lock_linked_referral(
-                actor=locked_actor,
-                referral_id=referral_id,
-                student_id=student.pk,
-            )
-
-        revision = _active_call_slip_revision()
-        try:
-            with transaction.atomic():
-                item = CallSlip.objects.create(
-                    student=student,
-                    student_name_snapshot=student.get_full_name(),
-                    course_year_snapshot=course_snapshot,
-                    referral=referral,
-                    destination_type=normalized_destination,
-                    other_destination=cleaned_other,
-                    report_at=normalized_report_at,
-                    issued_by=issuer,
-                    issued_by_name_snapshot=issuer.get_full_name(),
-                    form_revision=revision,
-                    recorded_by=locked_actor,
-                    creation_key_digest=digest,
-                    creation_request_fingerprint=fingerprint,
-                )
-        except IntegrityError as exc:
-            if (
-                referral is not None
-                and CallSlip.objects.filter(
-                    referral_id=referral.pk,
-                    voided_at__isnull=True,
-                ).exists()
-            ):
-                raise CallSlipReferralConflict(
-                    "The linked Referral already has an active Call Slip."
-                ) from exc
-            raise CallSlipCreationConflict(
-                "The Call Slip could not be created because its creation identity conflicted."
-            ) from exc
-
-        item_for_audit = _queryset().get(pk=item.pk)
-        record_event(
+            return existing
+        return _create_new_call_slip_locked(
+            actor=locked_actor,
+            student_id=student_id,
+            prepared=prepared,
+            referral_id=referral_id,
+            notify_student=notify_student,
             context=context,
-            action=CALL_SLIP_CREATED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="callslips.callslip",
-            target_id=item.pk,
-            metadata=_safe_audit_metadata(item_for_audit),
         )
-        if notify_student:
-            create_notification_for_event(
-                recipient=student,
-                event=NotificationEvent.CALL_SLIP_ISSUED,
-                source_type="call_slip",
-                source_id=item.pk,
-                target_type="CALL_SLIP",
-                target_id=item.pk,
+
+
+def _lock_referral_for_atomic_issuance(*, actor: User, referral_id: UUID) -> Referral:
+    referral = Referral.objects.select_for_update().filter(pk=referral_id).first()
+    if referral is None or not _student_in_scope(actor, referral.student_id):
+        raise CallSlipNotFound("The linked Referral was not found.")
+    if referral.voided_at is not None:
+        raise CallSlipReferralConflict("A voided Referral cannot receive a new Call Slip.")
+    if CallSlip.objects.filter(
+        referral_id=referral.pk,
+        voided_at__isnull=True,
+    ).exists():
+        raise CallSlipReferralConflict("The linked Referral already has a non-voided Call Slip.")
+    return referral
+
+
+def _translate_referral_action_error(exc: ReferralError) -> CallSlipError:
+    if isinstance(exc, (ReferralNotFound, ReferralNotPermitted)):
+        return CallSlipNotFound("The linked Referral was not found.")
+    if isinstance(exc, InvalidReferralInput):
+        return InvalidCallSlipInput(str(exc))
+    if isinstance(exc, (ReferralActionConflict, ReferralVoidConflict)):
+        return CallSlipReferralConflict(str(exc))
+    return CallSlipReferralConflict("The linked Referral source action could not be ensured.")
+
+
+def create_call_slip_from_referral(
+    *,
+    actor: User,
+    referral_id: UUID,
+    course_year: str,
+    destination_type: str | CallSlipDestinationType,
+    other_destination: str,
+    report_at: datetime,
+    notify_student: bool,
+    action_occurred_at: datetime | None,
+    action_remarks: str | None,
+    idempotency_key: str,
+    request_fingerprint: str,
+    context: AuditContext,
+) -> CallSlip:
+    prepared = _prepare_creation_input(
+        actor=actor,
+        course_year=course_year,
+        destination_type=destination_type,
+        other_destination=other_destination,
+        report_at=report_at,
+        idempotency_key=idempotency_key,
+        request_fingerprint=request_fingerprint,
+    )
+
+    with transaction.atomic():
+        locked_actor = _lock_creation_actor(actor)
+
+        # Persistent Call Slip idempotency is authoritative and must resolve an exact
+        # successful retry before source-action uniqueness is considered.
+        existing = _existing_creation_locked(
+            actor=locked_actor,
+            digest=prepared.digest,
+            fingerprint=prepared.fingerprint,
+        )
+        if existing is not None:
+            return existing
+
+        referral = _lock_referral_for_atomic_issuance(
+            actor=locked_actor,
+            referral_id=referral_id,
+        )
+        try:
+            ensure_call_slip_action(
+                actor=locked_actor,
+                referral_id=referral.pk,
+                occurred_at=action_occurred_at,
+                remarks=action_remarks,
+                context=context,
             )
-        return item_for_audit
+        except ReferralError as exc:
+            raise _translate_referral_action_error(exc) from exc
+
+        return _create_new_call_slip_locked(
+            actor=locked_actor,
+            student_id=referral.student_id,
+            prepared=prepared,
+            referral_id=referral.pk,
+            notify_student=notify_student,
+            context=context,
+        )
 
 
 def list_eligible_students(

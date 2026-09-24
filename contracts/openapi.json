@@ -2196,6 +2196,50 @@
         "title": "CSRFResponse",
         "type": "object"
       },
+      "CallSlipCreateFromReferralRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallSlipReferralActionInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "course_year": {
+            "title": "Course Year",
+            "type": "string"
+          },
+          "destination_type": {
+            "$ref": "#/components/schemas/CallSlipDestinationTypeValue"
+          },
+          "notify_student": {
+            "default": true,
+            "title": "Notify Student",
+            "type": "boolean"
+          },
+          "other_destination": {
+            "default": "",
+            "title": "Other Destination",
+            "type": "string"
+          },
+          "report_at": {
+            "format": "date-time",
+            "title": "Report At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_year",
+          "destination_type",
+          "report_at"
+        ],
+        "title": "CallSlipCreateFromReferralRequest",
+        "type": "object"
+      },
       "CallSlipCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -2500,6 +2544,26 @@
           "display_name"
         ],
         "title": "CallSlipPersonSummary",
+        "type": "object"
+      },
+      "CallSlipReferralActionInput": {
+        "additionalProperties": false,
+        "properties": {
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "remarks": {
+            "default": "",
+            "title": "Remarks",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at"
+        ],
+        "title": "CallSlipReferralActionInput",
         "type": "object"
       },
       "CallSlipReferralSummary": {
@@ -27055,6 +27119,113 @@
           }
         ],
         "summary": "Call Slips Create",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
+    "/api/v1/call-slips/from-referral/{referral_id}": {
+      "post": {
+        "operationId": "callSlipsCreateFromReferral",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CallSlipCreateFromReferralRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Create From Referral",
         "tags": [
           "call-slips"
         ]

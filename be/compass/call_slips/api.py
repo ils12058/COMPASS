@@ -35,6 +35,7 @@ from .services import (
     CallSlipVoidConflict,
     InvalidCallSlipInput,
     create_call_slip,
+    create_call_slip_from_referral,
     get_call_slip,
     get_my_call_slip,
     list_call_slips,
@@ -47,6 +48,7 @@ from .services import (
 
 router = Router(tags=["call-slips"])
 CREATE_ROUTE = "/api/v1/call-slips"
+CREATE_FROM_REFERRAL_ROUTE = "/api/v1/call-slips/from-referral"
 PDF_SUCCESS_OPENAPI = {
     "responses": {
         200: {
@@ -83,6 +85,20 @@ class CallSlipCreateRequest(StrictSchema):
     report_at: datetime
     referral_id: UUID | None = None
     notify_student: bool = True
+
+
+class CallSlipReferralActionInput(StrictSchema):
+    occurred_at: datetime
+    remarks: str = ""
+
+
+class CallSlipCreateFromReferralRequest(StrictSchema):
+    course_year: str
+    destination_type: CallSlipDestinationTypeValue
+    other_destination: str = ""
+    report_at: datetime
+    notify_student: bool = True
+    action: CallSlipReferralActionInput | None = None
 
 
 class CallSlipInterviewEndedRequest(StrictSchema):
@@ -497,6 +513,54 @@ def call_slips_list_eligible_students(
         "page_size": result.page_size,
         "has_next": result.has_next,
     }
+
+
+@router.post(
+    "/from-referral/{referral_id}",
+    response=response_with_errors(
+        CallSlipOperationalResponse,
+        401,
+        403,
+        404,
+        409,
+        422,
+        success_status=201,
+    ),
+    auth=session_auth,
+    operation_id="callSlipsCreateFromReferral",
+)
+def call_slips_create_from_referral(
+    request,
+    referral_id: UUID,
+    payload: CallSlipCreateFromReferralRequest,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
+    _require_operational(request, "call_slips.manage")
+    fingerprint = request_fingerprint(
+        method="POST",
+        route=f"{CREATE_FROM_REFERRAL_ROUTE}/{referral_id}",
+        query_string=request.META.get("QUERY_STRING", ""),
+        body=request.body,
+    )
+    action = payload.action
+    try:
+        item = create_call_slip_from_referral(
+            actor=request.auth_user,
+            referral_id=referral_id,
+            course_year=payload.course_year,
+            destination_type=payload.destination_type.value,
+            other_destination=payload.other_destination,
+            report_at=payload.report_at,
+            notify_student=payload.notify_student,
+            action_occurred_at=action.occurred_at if action is not None else None,
+            action_remarks=action.remarks if action is not None else None,
+            idempotency_key=idempotency_key,
+            request_fingerprint=fingerprint,
+            context=_context(request),
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return Status(201, _operational_view(item))
 
 
 @router.get(

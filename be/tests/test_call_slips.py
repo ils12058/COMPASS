@@ -26,8 +26,10 @@ from compass.call_slips.services import (
     CallSlipReferralConflict,
     InvalidCallSlipInput,
     create_call_slip,
+    create_call_slip_from_referral,
     list_call_slips,
     record_interview_ended,
+    void_call_slip,
 )
 from compass.counseling.models import CounselingEncounter, CounselingSharedSummary
 from compass.ecounseling.models import ECounselingRoom
@@ -43,8 +45,8 @@ from compass.organization.models import (
     StaffSupervision,
     StudentAffiliation,
 )
-from compass.referrals.models import ReferralAction
-from compass.referrals.services import create_referral, record_action
+from compass.referrals.models import ReferralAction, ReferralActionType
+from compass.referrals.services import create_referral, record_action, void_referral
 from compass.routine_interviews.models import RoutineInterview
 
 
@@ -164,6 +166,62 @@ def create_referral_for(actor: User, student: User, *, key: str, fingerprint: st
         request_fingerprint=fingerprint,
         context=audit_context(actor),
         now=now,
+    )
+
+
+def composite_payload(
+    *,
+    course_year: str = "BSIS 4",
+    destination_type: str = "GUIDANCE_OFFICE",
+    other_destination: str = "",
+    report_at: datetime | None = None,
+    notify_student: bool = True,
+    action_occurred_at: datetime | None = None,
+    action_remarks: str = "Issued from Referral",
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "course_year": course_year,
+        "destination_type": destination_type,
+        "other_destination": other_destination,
+        "report_at": (report_at or (timezone.now() + timedelta(hours=2))).isoformat(),
+        "notify_student": notify_student,
+        "action": None,
+    }
+    if action_occurred_at is not None:
+        payload["action"] = {
+            "occurred_at": action_occurred_at.isoformat(),
+            "remarks": action_remarks,
+        }
+    return payload
+
+
+def create_from_referral_for(
+    actor: User,
+    referral,
+    *,
+    key: str,
+    fingerprint: str,
+    course_year: str = "BSIS 4",
+    destination_type: str = "GUIDANCE_OFFICE",
+    other_destination: str = "",
+    report_at: datetime | None = None,
+    notify_student: bool = False,
+    action_occurred_at: datetime | None = None,
+    action_remarks: str | None = None,
+):
+    return create_call_slip_from_referral(
+        actor=actor,
+        referral_id=referral.pk,
+        course_year=course_year,
+        destination_type=destination_type,
+        other_destination=other_destination,
+        report_at=report_at or (timezone.now() + timedelta(hours=2)),
+        notify_student=notify_student,
+        action_occurred_at=action_occurred_at,
+        action_remarks=action_remarks,
+        idempotency_key=key,
+        request_fingerprint=fingerprint,
+        context=audit_context(actor),
     )
 
 
@@ -1142,3 +1200,716 @@ def test_operational_call_slip_search_is_identity_reference_only_and_scope_first
         ).status_code
         == 422
     )
+
+
+@pytest.mark.django_db
+def test_atomic_referral_call_slip_live_issue_exact_retry_is_single_transactional_intent():
+    sync_policy()
+    head = make_head("atomic-live-head@example.edu")
+    student = make_user("atomic-live-student@example.edu", "STUDENT")
+    referral = create_referral_for(head, student, key="atomic-live-ref", fingerprint="a" * 64)
+    client = auth_client(head)
+    headers = csrf(client)
+    raw_key = "atomic-live-call-slip-key"
+    action_at = timezone.now()
+    payload = composite_payload(
+        course_year="BSIT 3",
+        report_at=timezone.now() - timedelta(hours=3),
+        notify_student=True,
+        action_occurred_at=action_at,
+        action_remarks="Send permit now",
+    )
+
+    first = client.post(
+        f"/api/v1/call-slips/from-referral/{referral.pk}",
+        data=json.dumps(payload),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY=raw_key,
+        **headers,
+    )
+    retry = client.post(
+        f"/api/v1/call-slips/from-referral/{referral.pk}",
+        data=json.dumps(payload),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY=raw_key,
+        **headers,
+    )
+
+    assert first.status_code == 201
+    assert retry.status_code == 201
+    assert retry.json()["id"] == first.json()["id"]
+    assert first.json()["student"]["id"] == str(student.pk)
+    assert first.json()["course_year_snapshot"] == "BSIT 3"
+    assert first.json()["referral"] == {
+        "id": str(referral.pk),
+        "reference_code": referral.reference_code,
+    }
+    assert set(first.json()["referral"]) == {"id", "reference_code"}
+    assert first.json()["issued_by"]["id"] == str(head.pk)
+    assert first.json()["recorded_by"]["id"] == str(head.pk)
+
+    action = ReferralAction.objects.get(
+        referral=referral,
+        action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT,
+    )
+    item = CallSlip.objects.get()
+    assert action.recorded_by_id == head.pk
+    assert item.student_id == referral.student_id
+    assert item.referral_id == referral.pk
+    assert item.report_at < item.created_at
+    assert item.creation_key_digest != raw_key
+    assert len(item.creation_key_digest) == 64
+
+    assert ReferralAction.objects.count() == 1
+    assert CallSlip.objects.count() == 1
+    assert AuditEvent.objects.filter(action="referral.action_recorded").count() == 1
+    assert AuditEvent.objects.filter(action="call_slip.created").count() == 1
+    notification = Notification.objects.get(event_code=NotificationEvent.CALL_SLIP_ISSUED)
+    assert notification.recipient_id == student.pk
+    assert notification.target_type == "CALL_SLIP"
+    assert notification.target_id == item.pk
+    assert EmailDelivery.objects.filter(notification=notification).count() == 1
+
+    serialized = json.dumps(
+        list(
+            AuditEvent.objects.filter(
+                action__in=["referral.action_recorded", "call_slip.created"]
+            ).values_list("metadata", flat=True)
+        )
+    )
+    assert raw_key not in serialized
+    assert raw_key not in notification.title
+    assert raw_key not in notification.message
+    assert "SENSITIVE-LINKED-REFERRAL-REASON" not in json.dumps(first.json())
+
+    assert Appointment.objects.count() == 0
+    assert CounselingEncounter.objects.count() == 0
+    assert CounselingSharedSummary.objects.count() == 0
+    assert RoutineInterview.objects.count() == 0
+    assert ECounselingRoom.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_atomic_referral_call_slip_historical_issue_is_quiet_and_requires_explicit_source_action():
+    sync_policy()
+    head = make_head("atomic-history-head@example.edu")
+    student = make_user("atomic-history-student@example.edu", "STUDENT")
+    missing = create_referral_for(head, student, key="history-missing-ref", fingerprint="b" * 64)
+    client = auth_client(head)
+    headers = csrf(client)
+
+    missing_response = client.post(
+        f"/api/v1/call-slips/from-referral/{missing.pk}",
+        data=json.dumps(
+            composite_payload(
+                report_at=timezone.now() - timedelta(days=60),
+                notify_student=False,
+            )
+        ),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="history-missing-action",
+        **headers,
+    )
+    assert missing_response.status_code == 409
+    assert ReferralAction.objects.filter(referral=missing).count() == 0
+    assert CallSlip.objects.count() == 0
+
+    action_at = timezone.now() - timedelta(hours=1)
+    issued = client.post(
+        f"/api/v1/call-slips/from-referral/{missing.pk}",
+        data=json.dumps(
+            composite_payload(
+                report_at=timezone.now() - timedelta(days=60),
+                notify_student=False,
+                action_occurred_at=action_at,
+                action_remarks="Historical permit source row",
+            )
+        ),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="history-explicit-action",
+        **headers,
+    )
+    assert issued.status_code == 201
+    assert CallSlip.objects.get().report_at < timezone.now()
+    assert ReferralAction.objects.filter(referral=missing).count() == 1
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_atomic_referral_call_slip_reuses_existing_action_and_only_accepts_matching_action_input():
+    sync_policy()
+    head = make_head("action-reuse-head@example.edu")
+    student = make_user("action-reuse-student@example.edu", "STUDENT")
+    action_at = timezone.now() - timedelta(minutes=20)
+
+    null_referral = create_referral_for(head, student, key="reuse-null-ref", fingerprint="c" * 64)
+    record_action(
+        actor=head,
+        referral_id=null_referral.pk,
+        action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT,
+        occurred_at=action_at,
+        remarks="Existing source action",
+        context=audit_context(head),
+    )
+    before_action_audits = AuditEvent.objects.filter(action="referral.action_recorded").count()
+    created = create_from_referral_for(
+        head,
+        null_referral,
+        key="reuse-null-call",
+        fingerprint="d" * 64,
+        action_occurred_at=None,
+        action_remarks=None,
+    )
+    assert created.referral_id == null_referral.pk
+    assert ReferralAction.objects.filter(referral=null_referral).count() == 1
+    assert (
+        AuditEvent.objects.filter(action="referral.action_recorded").count() == before_action_audits
+    )
+
+    matching_referral = create_referral_for(
+        head,
+        student,
+        key="reuse-matching-ref",
+        fingerprint="e" * 64,
+    )
+    matching = record_action(
+        actor=head,
+        referral_id=matching_referral.pk,
+        action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT,
+        occurred_at=action_at,
+        remarks="  Matching source facts  ",
+        context=audit_context(head),
+    )
+    matching_item = create_from_referral_for(
+        head,
+        matching_referral,
+        key="reuse-matching-call",
+        fingerprint="f" * 64,
+        action_occurred_at=matching.occurred_at,
+        action_remarks="Matching source facts",
+    )
+    assert matching_item.referral_id == matching_referral.pk
+    assert ReferralAction.objects.filter(referral=matching_referral).count() == 1
+
+    conflict_referral = create_referral_for(
+        head,
+        student,
+        key="reuse-conflict-ref",
+        fingerprint="1" * 64,
+    )
+    conflict_action = record_action(
+        actor=head,
+        referral_id=conflict_referral.pk,
+        action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT,
+        occurred_at=action_at,
+        remarks="Historical fact",
+        context=audit_context(head),
+    )
+    with pytest.raises(CallSlipReferralConflict, match="conflicts"):
+        create_from_referral_for(
+            head,
+            conflict_referral,
+            key="reuse-conflict-call",
+            fingerprint="2" * 64,
+            action_occurred_at=conflict_action.occurred_at,
+            action_remarks="Different historical fact",
+        )
+    assert ReferralAction.objects.filter(referral=conflict_referral).count() == 1
+    assert not CallSlip.objects.filter(referral=conflict_referral).exists()
+
+
+@pytest.mark.django_db
+def test_atomic_referral_call_slip_rolls_back_new_action_when_call_slip_creation_fails(
+    monkeypatch,
+):
+    sync_policy()
+    head = make_head("atomic-rollback-head@example.edu")
+    student = make_user("atomic-rollback-student@example.edu", "STUDENT")
+    referral = create_referral_for(head, student, key="rollback-ref", fingerprint="3" * 64)
+
+    def fail_revision():
+        raise CallSlipConfigurationConflict("synthetic Call Slip configuration failure")
+
+    monkeypatch.setattr(
+        "compass.call_slips.services._active_call_slip_revision",
+        fail_revision,
+    )
+
+    with pytest.raises(CallSlipConfigurationConflict, match="synthetic"):
+        create_from_referral_for(
+            head,
+            referral,
+            key="rollback-call",
+            fingerprint="4" * 64,
+            notify_student=True,
+            action_occurred_at=timezone.now(),
+            action_remarks="Would otherwise be recorded",
+        )
+
+    assert not ReferralAction.objects.filter(referral=referral).exists()
+    assert not CallSlip.objects.filter(referral=referral).exists()
+    assert AuditEvent.objects.filter(action="referral.action_recorded").count() == 0
+    assert AuditEvent.objects.filter(action="call_slip.created").count() == 0
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_atomic_referral_call_slip_notification_persistence_failure_rolls_back_everything(
+    monkeypatch,
+):
+    sync_policy()
+    head = make_head("atomic-notification-head@example.edu")
+    student = make_user("atomic-notification-student@example.edu", "STUDENT")
+    referral = create_referral_for(
+        head,
+        student,
+        key="notification-rollback-ref",
+        fingerprint="5" * 64,
+    )
+
+    def fail_notification(**kwargs):
+        raise RuntimeError("synthetic durable notification persistence failure")
+
+    monkeypatch.setattr(
+        "compass.call_slips.services.create_notification_for_event",
+        fail_notification,
+    )
+
+    with pytest.raises(RuntimeError, match="durable notification"):
+        create_from_referral_for(
+            head,
+            referral,
+            key="notification-rollback-call",
+            fingerprint="6" * 64,
+            notify_student=True,
+            action_occurred_at=timezone.now(),
+            action_remarks="Live issue",
+        )
+
+    assert not ReferralAction.objects.filter(referral=referral).exists()
+    assert not CallSlip.objects.filter(referral=referral).exists()
+    assert AuditEvent.objects.filter(action="referral.action_recorded").count() == 0
+    assert AuditEvent.objects.filter(action="call_slip.created").count() == 0
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_atomic_referral_call_slip_idempotency_conflicts_cover_body_referral_and_direct_routes():
+    sync_policy()
+    head = make_head("atomic-idem-head@example.edu")
+    student = make_user("atomic-idem-student@example.edu", "STUDENT")
+    client = auth_client(head)
+    headers = csrf(client)
+    action_at = timezone.now() - timedelta(minutes=5)
+
+    referral_a = create_referral_for(head, student, key="idem-ref-a", fingerprint="7" * 64)
+    payload = composite_payload(
+        notify_student=False,
+        action_occurred_at=action_at,
+        action_remarks="Idempotent source action",
+    )
+    first = client.post(
+        f"/api/v1/call-slips/from-referral/{referral_a.pk}",
+        data=json.dumps(payload),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="composite-idem-key",
+        **headers,
+    )
+    assert first.status_code == 201
+
+    changed = {**payload, "course_year": "BSIT 2"}
+    body_conflict = client.post(
+        f"/api/v1/call-slips/from-referral/{referral_a.pk}",
+        data=json.dumps(changed),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="composite-idem-key",
+        **headers,
+    )
+    assert body_conflict.status_code == 409
+    assert CallSlip.objects.count() == 1
+    assert ReferralAction.objects.filter(referral=referral_a).count() == 1
+
+    referral_b = create_referral_for(head, student, key="idem-ref-b", fingerprint="8" * 64)
+    referral_conflict = client.post(
+        f"/api/v1/call-slips/from-referral/{referral_b.pk}",
+        data=json.dumps(payload),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="composite-idem-key",
+        **headers,
+    )
+    assert referral_conflict.status_code == 409
+    assert not ReferralAction.objects.filter(referral=referral_b).exists()
+    assert not CallSlip.objects.filter(referral=referral_b).exists()
+
+    direct_referral = create_referral_for(
+        head,
+        student,
+        key="direct-collision-ref",
+        fingerprint="9" * 64,
+    )
+    direct_payload = {
+        "student_id": str(student.pk),
+        "course_year": "BSIS 4",
+        "destination_type": "GUIDANCE_OFFICE",
+        "other_destination": "",
+        "report_at": (timezone.now() + timedelta(hours=1)).isoformat(),
+        "referral_id": None,
+        "notify_student": False,
+    }
+    direct = client.post(
+        "/api/v1/call-slips",
+        data=json.dumps(direct_payload),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="direct-composite-collision",
+        **headers,
+    )
+    assert direct.status_code == 201
+    collision = client.post(
+        f"/api/v1/call-slips/from-referral/{direct_referral.pk}",
+        data=json.dumps(payload),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="direct-composite-collision",
+        **headers,
+    )
+    assert collision.status_code == 409
+    assert not ReferralAction.objects.filter(referral=direct_referral).exists()
+
+    reverse_referral = create_referral_for(
+        head,
+        student,
+        key="reverse-collision-ref",
+        fingerprint="a1" * 32,
+    )
+    reverse_composite = client.post(
+        f"/api/v1/call-slips/from-referral/{reverse_referral.pk}",
+        data=json.dumps(payload),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="composite-direct-collision",
+        **headers,
+    )
+    assert reverse_composite.status_code == 201
+    reverse_direct = client.post(
+        "/api/v1/call-slips",
+        data=json.dumps(direct_payload),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="composite-direct-collision",
+        **headers,
+    )
+    assert reverse_direct.status_code == 409
+
+
+@pytest.mark.django_db
+def test_atomic_referral_call_slip_nonvoided_link_blocks_and_voided_link_allows_new_issue():
+    sync_policy()
+    head = make_head("linked-state-head@example.edu")
+    student = make_user("linked-state-student@example.edu", "STUDENT")
+    action_at = timezone.now() - timedelta(minutes=10)
+
+    active_referral = create_referral_for(head, student, key="active-ref", fingerprint="b1" * 32)
+    record_action(
+        actor=head,
+        referral_id=active_referral.pk,
+        action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT,
+        occurred_at=action_at,
+        remarks="Existing source action",
+        context=audit_context(head),
+    )
+    create_for(
+        head,
+        student,
+        key="active-linked",
+        fingerprint="c1" * 32,
+        referral_id=active_referral.pk,
+        notify_student=False,
+    )
+    with pytest.raises(CallSlipReferralConflict, match="non-voided"):
+        create_from_referral_for(
+            head,
+            active_referral,
+            key="active-second",
+            fingerprint="d1" * 32,
+        )
+
+    completed_referral = create_referral_for(
+        head,
+        student,
+        key="completed-ref",
+        fingerprint="e1" * 32,
+    )
+    record_action(
+        actor=head,
+        referral_id=completed_referral.pk,
+        action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT,
+        occurred_at=action_at,
+        remarks="Existing completed source action",
+        context=audit_context(head),
+    )
+    completed = create_for(
+        head,
+        student,
+        key="completed-linked",
+        fingerprint="f1" * 32,
+        referral_id=completed_referral.pk,
+        notify_student=False,
+    )
+    record_interview_ended(
+        actor=head,
+        call_slip_id=completed.pk,
+        interview_ended_at=timezone.now() - timedelta(minutes=1),
+        context=audit_context(head),
+    )
+    with pytest.raises(CallSlipReferralConflict, match="non-voided"):
+        create_from_referral_for(
+            head,
+            completed_referral,
+            key="completed-second",
+            fingerprint="a2" * 32,
+        )
+
+    voided_referral = create_referral_for(
+        head,
+        student,
+        key="voided-ref",
+        fingerprint="b2" * 32,
+    )
+    record_action(
+        actor=head,
+        referral_id=voided_referral.pk,
+        action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT,
+        occurred_at=action_at,
+        remarks="Single historical action",
+        context=audit_context(head),
+    )
+    old = create_for(
+        head,
+        student,
+        key="voided-linked",
+        fingerprint="c2" * 32,
+        referral_id=voided_referral.pk,
+        notify_student=False,
+    )
+    void_call_slip(
+        actor=head,
+        call_slip_id=old.pk,
+        reason="Incorrect permit",
+        context=audit_context(head),
+    )
+    replacement = create_from_referral_for(
+        head,
+        voided_referral,
+        key="after-void-new-key",
+        fingerprint="d2" * 32,
+        notify_student=False,
+    )
+
+    old.refresh_from_db()
+    assert old.voided_at is not None
+    assert replacement.pk != old.pk
+    assert replacement.referral_id == voided_referral.pk
+    assert ReferralAction.objects.filter(referral=voided_referral).count() == 1
+    assert CallSlip.objects.filter(referral=voided_referral).count() == 2
+
+
+@pytest.mark.django_db
+def test_atomic_referral_call_slip_preserves_gss_head_and_scope_authority():
+    sync_policy()
+    counselor_a, counselor_b, gss, student_a, student_b = setup_scope()
+    action_at = timezone.now() - timedelta(minutes=5)
+
+    referral_a = create_referral_for(
+        counselor_a,
+        student_a,
+        key="gss-ref",
+        fingerprint="e2" * 32,
+    )
+    issued = create_from_referral_for(
+        gss,
+        referral_a,
+        key="gss-call",
+        fingerprint="f2" * 32,
+        action_occurred_at=action_at,
+        action_remarks="Staff encoded source action",
+    )
+    action = ReferralAction.objects.get(referral=referral_a)
+    assert issued.issued_by_id == counselor_a.pk
+    assert issued.recorded_by_id == gss.pk
+    assert action.recorded_by_id == gss.pk
+
+    no_supervision_referral = create_referral_for(
+        counselor_a,
+        student_a,
+        key="gss-no-supervision-ref",
+        fingerprint="a3" * 32,
+    )
+    StaffSupervision.objects.filter(staff=gss).delete()
+    with pytest.raises((CallSlipNotFound, CallSlipNotPermitted)):
+        create_from_referral_for(
+            gss,
+            no_supervision_referral,
+            key="gss-no-supervision-call",
+            fingerprint="b3" * 32,
+            action_occurred_at=action_at,
+            action_remarks="Must not persist",
+        )
+    assert not ReferralAction.objects.filter(referral=no_supervision_referral).exists()
+    assert not CallSlip.objects.filter(referral=no_supervision_referral).exists()
+
+    out_of_scope = create_referral_for(
+        counselor_b,
+        student_b,
+        key="scope-ref",
+        fingerprint="c3" * 32,
+    )
+    counselor_client = auth_client(counselor_a)
+    denied = counselor_client.post(
+        f"/api/v1/call-slips/from-referral/{out_of_scope.pk}",
+        data=json.dumps(
+            composite_payload(
+                notify_student=False,
+                action_occurred_at=action_at,
+            )
+        ),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="scope-denied",
+        **csrf(counselor_client),
+    )
+    assert denied.status_code == 404
+    assert not ReferralAction.objects.filter(referral=out_of_scope).exists()
+    assert not CallSlip.objects.filter(referral=out_of_scope).exists()
+
+    head = make_head("institution-wide-call-slip@example.edu")
+    head_created = create_from_referral_for(
+        head,
+        out_of_scope,
+        key="head-institution-wide",
+        fingerprint="d3" * 32,
+        action_occurred_at=action_at,
+        action_remarks="Head institution-wide issue",
+    )
+    assert head_created.student_id == student_b.pk
+    assert head_created.issued_by_id == head.pk
+    assert head_created.recorded_by_id == head.pk
+
+
+@pytest.mark.django_db
+def test_atomic_referral_call_slip_rejects_void_referral_bad_action_chronology_and_forbidden_ids():
+    sync_policy()
+    head = make_head("validation-head@example.edu")
+    student = make_user("validation-student@example.edu", "STUDENT")
+    client = auth_client(head)
+    action_now = timezone.now()
+
+    voided = create_referral_for(head, student, key="voided-source-ref", fingerprint="e3" * 32)
+    void_referral(
+        actor=head,
+        referral_id=voided.pk,
+        reason="Source record voided",
+        context=audit_context(head),
+    )
+    voided_response = client.post(
+        f"/api/v1/call-slips/from-referral/{voided.pk}",
+        data=json.dumps(
+            composite_payload(
+                notify_student=False,
+                action_occurred_at=action_now,
+            )
+        ),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="voided-source-call",
+        **csrf(client),
+    )
+    assert voided_response.status_code == 409
+    assert not ReferralAction.objects.filter(referral=voided).exists()
+    assert not CallSlip.objects.filter(referral=voided).exists()
+
+    before_received = create_referral_for(
+        head,
+        student,
+        key="before-received-ref",
+        fingerprint="f3" * 32,
+    )
+    invalid_early = client.post(
+        f"/api/v1/call-slips/from-referral/{before_received.pk}",
+        data=json.dumps(
+            composite_payload(
+                notify_student=False,
+                action_occurred_at=before_received.received_at - timedelta(minutes=1),
+            )
+        ),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="before-received-call",
+        **csrf(client),
+    )
+    assert invalid_early.status_code == 422
+    assert not ReferralAction.objects.filter(referral=before_received).exists()
+    assert not CallSlip.objects.filter(referral=before_received).exists()
+
+    future_referral = create_referral_for(
+        head,
+        student,
+        key="future-action-ref",
+        fingerprint="a4" * 32,
+    )
+    future = client.post(
+        f"/api/v1/call-slips/from-referral/{future_referral.pk}",
+        data=json.dumps(
+            composite_payload(
+                notify_student=False,
+                action_occurred_at=timezone.now() + timedelta(minutes=5),
+            )
+        ),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="future-action-call",
+        **csrf(client),
+    )
+    assert future.status_code == 422
+    assert not ReferralAction.objects.filter(referral=future_referral).exists()
+
+    strict_referral = create_referral_for(
+        head,
+        student,
+        key="strict-body-ref",
+        fingerprint="b4" * 32,
+    )
+    base_payload = composite_payload(
+        notify_student=False,
+        action_occurred_at=timezone.now(),
+    )
+    for index, forbidden in enumerate(
+        ("student_id", "referral_id", "issued_by_id", "recorded_by_id"),
+        start=1,
+    ):
+        invalid_payload = {**base_payload, forbidden: str(student.pk)}
+        response = client.post(
+            f"/api/v1/call-slips/from-referral/{strict_referral.pk}",
+            data=json.dumps(invalid_payload),
+            content_type="application/json",
+            HTTP_IDEMPOTENCY_KEY=f"strict-extra-{index}",
+            **csrf(client),
+        )
+        assert response.status_code == 422
+    assert not ReferralAction.objects.filter(referral=strict_referral).exists()
+    assert not CallSlip.objects.filter(referral=strict_referral).exists()
+
+    missing_key_referral = create_referral_for(
+        head,
+        student,
+        key="missing-key-ref",
+        fingerprint="c4" * 32,
+    )
+    missing_key = client.post(
+        f"/api/v1/call-slips/from-referral/{missing_key_referral.pk}",
+        data=json.dumps(
+            composite_payload(
+                notify_student=False,
+                action_occurred_at=timezone.now(),
+            )
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert missing_key.status_code == 422
+    assert not ReferralAction.objects.filter(referral=missing_key_referral).exists()
