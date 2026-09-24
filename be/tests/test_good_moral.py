@@ -885,3 +885,625 @@ def test_good_moral_operational_list_supports_student_filter_and_safe_identity_s
         ).status_code
         == 422
     )
+
+
+@pytest.mark.django_db
+def test_f4_persistent_replay_precedes_lifecycle_inventory_affiliation_and_snapshot_refresh(
+    monkeypatch,
+):
+    sync_policy()
+    student = make_user("idem-f4@example.edu")
+    affiliation = make_affiliation(student, code="F4IDEM")
+    academic_year = make_academic_year()
+    inventory = make_inventory(
+        student,
+        academic_year,
+        course="Original Course",
+        major="Original Major",
+    )
+    client = auth_client(student)
+    payload = {"year_level": "Fourth Year", "semester": "First Semester"}
+    key = "gm-f4-1"
+
+    first = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **good_moral_create_headers(client, key),
+    )
+    assert first.status_code == 201
+    request_id = first.json()["id"]
+    item = GoodMoralRequest.objects.get(pk=request_id)
+    assert item.variant == GoodMoralVariant.CURRENT_STUDENT
+    assert item.creation_key_digest
+    assert len(item.creation_key_digest) == 64
+    assert item.creation_key_digest != key
+    assert len(item.creation_request_fingerprint) == 64
+    assert set(item.creation_request_fingerprint) <= set("0123456789abcdef")
+    assert (
+        AuditEvent.objects.filter(
+            action="good_moral.request_created",
+            target_id=str(item.pk),
+        ).count()
+        == 1
+    )
+
+    original = {
+        "inventory_id": item.inventory_id,
+        "academic_year_id": item.academic_year_id,
+        "applicant_name": item.applicant_name_snapshot,
+        "college": item.college_snapshot,
+        "course": item.course_snapshot,
+        "major": item.major_snapshot,
+        "year_level": item.year_level_snapshot,
+        "semester": item.semester_snapshot,
+    }
+
+    student.first_name = "Changed"
+    student.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
+    student.save(update_fields=["first_name", "student_lifecycle_status", "updated_at"])
+    inventory.course_currently_enrolled = "Changed Course"
+    inventory.major = "Changed Major"
+    inventory.save(update_fields=["course_currently_enrolled", "major", "updated_at"])
+    affiliation.college.name = "Changed College"
+    affiliation.college.save(update_fields=["name", "updated_at"])
+
+    def fail_inventory(_student):
+        raise AssertionError("exact replay must not resolve current Inventory")
+
+    def fail_affiliation(_student):
+        raise AssertionError("exact replay must not resolve current affiliation")
+
+    monkeypatch.setattr(
+        "compass.good_moral.services.require_current_submitted_inventory",
+        fail_inventory,
+    )
+    monkeypatch.setattr(
+        "compass.good_moral.services._current_affiliation",
+        fail_affiliation,
+    )
+
+    replay = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **good_moral_create_headers(client, key),
+    )
+    assert replay.status_code == 201
+    assert replay.json()["id"] == request_id
+    item.refresh_from_db()
+    assert {
+        "inventory_id": item.inventory_id,
+        "academic_year_id": item.academic_year_id,
+        "applicant_name": item.applicant_name_snapshot,
+        "college": item.college_snapshot,
+        "course": item.course_snapshot,
+        "major": item.major_snapshot,
+        "year_level": item.year_level_snapshot,
+        "semester": item.semester_snapshot,
+    } == original
+    assert GoodMoralRequest.objects.filter(student=student).count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action="good_moral.request_created",
+            target_id=str(item.pk),
+        ).count()
+        == 1
+    )
+
+    new_intent = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **good_moral_create_headers(client, "gm-f4-new-intent"),
+    )
+    assert new_intent.status_code == 409
+    assert new_intent.json()["error"]["code"] == "current_student_required"
+
+
+@pytest.mark.django_db
+def test_f6_persistent_replay_precedes_lifecycle_and_profile_refresh():
+    sync_policy()
+    student = make_user(
+        "idem-f6@example.edu",
+        lifecycle=StudentLifecycleStatus.GRADUATED,
+    )
+    client = auth_client(student)
+    payload = {
+        "degree": "Bachelor of Science in Information Systems",
+        "major": "Information Systems",
+        "graduation_date": "2026-06-30",
+    }
+    key = "gm-f6-1"
+
+    first = client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **good_moral_create_headers(client, key),
+    )
+    assert first.status_code == 201
+    request_id = first.json()["id"]
+    item = GoodMoralRequest.objects.get(pk=request_id)
+    saved_name = item.applicant_name_snapshot
+    assert item.variant == GoodMoralVariant.GRADUATE
+    assert item.inventory_id is None
+    assert item.academic_year_id is None
+    assert item.creation_key_digest
+    assert item.creation_request_fingerprint
+    assert (
+        AuditEvent.objects.filter(
+            action="good_moral.request_created",
+            target_id=str(item.pk),
+        ).count()
+        == 1
+    )
+
+    student.first_name = "Changed"
+    student.student_lifecycle_status = StudentLifecycleStatus.FORMER
+    student.save(update_fields=["first_name", "student_lifecycle_status", "updated_at"])
+
+    replay = client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **good_moral_create_headers(client, key),
+    )
+    assert replay.status_code == 201
+    assert replay.json()["id"] == request_id
+    assert replay.json()["applicant_name"] == saved_name
+    assert GoodMoralRequest.objects.filter(student=student).count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action="good_moral.request_created",
+            target_id=str(item.pk),
+        ).count()
+        == 1
+    )
+
+    new_intent = client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **good_moral_create_headers(client, "gm-f6-new-intent"),
+    )
+    assert new_intent.status_code == 409
+    assert new_intent.json()["error"]["code"] == "graduated_student_required"
+
+
+@pytest.mark.django_db
+def test_same_good_moral_key_changed_body_and_cross_variant_conflict():
+    sync_policy()
+    current = make_user("same-key-current@example.edu")
+    make_affiliation(current, code="SAMEKEY")
+    make_inventory(current, make_academic_year(), course="BSIS")
+    client = auth_client(current)
+    key = "gm-shared-intent"
+
+    first = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps({"year_level": "Fourth", "semester": "First"}),
+        content_type="application/json",
+        **good_moral_create_headers(client, key),
+    )
+    assert first.status_code == 201
+
+    changed = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps({"year_level": "Fourth", "semester": "Second"}),
+        content_type="application/json",
+        **good_moral_create_headers(client, key),
+    )
+    assert changed.status_code == 409
+    assert changed.json()["error"]["code"] == "good_moral_conflict"
+
+    current.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
+    current.save(update_fields=["student_lifecycle_status", "updated_at"])
+    cross_variant = client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(
+            {
+                "degree": "BS Information Systems",
+                "major": "",
+                "graduation_date": "2026-06-30",
+            }
+        ),
+        content_type="application/json",
+        **good_moral_create_headers(client, key),
+    )
+    assert cross_variant.status_code == 409
+    assert cross_variant.json()["error"]["code"] == "good_moral_conflict"
+    assert GoodMoralRequest.objects.filter(student=current).count() == 1
+
+    graduate = make_user(
+        "same-key-graduate@example.edu",
+        lifecycle=StudentLifecycleStatus.GRADUATED,
+    )
+    graduate_client = auth_client(graduate)
+    graduate_key = "gm-graduate-change"
+    graduate_payload = {
+        "degree": "BS Information Systems",
+        "major": "",
+        "graduation_date": "2026-06-30",
+    }
+    assert (
+        graduate_client.post(
+            "/api/v1/good-moral/me/requests/graduate",
+            data=json.dumps(graduate_payload),
+            content_type="application/json",
+            **good_moral_create_headers(graduate_client, graduate_key),
+        ).status_code
+        == 201
+    )
+    graduate_changed = graduate_client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps({**graduate_payload, "degree": "BS Information Technology"}),
+        content_type="application/json",
+        **good_moral_create_headers(graduate_client, graduate_key),
+    )
+    assert graduate_changed.status_code == 409
+    assert graduate_changed.json()["error"]["code"] == "good_moral_conflict"
+    assert GoodMoralRequest.objects.filter(student=graduate).count() == 1
+
+
+@pytest.mark.django_db
+def test_same_raw_key_is_actor_scoped_and_new_key_preserves_multiple_legitimate_requests():
+    sync_policy()
+    first_student = make_user(
+        "actor-scope-a@example.edu",
+        lifecycle=StudentLifecycleStatus.GRADUATED,
+    )
+    second_student = make_user(
+        "actor-scope-b@example.edu",
+        lifecycle=StudentLifecycleStatus.GRADUATED,
+    )
+    payload = {
+        "degree": "BS Information Systems",
+        "major": "",
+        "graduation_date": "2026-06-30",
+    }
+    raw_key = "student-local-intent"
+
+    responses = []
+    for student in (first_student, second_student):
+        client = auth_client(student)
+        response = client.post(
+            "/api/v1/good-moral/me/requests/graduate",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **good_moral_create_headers(client, raw_key),
+        )
+        assert response.status_code == 201
+        responses.append(response.json()["id"])
+
+    first_request = GoodMoralRequest.objects.get(pk=responses[0])
+    second_request = GoodMoralRequest.objects.get(pk=responses[1])
+    assert first_request.creation_key_digest != second_request.creation_key_digest
+
+    first_client = auth_client(first_student)
+    another = first_client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **good_moral_create_headers(first_client, "student-local-second-intent"),
+    )
+    assert another.status_code == 201
+    assert another.json()["id"] != responses[0]
+    assert GoodMoralRequest.objects.filter(student=first_student).count() == 2
+    assert (
+        AuditEvent.objects.filter(
+            action="good_moral.request_created",
+            target_id__in=[str(responses[0]), str(another.json()["id"])],
+        ).count()
+        == 2
+    )
+
+
+@pytest.mark.django_db
+def test_create_replay_returns_current_cancelled_and_issued_resource_state():
+    sync_policy()
+    cancelled_student = make_user(
+        "replay-cancelled@example.edu",
+        lifecycle=StudentLifecycleStatus.GRADUATED,
+    )
+    cancelled_client = auth_client(cancelled_student)
+    payload = {
+        "degree": "BS Information Systems",
+        "major": "",
+        "graduation_date": "2026-06-30",
+    }
+    cancelled_key = "gm-replay-cancelled"
+    created = cancelled_client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **good_moral_create_headers(cancelled_client, cancelled_key),
+    )
+    assert created.status_code == 201
+    cancelled_id = created.json()["id"]
+    cancel_request(
+        actor=cancelled_student,
+        request_id=uuid.UUID(cancelled_id),
+        reason="No longer needed",
+        self_service=True,
+        context=AuditContext.user(cancelled_student),
+    )
+    replay_cancelled = cancelled_client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **good_moral_create_headers(cancelled_client, cancelled_key),
+    )
+    assert replay_cancelled.status_code == 201
+    assert replay_cancelled.json()["id"] == cancelled_id
+    assert replay_cancelled.json()["status"] == GoodMoralStatus.CANCELLED
+    assert (
+        AuditEvent.objects.filter(
+            action="good_moral.request_created",
+            target_id=cancelled_id,
+        ).count()
+        == 1
+    )
+
+    issued_student = make_user(
+        "replay-issued@example.edu",
+        lifecycle=StudentLifecycleStatus.GRADUATED,
+    )
+    counselor = make_user("replay-issued-counselor@example.edu", role="COUNSELOR")
+    issued_client = auth_client(issued_student)
+    issued_key = "gm-replay-issued"
+    created_issued = issued_client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **good_moral_create_headers(issued_client, issued_key),
+    )
+    assert created_issued.status_code == 201
+    issued_id = created_issued.json()["id"]
+    issue_request(
+        actor=counselor,
+        request_id=uuid.UUID(issued_id),
+        context=AuditContext.user(counselor),
+    )
+    notification_count = Notification.objects.filter(
+        source_type="good_moral_request",
+        source_id=uuid.UUID(issued_id),
+    ).count()
+
+    replay_issued = issued_client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **good_moral_create_headers(issued_client, issued_key),
+    )
+    assert replay_issued.status_code == 201
+    assert replay_issued.json()["id"] == issued_id
+    assert replay_issued.json()["status"] == GoodMoralStatus.ISSUED
+    assert (
+        AuditEvent.objects.filter(
+            action="good_moral.request_created",
+            target_id=issued_id,
+        ).count()
+        == 1
+    )
+    assert (
+        AuditEvent.objects.filter(
+            action="good_moral.issued",
+            target_id=issued_id,
+        ).count()
+        == 1
+    )
+    assert (
+        Notification.objects.filter(
+            source_type="good_moral_request",
+            source_id=uuid.UUID(issued_id),
+        ).count()
+        == notification_count
+    )
+
+
+@pytest.mark.django_db
+def test_good_moral_idempotency_key_validation_missing_header_and_privacy():
+    sync_policy()
+    student = make_user(
+        "key-validation@example.edu",
+        lifecycle=StudentLifecycleStatus.GRADUATED,
+    )
+    client = auth_client(student)
+    payload = {
+        "degree": "BS Information Systems",
+        "major": "",
+        "graduation_date": "2026-06-30",
+    }
+
+    missing = client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert missing.status_code == 422
+    assert GoodMoralRequest.objects.count() == 0
+
+    for index, invalid_key in enumerate(
+        (" bad-key ", "x" * 256),
+        start=1,
+    ):
+        response = client.post(
+            "/api/v1/good-moral/me/requests/graduate",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **good_moral_create_headers(client, invalid_key),
+        )
+        assert response.status_code == 422, index
+        assert response.json()["error"]["code"] == "invalid_good_moral_request"
+    assert GoodMoralRequest.objects.count() == 0
+
+    with pytest.raises(InvalidGoodMoralInput):
+        create_my_graduate_service(
+            student=student,
+            degree="BS Information Systems",
+            major="",
+            graduation_date=date(2026, 6, 30),
+            idempotency_key="good-key",
+            request_fingerprint="NOT-A-SHA256",
+            context=AuditContext.user(student),
+        )
+
+    raw_key = "raw-good-moral-key-must-not-persist"
+    success = client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **good_moral_create_headers(client, raw_key),
+    )
+    assert success.status_code == 201
+    item = GoodMoralRequest.objects.get(pk=success.json()["id"])
+    assert raw_key not in str(item.__dict__)
+    assert "creation_key" not in json.dumps(success.json())
+    assert "fingerprint" not in json.dumps(success.json())
+    event = AuditEvent.objects.get(
+        action="good_moral.request_created",
+        target_id=str(item.pk),
+    )
+    assert event.metadata == {
+        "variant": GoodMoralVariant.GRADUATE,
+        "transition": "NONE -> REQUESTED",
+    }
+    assert raw_key not in json.dumps(event.metadata)
+    assert "creation" not in json.dumps(event.metadata).lower()
+
+
+@pytest.mark.django_db
+def test_historical_null_creation_identity_rows_keep_existing_workflows(monkeypatch):
+    sync_policy()
+    student = make_user(
+        "historical-null@example.edu",
+        lifecycle=StudentLifecycleStatus.GRADUATED,
+    )
+    counselor = make_user("historical-null-counselor@example.edu", role="COUNSELOR")
+
+    correctable = GoodMoralRequest.objects.create(
+        student=student,
+        variant=GoodMoralVariant.GRADUATE,
+        applicant_name_snapshot=student.get_full_name(),
+        degree_snapshot="BS Information Systems",
+        major_snapshot="",
+        graduation_date=date(2026, 6, 30),
+    )
+    assert correctable.creation_key_digest is None
+    assert correctable.creation_request_fingerprint is None
+    assert get_mine(student=student, request_id=correctable.pk).pk == correctable.pk
+    assert [item.pk for item in list_mine(student)] == [correctable.pk]
+
+    updated = update_request(
+        actor=counselor,
+        request_id=correctable.pk,
+        changes={"degree_snapshot": "BS Information Technology"},
+        context=AuditContext.user(counselor),
+    )
+    assert updated.degree_snapshot == "BS Information Technology"
+    cancelled = cancel_request(
+        actor=student,
+        request_id=correctable.pk,
+        reason="Historical cancellation",
+        self_service=True,
+        context=AuditContext.user(student),
+    )
+    assert cancelled.status == GoodMoralStatus.CANCELLED
+    assert cancelled.creation_key_digest is None
+
+    issuable = GoodMoralRequest.objects.create(
+        student=student,
+        variant=GoodMoralVariant.GRADUATE,
+        applicant_name_snapshot=student.get_full_name(),
+        degree_snapshot="BS Information Systems",
+        major_snapshot="",
+        graduation_date=date(2026, 6, 30),
+    )
+    issued = issue_request(
+        actor=counselor,
+        request_id=issuable.pk,
+        context=AuditContext.user(counselor),
+    )
+    assert issued.status == GoodMoralStatus.ISSUED
+    assert issued.creation_key_digest is None
+    assert issued.creation_request_fingerprint is None
+
+    fake_pdf = b"%PDF-" + b"x" * 2048
+    monkeypatch.setattr(
+        "compass.good_moral.api.render_certificate_pdf",
+        lambda requested: fake_pdf,
+    )
+    response = auth_client(student).get(f"/api/v1/good-moral/me/{issued.pk}/pdf")
+    assert response.status_code == 200
+    assert response.content == fake_pdf
+
+
+@pytest.mark.django_db
+def test_unique_creation_digest_race_recovers_existing_resource_without_raw_integrity_error(
+    monkeypatch,
+):
+    sync_policy()
+    student = make_user(
+        "race-recovery@example.edu",
+        lifecycle=StudentLifecycleStatus.GRADUATED,
+    )
+    key = "gm-race-key"
+    fingerprint = "2" * 64
+    existing = create_my_graduate_service(
+        student=student,
+        degree="BS Information Systems",
+        major="",
+        graduation_date=date(2026, 6, 30),
+        idempotency_key=key,
+        request_fingerprint=fingerprint,
+        context=AuditContext.user(student),
+    )
+
+    original_lookup = good_moral_services._existing_creation_locked
+    calls = {"count": 0}
+
+    def hide_first_lookup(**kwargs):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return None
+        return original_lookup(**kwargs)
+
+    monkeypatch.setattr(
+        good_moral_services,
+        "_existing_creation_locked",
+        hide_first_lookup,
+    )
+    recovered = create_my_graduate_service(
+        student=student,
+        degree="BS Information Systems",
+        major="",
+        graduation_date=date(2026, 6, 30),
+        idempotency_key=key,
+        request_fingerprint=fingerprint,
+        context=AuditContext.user(student),
+    )
+    assert recovered.pk == existing.pk
+    assert GoodMoralRequest.objects.filter(student=student).count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action="good_moral.request_created",
+            target_id=str(existing.pk),
+        ).count()
+        == 1
+    )
+
+    calls["count"] = 0
+    with pytest.raises(GoodMoralCreationConflict):
+        create_my_graduate_service(
+            student=student,
+            degree="BS Information Technology",
+            major="",
+            graduation_date=date(2026, 6, 30),
+            idempotency_key=key,
+            request_fingerprint="3" * 64,
+            context=AuditContext.user(student),
+        )
+    assert GoodMoralRequest.objects.filter(student=student).count() == 1
+
