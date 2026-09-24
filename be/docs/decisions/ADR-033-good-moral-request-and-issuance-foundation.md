@@ -59,6 +59,40 @@ Lifecycle controls future initiation eligibility. It does not rewrite existing r
 variant, provenance, or snapshots. Active Student accounts retain owner-only historical list,
 detail, and issued-PDF access across CURRENT/GRADUATED/FORMER transitions.
 
+### Persistent request-creation replay safety
+
+Both Student request-creation commands require `Idempotency-Key` and use PostgreSQL-backed
+resource replay rather than transient Redis response replay.
+
+`GoodMoralRequest` stores only:
+
+- an actor-scoped SHA-256 creation-key digest; and
+- the exact HTTP request fingerprint.
+
+The raw idempotency key is never persisted. Historical rows are not backfilled and may continue
+to have null creation identity.
+
+For an authenticated active Student, persistent replay is resolved after locking/revalidating the
+Student account but before CURRENT/GRADUATED lifecycle checks and, for F4, before current Inventory
+or StudentAffiliation resolution. An exact Student + key + request retry therefore returns the
+existing durable Good Moral request even when lifecycle or institutional context has changed since
+the original creation.
+
+Exact replay returns the current representation of that same request, including a request that has
+since become CANCELLED or ISSUED. It does not refresh Inventory, Academic Year, College, course,
+major, applicant-name, year-level, semester, degree, graduation-date, FormRevision, or presentation
+provenance, and it creates no additional request-creation AuditEvent.
+
+Reusing the same Student/key for a different exact HTTP creation intent conflicts. This includes
+reuse across the Current Student and Graduate creation routes because route identity participates
+in the fingerprint. Different Students may independently use the same raw key because the digest
+is actor-scoped.
+
+A new `Idempotency-Key` always represents a new creation intent and must satisfy the Student's
+current lifecycle and all normal variant prerequisites. Multiple legitimate Good Moral requests
+remain allowed; no Student/variant, Student/Academic-Year, active-request, or daily uniqueness rule
+is introduced.
+
 ### F4 creation and exact Inventory provenance
 
 F4 creation runs transactionally and locks the Student User row before lifecycle evaluation and
