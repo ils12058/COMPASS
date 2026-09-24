@@ -357,6 +357,10 @@ def _prepare_creation_input(
     _validate_operational_actor(actor)
     key = _validate_idempotency_key(idempotency_key)
     fingerprint = _validate_fingerprint(request_fingerprint)
+    normalized_destination, cleaned_other = _normalize_destination(
+        destination_type,
+        other_destination,
+    )
     return _CallSlipCreationInput(
         fingerprint=fingerprint,
         course_snapshot=_clean_required(
@@ -364,8 +368,8 @@ def _prepare_creation_input(
             "course_year",
             MAX_COURSE_YEAR_LENGTH,
         ),
-        destination_type=_normalize_destination(destination_type, other_destination)[0],
-        other_destination=_normalize_destination(destination_type, other_destination)[1],
+        destination_type=normalized_destination,
+        other_destination=cleaned_other,
         report_at=_normalize_report_at(report_at),
         digest=_creation_digest(actor_id=actor.pk, key=key),
     )
