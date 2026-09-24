@@ -2384,4 +2384,3 @@ def test_feedback_submission_idempotency_openapi_contract() -> None:
     assert csm["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith(
         "/CSMSubmitRequest"
     )
-
