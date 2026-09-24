@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import date
 from decimal import Decimal
 
@@ -30,8 +31,8 @@ from compass.good_moral.services import (
     GoodMoralDocumentUnavailable,
     InvalidGoodMoralInput,
     build_certificate_render_context,
-    create_my_current_student,
-    create_my_graduate,
+    create_my_current_student as create_my_current_student_service,
+    create_my_graduate as create_my_graduate_service,
     get_mine,
     issue_request,
     list_mine,
@@ -84,6 +85,25 @@ def csrf(client: Client) -> dict[str, str]:
     response = client.get("/api/v1/auth/csrf")
     assert response.status_code == 200
     return {"HTTP_X_CSRFTOKEN": response.json()["csrf_token"]}
+
+
+def create_my_current_student(**kwargs):
+    kwargs.setdefault("idempotency_key", f"good-moral-current-{uuid.uuid4()}")
+    kwargs.setdefault("request_fingerprint", "0" * 64)
+    return create_my_current_student_service(**kwargs)
+
+
+def create_my_graduate(**kwargs):
+    kwargs.setdefault("idempotency_key", f"good-moral-graduate-{uuid.uuid4()}")
+    kwargs.setdefault("request_fingerprint", "1" * 64)
+    return create_my_graduate_service(**kwargs)
+
+
+def good_moral_create_headers(client: Client, key: str | None = None) -> dict[str, str]:
+    return {
+        **csrf(client),
+        "HTTP_IDEMPOTENCY_KEY": key or f"good-moral-api-{uuid.uuid4()}",
+    }
 
 
 def make_affiliation(student: User, *, code: str = "CCMS") -> StudentAffiliation:
@@ -250,7 +270,7 @@ def test_f4_inventory_prerequisite_failures_are_controlled_good_moral_409(case: 
         "/api/v1/good-moral/me/requests/current-student",
         data=json.dumps({"year_level": "Fourth", "semester": "First"}),
         content_type="application/json",
-        **csrf(client),
+        **good_moral_create_headers(client),
     )
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "good_moral_inventory_required"
@@ -270,7 +290,7 @@ def test_f4_rejects_noncurrent_lifecycle_before_inventory_lookup(lifecycle: str)
         "/api/v1/good-moral/me/requests/current-student",
         data=json.dumps({"year_level": "Fourth", "semester": "First"}),
         content_type="application/json",
-        **csrf(client),
+        **good_moral_create_headers(client),
     )
 
     assert response.status_code == 409
@@ -282,7 +302,7 @@ def test_student_creation_schemas_do_not_accept_server_owned_good_moral_fields()
     sync_policy()
     student = make_user("strict.student@example.edu")
     client = auth_client(student)
-    headers = csrf(client)
+    headers = good_moral_create_headers(client)
 
     f4 = client.post(
         "/api/v1/good-moral/me/requests/current-student",
@@ -365,7 +385,7 @@ def test_f6_rejects_non_graduated_student(lifecycle: str):
             }
         ),
         content_type="application/json",
-        **csrf(client),
+        **good_moral_create_headers(client),
     )
 
     assert response.status_code == 409
