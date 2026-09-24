@@ -26,6 +26,7 @@ from compass.common.idempotency import (
     RedisIdempotencyStore,
     request_fingerprint,
 )
+from compass.feedback import api as feedback_api
 from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
 from compass.institutional_forms.models import FormFamily, FormRevision
 
@@ -141,6 +142,88 @@ def post_json(
         content_type="application/json",
         HTTP_IDEMPOTENCY_KEY=idempotency_key or f"feedback-{uuid.uuid4()}",
         **csrf(client),
+    )
+
+
+class FakeRedis:
+    def __init__(self):
+        self.records: dict[str, str] = {}
+
+    def set(self, key, value, nx=False, ex=None):
+        if nx and key in self.records:
+            return False
+        self.records[key] = value
+        return True
+
+    def get(self, key):
+        return self.records.get(key)
+
+    def eval(self, script, number_of_keys, key, owner_token, *args):
+        record = json.loads(self.records[key])
+        if record["owner_token"] != owner_token:
+            return 0
+        if not args:
+            if record["state"] != "in_progress":
+                return -2
+            del self.records[key]
+            return 1
+        status_code, content_type, body_b64, ttl = args
+        record.update(
+            {
+                "state": "completed",
+                "status_code": int(status_code),
+                "content_type": content_type,
+                "body_b64": body_b64,
+            }
+        )
+        self.records[key] = json.dumps(record)
+        return 1
+
+
+class ControlledIdempotencyStore:
+    def __init__(
+        self,
+        *,
+        outcome: str = "execute",
+        begin_error: Exception | None = None,
+        complete_error: Exception | None = None,
+        abandon_error: Exception | None = None,
+    ):
+        self.outcome = outcome
+        self.begin_error = begin_error
+        self.complete_error = complete_error
+        self.abandon_error = abandon_error
+        self.begin_calls = 0
+        self.complete_calls = 0
+        self.abandon_calls = 0
+        self.completed_response = None
+        self.reservation = IdempotencyReservation("fake-feedback-key", "fake-owner")
+
+    def begin(self, **kwargs):
+        self.begin_calls += 1
+        if self.begin_error is not None:
+            raise self.begin_error
+        if self.outcome == "in_progress":
+            return IdempotencyDecision("in_progress")
+        return IdempotencyDecision("execute", reservation=self.reservation)
+
+    def complete(self, reservation, response):
+        self.complete_calls += 1
+        self.completed_response = response
+        if self.complete_error is not None:
+            raise self.complete_error
+
+    def abandon(self, reservation):
+        self.abandon_calls += 1
+        if self.abandon_error is not None:
+            raise self.abandon_error
+
+
+def use_idempotency_store(monkeypatch, store) -> None:
+    monkeypatch.setattr(
+        feedback_api.RedisIdempotencyStore,
+        "from_settings",
+        classmethod(lambda cls: store),
     )
 
 
