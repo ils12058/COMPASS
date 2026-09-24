@@ -1506,4 +1506,3 @@ def test_unique_creation_digest_race_recovers_existing_resource_without_raw_inte
             context=AuditContext.user(student),
         )
     assert GoodMoralRequest.objects.filter(student=student).count() == 1
-
