@@ -2342,3 +2342,46 @@ def test_counseling_frontend_readiness_openapi_contract() -> None:
         "shared_summary",
     ):
         assert forbidden not in serialized
+
+
+def test_feedback_submission_idempotency_openapi_contract() -> None:
+    schema = _generated_schema()
+    expected = {
+        "/api/v1/feedback/customer-feedback": "feedbackSubmitCustomerFeedback",
+        "/api/v1/feedback/csm": "feedbackSubmitCsm",
+    }
+
+    for path, operation_id in expected.items():
+        operation = _operation(schema, path, "post")
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["feedback"]
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        assert {201, 401, 403, 409, 422, 503} <= _response_statuses(operation)
+
+        headers = [
+            parameter
+            for parameter in operation["parameters"]
+            if parameter["in"] == "header" and parameter["name"] == "Idempotency-Key"
+        ]
+        assert len(headers) == 1
+        assert headers[0]["required"] is True
+        assert headers[0]["schema"]["type"] == "string"
+
+        for status in (401, 403, 409, 422, 503):
+            error_schema = operation["responses"][str(status)]["content"]["application/json"][
+                "schema"
+            ]
+            assert error_schema["$ref"].endswith("/APIErrorResponse")
+
+        success_schema = operation["responses"]["201"]["content"]["application/json"]["schema"]
+        assert success_schema["$ref"].endswith("/FeedbackSubmissionResponse")
+
+    customer = _operation(schema, "/api/v1/feedback/customer-feedback", "post")
+    csm = _operation(schema, "/api/v1/feedback/csm", "post")
+    assert customer["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/CustomerFeedbackSubmitRequest"
+    )
+    assert csm["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/CSMSubmitRequest"
+    )
+
