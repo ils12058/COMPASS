@@ -741,7 +741,8 @@ def ensure_call_slip_action(
             )
             if existing.occurred_at != normalized_occurred or existing.remarks != cleaned_remarks:
                 raise ReferralActionConflict(
-                    "The supplied Call-Slip Referral action conflicts with the existing source action."
+                    "The supplied Call-Slip Referral action conflicts with the "
+                    "existing source action."
                 )
             return referral, existing, False
 
