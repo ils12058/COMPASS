@@ -2399,8 +2399,7 @@ def test_referral_call_slip_atomic_issuance_openapi_contract() -> None:
     assert {201, 401, 403, 404, 409, 422} <= _response_statuses(operation)
 
     parameters = {
-        (parameter["in"], parameter["name"]): parameter
-        for parameter in operation["parameters"]
+        (parameter["in"], parameter["name"]): parameter for parameter in operation["parameters"]
     }
     referral_id = parameters[("path", "referral_id")]
     assert referral_id["required"] is True
@@ -2443,4 +2442,3 @@ def test_referral_call_slip_atomic_issuance_openapi_contract() -> None:
     assert existing["operationId"] == "callSlipsCreate"
     existing_request = existing["requestBody"]["content"]["application/json"]["schema"]
     assert existing_request["$ref"].endswith("/CallSlipCreateRequest")
-
