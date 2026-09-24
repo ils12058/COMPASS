@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -92,6 +93,10 @@ class GoodMoralConflict(GoodMoralError):
     pass
 
 
+class GoodMoralCreationConflict(GoodMoralConflict):
+    pass
+
+
 class GoodMoralDocumentUnavailable(GoodMoralError):
     pass
 
@@ -139,6 +144,76 @@ def _validate_counselor(actor: User, capability: str) -> None:
         or not actor.has_capability(capability)
     ):
         raise GoodMoralNotPermitted("Authorized Counselor Good Moral access is required.")
+
+
+def _validate_idempotency_key(value: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > 255
+        or value.strip() != value
+        or not value.isprintable()
+    ):
+        raise InvalidGoodMoralInput(
+            "Idempotency-Key must be printable, trimmed, and at most 255 characters."
+        )
+    return value
+
+
+def _validate_fingerprint(value: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise InvalidGoodMoralInput("The Good Moral creation request fingerprint is invalid.")
+    return value
+
+
+def _creation_digest(*, student_id: UUID, key: str) -> str:
+    return hashlib.sha256(f"{student_id}\0{key}".encode()).hexdigest()
+
+
+def _existing_creation_locked(
+    *,
+    student: User,
+    digest: str,
+    fingerprint: str,
+) -> GoodMoralRequest | None:
+    existing = (
+        GoodMoralRequest.objects.select_for_update()
+        .filter(creation_key_digest=digest)
+        .first()
+    )
+    if existing is None:
+        return None
+    if existing.student_id != student.pk:
+        raise GoodMoralCreationConflict(
+            "The Good Moral creation identity belongs to a different Student."
+        )
+    if existing.creation_request_fingerprint != fingerprint:
+        raise GoodMoralCreationConflict(
+            "The Idempotency-Key was already used for a different Good Moral request."
+        )
+    return _queryset().get(pk=existing.pk)
+
+
+def _recover_creation_conflict(
+    *,
+    student: User,
+    digest: str,
+    fingerprint: str,
+) -> GoodMoralRequest:
+    existing = _existing_creation_locked(
+        student=student,
+        digest=digest,
+        fingerprint=fingerprint,
+    )
+    if existing is not None:
+        return existing
+    raise GoodMoralCreationConflict(
+        "The Good Moral request could not be created because its creation identity conflicted."
+    )
 
 
 def _clean_required(value: object, label: str, maximum: int) -> str:
@@ -224,11 +299,16 @@ def create_my_current_student(
     student: User,
     year_level: str,
     semester: str,
+    idempotency_key: str,
+    request_fingerprint: str,
     context: AuditContext,
 ) -> GoodMoralRequest:
     _validate_student(student, "good_moral.request_self")
+    key = _validate_idempotency_key(idempotency_key)
+    fingerprint = _validate_fingerprint(request_fingerprint)
     year = _clean_required(year_level, "year_level", 64)
     term = _clean_required(semester, "semester", 80)
+    digest = _creation_digest(student_id=student.pk, key=key)
 
     with transaction.atomic():
         locked_student = (
@@ -237,6 +317,15 @@ def create_my_current_student(
         if locked_student is None:
             raise GoodMoralNotFound("The Student account was not found.")
         _validate_student(locked_student, "good_moral.request_self")
+
+        existing = _existing_creation_locked(
+            student=locked_student,
+            digest=digest,
+            fingerprint=fingerprint,
+        )
+        if existing is not None:
+            return existing
+
         if not is_current_student(locked_student):
             raise GoodMoralCurrentStudentRequired(
                 "Current Student lifecycle is required to request the F4 Good Moral certificate."
@@ -246,18 +335,29 @@ def create_my_current_student(
         affiliation = _current_affiliation(locked_student)
         profile = get_person_profile_context(locked_student)
 
-        item = GoodMoralRequest.objects.create(
-            student=locked_student,
-            variant=GoodMoralVariant.CURRENT_STUDENT,
-            inventory=inventory,
-            academic_year=inventory.academic_year,
-            applicant_name_snapshot=profile.full_name.strip(),
-            year_level_snapshot=year,
-            college_snapshot=affiliation.college.name.strip(),
-            course_snapshot=inventory.course_currently_enrolled.strip(),
-            major_snapshot=inventory.major.strip(),
-            semester_snapshot=term,
-        )
+        try:
+            with transaction.atomic():
+                item = GoodMoralRequest.objects.create(
+                    student=locked_student,
+                    variant=GoodMoralVariant.CURRENT_STUDENT,
+                    inventory=inventory,
+                    academic_year=inventory.academic_year,
+                    applicant_name_snapshot=profile.full_name.strip(),
+                    year_level_snapshot=year,
+                    college_snapshot=affiliation.college.name.strip(),
+                    course_snapshot=inventory.course_currently_enrolled.strip(),
+                    major_snapshot=inventory.major.strip(),
+                    semester_snapshot=term,
+                    creation_key_digest=digest,
+                    creation_request_fingerprint=fingerprint,
+                )
+        except IntegrityError:
+            return _recover_creation_conflict(
+                student=locked_student,
+                digest=digest,
+                fingerprint=fingerprint,
+            )
+
         record_event(
             context=context,
             action=GOOD_MORAL_REQUEST_CREATED,
@@ -275,13 +375,18 @@ def create_my_graduate(
     degree: str,
     major: str,
     graduation_date: date,
+    idempotency_key: str,
+    request_fingerprint: str,
     context: AuditContext,
 ) -> GoodMoralRequest:
     _validate_student(student, "good_moral.request_self")
+    key = _validate_idempotency_key(idempotency_key)
+    fingerprint = _validate_fingerprint(request_fingerprint)
     degree_value = _clean_required(degree, "degree", 255)
     major_value = _clean_optional(major, "major", 180)
     graduation_value = _clean_date(graduation_date, "graduation_date", allow_none=False)
     assert graduation_value is not None
+    digest = _creation_digest(student_id=student.pk, key=key)
 
     with transaction.atomic():
         locked_student = (
@@ -290,20 +395,40 @@ def create_my_graduate(
         if locked_student is None:
             raise GoodMoralNotFound("The Student account was not found.")
         _validate_student(locked_student, "good_moral.request_self")
+
+        existing = _existing_creation_locked(
+            student=locked_student,
+            digest=digest,
+            fingerprint=fingerprint,
+        )
+        if existing is not None:
+            return existing
+
         if locked_student.student_lifecycle_status != StudentLifecycleStatus.GRADUATED:
             raise GoodMoralGraduatedStudentRequired(
                 "Graduated Student lifecycle is required to request the F6 Good Moral certificate."
             )
 
         profile = get_person_profile_context(locked_student)
-        item = GoodMoralRequest.objects.create(
-            student=locked_student,
-            variant=GoodMoralVariant.GRADUATE,
-            applicant_name_snapshot=profile.full_name.strip(),
-            degree_snapshot=degree_value,
-            major_snapshot=major_value,
-            graduation_date=graduation_value,
-        )
+        try:
+            with transaction.atomic():
+                item = GoodMoralRequest.objects.create(
+                    student=locked_student,
+                    variant=GoodMoralVariant.GRADUATE,
+                    applicant_name_snapshot=profile.full_name.strip(),
+                    degree_snapshot=degree_value,
+                    major_snapshot=major_value,
+                    graduation_date=graduation_value,
+                    creation_key_digest=digest,
+                    creation_request_fingerprint=fingerprint,
+                )
+        except IntegrityError:
+            return _recover_creation_conflict(
+                student=locked_student,
+                digest=digest,
+                fingerprint=fingerprint,
+            )
+
         record_event(
             context=context,
             action=GOOD_MORAL_REQUEST_CREATED,
