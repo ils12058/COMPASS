@@ -9,6 +9,7 @@ import { getAppointmentAccess } from "@/features/appointments/appointments-acces
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
+import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
@@ -39,6 +40,7 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const referralAccess = getReferralAccess(user);
   const callSlipAccess = getCallSlipAccess(user);
   const feedbackAccess = getFeedbackAccess(user);
+  const goodMoralAccess = getGoodMoralAccess(user);
   const hasGuidanceServices =
     hasServices ||
     hasAvailability ||
@@ -48,6 +50,7 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
     hasCounseling ||
     referralAccess.hasWorkspace ||
     callSlipAccess.hasWorkspace ||
+    goodMoralAccess.hasWorkspace ||
     feedbackAccess.hasWorkspace;
   const hasPlatformOperations = user.capabilities.includes(
     "platform_operations.view",
@@ -307,6 +310,19 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
                 }
               >
                 Call Slips
+              </Link>
+            ) : null}
+            {goodMoralAccess.hasWorkspace ? (
+              <Link
+                href="/portal/good-moral"
+                onClick={onNavigate}
+                aria-current={pathname.startsWith("/portal/good-moral") ? "page" : undefined}
+                className={
+                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                  (pathname.startsWith("/portal/good-moral") ? "bg-on-brand/12" : "hover:bg-on-brand/10")
+                }
+              >
+                Good Moral
               </Link>
             ) : null}
             {feedbackAccess.hasWorkspace ? (
