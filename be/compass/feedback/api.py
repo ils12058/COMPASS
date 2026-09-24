@@ -340,10 +340,14 @@ def _begin_submission_idempotency(
 
     if decision.outcome == "replay":
         assert decision.response is not None
-        return store, decision, HttpResponse(
-            decision.response.body,
-            status=decision.response.status_code,
-            content_type=decision.response.content_type,
+        return (
+            store,
+            decision,
+            HttpResponse(
+                decision.response.body,
+                status=decision.response.status_code,
+                content_type=decision.response.content_type,
+            ),
         )
     if decision.outcome == "in_progress":
         raise APIError(
