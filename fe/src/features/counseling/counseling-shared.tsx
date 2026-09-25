@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 import type { CounselingEntryMode, DeliveryMode } from "@/lib/api/generated/model";
 
@@ -81,18 +82,13 @@ export function CounselingPageHeading({
   );
 }
 export function CounselingUnavailable({
-  title = "Counseling is unavailable",
-  children = "This workspace is not available within your current access.",
+  title = "Counseling unavailable",
+  children = "Your current access does not include this Counseling workspace.",
 }: {
   title?: string;
   children?: ReactNode;
 }) {
-  return (
-    <section role="status" className="max-w-2xl border-y border-border py-7">
-      <h1 className="font-heading text-2xl font-semibold text-ink">{title}</h1>
-      <p className="mt-3 text-sm leading-6 text-muted">{children}</p>
-    </section>
-  );
+  return <WorkspaceUnavailable title={title}>{children}</WorkspaceUnavailable>;
 }
 
 export function CounselingQueryError({

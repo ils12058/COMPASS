@@ -1,10 +1,4 @@
-const roleLabels: Record<string, string> = {
-  COUNSELOR: "Counselor",
-  GUIDANCE_SERVICES_STAFF: "Guidance Services Staff",
-  INSTITUTIONAL_OFFICER: "Institutional Officer",
-  IT_ADMIN: "IT Administrator",
-  STUDENT: "Student",
-};
+import { isRoleCode, roleLabels } from "@/features/accounts/presentation";
 
 export function userDisplayName(user: { email: string; first_name: string; last_name: string }): string {
   const name = `${user.first_name} ${user.last_name}`.trim();
@@ -12,5 +6,5 @@ export function userDisplayName(user: { email: string; first_name: string; last_
 }
 
 export function userRoleLabel(role: string): string {
-  return roleLabels[role] ?? "COMPASS user";
+  return isRoleCode(role) ? roleLabels[role] : "COMPASS user";
 }

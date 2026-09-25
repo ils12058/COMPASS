@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { hasAvailabilityWorkspace } from "@/features/availability/availability-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
@@ -25,9 +26,50 @@ import {
 } from "@/features/institution-configuration/institution-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 
+function NavItem({
+  href,
+  current,
+  onNavigate,
+  children,
+}: {
+  href: string;
+  current: boolean;
+  onNavigate?: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      aria-current={current ? "page" : undefined}
+      className={
+        "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand first:mt-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+        (current ? "bg-on-brand/12" : "hover:bg-on-brand/10")
+      }
+    >
+      {children}
+    </Link>
+  );
+}
+
+function NavSection({ label, children }: { label?: string; children: ReactNode }) {
+  return (
+    <div className="mt-7 border-t border-on-brand/15 pt-5">
+      {label ? (
+        <p className="px-3 text-xs font-semibold uppercase tracking-wider text-on-brand/70">
+          {label}
+        </p>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
 export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = usePortalSession();
   const pathname = usePathname();
+  const isWithin = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
   const canManageAccounts = user.capabilities.includes("accounts.manage");
   const hasOrganization =
     canViewOrganization(user) || canManageOrganization(user);
@@ -38,34 +80,49 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const hasAvailability = hasAvailabilityWorkspace(user);
   const hasAppointments = getAppointmentAccess(user).hasWorkspace;
   const hasInventory = getInventoryAccess(user).hasWorkspace;
-  const routineAccess = getRoutineInterviewAccess(user);
+  const hasRoutineInterviews = getRoutineInterviewAccess(user).hasWorkspace;
   const hasCounseling = getCounselingAccess(user).hasWorkspace;
-  const referralAccess = getReferralAccess(user);
-  const callSlipAccess = getCallSlipAccess(user);
-  const feedbackAccess = getFeedbackAccess(user);
-  const goodMoralAccess = getGoodMoralAccess(user);
-  const exitInterviewAccess = getExitInterviewAccess(user);
-  const graduateTracerAccess = getGraduateTracerAccess(user);
+  const hasReferrals = getReferralAccess(user).hasWorkspace;
+  const hasCallSlips = getCallSlipAccess(user).hasWorkspace;
+  const hasFeedback = getFeedbackAccess(user).hasWorkspace;
+  const hasGoodMoral = getGoodMoralAccess(user).hasWorkspace;
+  const hasExitInterviews = getExitInterviewAccess(user).hasWorkspace;
+  const hasGraduateTracer = getGraduateTracerAccess(user).hasWorkspace;
   const hasGuidanceServices =
     hasServices ||
     hasAvailability ||
     hasAppointments ||
     hasInventory ||
-    routineAccess.hasWorkspace ||
-    exitInterviewAccess.hasWorkspace ||
-    graduateTracerAccess.hasWorkspace ||
+    hasRoutineInterviews ||
+    hasExitInterviews ||
+    hasGraduateTracer ||
     hasCounseling ||
-    referralAccess.hasWorkspace ||
-    callSlipAccess.hasWorkspace ||
-    goodMoralAccess.hasWorkspace ||
-    feedbackAccess.hasWorkspace;
+    hasReferrals ||
+    hasCallSlips ||
+    hasGoodMoral ||
+    hasFeedback;
   const hasPlatformOperations = user.capabilities.includes(
     "platform_operations.view",
   );
   const hasReports = canAttemptReports(user);
 
+  const guidanceLinks: { href: string; label: string; visible: boolean }[] = [
+    { href: "/portal/services", label: "Services", visible: hasServices },
+    { href: "/portal/appointments", label: "Appointments", visible: hasAppointments },
+    { href: "/portal/availability", label: "Availability", visible: hasAvailability },
+    { href: "/portal/inventory", label: "Individual Inventory", visible: hasInventory },
+    { href: "/portal/routine-interviews", label: "Routine Interviews", visible: hasRoutineInterviews },
+    { href: "/portal/exit-interviews", label: "Exit Interviews", visible: hasExitInterviews },
+    { href: "/portal/graduate-tracer", label: "Graduate Tracer", visible: hasGraduateTracer },
+    { href: "/portal/counseling", label: "Counseling", visible: hasCounseling },
+    { href: "/portal/referrals", label: "Referrals", visible: hasReferrals },
+    { href: "/portal/call-slips", label: "Call Slips", visible: hasCallSlips },
+    { href: "/portal/good-moral", label: "Good Moral", visible: hasGoodMoral },
+    { href: "/portal/feedback", label: "Feedback", visible: hasFeedback },
+  ];
+
   return (
-    <div className="flex h-full flex-col bg-brand-strong text-on-brand">
+    <div className="flex min-h-full flex-col bg-brand-strong text-on-brand">
       <Link
         href="/portal"
         onClick={onNavigate}
@@ -84,340 +141,59 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
         </span>
       </Link>
       <nav aria-label="Portal navigation" className="p-3">
-        <Link
-          href="/portal"
-          onClick={onNavigate}
-          aria-current={pathname === "/portal" ? "page" : undefined}
-          className={
-            "flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-            (pathname === "/portal"
-              ? "bg-on-brand/12"
-              : "hover:bg-on-brand/10")
-          }
-        >
+        <NavItem href="/portal" current={pathname === "/portal"} onNavigate={onNavigate}>
           Overview
-        </Link>
+        </NavItem>
         {canManageAccounts ? (
-          <div className="mt-7 border-t border-on-brand/15 pt-5">
-            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-on-brand/70">
-              Identity &amp; Access
-            </p>
-            <Link
-              href="/portal/accounts"
-              onClick={onNavigate}
-              aria-current={
-                pathname.startsWith("/portal/accounts") ? "page" : undefined
-              }
-              className={
-                "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                (pathname.startsWith("/portal/accounts")
-                  ? "bg-on-brand/12"
-                  : "hover:bg-on-brand/10")
-              }
-            >
+          <NavSection label="Identity & Access">
+            <NavItem href="/portal/accounts" current={isWithin("/portal/accounts")} onNavigate={onNavigate}>
               Accounts
-            </Link>
-          </div>
+            </NavItem>
+          </NavSection>
         ) : null}
         {hasInstitution ? (
-          <div className="mt-7 border-t border-on-brand/15 pt-5">
-            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-on-brand/70">
-              Institution
-            </p>
+          <NavSection label="Institution">
             {hasOrganization ? (
-              <Link
-                href="/portal/organization"
-                onClick={onNavigate}
-                aria-current={
-                  pathname.startsWith("/portal/organization")
-                    ? "page"
-                    : undefined
-                }
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/organization")
-                    ? "bg-on-brand/12"
-                    : "hover:bg-on-brand/10")
-                }
-              >
+              <NavItem href="/portal/organization" current={isWithin("/portal/organization")} onNavigate={onNavigate}>
                 Organization
-              </Link>
+              </NavItem>
             ) : null}
             {hasAcademicYears ? (
-              <Link
-                href="/portal/academic-years"
-                onClick={onNavigate}
-                aria-current={
-                  pathname === "/portal/academic-years" ? "page" : undefined
-                }
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname === "/portal/academic-years"
-                    ? "bg-on-brand/12"
-                    : "hover:bg-on-brand/10")
-                }
-              >
+              <NavItem href="/portal/academic-years" current={isWithin("/portal/academic-years")} onNavigate={onNavigate}>
                 Academic Years
-              </Link>
+              </NavItem>
             ) : null}
             {hasInstitutionalForms ? (
-              <Link
-                href="/portal/institutional-forms"
-                onClick={onNavigate}
-                aria-current={
-                  pathname === "/portal/institutional-forms"
-                    ? "page"
-                    : undefined
-                }
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname === "/portal/institutional-forms"
-                    ? "bg-on-brand/12"
-                    : "hover:bg-on-brand/10")
-                }
-              >
+              <NavItem href="/portal/institutional-forms" current={isWithin("/portal/institutional-forms")} onNavigate={onNavigate}>
                 Institutional Forms
-              </Link>
+              </NavItem>
             ) : null}
-          </div>
+          </NavSection>
         ) : null}
         {hasGuidanceServices ? (
-          <div className="mt-7 border-t border-on-brand/15 pt-5">
-            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-on-brand/70">
-              Guidance Services
-            </p>
-            {hasServices ? (
-              <Link
-                href="/portal/services"
-                onClick={onNavigate}
-                aria-current={
-                  pathname.startsWith("/portal/services")
-                    ? "page"
-                    : undefined
-                }
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/services")
-                    ? "bg-on-brand/12"
-                    : "hover:bg-on-brand/10")
-                }
-              >
-                Services
-              </Link>
-            ) : null}
-            {hasAppointments ? (
-              <Link
-                href="/portal/appointments"
-                onClick={onNavigate}
-                aria-current={
-                  pathname.startsWith("/portal/appointments") ? "page" : undefined
-                }
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/appointments")
-                    ? "bg-on-brand/12"
-                    : "hover:bg-on-brand/10")
-                }
-              >
-                Appointments
-              </Link>
-            ) : null}
-            {hasAvailability ? (
-              <Link
-                href="/portal/availability"
-                onClick={onNavigate}
-                aria-current={
-                  pathname.startsWith("/portal/availability")
-                    ? "page"
-                    : undefined
-                }
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/availability")
-                    ? "bg-on-brand/12"
-                    : "hover:bg-on-brand/10")
-                }
-              >
-                Availability
-              </Link>
-            ) : null}
-            {hasInventory ? (
-              <Link
-                href="/portal/inventory"
-                onClick={onNavigate}
-                aria-current={
-                  pathname.startsWith("/portal/inventory") ? "page" : undefined
-                }
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/inventory")
-                    ? "bg-on-brand/12"
-                    : "hover:bg-on-brand/10")
-                }
-              >
-                Individual Inventory
-              </Link>
-            ) : null}
-            {routineAccess.hasWorkspace ? (
-              <Link
-                href="/portal/routine-interviews"
-                onClick={onNavigate}
-                aria-current={
-                  pathname.startsWith("/portal/routine-interviews")
-                    ? "page"
-                    : undefined
-                }
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/routine-interviews")
-                    ? "bg-on-brand/12"
-                    : "hover:bg-on-brand/10")
-                }
-              >
-                Routine Interviews
-              </Link>
-            ) : null}
-            {exitInterviewAccess.hasWorkspace ? (
-              <Link
-                href="/portal/exit-interviews"
-                onClick={onNavigate}
-                aria-current={
-                  pathname.startsWith("/portal/exit-interviews") ? "page" : undefined
-                }
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/exit-interviews")
-                    ? "bg-on-brand/12"
-                    : "hover:bg-on-brand/10")
-                }
-              >
-                Exit Interviews
-              </Link>
-            ) : null}
-            {graduateTracerAccess.hasWorkspace ? (
-              <Link
-                href="/portal/graduate-tracer"
-                onClick={onNavigate}
-                aria-current={pathname.startsWith("/portal/graduate-tracer") ? "page" : undefined}
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/graduate-tracer") ? "bg-on-brand/12" : "hover:bg-on-brand/10")
-                }
-              >
-                Graduate Tracer
-              </Link>
-            ) : null}
-            {hasCounseling ? (
-              <Link
-                href="/portal/counseling"
-                onClick={onNavigate}
-                aria-current={pathname.startsWith("/portal/counseling") ? "page" : undefined}
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/counseling") ? "bg-on-brand/12" : "hover:bg-on-brand/10")
-                }
-              >
-                Counseling
-              </Link>
-            ) : null}
-            {referralAccess.hasWorkspace ? (
-              <Link
-                href="/portal/referrals"
-                onClick={onNavigate}
-                aria-current={pathname.startsWith("/portal/referrals") ? "page" : undefined}
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/referrals")
-                    ? "bg-on-brand/12"
-                    : "hover:bg-on-brand/10")
-                }
-              >
-                Referrals
-              </Link>
-            ) : null}
-            {callSlipAccess.hasWorkspace ? (
-              <Link
-                href="/portal/call-slips"
-                onClick={onNavigate}
-                aria-current={pathname.startsWith("/portal/call-slips") ? "page" : undefined}
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/call-slips")
-                    ? "bg-on-brand/12"
-                    : "hover:bg-on-brand/10")
-                }
-              >
-                Call Slips
-              </Link>
-            ) : null}
-            {goodMoralAccess.hasWorkspace ? (
-              <Link
-                href="/portal/good-moral"
-                onClick={onNavigate}
-                aria-current={pathname.startsWith("/portal/good-moral") ? "page" : undefined}
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/good-moral") ? "bg-on-brand/12" : "hover:bg-on-brand/10")
-                }
-              >
-                Good Moral
-              </Link>
-            ) : null}
-            {feedbackAccess.hasWorkspace ? (
-              <Link
-                href="/portal/feedback"
-                onClick={onNavigate}
-                aria-current={pathname.startsWith("/portal/feedback") ? "page" : undefined}
-                className={
-                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                  (pathname.startsWith("/portal/feedback") ? "bg-on-brand/12" : "hover:bg-on-brand/10")
-                }
-              >
-                Feedback
-              </Link>
-            ) : null}
-          </div>
+          <NavSection label="Guidance Services">
+            {guidanceLinks
+              .filter((link) => link.visible)
+              .map((link) => (
+                <NavItem key={link.href} href={link.href} current={isWithin(link.href)} onNavigate={onNavigate}>
+                  {link.label}
+                </NavItem>
+              ))}
+          </NavSection>
         ) : null}
         {hasReports ? (
-          <div className="mt-7 border-t border-on-brand/15 pt-5">
-            <Link
-              href="/portal/reports"
-              onClick={onNavigate}
-              aria-current={
-                pathname.startsWith("/portal/reports") ? "page" : undefined
-              }
-              className={
-                "flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                (pathname.startsWith("/portal/reports")
-                  ? "bg-on-brand/12"
-                  : "hover:bg-on-brand/10")
-              }
-            >
+          <NavSection>
+            <NavItem href="/portal/reports" current={isWithin("/portal/reports")} onNavigate={onNavigate}>
               Reports
-            </Link>
-          </div>
+            </NavItem>
+          </NavSection>
         ) : null}
         {hasPlatformOperations ? (
-          <div className="mt-7 border-t border-on-brand/15 pt-5">
-            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-on-brand/70">
-              Platform
-            </p>
-            <Link
-              href="/portal/platform/health"
-              onClick={onNavigate}
-              aria-current={
-                pathname.startsWith("/portal/platform") ? "page" : undefined
-              }
-              className={
-                "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-                (pathname.startsWith("/portal/platform")
-                  ? "bg-on-brand/12"
-                  : "hover:bg-on-brand/10")
-              }
-            >
+          <NavSection label="Platform">
+            <NavItem href="/portal/platform/health" current={isWithin("/portal/platform")} onNavigate={onNavigate}>
               Platform Operations
-            </Link>
-          </div>
+            </NavItem>
+          </NavSection>
         ) : null}
       </nav>
     </div>

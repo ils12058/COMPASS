@@ -1,5 +1,5 @@
-import { PlatformIndex } from "@/features/platform/platform-index";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <PlatformIndex />;
+  redirect("/portal/platform/health");
 }

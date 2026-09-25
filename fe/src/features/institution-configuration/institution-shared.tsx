@@ -1,5 +1,4 @@
-import Link from "next/link";
-
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { FormRevisionStatusValue } from "@/lib/api/generated/model";
 
 export function InstitutionWorkspaceUnavailable({
@@ -8,26 +7,9 @@ export function InstitutionWorkspaceUnavailable({
   workspace: string;
 }) {
   return (
-    <section
-      aria-labelledby="institution-workspace-unavailable-heading"
-      className="max-w-xl border-y border-border py-8"
-    >
-      <h1
-        id="institution-workspace-unavailable-heading"
-        className="font-heading text-3xl font-bold text-ink"
-      >
-        {workspace} unavailable
-      </h1>
-      <p className="mt-3 text-sm leading-6 text-muted">
-        Your current access does not include this Institution workspace.
-      </p>
-      <Link
-        className="mt-5 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        href="/portal"
-      >
-        Return to Home
-      </Link>
-    </section>
+    <WorkspaceUnavailable title={`${workspace} unavailable`}>
+      Your current access does not include {workspace}.
+    </WorkspaceUnavailable>
   );
 }
 
