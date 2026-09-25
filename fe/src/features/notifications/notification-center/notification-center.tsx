@@ -22,7 +22,7 @@ const PAGE_SIZE = 20;
 
 function NotificationSkeleton() {
   return (
-    <div role="status" aria-label="Loading notifications" className="mt-7 border-t border-border">
+    <div role="status" className="mt-7 border-t border-border"><span className="sr-only">Loading notifications…</span>
       {[0, 1, 2].map((item) => (
         <div key={item} className="border-b border-border py-6">
           <Skeleton className="h-5 w-2/5" />

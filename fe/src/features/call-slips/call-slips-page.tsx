@@ -117,7 +117,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
       {slips.isError ? (
         <CallSlipQueryError error={slips.error} fallback="Your Call Slips could not be loaded." onRetry={() => void slips.refetch()} />
       ) : slips.isPending ? (
-        <div aria-label="Loading My Call Slips" className="space-y-3" aria-busy="true"><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
+        <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading My Call Slips…</span><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
       ) : items.length === 0 ? (
         <div className="border-y border-border py-6">
           <p className="text-sm text-muted">{hasFilters ? "No Call Slips match these filters." : "You do not have any Call Slips yet."}</p>
@@ -221,7 +221,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
       {slips.isError ? (
         <CallSlipQueryError error={slips.error} fallback="Call Slips could not be loaded." onRetry={() => void slips.refetch()} />
       ) : slips.isPending ? (
-        <div aria-label="Loading Call Slips" className="space-y-3" aria-busy="true"><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
+        <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading Call Slips…</span><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
       ) : items.length === 0 ? (
         <div className="border-y border-border py-6">
           <p className="text-sm text-muted">{hasFilters ? "No Call Slips match these filters." : "No Call Slips have been recorded in your current scope."}</p>

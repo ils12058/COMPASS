@@ -269,7 +269,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
 
 export function GraduateTracerFormSkeleton() {
   return (
-    <div className="space-y-5" aria-busy="true" aria-label="Loading Graduate Tracer draft">
+    <div className="space-y-5" aria-busy="true"><span className="sr-only">Loading Graduate Tracer draft…</span>
       <Skeleton className="h-9 w-60" />
       <Skeleton className="h-20 w-full" />
       <Skeleton className="h-12 w-full" />

@@ -370,7 +370,7 @@ function RoutineEncounterFinalization({
       </p>
 
       {candidates.isPending ? (
-        <div aria-busy="true" aria-label="Loading completed Counseling interactions" className="mt-4 space-y-3">
+        <div aria-busy="true" className="mt-4 space-y-3"><span className="sr-only">Loading completed Counseling interactions…</span>
           <Skeleton className="h-14 w-full" />
           <Skeleton className="h-14 w-full" />
         </div>

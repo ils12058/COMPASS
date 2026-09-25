@@ -44,7 +44,7 @@ export function StudentSharedSummaries({ access }: { access: CounselingAccess })
   return (
     <div>
       <CounselingPageHeading title="Counseling summaries" description="View summaries that your Counselor has explicitly shared with you." />
-      {summaries.isPending ? <div aria-busy="true" aria-label="Loading published Counseling summaries" className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div> : summaries.isError ? <CounselingQueryError message={counselingErrorMessage(summaries.error, "Published Counseling summaries could not be loaded.")} onRetry={() => void summaries.refetch()} /> : items.length === 0 ? <p className="border-y border-border py-6 text-sm text-muted">No Counseling summaries have been shared with you yet.</p> : (
+      {summaries.isPending ? <div aria-busy="true" className="space-y-4"><span className="sr-only">Loading published Counseling summaries…</span><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div> : summaries.isError ? <CounselingQueryError message={counselingErrorMessage(summaries.error, "Published Counseling summaries could not be loaded.")} onRetry={() => void summaries.refetch()} /> : items.length === 0 ? <p className="border-y border-border py-6 text-sm text-muted">No Counseling summaries have been shared with you yet.</p> : (
         <>
           <ul className="divide-y divide-border border-y border-border" aria-label="Published Counseling summaries">
             {items.map((summary) => (
@@ -75,7 +75,7 @@ export function StudentSharedSummaryDetail({ summaryId }: { summaryId: string })
   const query = useCounselingGetMySharedSummary(summaryId, { query: { enabled: access.canViewOwnSummaries, retry: false } });
   const summary = query.data?.data;
   if (!access.canViewOwnSummaries) return <CounselingPageHeading title="Shared Summary unavailable" description="This published Shared Summary is not available within your current access." />;
-  if (query.isPending) return <div aria-busy="true" aria-label="Loading published Shared Summary"><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-4 h-32 w-full" /></div>;
+  if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading published Shared Summary…</span><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-4 h-32 w-full" /></div>;
   if (query.isError || !summary) return <CounselingQueryError message={counselingErrorMessage(query.error, "This published Shared Summary is not available within your current access.")} onRetry={() => void query.refetch()} />;
 
   return (

@@ -129,5 +129,5 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
 }
 
 export function GraduateTracerStudentWorkspaceSkeleton() {
-  return <div className="space-y-5" aria-busy="true" aria-label="Loading Graduate Tracer workspace"><Skeleton className="h-10 w-72" /><Skeleton className="h-24 w-full max-w-3xl" /></div>;
+  return <div className="space-y-5" aria-busy="true"><span className="sr-only">Loading Graduate Tracer workspace…</span><Skeleton className="h-10 w-72" /><Skeleton className="h-24 w-full max-w-3xl" /></div>;
 }

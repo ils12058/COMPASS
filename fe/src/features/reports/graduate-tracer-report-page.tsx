@@ -166,7 +166,7 @@ function GraduateTracerReportWorkspace() {
       ) : null}
 
       {reportQuery.isPending && applied.valid ? (
-        <div className="mt-7 space-y-5" aria-busy="true" aria-label="Loading Graduate Tracer report">
+        <div className="mt-7 space-y-5" aria-busy="true"><span className="sr-only">Loading Graduate Tracer report…</span>
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-52 w-full" />

@@ -28,7 +28,7 @@ export function GoodMoralStudentDetail({
   const detail = useGoodMoralGetMyRequest(requestId, { query: { retry: false } });
 
   if (detail.isPending) {
-    return <div className="space-y-4" aria-busy="true" aria-label="Loading Good Moral request"><Skeleton className="h-10 w-1/2" /><Skeleton className="h-44 w-full" /><Skeleton className="h-32 w-full" /></div>;
+    return <div className="space-y-4" aria-busy="true"><span className="sr-only">Loading Good Moral request…</span><Skeleton className="h-10 w-1/2" /><Skeleton className="h-44 w-full" /><Skeleton className="h-32 w-full" /></div>;
   }
   if (detail.isError) {
     const notFound = goodMoralErrorCode(detail.error) === "good_moral_not_found";

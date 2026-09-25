@@ -130,7 +130,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
           {referrals.isError ? (
             <ReferralQueryError error={referrals.error} fallback="Referrals could not be loaded." onRetry={() => void referrals.refetch()} />
           ) : referrals.isPending ? (
-            <div aria-label="Loading Referrals" className="space-y-3" aria-busy="true">
+            <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading Referrals…</span>
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-16 w-full" />

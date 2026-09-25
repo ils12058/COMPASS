@@ -255,7 +255,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
               <Button type="submit" variant="secondary">Search</Button>
             </div>
           </form>
-          {appointmentCandidates.isPending ? <div aria-busy="true" aria-label="Loading Counseling Appointment candidates" className="space-y-2"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : appointmentCandidates.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(appointmentCandidates.error, "Counseling Appointments could not be loaded.")}</p> : appointments.length === 0 ? <p className="border-y border-border py-4 text-sm text-muted">No eligible Counseling Appointments match this search.</p> : (
+          {appointmentCandidates.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Counseling Appointment candidates…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : appointmentCandidates.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(appointmentCandidates.error, "Counseling Appointments could not be loaded.")}</p> : appointments.length === 0 ? <p className="border-y border-border py-4 text-sm text-muted">No eligible Counseling Appointments match this search.</p> : (
             <>
               <ul className="divide-y divide-border border-y border-border" aria-label="Counseling Appointment candidates">
                 {appointments.map((candidate) => (
@@ -288,7 +288,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
               <Button type="submit" variant="secondary">Search</Button>
             </div>
           </form>
-          {students.isPending ? <div aria-busy="true" aria-label="Loading Student candidates" className="space-y-2"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : students.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(students.error, "Student candidates could not be loaded.")}</p> : studentItems.length === 0 ? <p className="border-y border-border py-4 text-sm text-muted">No Students match this search.</p> : (
+          {students.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Student candidates…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : students.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(students.error, "Student candidates could not be loaded.")}</p> : studentItems.length === 0 ? <p className="border-y border-border py-4 text-sm text-muted">No Students match this search.</p> : (
             <>
               <ul className="divide-y divide-border border-y border-border" aria-label="Student candidates">
                 {studentItems.map((student) => (

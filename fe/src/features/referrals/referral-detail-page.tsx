@@ -65,7 +65,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
     return <ReferralQueryError error={referral.error} fallback="Referral detail could not be loaded." onRetry={() => void referral.refetch()} />;
   }
   if (referral.isPending) {
-    return <div className="space-y-4" aria-busy="true" aria-label="Loading Referral"><Skeleton className="h-16 w-full" /><Skeleton className="h-40 w-full" /><Skeleton className="h-64 w-full" /></div>;
+    return <div className="space-y-4" aria-busy="true"><span className="sr-only">Loading Referral…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-40 w-full" /><Skeleton className="h-64 w-full" /></div>;
   }
 
   const item = referral.data.data;

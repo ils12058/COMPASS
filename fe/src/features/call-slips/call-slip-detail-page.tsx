@@ -132,7 +132,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
 }
 
 function CallSlipLoading() {
-  return <div className="space-y-4" aria-busy="true" aria-label="Loading Call Slip"><Skeleton className="h-16 w-full" /><Skeleton className="h-48 w-full" /><Skeleton className="h-32 w-full" /></div>;
+  return <div className="space-y-4" aria-busy="true"><span className="sr-only">Loading Call Slip…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-48 w-full" /><Skeleton className="h-32 w-full" /></div>;
 }
 
 function Field({ label, value }: { label: string; value: string }) {

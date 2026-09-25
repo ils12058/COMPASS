@@ -323,7 +323,7 @@ function StudentProfileReportWorkspace() {
       ) : null}
 
       {reportQuery.isPending && canQueryReport ? (
-        <div className="mt-7 space-y-5" aria-busy="true" aria-label="Loading Student Profiling report">
+        <div className="mt-7 space-y-5" aria-busy="true"><span className="sr-only">Loading Student Profiling report…</span>
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-52 w-full" />

@@ -44,7 +44,7 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   if (!callSlipAccess.canViewOperational || !callSlipAccess.canManageOperational) return <CallSlipAccessUnavailable title="Linked Call Slip issuance unavailable" message="Operational Call Slip review and management access are required." />;
   if (referral.isError) return <ReferralQueryError error={referral.error} fallback="The source Referral could not be loaded." onRetry={() => void referral.refetch()} />;
   if (referral.isPending || current.isPending || history.isPending) {
-    return <div className="space-y-4" aria-busy="true" aria-label="Loading linked Call Slip context"><p role="status" className="text-sm text-muted">Checking Referral and linked Call Slip state…</p></div>;
+    return <div className="space-y-4" aria-busy="true"><p role="status" className="text-sm text-muted">Checking Referral and linked Call Slip state…</p></div>;
   }
   if (current.isError) return <CallSlipQueryError error={current.error} fallback="Current linked Call Slip state could not be checked. Issuance is unavailable until it can be refreshed." onRetry={() => void current.refetch()} />;
   if (history.isError) return <CallSlipQueryError error={history.error} fallback="Linked Call Slip history could not be loaded." onRetry={() => void history.refetch()} />;

@@ -34,7 +34,7 @@ export function GoodMoralStudentHistory({
         <section aria-labelledby="good-moral-my-requests-heading">
           <h2 id="good-moral-my-requests-heading" className="font-heading text-xl font-semibold text-ink">My requests</h2>
           {history.isPending ? (
-            <div className="mt-4 space-y-3" aria-busy="true" aria-label="Loading Good Moral requests">
+            <div className="mt-4 space-y-3" aria-busy="true"><span className="sr-only">Loading Good Moral requests…</span>
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-16 w-full" />

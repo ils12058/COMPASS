@@ -55,6 +55,7 @@ import {
 
 type ConfirmAction = "cancel" | "complete" | "no-show";
 type StepUpAction = "cancel" | "reschedule" | "reassign";
+type ActionError = { scope: "confirm" | "reschedule" | "reassign"; message: string };
 
 const controlClass = "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
@@ -111,18 +112,22 @@ function ActionConfirmation({
   action,
   busy,
   selfCancellation,
+  referenceCode,
+  error,
   onClose,
   onConfirm,
 }: {
   action: ConfirmAction | null;
   busy: boolean;
   selfCancellation: boolean;
+  referenceCode: string;
+  error: string | null;
   onClose: () => void;
   onConfirm: () => void;
 }) {
   const content: Record<ConfirmAction, { title: string; description: string; confirm: string; pending: string; variant: "danger" | "primary" }> = {
     cancel: {
-      title: "Cancel this Appointment?",
+      title: `Cancel Appointment ${referenceCode}?`,
       description: selfCancellation
         ? "This will cancel the scheduled Appointment. The saved self-service cutoff and Appointment lifecycle rules still apply."
         : "This will administratively cancel the scheduled Appointment in your authorized scope. Recent authenticator verification may be required.",
@@ -131,17 +136,17 @@ function ActionConfirmation({
       variant: "danger",
     },
     complete: {
-      title: "Complete this Appointment?",
+      title: `Complete Appointment ${referenceCode}?`,
       description: "This marks the scheduled Appointment as completed. COMPASS checks its status and timing before saving.",
       confirm: "Complete appointment",
       pending: "Completing…",
       variant: "primary",
     },
     "no-show": {
-      title: "Mark this Appointment no-show?",
+      title: `Mark Appointment ${referenceCode} as no-show?`,
       description: "This marks the scheduled Appointment as no-show. COMPASS checks its end time and related records before saving.",
       confirm: "Mark no-show",
-      pending: "Updating…",
+      pending: "Marking no-show…",
       variant: "danger",
     },
   };
@@ -161,6 +166,7 @@ function ActionConfirmation({
         >
           <DialogTitle>{selected.title}</DialogTitle>
           <DialogDescription>{selected.description}</DialogDescription>
+          {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
           <div className="mt-6 flex flex-wrap justify-end gap-2">
             <Button variant="secondary" disabled={busy} onClick={onClose}>Keep Appointment</Button>
             <Button variant={selected.variant} disabled={busy} onClick={onConfirm} aria-busy={busy}>
@@ -199,7 +205,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const [reassignmentReason, setReassignmentReason] = useState("");
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [reassignmentOpen, setReassignmentOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ActionError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const appointment = appointmentQuery.data?.data;
@@ -262,7 +268,12 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
     await Promise.all(invalidations);
   }
 
-  function handleMutationError(caught: unknown, fallback: string, stepUpFor?: StepUpAction) {
+  function handleMutationError(
+    caught: unknown,
+    fallback: string,
+    scope: ActionError["scope"],
+    stepUpFor?: StepUpAction,
+  ) {
     if (
       stepUpFor &&
       appointmentErrorCode(caught) === "recent_mfa_required" &&
@@ -274,7 +285,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       setStepUpOpen(true);
       return;
     }
-    setError(appointmentErrorMessage(caught, fallback));
+    setError({ scope, message: appointmentErrorMessage(caught, fallback) });
   }
 
   async function confirmMutation() {
@@ -300,6 +311,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       handleMutationError(
         caught,
         "The Appointment could not be updated.",
+        "confirm",
         confirmAction === "cancel" && adminActor ? "cancel" : undefined,
       );
     }
@@ -327,13 +339,17 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       const code = appointmentErrorCode(caught);
       if (code === "appointment_time_unavailable" || code === "appointment_time_conflict") {
         setRescheduleSlotStart("");
-        setError("The selected time is no longer available. Available times have been refreshed; choose another time.");
+        setError({
+          scope: "reschedule",
+          message: "The selected time is no longer available. Available times have been refreshed; choose another time.",
+        });
         void rescheduleSlots.refetch();
         return;
       }
       handleMutationError(
         caught,
         "The Appointment could not be rescheduled.",
+        "reschedule",
         adminActor ? "reschedule" : undefined,
       );
     }
@@ -362,6 +378,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         caught,
         "The Counselor could not be reassigned.",
         "reassign",
+        "reassign",
       );
     }
   }
@@ -381,11 +398,12 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   if (!access.hasWorkspace) return <AppointmentsUnavailable />;
   if (appointmentQuery.isPending) {
     return (
-      <section aria-busy="true" aria-label="Loading Appointment details">
+      <section aria-busy="true">
         <AppointmentsLocalNavigation />
         <Skeleton className="h-9 w-2/5" />
         <Skeleton className="mt-5 h-24 w-full" />
         <Skeleton className="mt-5 h-48 w-full" />
+        <p className="sr-only">Loading Appointment details…</p>
       </section>
     );
   }
@@ -417,7 +435,6 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       <AppointmentsPageHeading
         headingId="appointment-detail-heading"
         title="Appointment details"
-        description={appointment.reference_code}
       />
 
       {counselingAccess.isCounselor &&
@@ -445,7 +462,6 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       ) : null}
 
       {notice ? <p role="status" className="mb-4 text-sm text-success">{notice}</p> : null}
-      {error ? <p role="alert" className="mb-4 text-sm text-danger">{error}</p> : null}
 
       <div className="flex flex-wrap items-center gap-3 border-y border-border py-4">
         <span className="break-all font-mono text-sm font-semibold text-ink">{appointment.reference_code}</span>
@@ -504,7 +520,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               {rescheduleDate ? (
                 <div className="mt-4" aria-live="polite">
                   {rescheduleSlots.isPending ? (
-                    <div aria-busy="true" aria-label="Loading replacement times" className="flex flex-wrap gap-2"><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /></div>
+                    <div aria-busy="true" className="flex flex-wrap gap-2"><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /><p className="sr-only">Loading replacement times…</p></div>
                   ) : rescheduleSlots.isError ? (
                     <div role="alert"><p className="text-sm text-danger">Replacement times could not be loaded.</p><Button className="mt-2" variant="secondary" onClick={() => void rescheduleSlots.refetch()}>Retry</Button></div>
                   ) : rescheduleSlotItems.length === 0 ? (
@@ -547,6 +563,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                   {rescheduleReason.trim() ? <p className="mt-3 text-sm text-muted">Reason: {rescheduleReason.trim()}</p> : null}
                 </section>
               ) : null}
+              {error?.scope === "reschedule" ? <p role="alert" className="mt-4 text-sm text-danger">{error.message}</p> : null}
               <Button className="mt-4" type="submit" disabled={!selectedRescheduleSlot || reschedule.isPending} aria-busy={reschedule.isPending}>
                 {reschedule.isPending ? "Rescheduling…" : "Reschedule appointment"}
               </Button>
@@ -583,6 +600,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                   <p className="mt-2 whitespace-pre-wrap text-sm text-muted">Reason: {reassignmentReason.trim()}</p>
                 </div>
               ) : null}
+              {error?.scope === "reassign" ? <p role="alert" className="mt-4 text-sm text-danger">{error.message}</p> : null}
               <Button className="mt-4" type="submit" disabled={!selectedProviderId || !reassignmentReason.trim() || reassign.isPending || candidates.isPending} aria-busy={reassign.isPending}>
                 {reassign.isPending ? "Reassigning…" : "Reassign counselor"}
               </Button>
@@ -594,7 +612,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       <section aria-labelledby="appointment-history-heading" className="py-6">
         <h2 id="appointment-history-heading" className="font-heading text-xl font-semibold text-ink">Appointment history</h2>
         {historyQuery.isPending ? (
-          <div aria-busy="true" aria-label="Loading Appointment history" className="mt-4 space-y-3"><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></div>
+          <div aria-busy="true" className="mt-4 space-y-3"><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /><p className="sr-only">Loading Appointment history…</p></div>
         ) : historyQuery.isError ? (
           <div role="alert" className="mt-4 border-y border-danger/30 py-5">
             <p className="text-sm text-danger">Appointment history could not be loaded.</p>
@@ -625,6 +643,8 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         action={confirmAction}
         busy={pending}
         selfCancellation={canCancelSelf}
+        referenceCode={appointment.reference_code}
+        error={error?.scope === "confirm" ? error.message : null}
         onClose={() => setConfirmAction(null)}
         onConfirm={() => void confirmMutation()}
       />

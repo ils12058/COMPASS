@@ -110,7 +110,7 @@ function StudentWorkspace({ appointmentId, access }: { appointmentId: string; ac
     }
   }
 
-  if (workspace.isPending) return <div aria-busy="true" aria-label="Loading E-Counseling session"><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-5 h-80 w-full" /><Skeleton className="mt-4 h-24 w-full" /></div>;
+  if (workspace.isPending) return <div aria-busy="true"><span className="sr-only">Loading E-Counseling session…</span><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-5 h-80 w-full" /><Skeleton className="mt-4 h-24 w-full" /></div>;
   if (workspace.isError || !data || !media) return <WorkspaceLoadError error={workspace.error} retry={() => void workspace.refetch()} />;
 
   const joinAvailable = access.canJoinSelf && data.provider_readiness.daily_enabled && data.provider_readiness.join_allowed;
@@ -181,7 +181,7 @@ function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; 
     }
   }
 
-  if (workspace.isPending) return <div aria-busy="true" aria-label="Loading E-Counseling session"><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-5 h-80 w-full" /><Skeleton className="mt-4 h-24 w-full" /></div>;
+  if (workspace.isPending) return <div aria-busy="true"><span className="sr-only">Loading E-Counseling session…</span><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-5 h-80 w-full" /><Skeleton className="mt-4 h-24 w-full" /></div>;
   if (workspace.isError || !data || !media) return <WorkspaceLoadError error={workspace.error} retry={() => void workspace.refetch()} />;
 
   const joinAvailable = access.canJoinAssigned && data.provider_readiness.daily_enabled && data.provider_readiness.join_allowed;

@@ -106,7 +106,7 @@ export function StudentConsentPanel({
       <h2 id="e-counseling-consent-heading" className="font-heading text-lg font-semibold text-ink">Media consent</h2>
       <p className="mt-2 text-sm leading-6 text-muted">Your media-consent choice does not affect your ability to receive Counseling.</p>
       {access.canConsentSelf ? (
-        consents.isPending ? <div aria-busy="true" aria-label="Loading your session consent"><Skeleton className="mt-4 h-16 w-full" /><Skeleton className="mt-3 h-16 w-full" /></div> :
+        consents.isPending ? <div aria-busy="true"><span className="sr-only">Loading your session consent…</span><Skeleton className="mt-4 h-16 w-full" /><Skeleton className="mt-3 h-16 w-full" /></div> :
           consents.isError ? <div role="alert" className="mt-4 border-y border-danger/30 py-4"><p className="text-sm text-danger">Session consent could not be loaded.</p><Button className="mt-3" variant="secondary" onClick={() => void consents.refetch()}>Retry</Button></div> :
             <ul className="mt-4 divide-y divide-border border-y border-border">{scopeRows.map(({ scope, row }) => {
               const withdrawn = Boolean(row?.withdrawn_at || row?.decision === "WITHDRAWN");
