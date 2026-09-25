@@ -70,7 +70,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
   }
 
   return (
-    <main className="space-y-7">
+    <div className="space-y-7">
       <ReferralHeading
         title="Referrals"
         description="Record and review Student referrals within your authorized Guidance scope."
@@ -153,7 +153,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
           ) : (
             <>
               <p className="text-sm text-muted" aria-live="polite">
-                Showing {items.length} Referrals on page {data?.page ?? filters.page}.
+                Showing {items.length} {items.length === 1 ? "Referral" : "Referrals"} on page {data?.page ?? filters.page}.
               </p>
               <ul className="divide-y divide-border border-y border-border md:hidden">
                 {items.map((referral) => (
@@ -171,6 +171,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
               </ul>
               <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+                  <caption className="sr-only">Referrals</caption>
                   <thead>
                     <tr className="border-b border-border-strong text-xs font-semibold uppercase tracking-wide text-muted">
                       <th scope="col" className="px-3 py-3">Referral / Student</th>
@@ -184,10 +185,10 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                   <tbody className="divide-y divide-border">
                     {items.map((referral) => (
                       <tr key={referral.id} className="align-top">
-                        <td className="px-3 py-4">
+                        <th scope="row" className="px-3 py-4 font-normal">
                           <Link href={`/portal/referrals/${referral.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{referral.reference_code}</Link>
                           <span className="mt-1 block text-ink">{referral.student_name_snapshot}</span>
-                        </td>
+                        </th>
                         <td className="px-3 py-4 text-ink">{referral.course_year_block_snapshot}</td>
                         <td className="px-3 py-4 text-ink">{formatDateOnly(referral.referred_on)}</td>
                         <td className="px-3 py-4 text-ink">{formatDateTime(referral.received_at)}</td>
@@ -210,6 +211,6 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
           )}
         </>
       )}
-    </main>
+    </div>
   );
 }

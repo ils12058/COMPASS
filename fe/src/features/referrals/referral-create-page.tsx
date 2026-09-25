@@ -127,7 +127,7 @@ export function ReferralCreatePage() {
   const studentPageData = eligibleStudents.data?.data;
 
   return (
-    <main className="space-y-7">
+    <div className="space-y-7">
       <ReferralHeading title="Record referral" description="Enter the source Referral details. Date referred, Guidance receipt, and the time COMPASS records this entry remain distinct." backHref="/portal/referrals" />
       <form className="max-w-3xl space-y-8" onSubmit={submit} aria-busy={create.isPending}>
         <section aria-labelledby="referral-student-heading" className="border-b border-border pb-7">
@@ -205,6 +205,6 @@ export function ReferralCreatePage() {
         onOpenChange={setStepUpOpen}
         onVerified={() => setNotice("Verification complete. Submit the same Referral details again to continue.")}
       />
-    </main>
+    </div>
   );
 }

@@ -53,14 +53,14 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   const currentSlip = current.data.data.items[0];
   if (currentSlip) {
     return (
-      <main className="space-y-7">
+      <div className="space-y-7">
         <CallSlipHeading title={`Issue linked Call Slip · ${item.reference_code}`} description="This Referral already has a non-voided linked Call Slip." backHref={`/portal/referrals/${item.id}`} backLabel="Back to Referral" />
         <section className="border-y border-border py-5">
           <p className="font-semibold text-ink">{callSlipStateLabel(currentSlip.state)} linked permit</p>
           <p className="mt-2 text-sm text-muted">{formatDateTime(currentSlip.report_at)} · {callSlipDestinationLabel(currentSlip.destination_type, currentSlip.other_destination)}</p>
           <Link href={`/portal/call-slips/${currentSlip.id}`} className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open linked Call Slip</Link>
         </section>
-      </main>
+      </div>
     );
   }
   if (item.voided_at) {
@@ -72,11 +72,11 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   }
 
   return (
-    <main className="space-y-7">
+    <div className="space-y-7">
       <CallSlipHeading title={`Issue linked Call Slip · ${item.reference_code}`} description="Issuing this Call Slip also records the action on the Referral in the same step." backHref={`/portal/referrals/${item.id}`} backLabel="Back to Referral" />
       <LinkedCallSlipHistory items={history.data.data.items} />
       <LinkedCallSlipCreateForm referral={item} onRefresh={refreshContext} />
-    </main>
+    </div>
   );
 }
 

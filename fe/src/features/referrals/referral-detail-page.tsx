@@ -60,9 +60,14 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
   }
   if (referral.isError) {
     if (referralErrorCode(referral.error) === "referral_not_found") {
-      return <ReferralAccessUnavailable title="Referral not found" message="Referral not found." />;
+      return <ReferralAccessUnavailable title="Referral not found" message="This Referral does not exist or is outside your Referral scope." />;
     }
-    return <ReferralQueryError error={referral.error} fallback="Referral detail could not be loaded." onRetry={() => void referral.refetch()} />;
+    return (
+      <div className="space-y-7">
+        <ReferralHeading title="Referral" backHref="/portal/referrals" />
+        <ReferralQueryError error={referral.error} fallback="Referral detail could not be loaded." onRetry={() => void referral.refetch()} />
+      </div>
+    );
   }
   if (referral.isPending) {
     return <div className="space-y-4" aria-busy="true"><span className="sr-only">Loading Referral…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-40 w-full" /><Skeleton className="h-64 w-full" /></div>;
@@ -82,7 +87,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
   }
 
   return (
-    <main className="space-y-7">
+    <div className="space-y-7">
       <ReferralHeading
         title={item.reference_code}
         description="Referral source record"
@@ -199,7 +204,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
           <p className="mt-3 text-sm text-muted">Your current access is read-only for this Referral.</p>
         )}
       </section>
-    </main>
+    </div>
   );
 
 }
