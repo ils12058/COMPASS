@@ -70,7 +70,7 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
         href="/portal"
         onClick={onNavigate}
         className="flex min-h-18 items-center gap-3 border-b border-on-brand/15 px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand"
-        aria-label="COMPASS portal home"
+        aria-label="COMPASS Portal Overview"
       >
         <Image
           src="/brand/compass-mark.svg"
@@ -95,7 +95,7 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
               : "hover:bg-on-brand/10")
           }
         >
-          Home
+          Overview
         </Link>
         {canManageAccounts ? (
           <div className="mt-7 border-t border-on-brand/15 pt-5">
