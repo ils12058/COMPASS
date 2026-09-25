@@ -719,10 +719,14 @@ def count_active_call_slips(actor: User) -> int | None:
         or not actor.has_capability("call_slips.view")
     ):
         return None
-    return _scope_queryset(CallSlip.objects.all(), actor).filter(
-        voided_at__isnull=True,
-        interview_ended_at__isnull=True,
-    ).count()
+    return (
+        _scope_queryset(CallSlip.objects.all(), actor)
+        .filter(
+            voided_at__isnull=True,
+            interview_ended_at__isnull=True,
+        )
+        .count()
+    )
 
 
 def list_call_slips(
