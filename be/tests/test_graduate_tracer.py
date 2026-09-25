@@ -461,9 +461,7 @@ def test_job_change_other_validation_remains_submission_safe():
     missing_other_text = valid_employed_payload()
     missing_other_text["reasons_for_changing_job"] = ["OTHER"]
     missing_other_text["reasons_for_changing_other"] = ""
-    assert (
-        put_json(client, "/api/v1/graduate-tracer/me", missing_other_text).status_code == 200
-    )
+    assert put_json(client, "/api/v1/graduate-tracer/me", missing_other_text).status_code == 200
     missing_text_submit = post_empty(client, "/api/v1/graduate-tracer/me/submit")
     assert missing_text_submit.status_code == 422
     assert missing_text_submit.json()["error"]["code"] == "invalid_graduate_tracer_request"
@@ -471,9 +469,7 @@ def test_job_change_other_validation_remains_submission_safe():
     unexpected_other_text = valid_employed_payload()
     unexpected_other_text["reasons_for_changing_job"] = ["SALARIES_BENEFITS"]
     unexpected_other_text["reasons_for_changing_other"] = "Unexpected companion text."
-    assert (
-        put_json(client, "/api/v1/graduate-tracer/me", unexpected_other_text).status_code == 200
-    )
+    assert put_json(client, "/api/v1/graduate-tracer/me", unexpected_other_text).status_code == 200
     unexpected_text_submit = post_empty(client, "/api/v1/graduate-tracer/me/submit")
     assert unexpected_text_submit.status_code == 422
     assert unexpected_text_submit.json()["error"]["code"] == "invalid_graduate_tracer_request"
