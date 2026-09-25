@@ -2,32 +2,33 @@
 
 import type { ReactNode } from "react";
 
+import {
+  canManageOrganization,
+  canViewOrganizationStructure,
+} from "@/features/institution-configuration/institution-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 
-function Unavailable({ management = false }: { management?: boolean }) {
-  return (
+// Structure reads alone are reference data for selectors in other workflows;
+// the Organization workspace follows management authority (ADR-059).
+export function OrganizationGate({ children }: { children: ReactNode }) {
+  const { user } = usePortalSession();
+  return canManageOrganization(user) ? (
+    children
+  ) : (
     <WorkspaceUnavailable title="Organization unavailable">
-      {management
-        ? "Your current access does not include Organization management."
-        : "Your current access does not include Organization."}
+      Your current access does not include Organization management.
     </WorkspaceUnavailable>
   );
 }
 
-export function OrganizationGate({ children }: { children: ReactNode }) {
+export function OrganizationStructureGate({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
-  const allowed =
-    user.capabilities.includes("organization.view") ||
-    user.capabilities.includes("organization.manage");
-  return allowed ? children : <Unavailable />;
-}
-
-export function OrganizationManageGate({ children }: { children: ReactNode }) {
-  const { user } = usePortalSession();
-  return user.capabilities.includes("organization.manage") ? (
+  return canViewOrganizationStructure(user) ? (
     children
   ) : (
-    <Unavailable management />
+    <WorkspaceUnavailable title="Organization structure unavailable">
+      Your current access does not include Campus, College, and Program structure.
+    </WorkspaceUnavailable>
   );
 }

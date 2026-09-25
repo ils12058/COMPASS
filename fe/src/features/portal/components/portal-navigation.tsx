@@ -17,11 +17,11 @@ import { canAttemptReports } from "@/features/reports/reports-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
+import { hasServicesWorkspace } from "@/features/services/services-access";
 import {
   canManageOrganization,
   canViewAcademicYears,
   canViewInstitutionalForms,
-  canViewOrganization,
   hasInstitutionWorkspace,
 } from "@/features/institution-configuration/institution-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -71,12 +71,11 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const isWithin = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
   const canManageAccounts = user.capabilities.includes("accounts.manage");
-  const hasOrganization =
-    canViewOrganization(user) || canManageOrganization(user);
+  const hasOrganization = canManageOrganization(user);
   const hasAcademicYears = canViewAcademicYears(user);
   const hasInstitutionalForms = canViewInstitutionalForms(user);
   const hasInstitution = hasInstitutionWorkspace(user);
-  const hasServices = user.capabilities.includes("services.view");
+  const hasServices = hasServicesWorkspace(user);
   const hasAvailability = hasAvailabilityWorkspace(user);
   const hasAppointments = getAppointmentAccess(user).hasWorkspace;
   const hasInventory = getInventoryAccess(user).hasWorkspace;

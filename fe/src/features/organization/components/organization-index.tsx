@@ -4,21 +4,21 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { canViewOrganizationStructure } from "@/features/institution-configuration/institution-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 
 export function OrganizationIndex() {
   const router = useRouter();
   const { user } = usePortalSession();
-  const canView = user.capabilities.includes("organization.view");
-  const canManage = user.capabilities.includes("organization.manage");
+  const canViewStructure = canViewOrganizationStructure(user);
 
   useEffect(() => {
-    if (canView) {
-      router.replace("/portal/organization/campuses");
-    } else if (canManage) {
-      router.replace("/portal/organization/responsibilities");
-    }
-  }, [canManage, canView, router]);
+    router.replace(
+      canViewStructure
+        ? "/portal/organization/campuses"
+        : "/portal/organization/responsibilities",
+    );
+  }, [canViewStructure, router]);
 
   return (
     <div aria-busy="true">

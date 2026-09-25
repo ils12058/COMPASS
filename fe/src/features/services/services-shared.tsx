@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
+import { hasServicesWorkspace } from "@/features/services/services-access";
 import {
   CompassApiError,
   readApiErrorCode,
@@ -49,31 +50,14 @@ export function servicesErrorMessage(
   return (code && knownErrors[code]) || backendMessage || fallback;
 }
 
-function ServicesUnavailable({ management = false }: { management?: boolean }) {
-  return (
-    <WorkspaceUnavailable title="Services unavailable">
-      {management
-        ? "Your current access does not include Service Catalog management."
-        : "Your current access does not include the Service Catalog."}
-    </WorkspaceUnavailable>
-  );
-}
-
 export function ServicesGate({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
-  return user.capabilities.includes("services.view") ? (
+  return hasServicesWorkspace(user) ? (
     children
   ) : (
-    <ServicesUnavailable />
-  );
-}
-
-export function ServicesManageGate({ children }: { children: ReactNode }) {
-  const { user } = usePortalSession();
-  return user.capabilities.includes("services.manage") ? (
-    children
-  ) : (
-    <ServicesUnavailable management />
+    <WorkspaceUnavailable title="Services unavailable">
+      Your current access does not include Service Catalog management.
+    </WorkspaceUnavailable>
   );
 }
 

@@ -40,7 +40,7 @@ import {
 
 export function ResponsibilitiesPage() {
   const { user } = usePortalSession();
-  const canViewStructure = user.capabilities.includes("organization.view");
+  const canViewStructure = user.capabilities.includes("organization.structure.view");
   const queryClient = useQueryClient();
   const responsibilities = useOrganizationListCounselorResponsibilities(
     {},

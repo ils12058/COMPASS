@@ -142,7 +142,7 @@ export function EducationSection({
         ) : null}
         {!programDiscoveryAllowed ? (
           <InventoryNotice tone="warning" role="status">
-            Your session does not include the Organization view capability needed to load Program choices.
+            Program choices are not available with your current access. Saved Program data is preserved; you can continue editing and save progress.
           </InventoryNotice>
         ) : null}
         {preserveSnapshot && programSnapshot ? (

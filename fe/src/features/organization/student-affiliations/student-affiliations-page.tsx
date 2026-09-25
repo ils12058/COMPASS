@@ -47,7 +47,7 @@ function parsePage(value: string | null): number {
 
 export function StudentAffiliationsPage() {
   const { user } = usePortalSession();
-  const canViewStructure = user.capabilities.includes("organization.view");
+  const canViewStructure = user.capabilities.includes("organization.structure.view");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

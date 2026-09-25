@@ -35,7 +35,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = usePortalSession();
-  const canDiscoverPrograms = user.capabilities.includes("organization.view");
+  const canDiscoverPrograms = user.capabilities.includes("organization.structure.view");
   const programQuery = useOrganizationListPrograms(
     { is_active: true },
     { query: { enabled: canDiscoverPrograms, retry: false } },
