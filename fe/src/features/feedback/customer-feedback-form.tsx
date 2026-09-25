@@ -194,7 +194,7 @@ export function CustomerFeedbackForm() {
 
   return (
     <section aria-labelledby="customer-feedback-heading">
-      <FeedbackPageHeading headingId="customer-feedback-heading" eyebrow="Feedback · Student response" title="Customer Feedback Form" description="Please tell us about the service you received from the GTAO. Your response is submitted as a final response." />
+      <FeedbackPageHeading headingId="customer-feedback-heading" title="Customer Feedback Form" description="Please tell us about the service you received from the GTAO. Your response is submitted as a final response." />
       <form className="mt-4" onSubmit={prepareSubmission} noValidate>
         {error ? <p role="alert" className="mb-5 border-y border-danger/30 py-3 text-sm text-danger">{error}</p> : null}
         {isUncertain ? (

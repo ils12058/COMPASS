@@ -114,7 +114,7 @@ export function GoodMoralStudentDetail({
         </GoodMoralSection>
       ) : null}
 
-      {item.status === "CANCELLED" ? <p role="status" className="border-y border-border py-4 text-sm text-muted">This request was cancelled. The cancellation reason is not available in the current request detail.</p> : null}
+      {item.status === "CANCELLED" ? <p role="status" className="border-y border-border py-4 text-sm text-muted">This request was cancelled.</p> : null}
     </section>
   );
 }

@@ -188,7 +188,7 @@ export function CsmForm() {
 
   return (
     <section aria-labelledby="csm-page-heading">
-      <FeedbackPageHeading headingId="csm-page-heading" eyebrow="Feedback · Client Satisfaction Measurement" title="HELP US SERVE YOU BETTER!" description="The Client Satisfaction Measurement gathers feedback about customer experience with government offices. Taking part is optional; if you choose to continue, please answer the required questions." />
+      <FeedbackPageHeading headingId="csm-page-heading" eyebrow="Client Satisfaction Measurement" title="HELP US SERVE YOU BETTER!" description="The Client Satisfaction Measurement gathers feedback about customer experience with government offices. Taking part is optional; if you choose to continue, please answer the required questions." />
       <form className="mt-4" onSubmit={prepareSubmission} noValidate>
         {error ? <p role="alert" className="mb-5 border-y border-danger/30 py-3 text-sm text-danger">{error}</p> : null}
         {isUncertain ? <div className="mb-6 border-y border-warning/40 bg-warning/10 px-4 py-4" role="status" aria-live="polite"><p className="text-sm font-semibold text-ink">Submission result not confirmed</p><p className="mt-1 text-sm leading-6 text-muted">The exact response and its replay key are being retained in this page. Retry the same submission to safely check whether it was received.</p><Button className="mt-3" disabled={create.isPending} onClick={() => void send(uncertainIntent.body)}>{create.isPending ? "Checking submission…" : "Retry same submission"}</Button></div> : null}
