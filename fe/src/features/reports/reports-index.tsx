@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { canAttemptReports } from "@/features/reports/reports-access";
 import {
   isReportScopeDenied,
@@ -16,14 +17,9 @@ export function ReportsIndex() {
   const { user } = usePortalSession();
   if (!canAttemptReports(user)) {
     return (
-      <section className="max-w-2xl border-y border-border py-7">
-        <h1 className="font-heading text-3xl font-bold text-ink">
-          Reports unavailable
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-muted">
-          Your current access does not include Reports.
-        </p>
-      </section>
+      <WorkspaceUnavailable title="Reports unavailable">
+        Your current access does not include Reports.
+      </WorkspaceUnavailable>
     );
   }
 

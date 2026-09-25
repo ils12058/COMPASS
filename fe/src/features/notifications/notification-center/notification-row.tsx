@@ -26,7 +26,7 @@ export function NotificationRow({ notification, currentUserId }: { notification:
   async function markAndMaybeOpen() {
     setError(null);
     if (notification.is_read) {
-      if (destination) router.push(destination);
+      if (destination) router.push(destination.href);
       return;
     }
     try {
@@ -41,7 +41,7 @@ export function NotificationRow({ notification, currentUserId }: { notification:
       queryClient.invalidateQueries({ queryKey: getNotificationsListMineQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getNotificationsGetUnreadCountQueryKey() }),
     ]);
-    if (destination) router.push(destination);
+    if (destination) router.push(destination.href);
   }
 
   return (
@@ -62,7 +62,7 @@ export function NotificationRow({ notification, currentUserId }: { notification:
             {destination || !notification.is_read ? (
               <div className="mt-3">
                 <Button variant="quiet" className="min-h-10 px-2" disabled={markRead.isPending} onClick={() => void markAndMaybeOpen()}>
-                  {markRead.isPending ? "Marking as read…" : destination ? "Open Security" : "Mark as read"}
+                  {markRead.isPending ? "Marking as read…" : destination ? destination.label : "Mark as read"}
                 </Button>
               </div>
             ) : null}
