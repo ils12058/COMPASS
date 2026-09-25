@@ -92,6 +92,22 @@ class ReportAccessScope:
 GLOBAL_REPORT_ACCESS_SCOPE = ReportAccessScope(is_global=True)
 
 
+@dataclass(frozen=True, slots=True)
+class ReportScopeCollegeProjection:
+    id: UUID
+    code: str
+    name: str
+    campus_id: UUID
+    campus_code: str
+    campus_name: str
+
+
+@dataclass(frozen=True, slots=True)
+class ReportScopeProjection:
+    is_global: bool
+    colleges: tuple[ReportScopeCollegeProjection, ...] = ()
+
+
 def _active_scope_college_ids(access_scope: ReportAccessScope) -> tuple[UUID, ...] | None:
     if access_scope.is_global:
         return None
@@ -125,6 +141,37 @@ def resolve_report_access_scope(actor: User) -> ReportAccessScope:
     if not scope.college_ids:
         raise ReportAccessDenied("No active Counselor report scope is assigned.")
     return ReportAccessScope(is_global=False, college_ids=scope.college_ids)
+
+
+def get_report_scope_projection(actor: User) -> ReportScopeProjection:
+    access_scope = resolve_report_access_scope(actor)
+    active_college_ids = _active_scope_college_ids(access_scope)
+    if active_college_ids is None:
+        return ReportScopeProjection(is_global=True)
+
+    colleges = (
+        College.objects.filter(
+            pk__in=active_college_ids,
+            is_active=True,
+            campus__is_active=True,
+        )
+        .select_related("campus")
+        .order_by("campus__code", "code", "pk")
+    )
+    return ReportScopeProjection(
+        is_global=False,
+        colleges=tuple(
+            ReportScopeCollegeProjection(
+                id=college.pk,
+                code=college.code,
+                name=college.name,
+                campus_id=college.campus_id,
+                campus_code=college.campus.code,
+                campus_name=college.campus.name,
+            )
+            for college in colleges
+        ),
+    )
 
 
 def _report_access_scope_note(access_scope: ReportAccessScope) -> str:
