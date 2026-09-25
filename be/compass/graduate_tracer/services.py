@@ -529,13 +529,9 @@ def _normalize_root(values: dict[str, object]) -> dict[str, object]:
         normalized["first_job_related_to_course"] = None
         normalized["reasons_for_accepting_first_job"] = []
         normalized["reasons_for_accepting_other"] = ""
-        normalized["reasons_for_changing_job"] = []
-        normalized["reasons_for_changing_other"] = ""
     elif normalized["first_job_related_to_course"] is False:
         normalized["reasons_for_accepting_first_job"] = []
         normalized["reasons_for_accepting_other"] = ""
-        normalized["reasons_for_changing_job"] = []
-        normalized["reasons_for_changing_other"] = ""
 
     if normalized["curriculum_relevant_to_first_job"] is False:
         normalized["useful_competencies"] = []
