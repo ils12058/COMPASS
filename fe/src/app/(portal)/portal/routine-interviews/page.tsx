@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { RoutineInterviewsEntryPage } from "@/features/routine-interviews/routine-interviews-entry-page";
+
+export const metadata: Metadata = { title: "Routine Interviews" };
 
 export default function Page() {
   return (

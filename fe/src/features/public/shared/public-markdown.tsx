@@ -23,6 +23,7 @@ export function PublicMarkdown({ children }: { children: string }) {
             return safeHref ? (
               <a href={safeHref} target="_blank" rel="noopener noreferrer">
                 {linkChildren}
+                <span className="sr-only"> (opens in a new tab)</span>
               </a>
             ) : (
               <span>{linkChildren}</span>

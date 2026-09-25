@@ -1,7 +1,6 @@
 "use client";
 
 import { Pin } from "lucide-react";
-import Link from "next/link";
 
 import { PublicMarkdown } from "@/features/public/shared/public-markdown";
 import { formatPublicDate } from "@/features/public/shared/presentation";
@@ -24,9 +23,6 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
           <p className="mt-3 leading-7 text-muted">
             This announcement does not exist or is no longer publicly available.
           </p>
-          <Link className="mt-5 inline-flex min-h-10 items-center font-semibold text-brand hover:underline" href="/announcements">
-            Return to announcements
-          </Link>
         </div>
       );
     }

@@ -91,7 +91,7 @@ export function PasswordChangePage() {
           <div className="grid gap-2"><Label htmlFor="account-confirm-password">Confirm new password</Label><PasswordInput id="account-confirm-password" name="confirm-password" autoComplete="new-password" required value={confirmation} onChange={(event) => { setConfirmation(event.target.value); setChanged(false); }} aria-describedby={error ? "password-change-error" : undefined} /></div>
           {error ? <p id="password-change-error" role="alert" className="text-sm text-danger">{error}</p> : null}
           {policyIssues.length ? <ul className="list-disc space-y-1 pl-5 text-sm text-danger">{policyIssues.map((issue) => <li key={issue}>{issue}</li>)}</ul> : null}
-          {setupRequired ? <Link href="/portal/account/security/authenticator" className="inline-flex min-h-10 items-center font-semibold text-brand hover:underline">Set up authenticator</Link> : null}
+          {setupRequired ? <Link href="/portal/account/security/authenticator" className="inline-flex min-h-10 items-center font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Set up authenticator</Link> : null}
           {changed ? <p role="status" className="text-sm text-success">Password changed. Your current session remains signed in.</p> : null}
           <Button type="submit" disabled={change.isPending}>{change.isPending ? "Changing password…" : usesMfa && !recent ? "Verify to continue" : "Change password"}</Button>
         </form>

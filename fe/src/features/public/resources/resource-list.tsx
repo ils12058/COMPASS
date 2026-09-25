@@ -63,7 +63,7 @@ export function ResourceList(props: ResourceListProps) {
               : "No public resources are available right now."}
           </p>
           {category || kind ? (
-            <Link className="mt-3 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline" href="/resources">
+            <Link className="mt-3 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/resources">
               Clear filters
             </Link>
           ) : null}

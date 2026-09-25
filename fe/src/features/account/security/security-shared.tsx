@@ -53,11 +53,17 @@ export function StepUpDialog({
     void queryClient.invalidateQueries({ queryKey: getAuthGetSessionQueryKey() });
   }
 
+  function close() {
+    onOpenChange(false);
+    setCode("");
+    setError(null);
+  }
+
   return (
     <Dialog open={open} onOpenChange={(next) => {
       if (verify.isPending) return;
-      onOpenChange(next);
-      if (!next) { setCode(""); setError(null); }
+      if (next) onOpenChange(true);
+      else close();
     }}>
       <DialogContent onEscapeKeyDown={(event) => { if (verify.isPending) event.preventDefault(); }} onPointerDownOutside={(event) => { if (verify.isPending) event.preventDefault(); }}>
         <DialogTitle>Verify it&apos;s you</DialogTitle>
@@ -69,7 +75,7 @@ export function StepUpDialog({
           </div>
           {error ? <p id="step-up-error" role="alert" className="text-sm text-danger">{error}</p> : null}
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" disabled={verify.isPending} onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button variant="secondary" disabled={verify.isPending} onClick={close}>Cancel</Button>
             <Button type="submit" disabled={verify.isPending}>{verify.isPending ? "Verifying…" : "Verify"}</Button>
           </div>
         </form>

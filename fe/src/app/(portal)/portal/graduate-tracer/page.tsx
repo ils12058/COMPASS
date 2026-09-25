@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,6 +27,8 @@ function validCalendarDate(value: string): string {
   const parsed = new Date(`${value}T00:00:00.000Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value ? value : "";
 }
+
+export const metadata: Metadata = { title: "Graduate Tracer" };
 
 export default async function Page({
   searchParams,

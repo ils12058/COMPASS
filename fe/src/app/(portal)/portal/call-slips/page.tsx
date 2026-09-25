@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +15,8 @@ function pageNumber(value: string): number {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
+
+export const metadata: Metadata = { title: "Call Slips" };
 
 export default async function Page({
   searchParams,
