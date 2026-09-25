@@ -341,6 +341,34 @@ def retire_processing_activity(
     return item
 
 
+def privacy_overview_access_allowed(actor: User) -> bool:
+    return (
+        bool(getattr(actor, "pk", None))
+        and actor.is_active
+        and actor.role.code == "INSTITUTIONAL_OFFICER"
+        and actor.has_capability("privacy_governance.view")
+        and actor.designations.filter(code="DPO").exists()
+    )
+
+
+def count_open_reviews(actor: User) -> int | None:
+    if not privacy_overview_access_allowed(actor):
+        return None
+    return PrivacyReview.objects.filter(status=PrivacyReviewStatus.OPEN).count()
+
+
+def count_active_incidents(actor: User) -> int | None:
+    if not privacy_overview_access_allowed(actor):
+        return None
+    return PrivacyIncident.objects.filter(
+        status__in=(
+            PrivacyIncidentStatus.OPEN,
+            PrivacyIncidentStatus.ASSESSING,
+            PrivacyIncidentStatus.CONTAINED,
+        )
+    ).count()
+
+
 def get_privacy_review(review_id: UUID) -> PrivacyReview:
     item = (
         PrivacyReview.objects.select_related("processing_activity", "reviewed_by")
