@@ -13756,6 +13756,281 @@
         "title": "OverrideRemovalResponse",
         "type": "object"
       },
+      "OverviewGuidanceSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "active_call_slip_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Call Slip Count"
+          },
+          "good_moral_requested_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Good Moral Requested Count"
+          },
+          "routine_evaluation_pending_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routine Evaluation Pending Count"
+          },
+          "upcoming_managed_appointments_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upcoming Managed Appointments Count"
+          },
+          "upcoming_self_appointments_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upcoming Self Appointments Count"
+          }
+        },
+        "required": [
+          "upcoming_self_appointments_count",
+          "upcoming_managed_appointments_count",
+          "routine_evaluation_pending_count",
+          "good_moral_requested_count",
+          "active_call_slip_count"
+        ],
+        "title": "OverviewGuidanceSummary",
+        "type": "object"
+      },
+      "OverviewPlatformSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "email_due_pending_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Due Pending Count"
+          },
+          "email_failed_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Failed Count"
+          },
+          "email_pending_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Pending Count"
+          },
+          "email_sent_today_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Sent Today Count"
+          }
+        },
+        "required": [
+          "email_pending_count",
+          "email_due_pending_count",
+          "email_failed_count",
+          "email_sent_today_count"
+        ],
+        "title": "OverviewPlatformSummary",
+        "type": "object"
+      },
+      "OverviewPrivacySummary": {
+        "additionalProperties": false,
+        "properties": {
+          "active_incident_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Incident Count"
+          },
+          "open_review_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Review Count"
+          }
+        },
+        "required": [
+          "open_review_count",
+          "active_incident_count"
+        ],
+        "title": "OverviewPrivacySummary",
+        "type": "object"
+      },
+      "OverviewStudentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "active_call_slip_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Call Slip Count"
+          },
+          "good_moral_requested_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Good Moral Requested Count"
+          },
+          "routine_intake_draft_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routine Intake Draft Count"
+          },
+          "upcoming_appointments_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upcoming Appointments Count"
+          }
+        },
+        "required": [
+          "upcoming_appointments_count",
+          "routine_intake_draft_count",
+          "good_moral_requested_count",
+          "active_call_slip_count"
+        ],
+        "title": "OverviewStudentSummary",
+        "type": "object"
+      },
+      "OverviewSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "guidance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverviewGuidanceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverviewPlatformSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "privacy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverviewPrivacySummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "student": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverviewStudentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "generated_at",
+          "student",
+          "guidance",
+          "platform",
+          "privacy"
+        ],
+        "title": "OverviewSummaryResponse",
+        "type": "object"
+      },
       "PSGCReferenceItem": {
         "additionalProperties": false,
         "properties": {
@@ -38725,6 +39000,53 @@
         ]
       }
     },
+    "/api/v1/overview": {
+      "get": {
+        "operationId": "overviewGetSummary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewSummaryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Overview Get Summary",
+        "tags": [
+          "overview"
+        ]
+      }
+    },
     "/api/v1/platform/activity": {
       "get": {
         "operationId": "platformOperationsListActivity",
@@ -46094,6 +46416,10 @@
     {
       "description": "Restricted aggregate Guidance and Counseling Office reports.",
       "name": "reports"
+    },
+    {
+      "description": "Authenticated role- and designation-aware Portal Overview summaries.",
+      "name": "overview"
     },
     {
       "description": "Student Good Moral requests, Counselor issuance, and certificate PDFs.",
