@@ -14,7 +14,8 @@ from compass.counseling.context_access import (
     resolve_counseling_context,
 )
 from compass.counseling.models import CounselingEncounter, CounselingEntryMode
-from compass.service_catalog.services import create_service, set_service_active
+from compass.service_catalog.services import set_service_active
+from tests.canonical_service_helpers import legacy_counseling_service
 
 
 def sync_policy() -> None:
@@ -36,7 +37,7 @@ def context(actor: User) -> AuditContext:
 
 
 def make_counseling_service(admin: User):
-    service = create_service(
+    service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
         appointment_policy="OPTIONAL",

@@ -33,8 +33,9 @@ from compass.organization.models import (
     StudentAffiliation,
 )
 from compass.reports.services import build_student_profiling_report, resolve_report_access_scope
-from compass.service_catalog.services import create_service, set_service_active
+from compass.service_catalog.services import set_service_active
 from compass.student_support.services import StudentSupportNotFound, get_student_support_context
+from tests.canonical_service_helpers import legacy_counseling_service
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
@@ -453,7 +454,7 @@ def test_cross_scope_counseling_assignment_does_not_expand_inventory_or_support_
     configure_year(admin)
     inventory = submit_inventory(student=student, program=student_program)
 
-    service = create_service(
+    service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
         appointment_policy="OPTIONAL",

@@ -173,6 +173,7 @@ jobs:
           tests/test_student_profiling_pdf.py
           tests/test_student_profiling_xlsx.py
           tests/test_service_catalog.py
+          tests/test_canonical_services.py
           tests/test_availability.py
           tests/test_idempotency.py
           tests/test_openapi_contract.py

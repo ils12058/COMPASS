@@ -447,10 +447,13 @@ def test_concurrent_manual_enable_mutations_serialize():
 
 @pytest.mark.django_db
 def test_health_auth_platform_and_daily_webhook_bypass_before_maintenance_lookup(client):
-    with patch(
-        "compass.platform_ops.middleware.get_maintenance_snapshot",
-        side_effect=AssertionError("maintenance DB lookup must be bypassed"),
-    ) as lookup:
+    with (
+        patch(
+            "compass.platform_ops.middleware.get_maintenance_snapshot",
+            side_effect=AssertionError("maintenance DB lookup must be bypassed"),
+        ) as lookup,
+        patch("compass.api.v1.health.canonical_counseling_readiness", return_value=(True, "ok")),
+    ):
         live = client.get("/api/v1/health/live")
         ready = client.get("/api/v1/health/ready")
         metadata = client.get("/api/v1/meta")

@@ -7,7 +7,8 @@ from django.utils import timezone
 from compass.accounts.models import Role, StudentLifecycleStatus, User
 from compass.audit.context import AuditContext
 from compass.counseling.services import create_encounter
-from compass.service_catalog.services import create_service, set_service_active
+from compass.service_catalog.services import set_service_active
+from tests.canonical_service_helpers import legacy_counseling_service
 
 
 def sync_policy() -> None:
@@ -38,7 +39,7 @@ def test_walk_in_counseling_remains_recordable_without_current_inventory(status)
     admin = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     student = make_user("student@example.edu", "STUDENT")
-    service = create_service(
+    service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
         appointment_policy="OPTIONAL",

@@ -17,6 +17,8 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.service_catalog.services import (
     DEFAULT_PAGE_SIZE,
+    CanonicalServiceRequired,
+    CanonicalServiceReserved,
     InvalidServiceCatalogInput,
     ServiceCatalogConflict,
     ServiceCatalogError,
@@ -122,6 +124,10 @@ def _require(request, capability: str, *, recent_mfa: bool = False) -> None:
 def _raise(exc: ServiceCatalogError) -> NoReturn:
     if isinstance(exc, ServiceCatalogNotFound):
         raise APIError(404, "service_not_found", str(exc)) from exc
+    if isinstance(exc, CanonicalServiceRequired):
+        raise APIError(409, "canonical_service_required", str(exc)) from exc
+    if isinstance(exc, CanonicalServiceReserved):
+        raise APIError(409, "canonical_service_reserved", str(exc)) from exc
     if isinstance(exc, ServiceCatalogConflict):
         raise APIError(409, "service_catalog_conflict", str(exc)) from exc
     if isinstance(exc, InvalidServiceCatalogInput):
