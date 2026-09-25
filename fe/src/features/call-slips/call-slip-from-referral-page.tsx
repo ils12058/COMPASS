@@ -73,7 +73,7 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
 
   return (
     <main className="space-y-7">
-      <CallSlipHeading title={`Issue linked Call Slip · ${item.reference_code}`} description="Issue the permit through the atomic Referral workflow. The backend records the source action and creates the linked Call Slip together." backHref={`/portal/referrals/${item.id}`} backLabel="Back to Referral" />
+      <CallSlipHeading title={`Issue linked Call Slip · ${item.reference_code}`} description="Issuing this Call Slip also records the action on the Referral in the same step." backHref={`/portal/referrals/${item.id}`} backLabel="Back to Referral" />
       <LinkedCallSlipHistory items={history.data.data.items} />
       <LinkedCallSlipCreateForm referral={item} onRefresh={refreshContext} />
     </main>
@@ -223,7 +223,7 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
             </div>
           ) : (
             <>
-              <p className="mt-2 text-sm leading-6 text-muted">This atomic operation will record the source action and create the linked Call Slip together.</p>
+              <p className="mt-2 text-sm leading-6 text-muted">Issuing records this action on the Referral and creates the linked Call Slip in the same step.</p>
               <div className="mt-4 grid gap-5 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="linked-action-occurred">Action occurred</Label>
@@ -250,7 +250,7 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
       <AlertDialog open={confirmOpen} onOpenChange={(open) => { if (!create.isPending) setConfirmOpen(open); }}>
         <AlertDialogContent onEscapeKeyDown={(event) => { if (create.isPending) event.preventDefault(); }}>
           <AlertDialogTitle>Confirm linked Call Slip issuance</AlertDialogTitle>
-          <AlertDialogDescription>This creates the Call Slip and, only when needed, records the Referral source action in one atomic backend operation. Review the values before continuing.</AlertDialogDescription>
+          <AlertDialogDescription>This issues the Call Slip and, when needed, records the action on the Referral in the same step. Review the details before issuing.</AlertDialogDescription>
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
             <div><dt className="text-xs font-semibold text-muted">Referral</dt><dd className="mt-1 text-ink">{referral.reference_code}</dd></div>
             <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 text-ink">{referral.student_name_snapshot}</dd></div>

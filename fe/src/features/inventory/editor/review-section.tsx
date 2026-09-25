@@ -50,7 +50,7 @@ export function ReviewSection({
       <FieldGroup legend="Submission readiness">
         {issues.length === 0 ? (
           <InventoryNotice tone="success">
-            No immediate required-field issues were found. The backend remains authoritative for final validation.
+            No required-field issues were found. Your Inventory is checked again when you submit.
           </InventoryNotice>
         ) : (
           <InventoryNotice title="Needs attention before submission" tone="warning">

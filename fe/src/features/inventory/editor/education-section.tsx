@@ -109,7 +109,7 @@ export function EducationSection({
             value={draft.course_currently_enrolled}
             onChange={() => undefined}
             readOnly
-            hint="This snapshot follows the selected canonical Program."
+            hint="Filled from the selected Program."
           />
           <div>
             <label htmlFor="inventory-year-level" className="text-sm font-semibold text-ink">

@@ -132,7 +132,7 @@ export function ReferralCreatePage() {
       <form className="max-w-3xl space-y-8" onSubmit={submit} aria-busy={create.isPending}>
         <section aria-labelledby="referral-student-heading" className="border-b border-border pb-7">
           <h2 id="referral-student-heading" className="font-heading text-xl font-semibold text-ink">Student</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Choose from Students returned by Referral-specific discovery. College is context only; the backend enforces scope.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">Search Students available for Referrals. College is shown for context.</p>
           <div className="mt-4">
             <EligibleStudentPicker
               label="Choose Student"

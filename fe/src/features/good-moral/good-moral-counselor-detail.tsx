@@ -143,7 +143,7 @@ export function GoodMoralCounselorDetail({
         </>
       ) : null}
 
-      {item.status === "CANCELLED" ? <p role="status" className="border-y border-border py-4 text-sm text-muted">This request was cancelled. Cancellation details are not exposed in the current request contract.</p> : null}
+      {item.status === "CANCELLED" ? <p role="status" className="border-y border-border py-4 text-sm text-muted">This request was cancelled. Cancellation details are not shown here.</p> : null}
     </section>
   );
 }

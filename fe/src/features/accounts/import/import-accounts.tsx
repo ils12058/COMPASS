@@ -250,7 +250,7 @@ export function ImportAccounts() {
           <p className="mt-2 text-sm text-muted">
             {report.valid
               ? report.committed
-                ? "The backend committed this import."
+                ? "The import was completed."
                 : "The CSV is valid for import. Records may change before commit."
               : "Resolve the conflicts or invalid rows, then validate the CSV again."}
           </p>

@@ -193,7 +193,7 @@ export function ExitInterviewStudentHome({
                 ) : (
                   <p role="alert" className="text-sm leading-6 text-danger">
                     {needsStatusCheck
-                      ? "We could not confirm whether the Exit Interview started. Check the canonical current status before trying again."
+                      ? "We could not confirm whether the Exit Interview started. Check its current status before trying again."
                       : exitInterviewErrorMessage(startError, "The Exit Interview could not be started.")}
                   </p>
                 )}

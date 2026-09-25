@@ -403,8 +403,8 @@ export function AccountAccess() {
           Effective access
         </h2>
         <p className="mt-2 text-sm text-muted">
-          This is the backend&apos;s current access projection, including role,
-          designations, and overrides.
+          Current access resulting from this account&apos;s role, designations,
+          and overrides.
         </p>
         {effective.isPending ? (
           <div aria-busy="true" className="mt-5 space-y-2">

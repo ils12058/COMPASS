@@ -406,8 +406,8 @@ export function StudentAffiliationsPage() {
             {dialog?.studentId ? "Change affiliation" : "Set affiliation"}
           </DialogTitle>
           <DialogDescription>
-            Each Student has one canonical College affiliation. Setting a new
-            College replaces the current relationship.
+            Each Student has one College affiliation. Setting a new College
+            replaces the current affiliation.
           </DialogDescription>
           <div className="mt-6 space-y-6">
             {dialog?.studentId ? (

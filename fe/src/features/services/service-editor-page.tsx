@@ -268,9 +268,8 @@ function ServiceForm({
               </option>
             </select>
             <p className="text-xs leading-5 text-muted">
-              Optional and required are both schedulable under the current
-              backend contract. No additional workflow distinction is applied
-              here.
+              Services with an optional or required appointment policy can
+              both be booked as Appointments.
             </p>
           </div>
           <div className="grid gap-2">
@@ -360,9 +359,8 @@ function ServiceForm({
           </span>
         </label>
         <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">
-          This requirement is preserved even when appointment policy is No
-          appointment; COMPASS does not invent an incompatibility the backend
-          does not enforce.
+          When the appointment policy is No appointment, this setting is kept
+          but has no booking effect.
         </p>
       </section>
 

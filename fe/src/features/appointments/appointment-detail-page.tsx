@@ -132,14 +132,14 @@ function ActionConfirmation({
     },
     complete: {
       title: "Complete this Appointment?",
-      description: "This will mark the scheduled Appointment as completed. The backend will verify its lifecycle and timing.",
+      description: "This marks the scheduled Appointment as completed. COMPASS checks its status and timing before saving.",
       confirm: "Complete appointment",
       pending: "Completing…",
       variant: "primary",
     },
     "no-show": {
       title: "Mark this Appointment no-show?",
-      description: "This will mark the scheduled Appointment as no-show. The backend will verify its end time and related records.",
+      description: "This marks the scheduled Appointment as no-show. COMPASS checks its end time and related records before saving.",
       confirm: "Mark no-show",
       pending: "Updating…",
       variant: "danger",
@@ -473,7 +473,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         <section aria-labelledby="appointment-actions-heading" className="border-b border-border py-6">
           <h2 id="appointment-actions-heading" className="font-heading text-xl font-semibold text-ink">Appointment actions</h2>
           {canRescheduleSelf && appointment.cancellation_cutoff_minutes !== null ? (
-            <p className="mt-2 max-w-3xl text-sm text-muted">Self-service rescheduling is subject to the cutoff saved with this Appointment. The backend confirms whether a change is still allowed.</p>
+            <p className="mt-2 max-w-3xl text-sm text-muted">Rescheduling is subject to the cutoff saved with this Appointment. COMPASS confirms whether a change is still allowed when you submit.</p>
           ) : null}
           <div className="mt-4 flex flex-wrap gap-2">
             {canCancel ? <Button variant="danger" disabled={pending} onClick={() => { setError(null); setConfirmAction("cancel"); }}>Cancel appointment</Button> : null}

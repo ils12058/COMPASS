@@ -18,7 +18,7 @@ const counselingErrors: Record<string, string> = {
   counseling_invalid_time: "The recorded start and end times are not valid. Review the actual interaction times.",
   counseling_appointment_already_used: "A Counseling Encounter has already been recorded for this Appointment. Refresh the candidates and your encounter list.",
   counseling_appointment_invalid: "This Appointment is no longer eligible for this Counseling action. Refresh the candidates and try again.",
-  counseling_service_not_configured: "Counseling cannot be recorded because the canonical Counseling Service is not currently configured for this workflow.",
+  counseling_service_not_configured: "Counseling cannot be recorded because the Counseling Service is not configured.",
   counseling_not_permitted: "This Counseling action is not available within your current access.",
   counseling_context_not_found: "This temporary Counseling Context is no longer available.",
   current_academic_year_not_configured: "The current Academic Year is not configured for this Counseling workflow.",

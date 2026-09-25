@@ -42,9 +42,9 @@ function policyLabel(policy: AppointmentPolicy): string {
 
 function policyDescription(policy: AppointmentPolicy): string {
   if (policy === AppointmentPolicy.NONE) {
-    return "This Service does not accept Appointment scheduling. It may still participate in other COMPASS workflows.";
+    return "This Service does not accept Appointment scheduling.";
   }
-  return "Appointment scheduling is supported when the other booking requirements are satisfied. COMPASS does not add a frontend-only workflow distinction between optional and required.";
+  return "Appointments can be scheduled for this Service when its booking requirements are met.";
 }
 
 function formatDate(value: string): string {
@@ -73,11 +73,20 @@ export function ServiceDetailPage() {
 
   if (detail.isError) {
     return (
-      <ServicesQueryError
-        error={detail.error}
-        fallback="The Service could not be loaded."
-        onRetry={() => void detail.refetch()}
-      />
+      <section>
+        <ServicesPageHeading
+          title="Service unavailable"
+          backHref="/portal/services"
+          backLabel="Services"
+        />
+        <div className="mt-6">
+          <ServicesQueryError
+            error={detail.error}
+            fallback="The Service could not be loaded."
+            onRetry={() => void detail.refetch()}
+          />
+        </div>
+      </section>
     );
   }
 
@@ -236,10 +245,12 @@ export function ServiceDetailPage() {
           <p className="mt-4 max-w-4xl text-sm leading-6 text-muted">
             {policyDescription(service.appointment_policy)}
           </p>
-          <p className="mt-2 max-w-4xl text-xs leading-5 text-muted">
-            Service scheduling changes apply to future Appointments. Existing
-            Appointments retain their saved timing and cancellation cutoff.
-          </p>
+          {canManage ? (
+            <p className="mt-2 max-w-4xl text-xs leading-5 text-muted">
+              Service scheduling changes apply to future Appointments. Existing
+              Appointments retain their saved timing and cancellation cutoff.
+            </p>
+          ) : null}
         </section>
 
         <section className="py-7" aria-labelledby="service-requirements-heading">

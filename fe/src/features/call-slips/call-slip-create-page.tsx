@@ -124,7 +124,7 @@ export function DirectCallSlipCreatePage() {
       <form className="max-w-3xl space-y-8" onSubmit={prepare} aria-busy={create.isPending}>
         <section aria-labelledby="direct-call-slip-student-heading" className="border-b border-border pb-7">
           <h2 id="direct-call-slip-student-heading" className="font-heading text-xl font-semibold text-ink">Student</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Choose from Students returned by Call Slip-specific discovery. Do not select an issuer; the backend determines who issues and records the permit.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">Search Students available for Call Slips. The issuer is recorded automatically.</p>
           <div className="mt-4">
             <EligibleStudentPicker
               label="Choose Student"

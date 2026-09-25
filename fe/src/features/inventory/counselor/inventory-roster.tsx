@@ -190,7 +190,7 @@ export function CounselorInventoryRoster() {
           </div>
         </div>
         {academicYears.isError && canFilterYear ? (
-          <p role="status" className="mt-3 text-sm text-warning">Academic Year choices could not be loaded. The roster still uses the selected Academic Year when one is present; otherwise, it uses the backend&apos;s current-year default.</p>
+          <p role="status" className="mt-3 text-sm text-warning">Academic Year choices could not be loaded. The roster still uses the selected Academic Year when one is present; otherwise, it uses the current Academic Year.</p>
         ) : null}
         {missingYearUnresolved ? (
           <p role="status" className="mt-3 text-sm text-warning">The Missing filter is held until this Academic Year can be verified, so an unsupported historical Missing query is not sent.</p>

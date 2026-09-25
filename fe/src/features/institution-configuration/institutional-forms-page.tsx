@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canManageInstitutionalForms, canViewInstitutionalForms } from "@/features/institution-configuration/institution-access";
 import { institutionConfigurationErrorMessage } from "@/features/institution-configuration/institution-action";
@@ -74,16 +75,21 @@ function InstitutionalFormsWorkspace({
         Institutional Forms
       </h1>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-        Manage QMS-issued Form Family and revision metadata. This workspace does not edit or preview the forms themselves.
+        QMS-issued Form Family and revision metadata. This workspace does not edit or preview the forms themselves.
       </p>
 
       {families.isError && !families.data ? (
-        <p role="alert" className="mt-8 border-y border-danger/30 py-4 text-sm leading-6 text-danger">
-          {institutionConfigurationErrorMessage(
-            families.error,
-            "Institutional Form Families could not be loaded. Try again.",
-          )}
-        </p>
+        <div role="alert" className="mt-8 border-y border-danger/30 py-4">
+          <p className="text-sm leading-6 text-danger">
+            {institutionConfigurationErrorMessage(
+              families.error,
+              "Institutional Form Families could not be loaded.",
+            )}
+          </p>
+          <Button variant="secondary" className="mt-3" onClick={() => void families.refetch()}>
+            Retry
+          </Button>
+        </div>
       ) : families.isPending && !families.data ? (
         <div className="mt-8 grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]" aria-busy="true">
           <div className="space-y-3">
@@ -156,12 +162,17 @@ function InstitutionalFormsWorkspace({
               Form Revisions
             </h3>
             {revisions.isError && !revisions.data ? (
-              <p role="alert" className="mt-4 border-y border-danger/30 py-4 text-sm leading-6 text-danger">
-                {institutionConfigurationErrorMessage(
-                  revisions.error,
-                  "Form Revisions for this family could not be loaded. Try again.",
-                )}
-              </p>
+              <div role="alert" className="mt-4 border-y border-danger/30 py-4">
+                <p className="text-sm leading-6 text-danger">
+                  {institutionConfigurationErrorMessage(
+                    revisions.error,
+                    "Form Revisions for this family could not be loaded.",
+                  )}
+                </p>
+                <Button variant="secondary" className="mt-3" onClick={() => void revisions.refetch()}>
+                  Retry
+                </Button>
+              </div>
             ) : revisions.isPending && !revisions.data ? (
               <div className="mt-4 space-y-3" aria-busy="true">
                 <Skeleton className="h-12 w-full" />

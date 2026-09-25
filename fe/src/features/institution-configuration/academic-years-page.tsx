@@ -137,12 +137,21 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
       ) : null}
 
       {years.isError && !years.data ? (
-        <p role="alert" className="mt-6 border-y border-danger/30 py-4 text-sm leading-6 text-danger">
-          {institutionConfigurationErrorMessage(
-            years.error,
-            "Academic Years could not be loaded. Try again.",
-          )}
-        </p>
+        <div role="alert" className="mt-6 border-y border-danger/30 py-4">
+          <p className="text-sm leading-6 text-danger">
+            {institutionConfigurationErrorMessage(
+              years.error,
+              "Academic Years could not be loaded.",
+            )}
+          </p>
+          <Button
+            variant="secondary"
+            className="mt-3"
+            onClick={() => void years.refetch()}
+          >
+            Retry
+          </Button>
+        </div>
       ) : (
         <>
           <section
