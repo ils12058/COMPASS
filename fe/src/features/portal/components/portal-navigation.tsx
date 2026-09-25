@@ -12,6 +12,7 @@ import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import { getExitInterviewAccess } from "@/features/exit-interviews/exit-interviews-access";
 import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
+import { canAttemptReports } from "@/features/reports/reports-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
@@ -61,6 +62,7 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const hasPlatformOperations = user.capabilities.includes(
     "platform_operations.view",
   );
+  const hasReports = canAttemptReports(user);
 
   return (
     <div className="flex h-full flex-col bg-brand-strong text-on-brand">
@@ -374,6 +376,25 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
                 Feedback
               </Link>
             ) : null}
+          </div>
+        ) : null}
+        {hasReports ? (
+          <div className="mt-7 border-t border-on-brand/15 pt-5">
+            <Link
+              href="/portal/reports"
+              onClick={onNavigate}
+              aria-current={
+                pathname.startsWith("/portal/reports") ? "page" : undefined
+              }
+              className={
+                "flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                (pathname.startsWith("/portal/reports")
+                  ? "bg-on-brand/12"
+                  : "hover:bg-on-brand/10")
+              }
+            >
+              Reports
+            </Link>
           </div>
         ) : null}
         {hasPlatformOperations ? (
