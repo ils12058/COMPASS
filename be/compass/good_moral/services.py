@@ -438,6 +438,31 @@ def create_my_graduate(
         return _queryset().get(pk=item.pk)
 
 
+def count_my_requested_requests(student: User) -> int | None:
+    if (
+        not getattr(student, "pk", None)
+        or not student.is_active
+        or student.role.code != "STUDENT"
+        or not student.has_capability("good_moral.view_self")
+    ):
+        return None
+    return GoodMoralRequest.objects.filter(
+        student_id=student.pk,
+        status=GoodMoralStatus.REQUESTED,
+    ).count()
+
+
+def count_requested_requests(actor: User) -> int | None:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code != "COUNSELOR"
+        or not actor.has_capability("good_moral.view")
+    ):
+        return None
+    return GoodMoralRequest.objects.filter(status=GoodMoralStatus.REQUESTED).count()
+
+
 def list_mine(student: User) -> tuple[GoodMoralRequest, ...]:
     _validate_student(student, "good_moral.view_self")
     return tuple(_queryset().filter(student_id=student.pk).order_by("-created_at", "id"))
