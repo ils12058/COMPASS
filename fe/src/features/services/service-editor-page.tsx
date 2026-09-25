@@ -395,9 +395,8 @@ function ServiceForm({
         {legacyProviderAssignment ? (
           <p className="mt-3 max-w-3xl border-l-2 border-warning pl-3 text-xs leading-5 text-muted">
             This Service has a historical Guidance Services Staff provider
-            assignment. It remains readable for compatibility but is not
-            selectable for current provider configuration. Unrelated edits
-            leave that historical assignment untouched.
+            assignment. It can no longer be selected, and saving changes to
+            other settings leaves it in place.
           </p>
         ) : null}
       </section>

@@ -211,10 +211,9 @@ export function StudentAffiliationsPage() {
 
       {!canViewStructure ? (
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-          This capability combination can manage affiliation records returned by
-          the manager API, but it cannot browse Organization structure. COMPASS
-          therefore does not invent College choices for new or changed
-          affiliations.
+          Your current access does not include Organization structure, so
+          College choices for new or changed affiliations are unavailable.
+          Existing affiliations are still listed.
         </p>
       ) : null}
 

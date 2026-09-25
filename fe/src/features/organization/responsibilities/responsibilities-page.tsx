@@ -346,9 +346,8 @@ export function ResponsibilitiesPage() {
 
         {!canViewStructure ? (
           <p className="mt-3 text-xs leading-5 text-muted">
-            Structure viewing is not available in this capability combination,
-            so COMPASS shows only explicit College responsibilities returned by
-            the manager API. It does not invent unassigned College choices.
+            Your current access does not include Organization structure, so only
+            Colleges that already have a responsible Counselor are listed.
           </p>
         ) : null}
       </section>

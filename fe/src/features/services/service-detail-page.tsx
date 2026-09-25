@@ -279,9 +279,8 @@ export function ServiceDetailPage() {
               {hasCounselor ? <p>Counselor</p> : null}
               {hasLegacyGss ? (
                 <p>
-                  Guidance Services Staff — historical assignment retained for
-                  compatibility; not configurable as current provider
-                  eligibility.
+                  Guidance Services Staff (historical assignment; can no longer
+                  be selected)
                 </p>
               ) : null}
               {!hasCounselor && !hasLegacyGss ? (
