@@ -116,9 +116,7 @@ def make_revision(key: str) -> FormRevision:
 
 def make_inventory(student: User, *, suffix: str) -> StudentInventory:
     year, _ = AcademicYear.objects.get_or_create(label="2026-2027", defaults={"is_current": True})
-    revision = FormRevision.objects.filter(family__key="overview_inventory").first()
-    if revision is None:
-        revision = make_revision("overview_inventory")
+    revision = make_revision(f"overview_inventory_{suffix}")
     return StudentInventory.objects.create(
         student=student,
         academic_year=year,
