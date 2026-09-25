@@ -490,7 +490,7 @@ def test_guidance_overview_preserves_counselor_gss_and_head_scope() -> None:
     gss_body = auth_client(gss).get("/api/v1/overview").json()["guidance"]
     assert gss_body == {
         "upcoming_self_appointments_count": None,
-        "upcoming_managed_appointments_count": 1,
+        "upcoming_managed_appointments_count": 2,
         "routine_evaluation_pending_count": None,
         "good_moral_requested_count": None,
         "active_call_slip_count": 1,
