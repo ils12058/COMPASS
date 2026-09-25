@@ -213,6 +213,7 @@ EXPECTED_OPERATION_IDS = {
     "studentSupportGetContext",
     "studentSupportListStudents",
     "reportsGetScope",
+    "overviewGetSummary",
     "reportsGetStudentProfile",
     "reportsDownloadStudentProfilePdf",
     "reportsDownloadStudentProfileXlsx",
@@ -347,6 +348,57 @@ def _operation(schema: dict, path: str, method: str) -> dict:
 
 def _response_statuses(operation: dict) -> set[int]:
     return {int(status) for status in operation["responses"]}
+
+
+def test_overview_summary_contract_is_typed_and_nullable_by_domain() -> None:
+    schema = _generated_schema()
+
+    operation = _operation(schema, "/api/v1/overview", "get")
+    assert operation["operationId"] == "overviewGetSummary"
+    assert operation["tags"] == ["overview"]
+    assert {200, 401, 403} <= _response_statuses(operation)
+    assert operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/OverviewSummaryResponse"
+    )
+    for status in (401, 403):
+        error_schema = operation["responses"][str(status)]["content"]["application/json"]["schema"]
+        assert error_schema["$ref"].endswith("/APIErrorResponse")
+
+    schemas = schema["components"]["schemas"]
+    root = schemas["OverviewSummaryResponse"]["properties"]
+    assert set(root) == {"generated_at", "student", "guidance", "platform", "privacy"}
+
+    expected_fields = {
+        "OverviewStudentSummary": {
+            "upcoming_appointments_count",
+            "routine_intake_draft_count",
+            "good_moral_requested_count",
+            "active_call_slip_count",
+        },
+        "OverviewGuidanceSummary": {
+            "upcoming_self_appointments_count",
+            "upcoming_managed_appointments_count",
+            "routine_evaluation_pending_count",
+            "good_moral_requested_count",
+            "active_call_slip_count",
+        },
+        "OverviewPlatformSummary": {
+            "email_pending_count",
+            "email_due_pending_count",
+            "email_failed_count",
+            "email_sent_today_count",
+        },
+        "OverviewPrivacySummary": {
+            "open_review_count",
+            "active_incident_count",
+        },
+    }
+    for schema_name, fields in expected_fields.items():
+        properties = schemas[schema_name]["properties"]
+        assert set(properties) == fields
+        for field in fields:
+            assert {"type": "null"} in properties[field]["anyOf"]
+            assert {"type": "integer"} in properties[field]["anyOf"]
 
 
 def test_exit_interview_head_review_contract_protects_drafts_and_reopen_response() -> None:
