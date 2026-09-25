@@ -224,6 +224,138 @@ def test_reports_view_is_counselor_baseline_but_does_not_fabricate_scope():
 
 
 @pytest.mark.django_db
+def test_report_scope_head_is_global_without_redundant_college_catalog():
+    sync_policy()
+    Campus.objects.create(code="HEAD-C", name="Head Scope Campus")
+    head = make_head("scope-head-discovery@example.edu")
+
+    response = auth_client(head).get("/api/v1/reports/scope")
+
+    assert response.status_code == 200
+    assert response.json() == {"is_global": True, "colleges": []}
+    assert Client().get("/api/v1/reports/scope").status_code == 401
+
+
+@pytest.mark.django_db
+def test_report_scope_counselor_projects_only_authorized_colleges_in_stable_order():
+    sync_policy()
+    campus_b = Campus.objects.create(code="C-B", name="Campus B")
+    campus_a = Campus.objects.create(code="C-A", name="Campus A")
+    assigned_b = College.objects.create(campus=campus_b, code="B1", name="College B1")
+    assigned_a = College.objects.create(campus=campus_a, code="A2", name="College A2")
+    unassigned = College.objects.create(campus=campus_a, code="A1", name="College A1")
+    counselor = make_user("scope-discovery@example.edu", role="COUNSELOR", lifecycle=None)
+    CounselorResponsibility.objects.create(college=assigned_b, counselor=counselor)
+    CounselorResponsibility.objects.create(college=assigned_a, counselor=counselor)
+
+    response = auth_client(counselor).get("/api/v1/reports/scope")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["is_global"] is False
+    assert [college["id"] for college in body["colleges"]] == [
+        str(assigned_a.pk),
+        str(assigned_b.pk),
+    ]
+    assert [college["code"] for college in body["colleges"]] == ["A2", "B1"]
+    assert body["colleges"][0]["campus"] == {
+        "id": str(campus_a.pk),
+        "code": "C-A",
+        "name": "Campus A",
+    }
+    assert body["colleges"][1]["campus"] == {
+        "id": str(campus_b.pk),
+        "code": "C-B",
+        "name": "Campus B",
+    }
+    assert str(unassigned.pk) not in {college["id"] for college in body["colleges"]}
+
+
+@pytest.mark.django_db
+def test_report_scope_zero_scope_and_unsupported_roles_are_denied():
+    sync_policy()
+    zero_scope = make_user("scope-zero@example.edu", role="COUNSELOR", lifecycle=None)
+    staff = make_user(
+        "scope-staff@example.edu",
+        role="GUIDANCE_SERVICES_STAFF",
+        lifecycle=None,
+    )
+    student = make_user("scope-student@example.edu")
+    admin = make_user("scope-admin@example.edu", role="IT_ADMIN", lifecycle=None)
+    dpo = make_user(
+        "scope-dpo@example.edu",
+        role="INSTITUTIONAL_OFFICER",
+        lifecycle=None,
+    )
+    UserDesignation.objects.create(
+        user=dpo,
+        designation=Designation.objects.get(code="DPO"),
+    )
+
+    assert zero_scope.has_capability("reports.view")
+    assert auth_client(zero_scope).get("/api/v1/reports/scope").status_code == 403
+    for actor in (staff, student, admin, dpo):
+        assert auth_client(actor).get("/api/v1/reports/scope").status_code == 403
+
+    set_user_capability_override(
+        user=admin,
+        capability=Capability.objects.get(code="reports.view"),
+        effect="GRANT",
+        reason="Synthetic approved reporting exception",
+    )
+    assert admin.has_capability("reports.view")
+    overridden = auth_client(admin).get("/api/v1/reports/scope")
+    assert overridden.status_code == 403
+    assert overridden.json()["error"]["code"] == "permission_denied"
+
+
+@pytest.mark.django_db
+def test_report_scope_excludes_inactive_college_and_campus_assignments():
+    sync_policy()
+    active_campus = Campus.objects.create(code="ACTIVE-C", name="Active Campus")
+    inactive_campus = Campus.objects.create(
+        code="INACTIVE-C",
+        name="Inactive Campus",
+        is_active=False,
+    )
+    active_college = College.objects.create(
+        campus=active_campus,
+        code="ACTIVE",
+        name="Active College",
+    )
+    inactive_college = College.objects.create(
+        campus=active_campus,
+        code="INACTIVE",
+        name="Inactive College",
+        is_active=False,
+    )
+    inactive_campus_college = College.objects.create(
+        campus=inactive_campus,
+        code="STALE",
+        name="College on Inactive Campus",
+    )
+    counselor = make_user(
+        "scope-active-only@example.edu",
+        role="COUNSELOR",
+        lifecycle=None,
+    )
+    for college in (inactive_college, inactive_campus_college, active_college):
+        CounselorResponsibility.objects.create(college=college, counselor=counselor)
+
+    client = auth_client(counselor)
+    response = client.get("/api/v1/reports/scope")
+
+    assert response.status_code == 200
+    assert [college["id"] for college in response.json()["colleges"]] == [str(active_college.pk)]
+
+    active_college.is_active = False
+    active_college.save(update_fields=["is_active", "updated_at"])
+    denied = client.get("/api/v1/reports/scope")
+    assert denied.status_code == 403
+    assert denied.json()["error"]["code"] == "permission_denied"
+
+
+@pytest.mark.django_db
 def test_student_profile_endpoint_authorization_and_unauthenticated_boundary():
     sync_policy()
     AcademicYear.objects.create(label="2026-2027", is_current=True)
