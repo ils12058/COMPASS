@@ -103,6 +103,7 @@ export function PlatformConfirmation({
   title,
   children,
   confirmLabel,
+  cancelLabel = "Cancel",
   pendingLabel,
   pending,
   error,
@@ -114,6 +115,7 @@ export function PlatformConfirmation({
   title: string;
   children: ReactNode;
   confirmLabel: string;
+  cancelLabel?: string;
   pendingLabel: string;
   pending: boolean;
   error: string | null;
@@ -151,7 +153,7 @@ export function PlatformConfirmation({
               disabled={pending}
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {cancelLabel}
             </Button>
           </AlertDialogCancel>
           <Button

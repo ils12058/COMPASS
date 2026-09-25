@@ -525,6 +525,7 @@ export function PlatformMaintenancePage() {
                       : "Schedule maintenance"
                     : "Cancel schedule"
             }
+            cancelLabel={confirmation === "cancel" ? "Keep schedule" : "Cancel"}
             pendingLabel={
               confirmation === "enable"
                 ? "Enabling…"

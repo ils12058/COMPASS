@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DiagnosticStatus } from "@/lib/api/generated/model";
 
 const diagnosticLabels: Record<DiagnosticStatus, string> = {
@@ -96,15 +97,15 @@ export function PlatformRowsSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div
       aria-busy="true"
-      aria-label="Loading Platform Operations"
       className="divide-y divide-border border-y border-border"
     >
       {Array.from({ length: rows }).map((_, index) => (
         <div key={index} className="py-5">
-          <div className="h-4 w-36 animate-pulse rounded-sm bg-surface-muted" />
-          <div className="mt-3 h-3 w-3/4 animate-pulse rounded-sm bg-surface-muted" />
+          <Skeleton className="h-4 w-36 rounded-sm" />
+          <Skeleton className="mt-3 h-3 w-3/4 rounded-sm" />
         </div>
       ))}
+      <p className="sr-only">Loading…</p>
     </div>
   );
 }
