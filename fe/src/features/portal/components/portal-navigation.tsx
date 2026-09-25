@@ -11,6 +11,7 @@ import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import { getExitInterviewAccess } from "@/features/exit-interviews/exit-interviews-access";
+import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
@@ -43,6 +44,7 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const feedbackAccess = getFeedbackAccess(user);
   const goodMoralAccess = getGoodMoralAccess(user);
   const exitInterviewAccess = getExitInterviewAccess(user);
+  const graduateTracerAccess = getGraduateTracerAccess(user);
   const hasGuidanceServices =
     hasServices ||
     hasAvailability ||
@@ -50,6 +52,7 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
     hasInventory ||
     routineAccess.hasWorkspace ||
     exitInterviewAccess.hasWorkspace ||
+    graduateTracerAccess.hasWorkspace ||
     hasCounseling ||
     referralAccess.hasWorkspace ||
     callSlipAccess.hasWorkspace ||
@@ -287,6 +290,19 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
                 }
               >
                 Exit Interviews
+              </Link>
+            ) : null}
+            {graduateTracerAccess.hasWorkspace ? (
+              <Link
+                href="/portal/graduate-tracer"
+                onClick={onNavigate}
+                aria-current={pathname.startsWith("/portal/graduate-tracer") ? "page" : undefined}
+                className={
+                  "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
+                  (pathname.startsWith("/portal/graduate-tracer") ? "bg-on-brand/12" : "hover:bg-on-brand/10")
+                }
+              >
+                Graduate Tracer
               </Link>
             ) : null}
             {hasCounseling ? (
