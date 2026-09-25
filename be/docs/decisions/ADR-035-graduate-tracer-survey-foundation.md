@@ -71,6 +71,13 @@ use semantic names rather than question-number identities. No missing question i
 Reasons for accepting/changing a job are kept conditionally optional where the numbering and
 branch sequence are ambiguous.
 
+Because the source routes NO answers from the first-job branch toward that ambiguous later
+job-history section, schema-v1 normalization preserves supplied `reasons_for_changing_job` and
+its OTHER companion for EMPLOYED respondents rather than discarding them solely because
+`first_job_after_college` or `first_job_related_to_course` is false. This preservation does not
+make job-change reasons mandatory and does not assert that the missing printed question 26 has
+been conclusively reconstructed.
+
 Both "How long did you stay in your first job?" and "How long did it take you to land your first
 job?" visibly include "3 years to less than 4 years" in the supplied page. Schema version 1
 therefore permits that bucket for both semantic fields.

@@ -407,6 +407,116 @@ def test_branch_change_clears_now_inapplicable_employment_answers():
 
 
 @pytest.mark.django_db
+def test_job_change_reasons_survive_when_current_job_is_not_first_job():
+    sync_policy()
+    student = make_user("job-change-not-first-gts@example.edu")
+    client = auth_client(student)
+    assert post_empty(client, "/api/v1/graduate-tracer/me").status_code == 200
+
+    payload = valid_employed_payload()
+    payload.update(
+        {
+            "first_job_after_college": False,
+            "first_job_related_to_course": True,
+            "reasons_for_staying_on_job": ["SALARIES_BENEFITS"],
+            "reasons_for_changing_job": ["SALARIES_BENEFITS", "CAREER_CHALLENGE"],
+            "reasons_for_changing_other": "",
+        }
+    )
+    updated = put_json(client, "/api/v1/graduate-tracer/me", payload)
+
+    assert updated.status_code == 200
+    body = updated.json()
+    assert body["reasons_for_changing_job"] == ["SALARIES_BENEFITS", "CAREER_CHALLENGE"]
+    assert body["reasons_for_changing_other"] == ""
+    assert body["reasons_for_staying_on_job"] == []
+    assert body["first_job_related_to_course"] is None
+
+
+@pytest.mark.django_db
+def test_job_change_other_survives_ambiguous_employed_branch():
+    sync_policy()
+    student = make_user("job-change-other-gts@example.edu")
+    client = auth_client(student)
+    assert post_empty(client, "/api/v1/graduate-tracer/me").status_code == 200
+
+    payload = valid_employed_payload()
+    payload["reasons_for_changing_job"] = ["OTHER"]
+    payload["reasons_for_changing_other"] = "Needed a different work arrangement."
+    updated = put_json(client, "/api/v1/graduate-tracer/me", payload)
+
+    assert updated.status_code == 200
+    body = updated.json()
+    assert body["reasons_for_changing_job"] == ["OTHER"]
+    assert body["reasons_for_changing_other"] == "Needed a different work arrangement."
+
+
+@pytest.mark.django_db
+def test_job_change_other_validation_remains_submission_safe():
+    sync_policy()
+    student = make_user("job-change-other-validation-gts@example.edu")
+    client = auth_client(student)
+    assert post_empty(client, "/api/v1/graduate-tracer/me").status_code == 200
+
+    missing_other_text = valid_employed_payload()
+    missing_other_text["reasons_for_changing_job"] = ["OTHER"]
+    missing_other_text["reasons_for_changing_other"] = ""
+    assert put_json(client, "/api/v1/graduate-tracer/me", missing_other_text).status_code == 200
+    missing_text_submit = post_empty(client, "/api/v1/graduate-tracer/me/submit")
+    assert missing_text_submit.status_code == 422
+    assert missing_text_submit.json()["error"]["code"] == "invalid_graduate_tracer_request"
+
+    unexpected_other_text = valid_employed_payload()
+    unexpected_other_text["reasons_for_changing_job"] = ["SALARIES_BENEFITS"]
+    unexpected_other_text["reasons_for_changing_other"] = "Unexpected companion text."
+    assert put_json(client, "/api/v1/graduate-tracer/me", unexpected_other_text).status_code == 200
+    unexpected_text_submit = post_empty(client, "/api/v1/graduate-tracer/me/submit")
+    assert unexpected_text_submit.status_code == 422
+    assert unexpected_text_submit.json()["error"]["code"] == "invalid_graduate_tracer_request"
+
+
+@pytest.mark.django_db
+def test_unemployed_transition_still_clears_job_change_answers():
+    sync_policy()
+    student = make_user("job-change-unemployed-gts@example.edu")
+    client = auth_client(student)
+    assert post_empty(client, "/api/v1/graduate-tracer/me").status_code == 200
+
+    employed = valid_employed_payload()
+    employed["reasons_for_changing_job"] = ["OTHER"]
+    employed["reasons_for_changing_other"] = "Changed industries."
+    assert put_json(client, "/api/v1/graduate-tracer/me", employed).status_code == 200
+
+    switched = put_json(client, "/api/v1/graduate-tracer/me", valid_unemployed_payload())
+    assert switched.status_code == 200
+    body = switched.json()
+    assert body["reasons_for_changing_job"] == []
+    assert body["reasons_for_changing_other"] == ""
+
+
+@pytest.mark.django_db
+def test_job_change_reasons_survive_first_job_related_to_course_no_branch():
+    sync_policy()
+    student = make_user("job-change-course-no-gts@example.edu")
+    client = auth_client(student)
+    assert post_empty(client, "/api/v1/graduate-tracer/me").status_code == 200
+
+    payload = valid_employed_payload()
+    payload.update(
+        {
+            "first_job_after_college": True,
+            "reasons_for_staying_on_job": ["SALARIES_BENEFITS"],
+            "first_job_related_to_course": False,
+            "reasons_for_changing_job": ["CAREER_CHALLENGE"],
+        }
+    )
+    updated = put_json(client, "/api/v1/graduate-tracer/me", payload)
+
+    assert updated.status_code == 200
+    assert updated.json()["reasons_for_changing_job"] == ["CAREER_CHALLENGE"]
+
+
+@pytest.mark.django_db
 def test_submission_freezes_response_and_repeat_submit_is_idempotent():
     sync_policy()
     student = make_user("immutable-gts@example.edu")
