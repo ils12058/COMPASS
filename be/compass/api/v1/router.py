@@ -106,7 +106,9 @@ api = NinjaAPI(
             },
             {
                 "name": "overview",
-                "description": "Authenticated role- and designation-aware Portal Overview summaries.",
+                "description": (
+                    "Authenticated role- and designation-aware Portal Overview summaries."
+                ),
             },
             {
                 "name": "good-moral",
