@@ -871,7 +871,7 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
     service = create_counseling_service(admin, delivery_modes=["IN_PERSON"])
     for capability_code in (
         "appointments.manage",
-        "organization.view",
+        "organization.structure.view",
         "inventory.view",
     ):
         UserCapabilityOverride.objects.create(

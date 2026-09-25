@@ -154,7 +154,7 @@ def test_dpo_privacy_authority_is_designation_derived_and_separate_from_roles():
         "accounts.manage",
         "platform_operations.view",
         "platform_operations.manage",
-        "organization.view",
+        "organization.structure.view",
         "organization.manage",
         "reports.view",
         "counseling.view_assigned",

@@ -261,7 +261,7 @@ def _person(user) -> dict[str, object]:
     operation_id="organizationListCampuses",
 )
 def campuses(request, is_active: bool | None = None, search: str | None = None):
-    _require(request, "organization.view")
+    _require(request, "organization.structure.view")
     return {"items": [_campus(item) for item in list_campuses(is_active=is_active, search=search)]}
 
 
@@ -287,7 +287,7 @@ def campus_create(request, payload: CampusCreateRequest):
     operation_id="organizationGetCampus",
 )
 def campus_get(request, campus_id: UUID):
-    _require(request, "organization.view")
+    _require(request, "organization.structure.view")
     try:
         return _campus(get_campus(campus_id))
     except OrganizationError as exc:
@@ -355,7 +355,7 @@ def campus_disable(request, campus_id: UUID):
 def colleges(
     request, campus_id: UUID | None = None, is_active: bool | None = None, search: str | None = None
 ):
-    _require(request, "organization.view")
+    _require(request, "organization.structure.view")
     return {
         "items": [
             _college(item)
@@ -391,7 +391,7 @@ def college_create(request, payload: CollegeCreateRequest):
     operation_id="organizationGetCollege",
 )
 def college_get(request, college_id: UUID):
-    _require(request, "organization.view")
+    _require(request, "organization.structure.view")
     try:
         return _college(get_college(college_id))
     except OrganizationError as exc:
@@ -462,7 +462,7 @@ def programs(
     is_active: bool | None = None,
     search: str | None = None,
 ):
-    _require(request, "organization.view")
+    _require(request, "organization.structure.view")
     return {
         "items": [
             _program(item)
@@ -502,7 +502,7 @@ def program_create(request, payload: ProgramCreateRequest):
     operation_id="organizationGetProgram",
 )
 def program_get(request, program_id: UUID):
-    _require(request, "organization.view")
+    _require(request, "organization.structure.view")
     try:
         return _program(get_program(program_id))
     except OrganizationError as exc:

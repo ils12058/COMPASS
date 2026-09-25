@@ -144,6 +144,8 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
         "DPO",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
+    assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
+    assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
     assert RoleCapability.objects.count() == 77
     assert DesignationCapability.objects.count() == 18
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
@@ -159,6 +161,44 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert Capability.objects.count() == 67
     assert RoleCapability.objects.count() == 77
     assert DesignationCapability.objects.count() == 18
+
+
+@pytest.mark.django_db
+def test_reference_reads_do_not_grant_management_to_students_or_staff():
+    sync_policy()
+    for role_code in ("STUDENT", "GUIDANCE_SERVICES_STAFF"):
+        actor = make_user(role=role_code, email=f"reference-{role_code.lower()}@example.edu")
+        assert actor.has_capability("organization.structure.view")
+        assert actor.has_capability("services.catalog.view")
+        assert not actor.has_capability("organization.manage")
+        assert not actor.has_capability("services.manage")
+        assert not actor.has_capability("organization.view")
+        assert not actor.has_capability("services.view")
+
+
+@pytest.mark.django_db
+def test_policy_sync_rejects_legacy_rows_before_creating_new_capabilities():
+    Capability.objects.create(code="organization.view", name="Legacy organization read")
+    with pytest.raises(CommandError, match="Run accounts migration"):
+        call_command("sync_identity_policy", stdout=StringIO())
+    assert not Capability.objects.filter(code="organization.structure.view").exists()
+
+
+@pytest.mark.django_db
+def test_stray_legacy_row_and_grant_cannot_restore_old_authority():
+    sync_policy()
+    student = make_user(email="legacy-unknown@example.edu")
+    legacy = Capability.objects.create(code="organization.view", name="Stray legacy code")
+    RoleCapability.objects.create(role=student.role, capability=legacy)
+    UserCapabilityOverride.objects.create(
+        user=student,
+        capability=legacy,
+        effect=UserCapabilityOverride.Effect.GRANT,
+        reason="Stray legacy grant",
+    )
+    assert "organization.view" not in effective_capabilities(student)
+    assert not student.has_capability("organization.view")
+    assert student.has_capability("organization.structure.view")
 
 
 @pytest.mark.django_db
@@ -223,7 +263,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     assert effective_capabilities(user) == {
         "accounts.view",
         "accounts.manage",
-        "organization.view",
+        "organization.structure.view",
         "organization.manage",
         "academic_years.view",
         "academic_years.manage",
@@ -233,7 +273,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "document_branding.manage",
         "exit_interviews.view",
         "exit_interviews.reopen",
-        "services.view",
+        "services.catalog.view",
         "services.manage",
         "availability.view",
         "availability.manage",
@@ -277,7 +317,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     )
     assert revoke.reason == "Temporary separation of duties"
     assert user.has_capability("accounts.view")
-    assert user.has_capability("organization.view")
+    assert user.has_capability("organization.structure.view")
     assert user.has_capability("organization.manage")
     assert user.has_capability("academic_years.view")
     assert user.has_capability("academic_years.manage")
@@ -285,7 +325,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     assert user.has_capability("institutional_forms.manage")
     assert user.has_capability("document_branding.view")
     assert user.has_capability("document_branding.manage")
-    assert user.has_capability("services.view")
+    assert user.has_capability("services.catalog.view")
     assert user.has_capability("services.manage")
     assert user.has_capability("availability.view")
     assert user.has_capability("availability.manage")

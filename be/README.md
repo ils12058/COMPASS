@@ -359,7 +359,7 @@ assignment, or role/designation/capability definition CRUD.
 
 The Organization domain models an explicit Campus -> College structure, current student college affiliation, one default counselor per College, and Guidance Services Staff supervision. Effective organizational scope is default responsibility/routing context rather than a permanent authorization wall: future preferred-counselor and case-specific assignment rules may cross those boundaries. An active Counselor holding the HEAD_GUIDANCE_COUNSELOR designation has institution-wide responsibility over active Colleges under active Campuses and is the deterministic fallback only when exactly one valid Head exists.
 
-Organization management uses the scope-free capabilities `organization.view` and `organization.manage`; mutations reuse recent-MFA step-up and are audited synchronously. No Campus or College delete endpoints are exposed.
+Safe Campus, College, and Program reads use the scope-free `organization.structure.view` capability. Responsibility, supervision, affiliation, people picker, and structure mutations require `organization.manage`; mutations reuse recent-MFA step-up and are audited synchronously. No Campus or College delete endpoints are exposed.
 
 
 ## Service Catalog
@@ -377,7 +377,7 @@ invariant is satisfied. OPTIONAL/REQUIRED Services need a default duration; any 
 duration is bounded to 1–480 minutes. Service codes are normalized stable identifiers and are not
 editable through the normal PATCH API. There is no delete endpoint.
 
-`services.view` permits authenticated catalog reads. Inactive draft configuration additionally
+`services.catalog.view` permits authenticated active catalog reads. Inactive draft configuration additionally
 requires `services.manage`; all writes require `services.manage` plus recent MFA. IT Admin
 receives view/manage, Counselor/GSS/Student receive view, and the Head Guidance Counselor
 designation grants manage. Capability overrides remain authoritative.

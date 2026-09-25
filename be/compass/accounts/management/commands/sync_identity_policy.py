@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from compass.accounts.models import (
@@ -23,6 +23,8 @@ from compass.audit.actions import IDENTITY_POLICY_SYNCED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+
+RENAMED_LEGACY_CAPABILITY_CODES = ("organization.view", "services.view")
 
 
 def _sync_definition(model, definition) -> tuple[object, str]:
@@ -61,6 +63,11 @@ class Command(BaseCommand):
         }
 
         with transaction.atomic():
+            if Capability.objects.filter(code__in=RENAMED_LEGACY_CAPABILITY_CODES).exists():
+                raise CommandError(
+                    "Legacy capability rows remain. Run accounts migration "
+                    "0006_rename_reference_capabilities before sync_identity_policy."
+                )
             roles = {}
             for definition in ROLE_DEFINITIONS:
                 role, result = _sync_definition(Role, definition)

@@ -23,6 +23,7 @@ from compass.organization.models import (
     Campus,
     College,
     CounselorResponsibility,
+    Program,
     StaffSupervision,
     StudentAffiliation,
 )
@@ -83,7 +84,7 @@ def test_policy_grants_organization_capabilities_and_revoke_still_wins():
     UserDesignation.objects.create(user=counselor, designation=head)
 
     assert admin.has_capability("organization.manage")
-    assert student.has_capability("organization.view")
+    assert student.has_capability("organization.structure.view")
     assert counselor.has_capability("organization.manage")
 
     UserCapabilityOverride.objects.create(
@@ -93,6 +94,47 @@ def test_policy_grants_organization_capabilities_and_revoke_still_wins():
         reason="separation",
     )
     assert not counselor.has_capability("organization.manage")
+
+
+@pytest.mark.django_db
+def test_structural_reads_are_available_without_organization_management():
+    sync_policy()
+    campus = Campus.objects.create(code="READ", name="Read Campus")
+    college = College.objects.create(campus=campus, code="READ", name="Read College")
+    program = Program.objects.create(college=college, code="READ", name="Read Program")
+    for role_code in ("STUDENT", "GUIDANCE_SERVICES_STAFF", "COUNSELOR", "IT_ADMIN"):
+        actor = make_user(f"read-{role_code.lower()}@example.edu", role_code)
+        client = auth_client(actor)
+        for collection, record_id in (
+            ("campuses", campus.pk),
+            ("colleges", college.pk),
+            ("programs", program.pk),
+        ):
+            assert client.get(f"/api/v1/organization/{collection}").status_code == 200
+            assert client.get(f"/api/v1/organization/{collection}/{record_id}").status_code == 200
+        if role_code in {"STUDENT", "GUIDANCE_SERVICES_STAFF", "COUNSELOR"}:
+            assert not actor.has_capability("organization.manage")
+            for path in (
+                "counselor-responsibilities",
+                "staff-supervisions",
+                "student-affiliations",
+            ):
+                assert client.get(f"/api/v1/organization/{path}").status_code == 403
+            assert (
+                client.get("/api/v1/organization/people", {"role": "COUNSELOR"}).status_code == 403
+            )
+            assert (
+                client.post(
+                    "/api/v1/organization/campuses",
+                    data=json.dumps({"code": "DENIED", "name": "Denied"}),
+                    content_type="application/json",
+                    **csrf(client),
+                ).status_code
+                == 403
+            )
+
+    officer = make_user("read-officer@example.edu", "INSTITUTIONAL_OFFICER")
+    assert auth_client(officer).get("/api/v1/organization/campuses").status_code == 403
 
 
 @pytest.mark.django_db

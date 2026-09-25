@@ -142,6 +142,7 @@ jobs:
           tests/test_shared_summaries.py
           tests/test_appointments.py
           tests/test_accounts.py
+          tests/test_capability_rename_migration.py
           tests/test_build_metadata.py
           tests/test_metadata.py
           tests/test_health.py

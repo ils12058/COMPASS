@@ -451,6 +451,39 @@ def test_role_designation_and_override_mutations_update_authority_and_invalidate
 
 
 @pytest.mark.django_db
+def test_renamed_reference_override_api_preserves_effect_and_session_invalidation():
+    sync_policy()
+    client, admin, _session = make_admin_client()
+    cases = (
+        ("STUDENT", "organization.structure.view", "REVOKE", False),
+        ("INSTITUTIONAL_OFFICER", "services.catalog.view", "GRANT", True),
+    )
+    for role_code, code, effect, expected in cases:
+        target = make_user(email=f"override-{role_code.lower()}@example.edu", role=role_code)
+        target_session = create_auth_session(target).session
+        response = client.put(
+            f"/api/v1/accounts/{target.pk}/capability-overrides/{code}",
+            data=json.dumps({"effect": effect, "reason": f"Reviewed {effect.lower()}"}),
+            content_type="application/json",
+            **csrf_headers(client),
+        )
+        assert response.status_code == 200
+        assert response.json()["capability"] == code
+        assert response.json()["effect"] == effect
+        assert response.json()["created_by"]["id"] == str(admin.pk)
+        assert target.has_capability(code) is expected
+        assert AuthSession.objects.get(pk=target_session.pk).revoked_at is not None
+
+        access = client.get(f"/api/v1/accounts/{target.pk}/access")
+        assert access.status_code == 200
+        row = next(item for item in access.json()["capabilities"] if item["code"] == code)
+        assert row["effective"] is expected
+        assert row["override"]["effect"] == effect
+        assert row["override"]["reason"] == f"Reviewed {effect.lower()}"
+        assert row["override"]["created_by"]["id"] == str(admin.pk)
+
+
+@pytest.mark.django_db
 def test_last_manager_and_self_target_safety_are_enforced():
     from compass.account_management import services as management_services
 
@@ -666,6 +699,13 @@ def test_effective_access_inspector_uses_canonical_truth_and_explains_provenance
     )
     UserCapabilityOverride.objects.create(
         user=target,
+        capability=Capability.objects.get(code="organization.structure.view"),
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Temporary structure restriction",
+        created_by=admin,
+    )
+    UserCapabilityOverride.objects.create(
+        user=target,
         capability=Capability.objects.get(code="platform_operations.view"),
         effect=UserCapabilityOverride.Effect.GRANT,
         reason="Temporary diagnostic coverage",
@@ -704,12 +744,19 @@ def test_effective_access_inspector_uses_canonical_truth_and_explains_provenance
     assert [row["code"] for row in body["capabilities"]] == canonical_codes
     assert "accounts.future" not in body["effective_capabilities"]
     assert "accounts.future" not in canonical_codes
+    assert {"organization.structure.view", "services.catalog.view"} <= set(canonical_codes)
+    assert {"organization.view", "services.view"}.isdisjoint(canonical_codes)
 
     rows = {row["code"]: row for row in body["capabilities"]}
     for code, row in rows.items():
         assert row["effective"] is (code in effective_capabilities(target))
 
     reopen = rows["inventory.reopen"]
+    structure = rows["organization.structure.view"]
+    assert structure["effective"] is False
+    assert structure["override"]["reason"] == "Temporary structure restriction"
+    assert structure["override"]["created_by"]["id"] == str(admin.pk)
+    assert rows["services.catalog.view"]["effective"] is True
     assert reopen["effective"] is False
     assert reopen["baseline_sources"] == [{"type": "ROLE", "code": "COUNSELOR"}]
     assert reopen["override"]["effect"] == "REVOKE"

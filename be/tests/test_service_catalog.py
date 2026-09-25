@@ -98,13 +98,13 @@ def test_policy_grants_service_catalog_capabilities_and_preserves_overrides():
     UserDesignation.objects.create(user=counselor, designation=head)
     UserDesignation.objects.create(user=student, designation=dpo)
 
-    assert admin.has_capability("services.view")
+    assert admin.has_capability("services.catalog.view")
     assert admin.has_capability("services.manage")
-    assert counselor.has_capability("services.view")
+    assert counselor.has_capability("services.catalog.view")
     assert counselor.has_capability("services.manage")
-    assert staff.has_capability("services.view")
+    assert staff.has_capability("services.catalog.view")
     assert not staff.has_capability("services.manage")
-    assert student.has_capability("services.view")
+    assert student.has_capability("services.catalog.view")
     assert not student.has_capability("services.manage")
 
     manage = Capability.objects.get(code="services.manage")
@@ -429,6 +429,7 @@ def test_student_can_read_only_active_catalog_and_cannot_manage():
     listed = client.get("/api/v1/services")
     assert listed.status_code == 200
     assert [item["id"] for item in listed.json()["items"]] == [str(active_service.pk)]
+    assert client.get(f"/api/v1/services/{active_service.pk}").status_code == 200
     assert client.get(f"/api/v1/services/{inactive_service.pk}").status_code == 404
     assert client.get("/api/v1/services?include_inactive=true").status_code == 403
     denied = client.post(
@@ -438,6 +439,20 @@ def test_student_can_read_only_active_catalog_and_cannot_manage():
         **csrf(client),
     )
     assert denied.status_code == 403
+    for method, suffix, payload in (
+        (client.patch, str(active_service.pk), {"name": "Denied"}),
+        (client.post, f"{inactive_service.pk}/enable", {}),
+        (client.post, f"{active_service.pk}/disable", {}),
+    ):
+        assert (
+            method(
+                f"/api/v1/services/{suffix}",
+                data=json.dumps(payload),
+                content_type="application/json",
+                **csrf(client),
+            ).status_code
+            == 403
+        )
 
 
 @pytest.mark.django_db

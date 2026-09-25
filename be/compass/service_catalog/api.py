@@ -167,7 +167,7 @@ def services_list(
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
-    _require(request, "services.view")
+    _require(request, "services.catalog.view")
     if include_inactive:
         _require(request, "services.manage")
     try:
@@ -214,7 +214,7 @@ def services_create(request, payload: ServiceCreateRequest):
     operation_id="servicesGet",
 )
 def services_get(request, service_id: UUID):
-    _require(request, "services.view")
+    _require(request, "services.catalog.view")
     try:
         item = get_service(service_id)
     except ServiceCatalogError as exc:
