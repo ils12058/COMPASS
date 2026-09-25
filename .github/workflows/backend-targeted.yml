@@ -110,72 +110,14 @@ jobs:
       - name: Contract must be committed
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         run: git diff --exit-code -- contracts/openapi.json
-      # Daily provider traffic is fully mocked; targeted CI must never contact Daily.co.
+      # Focused validation branch: recheck only failures observed on Overview run #488.
       - name: Targeted tests
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         working-directory: be
         run: >-
           uv run pytest
-          tests/test_ecounseling.py
-          tests/test_ecounseling_media.py
-          tests/test_daily_integration.py
-          tests/test_routine_interviews.py
-          tests/test_institutional_forms.py
-          tests/test_referrals.py
-          tests/test_call_slips.py
-          tests/test_notifications.py
-          tests/test_notification_delivery.py
-          tests/test_documents.py
-          tests/test_profiles.py
-          tests/test_profile_photos.py
-          tests/test_inventory.py
-          tests/test_inventory_counselor_review.py
-          tests/test_inventory_counseling_regression.py
-          tests/test_good_moral.py
-          tests/test_feedback.py
-          tests/test_graduate_tracer.py
-          tests/test_graduate_tracer_reports.py
-          tests/test_graduate_tracer_xlsx.py
-          tests/test_exit_interviews.py
-          tests/test_overview.py
-          tests/test_counseling.py
-          tests/test_shared_summaries.py
-          tests/test_appointments.py
-          tests/test_accounts.py
-          tests/test_build_metadata.py
-          tests/test_metadata.py
-          tests/test_health.py
-          tests/test_celery.py
-          tests/test_mail.py
-          tests/test_storage.py
-          tests/test_platform_operations.py
-          tests/test_runtime_maintenance.py
-          tests/test_platform_email_operations.py
-          tests/test_platform_activity.py
-          tests/test_runtime_operations_audit.py
-          tests/test_privacy_governance.py
-          tests/test_privacy_activity.py
-          tests/test_privacy_release_audit.py
-          tests/test_compass_doctor.py
-          tests/test_authentication.py
-          tests/test_account_management.py
-          tests/test_account_csv_import.py
-          tests/test_password_access.py
-          tests/test_organization.py
-          tests/test_program_inventory_academic_context.py
-          tests/test_inventory_profiling_normalization.py
-          tests/test_student_support.py
-          tests/test_student_support_migrations.py
-          tests/test_student_profiling_reports.py
-          tests/test_student_profiling_report_aggregates.py
-          tests/test_student_profiling_report_coverage.py
-          tests/test_student_profiling_pdf.py
-          tests/test_student_profiling_xlsx.py
-          tests/test_service_catalog.py
-          tests/test_availability.py
-          tests/test_idempotency.py
-          tests/test_openapi_contract.py
-          tests/test_final_api_ergonomics.py
+          tests/test_overview.py::test_guidance_overview_preserves_counselor_gss_and_head_scope
+          tests/test_openapi_contract.py::test_all_public_operations_have_stable_unique_ids_and_approved_tags
       - name: Contract check
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         working-directory: be
