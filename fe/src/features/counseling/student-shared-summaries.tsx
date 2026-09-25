@@ -11,6 +11,7 @@ import {
   CounselingPageHeading,
   CounselingPagination,
   CounselingQueryError,
+  CounselingUnavailable,
   formatCounselingDateTime,
 } from "@/features/counseling/counseling-shared";
 import type { CounselingAccess } from "@/features/counseling/counseling-access";
@@ -74,9 +75,9 @@ export function StudentSharedSummaryDetail({ summaryId }: { summaryId: string })
   const access = getCounselingAccess(user);
   const query = useCounselingGetMySharedSummary(summaryId, { query: { enabled: access.canViewOwnSummaries, retry: false } });
   const summary = query.data?.data;
-  if (!access.canViewOwnSummaries) return <CounselingPageHeading title="Shared Summary unavailable" description="This published Shared Summary is not available within your current access." />;
+  if (!access.canViewOwnSummaries) return <CounselingUnavailable title="Counseling summary unavailable">This shared summary is not available within your current access.</CounselingUnavailable>;
   if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading published Shared Summary…</span><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-4 h-32 w-full" /></div>;
-  if (query.isError || !summary) return <CounselingQueryError message={counselingErrorMessage(query.error, "This published Shared Summary is not available within your current access.")} onRetry={() => void query.refetch()} />;
+  if (query.isError || !summary) return <div><CounselingPageHeading title="Counseling summary" /><CounselingQueryError message={counselingErrorMessage(query.error, "This shared summary is not available within your current access.")} onRetry={() => void query.refetch()} /></div>;
 
   return (
     <article className="max-w-4xl">

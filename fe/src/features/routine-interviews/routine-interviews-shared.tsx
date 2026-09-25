@@ -48,13 +48,11 @@ export function routineDeliveryModeLabel(mode: DeliveryMode): string {
   return mode === "ONLINE" ? "Online" : "In person";
 }
 
-export function routineIntakeStatusLabel(status: RoutineIntakeStatus): string {
+export function routineIntakeStatusLabel(status: string): string {
   return status === "SUBMITTED" ? "Submitted" : "Draft";
 }
 
-export function routineEvaluationStatusLabel(
-  status: RoutineEvaluationStatus,
-): string {
+export function routineEvaluationStatusLabel(status: string): string {
   return status === "FINALIZED" ? "Finalized" : "Draft";
 }
 

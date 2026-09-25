@@ -111,6 +111,7 @@ export function SharedSummarySection({
             <AlertDialogContent>
               <AlertDialogTitle>Publish this Shared Summary to the Student?</AlertDialogTitle>
               <AlertDialogDescription>After publication, the summary becomes visible to the Student and is locked from ordinary editing.</AlertDialogDescription>
+              {publishError ? <p role="alert" className="mt-3 text-sm text-danger">{publishError}</p> : null}
               <div className="mt-6 flex flex-wrap justify-end gap-2">
                 <AlertDialogCancel asChild><Button variant="secondary" disabled={publish.isPending}>Keep draft</Button></AlertDialogCancel>
                 <Button disabled={publish.isPending || !value.trim()} onClick={() => void publishSummary()} aria-busy={publish.isPending}>{publish.isPending ? "Publishing…" : "Publish summary"}</Button>
