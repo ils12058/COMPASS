@@ -696,6 +696,35 @@ def list_eligible_students(
         raise InvalidCallSlipInput(str(exc)) from exc
 
 
+def count_my_active_call_slips(actor: User) -> int | None:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code != "STUDENT"
+        or not actor.has_capability("call_slips.view_self")
+    ):
+        return None
+    return CallSlip.objects.filter(
+        student_id=actor.pk,
+        voided_at__isnull=True,
+        interview_ended_at__isnull=True,
+    ).count()
+
+
+def count_active_call_slips(actor: User) -> int | None:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code not in OPERATIONAL_ROLES
+        or not actor.has_capability("call_slips.view")
+    ):
+        return None
+    return _scope_queryset(CallSlip.objects.all(), actor).filter(
+        voided_at__isnull=True,
+        interview_ended_at__isnull=True,
+    ).count()
+
+
 def list_call_slips(
     *,
     actor: User,
