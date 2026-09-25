@@ -137,6 +137,7 @@ jobs:
           tests/test_graduate_tracer_reports.py
           tests/test_graduate_tracer_xlsx.py
           tests/test_exit_interviews.py
+          tests/test_overview.py
           tests/test_counseling.py
           tests/test_shared_summaries.py
           tests/test_appointments.py
