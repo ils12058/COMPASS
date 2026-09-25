@@ -277,6 +277,51 @@ def _page(queryset, *, page: int, page_size: int) -> AppointmentPage:
     return AppointmentPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
 
 
+def count_upcoming_self_appointments(
+    *,
+    actor: User,
+    now: datetime | None = None,
+) -> int | None:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or not actor.has_capability("appointments.view_self")
+    ):
+        return None
+
+    current = now or timezone.now()
+    queryset = Appointment.objects.filter(
+        status=AppointmentStatus.SCHEDULED,
+        starts_at__gte=current,
+    )
+    if actor.role.code == "STUDENT":
+        return queryset.filter(student_id=actor.pk).count()
+    if actor.role.code == "COUNSELOR":
+        return queryset.filter(provider_id=actor.pk).count()
+    return None
+
+
+def count_upcoming_managed_appointments(
+    *,
+    actor: User,
+    now: datetime | None = None,
+) -> int | None:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        or not actor.has_capability("appointments.manage")
+    ):
+        return None
+
+    current = now or timezone.now()
+    queryset = scope_managed_appointments(Appointment.objects.all(), actor)
+    return queryset.filter(
+        status=AppointmentStatus.SCHEDULED,
+        starts_at__gte=current,
+    ).count()
+
+
 def list_my_appointments(
     *,
     actor: User,
