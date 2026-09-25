@@ -1180,9 +1180,9 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert scope_operation["operationId"] == "reportsGetScope"
     assert scope_operation["tags"] == ["reports"]
     assert {200, 401, 403} <= _response_statuses(scope_operation)
-    assert scope_operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
-        "/ReportScopeResponse"
-    )
+    assert scope_operation["responses"]["200"]["content"]["application/json"]["schema"][
+        "$ref"
+    ].endswith("/ReportScopeResponse")
     for status in (401, 403):
         response_schema = scope_operation["responses"][str(status)]["content"]["application/json"][
             "schema"
