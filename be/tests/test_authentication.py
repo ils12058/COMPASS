@@ -179,6 +179,8 @@ def test_authenticated_student_contract_exposes_effective_capabilities_without_s
     assert login_user["designations"] == []
     assert login_user["capabilities"] == sorted(effective_capabilities(user))
     assert {
+        "organization.structure.view",
+        "services.catalog.view",
         "appointments.view_self",
         "appointments.manage_self",
         "inventory.view_self",
@@ -192,6 +194,7 @@ def test_authenticated_student_contract_exposes_effective_capabilities_without_s
         "inventory.reopen",
     }.isdisjoint(login_user["capabilities"])
     assert login_user["capabilities"] == sorted(set(login_user["capabilities"]))
+    assert {"organization.view", "services.view"}.isdisjoint(login_user["capabilities"])
 
     expected_user_keys = {
         "id",
@@ -222,6 +225,10 @@ def test_authenticated_student_contract_exposes_effective_capabilities_without_s
     assert current.status_code == 200
     assert current.json()["authenticated"] is True
     assert current.json()["user"] == login_user
+    assert {"organization.structure.view", "services.catalog.view"} <= set(
+        current.json()["user"]["capabilities"]
+    )
+    assert {"organization.view", "services.view"}.isdisjoint(current.json()["user"]["capabilities"])
     assert "capabilities" not in current.json()["session"]
     assert "designations" not in current.json()["session"]
 

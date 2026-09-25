@@ -1216,14 +1216,14 @@ def test_booking_service_discovery_is_appointment_owned_filtered_and_paginated()
     student = make_user("booking-services-student@example.edu", "STUDENT")
     counselor = make_user("booking-services-counselor@example.edu", "COUNSELOR")
 
-    services_view = Capability.objects.filter(code="services.view").first()
+    services_view = Capability.objects.filter(code="services.catalog.view").first()
     if services_view is not None:
         UserCapabilityOverride.objects.update_or_create(
             user=student,
             capability=services_view,
             defaults={"effect": "REVOKE", "reason": "Appointment discovery isolation test"},
         )
-    assert not student.has_capability("services.view")
+    assert not student.has_capability("services.catalog.view")
     assert not student.has_capability("accounts.manage")
     assert not student.has_capability("organization.manage")
 

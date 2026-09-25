@@ -121,9 +121,11 @@ CAPABILITY_DEFINITIONS = (
         ),
     ),
     CapabilityDefinition(
-        code="organization.view",
-        name="View organization",
-        description="View safe organizational structure through an authorized COMPASS workflow.",
+        code="organization.structure.view",
+        name="View organizational structure",
+        description=(
+            "View safe Campus, College, and Program structure through authorized COMPASS workflows."
+        ),
     ),
     CapabilityDefinition(
         code="organization.manage",
@@ -151,9 +153,12 @@ CAPABILITY_DEFINITIONS = (
         description="Register and activate QMS-issued institutional Form Revision metadata.",
     ),
     CapabilityDefinition(
-        code="services.view",
+        code="services.catalog.view",
         name="View service catalog",
-        description="View the active Guidance and Counseling Office service catalog.",
+        description=(
+            "View the active Guidance and Counseling Office service catalog through authorized "
+            "COMPASS workflows."
+        ),
     ),
     CapabilityDefinition(
         code="services.manage",
@@ -465,9 +470,9 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "institutional_designations.manage",
             "platform_operations.view",
             "platform_operations.manage",
-            "organization.view",
+            "organization.structure.view",
             "organization.manage",
-            "services.view",
+            "services.catalog.view",
             "services.manage",
             "availability.view",
             "availability.manage",
@@ -476,10 +481,10 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     "COUNSELOR": frozenset(
         {
             "accounts.view",
-            "organization.view",
+            "organization.structure.view",
             "academic_years.view",
             "institutional_forms.view",
-            "services.view",
+            "services.catalog.view",
             "availability.view",
             "availability.manage_self",
             "appointments.view_self",
@@ -511,8 +516,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     "GUIDANCE_SERVICES_STAFF": frozenset(
         {
             "accounts.view",
-            "organization.view",
-            "services.view",
+            "organization.structure.view",
+            "services.catalog.view",
             "availability.view",
             "appointments.view_self",
             "appointments.manage",
@@ -527,8 +532,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     "STUDENT": frozenset(
         {
             "accounts.view",
-            "organization.view",
-            "services.view",
+            "organization.structure.view",
+            "services.catalog.view",
             "availability.view",
             "appointments.view_self",
             "appointments.manage_self",
