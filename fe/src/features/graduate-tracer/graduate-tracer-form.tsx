@@ -198,10 +198,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
   return (
     <section className="space-y-6" aria-labelledby="graduate-tracer-form-heading">
       <header className="border-b border-border pb-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="graduate-tracer-form-heading" className="font-heading text-xl font-semibold text-ink">Graduate Tracer Survey</h2>
-          <span className="text-xs text-muted">Schema version {detail.instrument_schema_version}</span>
-        </div>
+        <h2 id="graduate-tracer-form-heading" className="font-heading text-xl font-semibold text-ink">Graduate Tracer Survey</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">This survey collects information about your education and employment experiences to support graduate employability research and curriculum improvement. Your draft is private to you until you submit it.</p>
       </header>
 

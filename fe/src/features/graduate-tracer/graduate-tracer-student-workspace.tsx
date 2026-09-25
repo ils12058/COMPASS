@@ -77,6 +77,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
     return (
       <section className="space-y-6" aria-labelledby="graduate-tracer-student-heading">
         <GraduateTracerHeading
+          id="graduate-tracer-student-heading"
           title="Graduate Tracer Survey"
           description="Your Graduate Tracer response is tied to your COMPASS Student account."
           action={<GraduateTracerStatus submitted={submitted} />}
@@ -106,6 +107,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
   return (
     <section className="space-y-6" aria-labelledby="graduate-tracer-student-heading">
       <GraduateTracerHeading
+        id="graduate-tracer-student-heading"
         title="Graduate Tracer Survey"
         description="This survey collects information about graduate education and employment experiences to support graduate employability research and curriculum improvement."
       />
