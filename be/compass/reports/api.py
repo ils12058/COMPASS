@@ -33,7 +33,7 @@ from .pdf import (
     StudentProfilingDocumentUnavailable,
     render_student_profiling_pdf,
 )
-from .schemas import StudentProfilingReportResponse
+from .schemas import ReportScopeResponse, StudentProfilingReportResponse
 from .services import (
     InvalidReportFilter,
     ReportAccessDenied,
@@ -42,6 +42,7 @@ from .services import (
     ReportError,
     ReportNotFound,
     build_student_profiling_report,
+    get_report_scope_projection,
     resolve_report_access_scope,
 )
 from .xlsx import (
@@ -135,6 +136,36 @@ def _raise_graduate_tracer(exc: GraduateTracerReportError) -> NoReturn:
         "internal_error",
         "The Graduate Tracer report could not be generated.",
     ) from exc
+
+
+@router.get(
+    "/scope",
+    response=response_with_errors(ReportScopeResponse, 401, 403),
+    auth=session_auth,
+    operation_id="reportsGetScope",
+)
+def report_scope(request):
+    try:
+        scope = get_report_scope_projection(request.auth_user)
+    except ReportAccessDenied as exc:
+        raise APIError(403, "permission_denied", str(exc)) from exc
+
+    return {
+        "is_global": scope.is_global,
+        "colleges": [
+            {
+                "id": college.id,
+                "code": college.code,
+                "name": college.name,
+                "campus": {
+                    "id": college.campus_id,
+                    "code": college.campus_code,
+                    "name": college.campus_name,
+                },
+            }
+            for college in scope.colleges
+        ],
+    }
 
 
 @router.get(

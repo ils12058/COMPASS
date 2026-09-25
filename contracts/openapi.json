@@ -16169,6 +16169,57 @@
         "title": "ReportContext",
         "type": "object"
       },
+      "ReportScopeCollege": {
+        "additionalProperties": false,
+        "properties": {
+          "campus": {
+            "$ref": "#/components/schemas/OrganizationReference"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "campus"
+        ],
+        "title": "ReportScopeCollege",
+        "type": "object"
+      },
+      "ReportScopeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "colleges": {
+            "items": {
+              "$ref": "#/components/schemas/ReportScopeCollege"
+            },
+            "title": "Colleges",
+            "type": "array"
+          },
+          "is_global": {
+            "title": "Is Global",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "is_global",
+          "colleges"
+        ],
+        "title": "ReportScopeResponse",
+        "type": "object"
+      },
       "ResourceAudienceValue": {
         "enum": [
           "PUBLIC",
@@ -42337,6 +42388,53 @@
           }
         ],
         "summary": "Graduate Tracer Xlsx",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/scope": {
+      "get": {
+        "operationId": "reportsGetScope",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportScopeResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Report Scope",
         "tags": [
           "reports"
         ]

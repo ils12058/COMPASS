@@ -212,6 +212,7 @@ EXPECTED_OPERATION_IDS = {
     "referenceDataListPSGCBarangays",
     "studentSupportGetContext",
     "studentSupportListStudents",
+    "reportsGetScope",
     "reportsGetStudentProfile",
     "reportsDownloadStudentProfilePdf",
     "reportsDownloadStudentProfileXlsx",
@@ -1171,6 +1172,23 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert schemas["InventoryCoverage"]["properties"]["missing_count"]["anyOf"][-1] == {
         "type": "null"
     }
+    scope_schema = schemas["ReportScopeResponse"]["properties"]
+    assert set(scope_schema) == {"is_global", "colleges"}
+    scope_college = schemas["ReportScopeCollege"]["properties"]
+    assert set(scope_college) == {"id", "code", "name", "campus"}
+    scope_operation = _operation(schema, "/api/v1/reports/scope", "get")
+    assert scope_operation["operationId"] == "reportsGetScope"
+    assert scope_operation["tags"] == ["reports"]
+    assert {200, 401, 403} <= _response_statuses(scope_operation)
+    assert scope_operation["responses"]["200"]["content"]["application/json"]["schema"][
+        "$ref"
+    ].endswith("/ReportScopeResponse")
+    for status in (401, 403):
+        response_schema = scope_operation["responses"][str(status)]["content"]["application/json"][
+            "schema"
+        ]
+        assert response_schema["$ref"].endswith("/APIErrorResponse")
+
     assert _operation(schema, "/api/v1/reports/student-profile", "get")["operationId"] == (
         "reportsGetStudentProfile"
     )

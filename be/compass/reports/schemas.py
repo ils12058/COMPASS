@@ -31,6 +31,18 @@ class OrganizationReference(StrictSchema):
     name: str
 
 
+class ReportScopeCollege(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+    campus: OrganizationReference
+
+
+class ReportScopeResponse(StrictSchema):
+    is_global: bool
+    colleges: list[ReportScopeCollege]
+
+
 class ProgramColumn(StrictSchema):
     key: str
     program_id: UUID | None

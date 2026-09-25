@@ -50,13 +50,15 @@ The reports domain owns a narrow, non-persistent `ReportAccessScope`:
 
 Student Profiling applies the resolved scope in the canonical report population/query layer before the frozen population is used by distributions and denominators. Request filters may narrow that population but cannot expand it. A College or Program outside the resolved scope is denied. A Campus filter is allowed only when that Campus contains at least one authorized College, and the population remains restricted to authorized Colleges inside it.
 
+The Reports domain exposes a safe read-only scope projection at `GET /api/v1/reports/scope` so clients can construct valid report filters without reading `CounselorResponsibility` directly or probing unauthorized filter values. The endpoint does not grant authority; it projects the authority already resolved by Reports. Global scope is represented by `is_global = true` with no finite College list. College-scoped access returns only current active authorized Colleges with safe Campus context, while a Counselor with no usable active scope remains denied. The projection contains no report data, counts, Student information, Counselor identity, assignment metadata, or raw policy internals.
+
 Current Counselor responsibility is also the authorization boundary for historical Student Profiling. COMPASS does not reconstruct historical Counselor assignments it does not store. Historical submitted/draft Inventory rows are therefore limited by their canonical Program/College against the Counselor's current authorized Colleges.
 
 The same resolved scope is passed through JSON, PDF, and XLSX paths. Scope wording is included in the report methodology/coverage text so a Counselor-scoped artifact does not imply institution-wide coverage.
 
 ### Graduate Tracer
 
-Graduate Tracer aggregate reporting requires global report scope. COMPASS has no authoritative historical Campus/College/Program binding for the Graduate Tracer dataset, so ordinary College-scoped Counselors are denied even though they have `reports.view`.
+Graduate Tracer aggregate reporting requires global report scope. COMPASS has no authoritative historical Campus/College/Program binding for the Graduate Tracer dataset, so ordinary College-scoped Counselors are denied even though they have `reports.view`. The scope projection does not change this rule; clients may use `is_global` to decide whether to offer the aggregate workspace, but backend authorization remains final.
 
 No College scope is inferred from current Student affiliation, survey free text, degree strings, or heuristic Program classification.
 
