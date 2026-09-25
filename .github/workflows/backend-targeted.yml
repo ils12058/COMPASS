@@ -110,7 +110,7 @@ jobs:
       - name: Contract must be committed
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         run: git diff --exit-code -- contracts/openapi.json
-      # Focused validation branch: recheck only failures observed on Overview run #488.
+      # Focused validation branch: recheck only the two failures observed on Overview run #488.
       - name: Targeted tests
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         working-directory: be
