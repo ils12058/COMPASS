@@ -593,6 +593,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "reference-data",
         "student-support",
         "reports",
+        "overview",
         "good-moral",
         "feedback",
         "graduate-tracer",
