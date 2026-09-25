@@ -708,6 +708,37 @@ def list_encounter_candidates(
     )
 
 
+def count_my_draft_intakes(student: User) -> int | None:
+    if (
+        not getattr(student, "pk", None)
+        or not student.is_active
+        or student.role.code != "STUDENT"
+        or not student.has_capability("routine_interviews.manage_self")
+        or not is_current_student(student)
+    ):
+        return None
+    return RoutineInterview.objects.filter(
+        student_id=student.pk,
+        intake_submitted_at__isnull=True,
+    ).count()
+
+
+def count_pending_assigned_evaluations(counselor: User) -> int | None:
+    if (
+        not getattr(counselor, "pk", None)
+        or not counselor.is_active
+        or counselor.role.code != "COUNSELOR"
+        or not counselor.has_capability("routine_interviews.view_assigned")
+        or not counselor.has_capability("routine_interviews.manage_assigned")
+    ):
+        return None
+    return RoutineInterview.objects.filter(
+        counselor_id=counselor.pk,
+        intake_submitted_at__isnull=False,
+        evaluation_finalized_at__isnull=True,
+    ).count()
+
+
 def list_mine(student: User) -> tuple[RoutineInterview, ...]:
     _validate_student(student)
     return tuple(_queryset().filter(student_id=student.pk).order_by("-created_at", "id"))
