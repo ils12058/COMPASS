@@ -15,6 +15,7 @@ import {
   appointmentErrorMessage,
   deliveryModeLabel,
   formatAppointmentDateTime,
+  UPCOMING_APPOINTMENTS_VIEW,
   updateAppointmentQuery,
 } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess, type AppointmentAccess } from "@/features/appointments/appointments-access";
@@ -44,9 +45,10 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
   const searchParams = useSearchParams();
 
   const statusParam = searchParams.get("status");
+  const upcoming = statusParam === UPCOMING_APPOINTMENTS_VIEW;
   const status = isStatus(statusParam)
     ? statusParam
-    : statusParam === "ALL"
+    : statusParam === "ALL" || upcoming
       ? undefined
       : AppointmentStatus.SCHEDULED;
   const fromDate = searchParams.get("from") ?? "";
@@ -60,6 +62,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
   const list = useAppointmentsListMy(
     {
       ...(status ? { status } : {}),
+      ...(upcoming ? { upcoming: true } : {}),
       ...(fromDate ? { from_date: fromDate } : {}),
       ...(toDate ? { to_date: toDate } : {}),
       ordering,
@@ -115,10 +118,11 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
           <select
             id="my-appointment-status"
             className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            value={status ?? "ALL"}
+            value={upcoming ? UPCOMING_APPOINTMENTS_VIEW : status ?? "ALL"}
             onChange={(event) => updateFilter("status", event.target.value)}
           >
             <option value={AppointmentStatus.SCHEDULED}>Scheduled</option>
+            <option value={UPCOMING_APPOINTMENTS_VIEW}>Upcoming (not yet started)</option>
             <option value="ALL">All statuses</option>
             <option value={AppointmentStatus.CANCELLED}>Cancelled</option>
             <option value={AppointmentStatus.COMPLETED}>Completed</option>
@@ -184,7 +188,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
                 ? "No scheduled Appointments match this view."
                 : "No Appointments are available."}
           </p>
-          {status !== undefined || fromDate || toDate ? (
+          {status !== undefined || upcoming || fromDate || toDate ? (
             <Link
               href={updateAppointmentQuery(
                 pathname,

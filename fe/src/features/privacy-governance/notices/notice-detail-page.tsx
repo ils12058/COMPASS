@@ -18,8 +18,8 @@ import {
   type NoticeRevisionValues,
 } from "@/features/privacy-governance/notices/notice-revision-fields";
 import {
-  isPrivacyConflict,
-  privacyConflictMessages,
+  hasPrivacyConflictCode,
+  PrivacyConflictCode,
   privacyErrorMessage,
 } from "@/features/privacy-governance/privacy-governance-errors";
 import { audienceSummary } from "@/features/privacy-governance/privacy-governance-presentation";
@@ -42,15 +42,11 @@ import {
   usePrivacyAction,
 } from "@/features/privacy-governance/privacy-governance-shared";
 import { formatDateOnly, formatDateTime } from "@/lib/date-time";
+import type { NoticeResponse, RevisionResponse } from "@/lib/api/generated/model";
 import {
-  RevisionStatusValue,
-  type NoticeResponse,
-  type RevisionResponse,
-} from "@/lib/api/generated/model";
-import {
-  getPrivacyGovernanceListNoticeRevisionsQueryKey,
   usePrivacyGovernanceCreateNoticeRevision,
   usePrivacyGovernanceGetNotice,
+  usePrivacyGovernanceGetNoticeRevision,
   usePrivacyGovernanceListNoticeRevisions,
   usePrivacyGovernanceRetireNotice,
   usePrivacyGovernanceUpdateNotice,
@@ -148,7 +144,7 @@ function CreateRevisionForm({
       "The new revision could not be created.",
       {
         onError: (caught) => {
-          if (isPrivacyConflict(caught, privacyConflictMessages.noticeDraftExists)) {
+          if (hasPrivacyConflictCode(caught, PrivacyConflictCode.noticeDraftExists)) {
             onDraftExists(caught);
           }
         },
@@ -235,13 +231,11 @@ export function NoticeDetailPage() {
   const [creatingRevision, setCreatingRevision] = useState(false);
   const [retireOpen, setRetireOpen] = useState(false);
   const notice = usePrivacyGovernanceGetNotice(noticeId, { query: { retry: false } });
-  // Page 1 holds the newest revisions, which is where a draft or the published
-  // revision appears; it is also the source for a new draft.
-  const latest = usePrivacyGovernanceListNoticeRevisions(
-    noticeId,
-    { page: 1, page_size: PRIVACY_PAGE_SIZE },
-    { query: { retry: false } },
-  );
+  // A new draft starts from the current published revision, loaded only when needed.
+  const currentRevisionId = notice.data?.data.current_revision?.id ?? "";
+  const source = usePrivacyGovernanceGetNoticeRevision(currentRevisionId, {
+    query: { enabled: creatingRevision && Boolean(currentRevisionId), retry: false },
+  });
   const revisions = usePrivacyGovernanceListNoticeRevisions(
     noticeId,
     { page, page_size: PRIVACY_PAGE_SIZE },
@@ -266,8 +260,9 @@ export function NoticeDetailPage() {
 
   const family = notice.data.data;
   const manageable = canManage && family.is_active;
-  const latestItems = latest.data?.data.items;
-  const draft = latestItems?.find((revision) => revision.status === RevisionStatusValue.DRAFT);
+  const draft = family.draft_revision;
+  const sourceRevision = source.data?.data;
+  const sourcePending = Boolean(currentRevisionId) && source.isPending;
   const result = revisions.data?.data;
 
   async function confirmRetire() {
@@ -356,7 +351,7 @@ export function NoticeDetailPage() {
           >
             Revisions
           </h2>
-          {manageable && latestItems && !creatingRevision ? (
+          {manageable && !creatingRevision ? (
             draft ? (
               <Link
                 href={`/portal/privacy/notice-revisions/${draft.id}`}
@@ -378,10 +373,18 @@ export function NoticeDetailPage() {
           ) : null}
         </div>
 
-        {creatingRevision ? (
+        {creatingRevision && sourcePending ? (
+          <PrivacyListSkeleton rows={2} label="Loading the current revision…" />
+        ) : creatingRevision && currentRevisionId && source.isError ? (
+          <PrivacyQueryError
+            error={source.error}
+            fallback="The current revision could not be loaded to start a new draft."
+            onRetry={() => void source.refetch()}
+          />
+        ) : creatingRevision ? (
           <CreateRevisionForm
             notice={family}
-            source={latestItems?.[0]}
+            source={sourceRevision}
             onCancel={() => setCreatingRevision(false)}
             onDraftExists={(caught) => {
               // Another draft exists: close the form and point to that draft.
@@ -389,9 +392,11 @@ export function NoticeDetailPage() {
               action.setError(
                 privacyErrorMessage(caught, "The new revision could not be created."),
               );
-              void queryClient.invalidateQueries({
-                queryKey: getPrivacyGovernanceListNoticeRevisionsQueryKey(noticeId),
-              });
+              void invalidatePrivacyRecords(
+                queryClient,
+                privacyPaths.notices,
+                privacyPaths.noticeRevisions,
+              );
             }}
           />
         ) : null}

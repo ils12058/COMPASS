@@ -143,7 +143,14 @@ export function GoodMoralCounselorDetail({
         </>
       ) : null}
 
-      {item.status === "CANCELLED" ? <p role="status" className="border-y border-border py-4 text-sm text-muted">This request was cancelled.</p> : null}
+      {item.status === "CANCELLED" ? (
+        <GoodMoralSection title="Cancellation">
+          <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+            <GoodMoralField label="Cancelled by" value={item.cancellation?.cancelled_by?.display_name ?? "Not recorded"} />
+            <GoodMoralField label="Reason" value={item.cancellation?.reason} />
+          </dl>
+        </GoodMoralSection>
+      ) : null}
     </section>
   );
 }

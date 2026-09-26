@@ -22,7 +22,6 @@ import {
   ActionMessages,
   DetailSection,
   invalidatePrivacyRecords,
-  PRIVACY_PAGE_SIZE,
   PrivacyConfirmDialog,
   PrivacyDetailSkeleton,
   PrivacyPageHeader,
@@ -32,12 +31,19 @@ import {
   usePrivacyAccess,
   usePrivacyAction,
 } from "@/features/privacy-governance/privacy-governance-shared";
-import { formatDateOnly, formatDateTime, isFutureDateInput } from "@/lib/date-time";
-import { RevisionStatusValue, type RevisionResponse } from "@/lib/api/generated/model";
+import {
+  hasPrivacyConflictCode,
+  PrivacyConflictCode,
+} from "@/features/privacy-governance/privacy-governance-errors";
+import { formatDateOnly, formatDateTime } from "@/lib/date-time";
+import {
+  NoticePublishBlocker,
+  RevisionStatusValue,
+  type RevisionResponse,
+} from "@/lib/api/generated/model";
 import {
   usePrivacyGovernanceGetNotice,
   usePrivacyGovernanceGetNoticeRevision,
-  usePrivacyGovernanceListNoticeRevisions,
   usePrivacyGovernancePublishNoticeRevision,
   usePrivacyGovernanceUpdateNoticeRevision,
 } from "@/lib/api/generated/privacy-governance/privacy-governance";
@@ -109,15 +115,17 @@ function DraftEditor({
   );
 }
 
+// Readiness is evaluated by COMPASS with the institution's date; publishing revalidates it.
 function PublishReadiness({ revision }: { revision: RevisionResponse }) {
-  if (!revision.effective_on) {
+  const { blocker } = revision.publish_readiness;
+  if (blocker === NoticePublishBlocker.EFFECTIVE_DATE_MISSING) {
     return (
       <p className="text-sm text-muted">
         Set an effective date before publishing. It must be today or earlier.
       </p>
     );
   }
-  if (isFutureDateInput(revision.effective_on)) {
+  if (blocker === NoticePublishBlocker.EFFECTIVE_DATE_IN_FUTURE && revision.effective_on) {
     return (
       <p className="text-sm text-muted">
         This draft is effective {formatLongDate(revision.effective_on)}. It can be
@@ -140,11 +148,6 @@ export function NoticeRevisionPage() {
   const notice = usePrivacyGovernanceGetNotice(noticeId, {
     query: { enabled: Boolean(noticeId), retry: false },
   });
-  const latest = usePrivacyGovernanceListNoticeRevisions(
-    noticeId,
-    { page: 1, page_size: PRIVACY_PAGE_SIZE },
-    { query: { enabled: Boolean(noticeId), retry: false } },
-  );
   const publish = usePrivacyGovernancePublishNoticeRevision();
   const action = usePrivacyAction();
   const [editing, setEditing] = useState(false);
@@ -168,16 +171,30 @@ export function NoticeRevisionPage() {
   const family = notice.data?.data;
   const isDraft = revision.status === RevisionStatusValue.DRAFT;
   const editable = canManage && isDraft && family?.is_active === true;
-  const hasPublished =
-    latest.data?.data.items.some(
-      (item) => item.status === RevisionStatusValue.PUBLISHED,
-    ) ?? false;
+  const publishReady = revision.publish_readiness.ready;
+  const hasPublished = family?.current_revision != null;
 
   async function confirmPublish() {
     const result = await action.run(
       () => publish.mutateAsync({ revisionId }),
       "The revision could not be published.",
-      { onStepUpRequired: () => setPublishOpen(false) },
+      {
+        onStepUpRequired: () => setPublishOpen(false),
+        onError: (caught) => {
+          // The state or institutional date changed after this page loaded; show current state.
+          if (
+            hasPrivacyConflictCode(caught, PrivacyConflictCode.noticeNotYetEffective) ||
+            hasPrivacyConflictCode(caught, PrivacyConflictCode.noticeRevisionImmutable) ||
+            hasPrivacyConflictCode(caught, PrivacyConflictCode.noticeRetired)
+          ) {
+            void invalidatePrivacyRecords(
+              queryClient,
+              privacyPaths.noticeRevisions,
+              privacyPaths.notices,
+            );
+          }
+        },
+      },
     );
     if (!result) return;
     setPublishOpen(false);
@@ -216,14 +233,16 @@ export function NoticeRevisionPage() {
               >
                 Edit draft
               </Button>
-              <Button
-                onClick={() => {
-                  action.reset();
-                  setPublishOpen(true);
-                }}
-              >
-                Publish
-              </Button>
+              {publishReady ? (
+                <Button
+                  onClick={() => {
+                    action.reset();
+                    setPublishOpen(true);
+                  }}
+                >
+                  Publish
+                </Button>
+              ) : null}
             </>
           ) : null
         }

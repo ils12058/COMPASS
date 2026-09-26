@@ -12,7 +12,6 @@ import {
   RoutineCounselorEvaluationWorkspace,
 } from "@/features/routine-interviews/routine-counselor-evaluation";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
-import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import {
   RoutineContextSummary,
   RoutinePageHeading,
@@ -42,13 +41,12 @@ export function RoutineInterviewDetailPage({
 }) {
   const { user } = usePortalSession();
   const access = getRoutineInterviewAccess(user);
-  const counselingAccess = getCounselingAccess(user);
 
   if (access.isStudent && access.canViewSelf) {
     return <StudentRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageSelf} />;
   }
   if (access.isCounselor && (access.canViewAssigned || access.canManageAssigned)) {
-    return <CounselorRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageAssigned} canOpenCounselingWorkspace={counselingAccess.canViewAssigned || counselingAccess.canManageAssigned} />;
+    return <CounselorRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageAssigned} />;
   }
   return <RoutineUnavailable message="This Routine Interview is not available within your current access." />;
 }
@@ -123,11 +121,9 @@ function StudentRoutineDetail({
 function CounselorRoutineDetail({
   routineInterviewId,
   canManage,
-  canOpenCounselingWorkspace,
 }: {
   routineInterviewId: string;
   canManage: boolean;
-  canOpenCounselingWorkspace: boolean;
 }) {
   const query = useRoutineInterviewsGetAssigned(routineInterviewId, {
     query: { retry: false },
@@ -146,12 +142,11 @@ function CounselorRoutineDetail({
     );
   }
 
-  const workspaceHref = canOpenCounselingWorkspace
+  // COMPASS decides whether the time-bounded Counseling Context is open to this Counselor.
+  const workspaceHref = detail.counseling_context_available
     ? detail.appointment
       ? `/portal/counseling/workspace/appointment/${detail.appointment.id}`
-      : detail.intake_status === "SUBMITTED" && ["WALK_IN", "CALLED_IN", "REFERRED"].includes(detail.entry_mode)
-        ? `/portal/counseling/workspace/routine-interview/${detail.id}`
-        : null
+      : `/portal/counseling/workspace/routine-interview/${detail.id}`
     : null;
 
   return (

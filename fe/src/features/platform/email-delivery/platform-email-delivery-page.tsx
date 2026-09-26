@@ -10,6 +10,7 @@ import {
   usePlatformAction,
 } from "@/features/platform/platform-actions";
 import {
+  emailDeliveryStatusLabels,
   PlatformPageHeader,
   PlatformPagination,
   PlatformQueryError,
@@ -17,7 +18,13 @@ import {
   PlatformStatusBadge,
   PlatformTimestamp,
 } from "@/features/platform/platform-presentation";
-import type { EmailDeliveryItemResponse } from "@/lib/api/generated/model";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
+import {
+  EmailDeliveryFailureCode,
+  EmailDeliveryRetryBlocker,
+  EmailDeliveryStatusValue,
+  type EmailDeliveryItemResponse,
+} from "@/lib/api/generated/model";
 import {
   getPlatformOperationsGetEmailDeliverySummaryQueryKey,
   getPlatformOperationsListActivityQueryKey,
@@ -28,23 +35,28 @@ import {
 } from "@/lib/api/generated/platform-operations/platform-operations";
 
 const PAGE_SIZE = 20;
-const EMAIL_STATUSES = ["PENDING", "PROCESSING", "SENT", "FAILED", "CANCELLED"];
-const RETRYABLE_FAILURE_CODES = new Set(["transport_error", "send_returned_zero"]);
+const EMAIL_STATUSES = Object.values(EmailDeliveryStatusValue);
 const selectClass =
   "min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
-function humanize(value: string): string {
-  return value
-    .replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
+const failureLabels: Record<EmailDeliveryFailureCode, string> = {
+  [EmailDeliveryFailureCode.transport_error]: "Mail server could not be reached",
+  [EmailDeliveryFailureCode.send_returned_zero]: "Mail server did not accept the message",
+  [EmailDeliveryFailureCode.template_error]: "Email content could not be prepared",
+  [EmailDeliveryFailureCode.recipient_inactive]: "Recipient account is inactive",
+  [EmailDeliveryFailureCode.unknown_failure]: "Unclassified failure",
+};
 
-function retryEligible(delivery: EmailDeliveryItemResponse): boolean {
-  return (
-    delivery.status === "FAILED" &&
-    RETRYABLE_FAILURE_CODES.has(delivery.failure_code)
-  );
+// Only reasons an operator cannot infer from the status column are explained.
+const retryBlockerLabels: Partial<Record<EmailDeliveryRetryBlocker, string>> = {
+  [EmailDeliveryRetryBlocker.FAILURE_NOT_RETRYABLE]: "Not retryable for this failure",
+  [EmailDeliveryRetryBlocker.RECIPIENT_INACTIVE]: "Recipient account is inactive",
+};
+
+type StatusFilter = EmailDeliveryStatusValue | "ALL";
+
+function statusFilterFrom(value: string): StatusFilter {
+  return EMAIL_STATUSES.find((status) => status === value) ?? "ALL";
 }
 
 function Timing({ delivery }: { delivery: EmailDeliveryItemResponse }) {
@@ -73,7 +85,7 @@ function Timing({ delivery }: { delivery: EmailDeliveryItemResponse }) {
 
 export function PlatformEmailDeliveryPage() {
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState("ALL");
+  const [status, setStatus] = useState<StatusFilter>("ALL");
   const [page, setPage] = useState(1);
   const [selectedDelivery, setSelectedDelivery] =
     useState<EmailDeliveryItemResponse | null>(null);
@@ -96,12 +108,30 @@ export function PlatformEmailDeliveryPage() {
   async function requestRetry() {
     if (!selectedDelivery) return;
 
+    let staleEligibility = false;
     const success = await action.run(
-      () => retry.mutateAsync({ deliveryId: selectedDelivery.id }),
+      async () => {
+        try {
+          return await retry.mutateAsync({ deliveryId: selectedDelivery.id });
+        } catch (caught) {
+          staleEligibility =
+            caught instanceof CompassApiError &&
+            readApiErrorCode(caught.body) === "email_delivery_not_retryable";
+          throw caught;
+        }
+      },
       "The retry request could not be completed.",
       () => setSelectedDelivery(null),
     );
-    if (!success) return;
+    if (!success) {
+      // Eligibility can change between reading the list and retrying; show current state.
+      if (staleEligibility) {
+        void queryClient.invalidateQueries({
+          queryKey: getPlatformOperationsListEmailDeliveriesQueryKey(),
+        });
+      }
+      return;
+    }
 
     setSelectedDelivery(null);
     action.setNotice("Retry requested. The delivery is pending another attempt.");
@@ -200,14 +230,14 @@ export function PlatformEmailDeliveryPage() {
               className={selectClass}
               value={status}
               onChange={(event) => {
-                setStatus(event.target.value);
+                setStatus(statusFilterFrom(event.target.value));
                 setPage(1);
               }}
             >
               <option value="ALL">All statuses</option>
               {EMAIL_STATUSES.map((item) => (
                 <option key={item} value={item}>
-                  {humanize(item)}
+                  {emailDeliveryStatusLabels[item]}
                 </option>
               ))}
             </select>
@@ -265,7 +295,7 @@ export function PlatformEmailDeliveryPage() {
                           <PlatformStatusBadge status={delivery.status} />
                           {delivery.failure_code ? (
                             <p className="mt-2 max-w-48 break-words text-xs text-muted">
-                              {humanize(delivery.failure_code)}
+                              {failureLabels[delivery.failure_code]}
                             </p>
                           ) : null}
                         </td>
@@ -279,7 +309,7 @@ export function PlatformEmailDeliveryPage() {
                           <Timing delivery={delivery} />
                         </td>
                         <td className="px-3 py-4 align-top">
-                          {retryEligible(delivery) ? (
+                          {delivery.manual_retry_allowed ? (
                             <Button
                               variant="secondary"
                               aria-label={`Request retry for ${delivery.event_code}, delivery ${delivery.id}`}
@@ -291,6 +321,11 @@ export function PlatformEmailDeliveryPage() {
                             >
                               Request retry
                             </Button>
+                          ) : delivery.manual_retry_blocker &&
+                            retryBlockerLabels[delivery.manual_retry_blocker] ? (
+                            <span className="text-xs text-muted">
+                              {retryBlockerLabels[delivery.manual_retry_blocker]}
+                            </span>
                           ) : (
                             <span className="text-xs text-muted">—</span>
                           )}

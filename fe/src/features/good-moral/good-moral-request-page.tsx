@@ -101,13 +101,11 @@ function useCreateGoodMoralRequest() {
     } catch (caught) {
       const code = goodMoralErrorCode(caught);
       setErrorCode(code);
-      if (code === "good_moral_conflict") {
-        const message = goodMoralErrorMessage(caught, "This Good Moral request conflicts with an existing request.");
-        if (/idempotency-key/i.test(message)) {
-          intentRef.current = null;
-          setUncertainIntent(null);
-          setNotice("Review the request details, then submit again to start a new request.");
-        }
+      if (code === "idempotency_key_conflict") {
+        // The details changed after an uncertain attempt; the next submit starts a new request.
+        intentRef.current = null;
+        setUncertainIntent(null);
+        setNotice("Review the request details, then submit again to start a new request.");
       }
       setError(goodMoralErrorMessage(caught, "The Good Moral request could not be created."));
       if (uncertainGoodMoralMutation(caught)) {
