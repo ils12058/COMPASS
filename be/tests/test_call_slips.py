@@ -33,8 +33,8 @@ from compass.call_slips.services import (
 )
 from compass.counseling.models import CounselingEncounter, CounselingSharedSummary
 from compass.ecounseling.models import ECounselingRoom
+from compass.institutional_forms.canonical import supported_schema_versions
 from compass.institutional_forms.models import FormFamily, FormRevision
-from compass.institutional_forms.services import SUPPORTED_SCHEMA_VERSIONS
 from compass.notifications.delivery import render_notification_email
 from compass.notifications.models import EmailDelivery, Notification, NotificationPreference
 from compass.notifications.policy import NotificationEvent, NotificationPolicy
@@ -236,7 +236,7 @@ def test_call_slip_form_family_bootstraps_exact_historical_identity():
     assert family.title == "Interview Permit / Call Slip"
     assert revision.internal_schema_version == 1
     assert revision.status == "ACTIVE"
-    assert SUPPORTED_SCHEMA_VERSIONS["call_slip"] == frozenset({1})
+    assert supported_schema_versions("call_slip") == frozenset({1})
 
 
 @pytest.mark.django_db
