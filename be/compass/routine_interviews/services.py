@@ -208,7 +208,7 @@ def _queryset():
 def _lock_users(*user_ids: UUID) -> dict[UUID, User]:
     unique_ids = sorted(set(user_ids), key=str)
     rows = list(
-        User.objects.select_for_update()
+        User.objects.select_for_update(of=("self",))
         .select_related("role")
         .filter(pk__in=unique_ids)
         .order_by("pk")
@@ -338,7 +338,7 @@ def ensure_for_appointment(
     _validate_student(student)
     with transaction.atomic():
         appointment = (
-            Appointment.objects.select_for_update()
+            Appointment.objects.select_for_update(of=("self",))
             .select_related("student__role", "provider__role", "service")
             .filter(pk=appointment_id)
             .first()
@@ -375,16 +375,17 @@ def ensure_for_appointment(
         inventory = _submitted_inventory(student)
         revision = _optional_form_revision()
         try:
-            item = RoutineInterview.objects.create(
-                student=student,
-                counselor=counselor,
-                inventory=inventory,
-                appointment=appointment,
-                form_revision=revision,
-                entry_mode=CounselingEntryMode.APPOINTMENT,
-                delivery_mode=appointment.delivery_mode,
-                created_by=student,
-            )
+            with transaction.atomic():
+                item = RoutineInterview.objects.create(
+                    student=student,
+                    counselor=counselor,
+                    inventory=inventory,
+                    appointment=appointment,
+                    form_revision=revision,
+                    entry_mode=CounselingEntryMode.APPOINTMENT,
+                    delivery_mode=appointment.delivery_mode,
+                    created_by=student,
+                )
         except IntegrityError:
             concurrent = RoutineInterview.objects.filter(appointment_id=appointment.pk).first()
             if concurrent is None:
@@ -923,7 +924,7 @@ def submit_my_intake(
     _require_current_student(student)
     with transaction.atomic():
         item = (
-            RoutineInterview.objects.select_for_update()
+            RoutineInterview.objects.select_for_update(of=("self",))
             .select_related("inventory__academic_year")
             .filter(pk=routine_interview_id, student_id=student.pk)
             .first()
@@ -1061,7 +1062,7 @@ def finalize_assigned_evaluation(
     _validate_counselor(counselor)
     with transaction.atomic():
         item = (
-            RoutineInterview.objects.select_for_update()
+            RoutineInterview.objects.select_for_update(of=("self",))
             .select_related("inventory__academic_year")
             .filter(pk=routine_interview_id, counselor_id=counselor.pk)
             .first()
@@ -1078,7 +1079,7 @@ def finalize_assigned_evaluation(
         _validate_evaluation_values(item)
         if item.appointment_id is not None:
             encounter = (
-                CounselingEncounter.objects.select_for_update()
+                CounselingEncounter.objects.select_for_update(of=("self",))
                 .select_related("service")
                 .filter(appointment_id=item.appointment_id)
                 .first()
@@ -1097,7 +1098,7 @@ def finalize_assigned_evaluation(
                     "encounter_id is required for a direct Routine Interview."
                 )
             encounter = (
-                CounselingEncounter.objects.select_for_update()
+                CounselingEncounter.objects.select_for_update(of=("self",))
                 .select_related("service")
                 .filter(pk=encounter_id)
                 .first()

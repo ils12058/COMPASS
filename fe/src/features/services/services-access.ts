@@ -1,4 +1,6 @@
-type CapabilityUser = { capabilities: readonly string[] };
+import type { CapabilityCode } from "@/lib/api/generated/model";
+
+type CapabilityUser = { capabilities: readonly CapabilityCode[] };
 
 // The Services workspace configures the Service Catalog. Catalog reads alone
 // are reference data for booking and other workflows and do not open it

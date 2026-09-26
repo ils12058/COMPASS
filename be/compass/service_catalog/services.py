@@ -187,6 +187,11 @@ def _validate_active_configuration(
         raise ServiceCatalogConflict("An active Service must have at least one delivery mode.")
     if not provider_roles:
         raise ServiceCatalogConflict("An active Service must have at least one provider role.")
+    if not provider_roles & ELIGIBLE_PROVIDER_ROLE_CODES:
+        raise ServiceCatalogConflict(
+            "An active Service must allow the Counselor provider role; historical Guidance "
+            "Services Staff provider assignments are not eligible."
+        )
     if policy in {AppointmentPolicy.OPTIONAL, AppointmentPolicy.REQUIRED} and duration is None:
         raise ServiceCatalogConflict(
             "OPTIONAL and REQUIRED Services need a default schedulable duration before activation."

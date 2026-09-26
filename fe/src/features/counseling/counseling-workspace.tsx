@@ -11,7 +11,7 @@ import { RoutineCounselorEvaluationReadOnly, RoutineCounselorEvaluationWorkspace
 import { RoutineStudentIntakeReadOnly } from "@/features/routine-interviews/routine-student-intake";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
-import { routineIntakeStatusLabel } from "@/features/routine-interviews/routine-interviews-shared";
+import { routineEvaluationStatusLabel, routineIntakeStatusLabel } from "@/features/routine-interviews/routine-interviews-shared";
 import type { EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
 import { RecordEncounterForm } from "@/features/counseling/record-encounter-form";
 import { SharedSummarySection } from "@/features/counseling/shared-summary-section";
@@ -27,6 +27,8 @@ import {
 } from "@/features/counseling/counseling-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import type {
+  ContextHistoryKind,
+  ContextHistoryStatus,
   CounselingContextHistoryResponse,
   CounselingContextInventoryResponse,
   CounselingContextOverviewResponse,
@@ -57,9 +59,26 @@ type QueryResultWithData<T> = {
   refetch: () => Promise<unknown>;
 };
 
-function simpleLabel(value: string): string {
-  return value.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
+const historyKindLabels: Record<ContextHistoryKind, string> = {
+  APPOINTMENT: "Appointment",
+  REFERRAL: "Referral",
+  CALL_SLIP: "Call Slip",
+  ROUTINE_INTERVIEW: "Routine Interview",
+};
+
+const historyStatusLabels: Record<ContextHistoryStatus, string> = {
+  SCHEDULED: "Scheduled",
+  CANCELLED: "Cancelled",
+  COMPLETED: "Completed",
+  NO_SHOW: "No-show",
+  RECORDED: "Recorded",
+  RECEIVED: "Received",
+  PENDING: "Pending",
+  ENDED: "Ended",
+  DRAFT: "Draft",
+  SUBMITTED: "Submitted",
+  VOIDED: "Voided",
+};
 
 function isDeliveryMode(value: string): value is DeliveryMode {
   return Object.values(DeliveryMode).includes(value as DeliveryMode);
@@ -176,7 +195,7 @@ function CounselingWorkspaceContent({
               <Metadata label="Origin">{counselingEntryModeLabel(overview.entry_mode)}</Metadata>
               <Metadata label="Delivery">{counselingDeliveryModeLabel(overview.delivery_mode)}</Metadata>
               <Metadata label="Context available until">{formatCounselingDateTime(overview.valid_until)}</Metadata>
-              <Metadata label="Routine Interview">{overview.routine_interview ? `${simpleLabel(overview.routine_interview.intake_status)} Intake · ${simpleLabel(overview.routine_interview.evaluation_status)} Evaluation` : "No linked Routine Interview"}</Metadata>
+              <Metadata label="Routine Interview">{overview.routine_interview ? `${routineIntakeStatusLabel(overview.routine_interview.intake_status)} Intake · ${routineEvaluationStatusLabel(overview.routine_interview.evaluation_status)} Evaluation` : "No linked Routine Interview"}</Metadata>
               <Metadata label="Counseling Encounter">{overview.matching_encounter ? "Recorded" : "Not yet recorded"}</Metadata>
             </dl>
             {overview.matching_encounter ? (
@@ -291,7 +310,7 @@ function ContextOverview({ overview }: { overview: CounselingContextOverviewResp
         <Metadata label="Counseling origin">{counselingEntryModeLabel(overview.entry_mode)}</Metadata>
         <Metadata label="Delivery mode">{counselingDeliveryModeLabel(overview.delivery_mode)}</Metadata>
         <Metadata label="Available until">{formatCounselingDateTime(overview.valid_until)}</Metadata>
-        <Metadata label="Routine Interview">{overview.routine_interview ? `${simpleLabel(overview.routine_interview.intake_status)} Intake · ${simpleLabel(overview.routine_interview.evaluation_status)} Evaluation` : "No Routine Interview is linked to this Counseling context."}</Metadata>
+        <Metadata label="Routine Interview">{overview.routine_interview ? `${routineIntakeStatusLabel(overview.routine_interview.intake_status)} Intake · ${routineEvaluationStatusLabel(overview.routine_interview.evaluation_status)} Evaluation` : "No Routine Interview is linked to this Counseling context."}</Metadata>
         <Metadata label="Matching Encounter">{overview.matching_encounter ? "Counseling Encounter recorded" : "Counseling Encounter not yet recorded"}</Metadata>
       </dl>
     </div>
@@ -347,8 +366,7 @@ function HistoryContext({ query }: { query: QueryResultWithData<CounselingContex
   if (query.isError) return <CounselingQueryError message={counselingErrorMessage(query.error, "Counseling context history could not be loaded.")} onRetry={() => void query.refetch()} />;
   const items = query.data?.data.items ?? [];
   if (!items.length) return <p className="border-y border-border py-5 text-sm text-muted">No contextual history is available.</p>;
-  const kinds: Record<string, string> = { APPOINTMENT: "Appointment", REFERRAL: "Referral", CALL_SLIP: "Call Slip", ROUTINE_INTERVIEW: "Routine Interview" };
-  return <ol className="divide-y divide-border border-y border-border">{items.map((item) => <li key={`${item.kind}-${item.id}`} className="py-4"><p className="font-semibold text-ink">{kinds[item.kind] ?? simpleLabel(item.kind)} · {item.title}</p><p className="mt-1 text-sm text-muted">{formatCounselingDateTime(item.occurred_at)} · {simpleLabel(item.status)}{item.reference_code ? ` · ${item.reference_code}` : ""}{item.delivery_mode ? ` · ${counselingDeliveryModeLabel(item.delivery_mode)}` : ""}</p>{item.provider ? <p className="mt-1 text-sm text-muted">Provider: {item.provider.display_name}</p> : null}</li>)}</ol>;
+  return <ol className="divide-y divide-border border-y border-border">{items.map((item) => <li key={`${item.kind}-${item.id}`} className="py-4"><p className="font-semibold text-ink">{historyKindLabels[item.kind]} · {item.title}</p><p className="mt-1 text-sm text-muted">{formatCounselingDateTime(item.occurred_at)} · {historyStatusLabels[item.status]}{item.reference_code ? ` · ${item.reference_code}` : ""}{item.delivery_mode ? ` · ${counselingDeliveryModeLabel(item.delivery_mode)}` : ""}</p>{item.provider ? <p className="mt-1 text-sm text-muted">Provider: {item.provider.display_name}</p> : null}</li>)}</ol>;
 }
 
 function SharedSummariesContext({

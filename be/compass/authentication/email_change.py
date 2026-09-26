@@ -171,7 +171,7 @@ def request_current_email_security_challenge(
     """Issue fallback authorization only for accounts not governed by TOTP step-up."""
 
     with transaction.atomic():
-        locked = User.objects.select_for_update().select_related("role").get(pk=user.pk)
+        locked = User.objects.select_for_update(of=("self",)).select_related("role").get(pk=user.pk)
         if not locked.is_active:
             raise EmailChangeInvalid("the account is unavailable")
         if mfa_required_for_user(locked):
@@ -240,7 +240,7 @@ def request_self_email_change(
         authorized_current_email = challenge.email
 
     with transaction.atomic():
-        locked = User.objects.select_for_update().select_related("role").get(pk=user.pk)
+        locked = User.objects.select_for_update(of=("self",)).select_related("role").get(pk=user.pk)
         if not locked.is_active:
             raise EmailChangeInvalid("the account is unavailable")
         if getattr(session, "user_id", None) != locked.pk:
@@ -288,7 +288,7 @@ def request_administrative_email_change(
     with transaction.atomic():
         locked_users = {
             item.pk: item
-            for item in User.objects.select_for_update()
+            for item in User.objects.select_for_update(of=("self",))
             .select_related("role")
             .filter(pk__in=ids)
             .order_by("id")
@@ -350,7 +350,9 @@ def confirm_email_change(
     result: EmailChangeConfirmation | None = None
 
     with transaction.atomic():
-        locked_user = User.objects.select_for_update().select_related("role").get(pk=user.pk)
+        locked_user = (
+            User.objects.select_for_update(of=("self",)).select_related("role").get(pk=user.pk)
+        )
         pending_query = EmailChangeRequest.objects.select_for_update().filter(
             user_id=locked_user.pk,
             confirmed_at__isnull=True,

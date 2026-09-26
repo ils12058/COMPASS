@@ -1,6 +1,8 @@
-type CapabilityUser = { capabilities: readonly string[] };
+import type { CapabilityCode } from "@/lib/api/generated/model";
 
-function hasCapability(user: CapabilityUser, capability: string): boolean {
+type CapabilityUser = { capabilities: readonly CapabilityCode[] };
+
+function hasCapability(user: CapabilityUser, capability: CapabilityCode): boolean {
   return user.capabilities.includes(capability);
 }
 

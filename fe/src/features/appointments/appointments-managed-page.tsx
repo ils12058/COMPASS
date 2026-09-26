@@ -17,6 +17,7 @@ import {
   appointmentStatusLabel,
   deliveryModeLabel,
   formatAppointmentDateTime,
+  UPCOMING_APPOINTMENTS_VIEW,
   updateAppointmentQuery,
 } from "@/features/appointments/appointments-shared";
 import { AppointmentsUnavailable } from "@/features/appointments/appointments-shared";
@@ -53,9 +54,10 @@ function ManagedAppointmentsList() {
   const searchParams = useSearchParams();
   const search = (searchParams.get("search") ?? "").trim();
   const statusParam = searchParams.get("status");
+  const upcoming = statusParam === UPCOMING_APPOINTMENTS_VIEW;
   const status = isStatus(statusParam)
     ? statusParam
-    : statusParam === "ALL"
+    : statusParam === "ALL" || upcoming
       ? undefined
       : AppointmentStatus.SCHEDULED;
   const modeParam = searchParams.get("mode");
@@ -72,6 +74,7 @@ function ManagedAppointmentsList() {
     {
       ...(search ? { search } : {}),
       ...(status ? { status } : {}),
+      ...(upcoming ? { upcoming: true } : {}),
       ...(mode ? { delivery_mode: mode } : {}),
       ...(fromDate ? { from_date: fromDate } : {}),
       ...(toDate ? { to_date: toDate } : {}),
@@ -139,8 +142,9 @@ function ManagedAppointmentsList() {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="managed-appointment-status">Status</Label>
-            <select id="managed-appointment-status" className={controlClass} value={status ?? "ALL"} onChange={(event) => updateFilter("status", event.target.value)}>
+            <select id="managed-appointment-status" className={controlClass} value={upcoming ? UPCOMING_APPOINTMENTS_VIEW : status ?? "ALL"} onChange={(event) => updateFilter("status", event.target.value)}>
               <option value={AppointmentStatus.SCHEDULED}>{appointmentStatusLabel(AppointmentStatus.SCHEDULED)}</option>
+              <option value={UPCOMING_APPOINTMENTS_VIEW}>Upcoming (not yet started)</option>
               <option value="ALL">All statuses</option>
               <option value={AppointmentStatus.CANCELLED}>{appointmentStatusLabel(AppointmentStatus.CANCELLED)}</option>
               <option value={AppointmentStatus.COMPLETED}>{appointmentStatusLabel(AppointmentStatus.COMPLETED)}</option>

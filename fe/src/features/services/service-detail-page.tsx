@@ -22,7 +22,6 @@ import {
   ServicesSystemRequiredBadge,
   useServicesAction,
 } from "@/features/services/services-shared";
-import { isSystemRequiredService } from "@/features/services/system-required-service";
 import {
   AppointmentPolicy,
   DeliveryMode,
@@ -100,7 +99,7 @@ export function ServiceDetailPage() {
   const hasLegacyGss = service.provider_roles.includes(
     ProviderRoleCode.GUIDANCE_SERVICES_STAFF,
   );
-  const systemRequired = isSystemRequiredService(service);
+  const systemRequired = service.is_system_required;
 
   async function refresh() {
     await Promise.all([

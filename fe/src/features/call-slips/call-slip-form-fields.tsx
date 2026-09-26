@@ -108,7 +108,7 @@ export function CallSlipFormFields({
             />
             <span>
               <span className="block font-semibold">Historical / back-entry</span>
-              <span className="mt-1 block text-muted">Record an existing historical Call Slip without creating a new issuance notification.</span>
+              <span className="mt-1 block text-muted">Record an existing historical Call Slip. The Student is not notified now, or if this Call Slip is voided later.</span>
             </span>
           </label>
         </div>

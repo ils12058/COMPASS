@@ -28,7 +28,11 @@ import {
 } from "@/features/platform/maintenance/maintenance-time";
 import { refreshMaintenanceQueries } from "@/features/platform/maintenance/maintenance-queries";
 import { usePortalSession } from "@/features/portal/components/portal-session";
-import type { MaintenanceResponse } from "@/lib/api/generated/model";
+import {
+  MaintenanceSource,
+  MaintenanceState,
+  type MaintenanceResponse,
+} from "@/lib/api/generated/model";
 import {
   usePlatformOperationsCancelMaintenanceSchedule,
   usePlatformOperationsDisableMaintenance,
@@ -47,33 +51,23 @@ const emptyScheduleDraft: ScheduleDraft = {
 };
 
 function effectiveStateLabel(maintenance: MaintenanceResponse): string {
-  if (maintenance.state === "NORMAL") return "Operational";
-  if (maintenance.state === "SCHEDULED") return "Maintenance scheduled";
-  if (maintenance.state === "MAINTENANCE") {
-    return maintenance.source === "MANUAL"
-      ? "Manual maintenance active"
-      : maintenance.source === "SCHEDULED"
-        ? "Scheduled maintenance active"
-        : "Maintenance active";
-  }
-  return "State unavailable";
+  if (maintenance.state === MaintenanceState.NORMAL) return "Operational";
+  if (maintenance.state === MaintenanceState.SCHEDULED) return "Maintenance scheduled";
+  return maintenance.source === MaintenanceSource.MANUAL
+    ? "Manual maintenance active"
+    : maintenance.source === MaintenanceSource.SCHEDULED
+      ? "Scheduled maintenance active"
+      : "Maintenance active";
 }
+
+const stateTones: Record<MaintenanceState, string> = {
+  [MaintenanceState.NORMAL]: "border-success/30 bg-success/10 text-success",
+  [MaintenanceState.SCHEDULED]: "border-info/30 bg-info/5 text-info",
+  [MaintenanceState.MAINTENANCE]: "border-warning/30 bg-warning/10 text-warning",
+};
 
 function stateTone(maintenance: MaintenanceResponse): string {
-  if (maintenance.state === "NORMAL") {
-    return "border-success/30 bg-success/10 text-success";
-  }
-  if (maintenance.state === "SCHEDULED") {
-    return "border-info/30 bg-info/5 text-info";
-  }
-  if (maintenance.state === "MAINTENANCE") {
-    return "border-warning/30 bg-warning/10 text-warning";
-  }
-  return "border-border bg-surface-muted text-muted";
-}
-
-function isKnownState(maintenance: MaintenanceResponse): boolean {
-  return ["NORMAL", "SCHEDULED", "MAINTENANCE"].includes(maintenance.state);
+  return stateTones[maintenance.state];
 }
 
 export function PlatformMaintenancePage() {
@@ -334,13 +328,13 @@ export function PlatformMaintenancePage() {
                 >
                   {effectiveStateLabel(result)}
                 </span>
-                {result.source === "MANUAL" || result.source === "SCHEDULED" ? (
+                {result.source !== MaintenanceSource.NONE ? (
                   <p className="mt-1 text-xs text-muted">
-                    Source: {result.source === "MANUAL" ? "Manual" : "Scheduled"}
+                    Source: {result.source === MaintenanceSource.MANUAL ? "Manual" : "Scheduled"}
                   </p>
                 ) : null}
               </dd>
-              {result.state !== "NORMAL" ? (
+              {result.state !== MaintenanceState.NORMAL ? (
                 <>
                   <dt className="text-sm font-semibold text-muted">
                     Public message
@@ -350,7 +344,7 @@ export function PlatformMaintenancePage() {
                   </dd>
                 </>
               ) : null}
-              {result.state === "SCHEDULED" || result.schedule_active ? (
+              {result.state === MaintenanceState.SCHEDULED || result.schedule_active ? (
                 <>
                   <dt className="text-sm font-semibold text-muted">Starts</dt>
                   <dd className="text-sm text-ink">
@@ -364,8 +358,8 @@ export function PlatformMaintenancePage() {
                   </dd>
                 </>
               ) : null}
-              {result.state === "MAINTENANCE" &&
-              result.source === "MANUAL" &&
+              {result.state === MaintenanceState.MAINTENANCE &&
+              result.source === MaintenanceSource.MANUAL &&
               result.manual_expected_end_at ? (
                 <>
                   <dt className="text-sm font-semibold text-muted">Expected end</dt>
@@ -396,7 +390,7 @@ export function PlatformMaintenancePage() {
                 Maintenance controls
               </h2>
 
-              {result.state === "NORMAL" ? (
+              {result.state === MaintenanceState.NORMAL ? (
                 <>
                   <ManualMaintenanceForm
                     draft={manualDraft}
@@ -449,7 +443,7 @@ export function PlatformMaintenancePage() {
                 />
               ) : null}
 
-              {result.state === "MAINTENANCE" && result.source === "MANUAL" ? (
+              {result.state === MaintenanceState.MAINTENANCE && result.source === MaintenanceSource.MANUAL ? (
                 <section className="border-t border-border py-6">
                   <h3 className="font-heading text-lg font-semibold text-ink">
                     Manual Maintenance Mode is active
@@ -492,11 +486,6 @@ export function PlatformMaintenancePage() {
                 </section>
               ) : null}
 
-              {!isKnownState(result) ? (
-                <p className="mt-5 border-t border-border pt-5 text-sm text-muted">
-                  No management actions are available for the current state.
-                </p>
-              ) : null}
             </section>
           ) : null}
 

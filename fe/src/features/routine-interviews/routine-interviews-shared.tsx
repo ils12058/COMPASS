@@ -48,12 +48,22 @@ export function routineDeliveryModeLabel(mode: DeliveryMode): string {
   return mode === "ONLINE" ? "Online" : "In person";
 }
 
-export function routineIntakeStatusLabel(status: string): string {
-  return status === "SUBMITTED" ? "Submitted" : "Draft";
+const routineIntakeStatusLabels: Record<RoutineIntakeStatus, string> = {
+  DRAFT: "Draft",
+  SUBMITTED: "Submitted",
+};
+
+const routineEvaluationStatusLabels: Record<RoutineEvaluationStatus, string> = {
+  DRAFT: "Draft",
+  FINALIZED: "Finalized",
+};
+
+export function routineIntakeStatusLabel(status: RoutineIntakeStatus): string {
+  return routineIntakeStatusLabels[status];
 }
 
-export function routineEvaluationStatusLabel(status: string): string {
-  return status === "FINALIZED" ? "Finalized" : "Draft";
+export function routineEvaluationStatusLabel(status: RoutineEvaluationStatus): string {
+  return routineEvaluationStatusLabels[status];
 }
 
 export function routineErrorCode(error: unknown): string | undefined {

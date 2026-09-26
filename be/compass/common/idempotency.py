@@ -10,12 +10,15 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import logging
 import secrets
 from dataclasses import dataclass
 from typing import Literal
 
 import redis
 from django.conf import settings
+
+logger = logging.getLogger("compass.idempotency")
 
 _COMPLETE_SCRIPT = """
 local raw = redis.call('GET', KEYS[1])
@@ -221,3 +224,22 @@ class RedisIdempotencyStore:
             raise IdempotencyOwnershipError("idempotency reservation is owned by another request")
         if result != 1:
             raise IdempotencyUnavailable("idempotency reservation cannot be abandoned")
+
+
+def abandon_after_unexpected_failure(
+    store: RedisIdempotencyStore,
+    reservation: IdempotencyReservation,
+) -> None:
+    """Best-effort release of a reservation whose domain transaction rolled back unexpectedly.
+
+    Without this, an unexpected error would leave the key ``in_progress`` for the full TTL and
+    block the client's safe retry of the same intent. The caller re-raises the original error.
+    """
+
+    try:
+        store.abandon(reservation)
+    except (IdempotencyUnavailable, IdempotencyOwnershipError):
+        logger.warning(
+            "idempotency reservation could not be released after an unexpected failure",
+            extra={"event": "idempotency_abandon_failed"},
+        )

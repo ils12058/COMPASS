@@ -1,8 +1,10 @@
 "use client";
 
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   FieldHint,
@@ -14,7 +16,8 @@ import {
   privacyGovernanceListRetentionPolicies,
 } from "@/lib/api/generated/privacy-governance/privacy-governance";
 
-const pickerParams = { is_active: true, page_size: 50 } as const;
+const PICKER_PAGE_SIZE = 20;
+const SEARCH_MAX_LENGTH = 160;
 
 export function RetentionPolicyPicker({
   id,
@@ -27,31 +30,59 @@ export function RetentionPolicyPicker({
   currentPolicy: RetentionSummary | null;
   onChange: (value: string) => void;
 }) {
+  const [searchDraft, setSearchDraft] = useState("");
+  const [search, setSearch] = useState("");
+  const params = {
+    is_active: true,
+    page_size: PICKER_PAGE_SIZE,
+    ...(search ? { search } : {}),
+  };
   const policies = useInfiniteQuery({
-    queryKey: [
-      ...getPrivacyGovernanceListRetentionPoliciesQueryKey(pickerParams),
-      "picker",
-    ],
+    queryKey: [...getPrivacyGovernanceListRetentionPoliciesQueryKey(params), "picker"],
     queryFn: ({ pageParam, signal }) =>
-      privacyGovernanceListRetentionPolicies(
-        { ...pickerParams, page: pageParam },
-        { signal },
-      ),
+      privacyGovernanceListRetentionPolicies({ ...params, page: pageParam }, { signal }),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.data.has_next ? last.data.page + 1 : undefined),
     retry: false,
   });
 
   const options = policies.data?.pages.flatMap((page) => page.data.items) ?? [];
-  // Keep an existing assignment visible even when it is retired or not yet
-  // loaded, so editing other fields never clears it silently.
+  // Keep an existing assignment visible even when it is retired or not in the current
+  // results, so searching or editing other fields never clears it silently.
   const showCurrent =
     currentPolicy !== null && !options.some((policy) => policy.id === currentPolicy.id);
   const keepsRetiredPolicy =
     currentPolicy !== null && !currentPolicy.is_active && value === currentPolicy.id;
+  const noMatches = policies.isSuccess && options.length === 0 && search !== "";
+
+  function applySearch() {
+    setSearch(searchDraft.trim());
+  }
 
   return (
     <div className="grid gap-2">
+      <Label htmlFor={`${id}-search`}>Find a Retention Policy</Label>
+      <div className="flex max-w-xl flex-col gap-2 sm:flex-row">
+        <Input
+          id={`${id}-search`}
+          type="search"
+          autoComplete="off"
+          maxLength={SEARCH_MAX_LENGTH}
+          placeholder="Search by code or name"
+          value={searchDraft}
+          onChange={(event) => setSearchDraft(event.target.value)}
+          onKeyDown={(event) => {
+            // The picker sits inside the Processing Activity form; Enter searches instead.
+            if (event.key === "Enter") {
+              event.preventDefault();
+              applySearch();
+            }
+          }}
+        />
+        <Button type="button" variant="secondary" onClick={applySearch}>
+          Search
+        </Button>
+      </div>
       <Label htmlFor={id}>Retention Policy</Label>
       <select
         id={id}
@@ -84,6 +115,21 @@ export function RetentionPolicyPicker({
           Loading active Retention Policies…
         </p>
       ) : null}
+      {noMatches ? (
+        <div role="status" className="flex flex-wrap items-center gap-3 text-xs text-muted">
+          No active Retention Policies match “{search}”.
+          <Button
+            type="button"
+            variant="quiet"
+            onClick={() => {
+              setSearchDraft("");
+              setSearch("");
+            }}
+          >
+            Clear search
+          </Button>
+        </div>
+      ) : null}
       {policies.isError ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-xs text-danger">
           Active Retention Policies could not be loaded.
@@ -100,7 +146,7 @@ export function RetentionPolicyPicker({
             disabled={policies.isFetchingNextPage}
             onClick={() => void policies.fetchNextPage()}
           >
-            {policies.isFetchingNextPage ? "Loading…" : "Load more Retention Policies"}
+            {policies.isFetchingNextPage ? "Loading…" : "Show more matching policies"}
           </Button>
         </div>
       ) : null}

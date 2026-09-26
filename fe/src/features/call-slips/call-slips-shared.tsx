@@ -6,6 +6,11 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import {
+  CallSlipDestinationTypeValue,
+  CallSlipIssuanceModeValue,
+  CallSlipLifecycleStateValue,
+} from "@/lib/api/generated/model";
 
 const knownCallSlipErrors: Record<string, string> = {
   permission_denied: "You do not have permission to use this Call Slip workspace.",
@@ -95,16 +100,26 @@ export function CallSlipNotice({ children }: { children: ReactNode }) {
   return <p role="status" className="mt-4 text-sm text-muted">{children}</p>;
 }
 
-export function callSlipStateLabel(state: string, studentFacing = false): string {
-  if (state === "ACTIVE") return "Active";
-  if (state === "COMPLETED") return "Completed";
-  if (state === "VOIDED") return studentFacing ? "Withdrawn" : "Voided";
-  return state;
+export function callSlipStateLabel(
+  state: CallSlipLifecycleStateValue,
+  studentFacing = false,
+): string {
+  if (state === CallSlipLifecycleStateValue.ACTIVE) return "Active";
+  if (state === CallSlipLifecycleStateValue.COMPLETED) return "Completed";
+  return studentFacing ? "Withdrawn" : "Voided";
 }
 
 export function callSlipDestinationLabel(
-  destinationType: string,
+  destinationType: CallSlipDestinationTypeValue,
   otherDestination: string,
 ): string {
-  return destinationType === "GUIDANCE_OFFICE" ? "Guidance Office" : otherDestination;
+  return destinationType === CallSlipDestinationTypeValue.GUIDANCE_OFFICE
+    ? "Guidance Office"
+    : otherDestination;
 }
+
+export const callSlipIssuanceModeLabels: Record<CallSlipIssuanceModeValue, string> = {
+  [CallSlipIssuanceModeValue.LIVE]: "Live issuance",
+  [CallSlipIssuanceModeValue.HISTORICAL]: "Historical / back-entry",
+  [CallSlipIssuanceModeValue.LEGACY_UNKNOWN]: "Not recorded (created before COMPASS tracked issuance mode)",
+};

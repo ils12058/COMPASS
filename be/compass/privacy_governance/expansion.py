@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -27,6 +29,7 @@ from .models import (
 from .services import (
     DEFAULT_PAGE_SIZE,
     PrivacyConflict,
+    PrivacyConflictCode,
     PrivacyInputError,
     PrivacyRecordNotFound,
     _changed_fields,
@@ -38,6 +41,7 @@ from .services import (
 )
 
 AUDIENCES = frozenset({"PUBLIC", "STUDENT", "STAFF"})
+MAX_SEARCH_LENGTH = 160
 RETENTION_FIELDS = {
     "name": (160, True),
     "scope_summary": (2000, True),
@@ -54,6 +58,95 @@ REVISION_FIELDS = {
     "requires_acknowledgment",
     "effective_on",
 }
+
+
+class NoticePublishBlocker(StrEnum):
+    """Server-owned reasons a notice revision cannot be published right now."""
+
+    NOTICE_RETIRED = "NOTICE_RETIRED"
+    REVISION_NOT_DRAFT = "REVISION_NOT_DRAFT"
+    EFFECTIVE_DATE_MISSING = "EFFECTIVE_DATE_MISSING"
+    EFFECTIVE_DATE_IN_FUTURE = "EFFECTIVE_DATE_IN_FUTURE"
+
+
+@dataclass(frozen=True, slots=True)
+class NoticePublishReadiness:
+    ready: bool
+    blocker: NoticePublishBlocker | None
+
+
+def notice_publish_blocker(
+    *,
+    notice_active: bool,
+    status: str,
+    effective_on: date | None,
+    today: date,
+) -> NoticePublishBlocker | None:
+    """Evaluate the same ordered publication rules that ``publish_revision`` enforces."""
+
+    if not notice_active:
+        return NoticePublishBlocker.NOTICE_RETIRED
+    if status != PrivacyNoticeRevisionStatus.DRAFT:
+        return NoticePublishBlocker.REVISION_NOT_DRAFT
+    if effective_on is None:
+        return NoticePublishBlocker.EFFECTIVE_DATE_MISSING
+    if effective_on > today:
+        return NoticePublishBlocker.EFFECTIVE_DATE_IN_FUTURE
+    return None
+
+
+def notice_publish_readiness(
+    revision: PrivacyNoticeRevision, *, today: date | None = None
+) -> NoticePublishReadiness:
+    """Advisory, read-time projection; publication revalidates under row locks."""
+
+    blocker = notice_publish_blocker(
+        notice_active=revision.notice.is_active,
+        status=revision.status,
+        effective_on=revision.effective_on,
+        today=today or timezone.localdate(),
+    )
+    return NoticePublishReadiness(ready=blocker is None, blocker=blocker)
+
+
+_OPEN_REVISION_STATUSES = (
+    PrivacyNoticeRevisionStatus.DRAFT,
+    PrivacyNoticeRevisionStatus.PUBLISHED,
+)
+
+
+def notice_queryset():
+    """Notices with their bounded draft/current revision summaries in one extra query."""
+
+    return PrivacyNotice.objects.prefetch_related(
+        Prefetch(
+            "revisions",
+            queryset=PrivacyNoticeRevision.objects.filter(status__in=_OPEN_REVISION_STATUSES).only(
+                "id",
+                "notice_id",
+                "revision_number",
+                "status",
+                "effective_on",
+                "published_at",
+            ),
+            to_attr="open_revisions",
+        )
+    )
+
+
+def notice_open_revisions(
+    notice: PrivacyNotice,
+) -> tuple[PrivacyNoticeRevision | None, PrivacyNoticeRevision | None]:
+    """Return ``(current_published, draft)`` using prefetched rows when available."""
+
+    rows = getattr(notice, "open_revisions", None)
+    if rows is None:
+        rows = list(notice.revisions.filter(status__in=_OPEN_REVISION_STATUSES))
+    current = next(
+        (row for row in rows if row.status == PrivacyNoticeRevisionStatus.PUBLISHED), None
+    )
+    draft = next((row for row in rows if row.status == PrivacyNoticeRevisionStatus.DRAFT), None)
+    return current, draft
 
 
 def page(queryset, *, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE):
@@ -104,11 +197,23 @@ def get_retention(policy_id: UUID):
 
 
 def list_retention(
-    *, is_active: bool | None = None, page_number: int = 1, page_size: int = DEFAULT_PAGE_SIZE
+    *,
+    is_active: bool | None = None,
+    search: str | None = None,
+    page_number: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
-    queryset = RetentionPolicy.objects.order_by("code")
+    queryset = RetentionPolicy.objects.order_by("code", "id")
     if is_active is not None:
         queryset = queryset.filter(is_active=is_active)
+    if search is not None:
+        if not isinstance(search, str):
+            raise PrivacyInputError("search must be text")
+        term = search.strip()
+        if len(term) > MAX_SEARCH_LENGTH:
+            raise PrivacyInputError(f"search must be at most {MAX_SEARCH_LENGTH} characters")
+        if term:
+            queryset = queryset.filter(Q(code__icontains=term) | Q(name__icontains=term))
     return page(queryset, page=page_number, page_size=page_size)
 
 
@@ -117,19 +222,26 @@ def create_retention(*, code: str, context: AuditContext, **values):
     normalized = _clean_code(code)
     with transaction.atomic():
         if RetentionPolicy.objects.filter(code=normalized).exists():
-            raise PrivacyConflict("retention policy code already exists")
+            raise PrivacyConflict(
+                "retention policy code already exists", code=PrivacyConflictCode.CODE_IN_USE
+            )
         item = RetentionPolicy(code=normalized, **cleaned)
         try:
             _validate_model(item)
         except PrivacyInputError:
             if RetentionPolicy.objects.filter(code=normalized).exists():
-                raise PrivacyConflict("retention policy code already exists") from None
+                raise PrivacyConflict(
+                    "retention policy code already exists",
+                    code=PrivacyConflictCode.CODE_IN_USE,
+                ) from None
             raise
         try:
             with transaction.atomic():
                 item.save()
         except IntegrityError as exc:
-            raise PrivacyConflict("retention policy code already exists") from exc
+            raise PrivacyConflict(
+                "retention policy code already exists", code=PrivacyConflictCode.CODE_IN_USE
+            ) from exc
         _audit(
             context,
             actions.PRIVACY_RETENTION_CREATED,
@@ -149,7 +261,10 @@ def update_retention(*, policy_id: UUID, context: AuditContext, changes: dict[st
         if not cleaned:
             return item
         if not item.is_active:
-            raise PrivacyConflict("retired retention policy cannot be edited")
+            raise PrivacyConflict(
+                "retired retention policy cannot be edited",
+                code=PrivacyConflictCode.RETENTION_POLICY_RETIRED,
+            )
         for key, value in cleaned.items():
             setattr(item, key, value)
         _validate_model(item)
@@ -173,7 +288,8 @@ def retire_retention(*, policy_id: UUID, context: AuditContext):
             return item
         if ProcessingActivity.objects.filter(retention_policy=item, is_active=True).exists():
             raise PrivacyConflict(
-                "active processing activities must be reassigned before retirement"
+                "active processing activities must be reassigned before retirement",
+                code=PrivacyConflictCode.RETENTION_POLICY_IN_USE,
             )
         item.is_active = False
         item.save(update_fields=["is_active", "updated_at"])
@@ -222,7 +338,7 @@ def _revision_values(values: dict[str, Any]):
 
 
 def get_notice(notice_id: UUID):
-    item = PrivacyNotice.objects.filter(pk=notice_id).first()
+    item = notice_queryset().filter(pk=notice_id).first()
     if item is None:
         raise PrivacyRecordNotFound("privacy notice was not found")
     return item
@@ -231,7 +347,7 @@ def get_notice(notice_id: UUID):
 def list_notices(
     *, is_active: bool | None = None, page_number: int = 1, page_size: int = DEFAULT_PAGE_SIZE
 ):
-    queryset = PrivacyNotice.objects.order_by("code")
+    queryset = notice_queryset().order_by("code")
     if is_active is not None:
         queryset = queryset.filter(is_active=is_active)
     return page(queryset, page=page_number, page_size=page_size)
@@ -243,19 +359,26 @@ def create_notice(*, actor: User, context: AuditContext, code: str, name: str, *
     name = _clean_required(name, label="name", maximum=160)
     with transaction.atomic():
         if PrivacyNotice.objects.filter(code=normalized).exists():
-            raise PrivacyConflict("privacy notice code already exists")
+            raise PrivacyConflict(
+                "privacy notice code already exists", code=PrivacyConflictCode.CODE_IN_USE
+            )
         notice = PrivacyNotice(code=normalized, name=name)
         try:
             _validate_model(notice)
         except PrivacyInputError:
             if PrivacyNotice.objects.filter(code=normalized).exists():
-                raise PrivacyConflict("privacy notice code already exists") from None
+                raise PrivacyConflict(
+                    "privacy notice code already exists",
+                    code=PrivacyConflictCode.CODE_IN_USE,
+                ) from None
             raise
         try:
             with transaction.atomic():
                 notice.save()
         except IntegrityError as exc:
-            raise PrivacyConflict("privacy notice code already exists") from exc
+            raise PrivacyConflict(
+                "privacy notice code already exists", code=PrivacyConflictCode.CODE_IN_USE
+            ) from exc
         revision = PrivacyNoticeRevision(
             notice=notice, revision_number=1, created_by=actor, **cleaned
         )
@@ -277,7 +400,10 @@ def update_notice(*, notice_id: UUID, context: AuditContext, name: str | None = 
         if notice is None:
             raise PrivacyRecordNotFound("privacy notice was not found")
         if not notice.is_active:
-            raise PrivacyConflict("retired privacy notice cannot be edited")
+            raise PrivacyConflict(
+                "retired privacy notice cannot be edited",
+                code=PrivacyConflictCode.NOTICE_RETIRED,
+            )
         if name is None:
             return notice
         notice.name = _clean_required(name, label="name", maximum=160)
@@ -320,7 +446,8 @@ def get_revision(revision_id: UUID):
 
 
 def list_revisions(*, notice_id: UUID, page_number: int = 1, page_size: int = DEFAULT_PAGE_SIZE):
-    get_notice(notice_id)
+    if not PrivacyNotice.objects.filter(pk=notice_id).exists():
+        raise PrivacyRecordNotFound("privacy notice was not found")
     return page(
         PrivacyNoticeRevision.objects.select_related("notice")
         .filter(notice_id=notice_id)
@@ -337,9 +464,15 @@ def create_revision(*, notice_id: UUID, actor: User, context: AuditContext, **va
         if notice is None:
             raise PrivacyRecordNotFound("privacy notice was not found")
         if not notice.is_active:
-            raise PrivacyConflict("retired privacy notice cannot receive revisions")
+            raise PrivacyConflict(
+                "retired privacy notice cannot receive revisions",
+                code=PrivacyConflictCode.NOTICE_RETIRED,
+            )
         if notice.revisions.filter(status=PrivacyNoticeRevisionStatus.DRAFT).exists():
-            raise PrivacyConflict("privacy notice already has a draft")
+            raise PrivacyConflict(
+                "privacy notice already has a draft",
+                code=PrivacyConflictCode.NOTICE_DRAFT_EXISTS,
+            )
         latest = notice.revisions.order_by("-revision_number").first()
         revision = PrivacyNoticeRevision(
             notice=notice,
@@ -365,8 +498,16 @@ def update_revision(*, revision_id: UUID, context: AuditContext, changes: dict[s
         candidate = get_revision(revision_id)
         notice = PrivacyNotice.objects.select_for_update().get(pk=candidate.notice_id)
         revision = PrivacyNoticeRevision.objects.select_for_update().get(pk=revision_id)
-        if not notice.is_active or revision.status != PrivacyNoticeRevisionStatus.DRAFT:
-            raise PrivacyConflict("only a draft of an active privacy notice can be edited")
+        if not notice.is_active:
+            raise PrivacyConflict(
+                "only a draft of an active privacy notice can be edited",
+                code=PrivacyConflictCode.NOTICE_RETIRED,
+            )
+        if revision.status != PrivacyNoticeRevisionStatus.DRAFT:
+            raise PrivacyConflict(
+                "only a draft of an active privacy notice can be edited",
+                code=PrivacyConflictCode.NOTICE_REVISION_IMMUTABLE,
+            )
         if not cleaned:
             return revision
         for key, value in cleaned.items():
@@ -391,10 +532,27 @@ def publish_revision(*, revision_id: UUID, actor: User, context: AuditContext):
         candidate = get_revision(revision_id)
         notice = PrivacyNotice.objects.select_for_update().get(pk=candidate.notice_id)
         revision = PrivacyNoticeRevision.objects.select_for_update().get(pk=revision_id)
-        if not notice.is_active or revision.status != PrivacyNoticeRevisionStatus.DRAFT:
-            raise PrivacyConflict("only a draft of an active notice can be published")
-        if revision.effective_on is None or revision.effective_on > timezone.localdate():
-            raise PrivacyConflict("notice effective date must be today or earlier")
+        blocker = notice_publish_blocker(
+            notice_active=notice.is_active,
+            status=revision.status,
+            effective_on=revision.effective_on,
+            today=timezone.localdate(),
+        )
+        if blocker == NoticePublishBlocker.NOTICE_RETIRED:
+            raise PrivacyConflict(
+                "only a draft of an active notice can be published",
+                code=PrivacyConflictCode.NOTICE_RETIRED,
+            )
+        if blocker == NoticePublishBlocker.REVISION_NOT_DRAFT:
+            raise PrivacyConflict(
+                "only a draft of an active notice can be published",
+                code=PrivacyConflictCode.NOTICE_REVISION_IMMUTABLE,
+            )
+        if blocker is not None:
+            raise PrivacyConflict(
+                "notice effective date must be today or earlier",
+                code=PrivacyConflictCode.NOTICE_NOT_YET_EFFECTIVE,
+            )
         _revision_values({field: getattr(revision, field) for field in REVISION_FIELDS})
         _validate_model(revision)
         current = (
@@ -450,12 +608,21 @@ def acknowledge_revision(*, revision_id: UUID, actor: User, context: AuditContex
             revision.status != PrivacyNoticeRevisionStatus.PUBLISHED
             or not revision.notice.is_active
         ):
-            raise PrivacyConflict("notice revision is no longer current; refresh notices")
+            raise PrivacyConflict(
+                "notice revision is no longer current; refresh notices",
+                code=PrivacyConflictCode.NOTICE_REVISION_NOT_CURRENT,
+            )
         if not revision.requires_acknowledgment:
-            raise PrivacyConflict("notice revision does not require acknowledgment")
+            raise PrivacyConflict(
+                "notice revision does not require acknowledgment",
+                code=PrivacyConflictCode.NOTICE_ACKNOWLEDGMENT_NOT_APPLICABLE,
+            )
         audience = "STUDENT" if actor.role.code == "STUDENT" else "STAFF"
         if not set(revision.audiences).intersection({"PUBLIC", audience}):
-            raise PrivacyConflict("notice revision is not applicable to this account")
+            raise PrivacyConflict(
+                "notice revision is not applicable to this account",
+                code=PrivacyConflictCode.NOTICE_ACKNOWLEDGMENT_NOT_APPLICABLE,
+            )
         acknowledgment, created = PrivacyNoticeAcknowledgment.objects.get_or_create(
             user=actor, revision=revision
         )

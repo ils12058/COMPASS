@@ -16,6 +16,7 @@ from .models import EmailDelivery, Notification, NotificationPreference
 from .policy import (
     NotificationChannel,
     NotificationEvent,
+    NotificationTargetType,
     email_allowed_for_policy,
     get_event_definition,
 )
@@ -79,10 +80,12 @@ def create_notification_for_event(
     event: NotificationEvent | str,
     source_type: str,
     source_id: UUID,
-    target_type: str = "",
+    target_type: NotificationTargetType | str = "",
     target_id: UUID | None = None,
 ) -> Notification:
     definition = get_event_definition(event)
+    # Unknown destinations fail at the producer instead of breaking the recipient's list later.
+    normalized_target = NotificationTargetType(target_type).value if target_type else ""
     notification, _created = Notification.objects.get_or_create(
         recipient=recipient,
         event_code=definition.event.value,
@@ -92,7 +95,7 @@ def create_notification_for_event(
             "policy": definition.policy.value,
             "title": definition.title,
             "message": definition.message,
-            "target_type": target_type,
+            "target_type": normalized_target,
             "target_id": target_id,
         },
     )

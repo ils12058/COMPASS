@@ -22,6 +22,7 @@ from compass.common.idempotency import (
     IdempotencyUnavailable,
     RedisIdempotencyStore,
     StoredResponse,
+    abandon_after_unexpected_failure,
     request_fingerprint,
 )
 
@@ -504,6 +505,9 @@ def feedback_submit_customer_feedback(
     except FeedbackError as exc:
         _abandon_submission_or_503(store, decision.reservation)
         _raise(exc)
+    except Exception:
+        abandon_after_unexpected_failure(store, decision.reservation)
+        raise
 
     response = _json_response(_submission(item), status=201)
     _complete_submission_or_503(store, decision.reservation, response)
@@ -599,6 +603,9 @@ def feedback_submit_csm(
     except FeedbackError as exc:
         _abandon_submission_or_503(store, decision.reservation)
         _raise(exc)
+    except Exception:
+        abandon_after_unexpected_failure(store, decision.reservation)
+        raise
 
     response = _json_response(_submission(item), status=201)
     _complete_submission_or_503(store, decision.reservation, response)

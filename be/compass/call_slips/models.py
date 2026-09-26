@@ -22,6 +22,18 @@ class CallSlipLifecycleState(models.TextChoices):
     VOIDED = "VOIDED", "Voided"
 
 
+class CallSlipIssuanceMode(models.TextChoices):
+    """Durable provenance of the original issuance intent.
+
+    LIVE and HISTORICAL are recorded explicitly at creation. LEGACY_UNKNOWN marks rows created
+    before provenance was persisted when no durable evidence shows how they were issued.
+    """
+
+    LIVE = "LIVE", "Live issuance"
+    HISTORICAL = "HISTORICAL", "Historical entry"
+    LEGACY_UNKNOWN = "LEGACY_UNKNOWN", "Not recorded"
+
+
 class CallSlip(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     student = models.ForeignKey(
@@ -41,6 +53,7 @@ class CallSlip(models.Model):
     destination_type = models.CharField(max_length=32, choices=CallSlipDestinationType.choices)
     other_destination = models.CharField(max_length=255, blank=True, default="")
     report_at = models.DateTimeField()
+    issuance_mode = models.CharField(max_length=16, choices=CallSlipIssuanceMode.choices)
     issued_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -73,6 +86,16 @@ class CallSlip(models.Model):
     creation_request_fingerprint = models.CharField(max_length=64, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def void_notifies_student(self) -> bool:
+        """Whether a void sends the Student withdrawal notification.
+
+        Historical/back-entry issuance stays quiet for its whole lifecycle. Legacy rows keep the
+        pre-provenance behavior because their original intent was never recorded.
+        """
+
+        return self.issuance_mode != CallSlipIssuanceMode.HISTORICAL
 
     @property
     def lifecycle_state(self) -> str:
@@ -114,5 +137,9 @@ class CallSlip(models.Model):
                 fields=("referral",),
                 condition=models.Q(referral__isnull=False, voided_at__isnull=True),
                 name="callslip_active_referral_uniq",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(issuance_mode__in=CallSlipIssuanceMode.values),
+                name="callslip_issuance_mode_valid",
             ),
         ]

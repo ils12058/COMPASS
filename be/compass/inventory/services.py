@@ -483,7 +483,7 @@ def _current_year() -> AcademicYear:
 
 def _require_active_program(program_id: UUID) -> Program:
     program = (
-        Program.objects.select_for_update()
+        Program.objects.select_for_update(of=("self",))
         .select_related("college__campus")
         .filter(pk=program_id)
         .first()
@@ -782,7 +782,10 @@ def ensure_current_inventory(*, student: User, context: AuditContext) -> Student
     _require_current_student(student)
     with transaction.atomic():
         locked_student = (
-            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
         )
         if locked_student is None:
             raise InventoryNotFound("The Student account was not found.")
@@ -797,13 +800,14 @@ def ensure_current_inventory(*, student: User, context: AuditContext) -> Student
             return _inventory_queryset().get(pk=existing.pk)
         revision = _active_inventory_revision()
         try:
-            item = StudentInventory.objects.create(
-                student=locked_student,
-                academic_year=current,
-                form_revision=revision,
-                student_number=locked_student.institutional_id or "",
-            )
-            StudentSupportProfile.objects.create(inventory=item)
+            with transaction.atomic():
+                item = StudentInventory.objects.create(
+                    student=locked_student,
+                    academic_year=current,
+                    form_revision=revision,
+                    student_number=locked_student.institutional_id or "",
+                )
+                StudentSupportProfile.objects.create(inventory=item)
         except IntegrityError:
             item = StudentInventory.objects.filter(
                 student_id=locked_student.pk,
@@ -1062,7 +1066,10 @@ def replace_current_inventory(
         raise InvalidInventoryInput("The Inventory update contains unsupported fields.")
     with transaction.atomic():
         locked_student = (
-            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
         )
         if locked_student is None:
             raise InventoryNotFound("The Student account was not found.")
@@ -1099,10 +1106,36 @@ def replace_current_inventory(
         return _inventory_queryset().get(pk=item.pk)
 
 
-def _validate_and_canonicalize_geography(item: StudentInventory) -> None:
-    rows = [row for row in item.geographic_locations.all() if not row.not_specified]
-    if not rows:
-        return
+_GeographyKey = tuple[str, str, str, str, str]
+
+
+@dataclass(frozen=True, slots=True)
+class _ResolvedGeographyNames:
+    region: str
+    province: str
+    city_municipality: str
+    barangay: str
+
+
+def _geography_key(row) -> _GeographyKey:
+    return (
+        row.kind,
+        row.region_psgc_code.strip(),
+        row.province_psgc_code.strip(),
+        row.city_municipality_psgc_code.strip(),
+        row.barangay_psgc_code.strip(),
+    )
+
+
+def _resolve_geography(rows) -> dict[_GeographyKey, _ResolvedGeographyNames]:
+    """Resolve official PSGC names without database locks or writes.
+
+    Outbound PSGC HTTP must never run while an Inventory, Student, or Program row is locked.
+    """
+
+    specified = [row for row in rows if not row.not_specified]
+    if not specified:
+        return {}
 
     try:
         client = PSGCClient.from_settings()
@@ -1115,13 +1148,12 @@ def _validate_and_canonicalize_geography(item: StudentInventory) -> None:
     province_cache: dict[tuple[str, str], PSGCReference] = {}
     city_cache: dict[tuple[str, str, str], PSGCReference] = {}
     barangay_cache: dict[tuple[str, str], PSGCReference] = {}
+    resolved: dict[_GeographyKey, _ResolvedGeographyNames] = {}
 
     try:
-        for row in rows:
-            region_code = row.region_psgc_code.strip()
-            province_code = row.province_psgc_code.strip()
-            city_code = row.city_municipality_psgc_code.strip()
-            barangay_code = row.barangay_psgc_code.strip()
+        for row in specified:
+            key = _geography_key(row)
+            _kind, region_code, province_code, city_code, barangay_code = key
 
             region = region_cache.get(region_code)
             if region is None:
@@ -1160,22 +1192,42 @@ def _validate_and_canonicalize_geography(item: StudentInventory) -> None:
                     )
                     barangay_cache[barangay_key] = barangay
 
-            row.region_name_snapshot = region.name
-            row.province_name_snapshot = province.name if province is not None else ""
-            row.city_municipality_name_snapshot = city.name
-            row.barangay_name_snapshot = barangay.name if barangay is not None else ""
-            row.save(
-                update_fields=[
-                    "region_name_snapshot",
-                    "province_name_snapshot",
-                    "city_municipality_name_snapshot",
-                    "barangay_name_snapshot",
-                ]
+            resolved[key] = _ResolvedGeographyNames(
+                region=region.name,
+                province=province.name if province is not None else "",
+                city_municipality=city.name,
+                barangay=barangay.name if barangay is not None else "",
             )
     except (PSGCInvalidRequest, PSGCReferenceNotFound) as exc:
         raise InvalidInventoryInput(str(exc)) from exc
     except (PSGCConfigurationError, PSGCUnavailable, PSGCInvalidResponse) as exc:
         raise InventoryPSGCUnavailable("Official PSGC validation could not be completed.") from exc
+    return resolved
+
+
+def _apply_resolved_geography(
+    item: StudentInventory,
+    resolved: dict[_GeographyKey, _ResolvedGeographyNames],
+) -> None:
+    rows = [row for row in item.geographic_locations.all() if not row.not_specified]
+    if {_geography_key(row) for row in rows} != set(resolved):
+        raise InventoryConflict(
+            "The Inventory locations changed while they were being verified. Submit again."
+        )
+    for row in rows:
+        names = resolved[_geography_key(row)]
+        row.region_name_snapshot = names.region
+        row.province_name_snapshot = names.province
+        row.city_municipality_name_snapshot = names.city_municipality
+        row.barangay_name_snapshot = names.barangay
+        row.save(
+            update_fields=[
+                "region_name_snapshot",
+                "province_name_snapshot",
+                "city_municipality_name_snapshot",
+                "barangay_name_snapshot",
+            ]
+        )
 
 
 def submit_current_inventory(
@@ -1184,9 +1236,24 @@ def submit_current_inventory(
     context: AuditContext,
 ) -> StudentInventory:
     _require_current_student(student)
+    pending = (
+        StudentInventory.objects.filter(
+            student_id=student.pk,
+            academic_year_id=_current_year().pk,
+            submitted_at__isnull=True,
+        )
+        .prefetch_related("geographic_locations")
+        .first()
+    )
+    resolved_geography = (
+        _resolve_geography(pending.geographic_locations.all()) if pending is not None else {}
+    )
     with transaction.atomic():
         locked_student = (
-            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
         )
         if locked_student is None:
             raise InventoryNotFound("The Student account was not found.")
@@ -1211,7 +1278,7 @@ def submit_current_inventory(
         if locked_student.institutional_id is not None:
             item.student_number = locked_student.institutional_id
         _validate_submission(item, profile)
-        _validate_and_canonicalize_geography(item)
+        _apply_resolved_geography(item, resolved_geography)
         submitted_at = timezone.now()
         is_resubmission = item.first_submitted_at is not None
         if item.first_submitted_at is None:
@@ -1426,7 +1493,7 @@ def reopen_inventory_for_correction(
 
     with transaction.atomic():
         item = (
-            StudentInventory.objects.select_for_update()
+            StudentInventory.objects.select_for_update(of=("self",))
             .select_related("student__role", "academic_year", "form_revision")
             .filter(pk=inventory_id)
             .first()

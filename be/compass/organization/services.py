@@ -358,7 +358,7 @@ def create_program(
 ) -> Program:
     with transaction.atomic():
         college = (
-            College.objects.select_for_update()
+            College.objects.select_for_update(of=("self", "campus"))
             .select_related("campus")
             .filter(pk=college_id)
             .first()
@@ -398,7 +398,7 @@ def update_program(
 ) -> Program:
     with transaction.atomic():
         program = (
-            Program.objects.select_for_update()
+            Program.objects.select_for_update(of=("self", "college", "college__campus"))
             .select_related("college__campus")
             .filter(pk=program_id)
             .first()
@@ -435,7 +435,7 @@ def update_program(
 def set_program_active(*, program_id: UUID, is_active: bool, context: AuditContext) -> Program:
     with transaction.atomic():
         program = (
-            Program.objects.select_for_update()
+            Program.objects.select_for_update(of=("self", "college", "college__campus"))
             .select_related("college__campus")
             .filter(pk=program_id)
             .first()
@@ -497,7 +497,7 @@ def update_college(
 ) -> College:
     with transaction.atomic():
         college = (
-            College.objects.select_for_update()
+            College.objects.select_for_update(of=("self", "campus"))
             .select_related("campus")
             .filter(pk=college_id)
             .first()
@@ -534,7 +534,7 @@ def update_college(
 def set_college_active(*, college_id: UUID, is_active: bool, context: AuditContext) -> College:
     with transaction.atomic():
         college = (
-            College.objects.select_for_update()
+            College.objects.select_for_update(of=("self", "campus"))
             .select_related("campus")
             .filter(pk=college_id)
             .first()
@@ -574,7 +574,12 @@ def _lock_user_with_role(
     *,
     require_active: bool,
 ) -> User:
-    user = User.objects.select_for_update().select_related("role").filter(pk=user_id).first()
+    user = (
+        User.objects.select_for_update(of=("self",))
+        .select_related("role")
+        .filter(pk=user_id)
+        .first()
+    )
     if user is None:
         raise OrganizationNotFound(f"The requested {label} was not found.")
     if user.role.code != role_code or (require_active and not user.is_active):
@@ -589,7 +594,10 @@ def _lock_active_user(user_id: UUID, role_code: str, label: str) -> User:
 
 def _lock_active_college(college_id: UUID) -> College:
     college = (
-        College.objects.select_for_update().select_related("campus").filter(pk=college_id).first()
+        College.objects.select_for_update(of=("self", "campus"))
+        .select_related("campus")
+        .filter(pk=college_id)
+        .first()
     )
     if college is None:
         raise OrganizationNotFound("The requested college was not found.")

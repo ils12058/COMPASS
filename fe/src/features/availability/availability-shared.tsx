@@ -11,6 +11,8 @@ import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import {
   AvailabilityModeScope,
+  type CapabilityCode,
+  type RoleCode,
   type WeeklyWindowResponse,
 } from "@/lib/api/generated/model";
 import {
@@ -42,8 +44,8 @@ export const availabilitySelectClass =
   "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 export function canUseSelfAvailability(user: {
-  role: string;
-  capabilities: string[];
+  role: RoleCode;
+  capabilities: readonly CapabilityCode[];
 }): boolean {
   return (
     user.role === "COUNSELOR" &&
@@ -52,14 +54,14 @@ export function canUseSelfAvailability(user: {
 }
 
 export function canManageAvailability(user: {
-  capabilities: string[];
+  capabilities: readonly CapabilityCode[];
 }): boolean {
   return user.capabilities.includes("availability.manage");
 }
 
 export function hasAvailabilityWorkspace(user: {
-  role: string;
-  capabilities: string[];
+  role: RoleCode;
+  capabilities: readonly CapabilityCode[];
 }): boolean {
   return canUseSelfAvailability(user) || canManageAvailability(user);
 }

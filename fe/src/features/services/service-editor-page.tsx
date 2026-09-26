@@ -14,7 +14,6 @@ import {
   servicesSelectClass,
   useServicesAction,
 } from "@/features/services/services-shared";
-import { isSystemRequiredService } from "@/features/services/system-required-service";
 import {
   AppointmentPolicy,
   ConfigurableProviderRoleCode,
@@ -83,7 +82,7 @@ function initialFromService(service: ServiceResponse): ServiceFormState {
     // A system-required Service must keep Counselor eligibility, so saving
     // always sends it and repairs a row that lost it.
     counselor:
-      isSystemRequiredService(service) ||
+      service.is_system_required ||
       service.provider_roles.includes(ProviderRoleCode.COUNSELOR),
   };
 }
@@ -600,7 +599,7 @@ export function EditServicePage() {
         initial={initial}
         active={service.is_active}
         legacyProviderAssignment={hasLegacyProvider}
-        systemRequired={isSystemRequiredService(service)}
+        systemRequired={service.is_system_required}
         submitting={update.isPending}
         submitLabel="Save changes"
         pendingLabel="Saving…"

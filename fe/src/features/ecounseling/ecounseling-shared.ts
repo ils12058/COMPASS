@@ -1,11 +1,11 @@
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
-import type { MediaWorkspaceState } from "@/lib/api/generated/model";
-
-export const ECounselingScope = {
-  recording: "AUDIO_VIDEO_RECORDING",
-  transcription: "LIVE_TRANSCRIPTION",
-  storage: "TRANSCRIPT_STORAGE",
-} as const;
+import {
+  ECounselingCaptureStatus,
+  ECounselingConsentDecision,
+  ECounselingConsentStatus,
+  type ConsentResponse,
+  type MediaWorkspaceState,
+} from "@/lib/api/generated/model";
 
 export function ecounselingErrorCode(error: unknown): string | undefined {
   return error instanceof CompassApiError ? readApiErrorCode(error.body) : undefined;
@@ -31,31 +31,54 @@ export function ecounselingErrorMessage(error: unknown, fallback: string): strin
   return (code && messages[code]) || readApiErrorMessage(error.body) || fallback;
 }
 
-export function consentStatusLabel(row: { decision: string; effective: boolean; withdrawn_at: string | null }): string {
-  if (row.withdrawn_at || row.decision === "WITHDRAWN") return "Withdrawn";
-  if (row.decision === "APPROVED" && row.effective) return "Approved";
-  if (row.decision === "APPROVED") return "Not effective";
-  if (row.decision === "DENIED") return "Declined";
-  return row.decision === "PENDING" ? "Pending" : row.decision.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+// A withdrawn consent keeps decision APPROVED; withdrawn_at and effective describe it.
+export function consentStatusLabel(
+  row: Pick<ConsentResponse, "decision" | "effective" | "withdrawn_at">,
+): string {
+  if (row.withdrawn_at) return "Withdrawn";
+  if (row.decision === ECounselingConsentDecision.APPROVED) {
+    return row.effective ? "Approved" : "Not effective";
+  }
+  if (row.decision === ECounselingConsentDecision.DENIED) return "Declined";
+  return "Pending";
 }
 
-export function captureStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    NOT_STARTED: "Not started",
-    START_REQUESTED: "Starting",
-    ACTIVE: "Active",
-    STOP_REQUESTED: "Stopping",
-    STOPPED: "Stopped",
-    READY: "Completed",
-    ERROR: "Provider state requires attention",
-  };
-  return labels[status] ?? "Status unavailable";
+export const consentProjectionLabels: Record<ECounselingConsentStatus, string> = {
+  [ECounselingConsentStatus.NOT_REQUESTED]: "Not requested",
+  [ECounselingConsentStatus.PENDING]: "Pending",
+  [ECounselingConsentStatus.APPROVED]: "Approved",
+  [ECounselingConsentStatus.DENIED]: "Declined",
+  [ECounselingConsentStatus.WITHDRAWN]: "Withdrawn",
+};
+
+const captureStatusLabels: Record<ECounselingCaptureStatus, string> = {
+  [ECounselingCaptureStatus.NOT_STARTED]: "Not started",
+  [ECounselingCaptureStatus.START_REQUESTED]: "Starting",
+  [ECounselingCaptureStatus.ACTIVE]: "Active",
+  [ECounselingCaptureStatus.STOP_REQUESTED]: "Stopping",
+  [ECounselingCaptureStatus.STOPPED]: "Stopped",
+  [ECounselingCaptureStatus.READY]: "Completed",
+  [ECounselingCaptureStatus.ERROR]: "Provider state requires attention",
+};
+
+export function captureStatusLabel(status: ECounselingCaptureStatus): string {
+  return captureStatusLabels[status];
+}
+
+const liveCaptureStates: ReadonlySet<ECounselingCaptureStatus> = new Set([
+  ECounselingCaptureStatus.START_REQUESTED,
+  ECounselingCaptureStatus.ACTIVE,
+  ECounselingCaptureStatus.STOP_REQUESTED,
+]);
+
+export function isLiveOrTransitionalCapture(status: ECounselingCaptureStatus): boolean {
+  return liveCaptureStates.has(status);
 }
 
 export function hasLiveOrTransitionalMedia(media: MediaWorkspaceState | undefined): boolean {
-  const liveStates = new Set(["START_REQUESTED", "ACTIVE", "STOP_REQUESTED"]);
   return Boolean(media && (
-    liveStates.has(media.recording.capture_status) || liveStates.has(media.transcription.capture_status)
+    isLiveOrTransitionalCapture(media.recording.capture_status) ||
+    isLiveOrTransitionalCapture(media.transcription.capture_status)
   ));
 }
 

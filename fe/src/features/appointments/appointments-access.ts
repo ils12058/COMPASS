@@ -4,7 +4,6 @@ export type AppointmentAccess = {
   canViewSelf: boolean;
   canManageSelf: boolean;
   canBook: boolean;
-  canRescheduleSelf: boolean;
   canManage: boolean;
   hasWorkspace: boolean;
   isStudent: boolean;
@@ -24,7 +23,6 @@ export function getAppointmentAccess(user: UserSummary): AppointmentAccess {
     canViewSelf,
     canManageSelf,
     canBook: canManageSelf && isCurrentStudent,
-    canRescheduleSelf: canManageSelf && isCurrentStudent,
     canManage,
     hasWorkspace: canViewSelf || canManage,
     isStudent,

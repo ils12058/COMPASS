@@ -857,3 +857,58 @@ def test_context_does_not_persist_support_indicator_snapshots(world):
     assert "student_support_profile" not in encounter_fields
     assert "four_ps_status" not in encounter_fields
     assert "pwd_status" not in encounter_fields
+
+
+@pytest.mark.django_db
+def test_detail_responses_project_counseling_context_availability(world):
+    now = timezone.now().replace(microsecond=0)
+    soon = make_appointment(
+        student=world["anna"],
+        counselor=world["b"],
+        service=world["service"],
+        starts_at=now + timedelta(hours=2),
+    )
+    later = make_appointment(
+        student=world["anna"],
+        counselor=world["b"],
+        service=world["service"],
+        starts_at=now + timedelta(days=3),
+    )
+
+    provider = auth_client(world["b"])
+    detail = provider.get(f"/api/v1/appointments/{soon.pk}")
+    assert detail.status_code == 200
+    assert detail.json()["counseling_context_available"] is True
+    assert (
+        provider.get(f"/api/v1/appointments/{later.pk}").json()["counseling_context_available"]
+        is False
+    )
+    student_view = auth_client(world["anna"]).get(f"/api/v1/appointments/{soon.pk}")
+    assert student_view.status_code == 200
+    assert student_view.json()["counseling_context_available"] is False
+
+    item = create_direct(
+        counselor=world["b"],
+        student_id=world["anna"].pk,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        idempotency_key="context-availability-key",
+        request_fingerprint="b" * 64,
+        context=audit_context(world["b"]),
+    )
+    draft = provider.get(f"/api/v1/routine-interviews/{item.pk}")
+    assert draft.status_code == 200
+    assert draft.json()["counseling_context_available"] is False
+
+    replace_my_intake(
+        student=world["anna"],
+        routine_interview_id=item.pk,
+        values={"coping_with_college_challenges": "Managing deadlines."},
+    )
+    submit_my_intake(
+        student=world["anna"],
+        routine_interview_id=item.pk,
+        context=audit_context(world["anna"]),
+    )
+    submitted = provider.get(f"/api/v1/routine-interviews/{item.pk}")
+    assert submitted.json()["counseling_context_available"] is True

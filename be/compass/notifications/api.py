@@ -14,6 +14,7 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
 from .models import Notification
+from .policy import NotificationPolicy, NotificationTargetType
 from .services import (
     DEFAULT_PAGE_SIZE,
     InvalidNotificationInput,
@@ -37,10 +38,10 @@ class StrictSchema(Schema):
 class NotificationResponse(StrictSchema):
     id: UUID
     event_code: str
-    policy: str
+    policy: NotificationPolicy
     title: str
     message: str
-    target_type: str
+    target_type: NotificationTargetType | None
     target_id: UUID | None
     created_at: datetime
     read_at: datetime | None
@@ -92,7 +93,7 @@ def _view(item: Notification) -> NotificationResponse:
         policy=item.policy,
         title=item.title,
         message=item.message,
-        target_type=item.target_type,
+        target_type=item.target_type or None,
         target_id=item.target_id,
         created_at=item.created_at,
         read_at=item.read_at,

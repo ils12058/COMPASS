@@ -10,6 +10,7 @@ import { formatGraduateTracerDateTime } from "@/features/graduate-tracer/graduat
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CompassApiError } from "@/lib/api/errors";
 import { useGraduateTracerGetResponse } from "@/lib/api/generated/graduate-tracer/graduate-tracer";
+import { GraduateTracerStatusValue } from "@/lib/api/generated/model";
 
 export function GraduateTracerDetailPage({ responseId }: { responseId: string }) {
   const { user } = usePortalSession();
@@ -42,7 +43,7 @@ export function GraduateTracerDetailPage({ responseId }: { responseId: string })
   }
 
   if (!response) return null;
-  if (response.status !== "SUBMITTED") {
+  if (response.status !== GraduateTracerStatusValue.SUBMITTED) {
     return (
       <section className="space-y-6">
         <Link href="/portal/graduate-tracer" className="inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Graduate Tracer queue</Link>
@@ -55,8 +56,12 @@ export function GraduateTracerDetailPage({ responseId }: { responseId: string })
     <section className="space-y-6">
       <Link href="/portal/graduate-tracer" className="inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Graduate Tracer queue</Link>
       <GraduateTracerHeading
-        title={response.name || "Graduate Tracer response"}
-        description="Submitted Graduate Tracer response"
+        title={response.name || response.student.display_name}
+        description={
+          response.student.institutional_id
+            ? `Submitted Graduate Tracer response · ${response.student.institutional_id}`
+            : "Submitted Graduate Tracer response"
+        }
         action={<span className="text-sm text-muted">Submitted {formatGraduateTracerDateTime(response.submitted_at)}</span>}
       />
       {detail.isFetching ? <p role="status" className="text-xs text-muted">Refreshing submitted response…</p> : null}

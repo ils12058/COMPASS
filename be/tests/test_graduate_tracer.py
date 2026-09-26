@@ -587,7 +587,11 @@ def test_head_reads_only_submitted_and_other_operational_roles_are_denied():
     listed = head.get("/api/v1/graduate-tracer/responses")
     assert listed.status_code == 200
     assert [row["id"] for row in listed.json()["items"]] == [submitted_id]
-    assert head.get(f"/api/v1/graduate-tracer/responses/{submitted_id}").status_code == 200
+    detail = head.get(f"/api/v1/graduate-tracer/responses/{submitted_id}")
+    assert detail.status_code == 200
+    # Detail carries the same bounded Student identity as the review queue row.
+    assert detail.json()["student"] == listed.json()["items"][0]["student"]
+    assert set(detail.json()["student"]) == {"id", "institutional_id", "display_name"}
     assert head.get(f"/api/v1/graduate-tracer/responses/{draft_id}").status_code == 404
 
     counselor = auth_client(make_user("ordinary-gts@example.edu", role="COUNSELOR", lifecycle=None))

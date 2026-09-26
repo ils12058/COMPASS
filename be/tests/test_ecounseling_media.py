@@ -760,6 +760,59 @@ def test_recording_webhooks_reconcile_without_persisting_temporary_access_values
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    "prior_status",
+    [
+        MediaCaptureStatus.STOP_REQUESTED,
+        MediaCaptureStatus.STOPPED,
+        MediaCaptureStatus.READY,
+    ],
+)
+def test_late_recording_started_webhook_does_not_regress_stopping_or_finished_capture(
+    prior_status,
+):
+    _, student, counselor, appointment = setup_session()
+    fake = FakeMediaDailyClient()
+    approve_scope(
+        student=student,
+        counselor=counselor,
+        appointment=appointment,
+        scope=ConsentScope.AUDIO_VIDEO_RECORDING,
+    )
+    with override_settings(DAILY_ENABLED=True):
+        create_join_credential(
+            actor=student,
+            appointment_id=appointment.pk,
+            context=context(student),
+            daily_client=fake,
+        )
+        capture = start_recording(
+            counselor=counselor,
+            appointment_id=appointment.pk,
+            context=context(counselor),
+            daily_client=fake,
+        )
+    capture.status = prior_status
+    capture.save(update_fields=["status", "updated_at"])
+
+    result = process_media_webhook_event(
+        event_type="recording.started",
+        event_id=f"late-start-{prior_status}",
+        event_ts=timezone.now().timestamp(),
+        payload={
+            "recording_id": "recording-late",
+            "instance_id": capture.provider_instance_id,
+            "start_ts": timezone.now().timestamp(),
+        },
+    )
+
+    assert result.accepted and result.supported
+    capture.refresh_from_db()
+    assert capture.status == prior_status
+    assert capture.provider_artifact_id == "recording-late"
+
+
+@pytest.mark.django_db
 def test_unexpected_transcription_without_consent_is_marked_stop_required_and_best_effort_stopped():
     _, student, _, appointment = setup_session()
     fake = FakeMediaDailyClient()

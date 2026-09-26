@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DiagnosticStatus } from "@/lib/api/generated/model";
+import { DiagnosticStatus, EmailDeliveryStatusValue } from "@/lib/api/generated/model";
 
 const diagnosticLabels: Record<DiagnosticStatus, string> = {
   [DiagnosticStatus.HEALTHY]: "Healthy",
@@ -12,36 +12,53 @@ const diagnosticLabels: Record<DiagnosticStatus, string> = {
   [DiagnosticStatus.NOT_CHECKED]: "Not checked",
 };
 
+export const emailDeliveryStatusLabels: Record<EmailDeliveryStatusValue, string> = {
+  [EmailDeliveryStatusValue.PENDING]: "Pending",
+  [EmailDeliveryStatusValue.PROCESSING]: "Processing",
+  [EmailDeliveryStatusValue.SENT]: "Sent",
+  [EmailDeliveryStatusValue.FAILED]: "Failed",
+  [EmailDeliveryStatusValue.CANCELLED]: "Cancelled",
+};
+
 export function diagnosticStatusLabel(status: DiagnosticStatus): string {
   return diagnosticLabels[status];
+}
+
+type BadgeTone = "success" | "warning" | "danger" | "info" | "neutral";
+
+const toneClasses: Record<BadgeTone, string> = {
+  success: "border-success/30 bg-success/10 text-success",
+  warning: "border-warning/30 bg-warning/10 text-warning",
+  danger: "border-danger/30 bg-danger/10 text-danger",
+  info: "border-info/30 bg-info/5 text-info",
+  neutral: "border-border bg-surface-muted text-muted",
+};
+
+const statusTones: Partial<Record<DiagnosticStatus | EmailDeliveryStatusValue, BadgeTone>> = {
+  [DiagnosticStatus.HEALTHY]: "success",
+  [DiagnosticStatus.DEGRADED]: "warning",
+  [DiagnosticStatus.UNAVAILABLE]: "danger",
+  [EmailDeliveryStatusValue.FAILED]: "danger",
+  [EmailDeliveryStatusValue.SENT]: "success",
+  [EmailDeliveryStatusValue.PENDING]: "info",
+  [EmailDeliveryStatusValue.PROCESSING]: "info",
+};
+
+function isDiagnosticStatus(
+  status: DiagnosticStatus | EmailDeliveryStatusValue,
+): status is DiagnosticStatus {
+  return Object.prototype.hasOwnProperty.call(diagnosticLabels, status);
 }
 
 export function PlatformStatusBadge({
   status,
 }: {
-  status: DiagnosticStatus | string;
+  status: DiagnosticStatus | EmailDeliveryStatusValue;
 }) {
-  const tone =
-    status === DiagnosticStatus.HEALTHY
-      ? "border-success/30 bg-success/10 text-success"
-      : status === DiagnosticStatus.DEGRADED
-        ? "border-warning/30 bg-warning/10 text-warning"
-        : status === DiagnosticStatus.UNAVAILABLE
-        ? "border-danger/30 bg-danger/10 text-danger"
-        : status === "FAILED"
-          ? "border-danger/30 bg-danger/10 text-danger"
-          : status === "SENT"
-            ? "border-success/30 bg-success/10 text-success"
-            : status === "PENDING" || status === "PROCESSING"
-              ? "border-info/30 bg-info/5 text-info"
-          : "border-border bg-surface-muted text-muted";
-
-  const label = Object.prototype.hasOwnProperty.call(diagnosticLabels, status)
-    ? diagnosticLabels[status as DiagnosticStatus]
-    : status
-        .replaceAll("_", " ")
-        .toLowerCase()
-        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const tone = toneClasses[statusTones[status] ?? "neutral"];
+  const label = isDiagnosticStatus(status)
+    ? diagnosticLabels[status]
+    : emailDeliveryStatusLabels[status];
 
   return (
     <span

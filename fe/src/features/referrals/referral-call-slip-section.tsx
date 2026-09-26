@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CallSlipQueryError, callSlipStateLabel } from "@/features/call-slips/call-slips-shared";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { ReferralActionEntry } from "@/features/referrals/referral-action-section";
-import { ReferralActionTypeValue, type CallSlipOperationalResponse, type ReferralDetailResponse } from "@/lib/api/generated/model";
+import { CallSlipLifecycleStateValue, ReferralActionTypeValue, type CallSlipOperationalResponse, type ReferralDetailResponse } from "@/lib/api/generated/model";
 import { useCallSlipsList } from "@/lib/api/generated/call-slips/call-slips";
 import { formatDateTime } from "@/lib/date-time";
 
@@ -87,7 +87,7 @@ export function ReferralCallSlipSection({
                   : "Issuing a linked Call Slip will also record the source Referral action in the same transaction."}
               </p>
               <Link href={`/portal/referrals/${referral.id}/issue-call-slip`} className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                {history.data?.data.items.some((item) => item.state === "VOIDED")
+                {history.data?.data.items.some((item) => item.state === CallSlipLifecycleStateValue.VOIDED)
                   ? "Issue another linked Call Slip"
                   : referralAction
                     ? "Issue linked Call Slip"

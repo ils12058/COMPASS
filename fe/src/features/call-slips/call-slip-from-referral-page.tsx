@@ -19,8 +19,8 @@ import { ReferralAccessUnavailable, ReferralQueryError } from "@/features/referr
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { callSlipsCreateFromReferral, getCallSlipsListQueryKey, useCallSlipsList } from "@/lib/api/generated/call-slips/call-slips";
 import { getReferralsGetQueryKey, useReferralsGet } from "@/lib/api/generated/referrals/referrals";
-import { ReferralActionTypeValue } from "@/lib/api/generated/model";
-import type { CallSlipCreateFromReferralRequest, ReferralDetailResponse } from "@/lib/api/generated/model";
+import { CallSlipLifecycleStateValue, ReferralActionTypeValue } from "@/lib/api/generated/model";
+import type { CallSlipCreateFromReferralRequest, CallSlipOperationalResponse, ReferralDetailResponse } from "@/lib/api/generated/model";
 import { dateTimeInputToISO, formatDateTime, isFutureDateTimeInput, localDateInputValue } from "@/lib/date-time";
 
 type LinkedCreateIntent = { fingerprint: string; key: string; payload: CallSlipCreateFromReferralRequest };
@@ -80,7 +80,11 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   );
 }
 
-function LinkedCallSlipHistory({ items }: { items: { id: string; state: string; report_at: string; destination_type: string; other_destination: string }[] }) {
+function LinkedCallSlipHistory({
+  items,
+}: {
+  items: Pick<CallSlipOperationalResponse, "id" | "state" | "report_at" | "destination_type" | "other_destination">[];
+}) {
   if (items.length === 0) return null;
   return (
     <section aria-labelledby="previous-call-slips-heading" className="border-y border-border py-5">
@@ -93,7 +97,7 @@ function LinkedCallSlipHistory({ items }: { items: { id: string; state: string; 
           </li>
         ))}
       </ul>
-      {items.some((slip) => slip.state === "VOIDED") ? <p className="mt-3 text-sm text-muted">A new linked Call Slip can be issued. The existing Referral source action remains recorded and will not be duplicated.</p> : null}
+      {items.some((slip) => slip.state === CallSlipLifecycleStateValue.VOIDED) ? <p className="mt-3 text-sm text-muted">A new linked Call Slip can be issued. The existing Referral source action remains recorded and will not be duplicated.</p> : null}
     </section>
   );
 }

@@ -9,6 +9,7 @@ from uuid import UUID
 from ninja import File, Router, Schema, UploadedFile
 from pydantic import ConfigDict
 
+from compass.accounts.api_codes import RoleCode
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
@@ -43,7 +44,7 @@ class MyProfileResponse(StrictSchema):
     last_name: str
     suffix: str
     full_name: str
-    role: str
+    role: RoleCode
     date_of_birth: date | None
     civil_status: str
     contact_number: str

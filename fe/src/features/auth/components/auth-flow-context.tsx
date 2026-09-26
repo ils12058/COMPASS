@@ -2,16 +2,22 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
+import type { LoginMFAMethod } from "@/lib/api/generated/model";
+
 type AuthFlowState = {
   challengeExpiresAt: string | null;
   mandatorySetup: boolean;
-  mfaMethods: string[];
+  mfaMethods: LoginMFAMethod[];
   nextPath: string;
 };
 
 type AuthFlowValue = AuthFlowState & {
   beginMandatorySetup: (nextPath: string) => void;
-  beginMfa: (methods: string[], challengeExpiresAt: string | null, nextPath: string) => void;
+  beginMfa: (
+    methods: LoginMFAMethod[],
+    challengeExpiresAt: string | null,
+    nextPath: string,
+  ) => void;
   clearFlow: () => void;
 };
 
@@ -28,7 +34,7 @@ export function AuthFlowProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(initialState);
 
   const beginMfa = useCallback(
-    (mfaMethods: string[], challengeExpiresAt: string | null, nextPath: string) => {
+    (mfaMethods: LoginMFAMethod[], challengeExpiresAt: string | null, nextPath: string) => {
       setState({ challengeExpiresAt, mandatorySetup: false, mfaMethods, nextPath });
     },
     [],

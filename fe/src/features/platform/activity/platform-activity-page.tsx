@@ -9,12 +9,19 @@ import {
   PlatformRowsSkeleton,
   PlatformTimestamp,
 } from "@/features/platform/platform-presentation";
+import { TechnicalActivityActorType } from "@/lib/api/generated/model";
 import { usePlatformOperationsListActivity } from "@/lib/api/generated/platform-operations/platform-operations";
 
 const PAGE_SIZE = 20;
 
-function actorLabel(name: string | null, type: string): string {
-  return name || type.replaceAll("_", " ").toLowerCase();
+const actorTypeLabels: Record<TechnicalActivityActorType, string> = {
+  [TechnicalActivityActorType.USER]: "operator",
+  [TechnicalActivityActorType.SYSTEM]: "system",
+  [TechnicalActivityActorType.ANONYMOUS]: "anonymous",
+};
+
+function actorLabel(name: string | null, type: TechnicalActivityActorType): string {
+  return name || actorTypeLabels[type];
 }
 
 export function PlatformActivityPage() {

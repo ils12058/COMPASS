@@ -80,6 +80,8 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
     case "good_moral_document_unavailable":
     case "release_audit_unavailable":
       return "The certificate could not be released right now. Try again later.";
+    case "idempotency_key_conflict":
+      return "This request attempt no longer matches its original details.";
     case "recent_mfa_required":
       return "Recent authenticator verification is required before issuing this certificate.";
     case "permission_denied":

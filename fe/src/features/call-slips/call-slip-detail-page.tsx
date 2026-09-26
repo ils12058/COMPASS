@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
-import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipQueryError, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipStateLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
+import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipQueryError, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipIssuanceModeLabels, callSlipStateLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import {
@@ -28,6 +28,7 @@ import {
   useCallSlipsGet,
   useCallSlipsGetMy,
 } from "@/lib/api/generated/call-slips/call-slips";
+import { CallSlipLifecycleStateValue } from "@/lib/api/generated/model";
 import type { CallSlipOperationalResponse, CallSlipStudentResponse } from "@/lib/api/generated/model";
 import { downloadBinaryResponse } from "@/lib/browser-download";
 import { dateTimeInputToISO, formatDateTime, isFutureDateTimeInput, localDateInputValue } from "@/lib/date-time";
@@ -51,7 +52,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   return (
     <div className="space-y-7">
       <CallSlipHeading title="Call Slip / Interview Permit" description="Your Call Slip details" backHref="/portal/call-slips" backLabel="Back to My Call Slips" action={<CallSlipPdfDownload callSlipId={item.id} studentFacing />} />
-      {item.state === "VOIDED" ? <div role="status" className="border-y border-warning/30 py-4"><p className="font-semibold text-warning">Withdrawn</p><p className="mt-1 text-sm text-ink">This Call Slip is no longer active.</p></div> : null}
+      {item.state === CallSlipLifecycleStateValue.VOIDED ? <div role="status" className="border-y border-warning/30 py-4"><p className="font-semibold text-warning">Withdrawn</p><p className="mt-1 text-sm text-ink">This Call Slip is no longer active.</p></div> : null}
       <RecordSection title="Permit details">
         <Field label="Student identity" value={item.student.display_name} />
         <Field label="Name on source Call Slip" value={item.student_name_snapshot} />
@@ -87,7 +88,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   return (
     <div className="space-y-7">
       <CallSlipHeading title="Call Slip / Interview Permit" description="Operational source record" backHref="/portal/call-slips" action={<CallSlipPdfDownload callSlipId={item.id} />} />
-      {item.state === "VOIDED" ? (
+      {item.state === CallSlipLifecycleStateValue.VOIDED ? (
         <div role="status" className="border-y border-warning/30 py-4">
           <p className="font-semibold text-warning">Voided</p>
           <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{item.void_reason}</p>
@@ -109,6 +110,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <Field label="Guidance Counselor issuer" value={item.issued_by_name_snapshot} />
         <Field label="Issuer account" value={item.issued_by.display_name} />
         <Field label="Recorded by" value={item.recorded_by?.display_name ?? "Not separately recorded"} />
+        <Field label="Issuance mode" value={callSlipIssuanceModeLabels[item.issuance_mode]} />
         <Field label="State" value={callSlipStateLabel(item.state)} />
         <Field label="Interview ended" value={formatDateTime(item.interview_ended_at)} />
         <Field label="Created in COMPASS" value={formatDateTime(item.created_at)} />
@@ -177,7 +179,7 @@ function CallSlipPdfDownload({ callSlipId, studentFacing = false }: { callSlipId
 }
 
 function CallSlipLifecycleActions({ slip, onRefresh }: { slip: CallSlipOperationalResponse; onRefresh: () => Promise<CallSlipOperationalResponse | undefined> }) {
-  if (slip.state !== "ACTIVE") return null;
+  if (slip.state !== CallSlipLifecycleStateValue.ACTIVE) return null;
   return (
     <section aria-labelledby="call-slip-actions-heading" className="border-t border-border py-6">
       <h2 id="call-slip-actions-heading" className="font-heading text-xl font-semibold text-ink">Operational actions</h2>
@@ -320,7 +322,7 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
       const refreshed = await onRefresh();
       if (!refreshed) return setError("The Call Slip could not be refreshed. Do not retry the void until its current state can be checked.");
       setReconcileRequired(false);
-      if (refreshed.state === "VOIDED") {
+      if (refreshed.state === CallSlipLifecycleStateValue.VOIDED) {
         setOpen(false);
         setNotice("This Call Slip is withdrawn.");
         await invalidate();
@@ -334,7 +336,11 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
       await mutation.mutateAsync();
       setOpen(false);
       setReason("");
-      setNotice("Call Slip withdrawn. The Student will be notified.");
+      setNotice(
+        slip.void_notifies_student
+          ? "Call Slip withdrawn. The Student will be notified."
+          : "Call Slip withdrawn. No Student notification was sent because it was recorded as a historical entry.",
+      );
       await invalidate();
     } catch (caught) {
       if (callSlipErrorCode(caught) === "recent_mfa_required") {
@@ -343,7 +349,7 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
         setStepUpOpen(true);
       } else if (callSlipErrorCode(caught) === "call_slip_conflict" || uncertainCallSlipMutation(caught)) {
         const refreshed = await onRefresh();
-        if (refreshed?.state === "VOIDED") {
+        if (refreshed?.state === CallSlipLifecycleStateValue.VOIDED) {
           setOpen(false);
           setNotice("This Call Slip is withdrawn.");
           await invalidate();
@@ -370,7 +376,11 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
       <AlertDialog open={open} onOpenChange={(next) => { if (!mutation.isPending) setOpen(next); }}>
         <AlertDialogContent onEscapeKeyDown={(event) => { if (mutation.isPending) event.preventDefault(); }}>
           <AlertDialogTitle>Void this Call Slip?</AlertDialogTitle>
-          <AlertDialogDescription>The Student will be notified that this Call Slip has been withdrawn. This notification is sent even when the permit was originally entered as historical/back-entry.</AlertDialogDescription>
+          <AlertDialogDescription>
+            {slip.void_notifies_student
+              ? "The Student will be notified that this Call Slip has been withdrawn."
+              : "This Call Slip was recorded as a historical entry, so the Student will not be notified that it was withdrawn."}
+          </AlertDialogDescription>
           <div className="mt-4 grid gap-2"><Label htmlFor="call-slip-void-reason">Void reason</Label><Textarea id="call-slip-void-reason" rows={3} maxLength={1_000} required value={reason} disabled={mutation.isPending} onChange={(event) => setReason(event.target.value)} /><p className="text-xs text-muted">{reason.length} / 1,000 characters</p></div>
           {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
           <div className="mt-6 flex flex-wrap justify-end gap-2"><AlertDialogCancel asChild><Button variant="secondary" disabled={mutation.isPending}>Cancel</Button></AlertDialogCancel><Button variant="danger" disabled={mutation.isPending || !reason.trim()} onClick={() => void confirmVoid()}>{mutation.isPending ? "Voiding…" : "Void Call Slip"}</Button></div>

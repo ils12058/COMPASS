@@ -316,20 +316,21 @@ class GraduateTracerDraftPayload(StrictSchema):
     curriculum_improvement_suggestions: str = ""
 
 
+class GraduateTracerStudentSummary(StrictSchema):
+    id: UUID
+    institutional_id: str | None
+    display_name: str
+
+
 class GraduateTracerDetailResponse(GraduateTracerDraftPayload):
     id: UUID
     student_id: UUID
+    student: GraduateTracerStudentSummary
     instrument_schema_version: int
     status: GraduateTracerStatusValue
     submitted_at: datetime | None
     created_at: datetime
     updated_at: datetime
-
-
-class GraduateTracerStudentSummary(StrictSchema):
-    id: UUID
-    institutional_id: str | None
-    display_name: str
 
 
 class GraduateTracerSummaryResponse(StrictSchema):
@@ -425,10 +426,19 @@ def _training_rows(item) -> list[dict[str, object]]:
     ]
 
 
+def _student_summary(item) -> dict[str, object]:
+    return {
+        "id": item.student_id,
+        "institutional_id": item.student.institutional_id,
+        "display_name": item.student.get_full_name(),
+    }
+
+
 def _detail(item) -> dict[str, object]:
     return {
         "id": item.pk,
         "student_id": item.student_id,
+        "student": _student_summary(item),
         "instrument_schema_version": item.instrument_schema_version,
         "status": item.status,
         "submitted_at": item.submitted_at,
@@ -489,11 +499,7 @@ def _summary(item) -> dict[str, object]:
     return {
         "id": item.pk,
         "student_id": item.student_id,
-        "student": {
-            "id": item.student_id,
-            "institutional_id": item.student.institutional_id,
-            "display_name": item.student.get_full_name(),
-        },
+        "student": _student_summary(item),
         "name": item.name_snapshot,
         "current_employment_state": item.current_employment_state,
         "instrument_schema_version": item.instrument_schema_version,

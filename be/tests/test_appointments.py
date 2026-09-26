@@ -1544,3 +1544,55 @@ def test_managed_appointment_ordering_composes_with_search_filters_and_scope():
 
     invalid = client.get("/api/v1/appointments", {"ordering": "RANDOM"})
     assert invalid.status_code == 422
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_unexpected_booking_failure_releases_idempotency_reservation(monkeypatch):
+    from compass.appointments import api as appointments_api
+
+    sync_policy()
+    actor = make_user("unexpected-admin@example.edu", "IT_ADMIN")
+    student = make_user("unexpected-student@example.edu", "STUDENT")
+    provider = make_user("unexpected-provider@example.edu", "COUNSELOR")
+    service = active_service(actor)
+    configure_availability(actor, provider)
+    client = auth_client(student)
+    client.raise_request_exception = False
+    payload = json.dumps(
+        {
+            "service_id": str(service.pk),
+            "provider_id": str(provider.pk),
+            "delivery_mode": "IN_PERSON",
+            "starts_at": future_local_start().isoformat(),
+        },
+        separators=(",", ":"),
+    )
+    key = f"unexpected-booking-{uuid.uuid4()}"
+    original = appointments_api.create_student_appointment
+
+    def fail_once(**kwargs):
+        monkeypatch.setattr(appointments_api, "create_student_appointment", original)
+        raise RuntimeError("unexpected database outage")
+
+    monkeypatch.setattr(appointments_api, "create_student_appointment", fail_once)
+    headers = csrf(client)
+
+    failed = client.post(
+        "/api/v1/appointments",
+        data=payload,
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY=key,
+        **headers,
+    )
+    assert failed.status_code == 500
+
+    retried = client.post(
+        "/api/v1/appointments",
+        data=payload,
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY=key,
+        **headers,
+    )
+    assert retried.status_code == 201
+    assert Appointment.objects.count() == 1

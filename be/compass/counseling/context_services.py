@@ -306,7 +306,13 @@ def list_context_history(
             kind="REFERRAL",
             occurred_at=item.received_at or item.created_at,
             title="Referral",
-            status="RECEIVED" if item.received_at is not None else "RECORDED",
+            status=(
+                "VOIDED"
+                if item.voided_at is not None
+                else "RECEIVED"
+                if item.received_at is not None
+                else "RECORDED"
+            ),
             reference_code=item.reference_code,
         )
         for item in referrals
@@ -323,7 +329,13 @@ def list_context_history(
             kind="CALL_SLIP",
             occurred_at=item.report_at,
             title="Call Slip",
-            status="ENDED" if item.interview_ended_at is not None else "PENDING",
+            status=(
+                "VOIDED"
+                if item.voided_at is not None
+                else "ENDED"
+                if item.interview_ended_at is not None
+                else "PENDING"
+            ),
             provider_id=item.issued_by_id,
             provider_display_name=item.issued_by.get_full_name(),
         )

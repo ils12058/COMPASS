@@ -1,4 +1,6 @@
-type CapabilityUser = { capabilities: readonly string[] };
+import type { CapabilityCode } from "@/lib/api/generated/model";
+
+type CapabilityUser = { capabilities: readonly CapabilityCode[] };
 
 // Privacy Governance follows effective capabilities, never the DPO designation
 // itself (ADR-045, ADR-061). The backend still authorizes every operation.

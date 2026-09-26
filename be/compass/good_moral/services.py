@@ -123,6 +123,7 @@ def _queryset():
         "form_revision",
         "form_revision__family",
         "issued_by",
+        "cancelled_by",
     )
 
 
@@ -310,7 +311,10 @@ def create_my_current_student(
 
     with transaction.atomic():
         locked_student = (
-            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
         )
         if locked_student is None:
             raise GoodMoralNotFound("The Student account was not found.")
@@ -388,7 +392,10 @@ def create_my_graduate(
 
     with transaction.atomic():
         locked_student = (
-            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
         )
         if locked_student is None:
             raise GoodMoralNotFound("The Student account was not found.")
@@ -697,7 +704,7 @@ def issue_request(
 
         if item.variant == GoodMoralVariant.CURRENT_STUDENT:
             locked_student = (
-                User.objects.select_for_update()
+                User.objects.select_for_update(of=("self",))
                 .select_related("role")
                 .filter(pk=item.student_id)
                 .first()

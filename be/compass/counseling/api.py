@@ -10,6 +10,7 @@ from uuid import UUID
 from ninja import Router, Schema
 from pydantic import ConfigDict
 
+from compass.appointments.api import AppointmentStatus
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
@@ -143,7 +144,7 @@ class CounselingAppointmentCandidate(StrictSchema):
     delivery_mode: DeliveryMode
     starts_at: datetime
     ends_at: datetime
-    status: str
+    status: AppointmentStatus
 
 
 class CounselingAppointmentCandidatePage(StrictSchema):
@@ -159,7 +160,7 @@ class CounselingEncounterAppointmentCandidate(StrictSchema):
     delivery_mode: DeliveryMode
     starts_at: datetime
     ends_at: datetime
-    status: str
+    status: AppointmentStatus
 
 
 class CounselingEncounterAppointmentCandidatePage(StrictSchema):

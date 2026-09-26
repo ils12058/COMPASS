@@ -342,6 +342,14 @@ the Compose services when deployment automation is introduced.
 - Audit events are synchronous PostgreSQL writes through one explicit service. They carry the
   existing request ID, trusted client IP, bounded user-agent summary, actor, outcome, target, and
   small deliberate metadata; they do not replace operational logging.
+- Row locks use `select_for_update(of=("self",))` unless a joined parent row is deliberately part
+  of the serialization. External network calls, such as PSGC resolution, run before locks are
+  taken and are revalidated under the lock (ADR-062).
+- Database integrity and data errors map by PostgreSQL SQLSTATE: unique, foreign-key, and exclusion
+  violations return 409; check violations and data errors return 422; anything else is logged and
+  returns the generic 500. Error codes come from exception types, never from message text.
+- Eligibility projections such as Appointment `actions`, `counseling_context_available`, email
+  `manual_retry_allowed`, and notice `publish_readiness` are advisory. Every mutation revalidates.
 
 ## Decisions
 
@@ -489,3 +497,8 @@ default.
 Appointments now support bounded slot discovery, rescheduling, reassignment, completion, no-show,
 notifications, and the related Counseling and E-Counseling workflows. There is no generic
 Appointment PATCH/DELETE or persisted slot table.
+
+Appointment detail projects the lifecycle `actions` available to the requesting actor, each with a
+closed `blocker` when unavailable, and `counseling_context_available` for the assigned Counselor.
+Both list routes accept `upcoming=true` (SCHEDULED and not yet started), which is the population
+counted on the Overview.

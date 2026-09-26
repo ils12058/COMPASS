@@ -67,6 +67,17 @@ class PrivacyActivityCategory(StrEnum):
     PRIVACY_GOVERNANCE = "PRIVACY_GOVERNANCE"
 
 
+class PrivacyActivityArtifactType(StrEnum):
+    GRADUATE_TRACER = "graduate_tracer"
+    STUDENT_PROFILING = "student_profiling"
+    GOOD_MORAL_CERTIFICATE = "good_moral_certificate"
+
+
+class PrivacyActivityArtifactFormat(StrEnum):
+    PDF = "PDF"
+    XLSX = "XLSX"
+
+
 class PrivacyActivityPaginationError(ValueError):
     pass
 
@@ -80,8 +91,8 @@ class PrivacyActivityItem:
     description: str
     occurred_at: datetime
     actor_display_name: str | None
-    artifact_type: str | None
-    artifact_format: str | None
+    artifact_type: PrivacyActivityArtifactType | None
+    artifact_format: PrivacyActivityArtifactFormat | None
     scope: str | None
     resource_reference: str | None
 
@@ -118,8 +129,8 @@ def _base(
     title: str,
     description: str,
     actor_proven: bool = True,
-    artifact_type: str | None = None,
-    artifact_format: str | None = None,
+    artifact_type: PrivacyActivityArtifactType | None = None,
+    artifact_format: PrivacyActivityArtifactFormat | None = None,
     scope: str | None = None,
     resource_reference: str | None = None,
 ) -> PrivacyActivityItem:
@@ -180,8 +191,8 @@ def _graduate_tracer_report_release(event: AuditEvent) -> PrivacyActivityItem | 
         description=(
             "COMPASS authorized and prepared an aggregate Graduate Tracer report response."
         ),
-        artifact_type="graduate_tracer",
-        artifact_format="XLSX",
+        artifact_type=PrivacyActivityArtifactType.GRADUATE_TRACER,
+        artifact_format=PrivacyActivityArtifactFormat.XLSX,
         scope="; ".join(scope_parts),
         resource_reference=f"schema-v{schema_version}",
     )
@@ -227,8 +238,8 @@ def _report_release(event: AuditEvent) -> PrivacyActivityItem | None:
         category=PrivacyActivityCategory.DATA_RELEASE,
         title=f"Student Profiling {artifact_format} released",
         description=("COMPASS authorized and prepared a Student Profiling artifact response."),
-        artifact_type="student_profiling",
-        artifact_format=str(artifact_format),
+        artifact_type=PrivacyActivityArtifactType.STUDENT_PROFILING,
+        artifact_format=PrivacyActivityArtifactFormat(artifact_format),
         scope="; ".join(scope_parts),
         resource_reference=resource,
     )
@@ -254,8 +265,8 @@ def _document_release(event: AuditEvent) -> PrivacyActivityItem | None:
         category=PrivacyActivityCategory.DATA_RELEASE,
         title="Good Moral certificate released",
         description="COMPASS authorized and prepared a Good Moral certificate response.",
-        artifact_type="good_moral_certificate",
-        artifact_format="PDF",
+        artifact_type=PrivacyActivityArtifactType.GOOD_MORAL_CERTIFICATE,
+        artifact_format=PrivacyActivityArtifactFormat.PDF,
         scope=f"Access {access_mode}; Variant {variant}",
         resource_reference=resource,
     )

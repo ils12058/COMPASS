@@ -8,6 +8,7 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
+from compass.accounts.policy import CAPABILITY_CODES
 from compass.api.contract import (
     CURRENT_API_TAGS,
     OPERATION_ID_PATTERN,
@@ -913,9 +914,12 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     user_summary = schemas["UserSummary"]["properties"]
     assert "student_lifecycle_status" in user_summary
     assert user_summary["designations"]["type"] == "array"
-    assert user_summary["designations"]["items"]["type"] == "string"
+    assert user_summary["designations"]["items"]["$ref"].endswith("/DesignationCode")
     assert user_summary["capabilities"]["type"] == "array"
-    assert user_summary["capabilities"]["items"]["type"] == "string"
+    assert user_summary["capabilities"]["items"]["$ref"].endswith("/CapabilityCode")
+    assert user_summary["role"]["$ref"].endswith("/RoleCode")
+    # Session typing reuses the canonical code-owned enums; it never becomes a second policy list.
+    assert set(schemas["CapabilityCode"]["enum"]) == set(CAPABILITY_CODES)
     assert {
         "college_ids",
         "student_ids",

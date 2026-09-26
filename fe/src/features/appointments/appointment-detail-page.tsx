@@ -27,12 +27,15 @@ import {
   formatAppointmentTime,
 } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
-import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { CompassApiError } from "@/lib/api/errors";
+import { isCounselingService } from "@/features/counseling/canonical-counseling-service";
 import {
+  AppointmentActionBlocker,
   AppointmentStatus,
   DeliveryMode,
+  type AppointmentActionsResponse,
   type BookableSlotResponse,
 } from "@/lib/api/generated/model";
 import {
@@ -106,6 +109,35 @@ function eventContext(entry: {
     return previous && next ? `${previous} → ${next}` : next ?? previous ?? null;
   }
   return null;
+}
+
+const actionNames: Record<keyof AppointmentActionsResponse, string> = {
+  cancel: "Cancel",
+  reschedule: "Reschedule",
+  reassign: "Reassign counselor",
+  complete: "Complete",
+  mark_no_show: "Mark no-show",
+};
+
+// NOT_PERMITTED and NOT_SCHEDULED are not explained here: the actor's access and the
+// status badge already say why nothing can be changed.
+const blockerExplanations: Partial<Record<AppointmentActionBlocker, string>> = {
+  [AppointmentActionBlocker.ALREADY_STARTED]: "The Appointment has already started.",
+  [AppointmentActionBlocker.NOT_STARTED]: "Available once the Appointment starts.",
+  [AppointmentActionBlocker.NOT_ENDED]: "Available once the Appointment ends.",
+  [AppointmentActionBlocker.CUTOFF_PASSED]: "The self-service cutoff saved with this Appointment has passed.",
+  [AppointmentActionBlocker.CURRENT_STUDENT_REQUIRED]: "Only a current Student can reschedule an Appointment.",
+  [AppointmentActionBlocker.ECOUNSELING_ROOM_LINKED]: "An E-Counseling room is already linked to this Appointment.",
+  [AppointmentActionBlocker.ROUTINE_INTERVIEW_LINKED]: "A Routine Interview is already linked to this Appointment.",
+  [AppointmentActionBlocker.COUNSELING_ENCOUNTER_LINKED]: "A Counseling encounter is already linked to this Appointment.",
+};
+
+function unavailableActions(actions: AppointmentActionsResponse): { action: string; reason: string }[] {
+  return (Object.keys(actionNames) as (keyof AppointmentActionsResponse)[]).flatMap((name) => {
+    const { allowed, blocker } = actions[name];
+    const reason = !allowed && blocker ? blockerExplanations[blocker] : undefined;
+    return reason ? [{ action: actionNames[name], reason }] : [];
+  });
 }
 
 function ActionConfirmation({
@@ -182,7 +214,6 @@ function ActionConfirmation({
 function DetailContent({ appointmentId }: { appointmentId: string }) {
   const { user } = usePortalSession();
   const access = getAppointmentAccess(user);
-  const counselingAccess = getCounselingAccess(user);
   const ecounselingAccess = getECounselingAccess(user);
   const queryClient = useQueryClient();
   const appointmentQuery = useAppointmentsGet(appointmentId, { query: { retry: false } });
@@ -209,20 +240,23 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const [notice, setNotice] = useState<string | null>(null);
 
   const appointment = appointmentQuery.data?.data;
-  const isScheduled = appointment?.status === AppointmentStatus.SCHEDULED;
   const adminActor = access.canManage && !access.isStudent;
-  const canCancelSelf = access.isStudent && access.canManageSelf && isScheduled;
-  const canRescheduleSelf = access.isStudent && access.canRescheduleSelf && isScheduled;
-  const canAdminister = adminActor && isScheduled;
-  const canCancel = canCancelSelf || canAdminister;
-  const canReschedule = canRescheduleSelf || canAdminister;
+  // COMPASS projects availability for this actor with server time and linked records.
+  // Every mutation still revalidates, so conflicts refresh the Appointment below.
+  const actions = appointment?.actions;
+  const canCancel = actions?.cancel.allowed === true;
+  const canReschedule = actions?.reschedule.allowed === true;
+  const canReassign = actions?.reassign.allowed === true;
+  const canComplete = actions?.complete.allowed === true;
+  const canMarkNoShow = actions?.mark_no_show.allowed === true;
+  const unavailable = actions ? unavailableActions(actions) : [];
 
   const rescheduleSlots = useAppointmentsListRescheduleSlots(
     appointmentId,
     { date: rescheduleDate || "1970-01-01" },
     {
       query: {
-        enabled: Boolean(appointment && canReschedule && rescheduleOpen && rescheduleDate && isScheduled),
+        enabled: Boolean(appointment && canReschedule && rescheduleOpen && rescheduleDate),
         retry: false,
       },
     },
@@ -234,7 +268,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
 
   const candidates = useAppointmentsListReassignmentCandidates(appointmentId, {
     query: {
-      enabled: Boolean(appointment && canAdminister && reassignmentOpen),
+      enabled: Boolean(appointment && canReassign && reassignmentOpen),
       retry: false,
     },
   });
@@ -286,6 +320,10 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       return;
     }
     setError({ scope, message: appointmentErrorMessage(caught, fallback) });
+    if (caught instanceof CompassApiError && caught.status === 409) {
+      // Availability changed after this page loaded; show the current state and actions.
+      void refreshAppointmentQueries();
+    }
   }
 
   async function confirmMutation() {
@@ -437,11 +475,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         title="Appointment details"
       />
 
-      {counselingAccess.isCounselor &&
-      (counselingAccess.canViewAssigned || counselingAccess.canManageAssigned) &&
-      appointment.service.code === "COUNSELING" &&
-      appointment.provider.id === user.id &&
-      (appointment.status === AppointmentStatus.SCHEDULED || appointment.status === AppointmentStatus.COMPLETED) ? (
+      {appointment.counseling_context_available ? (
         <p className="mb-4">
           <Link href={`/portal/counseling/workspace/appointment/${appointment.id}`} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
             Open Counseling workspace
@@ -450,7 +484,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       ) : null}
 
       {appointment.status === AppointmentStatus.SCHEDULED &&
-      appointment.service.code === "COUNSELING" &&
+      isCounselingService(appointment.service) &&
       appointment.delivery_mode === DeliveryMode.ONLINE &&
       ((ecounselingAccess.isStudent && ecounselingAccess.canViewSelf && appointment.student.id === user.id) ||
         (ecounselingAccess.isCounselor && ecounselingAccess.canViewAssigned && appointment.provider.id === user.id)) ? (
@@ -485,19 +519,34 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         {appointment.no_show_at ? <div><dt className="text-xs font-semibold text-muted">Marked no-show</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.no_show_at)}</dd></div> : null}
       </dl>
 
-      {(canCancel || canReschedule || canAdminister) ? (
+      {(canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || unavailable.length > 0) ? (
         <section aria-labelledby="appointment-actions-heading" className="border-b border-border py-6">
           <h2 id="appointment-actions-heading" className="font-heading text-xl font-semibold text-ink">Appointment actions</h2>
-          {canRescheduleSelf && appointment.cancellation_cutoff_minutes !== null ? (
+          {access.isStudent && canReschedule && appointment.cancellation_cutoff_minutes !== null ? (
             <p className="mt-2 max-w-3xl text-sm text-muted">Rescheduling is subject to the cutoff saved with this Appointment. COMPASS confirms whether a change is still allowed when you submit.</p>
           ) : null}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {canCancel ? <Button variant="danger" disabled={pending} onClick={() => { setError(null); setConfirmAction("cancel"); }}>Cancel appointment</Button> : null}
-            {canReschedule ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setRescheduleSlotStart(""); setNotice(null); setRescheduleOpen((open) => !open); }}>{rescheduleOpen ? "Close reschedule" : "Reschedule appointment"}</Button> : null}
-            {canAdminister ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setNotice(null); setReassignmentOpen((open) => !open); }}>{reassignmentOpen ? "Close reassignment" : "Reassign counselor"}</Button> : null}
-            {canAdminister ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button> : null}
-            {canAdminister ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setConfirmAction("no-show"); }}>Mark no-show</Button> : null}
-          </div>
+          {canCancel || canReschedule || canReassign || canComplete || canMarkNoShow ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {canCancel ? <Button variant="danger" disabled={pending} onClick={() => { setError(null); setConfirmAction("cancel"); }}>Cancel appointment</Button> : null}
+              {canReschedule ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setRescheduleSlotStart(""); setNotice(null); setRescheduleOpen((open) => !open); }}>{rescheduleOpen ? "Close reschedule" : "Reschedule appointment"}</Button> : null}
+              {canReassign ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setNotice(null); setReassignmentOpen((open) => !open); }}>{reassignmentOpen ? "Close reassignment" : "Reassign counselor"}</Button> : null}
+              {canComplete ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button> : null}
+              {canMarkNoShow ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setConfirmAction("no-show"); }}>Mark no-show</Button> : null}
+            </div>
+          ) : null}
+          {error && ((error.scope === "reschedule" && !canReschedule) || (error.scope === "reassign" && !canReassign)) ? (
+            <p role="alert" className="mt-4 text-sm text-danger">{error.message}</p>
+          ) : null}
+          {unavailable.length > 0 ? (
+            <div className="mt-4 max-w-3xl">
+              <h3 className="text-sm font-semibold text-ink">Not available right now</h3>
+              <ul className="mt-2 space-y-1 text-sm text-muted">
+                {unavailable.map((item) => (
+                  <li key={item.action}><span className="font-semibold text-ink">{item.action}:</span> {item.reason}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           {canReschedule && rescheduleOpen ? (
             <form onSubmit={submitReschedule} className="mt-6 max-w-3xl border-t border-border pt-5">
@@ -570,7 +619,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
             </form>
           ) : null}
 
-          {canAdminister && reassignmentOpen ? (
+          {canReassign && reassignmentOpen ? (
             <form onSubmit={submitReassignment} className="mt-6 max-w-3xl border-t border-border pt-5">
               <h3 className="font-heading text-lg font-semibold text-ink">Reassign counselor</h3>
               <p className="mt-3 text-sm text-muted"><span className="font-semibold text-ink">Current counselor:</span> {appointment.provider.display_name}</p>
@@ -642,7 +691,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       <ActionConfirmation
         action={confirmAction}
         busy={pending}
-        selfCancellation={canCancelSelf}
+        selfCancellation={access.isStudent}
         referenceCode={appointment.reference_code}
         error={error?.scope === "confirm" ? error.message : null}
         onClose={() => setConfirmAction(null)}

@@ -263,6 +263,10 @@ export function PaginationControls({
   );
 }
 
+// A list view rather than an Appointment status: Scheduled and not yet started by COMPASS
+// server time. It is the population the Overview counts as upcoming.
+export const UPCOMING_APPOINTMENTS_VIEW = "UPCOMING";
+
 export function updateAppointmentQuery(
   pathname: string,
   current: URLSearchParams,

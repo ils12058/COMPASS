@@ -267,35 +267,37 @@ def list_student_support_students(
     if indicator is not None:
         if indicator not in indicator_codes:
             raise StudentSupportConfigurationConflict("indicator is not supported.")
-        inventory_filter = {
-            "individual_inventories__academic_year_id": year.pk,
-            "individual_inventories__submitted_at__isnull": False,
-        }
-        queryset = queryset.filter(**inventory_filter)
-        if indicator == "PWD":
-            queryset = queryset.filter(individual_inventories__pwd_status=PWDStatus.PWD)
-        elif indicator == "SOLO_PARENT":
-            queryset = queryset.filter(
-                individual_inventories__civil_status_category=CivilStatusCategory.SOLO_PARENT
-            )
-        elif indicator == "FOUR_PS_BENEFICIARY":
-            queryset = queryset.filter(
-                individual_inventories__support_profile__four_ps_status=FourPsStatus.BENEFICIARY
-            )
-        elif indicator == "INDIGENOUS_PEOPLES_MEMBER":
-            queryset = queryset.filter(
-                individual_inventories__support_profile__indigenous_peoples_status=(
+        indicator_condition = {
+            "PWD": {"individual_inventories__pwd_status": PWDStatus.PWD},
+            "SOLO_PARENT": {
+                "individual_inventories__civil_status_category": CivilStatusCategory.SOLO_PARENT
+            },
+            "FOUR_PS_BENEFICIARY": {
+                "individual_inventories__support_profile__four_ps_status": FourPsStatus.BENEFICIARY
+            },
+            "INDIGENOUS_PEOPLES_MEMBER": {
+                "individual_inventories__support_profile__indigenous_peoples_status": (
                     IndigenousPeoplesStatus.MEMBER
                 )
-            )
-        elif indicator == "MOTHER_DECEASED":
-            queryset = queryset.filter(
-                individual_inventories__support_profile__mother_life_status=ParentLifeStatus.DECEASED
-            )
-        elif indicator == "FATHER_DECEASED":
-            queryset = queryset.filter(
-                individual_inventories__support_profile__father_life_status=ParentLifeStatus.DECEASED
-            )
+            },
+            "MOTHER_DECEASED": {
+                "individual_inventories__support_profile__mother_life_status": (
+                    ParentLifeStatus.DECEASED
+                )
+            },
+            "FATHER_DECEASED": {
+                "individual_inventories__support_profile__father_life_status": (
+                    ParentLifeStatus.DECEASED
+                )
+            },
+        }[indicator]
+        # One filter() call keeps every condition on the same current submitted Inventory row;
+        # separate calls would join any prior-year or draft Inventory for the indicator.
+        queryset = queryset.filter(
+            individual_inventories__academic_year_id=year.pk,
+            individual_inventories__submitted_at__isnull=False,
+            **indicator_condition,
+        )
 
     queryset = queryset.order_by("last_name", "first_name", "id").distinct()
     offset = (page - 1) * page_size

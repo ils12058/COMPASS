@@ -7,6 +7,7 @@ import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
@@ -50,6 +51,11 @@ REVIEW_TARGET = "privacy.review"
 INCIDENT_TARGET = "privacy.incident"
 
 _CODE_RE = re.compile(r"^[A-Z0-9][A-Z0-9._-]{1,63}$", re.ASCII)
+ACTIVE_INCIDENT_STATUSES = (
+    PrivacyIncidentStatus.OPEN,
+    PrivacyIncidentStatus.ASSESSING,
+    PrivacyIncidentStatus.CONTAINED,
+)
 _STATUS_RANK = {
     PrivacyIncidentStatus.OPEN: 0,
     PrivacyIncidentStatus.ASSESSING: 1,
@@ -66,8 +72,32 @@ class PrivacyRecordNotFound(PrivacyGovernanceError):
     pass
 
 
+class PrivacyConflictCode(StrEnum):
+    """Stable conflict classes for the recoveries a Privacy Governance client must choose."""
+
+    GENERAL = "privacy_governance_conflict"
+    CODE_IN_USE = "privacy_code_in_use"
+    RETENTION_POLICY_IN_USE = "privacy_retention_policy_in_use"
+    RETENTION_POLICY_RETIRED = "privacy_retention_policy_retired"
+    NOTICE_RETIRED = "privacy_notice_retired"
+    NOTICE_DRAFT_EXISTS = "privacy_notice_draft_exists"
+    NOTICE_REVISION_IMMUTABLE = "privacy_notice_revision_immutable"
+    NOTICE_NOT_YET_EFFECTIVE = "privacy_notice_not_yet_effective"
+    NOTICE_REVISION_NOT_CURRENT = "privacy_notice_revision_not_current"
+    NOTICE_ACKNOWLEDGMENT_NOT_APPLICABLE = "privacy_notice_acknowledgment_not_applicable"
+    RECORD_RESOLVED = "privacy_record_resolved"
+    INCIDENT_STATUS_INVALID = "privacy_incident_status_invalid"
+
+
 class PrivacyConflict(PrivacyGovernanceError):
-    pass
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: PrivacyConflictCode = PrivacyConflictCode.GENERAL,
+    ) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 class PrivacyInputError(PrivacyGovernanceError):
@@ -220,7 +250,10 @@ def create_processing_activity(
     with transaction.atomic():
         policy = _assignable_retention_policy(retention_policy_id)
         if ProcessingActivity.objects.filter(code=cleaned_code).exists():
-            raise PrivacyConflict("processing activity code already exists")
+            raise PrivacyConflict(
+                "processing activity code already exists",
+                code=PrivacyConflictCode.CODE_IN_USE,
+            )
         item = ProcessingActivity(
             code=cleaned_code,
             name=_clean_required(name, label="name", maximum=160),
@@ -260,7 +293,10 @@ def create_processing_activity(
         try:
             item.save()
         except IntegrityError as exc:
-            raise PrivacyConflict("processing activity code already exists") from exc
+            raise PrivacyConflict(
+                "processing activity code already exists",
+                code=PrivacyConflictCode.CODE_IN_USE,
+            ) from exc
         record_event(
             context=context,
             action=PRIVACY_PROCESSING_CREATED,
@@ -350,7 +386,10 @@ def _assignable_retention_policy(policy_id: UUID | None) -> RetentionPolicy | No
     if policy is None:
         raise PrivacyRecordNotFound("retention policy was not found")
     if not policy.is_active:
-        raise PrivacyConflict("retired retention policy cannot be assigned")
+        raise PrivacyConflict(
+            "retired retention policy cannot be assigned",
+            code=PrivacyConflictCode.RETENTION_POLICY_RETIRED,
+        )
     return policy
 
 
@@ -397,13 +436,7 @@ def count_open_reviews(actor: User) -> int | None:
 def count_active_incidents(actor: User) -> int | None:
     if not privacy_overview_access_allowed(actor):
         return None
-    return PrivacyIncident.objects.filter(
-        status__in=(
-            PrivacyIncidentStatus.OPEN,
-            PrivacyIncidentStatus.ASSESSING,
-            PrivacyIncidentStatus.CONTAINED,
-        )
-    ).count()
+    return PrivacyIncident.objects.filter(status__in=ACTIVE_INCIDENT_STATUSES).count()
 
 
 def get_privacy_review(review_id: UUID) -> PrivacyReview:
@@ -534,7 +567,7 @@ def update_privacy_review(
 
     with transaction.atomic():
         item = (
-            PrivacyReview.objects.select_for_update()
+            PrivacyReview.objects.select_for_update(of=("self",))
             .select_related("processing_activity", "reviewed_by")
             .filter(pk=review_id)
             .first()
@@ -542,7 +575,10 @@ def update_privacy_review(
         if item is None:
             raise PrivacyRecordNotFound("privacy review was not found")
         if item.status == PrivacyReviewStatus.RESOLVED:
-            raise PrivacyConflict("resolved privacy reviews cannot be edited")
+            raise PrivacyConflict(
+                "resolved privacy reviews cannot be edited",
+                code=PrivacyConflictCode.RECORD_RESOLVED,
+            )
 
         cleaned: dict[str, object] = {}
         for field, value in changes.items():
@@ -582,7 +618,7 @@ def resolve_privacy_review(
     current = now or timezone.now()
     with transaction.atomic():
         item = (
-            PrivacyReview.objects.select_for_update()
+            PrivacyReview.objects.select_for_update(of=("self",))
             .select_related("processing_activity", "reviewed_by")
             .filter(pk=review_id)
             .first()
@@ -590,7 +626,10 @@ def resolve_privacy_review(
         if item is None:
             raise PrivacyRecordNotFound("privacy review was not found")
         if item.status == PrivacyReviewStatus.RESOLVED:
-            raise PrivacyConflict("privacy review is already resolved")
+            raise PrivacyConflict(
+                "privacy review is already resolved",
+                code=PrivacyConflictCode.RECORD_RESOLVED,
+            )
         item.status = PrivacyReviewStatus.RESOLVED
         item.resolution_summary = resolution
         item.resolved_at = current
@@ -634,9 +673,14 @@ def list_privacy_incidents(
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     status: str | None = None,
+    active: bool | None = None,
 ) -> IncidentPage:
     page, page_size = _validate_page(page=page, page_size=page_size)
     queryset = PrivacyIncident.objects.order_by("-created_at", "-id")
+    if active is True:
+        queryset = queryset.filter(status__in=ACTIVE_INCIDENT_STATUSES)
+    elif active is False:
+        queryset = queryset.exclude(status__in=ACTIVE_INCIDENT_STATUSES)
     if status is not None:
         normalized = str(status).strip().upper()
         if normalized not in PrivacyIncidentStatus.values:
@@ -731,9 +775,15 @@ def _validate_incident_status_transition(current: str, requested: str) -> None:
     if requested not in PrivacyIncidentStatus.values:
         raise PrivacyInputError("incident status is not supported")
     if requested == PrivacyIncidentStatus.RESOLVED:
-        raise PrivacyConflict("use the resolve operation to resolve a privacy incident")
+        raise PrivacyConflict(
+            "use the resolve operation to resolve a privacy incident",
+            code=PrivacyConflictCode.INCIDENT_STATUS_INVALID,
+        )
     if _STATUS_RANK[requested] < _STATUS_RANK[current]:
-        raise PrivacyConflict("privacy incident status cannot move backward")
+        raise PrivacyConflict(
+            "privacy incident status cannot move backward",
+            code=PrivacyConflictCode.INCIDENT_STATUS_INVALID,
+        )
 
 
 def update_privacy_incident(
@@ -766,7 +816,10 @@ def update_privacy_incident(
         if item is None:
             raise PrivacyRecordNotFound("privacy incident was not found")
         if item.status == PrivacyIncidentStatus.RESOLVED:
-            raise PrivacyConflict("resolved privacy incidents cannot be edited")
+            raise PrivacyConflict(
+                "resolved privacy incidents cannot be edited",
+                code=PrivacyConflictCode.RECORD_RESOLVED,
+            )
 
         cleaned: dict[str, object] = {}
         for field, value in changes.items():
@@ -837,7 +890,10 @@ def resolve_privacy_incident(
         if item is None:
             raise PrivacyRecordNotFound("privacy incident was not found")
         if item.status == PrivacyIncidentStatus.RESOLVED:
-            raise PrivacyConflict("privacy incident is already resolved")
+            raise PrivacyConflict(
+                "privacy incident is already resolved",
+                code=PrivacyConflictCode.RECORD_RESOLVED,
+            )
         from_status = item.status
         item.status = PrivacyIncidentStatus.RESOLVED
         item.resolved_at = current
@@ -864,7 +920,9 @@ __all__ = [
     "MAX_CATEGORY_ITEMS",
     "MAX_PAGE_SIZE",
     "PROCESSING_TARGET",
+    "ACTIVE_INCIDENT_STATUSES",
     "PrivacyConflict",
+    "PrivacyConflictCode",
     "PrivacyGovernanceError",
     "PrivacyInputError",
     "PrivacyRecordNotFound",

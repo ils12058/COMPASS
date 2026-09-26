@@ -38,10 +38,18 @@ function addMetric(
   if (value !== null && value !== undefined) metrics.push({ label, value, href });
 }
 
+// The Overview counts Scheduled Appointments that have not started; these links open that
+// same population rather than every Scheduled Appointment.
+const MY_UPCOMING_APPOINTMENTS = "/portal/appointments/my?status=UPCOMING";
+const MANAGED_UPCOMING_APPOINTMENTS = "/portal/appointments/manage?status=UPCOMING";
+// Submitted intake with an evaluation that is not finalized, as counted on the Overview.
+export const PENDING_ROUTINE_EVALUATIONS = "/portal/routine-interviews?intake_status=SUBMITTED&evaluation_status=DRAFT";
+export const REQUESTED_GOOD_MORAL = "/portal/good-moral?status=REQUESTED";
+
 function appointmentHref(user: UserSummary): string | undefined {
   const access = getAppointmentAccess(user);
-  if (access.canViewSelf) return "/portal/appointments/my";
-  if (access.canManage) return "/portal/appointments/manage";
+  if (access.canViewSelf) return MY_UPCOMING_APPOINTMENTS;
+  if (access.canManage) return MANAGED_UPCOMING_APPOINTMENTS;
   return undefined;
 }
 
@@ -79,7 +87,7 @@ export function getOverviewMetrics(
       metrics,
       "Active Call Slips",
       summary.student.active_call_slip_count,
-      callSlipAccess.hasWorkspace ? "/portal/call-slips" : undefined,
+      callSlipAccess.hasWorkspace ? "/portal/call-slips?state=ACTIVE" : undefined,
     );
   }
 
@@ -88,31 +96,31 @@ export function getOverviewMetrics(
       metrics,
       "Your upcoming appointments",
       summary.guidance.upcoming_self_appointments_count,
-      getAppointmentAccess(user).canViewSelf ? "/portal/appointments/my" : undefined,
+      getAppointmentAccess(user).canViewSelf ? MY_UPCOMING_APPOINTMENTS : undefined,
     );
     addMetric(
       metrics,
       "Upcoming managed appointments",
       summary.guidance.upcoming_managed_appointments_count,
-      getAppointmentAccess(user).canManage ? "/portal/appointments/manage" : undefined,
+      getAppointmentAccess(user).canManage ? MANAGED_UPCOMING_APPOINTMENTS : undefined,
     );
     addMetric(
       metrics,
       "Routine evaluations pending",
       summary.guidance.routine_evaluation_pending_count,
-      routineAccess.hasWorkspace ? "/portal/routine-interviews" : undefined,
+      routineAccess.hasWorkspace ? PENDING_ROUTINE_EVALUATIONS : undefined,
     );
     addMetric(
       metrics,
       "Good Moral requests",
       summary.guidance.good_moral_requested_count,
-      goodMoralAccess.hasWorkspace ? "/portal/good-moral" : undefined,
+      goodMoralAccess.hasWorkspace ? REQUESTED_GOOD_MORAL : undefined,
     );
     addMetric(
       metrics,
       "Active Call Slips",
       summary.guidance.active_call_slip_count,
-      callSlipAccess.hasWorkspace ? "/portal/call-slips" : undefined,
+      callSlipAccess.hasWorkspace ? "/portal/call-slips?state=ACTIVE" : undefined,
     );
   }
 
@@ -127,8 +135,6 @@ export function getOverviewMetrics(
   }
 
   if (summary.privacy) {
-    // Active incidents have no single backend status filter, so that metric
-    // opens the unfiltered incident list.
     const hasPrivacy = hasPrivacyGovernanceWorkspace(user);
     addMetric(
       metrics,
@@ -140,7 +146,7 @@ export function getOverviewMetrics(
       metrics,
       "Active privacy incidents",
       summary.privacy.active_incident_count,
-      hasPrivacy ? "/portal/privacy/incidents" : undefined,
+      hasPrivacy ? "/portal/privacy/incidents?status=ACTIVE" : undefined,
     );
   }
 
@@ -264,7 +270,7 @@ export function getOverviewUpcomingItems(
   ) {
     items.push({
       message: "You have " + countLabel(summary.student.upcoming_appointments_count, "appointment") + ".",
-      href: "/portal/appointments/my",
+      href: MY_UPCOMING_APPOINTMENTS,
       linkLabel: "View appointments",
     });
   }
@@ -273,7 +279,7 @@ export function getOverviewUpcomingItems(
       summary.guidance.upcoming_self_appointments_count > 0 && access.canViewSelf) {
     items.push({
       message: "You have " + countLabel(summary.guidance.upcoming_self_appointments_count, "appointment") + ".",
-      href: "/portal/appointments/my",
+      href: MY_UPCOMING_APPOINTMENTS,
       linkLabel: "View your appointments",
     });
   }
@@ -287,7 +293,7 @@ export function getOverviewUpcomingItems(
         countLabel(count, "appointment") +
         (count === 1 ? " is" : " are") +
         " in your managed scope.",
-      href: "/portal/appointments/manage",
+      href: MANAGED_UPCOMING_APPOINTMENTS,
       linkLabel: "Open managed appointments",
     });
   }

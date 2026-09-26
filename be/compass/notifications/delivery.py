@@ -54,7 +54,7 @@ def claim_email_delivery(
     current = now or timezone.now()
     with transaction.atomic():
         delivery = (
-            EmailDelivery.objects.select_for_update()
+            EmailDelivery.objects.select_for_update(of=("self",))
             .select_related("notification__recipient")
             .filter(pk=delivery_id)
             .first()
