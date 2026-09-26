@@ -3218,7 +3218,6 @@
           "graduate_tracer.view",
           "graduate_tracer.view_self",
           "institutional_designations.manage",
-          "institutional_forms.manage",
           "institutional_forms.view",
           "inventory.manage_self",
           "inventory.reopen",
@@ -8985,30 +8984,6 @@
         "title": "FormRevisionListResponse",
         "type": "object"
       },
-      "FormRevisionRegisterRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "internal_schema_version": {
-            "title": "Internal Schema Version",
-            "type": "integer"
-          },
-          "official_code": {
-            "title": "Official Code",
-            "type": "string"
-          },
-          "official_revision": {
-            "title": "Official Revision",
-            "type": "string"
-          }
-        },
-        "required": [
-          "official_code",
-          "official_revision",
-          "internal_schema_version"
-        ],
-        "title": "FormRevisionRegisterRequest",
-        "type": "object"
-      },
       "FormRevisionResponse": {
         "additionalProperties": false,
         "properties": {
@@ -9049,6 +9024,10 @@
           },
           "status": {
             "$ref": "#/components/schemas/FormRevisionStatusValue"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
           }
         },
         "required": [
@@ -9057,7 +9036,8 @@
           "official_code",
           "official_revision",
           "internal_schema_version",
-          "status"
+          "status",
+          "supported"
         ],
         "title": "FormRevisionResponse",
         "type": "object"
@@ -22379,7 +22359,6 @@
                 "graduate_tracer.view",
                 "graduate_tracer.view_self",
                 "institutional_designations.manage",
-                "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
                 "inventory.reopen",
@@ -22543,7 +22522,6 @@
                 "graduate_tracer.view",
                 "graduate_tracer.view_self",
                 "institutional_designations.manage",
-                "institutional_forms.manage",
                 "institutional_forms.view",
                 "inventory.manage_self",
                 "inventory.reopen",
@@ -36390,182 +36368,6 @@
         ]
       }
     },
-    "/api/v1/institutional-forms/revisions/{revision_id}/activate": {
-      "post": {
-        "operationId": "institutionalFormsRevisionsActivate",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "revision_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Revision Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FormRevisionResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Institutional Form Revision Activate",
-        "tags": [
-          "institutional-forms"
-        ]
-      }
-    },
-    "/api/v1/institutional-forms/revisions/{revision_id}/deactivate": {
-      "post": {
-        "operationId": "institutionalFormsRevisionsDeactivate",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "revision_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Revision Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FormRevisionResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Institutional Form Revision Deactivate",
-        "tags": [
-          "institutional-forms"
-        ]
-      }
-    },
     "/api/v1/institutional-forms/{family_key}/revisions": {
       "get": {
         "operationId": "institutionalFormsRevisionsList",
@@ -36628,101 +36430,6 @@
           }
         ],
         "summary": "Institutional Form Revisions List",
-        "tags": [
-          "institutional-forms"
-        ]
-      },
-      "post": {
-        "operationId": "institutionalFormsRevisionsRegister",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "family_key",
-            "required": true,
-            "schema": {
-              "title": "Family Key",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FormRevisionRegisterRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FormRevisionResponse"
-                }
-              }
-            },
-            "description": "Created"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Institutional Form Revisions Register",
         "tags": [
           "institutional-forms"
         ]
