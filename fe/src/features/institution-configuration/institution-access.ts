@@ -28,10 +28,6 @@ export function canViewInstitutionalForms(user: CapabilityUser): boolean {
   return hasCapability(user, "institutional_forms.view");
 }
 
-export function canManageInstitutionalForms(user: CapabilityUser): boolean {
-  return hasCapability(user, "institutional_forms.manage");
-}
-
 export function hasInstitutionWorkspace(user: CapabilityUser): boolean {
   return (
     canManageOrganization(user) ||
