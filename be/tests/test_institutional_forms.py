@@ -15,14 +15,15 @@ from compass.call_slips.services import (
     CallSlipConfigurationConflict,
     _active_call_slip_revision,
 )
+from compass.institutional_forms.bootstrap import sync_institutional_forms
+from compass.institutional_forms.canonical import CANONICAL_FORM_FAMILIES
 from compass.institutional_forms.models import FormFamily, FormRevision
 from compass.institutional_forms.services import (
-    SUPPORTED_SCHEMA_VERSIONS,
-    InstitutionalFormConflict,
-    activate_form_revision,
-    deactivate_form_revision,
-    register_form_revision,
+    UnsupportedInstitutionalFormRevision,
+    is_supported_form_revision,
+    require_active_supported_form_revision,
 )
+from compass.inventory.models import StudentInventory
 from compass.inventory.services import (
     InventoryFormRevisionNotConfigured,
     _active_inventory_revision,
@@ -30,7 +31,10 @@ from compass.inventory.services import (
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
 from compass.organization.models import AcademicYear
 from compass.referrals.services import ReferralConfigurationConflict, _active_referral_revision
-from compass.routine_interviews.services import _optional_form_revision
+from compass.routine_interviews.services import (
+    RoutineInterviewFormRevisionUnsupported,
+    _optional_form_revision,
+)
 
 
 def sync_policy() -> None:
@@ -60,7 +64,7 @@ def context(actor: User) -> AuditContext:
     return AuditContext.user(actor)
 
 
-def auth_client(user: User, *, recent_mfa: bool) -> Client:
+def auth_client(user: User, *, recent_mfa: bool = False) -> Client:
     now = timezone.now()
     issued = create_auth_session(
         user,
@@ -79,81 +83,66 @@ def csrf(client: Client) -> dict[str, str]:
 
 
 @pytest.mark.django_db
-def test_initial_inventory_revision_preserves_confirmed_qms_identity():
-    family = FormFamily.objects.get(key="individual_inventory")
-    revision = FormRevision.objects.get(family=family, internal_schema_version=1)
+def test_canonical_registry_preserves_exact_confirmed_controlled_form_identities():
+    expected = {
+        "individual_inventory": (
+            "Individual Inventory",
+            frozenset({1}),
+            (("CNSC-OP-GCO-01F5", "0", 1, True),),
+        ),
+        "routine_interview": ("Routine Interview Form", frozenset({1}), ()),
+        "referral_slip": (
+            "Referral Slip",
+            frozenset({1}),
+            (("CNSC-OP-GTA-01F9", "1", 1, True),),
+        ),
+        "call_slip": (
+            "Interview Permit / Call Slip",
+            frozenset({1}),
+            (("CNSC-OP-GTA-01F8", "0", 1, True),),
+        ),
+        "good_moral_current_student": (
+            "Good Moral Character — Current Student",
+            frozenset({1}),
+            (("CNSC-OP-GCO-01F4", "0", 1, True),),
+        ),
+        "good_moral_graduate": (
+            "Good Moral Character — Graduate",
+            frozenset({1}),
+            (("CNSC-OP-GCO-01F6", "0", 1, True),),
+        ),
+        "customer_feedback": (
+            "Customer Feedback Form",
+            frozenset({1}),
+            (("CNSC-OP-GTA-01F14", "0", 1, True),),
+        ),
+    }
+    actual = {
+        family.key: (
+            family.title,
+            family.supported_schema_versions,
+            tuple(
+                (
+                    revision.official_code,
+                    revision.official_revision,
+                    revision.internal_schema_version,
+                    revision.active,
+                )
+                for revision in family.revisions
+            ),
+        )
+        for family in CANONICAL_FORM_FAMILIES
+    }
+    assert actual == expected
 
-    assert family.title == "Individual Inventory"
-    assert revision.official_code == "CNSC-OP-GCO-01F5"
-    assert revision.official_revision == "0"
-    assert revision.status == "ACTIVE"
     assert FormFamily.objects.count() == 7
-
     routine_family = FormFamily.objects.get(key="routine_interview")
     assert routine_family.title == "Routine Interview Form"
     assert not FormRevision.objects.filter(family=routine_family).exists()
-    assert SUPPORTED_SCHEMA_VERSIONS["routine_interview"] == frozenset({1})
-
-    referral_family = FormFamily.objects.get(key="referral_slip")
-    referral_revision = FormRevision.objects.get(
-        family=referral_family,
-        official_code="CNSC-OP-GTA-01F9",
-        official_revision="1",
-    )
-    assert referral_family.title == "Referral Slip"
-    assert referral_revision.internal_schema_version == 1
-    assert referral_revision.status == "ACTIVE"
-    assert SUPPORTED_SCHEMA_VERSIONS["referral_slip"] == frozenset({1})
-
-    call_slip_family = FormFamily.objects.get(key="call_slip")
-    call_slip_revision = FormRevision.objects.get(
-        family=call_slip_family,
-        official_code="CNSC-OP-GTA-01F8",
-        official_revision="0",
-    )
-    assert call_slip_family.title == "Interview Permit / Call Slip"
-    assert call_slip_revision.internal_schema_version == 1
-    assert call_slip_revision.status == "ACTIVE"
-    assert SUPPORTED_SCHEMA_VERSIONS["call_slip"] == frozenset({1})
-
-    current_good_moral = FormFamily.objects.get(key="good_moral_current_student")
-    current_revision = FormRevision.objects.get(
-        family=current_good_moral,
-        official_code="CNSC-OP-GCO-01F4",
-        official_revision="0",
-    )
-    assert current_good_moral.title == "Good Moral Character — Current Student"
-    assert current_revision.internal_schema_version == 1
-    assert current_revision.status == "ACTIVE"
-    assert SUPPORTED_SCHEMA_VERSIONS["good_moral_current_student"] == frozenset({1})
-
-    customer_feedback = FormFamily.objects.get(key="customer_feedback")
-    customer_feedback_revision = FormRevision.objects.get(
-        family=customer_feedback,
-        official_code="CNSC-OP-GTA-01F14",
-        official_revision="0",
-    )
-    assert customer_feedback.title == "Customer Feedback Form"
-    assert customer_feedback_revision.internal_schema_version == 1
-    assert customer_feedback_revision.status == "ACTIVE"
-    assert SUPPORTED_SCHEMA_VERSIONS["customer_feedback"] == frozenset({1})
-
-    graduate_good_moral = FormFamily.objects.get(key="good_moral_graduate")
-    graduate_revision = FormRevision.objects.get(
-        family=graduate_good_moral,
-        official_code="CNSC-OP-GCO-01F6",
-        official_revision="0",
-    )
-    assert graduate_good_moral.title == "Good Moral Character — Graduate"
-    assert graduate_revision.internal_schema_version == 1
-    assert graduate_revision.status == "ACTIVE"
-    assert SUPPORTED_SCHEMA_VERSIONS["good_moral_graduate"] == frozenset({1})
 
 
 @pytest.mark.django_db
-def test_required_form_consumers_reject_unsupported_active_revision_and_routine_is_optional():
-    assert _optional_form_revision() is None
-
+def test_exact_identity_not_schema_version_alone_controls_runtime_support():
     cases = (
         (
             "individual_inventory",
@@ -164,15 +153,136 @@ def test_required_form_consumers_reject_unsupported_active_revision_and_routine_
         ("call_slip", _active_call_slip_revision, CallSlipConfigurationConflict),
     )
     for family_key, resolver, expected_error in cases:
-        revision = FormRevision.objects.get(family__key=family_key, status="ACTIVE")
-        FormRevision.objects.filter(pk=revision.pk).update(internal_schema_version=999)
+        canonical = FormRevision.objects.get(family__key=family_key, status="ACTIVE")
+        canonical.status = "INACTIVE"
+        canonical.save(update_fields=["status", "updated_at"])
+        arbitrary = FormRevision.objects.create(
+            family=canonical.family,
+            official_code=f"UNCONFIRMED-{family_key}",
+            official_revision="99",
+            internal_schema_version=1,
+            status="ACTIVE",
+        )
+
+        assert not is_supported_form_revision(arbitrary)
+        with pytest.raises(UnsupportedInstitutionalFormRevision):
+            require_active_supported_form_revision(family_key)
         with pytest.raises(expected_error):
             resolver()
-        FormRevision.objects.filter(pk=revision.pk).update(internal_schema_version=1)
+
+        arbitrary.delete()
+        canonical.status = "ACTIVE"
+        canonical.save(update_fields=["status", "updated_at"])
+
+    routine_family = FormFamily.objects.get(key="routine_interview")
+    arbitrary_routine = FormRevision.objects.create(
+        family=routine_family,
+        official_code="UNCONFIRMED-ROUTINE",
+        official_revision="1",
+        internal_schema_version=1,
+        status="ACTIVE",
+    )
+    assert not is_supported_form_revision(arbitrary_routine)
+    with pytest.raises(RoutineInterviewFormRevisionUnsupported):
+        _optional_form_revision()
 
 
 @pytest.mark.django_db
-def test_configuration_capabilities_keep_head_business_authority_explicit():
+def test_canonical_sync_repairs_drift_preserves_ids_and_historical_references():
+    sync_policy()
+    inventory_family = FormFamily.objects.get(key="individual_inventory")
+    inventory_revision = FormRevision.objects.get(
+        family=inventory_family,
+        official_code="CNSC-OP-GCO-01F5",
+        official_revision="0",
+    )
+    family_id = inventory_family.pk
+    revision_id = inventory_revision.pk
+
+    inventory_family.title = "Locally edited title"
+    inventory_family.save(update_fields=["title", "updated_at"])
+    inventory_revision.internal_schema_version = 999
+    inventory_revision.status = "INACTIVE"
+    inventory_revision.save(
+        update_fields=["internal_schema_version", "status", "updated_at"]
+    )
+    legacy = FormRevision.objects.create(
+        family=inventory_family,
+        official_code="LEGACY-LOCAL-FORM",
+        official_revision="7",
+        internal_schema_version=1,
+        status="ACTIVE",
+    )
+
+    student = make_user("historical-form@example.edu", "STUDENT")
+    year = AcademicYear.objects.create(label="2026-2027", is_current=False)
+    historical_inventory = StudentInventory.objects.create(
+        student=student,
+        academic_year=year,
+        form_revision=legacy,
+    )
+
+    routine_family = FormFamily.objects.get(key="routine_interview")
+    routine_family.delete()
+
+    referral_revision = FormRevision.objects.get(
+        family__key="referral_slip",
+        official_code="CNSC-OP-GTA-01F9",
+        official_revision="1",
+    )
+    referral_revision.delete()
+
+    first = sync_institutional_forms()
+    assert first.changed
+
+    inventory_family.refresh_from_db()
+    inventory_revision.refresh_from_db()
+    legacy.refresh_from_db()
+    historical_inventory.refresh_from_db()
+
+    assert inventory_family.pk == family_id
+    assert inventory_family.title == "Individual Inventory"
+    assert inventory_revision.pk == revision_id
+    assert inventory_revision.internal_schema_version == 1
+    assert inventory_revision.status == "ACTIVE"
+    assert legacy.status == "INACTIVE"
+    assert historical_inventory.form_revision_id == legacy.pk
+    assert FormRevision.objects.filter(pk=legacy.pk).exists()
+
+    restored_routine = FormFamily.objects.get(key="routine_interview")
+    assert not FormRevision.objects.filter(family=restored_routine).exists()
+    restored_referral = FormRevision.objects.get(
+        family__key="referral_slip",
+        official_code="CNSC-OP-GTA-01F9",
+        official_revision="1",
+    )
+    assert restored_referral.internal_schema_version == 1
+    assert restored_referral.status == "ACTIVE"
+
+    for family in FormFamily.objects.filter(
+        key__in=[definition.key for definition in CANONICAL_FORM_FAMILIES]
+    ):
+        assert FormRevision.objects.filter(family=family, status="ACTIVE").count() <= 1
+
+    assert AuditEvent.objects.filter(action="institutional_forms.synced").count() == 1
+    event = AuditEvent.objects.get(action="institutional_forms.synced")
+    assert event.actor_type == "SYSTEM"
+    assert set(event.metadata) == {
+        "families_created",
+        "families_updated",
+        "revisions_created",
+        "revisions_updated",
+        "revisions_activated",
+        "revisions_deactivated",
+    }
+
+    second = sync_institutional_forms()
+    assert not second.changed
+    assert AuditEvent.objects.filter(action="institutional_forms.synced").count() == 1
+
+
+@pytest.mark.django_db
+def test_configuration_capabilities_keep_forms_read_only():
     sync_policy()
     head = make_head()
     counselor = make_user("counselor@example.edu", "COUNSELOR")
@@ -182,14 +292,14 @@ def test_configuration_capabilities_keep_head_business_authority_explicit():
     assert head.has_capability("academic_years.view")
     assert head.has_capability("academic_years.manage")
     assert head.has_capability("institutional_forms.view")
-    assert head.has_capability("institutional_forms.manage")
+    assert not head.has_capability("institutional_forms.manage")
     assert counselor.has_capability("academic_years.view")
     assert not counselor.has_capability("academic_years.manage")
     assert counselor.has_capability("institutional_forms.view")
     assert not counselor.has_capability("institutional_forms.manage")
     assert not admin.has_capability("academic_years.manage")
     assert not admin.has_capability("institutional_forms.manage")
-    assert not student.has_capability("academic_years.manage")
+    assert not student.has_capability("institutional_forms.view")
 
 
 @pytest.mark.django_db
@@ -220,36 +330,81 @@ def test_academic_year_switch_is_explicit_transactional_and_audited():
 
 
 @pytest.mark.django_db
-def test_form_revision_registration_is_append_only_and_activation_checks_code_support():
+def test_institutional_forms_api_is_read_only_and_projects_exact_support():
     sync_policy()
-    head = make_head()
+    counselor = make_user("forms-reader@example.edu", "COUNSELOR")
+    student = make_user("forms-denied@example.edu", "STUDENT")
     family = FormFamily.objects.get(key="individual_inventory")
-    old = FormRevision.objects.get(family=family, internal_schema_version=1)
-
-    unsupported = register_form_revision(
-        family_key=family.key,
-        official_code="CNSC-OP-GCO-01F5",
-        official_revision="1",
-        internal_schema_version=2,
-        context=context(head),
+    historical = FormRevision.objects.create(
+        family=family,
+        official_code="LEGACY-ONLY",
+        official_revision="2",
+        internal_schema_version=1,
+        status="INACTIVE",
     )
-    assert unsupported.status == "INACTIVE"
-    with pytest.raises(InstitutionalFormConflict, match="does not support"):
-        activate_form_revision(revision_id=unsupported.pk, context=context(head))
 
-    deactivate_form_revision(revision_id=old.pk, context=context(head))
-    old.refresh_from_db()
-    unsupported.refresh_from_db()
-    assert old.status == "INACTIVE"
-    assert unsupported.status == "INACTIVE"
-    assert AuditEvent.objects.filter(action="institutional_form.revision_registered").count() == 1
+    client = auth_client(counselor, recent_mfa=True)
+    families = client.get("/api/v1/institutional-forms")
+    assert families.status_code == 200
+    assert [item["key"] for item in families.json()["items"]] == [
+        "call_slip",
+        "customer_feedback",
+        "good_moral_current_student",
+        "good_moral_graduate",
+        "individual_inventory",
+        "referral_slip",
+        "routine_interview",
+    ]
+
+    revisions = client.get("/api/v1/institutional-forms/individual_inventory/revisions")
+    assert revisions.status_code == 200
+    by_id = {item["id"]: item for item in revisions.json()["items"]}
+    canonical = FormRevision.objects.get(
+        family=family,
+        official_code="CNSC-OP-GCO-01F5",
+        official_revision="0",
+    )
+    assert by_id[str(canonical.pk)]["supported"] is True
+    assert by_id[str(historical.pk)]["supported"] is False
+
+    headers = csrf(client)
+    removed_register = client.post(
+        "/api/v1/institutional-forms/individual_inventory/revisions",
+        data=json.dumps(
+            {
+                "official_code": "UNCONFIRMED",
+                "official_revision": "9",
+                "internal_schema_version": 1,
+            }
+        ),
+        content_type="application/json",
+        **headers,
+    )
+    assert removed_register.status_code == 405
+    removed_activate = client.post(
+        f"/api/v1/institutional-forms/revisions/{canonical.pk}/activate",
+        data=json.dumps({}),
+        content_type="application/json",
+        **headers,
+    )
+    removed_deactivate = client.post(
+        f"/api/v1/institutional-forms/revisions/{canonical.pk}/deactivate",
+        data=json.dumps({}),
+        content_type="application/json",
+        **headers,
+    )
+    assert removed_activate.status_code == 404
+    assert removed_deactivate.status_code == 404
+
+    denied = auth_client(student)
+    assert denied.get("/api/v1/institutional-forms").status_code == 403
 
 
 @pytest.mark.django_db
-def test_operational_configuration_mutations_require_head_capability_and_recent_mfa():
+def test_academic_year_mutations_still_require_head_capability_and_recent_mfa():
     sync_policy()
     head = make_head()
-    admin = make_user("admin@example.edu", "IT_ADMIN")
+    admin = make_user("admin-academic@example.edu", "IT_ADMIN")
 
     stale = auth_client(head, recent_mfa=False)
     denied_mfa = stale.post(
@@ -287,79 +442,3 @@ def test_operational_configuration_mutations_require_head_capability_and_recent_
     )
     assert current.status_code == 200
     assert current.json()["is_current"] is True
-
-    listed = client.get("/api/v1/institutional-forms")
-    assert listed.status_code == 200
-    assert [item["key"] for item in listed.json()["items"]] == [
-        "call_slip",
-        "customer_feedback",
-        "good_moral_current_student",
-        "good_moral_graduate",
-        "individual_inventory",
-        "referral_slip",
-        "routine_interview",
-    ]
-
-
-@pytest.mark.django_db
-def test_regular_counselor_can_read_but_not_manage_operational_configuration():
-    sync_policy()
-    counselor = make_user("config-counselor@example.edu", "COUNSELOR")
-    year = AcademicYear.objects.create(label="2030-2031", is_current=False)
-    revision = FormRevision.objects.filter(family__key="individual_inventory").first()
-    assert revision is not None
-
-    client = auth_client(counselor, recent_mfa=True)
-    assert client.get("/api/v1/academic-years").status_code == 200
-
-    denied_create = client.post(
-        "/api/v1/academic-years",
-        data=json.dumps({"label": "2031-2032"}),
-        content_type="application/json",
-        **csrf(client),
-    )
-    assert denied_create.status_code == 403
-
-    denied_current = client.post(
-        f"/api/v1/academic-years/{year.pk}/set-current",
-        data=json.dumps({}),
-        content_type="application/json",
-        **csrf(client),
-    )
-    assert denied_current.status_code == 403
-
-    families = client.get("/api/v1/institutional-forms")
-    assert families.status_code == 200
-    assert (
-        client.get("/api/v1/institutional-forms/individual_inventory/revisions").status_code == 200
-    )
-
-    denied_register = client.post(
-        "/api/v1/institutional-forms/individual_inventory/revisions",
-        data=json.dumps(
-            {
-                "official_code": "UCN-TEST-01",
-                "official_revision": "9",
-                "internal_schema_version": 99,
-            }
-        ),
-        content_type="application/json",
-        **csrf(client),
-    )
-    assert denied_register.status_code == 403
-
-    denied_activate = client.post(
-        f"/api/v1/institutional-forms/revisions/{revision.pk}/activate",
-        data=json.dumps({}),
-        content_type="application/json",
-        **csrf(client),
-    )
-    assert denied_activate.status_code == 403
-
-    denied_deactivate = client.post(
-        f"/api/v1/institutional-forms/revisions/{revision.pk}/deactivate",
-        data=json.dumps({}),
-        content_type="application/json",
-        **csrf(client),
-    )
-    assert denied_deactivate.status_code == 403
