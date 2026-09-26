@@ -9,6 +9,7 @@ import { getExitInterviewAccess } from "@/features/exit-interviews/exit-intervie
 import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
 import { canManageOrganization, canViewAcademicYears, canViewInstitutionalForms } from "@/features/institution-configuration/institution-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
+import { hasPrivacyGovernanceWorkspace } from "@/features/privacy-governance/privacy-governance-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { canAttemptReports } from "@/features/reports/reports-access";
@@ -126,8 +127,21 @@ export function getOverviewMetrics(
   }
 
   if (summary.privacy) {
-    addMetric(metrics, "Open privacy reviews", summary.privacy.open_review_count);
-    addMetric(metrics, "Active privacy incidents", summary.privacy.active_incident_count);
+    // Active incidents have no single backend status filter, so that metric
+    // opens the unfiltered incident list.
+    const hasPrivacy = hasPrivacyGovernanceWorkspace(user);
+    addMetric(
+      metrics,
+      "Open privacy reviews",
+      summary.privacy.open_review_count,
+      hasPrivacy ? "/portal/privacy/reviews?status=OPEN" : undefined,
+    );
+    addMetric(
+      metrics,
+      "Active privacy incidents",
+      summary.privacy.active_incident_count,
+      hasPrivacy ? "/portal/privacy/incidents" : undefined,
+    );
   }
 
   return metrics;
@@ -158,7 +172,9 @@ export function getOverviewQuickAccess(user: UserSummary): OverviewQuickAccessLi
   const goodMoralAccess = getGoodMoralAccess(user);
   const feedbackAccess = getFeedbackAccess(user);
   const canViewPlatform = user.capabilities.includes("platform_operations.view");
+  const hasPrivacy = hasPrivacyGovernanceWorkspace(user);
 
+  add("privacy", "Privacy Governance", hasPrivacy ? "/portal/privacy" : undefined);
   add("services", "Services", hasServicesWorkspace(user) ? "/portal/services" : undefined);
   add("inventory", "Individual Inventory", inventoryAccess.hasWorkspace ? "/portal/inventory" : undefined);
   add("routine", "Routine Interviews", routineAccess.hasWorkspace ? "/portal/routine-interviews" : undefined);
@@ -197,7 +213,9 @@ export function getOverviewQuickAccess(user: UserSummary): OverviewQuickAccessLi
               ? ["accounts", "platform", "organization", "academic-years", "institutional-forms"]
               : ["organization", "academic-years", "institutional-forms", "appointments", "platform"];
 
-  const selected = priorities
+  // Privacy Governance leads for anyone holding the capability, whatever
+  // their role; it is not tied to the DPO designation.
+  const selected = (hasPrivacy ? ["privacy", ...priorities] : priorities)
     .map((key) => links.get(key))
     .filter((link): link is OverviewQuickAccessLink => Boolean(link))
     .slice(0, 6);

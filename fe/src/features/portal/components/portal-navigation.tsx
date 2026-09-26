@@ -15,6 +15,7 @@ import { getExitInterviewAccess } from "@/features/exit-interviews/exit-intervie
 import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
 import { canAttemptReports } from "@/features/reports/reports-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
+import { hasPrivacyGovernanceWorkspace } from "@/features/privacy-governance/privacy-governance-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { hasServicesWorkspace } from "@/features/services/services-access";
@@ -104,6 +105,7 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
     "platform_operations.view",
   );
   const hasReports = canAttemptReports(user);
+  const hasPrivacyGovernance = hasPrivacyGovernanceWorkspace(user);
 
   const guidanceLinks: { href: string; label: string; visible: boolean }[] = [
     { href: "/portal/services", label: "Services", visible: hasServices },
@@ -184,6 +186,13 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
           <NavSection>
             <NavItem href="/portal/reports" current={isWithin("/portal/reports")} onNavigate={onNavigate}>
               Reports
+            </NavItem>
+          </NavSection>
+        ) : null}
+        {hasPrivacyGovernance ? (
+          <NavSection label="Privacy">
+            <NavItem href="/portal/privacy" current={isWithin("/portal/privacy")} onNavigate={onNavigate}>
+              Privacy Governance
             </NavItem>
           </NavSection>
         ) : null}
