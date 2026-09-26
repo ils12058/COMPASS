@@ -308,7 +308,6 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "academic_years.view",
         "academic_years.manage",
         "institutional_forms.view",
-        "institutional_forms.manage",
         "document_branding.view",
         "document_branding.manage",
         "exit_interviews.view",
