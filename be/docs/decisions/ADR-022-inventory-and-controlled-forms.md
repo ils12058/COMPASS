@@ -1,5 +1,11 @@
 # ADR-022: Controlled form identity and annual Individual Inventory
 
+> **Refined by ADR-063 (2026-09-27).** The runtime Form Revision registration and
+> activation/deactivation model recorded below remains historical context. Supported Form Families
+> and Revisions are now code-owned compatibility definitions synchronized explicitly into
+> PostgreSQL; `institutional_forms.manage` is retired. Historical FormRevision rows and saved FKs
+> remain preserved.
+
 ## Context
 
 COMPASS needs the Student Individual Inventory before later Routine Interview and other
