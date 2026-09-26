@@ -551,15 +551,17 @@ def test_active_unsupported_form_revision_blocks_new_referrals_and_history_keeps
     with pytest.raises(ReferralConfigurationConflict, match="not supported"):
         create_for(head, student, key="unsupported", fingerprint="b" * 64)
 
-    unsupported.status = "INACTIVE"
-    unsupported.save(update_fields=["status", "updated_at"])
-    replacement = FormRevision.objects.create(
+    call_command("sync_institutional_forms", verbosity=0)
+    unsupported.refresh_from_db()
+    replacement = FormRevision.objects.get(
         family=family,
         official_code="CNSC-OP-GTA-01F9",
-        official_revision="2",
+        official_revision="1",
         internal_schema_version=1,
-        status="ACTIVE",
     )
+    assert unsupported.status == "INACTIVE"
+    assert replacement.status == "ACTIVE"
+
     second = create_for(head, student, key="second-form", fingerprint="c" * 64)
     first.refresh_from_db()
     assert first.form_revision_id == first_revision_id
