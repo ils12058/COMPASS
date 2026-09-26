@@ -603,15 +603,17 @@ def test_form_revision_snapshot_survives_future_activation_and_unsupported_activ
     with pytest.raises(CallSlipConfigurationConflict, match="not supported"):
         create_for(head, student, key="unsupported", fingerprint="b" * 64)
 
-    unsupported.status = "INACTIVE"
-    unsupported.save(update_fields=["status", "updated_at"])
-    replacement = FormRevision.objects.create(
+    call_command("sync_institutional_forms", verbosity=0)
+    unsupported.refresh_from_db()
+    replacement = FormRevision.objects.get(
         family=family,
         official_code="CNSC-OP-GTA-01F8",
-        official_revision="1",
+        official_revision="0",
         internal_schema_version=1,
-        status="ACTIVE",
     )
+    assert unsupported.status == "INACTIVE"
+    assert replacement.status == "ACTIVE"
+
     second = create_for(head, student, key="form-second", fingerprint="c" * 64)
     first.refresh_from_db()
     assert first.form_revision_id == original_revision_id
