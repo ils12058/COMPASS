@@ -101,7 +101,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
           </div>
 
           {encounters.isPending ? (
-            <div aria-busy="true" aria-label="Loading My Counseling Encounters" className="space-y-2 py-3"><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></div>
+            <div aria-busy="true" className="space-y-2 py-3"><span className="sr-only">Loading My Counseling Encounters…</span><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></div>
           ) : encounters.isError ? (
             <CounselingQueryError message={counselingErrorMessage(encounters.error, "My Counseling Encounters could not be loaded.")} onRetry={() => void encounters.refetch()} />
           ) : items.length === 0 ? (

@@ -136,7 +136,7 @@ export function EmailChangePage() {
           {usesMfa && !recent ? <p className="text-sm text-muted">Authenticator verification is required before the new email can be requested.</p> : null}
           <TurnstileWidget action="email_otp" onTokenChange={setToken} resetKey={resetKey} />
           <Button type="submit" disabled={busy || (isTurnstileConfigured && !token)}>{requestChange.isPending ? "Requesting change…" : usesMfa && !recent ? "Verify to continue" : "Send code to new email"}</Button>
-          {!usesMfa ? <button type="button" onClick={() => { setCurrentChallengeId(null); setCurrentCode(""); setError(null); resetTurnstile(); }} className="block min-h-10 text-sm font-semibold text-brand hover:underline">Request a new current-email code</button> : null}
+          {!usesMfa ? <button type="button" onClick={() => { setCurrentChallengeId(null); setCurrentCode(""); setError(null); resetTurnstile(); }} className="block min-h-10 text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Request a new current-email code</button> : null}
         </form>
       ) : null}
       {mfa.isSuccess && pending ? (
@@ -145,11 +145,11 @@ export function EmailChangePage() {
           <p className="text-sm leading-6 text-muted">Enter the code sent to <span className="break-all font-semibold text-ink">{newEmail}</span>. Confirming this change will sign you out.</p>
           <div className="grid gap-2"><Label htmlFor="new-email-code">Code from new email</Label><Input id="new-email-code" autoComplete="one-time-code" inputMode="numeric" required value={newCode} onChange={(event) => setNewCode(event.target.value)} /></div>
           <Button type="submit" disabled={busy}>{confirmChange.isPending ? "Changing email…" : "Change sign-in email"}</Button>
-          <button type="button" onClick={() => { setPending(null); setNewCode(""); setError(null); }} className="block min-h-10 text-sm font-semibold text-brand hover:underline">Start a new email request</button>
+          <button type="button" onClick={() => { setPending(null); setNewCode(""); setError(null); }} className="block min-h-10 text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Start a new email request</button>
         </form>
       ) : null}
       {error ? <p role="alert" className="mt-5 text-sm text-danger">{error}</p> : null}
-      {setupRequired ? <Link href="/portal/account/security/authenticator" className="mt-3 inline-flex min-h-10 items-center font-semibold text-brand hover:underline">Manage authenticator</Link> : null}
+      {setupRequired ? <Link href="/portal/account/security/authenticator" className="mt-3 inline-flex min-h-10 items-center font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Manage authenticator</Link> : null}
       <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => setVerified(true)} />
     </section>
   );

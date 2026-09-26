@@ -167,7 +167,7 @@ export function CustomerFeedbackForm() {
       const code = feedbackErrorCode(caught);
       if (code === "idempotency_unavailable" || code === "idempotency_in_progress" || !(caught instanceof Error && "status" in caught)) {
         setUncertainIntent(intent);
-        setError(feedbackErrorMessage(caught, "The submission result could not be confirmed. Retry this exact response safely."));
+        setError(feedbackErrorMessage(caught, "The submission result could not be confirmed. Retry the same submission to check whether it was received."));
       } else if (code === "idempotency_key_conflict" || code === "invalid_idempotency_key") {
         intentRef.current = null;
         setUncertainIntent(null);
@@ -194,13 +194,13 @@ export function CustomerFeedbackForm() {
 
   return (
     <section aria-labelledby="customer-feedback-heading">
-      <FeedbackPageHeading headingId="customer-feedback-heading" eyebrow="Feedback · Student response" title="Customer Feedback Form" description="Please tell us about the service you received from the GTAO. Your response is submitted as a final response." />
+      <FeedbackPageHeading headingId="customer-feedback-heading" title="Customer Feedback Form" description="Please tell us about the service you received from the GTAO. Your response is submitted as a final response." />
       <form className="mt-4" onSubmit={prepareSubmission} noValidate>
         {error ? <p role="alert" className="mb-5 border-y border-danger/30 py-3 text-sm text-danger">{error}</p> : null}
         {isUncertain ? (
           <div className="mb-6 border-y border-warning/40 bg-warning/10 px-4 py-4" role="status" aria-live="polite">
             <p className="text-sm font-semibold text-ink">Submission result not confirmed</p>
-            <p className="mt-1 text-sm leading-6 text-muted">The exact response and its replay key are being retained in this page. Retry the same submission to safely check whether it was received.</p>
+            <p className="mt-1 text-sm leading-6 text-muted">Your response is still on this page. Retry the same submission to safely check whether it was received.</p>
             <Button className="mt-3" disabled={create.isPending} onClick={() => void send(uncertainIntent.body)}>{create.isPending ? "Checking submission…" : "Retry same submission"}</Button>
           </div>
         ) : null}

@@ -26,10 +26,10 @@ export function AppointmentsEntryPage() {
     return <AppointmentsUnavailable />;
   }
   return (
-    <main aria-busy="true" className="max-w-3xl">
+    <div aria-busy="true" className="max-w-3xl">
       <Skeleton className="h-8 w-2/5" />
       <Skeleton className="mt-5 h-20 w-full" />
       <p className="sr-only">Opening your Appointment workspace…</p>
-    </main>
+    </div>
   );
 }

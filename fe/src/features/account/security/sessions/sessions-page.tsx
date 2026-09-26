@@ -45,7 +45,7 @@ function SessionRow({ session, onRevoke }: { session: SessionSummary; onRevoke: 
         <p className="mt-1 text-sm text-muted">Last active {formatDate(session.last_used_at)}</p>
         <p className="mt-1 text-xs text-muted">Signed in {formatDate(session.created_at)}</p>
       </div>
-      {!session.is_current ? <Button variant="secondary" onClick={() => onRevoke(session.id)}>Revoke</Button> : null}
+      {!session.is_current ? <Button variant="secondary" onClick={() => onRevoke(session.id)}>Sign out</Button> : null}
     </li>
   );
 }
@@ -130,6 +130,9 @@ export function SessionsPage() {
     : action?.kind === "other-sessions" ? "Sign out other sessions"
       : action?.kind === "trusted" ? "Remove trust"
         : action?.currentExists ? "Remove other browsers' trust" : "Remove all trust";
+  const pendingLabel = action?.kind === "session" || action?.kind === "other-sessions"
+    ? "Signing out…"
+    : "Removing trust…";
 
   return (
     <section aria-labelledby="sessions-heading" className="max-w-3xl">
@@ -167,7 +170,7 @@ export function SessionsPage() {
           {actionError ? <p role="alert" className="mt-3 text-sm text-danger">{actionError}</p> : null}
           <div className="mt-6 flex flex-wrap justify-end gap-2">
             <AlertDialogCancel asChild><Button variant="secondary" disabled={pending}>Cancel</Button></AlertDialogCancel>
-            <Button variant="danger" disabled={pending} onClick={() => void confirmAction()}>{pending ? "Updating…" : actionLabel}</Button>
+            <Button variant="danger" disabled={pending} onClick={() => void confirmAction()}>{pending ? pendingLabel : actionLabel}</Button>
           </div>
         </AlertDialogContent>
       </AlertDialog>

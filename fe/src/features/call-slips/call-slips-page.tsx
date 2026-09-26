@@ -94,7 +94,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
   const hasFilters = Boolean(filters.fromDate || filters.toDate || filters.page > 1);
 
   return (
-    <main className="space-y-7">
+    <div className="space-y-7">
       <CallSlipHeading title="My Call Slips" description="Review Call Slips issued to you." />
       <form onSubmit={submitFilters} className="grid gap-4 border-b border-border pb-6 sm:grid-cols-2 sm:items-end">
         <div className="grid gap-2">
@@ -117,7 +117,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
       {slips.isError ? (
         <CallSlipQueryError error={slips.error} fallback="Your Call Slips could not be loaded." onRetry={() => void slips.refetch()} />
       ) : slips.isPending ? (
-        <div aria-label="Loading My Call Slips" className="space-y-3" aria-busy="true"><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
+        <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading My Call Slips…</span><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
       ) : items.length === 0 ? (
         <div className="border-y border-border py-6">
           <p className="text-sm text-muted">{hasFilters ? "No Call Slips match these filters." : "You do not have any Call Slips yet."}</p>
@@ -126,7 +126,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
         </div>
       ) : (
         <>
-          <p className="text-sm text-muted" aria-live="polite">Showing {items.length} Call Slips on page {data?.page ?? filters.page}.</p>
+          <p className="text-sm text-muted" aria-live="polite">Showing {items.length} {items.length === 1 ? "Call Slip" : "Call Slips"} on page {data?.page ?? filters.page}.</p>
           <ul className="divide-y divide-border border-y border-border">
             {items.map((slip) => (
               <li key={slip.id} className="grid gap-x-8 gap-y-2 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -144,7 +144,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
           <CanonicalPagination page={data?.page ?? filters.page} hasNext={data?.has_next ?? false} onPageChange={(page) => router.push(studentFiltersToUrl({ ...filters, page }), { scroll: false })} label="My Call Slip results" />
         </>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -180,7 +180,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
   const hasFilters = Boolean(effectiveFilters.search || effectiveFilters.destination || effectiveFilters.fromDate || effectiveFilters.toDate || effectiveFilters.includeVoided || effectiveFilters.page > 1);
 
   return (
-    <main className="space-y-7">
+    <div className="space-y-7">
       <CallSlipHeading
         title="Call Slips"
         description={access.canManageOperational ? "Review and manage Call Slips within your authorized Guidance scope." : "Review Call Slips within your authorized Guidance scope."}
@@ -221,7 +221,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
       {slips.isError ? (
         <CallSlipQueryError error={slips.error} fallback="Call Slips could not be loaded." onRetry={() => void slips.refetch()} />
       ) : slips.isPending ? (
-        <div aria-label="Loading Call Slips" className="space-y-3" aria-busy="true"><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
+        <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading Call Slips…</span><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
       ) : items.length === 0 ? (
         <div className="border-y border-border py-6">
           <p className="text-sm text-muted">{hasFilters ? "No Call Slips match these filters." : "No Call Slips have been recorded in your current scope."}</p>
@@ -230,7 +230,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
         </div>
       ) : (
         <>
-          <p className="text-sm text-muted" aria-live="polite">Showing {items.length} Call Slips on page {data?.page ?? filters.page}.</p>
+          <p className="text-sm text-muted" aria-live="polite">Showing {items.length} {items.length === 1 ? "Call Slip" : "Call Slips"} on page {data?.page ?? filters.page}.</p>
           <ul className="divide-y divide-border border-y border-border md:hidden">
             {items.map((slip) => (
               <li key={slip.id} className="space-y-2 py-4">
@@ -244,12 +244,13 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
           </ul>
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[850px] border-collapse text-left text-sm">
+              <caption className="sr-only">Call Slips</caption>
               <thead><tr className="border-b border-border-strong text-xs font-semibold uppercase tracking-wide text-muted">
                 <th scope="col" className="px-3 py-3">Student</th><th scope="col" className="px-3 py-3">Course / Year</th><th scope="col" className="px-3 py-3">Report</th><th scope="col" className="px-3 py-3">Destination</th><th scope="col" className="px-3 py-3">Issuer</th><th scope="col" className="px-3 py-3">State</th><th scope="col" className="px-3 py-3">Referral</th>
               </tr></thead>
               <tbody className="divide-y divide-border">{items.map((slip) => (
                 <tr key={slip.id} className="align-top">
-                  <td className="px-3 py-4"><Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.student_name_snapshot}</Link></td>
+                  <th scope="row" className="px-3 py-4 font-normal"><Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.student_name_snapshot}</Link></th>
                   <td className="px-3 py-4 text-ink">{slip.course_year_snapshot}</td><td className="px-3 py-4 text-ink">{formatDateTime(slip.report_at)}</td><td className="px-3 py-4 text-ink">{callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</td><td className="px-3 py-4 text-ink">{slip.issued_by_name_snapshot}</td><td className="px-3 py-4 text-ink">{callSlipStateLabel(slip.state)}</td>
                   <td className="px-3 py-4 text-ink">{slip.referral ? referralAccess.canView ? <Link href={`/portal/referrals/${slip.referral.id}`} className="font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.referral.reference_code}</Link> : slip.referral.reference_code : <span className="text-muted">—</span>}</td>
                 </tr>
@@ -261,6 +262,6 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
       )}
       </>
       )}
-    </main>
+    </div>
   );
 }

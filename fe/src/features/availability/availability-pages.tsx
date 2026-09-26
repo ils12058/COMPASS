@@ -568,7 +568,9 @@ export function ProviderAvailabilityPage() {
         </div>
       ) : providers.data.data.items.length === 0 ? (
         <p className="mt-5 border-y border-border py-8 text-sm text-muted">
-          No providers match the current search.
+          {search
+            ? "No Counselors match the current search."
+            : "No Counselors are available."}
         </p>
       ) : (
         <>

@@ -44,7 +44,7 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   if (!callSlipAccess.canViewOperational || !callSlipAccess.canManageOperational) return <CallSlipAccessUnavailable title="Linked Call Slip issuance unavailable" message="Operational Call Slip review and management access are required." />;
   if (referral.isError) return <ReferralQueryError error={referral.error} fallback="The source Referral could not be loaded." onRetry={() => void referral.refetch()} />;
   if (referral.isPending || current.isPending || history.isPending) {
-    return <div className="space-y-4" aria-busy="true" aria-label="Loading linked Call Slip context"><p role="status" className="text-sm text-muted">Checking Referral and linked Call Slip state…</p></div>;
+    return <div className="space-y-4" aria-busy="true"><p role="status" className="text-sm text-muted">Checking Referral and linked Call Slip state…</p></div>;
   }
   if (current.isError) return <CallSlipQueryError error={current.error} fallback="Current linked Call Slip state could not be checked. Issuance is unavailable until it can be refreshed." onRetry={() => void current.refetch()} />;
   if (history.isError) return <CallSlipQueryError error={history.error} fallback="Linked Call Slip history could not be loaded." onRetry={() => void history.refetch()} />;
@@ -53,14 +53,14 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   const currentSlip = current.data.data.items[0];
   if (currentSlip) {
     return (
-      <main className="space-y-7">
+      <div className="space-y-7">
         <CallSlipHeading title={`Issue linked Call Slip · ${item.reference_code}`} description="This Referral already has a non-voided linked Call Slip." backHref={`/portal/referrals/${item.id}`} backLabel="Back to Referral" />
         <section className="border-y border-border py-5">
           <p className="font-semibold text-ink">{callSlipStateLabel(currentSlip.state)} linked permit</p>
           <p className="mt-2 text-sm text-muted">{formatDateTime(currentSlip.report_at)} · {callSlipDestinationLabel(currentSlip.destination_type, currentSlip.other_destination)}</p>
           <Link href={`/portal/call-slips/${currentSlip.id}`} className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open linked Call Slip</Link>
         </section>
-      </main>
+      </div>
     );
   }
   if (item.voided_at) {
@@ -72,11 +72,11 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   }
 
   return (
-    <main className="space-y-7">
-      <CallSlipHeading title={`Issue linked Call Slip · ${item.reference_code}`} description="Issue the permit through the atomic Referral workflow. The backend records the source action and creates the linked Call Slip together." backHref={`/portal/referrals/${item.id}`} backLabel="Back to Referral" />
+    <div className="space-y-7">
+      <CallSlipHeading title={`Issue linked Call Slip · ${item.reference_code}`} description="Issuing this Call Slip also records the action on the Referral in the same step." backHref={`/portal/referrals/${item.id}`} backLabel="Back to Referral" />
       <LinkedCallSlipHistory items={history.data.data.items} />
       <LinkedCallSlipCreateForm referral={item} onRefresh={refreshContext} />
-    </main>
+    </div>
   );
 }
 
@@ -223,7 +223,7 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
             </div>
           ) : (
             <>
-              <p className="mt-2 text-sm leading-6 text-muted">This atomic operation will record the source action and create the linked Call Slip together.</p>
+              <p className="mt-2 text-sm leading-6 text-muted">Issuing records this action on the Referral and creates the linked Call Slip in the same step.</p>
               <div className="mt-4 grid gap-5 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="linked-action-occurred">Action occurred</Label>
@@ -250,7 +250,7 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
       <AlertDialog open={confirmOpen} onOpenChange={(open) => { if (!create.isPending) setConfirmOpen(open); }}>
         <AlertDialogContent onEscapeKeyDown={(event) => { if (create.isPending) event.preventDefault(); }}>
           <AlertDialogTitle>Confirm linked Call Slip issuance</AlertDialogTitle>
-          <AlertDialogDescription>This creates the Call Slip and, only when needed, records the Referral source action in one atomic backend operation. Review the values before continuing.</AlertDialogDescription>
+          <AlertDialogDescription>This issues the Call Slip and, when needed, records the action on the Referral in the same step. Review the details before issuing.</AlertDialogDescription>
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
             <div><dt className="text-xs font-semibold text-muted">Referral</dt><dd className="mt-1 text-ink">{referral.reference_code}</dd></div>
             <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 text-ink">{referral.student_name_snapshot}</dd></div>

@@ -17,6 +17,7 @@ import {
   useManagedAction,
 } from "@/features/accounts/components/account-action";
 import { useManagedAccount } from "@/features/accounts/detail/account-detail-frame";
+import { accountName } from "@/features/accounts/presentation";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   useAccountsResetMfa,
@@ -25,6 +26,14 @@ import {
 } from "@/lib/api/generated/accounts/accounts";
 
 type SecurityAction = "reset" | "sessions" | "trusted" | null;
+
+function countNoun(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+function countLabel(count: number, noun: string): string {
+  return `${countNoun(count, noun)} ${count === 1 ? "was" : "were"}`;
+}
 
 export function AccountSecurity() {
   const account = useManagedAccount();
@@ -52,7 +61,7 @@ export function AccountSecurity() {
       setConfirm(null);
       await invalidate();
       action.setNotice(
-        `Multi-factor authentication was reset. ${result.data.revoked_session_count} sessions and ${result.data.revoked_trusted_session_count} trusted-browser authorizations were revoked.`,
+        `Multi-factor authentication was reset. ${countNoun(result.data.revoked_session_count, "session")} and ${countNoun(result.data.revoked_trusted_session_count, "trusted-browser authorization")} were revoked.`,
       );
       return;
     }
@@ -65,7 +74,7 @@ export function AccountSecurity() {
       if (!result) return;
       setConfirm(null);
       action.setNotice(
-        `${result.data.revoked_count} authentication sessions were signed out.`,
+        `${countLabel(result.data.revoked_count, "authentication session")} signed out.`,
       );
       return;
     }
@@ -77,16 +86,17 @@ export function AccountSecurity() {
     if (!result) return;
     setConfirm(null);
     action.setNotice(
-      `${result.data.revoked_count} trusted-browser authorizations were removed.`,
+      `${countLabel(result.data.revoked_count, "trusted-browser authorization")} removed.`,
     );
   }
 
+  const name = accountName(account);
   const title =
     confirm === "reset"
-      ? "Reset multi-factor authentication?"
+      ? `Reset ${name}'s multi-factor authentication?`
       : confirm === "sessions"
-        ? "Sign out all sessions?"
-        : "Remove all trusted browsers?";
+        ? `Sign out all of ${name}'s sessions?`
+        : `Remove all of ${name}'s trusted browsers?`;
   const description =
     confirm === "reset"
       ? "This removes the account's current authenticator setup and recovery codes. Existing sessions and trusted-browser access will be revoked. The account may need to configure MFA again at the next sign-in."
@@ -99,6 +109,12 @@ export function AccountSecurity() {
       : confirm === "sessions"
         ? "Sign out all sessions"
         : "Remove all trusted browsers";
+  const pendingLabel =
+    confirm === "reset"
+      ? "Resetting MFA…"
+      : confirm === "sessions"
+        ? "Signing out…"
+        : "Removing trusted browsers…";
 
   return (
     <section aria-labelledby="managed-security-heading">
@@ -113,7 +129,7 @@ export function AccountSecurity() {
           Use your{" "}
           <Link
             href="/portal/account/security"
-            className="font-semibold text-brand underline"
+            className="font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             Account security settings
           </Link>{" "}
@@ -175,9 +191,6 @@ export function AccountSecurity() {
         <AlertDialogContent>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
-          <p className="mt-3 text-sm font-medium text-ink">
-            Account: {account.full_name}
-          </p>
           {action.error ? (
             <p role="alert" className="mt-3 text-sm text-danger">
               {action.error}
@@ -194,7 +207,7 @@ export function AccountSecurity() {
               disabled={busy}
               onClick={() => void confirmAction()}
             >
-              {busy ? "Updating security…" : submitLabel}
+              {busy ? pendingLabel : submitLabel}
             </Button>
           </div>
         </AlertDialogContent>

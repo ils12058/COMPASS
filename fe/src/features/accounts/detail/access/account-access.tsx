@@ -28,6 +28,7 @@ import {
 } from "@/features/accounts/components/account-action";
 import { useManagedAccount } from "@/features/accounts/detail/account-detail-frame";
 import {
+  accountName,
   compatibleDesignation,
   designationLabels,
   formatAccountDate,
@@ -223,35 +224,41 @@ export function AccountAccess() {
 
   function confirmationText(
     item: NonNullable<Confirmation>,
-  ): [string, string, string] {
+  ): [string, string, string, string] {
+    const name = accountName(account);
     if (item.kind === "role")
       return [
-        `Change ${account.full_name}'s role from ${roleLabels[account.role]} to ${roleLabels[item.role]}?`,
+        `Change ${name}'s role from ${roleLabels[account.role]} to ${roleLabels[item.role]}?`,
         "This changes baseline COMPASS access and may invalidate existing authenticated access.",
         "Change role",
+        "Changing role…",
       ];
     if (item.kind === "assign")
       return [
-        `Assign ${designationLabels[item.designation]} to ${account.full_name}?`,
+        `Assign ${designationLabels[item.designation]} to ${name}?`,
         "This designation changes the account's institutional authority and may invalidate current access.",
         "Assign designation",
+        "Assigning…",
       ];
     if (item.kind === "removeDesignation")
       return [
-        `Remove ${designationLabels[item.designation]} from ${account.full_name}?`,
+        `Remove ${designationLabels[item.designation]} from ${name}?`,
         "This removes designation-based access and may invalidate current authenticated access.",
         "Remove designation",
+        "Removing…",
       ];
     if (item.kind === "setOverride")
       return [
-        `${item.effect === Effect.GRANT ? "Grant" : "Revoke"} ${effective.data?.data.capabilities.find((capability) => capability.code === item.capability)?.name ?? item.capability} for ${account.full_name}?`,
+        `${item.effect === Effect.GRANT ? "Grant" : "Revoke"} ${effective.data?.data.capabilities.find((capability) => capability.code === item.capability)?.name ?? item.capability} for ${name}?`,
         `Reason: ${item.reason}${item.expires_at ? `. Expires: ${formatAccountDate(item.expires_at)}` : ". No expiry set."}`,
         "Set override",
+        "Setting override…",
       ];
     return [
-      `Remove ${account.full_name}'s ${effective.data?.data.capabilities.find((capability) => capability.code === item.capability)?.name ?? item.capability} override?`,
+      `Remove ${name}'s ${effective.data?.data.capabilities.find((capability) => capability.code === item.capability)?.name ?? item.capability} override?`,
       "Effective access will return to the role and designation baseline for this capability.",
       "Remove override",
+      "Removing override…",
     ];
   }
 
@@ -323,7 +330,8 @@ export function AccountAccess() {
               "Designations could not be loaded.",
             )}{" "}
             <button
-              className="font-semibold underline"
+              type="button"
+              className="min-h-10 font-semibold underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               onClick={() => void assigned.refetch()}
             >
               Retry
@@ -395,8 +403,8 @@ export function AccountAccess() {
           Effective access
         </h2>
         <p className="mt-2 text-sm text-muted">
-          This is the backend&apos;s current access projection, including role,
-          designations, and overrides.
+          Current access resulting from this account&apos;s role, designations,
+          and overrides.
         </p>
         {effective.isPending ? (
           <div aria-busy="true" className="mt-5 space-y-2">
@@ -411,7 +419,8 @@ export function AccountAccess() {
               "Effective access could not be loaded.",
             )}{" "}
             <button
-              className="font-semibold underline"
+              type="button"
+              className="min-h-10 font-semibold underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               onClick={() => void effective.refetch()}
             >
               Retry
@@ -518,7 +527,8 @@ export function AccountAccess() {
               "Overrides could not be loaded.",
             )}{" "}
             <button
-              className="font-semibold underline"
+              type="button"
+              className="min-h-10 font-semibold underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               onClick={() => void overrides.refetch()}
             >
               Retry
@@ -692,8 +702,12 @@ export function AccountAccess() {
                 Cancel
               </Button>
             </AlertDialogCancel>
-            <Button disabled={busy} onClick={() => void confirmAction()}>
-              {busy ? "Saving access…" : confirmation?.[2]}
+            <Button
+              variant={confirm?.kind === "removeDesignation" ? "danger" : "primary"}
+              disabled={busy}
+              onClick={() => void confirmAction()}
+            >
+              {busy ? confirmation?.[3] : confirmation?.[2]}
             </Button>
           </div>
         </AlertDialogContent>

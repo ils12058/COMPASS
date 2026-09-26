@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +25,8 @@ function pageSize(value: string): number | undefined {
   const parsed = positiveInteger(value);
   return parsed !== undefined && parsed <= 100 ? parsed : undefined;
 }
+
+export const metadata: Metadata = { title: "Exit Interviews" };
 
 export default async function Page({
   searchParams,

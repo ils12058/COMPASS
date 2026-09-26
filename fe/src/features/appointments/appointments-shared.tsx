@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { AppointmentStatus, DeliveryMode } from "@/lib/api/generated/model";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
@@ -135,18 +136,9 @@ export function AppointmentsUnavailable({
   children?: ReactNode;
 }) {
   return (
-    <section className="max-w-xl border-y border-border py-8">
-      <h1 className="font-heading text-3xl font-bold text-ink">
-        Appointments unavailable
-      </h1>
-      <p className="mt-3 text-sm leading-6 text-muted">{children}</p>
-      <Link
-        href="/portal"
-        className="mt-5 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        Return to Home
-      </Link>
-    </section>
+    <WorkspaceUnavailable title="Appointments unavailable">
+      {children}
+    </WorkspaceUnavailable>
   );
 }
 

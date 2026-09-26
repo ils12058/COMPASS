@@ -2,7 +2,6 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { ExternalLink, FileDown } from "lucide-react";
-import Link from "next/link";
 
 import { ResourceIcon } from "@/features/public/resources/resource-icon";
 import { PublicMarkdown } from "@/features/public/shared/public-markdown";
@@ -42,9 +41,6 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
           <p className="mt-3 leading-7 text-muted">
             This resource does not exist or is no longer publicly available.
           </p>
-          <Link className="mt-5 inline-flex min-h-10 items-center font-semibold text-brand hover:underline" href="/resources">
-            Return to resources
-          </Link>
         </div>
       );
     }
@@ -97,6 +93,7 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
             >
               Open resource
               <ExternalLink size={18} aria-hidden="true" />
+              <span className="sr-only">(opens in a new tab)</span>
             </a>
           ) : (
             <p className="text-sm text-danger">The external resource link is unavailable.</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -34,7 +35,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = usePortalSession();
-  const canDiscoverPrograms = user.capabilities.includes("organization.view");
+  const canDiscoverPrograms = user.capabilities.includes("organization.structure.view");
   const programQuery = useOrganizationListPrograms(
     { is_active: true },
     { query: { enabled: canDiscoverPrograms, retry: false } },
@@ -162,9 +163,12 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
         <InventoryNotice title="Editing is no longer available" tone="warning" role="alert">
           Your Student lifecycle is no longer current. This annual record remains saved and readable, but it cannot be edited or submitted.
         </InventoryNotice>
-        <Button variant="secondary" onClick={() => router.push("/portal/inventory")}>
+        <Link
+          href="/portal/inventory"
+          className="inline-flex min-h-10 items-center justify-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
           Return to Individual Inventory
-        </Button>
+        </Link>
       </div>
     );
   }
@@ -242,9 +246,6 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
               })}
             </ol>
           </nav>
-          <p className="mt-2 hidden text-xs leading-5 text-muted md:block">
-            Section selection does not represent percent complete.
-          </p>
         </div>
 
         <div className="min-w-0">

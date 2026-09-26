@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CounselorInventoryRoster } from "@/features/inventory/counselor/inventory-roster";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/features/inventory/inventory-shared";
 import { inventoryErrorMessage } from "@/features/inventory/inventory-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import {
   getInventoryGetMyCurrentQueryKey,
   getInventoryGetMyStatusQueryKey,
@@ -49,9 +51,9 @@ export function InventoryHome() {
   if (access.canViewSelf) return <StudentInventoryHome />;
 
   return (
-    <InventoryNotice title="Individual Inventory is unavailable" tone="warning">
+    <WorkspaceUnavailable title="Individual Inventory unavailable">
       This workspace is available to Students for their own annual record and to Counselors for their authorized roster.
-    </InventoryNotice>
+    </WorkspaceUnavailable>
   );
 }
 
@@ -93,8 +95,8 @@ function StudentInventoryHome() {
         <h2 id="inventory-current-heading" className="font-heading text-xl font-semibold text-ink">Current Academic Year</h2>
         {status.isPending ? (
           <div className="mt-4 space-y-3" aria-busy="true">
-            <div className="h-5 w-48 animate-pulse rounded bg-surface-muted" />
-            <div className="h-16 animate-pulse rounded bg-surface-muted" />
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-16" />
             <p className="sr-only">Loading current Individual Inventory status…</p>
           </div>
         ) : status.isError ? (
@@ -177,8 +179,8 @@ function StudentInventoryHome() {
         </div>
         {history.isPending ? (
           <div className="mt-4 space-y-3" aria-busy="true">
-            <div className="h-12 animate-pulse rounded bg-surface-muted" />
-            <div className="h-12 animate-pulse rounded bg-surface-muted" />
+            <Skeleton className="h-12" />
+            <Skeleton className="h-12" />
             <p className="sr-only">Loading annual Individual Inventory history…</p>
           </div>
         ) : history.isError ? (
@@ -209,7 +211,6 @@ function StudentInventoryHome() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <InventoryStatus status={record.status} correctionPending={record.correction_pending} />
-                  {record.correction_pending ? <span className="text-xs text-warning">Correction pending</span> : null}
                 </div>
               </li>
             ))}

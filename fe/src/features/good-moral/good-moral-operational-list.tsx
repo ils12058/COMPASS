@@ -75,7 +75,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
       </form>
 
       {queue.isPending ? (
-        <div className="space-y-3" aria-busy="true" aria-label="Loading Good Moral requests">
+        <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading Good Moral requests…</span>
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />

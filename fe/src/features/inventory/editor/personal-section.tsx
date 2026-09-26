@@ -53,7 +53,7 @@ export function PersonalSection({ draft, onChange }: InventorySectionProps) {
             value={draft.student_number}
             onChange={() => undefined}
             readOnly
-            hint="This is your canonical account identity; changing it here would not change your Institutional ID."
+            hint="From your COMPASS account. It cannot be changed here."
           />
           <TextField
             id="inventory-date-of-birth"

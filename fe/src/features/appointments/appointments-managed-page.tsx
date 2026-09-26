@@ -13,6 +13,7 @@ import {
   AppointmentsLocalNavigation,
   AppointmentsPageHeading,
   PaginationControls,
+  appointmentErrorMessage,
   appointmentStatusLabel,
   deliveryModeLabel,
   formatAppointmentDateTime,
@@ -174,22 +175,27 @@ function ManagedAppointmentsList() {
       </div>
 
       {list.isPending ? (
-        <div aria-label="Loading managed Appointments" aria-busy="true" className="space-y-3 py-5">
+        <div aria-busy="true" className="space-y-3 py-5">
           <Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" />
+          <p className="sr-only">Loading Appointments…</p>
         </div>
       ) : list.isError ? (
         <div role="alert" className="border-y border-danger/30 py-6">
-          <p className="text-sm text-danger">Appointments within your scope could not be loaded.</p>
+          <p className="text-sm text-danger">
+            {appointmentErrorMessage(list.error, "Appointments within your scope could not be loaded.")}
+          </p>
           <Button className="mt-4" variant="secondary" onClick={() => void list.refetch()}>Retry</Button>
         </div>
       ) : items.length === 0 ? (
         <div className="border-y border-border py-8">
           <p className="text-sm text-muted">
             {hasFilters
-              ? "No Appointments are available within your current scope and filters."
-              : "No Appointments are available within your current operational scope."}
+              ? "No Appointments match the selected filters within your scope."
+              : status === AppointmentStatus.SCHEDULED
+                ? "No scheduled Appointments are available within your operational scope."
+                : "No Appointments are available within your operational scope."}
           </p>
-          {hasFilters ? (
+          {hasFilters || status !== undefined ? (
             <Link
               href={updateAppointmentQuery(
                 pathname,
@@ -198,7 +204,7 @@ function ManagedAppointmentsList() {
               )}
               className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
-              Clear filters
+              {hasFilters ? "Clear filters" : "Show all statuses"}
             </Link>
           ) : null}
           {page > 1 || pageData?.has_next ? (

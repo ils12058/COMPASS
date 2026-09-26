@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
@@ -19,6 +20,7 @@ import {
 } from "@/features/inventory/inventory-shared";
 import { inventoryErrorMessage } from "@/features/inventory/inventory-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { useAcademicYearsList } from "@/lib/api/generated/academic-years/academic-years";
 import {
   getInventoryGetRecordQueryKey,
@@ -36,9 +38,9 @@ export function InventoryRecordDetail({ inventoryId }: { inventoryId: string }) 
   const access = getInventoryAccess(user);
   if (!access.canViewRoster) {
     return (
-      <InventoryNotice title="Individual Inventory is unavailable" tone="warning">
-        Submitted Inventory detail is available only to Counselors with the Inventory view capability.
-      </InventoryNotice>
+      <WorkspaceUnavailable title="Individual Inventory unavailable">
+        Submitted Inventory detail is available only to Counselors with Individual Inventory review access.
+      </WorkspaceUnavailable>
     );
   }
   return <CounselorInventoryRecordDetail inventoryId={inventoryId} />;
@@ -67,8 +69,8 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
     return (
       <section aria-busy="true" className="space-y-5">
         <InventoryHeading title="Submitted Individual Inventory" />
-        <div className="h-8 w-56 animate-pulse rounded bg-surface-muted" />
-        <div className="h-64 animate-pulse rounded bg-surface-muted" />
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-64" />
         <p className="sr-only">Loading authorized submitted Individual Inventory…</p>
       </section>
     );
@@ -189,7 +191,7 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
         setReopenOpen(open);
       }}>
         <AlertDialogContent>
-          <AlertDialogTitle>Reopen this Individual Inventory for correction?</AlertDialogTitle>
+          <AlertDialogTitle>Reopen {inventory.student.display_name}&apos;s Individual Inventory for correction?</AlertDialogTitle>
           <AlertDialogDescription>
             The Student will be able to edit and resubmit this current-year Inventory. While it is reopened, its contents will no longer be available for Counselor review until the Student resubmits it.
           </AlertDialogDescription>

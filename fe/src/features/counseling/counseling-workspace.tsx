@@ -92,7 +92,7 @@ export function CounselingWorkspace({
   });
 
   if (!allowed) return <CounselingUnavailable title="Counseling context unavailable" />;
-  if (overview.isPending) return <div aria-busy="true" aria-label="Loading Counseling context"><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-5 h-32 w-full" /><Skeleton className="mt-5 h-72 w-full" /></div>;
+  if (overview.isPending) return <div aria-busy="true"><span className="sr-only">Loading Counseling context…</span><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-5 h-32 w-full" /><Skeleton className="mt-5 h-72 w-full" /></div>;
   if (overview.isError || !overview.data?.data) {
     const expired = counselingErrorCode(overview.error) === "counseling_context_not_found";
     return (
@@ -299,7 +299,7 @@ function ContextOverview({ overview }: { overview: CounselingContextOverviewResp
 }
 
 function RoutineContext({ routine, canManage }: { routine: QueryResultWithData<CounselorRoutineDetailResponse>; canManage: boolean }) {
-  if (routine.isPending) return <div aria-busy="true" aria-label="Loading assigned Routine Interview"><Skeleton className="h-12 w-full" /><Skeleton className="mt-3 h-56 w-full" /></div>;
+  if (routine.isPending) return <div aria-busy="true"><span className="sr-only">Loading assigned Routine Interview…</span><Skeleton className="h-12 w-full" /><Skeleton className="mt-3 h-56 w-full" /></div>;
   if (routine.isError || !routine.data?.data) return <CounselingQueryError message={counselingErrorMessage(routine.error, "The Routine Interview could not be loaded within your current access.")} onRetry={() => void routine.refetch()} />;
   const detail = routine.data.data;
   return (
@@ -312,7 +312,7 @@ function RoutineContext({ routine, canManage }: { routine: QueryResultWithData<C
 }
 
 function InventoryContext({ query, overview }: { query: QueryResultWithData<CounselingContextInventoryResponse>; overview: CounselingContextOverviewResponse }) {
-  if (query.isPending) return <div aria-busy="true" aria-label="Loading contextual Individual Inventory"><Skeleton className="h-10 w-1/2" /><Skeleton className="mt-4 h-80 w-full" /></div>;
+  if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading contextual Individual Inventory…</span><Skeleton className="h-10 w-1/2" /><Skeleton className="mt-4 h-80 w-full" /></div>;
   if (query.isError) return <CounselingQueryError message={counselingErrorMessage(query.error, "Contextual Individual Inventory could not be loaded.")} onRetry={() => void query.refetch()} />;
   const result = query.data?.data;
   if (!result?.available) {
@@ -328,7 +328,7 @@ function InventoryContext({ query, overview }: { query: QueryResultWithData<Coun
 }
 
 function SupportContext({ query }: { query: QueryResultWithData<CounselingContextSupportResponse> }) {
-  if (query.isPending) return <div aria-busy="true" aria-label="Loading contextual support indicators"><Skeleton className="h-12 w-full" /><Skeleton className="mt-3 h-12 w-full" /></div>;
+  if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading contextual support indicators…</span><Skeleton className="h-12 w-full" /><Skeleton className="mt-3 h-12 w-full" /></div>;
   if (query.isError) return <CounselingQueryError message={counselingErrorMessage(query.error, "Contextual support indicators could not be loaded.")} onRetry={() => void query.refetch()} />;
   const result = query.data?.data;
   if (!result?.available) {
@@ -343,7 +343,7 @@ function SupportContext({ query }: { query: QueryResultWithData<CounselingContex
 }
 
 function HistoryContext({ query }: { query: QueryResultWithData<CounselingContextHistoryResponse> }) {
-  if (query.isPending) return <div aria-busy="true" aria-label="Loading minimized Counseling history"><Skeleton className="h-14 w-full" /><Skeleton className="mt-2 h-14 w-full" /></div>;
+  if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading minimized Counseling history…</span><Skeleton className="h-14 w-full" /><Skeleton className="mt-2 h-14 w-full" /></div>;
   if (query.isError) return <CounselingQueryError message={counselingErrorMessage(query.error, "Counseling context history could not be loaded.")} onRetry={() => void query.refetch()} />;
   const items = query.data?.data.items ?? [];
   if (!items.length) return <p className="border-y border-border py-5 text-sm text-muted">No contextual history is available.</p>;
@@ -362,7 +362,7 @@ function SharedSummariesContext({
   access: ReturnType<typeof getCounselingAccess>;
   onPublished: () => void;
 }) {
-  if (query.isPending && access.canViewAssignedSummaries) return <div aria-busy="true" aria-label="Loading published Shared Summaries"><Skeleton className="h-20 w-full" /><Skeleton className="mt-2 h-20 w-full" /></div>;
+  if (query.isPending && access.canViewAssignedSummaries) return <div aria-busy="true"><span className="sr-only">Loading published Shared Summaries…</span><Skeleton className="h-20 w-full" /><Skeleton className="mt-2 h-20 w-full" /></div>;
   if (query.isError && access.canViewAssignedSummaries) return <CounselingQueryError message={counselingErrorMessage(query.error, "Previously published Shared Summaries could not be loaded.")} onRetry={() => void query.refetch()} />;
   const items = query.data?.data.items ?? [];
   const encounterId = overview.matching_encounter?.id;

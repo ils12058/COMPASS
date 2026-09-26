@@ -194,7 +194,7 @@ export function CounselorRoutineWorkspace({
           </div>
 
           {queue.isPending ? (
-            <div aria-busy="true" aria-label="Loading assigned Routine Interviews" className="space-y-3 py-4">
+            <div aria-busy="true" className="space-y-3 py-4"><span className="sr-only">Loading assigned Routine Interviews…</span>
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />

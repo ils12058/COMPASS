@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { InventoryEditor } from "@/features/inventory/editor/inventory-editor";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { formatInventoryDate, InventoryHeading, InventoryNotice, InventoryQueryError, InventoryStatus } from "@/features/inventory/inventory-shared";
 import { inventoryErrorMessage } from "@/features/inventory/inventory-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import {
   getInventoryGetMyCurrentQueryKey,
   getInventoryGetMyStatusQueryKey,
@@ -26,9 +28,9 @@ export function CurrentInventoryPage() {
   const access = getInventoryAccess(user);
   if (!access.canViewSelf) {
     return (
-      <InventoryNotice title="Individual Inventory is unavailable" tone="warning">
+      <WorkspaceUnavailable title="Individual Inventory unavailable">
         This current-record view is available only to Students with access to their own Individual Inventory.
-      </InventoryNotice>
+      </WorkspaceUnavailable>
     );
   }
   return <StudentCurrentInventory />;
@@ -68,8 +70,8 @@ function StudentCurrentInventory() {
     return (
       <section aria-busy="true" className="space-y-5">
         <InventoryHeading title="Individual Inventory" />
-        <div className="h-7 w-48 animate-pulse rounded bg-surface-muted" />
-        <div className="h-48 animate-pulse rounded bg-surface-muted" />
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-48" />
         <p className="sr-only">Checking current Individual Inventory status…</p>
       </section>
     );
@@ -88,8 +90,8 @@ function StudentCurrentInventory() {
     return (
       <section className="space-y-5">
         <InventoryHeading title="Individual Inventory" description={value.academic_year.label} />
-        <InventoryNotice title="No current-year record yet" tone="neutral">
-          Opening this page does not create an Individual Inventory. Start is an explicit action, and the record will be bound to the current Academic Year and active official Form Revision.
+        <InventoryNotice title="No Individual Inventory for this Academic Year yet" tone="neutral">
+          Start your Individual Inventory when you are ready. It is recorded for the current Academic Year using the current official form.
         </InventoryNotice>
         <div className="flex flex-wrap gap-3">
           <Link href="/portal/inventory" className="inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
@@ -116,8 +118,8 @@ function StudentCurrentInventory() {
     return (
       <section aria-busy="true" className="space-y-5">
         <InventoryHeading title="Individual Inventory" />
-        <div className="h-8 w-56 animate-pulse rounded bg-surface-muted" />
-        <div className="h-64 animate-pulse rounded bg-surface-muted" />
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-64" />
         <p className="sr-only">Loading current Individual Inventory…</p>
       </section>
     );

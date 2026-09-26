@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
+import { hasServicesWorkspace } from "@/features/services/services-access";
 import {
   CompassApiError,
   readApiErrorCode,
@@ -48,48 +50,14 @@ export function servicesErrorMessage(
   return (code && knownErrors[code]) || backendMessage || fallback;
 }
 
-function ServicesUnavailable({ management = false }: { management?: boolean }) {
-  return (
-    <section
-      aria-labelledby="services-denied-heading"
-      className="max-w-xl border-y border-border py-8"
-    >
-      <h1
-        id="services-denied-heading"
-        className="font-heading text-3xl font-bold text-ink"
-      >
-        Services unavailable
-      </h1>
-      <p className="mt-3 text-sm leading-6 text-muted">
-        {management
-          ? "Your current access does not include Service Catalog management."
-          : "Your current access does not include the Service Catalog."}
-      </p>
-      <Link
-        className="mt-5 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        href="/portal"
-      >
-        Return to Home
-      </Link>
-    </section>
-  );
-}
-
 export function ServicesGate({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
-  return user.capabilities.includes("services.view") ? (
+  return hasServicesWorkspace(user) ? (
     children
   ) : (
-    <ServicesUnavailable />
-  );
-}
-
-export function ServicesManageGate({ children }: { children: ReactNode }) {
-  const { user } = usePortalSession();
-  return user.capabilities.includes("services.manage") ? (
-    children
-  ) : (
-    <ServicesUnavailable management />
+    <WorkspaceUnavailable title="Services unavailable">
+      Your current access does not include Service Catalog management.
+    </WorkspaceUnavailable>
   );
 }
 

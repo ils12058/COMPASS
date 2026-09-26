@@ -198,10 +198,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
   return (
     <section className="space-y-6" aria-labelledby="graduate-tracer-form-heading">
       <header className="border-b border-border pb-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="graduate-tracer-form-heading" className="font-heading text-xl font-semibold text-ink">Graduate Tracer Survey</h2>
-          <span className="text-xs text-muted">Schema version {detail.instrument_schema_version}</span>
-        </div>
+        <h2 id="graduate-tracer-form-heading" className="font-heading text-xl font-semibold text-ink">Graduate Tracer Survey</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">This survey collects information about your education and employment experiences to support graduate employability research and curriculum improvement. Your draft is private to you until you submit it.</p>
       </header>
 
@@ -269,7 +266,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
 
 export function GraduateTracerFormSkeleton() {
   return (
-    <div className="space-y-5" aria-busy="true" aria-label="Loading Graduate Tracer draft">
+    <div className="space-y-5" aria-busy="true"><span className="sr-only">Loading Graduate Tracer draft…</span>
       <Skeleton className="h-9 w-60" />
       <Skeleton className="h-20 w-full" />
       <Skeleton className="h-12 w-full" />

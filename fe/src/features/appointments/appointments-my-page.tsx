@@ -12,6 +12,7 @@ import {
   AppointmentsPageHeading,
   AppointmentsUnavailable,
   PaginationControls,
+  appointmentErrorMessage,
   deliveryModeLabel,
   formatAppointmentDateTime,
   updateAppointmentQuery,
@@ -159,14 +160,17 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
       </div>
 
       {list.isPending ? (
-        <div aria-label="Loading Appointments" aria-busy="true" className="space-y-3 py-4">
+        <div aria-busy="true" className="space-y-3 py-4">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
+          <p className="sr-only">Loading Appointments…</p>
         </div>
       ) : list.isError ? (
         <div role="alert" className="border-y border-danger/30 py-6">
-          <p className="text-sm text-danger">My Appointments could not be loaded.</p>
+          <p className="text-sm text-danger">
+            {appointmentErrorMessage(list.error, "My Appointments could not be loaded.")}
+          </p>
           <Button className="mt-4" variant="secondary" onClick={() => void list.refetch()}>
             Retry
           </Button>
@@ -189,7 +193,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
               )}
               className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
-              Clear filters
+              {filtering ? "Clear filters" : "Show all statuses"}
             </Link>
           ) : null}
           {page > 1 || pageData?.has_next ? (

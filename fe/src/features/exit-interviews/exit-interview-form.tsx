@@ -293,7 +293,7 @@ export function ExitInterviewForm({
             <div className="mt-4 max-w-2xl" role="alert">
               <p className="text-sm leading-6 text-danger">
                 {submissionUncertain
-                  ? "We could not confirm whether submission completed. Refresh the canonical record before trying again."
+                  ? "We could not confirm whether submission completed. Refresh the Exit Interview before trying again."
                   : exitInterviewErrorMessage(submitError, "The Exit Interview could not be submitted. Your saved draft remains available.")}
               </p>
               {submissionUncertain ? (
@@ -301,7 +301,7 @@ export function ExitInterviewForm({
                   <Button type="button" variant="secondary" onClick={() => void refreshCanonicalRecord()}>
                     Refresh Exit Interview
                   </Button>
-                  {refreshError ? <p className="mt-2 text-sm text-danger">The canonical record could not be refreshed. Retry before submitting again.</p> : null}
+                  {refreshError ? <p className="mt-2 text-sm text-danger">The Exit Interview could not be refreshed. Retry before submitting again.</p> : null}
                 </div>
               ) : null}
             </div>

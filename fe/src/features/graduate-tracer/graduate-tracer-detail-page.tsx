@@ -26,7 +26,7 @@ export function GraduateTracerDetailPage({ responseId }: { responseId: string })
   }
 
   if (detail.isPending) {
-    return <section className="space-y-6"><Skeleton className="h-9 w-64" /><Skeleton className="h-20 w-full" /><Skeleton className="h-56 w-full" /></section>;
+    return <section className="space-y-6" aria-busy="true"><Skeleton className="h-9 w-64" /><Skeleton className="h-20 w-full" /><Skeleton className="h-56 w-full" /><p className="sr-only">Loading Graduate Tracer response…</p></section>;
   }
 
   const response = detail.data?.data;
@@ -35,6 +35,7 @@ export function GraduateTracerDetailPage({ responseId }: { responseId: string })
     return (
       <section className="space-y-6">
         <Link href="/portal/graduate-tracer" className="inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Graduate Tracer queue</Link>
+        <GraduateTracerHeading title="Graduate Tracer response" />
         <GraduateTracerError error={detail.error} fallback={graduateTracerErrorCode(detail.error) === "graduate_tracer_not_submitted" ? "This response is not available because it has not been submitted." : "The submitted Graduate Tracer response could not be loaded."} onRetry={() => void detail.refetch()} />
       </section>
     );
@@ -45,7 +46,8 @@ export function GraduateTracerDetailPage({ responseId }: { responseId: string })
     return (
       <section className="space-y-6">
         <Link href="/portal/graduate-tracer" className="inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Graduate Tracer queue</Link>
-        <p role="alert" className="border-y border-border py-5 text-sm leading-6 text-muted">This response is not available in the submitted-response workspace.</p>
+        <GraduateTracerHeading title="Graduate Tracer response" />
+        <p role="alert" className="border-y border-border py-5 text-sm leading-6 text-muted">This response has not been submitted, so it is not available for review.</p>
       </section>
     );
   }
@@ -54,7 +56,7 @@ export function GraduateTracerDetailPage({ responseId }: { responseId: string })
       <Link href="/portal/graduate-tracer" className="inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Graduate Tracer queue</Link>
       <GraduateTracerHeading
         title={response.name || "Graduate Tracer response"}
-        description={`Submitted response · instrument schema ${response.instrument_schema_version}`}
+        description="Submitted Graduate Tracer response"
         action={<span className="text-sm text-muted">Submitted {formatGraduateTracerDateTime(response.submitted_at)}</span>}
       />
       {detail.isFetching ? <p role="status" className="text-xs text-muted">Refreshing submitted response…</p> : null}

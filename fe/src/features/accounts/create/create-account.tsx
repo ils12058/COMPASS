@@ -168,7 +168,7 @@ export function CreateAccount() {
           </Button>
           <Link
             href="/portal/accounts"
-            className="inline-flex min-h-10 items-center px-3 text-sm font-semibold text-muted hover:underline"
+            className="inline-flex min-h-10 items-center px-3 text-sm font-semibold text-muted hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             Cancel
           </Link>

@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
@@ -190,10 +191,10 @@ export function CounselorInventoryRoster() {
           </div>
         </div>
         {academicYears.isError && canFilterYear ? (
-          <p role="status" className="mt-3 text-sm text-warning">Academic Year choices could not be loaded. The roster still uses the selected Academic Year when one is present; otherwise, it uses the backend&apos;s current-year default.</p>
+          <p role="status" className="mt-3 text-sm text-warning">Academic Year choices could not be loaded. The roster still uses the selected Academic Year when one is present; otherwise, it uses the current Academic Year.</p>
         ) : null}
         {missingYearUnresolved ? (
-          <p role="status" className="mt-3 text-sm text-warning">The Missing filter is held until this Academic Year can be verified, so an unsupported historical Missing query is not sent.</p>
+          <p role="status" className="mt-3 text-sm text-warning">The Missing filter is paused until this Academic Year can be confirmed. Missing status applies only to the current Academic Year.</p>
         ) : null}
         {suppressMissing ? (
           <p role="status" className="mt-3 text-sm text-muted">The Missing filter applies only to the current Academic Year and was cleared for this selection.</p>
@@ -207,8 +208,8 @@ export function CounselorInventoryRoster() {
 
       {roster.isPending ? (
         <div className="mt-5 space-y-2" aria-busy="true">
-          <div className="h-12 animate-pulse rounded bg-surface-muted" />
-          <div className="h-12 animate-pulse rounded bg-surface-muted" />
+          <Skeleton className="h-12" />
+          <Skeleton className="h-12" />
           <p className="sr-only">Loading scoped Student Individual Inventory roster…</p>
         </div>
       ) : roster.isError ? (

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +20,8 @@ function positiveInteger(value: string): number | undefined {
 function pageNumber(value: string): number {
   return positiveInteger(value) ?? 1;
 }
+
+export const metadata: Metadata = { title: "Good Moral" };
 
 export default async function Page({
   searchParams,

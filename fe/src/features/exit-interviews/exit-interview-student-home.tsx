@@ -115,7 +115,7 @@ export function ExitInterviewStudentHome({
           Current Academic Year
         </h2>
         {current.isPending ? (
-          <div className="mt-4 space-y-3" aria-busy="true" aria-label="Loading current Exit Interview">
+          <div className="mt-4 space-y-3" aria-busy="true"><span className="sr-only">Loading current Exit Interview…</span>
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-16 w-full max-w-2xl" />
           </div>
@@ -193,7 +193,7 @@ export function ExitInterviewStudentHome({
                 ) : (
                   <p role="alert" className="text-sm leading-6 text-danger">
                     {needsStatusCheck
-                      ? "We could not confirm whether the Exit Interview started. Check the canonical current status before trying again."
+                      ? "We could not confirm whether the Exit Interview started. Check its current status before trying again."
                       : exitInterviewErrorMessage(startError, "The Exit Interview could not be started.")}
                   </p>
                 )}
@@ -208,7 +208,7 @@ export function ExitInterviewStudentHome({
           Exit Interview history
         </h2>
         {history.isPending ? (
-          <div className="mt-4 space-y-3" aria-busy="true" aria-label="Loading Exit Interview history">
+          <div className="mt-4 space-y-3" aria-busy="true"><span className="sr-only">Loading Exit Interview history…</span>
             <Skeleton className="h-14 w-full max-w-3xl" />
             <Skeleton className="h-14 w-full max-w-3xl" />
           </div>

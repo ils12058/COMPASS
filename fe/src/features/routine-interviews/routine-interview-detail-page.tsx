@@ -18,6 +18,7 @@ import {
   RoutinePageHeading,
   RoutineQueryError,
   RoutineUnavailable,
+  formatRoutineDateTime,
   routineErrorMessage,
 } from "@/features/routine-interviews/routine-interviews-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -65,7 +66,7 @@ function StudentRoutineDetail({
   const detail = query.data?.data;
 
   if (query.isPending) {
-    return <div aria-busy="true"><Skeleton className="h-9 w-1/2" /><Skeleton className="mt-5 h-28 w-full" /><Skeleton className="mt-8 h-96 w-full" /></div>;
+    return <div aria-busy="true"><Skeleton className="h-9 w-1/2" /><Skeleton className="mt-5 h-28 w-full" /><Skeleton className="mt-8 h-96 w-full" /><p className="sr-only">Loading Routine Interview…</p></div>;
   }
   if (query.isError || !detail) {
     return (
@@ -134,7 +135,7 @@ function CounselorRoutineDetail({
   const detail = query.data?.data;
 
   if (query.isPending) {
-    return <div aria-busy="true"><Skeleton className="h-9 w-1/2" /><Skeleton className="mt-5 h-28 w-full" /><Skeleton className="mt-8 h-96 w-full" /></div>;
+    return <div aria-busy="true"><Skeleton className="h-9 w-1/2" /><Skeleton className="mt-5 h-28 w-full" /><Skeleton className="mt-8 h-96 w-full" /><p className="sr-only">Loading Routine Interview…</p></div>;
   }
   if (query.isError || !detail) {
     return (
@@ -204,7 +205,7 @@ function CounselorRoutineDetail({
         <section aria-labelledby="routine-evaluation-heading" className="mt-10 border-t-2 border-brand pt-6">
           <header className="border-b border-border pb-4">
             <h2 id="routine-evaluation-heading" className="font-heading text-2xl font-semibold text-ink">Counselor Evaluation</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">Finalized {detail.evaluation_finalized_at ? new Date(detail.evaluation_finalized_at).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" }) : ""}. Read-only.</p>
+            <p className="mt-2 text-sm leading-6 text-muted">Finalized{detail.evaluation_finalized_at ? ` ${formatRoutineDateTime(detail.evaluation_finalized_at)}` : ""}. Read-only.</p>
           </header>
           <RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} />
         </section>

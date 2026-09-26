@@ -223,21 +223,7 @@ function BookingWorkspace() {
       <AppointmentsPageHeading
         headingId="book-appointment-heading"
         title="Book appointment"
-        description="Choose an Appointment Service, Counselor, and a bookable time. Your booking is scheduled directly after submission."
       />
-
-      {error ? <p role="alert" className="mb-4 text-sm text-danger">{error}</p> : null}
-      {createdAppointment ? (
-        <div role="status" className="mb-6 flex flex-col gap-3 border-y border-success/30 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-success">Appointment {createdAppointment.referenceCode} was scheduled.</p>
-          <Link
-            href={`/portal/appointments/${createdAppointment.id}`}
-            className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            View Appointment
-          </Link>
-        </div>
-      ) : null}
 
       <p className="mb-6 text-sm text-muted">
         Service <span aria-hidden="true">→</span> Delivery <span aria-hidden="true">→</span> Counselor <span aria-hidden="true">→</span> Time <span aria-hidden="true">→</span> Review
@@ -260,9 +246,10 @@ function BookingWorkspace() {
         </div>
 
         {bookingServices.isPending ? (
-          <div aria-busy="true" aria-label="Loading Appointment Services" className="mt-5 space-y-3">
+          <div aria-busy="true" className="mt-5 space-y-3">
             <Skeleton className="h-16 w-full" />
             <Skeleton className="h-16 w-full" />
+            <p className="sr-only">Loading Appointment Services…</p>
           </div>
         ) : bookingServices.isError ? (
           <div role="alert" className="mt-5 border-y border-danger/30 py-5">
@@ -386,8 +373,9 @@ function BookingWorkspace() {
           {date ? (
             <div className="mt-5" aria-live="polite">
               {slots.isPending ? (
-                <div aria-busy="true" aria-label="Loading available times" className="flex flex-wrap gap-2">
+                <div aria-busy="true" className="flex flex-wrap gap-2">
                   <Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" />
+                  <p className="sr-only">Loading available times…</p>
                 </div>
               ) : slots.isError ? (
                 <div role="alert">
@@ -463,6 +451,18 @@ function BookingWorkspace() {
         </section>
       ) : null}
 
+      {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
+      {createdAppointment ? (
+        <div role="status" className="mt-4 flex flex-col gap-3 border-y border-success/30 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-success">Appointment {createdAppointment.referenceCode} was scheduled.</p>
+          <Link
+            href={`/portal/appointments/${createdAppointment.id}`}
+            className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            View Appointment
+          </Link>
+        </div>
+      ) : null}
     </section>
   );
 }

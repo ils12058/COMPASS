@@ -157,11 +157,11 @@ export function PasswordAccess() {
             className="w-full"
             disabled={requestAccess.isPending || (isTurnstileConfigured && !turnstileToken)}
           >
-            {requestAccess.isPending ? "Sending code…" : "Continue"}
+            {requestAccess.isPending ? "Sending code…" : "Send security code"}
           </Button>
         </form>
 
-        <Link className="mt-5 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline" href="/login">
+        <Link className="mt-5 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/login">
           Return to sign in
         </Link>
       </section>

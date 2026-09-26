@@ -4,8 +4,10 @@ function hasCapability(user: CapabilityUser, capability: string): boolean {
   return user.capabilities.includes(capability);
 }
 
-export function canViewOrganization(user: CapabilityUser): boolean {
-  return hasCapability(user, "organization.view");
+// Reference read of Campus, College, and Program structure for selectors and
+// other workflows. It does not grant the Organization workspace (ADR-059).
+export function canViewOrganizationStructure(user: CapabilityUser): boolean {
+  return hasCapability(user, "organization.structure.view");
 }
 
 export function canManageOrganization(user: CapabilityUser): boolean {
@@ -30,7 +32,6 @@ export function canManageInstitutionalForms(user: CapabilityUser): boolean {
 
 export function hasInstitutionWorkspace(user: CapabilityUser): boolean {
   return (
-    canViewOrganization(user) ||
     canManageOrganization(user) ||
     canViewAcademicYears(user) ||
     canViewInstitutionalForms(user)

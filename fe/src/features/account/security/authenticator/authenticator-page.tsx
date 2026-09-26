@@ -194,7 +194,7 @@ export function AuthenticatorPage() {
       ) : null}
       {error ? <p role="alert" className="mt-5 text-sm text-danger">{error}</p> : null}
       {success ? <p role="status" className="mt-5 text-sm text-success">{success}</p> : null}
-      <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setVerified(true); setError("Verification complete. Select the action again to continue."); }} />
+      <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setVerified(true); setError(null); setSuccess("Verification complete. Select the action again to continue."); }} />
       <AlertDialog open={confirmAction !== null} onOpenChange={(open) => { if (!open && !actionPending) setConfirmAction(null); }}>
         <AlertDialogContent>
           <AlertDialogTitle>{confirmAction === "disable" ? "Disable authenticator app?" : "Generate new recovery codes?"}</AlertDialogTitle>

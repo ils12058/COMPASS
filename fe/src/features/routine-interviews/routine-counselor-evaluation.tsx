@@ -366,11 +366,11 @@ function RoutineEncounterFinalization({
     <section aria-labelledby="routine-encounter-finalization" className="border-t border-border py-5">
       <h3 id="routine-encounter-finalization" className="font-heading text-lg font-semibold text-ink">Finalize against a completed Counseling interaction</h3>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-        Finalization is separate from saving. The backend verifies the completed Encounter and permanently locks this Evaluation.
+        Finalizing is separate from saving. COMPASS verifies the completed Counseling Encounter and permanently locks this Evaluation.
       </p>
 
       {candidates.isPending ? (
-        <div aria-busy="true" aria-label="Loading completed Counseling interactions" className="mt-4 space-y-3">
+        <div aria-busy="true" className="mt-4 space-y-3"><span className="sr-only">Loading completed Counseling interactions…</span>
           <Skeleton className="h-14 w-full" />
           <Skeleton className="h-14 w-full" />
         </div>

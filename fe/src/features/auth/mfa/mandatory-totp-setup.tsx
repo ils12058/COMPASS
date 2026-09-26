@@ -99,7 +99,7 @@ export function MandatoryTotpSetup() {
         <p className="mt-3 text-sm leading-6 text-muted">
           The authenticator setup challenge is no longer available.
         </p>
-        <Link className="mt-6 inline-flex min-h-10 items-center font-semibold text-brand hover:underline" href="/login">
+        <Link className="mt-6 inline-flex min-h-10 items-center font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/login">
           Return to sign in
         </Link>
       </section>

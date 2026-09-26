@@ -106,7 +106,7 @@ function useCreateGoodMoralRequest() {
         if (/idempotency-key/i.test(message)) {
           intentRef.current = null;
           setUncertainIntent(null);
-          setNotice("Review the request details, then submit again deliberately to begin a new request intent.");
+          setNotice("Review the request details, then submit again to start a new request.");
         }
       }
       setError(goodMoralErrorMessage(caught, "The Good Moral request could not be created."));
@@ -146,7 +146,7 @@ function useCreateGoodMoralRequest() {
     intentRef.current = null;
     setUncertainIntent(null);
     setError(null);
-    setNotice("Update the details before starting a new request intent. The previous result may still have created a request.");
+    setNotice("Update the details before submitting again. The previous attempt may already have created a request.");
   }
 
   return {

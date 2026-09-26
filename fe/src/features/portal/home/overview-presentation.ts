@@ -7,11 +7,12 @@ import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import { getExitInterviewAccess } from "@/features/exit-interviews/exit-interviews-access";
 import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
-import { canManageOrganization, canViewAcademicYears, canViewInstitutionalForms, canViewOrganization } from "@/features/institution-configuration/institution-access";
+import { canManageOrganization, canViewAcademicYears, canViewInstitutionalForms } from "@/features/institution-configuration/institution-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { canAttemptReports } from "@/features/reports/reports-access";
+import { hasServicesWorkspace } from "@/features/services/services-access";
 import { designationLabels, isDesignationCode } from "@/features/accounts/presentation";
 import { userRoleLabel } from "@/features/portal/components/portal-presentation";
 import { DesignationCode, type OverviewSummaryResponse, type UserSummary } from "@/lib/api/generated/model";
@@ -158,7 +159,7 @@ export function getOverviewQuickAccess(user: UserSummary): OverviewQuickAccessLi
   const feedbackAccess = getFeedbackAccess(user);
   const canViewPlatform = user.capabilities.includes("platform_operations.view");
 
-  add("services", "Services", user.capabilities.includes("services.view") ? "/portal/services" : undefined);
+  add("services", "Services", hasServicesWorkspace(user) ? "/portal/services" : undefined);
   add("inventory", "Individual Inventory", inventoryAccess.hasWorkspace ? "/portal/inventory" : undefined);
   add("routine", "Routine Interviews", routineAccess.hasWorkspace ? "/portal/routine-interviews" : undefined);
   add("exit", "Exit Interviews", exitAccess.hasWorkspace ? "/portal/exit-interviews" : undefined);
@@ -176,9 +177,7 @@ export function getOverviewQuickAccess(user: UserSummary): OverviewQuickAccessLi
     canViewPlatform ? "/portal/platform" : undefined,
   );
 
-  const canViewOrganizationWorkspace =
-    canViewOrganization(user) || canManageOrganization(user);
-  add("organization", "Organization", canViewOrganizationWorkspace ? "/portal/organization" : undefined);
+  add("organization", "Organization", canManageOrganization(user) ? "/portal/organization" : undefined);
   add("academic-years", "Academic Years", canViewAcademicYears(user) ? "/portal/academic-years" : undefined);
   add("institutional-forms", "Institutional Forms", canViewInstitutionalForms(user) ? "/portal/institutional-forms" : undefined);
 
@@ -187,9 +186,9 @@ export function getOverviewQuickAccess(user: UserSummary): OverviewQuickAccessLi
     user.designations.includes(DesignationCode.HEAD_GUIDANCE_COUNSELOR);
   const priorities =
     user.role === "STUDENT"
-      ? ["appointments", "services", "good-moral", "feedback"]
+      ? ["appointments", "good-moral", "feedback"]
       : user.role === "GUIDANCE_SERVICES_STAFF"
-        ? ["appointments", "referrals", "call-slips", "services"]
+        ? ["appointments", "referrals", "call-slips"]
         : user.role === "COUNSELOR" && isHeadGuidance
           ? ["appointments", "routine", "reports", "call-slips", "exit", "graduate", "organization"]
           : user.role === "COUNSELOR"

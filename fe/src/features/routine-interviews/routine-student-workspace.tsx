@@ -96,7 +96,7 @@ export function StudentRoutineWorkspace({
           </div>
 
           {candidates.isPending ? (
-            <div aria-busy="true" aria-label="Loading eligible Appointments" className="space-y-3 border-y border-border py-4">
+            <div aria-busy="true" className="space-y-3 border-y border-border py-4"><span className="sr-only">Loading eligible Appointments…</span>
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />
             </div>
@@ -158,7 +158,7 @@ export function StudentRoutineWorkspace({
             Your Routine Interviews
           </h2>
           {routines.isPending ? (
-            <div aria-busy="true" aria-label="Loading your Routine Interviews" className="space-y-3 border-y border-border py-4">
+            <div aria-busy="true" className="space-y-3 border-y border-border py-4"><span className="sr-only">Loading your Routine Interviews…</span>
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
             </div>

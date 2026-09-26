@@ -1,7 +1,7 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 import type { ExitInterviewStatusValue } from "@/lib/api/generated/model";
 
@@ -30,7 +30,7 @@ export function exitInterviewErrorMessage(
     case "exit_interview_inventory_required":
       return "A submitted Individual Inventory for the current Academic Year is required before starting an Exit Interview.";
     case "current_student_required":
-      return "Starting, editing, or submitting an Exit Interview requires CURRENT Student lifecycle under the current institutional rule.";
+      return "Only Students with Current lifecycle status can start, edit, or submit an Exit Interview.";
     case "current_academic_year_not_configured":
       return "A current Academic Year is not configured. Contact the institutional administrator.";
     case "exit_interview_not_submitted":
@@ -138,18 +138,7 @@ export function ExitInterviewUnavailable({
   title?: string;
   message?: string;
 }) {
-  return (
-    <section className="max-w-xl border-y border-border py-8">
-      <h1 className="font-heading text-3xl font-bold text-ink">{title}</h1>
-      <p className="mt-3 text-sm leading-6 text-muted">{message}</p>
-      <Link
-        href="/portal"
-        className="mt-5 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        Return to Home
-      </Link>
-    </section>
-  );
+  return <WorkspaceUnavailable title={title}>{message}</WorkspaceUnavailable>;
 }
 
 export function ExitInterviewError({

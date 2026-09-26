@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import {
   parseStudentProfileFilters,
 } from "@/features/reports/report-filters";
@@ -35,14 +36,9 @@ export function StudentProfileReportPage() {
   const { user } = usePortalSession();
   if (!canAttemptReports(user)) {
     return (
-      <section className="max-w-2xl border-y border-border py-7">
-        <h1 className="font-heading text-3xl font-bold text-ink">
-          Student Profiling unavailable
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-muted">
-          Your current access does not include Reports.
-        </p>
-      </section>
+      <WorkspaceUnavailable title="Student Profiling unavailable">
+        Your current access does not include Reports.
+      </WorkspaceUnavailable>
     );
   }
   return <StudentProfileReportWorkspace />;
@@ -323,7 +319,7 @@ function StudentProfileReportWorkspace() {
       ) : null}
 
       {reportQuery.isPending && canQueryReport ? (
-        <div className="mt-7 space-y-5" aria-busy="true" aria-label="Loading Student Profiling report">
+        <div className="mt-7 space-y-5" aria-busy="true"><span className="sr-only">Loading Student Profiling report…</span>
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-52 w-full" />

@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 
+import { Skeleton } from "@/components/ui/skeleton";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
 import { formatInventoryDate, InventoryHeading, InventoryNotice, InventoryQueryError, InventoryStatus } from "@/features/inventory/inventory-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { useInventoryGetMyHistoryItem } from "@/lib/api/generated/inventory/inventory";
 
 export function InventoryHistoryDetail({ inventoryId }: { inventoryId: string }) {
@@ -13,9 +15,9 @@ export function InventoryHistoryDetail({ inventoryId }: { inventoryId: string })
   const access = getInventoryAccess(user);
   if (!access.canViewSelf) {
     return (
-      <InventoryNotice title="Individual Inventory is unavailable" tone="warning">
+      <WorkspaceUnavailable title="Individual Inventory unavailable">
         This historical record is available only to its Student through the self-service Inventory workspace.
-      </InventoryNotice>
+      </WorkspaceUnavailable>
     );
   }
   return <StudentInventoryHistoryDetail inventoryId={inventoryId} />;
@@ -30,8 +32,8 @@ function StudentInventoryHistoryDetail({ inventoryId }: { inventoryId: string })
     return (
       <section aria-busy="true" className="space-y-5">
         <InventoryHeading title="Annual Individual Inventory" />
-        <div className="h-8 w-56 animate-pulse rounded bg-surface-muted" />
-        <div className="h-64 animate-pulse rounded bg-surface-muted" />
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-64" />
         <p className="sr-only">Loading annual Individual Inventory record…</p>
       </section>
     );

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { counselingDeliveryModeLabel, counselingErrorMessage, CounselingPagination } from "@/features/counseling/counseling-shared";
+import { appointmentStatusLabel } from "@/features/appointments/appointments-shared";
+import { counselingDeliveryModeLabel, counselingErrorMessage, CounselingPagination, formatCounselingDateTime } from "@/features/counseling/counseling-shared";
 import type { CounselingEncounterResponse } from "@/lib/api/generated/model";
 import { CounselingEntryMode, DeliveryMode } from "@/lib/api/generated/model";
 import {
@@ -143,7 +144,7 @@ export function EncounterCorrectionForm({
         }} className="mt-2 min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
           <option value="">No Appointment link</option>
           {currentAppointmentAvailable ? <option value={encounter.appointment?.id}>{encounter.appointment?.reference_code} · current link</option> : null}
-          {items.map((item) => <option key={item.id} value={item.id}>{item.reference_code} · {new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.starts_at))} · {counselingDeliveryModeLabel(item.delivery_mode)} · {item.status.toLowerCase().replaceAll("_", " ")}</option>)}
+          {items.map((item) => <option key={item.id} value={item.id}>{item.reference_code} · {formatCounselingDateTime(item.starts_at)} · {counselingDeliveryModeLabel(item.delivery_mode)} · {appointmentStatusLabel(item.status)}</option>)}
         </select>
         {!candidates.isPending && !candidates.isError && items.length === 0 && !encounter.appointment ? <p className="mt-2 text-sm text-muted">No Appointment candidates are available for this Encounter.</p> : null}
         {!candidates.isPending && !candidates.isError ? <CounselingPagination page={candidates.data?.data.page ?? page} hasNext={candidates.data?.data.has_next ?? false} onPageChange={setPage} /> : null}

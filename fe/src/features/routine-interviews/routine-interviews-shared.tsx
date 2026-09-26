@@ -1,7 +1,7 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import type {
   DeliveryMode,
   RoutineAppointmentSummary,
@@ -48,13 +48,11 @@ export function routineDeliveryModeLabel(mode: DeliveryMode): string {
   return mode === "ONLINE" ? "Online" : "In person";
 }
 
-export function routineIntakeStatusLabel(status: RoutineIntakeStatus): string {
+export function routineIntakeStatusLabel(status: string): string {
   return status === "SUBMITTED" ? "Submitted" : "Draft";
 }
 
-export function routineEvaluationStatusLabel(
-  status: RoutineEvaluationStatus,
-): string {
+export function routineEvaluationStatusLabel(status: string): string {
   return status === "FINALIZED" ? "Finalized" : "Draft";
 }
 
@@ -321,18 +319,9 @@ export function RoutineUnavailable({
   message?: string;
 }) {
   return (
-    <section className="max-w-xl border-y border-border py-8">
-      <h1 className="font-heading text-3xl font-bold text-ink">
-        Routine Interviews unavailable
-      </h1>
-      <p className="mt-3 text-sm leading-6 text-muted">{message}</p>
-      <Link
-        href="/portal"
-        className="mt-5 inline-block min-h-10 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        Return to Home
-      </Link>
-    </section>
+    <WorkspaceUnavailable title="Routine Interviews unavailable">
+      {message}
+    </WorkspaceUnavailable>
   );
 }
 

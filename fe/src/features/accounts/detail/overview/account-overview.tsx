@@ -29,6 +29,7 @@ import {
 } from "@/features/accounts/components/account-action";
 import { useManagedAccount } from "@/features/accounts/detail/account-detail-frame";
 import {
+  accountName,
   formatAccountDate,
   lifecycleLabels,
   lifecycles,
@@ -43,8 +44,8 @@ import {
 } from "@/lib/api/generated/accounts/accounts";
 import {
   RoleCode,
+  StudentLifecycleCode,
   type IdentityUpdateRequest,
-  type StudentLifecycleCode,
 } from "@/lib/api/generated/model";
 
 type Confirmation = "disable" | "enable" | "lifecycle" | null;
@@ -474,17 +475,19 @@ export function AccountOverview() {
         <AlertDialogContent>
           <AlertDialogTitle>
             {confirm === "disable"
-              ? `Disable ${account.full_name}'s account?`
+              ? `Disable ${accountName(account)}'s account?`
               : confirm === "enable"
-                ? `Enable ${account.full_name}'s account?`
-                : "Update Student lifecycle?"}
+                ? `Enable ${accountName(account)}'s account?`
+                : `Update ${accountName(account)}'s Student lifecycle?`}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {confirm === "disable"
               ? "The account will no longer be able to sign in. Existing authentication state will be invalidated."
               : confirm === "enable"
                 ? "This restores account access. Password, email verification, and MFA states remain separate."
-                : `Change the Student lifecycle to ${lifecycle ? lifecycleLabels[lifecycle] : "the selected status"}?`}
+                : lifecycle === StudentLifecycleCode.CURRENT
+                  ? "Change the Student lifecycle to Current. Current-student workflows such as Individual Inventory, Appointment booking, and Routine Interviews become available again. Sign-in and existing records are not affected."
+                  : `Change the Student lifecycle to ${lifecycle ? lifecycleLabels[lifecycle] : "the selected status"}. The Student will no longer be able to start or update current-student workflows such as Individual Inventory, Appointment booking, Routine Interviews, and Exit Interviews. Sign-in and historical records remain available.`}
           </AlertDialogDescription>
           {action.error ? (
             <p role="alert" className="mt-3 text-sm text-danger">
@@ -503,7 +506,11 @@ export function AccountOverview() {
               onClick={() => void confirmAction()}
             >
               {busy
-                ? "Updating…"
+                ? confirm === "disable"
+                  ? "Disabling…"
+                  : confirm === "enable"
+                    ? "Enabling…"
+                    : "Updating lifecycle…"
                 : confirm === "disable"
                   ? "Disable account"
                   : confirm === "enable"

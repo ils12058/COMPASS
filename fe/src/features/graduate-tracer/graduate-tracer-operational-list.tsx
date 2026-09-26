@@ -95,7 +95,7 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
       {!dateRangeInvalid && queue.isError && page && !hideCached ? <GraduateTracerError error={queue.error} fallback="The submitted-response queue could not be refreshed. Showing the last confirmed results." onRetry={() => void queue.refetch()} /> : null}
 
       {dateRangeInvalid ? null : queue.isPending ? (
-        <div className="space-y-3" aria-busy="true" aria-label="Loading submitted Graduate Tracer responses"><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
+        <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading submitted Graduate Tracer responses…</span><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
       ) : queue.isError && (!page || hideCached) ? (
         <GraduateTracerError error={queue.error} fallback="The submitted-response queue could not be loaded." onRetry={() => void queue.refetch()} />
       ) : !page ? null : page.items.length === 0 ? (

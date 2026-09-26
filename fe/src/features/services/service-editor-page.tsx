@@ -268,9 +268,8 @@ function ServiceForm({
               </option>
             </select>
             <p className="text-xs leading-5 text-muted">
-              Optional and required are both schedulable under the current
-              backend contract. No additional workflow distinction is applied
-              here.
+              Services with an optional or required appointment policy can
+              both be booked as Appointments.
             </p>
           </div>
           <div className="grid gap-2">
@@ -360,9 +359,8 @@ function ServiceForm({
           </span>
         </label>
         <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">
-          This requirement is preserved even when appointment policy is No
-          appointment; COMPASS does not invent an incompatibility the backend
-          does not enforce.
+          When the appointment policy is No appointment, this setting is kept
+          but has no booking effect.
         </p>
       </section>
 
@@ -397,9 +395,8 @@ function ServiceForm({
         {legacyProviderAssignment ? (
           <p className="mt-3 max-w-3xl border-l-2 border-warning pl-3 text-xs leading-5 text-muted">
             This Service has a historical Guidance Services Staff provider
-            assignment. It remains readable for compatibility but is not
-            selectable for current provider configuration. Unrelated edits
-            leave that historical assignment untouched.
+            assignment. It can no longer be selected, and saving changes to
+            other settings leaves it in place.
           </p>
         ) : null}
       </section>

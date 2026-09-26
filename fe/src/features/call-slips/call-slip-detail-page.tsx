@@ -44,12 +44,12 @@ export function CallSlipDetailPage({ callSlipId }: { callSlipId: string }) {
 function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   const slip = useCallSlipsGetMy(callSlipId, { query: { retry: false } });
 
-  if (slip.isError) return <CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} />;
+  if (slip.isError) return <div className="space-y-7"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
   if (slip.isPending) return <CallSlipLoading />;
 
   const item = slip.data.data;
   return (
-    <main className="space-y-7">
+    <div className="space-y-7">
       <CallSlipHeading title="Call Slip / Interview Permit" description="Your Call Slip details" backHref="/portal/call-slips" backLabel="Back to My Call Slips" action={<CallSlipPdfDownload callSlipId={item.id} studentFacing />} />
       {item.state === "VOIDED" ? <div role="status" className="border-y border-warning/30 py-4"><p className="font-semibold text-warning">Withdrawn</p><p className="mt-1 text-sm text-ink">This Call Slip is no longer active.</p></div> : null}
       <RecordSection title="Permit details">
@@ -71,7 +71,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <Field label="Recorded in COMPASS" value={formatDateTime(item.created_at)} />
       </RecordSection>
       <FormRevisionSection revision={item.form_revision} />
-    </main>
+    </div>
   );
 }
 
@@ -80,12 +80,12 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   const referralAccess = getReferralAccess(user);
   const slip = useCallSlipsGet(callSlipId, { query: { retry: false } });
 
-  if (slip.isError) return <CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} />;
+  if (slip.isError) return <div className="space-y-7"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
   if (slip.isPending) return <CallSlipLoading />;
 
   const item = slip.data.data;
   return (
-    <main className="space-y-7">
+    <div className="space-y-7">
       <CallSlipHeading title="Call Slip / Interview Permit" description="Operational source record" backHref="/portal/call-slips" action={<CallSlipPdfDownload callSlipId={item.id} />} />
       {item.state === "VOIDED" ? (
         <div role="status" className="border-y border-warning/30 py-4">
@@ -127,12 +127,12 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         const refreshed = await slip.refetch();
         return refreshed.isSuccess ? refreshed.data.data : undefined;
       }} />
-    </main>
+    </div>
   );
 }
 
 function CallSlipLoading() {
-  return <div className="space-y-4" aria-busy="true" aria-label="Loading Call Slip"><Skeleton className="h-16 w-full" /><Skeleton className="h-48 w-full" /><Skeleton className="h-32 w-full" /></div>;
+  return <div className="space-y-4" aria-busy="true"><span className="sr-only">Loading Call Slip…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-48 w-full" /><Skeleton className="h-32 w-full" /></div>;
 }
 
 function Field({ label, value }: { label: string; value: string }) {

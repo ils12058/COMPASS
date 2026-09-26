@@ -4,7 +4,7 @@ import { Suspense, type ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PortalBoundary } from "@/features/portal/components/portal-boundary";
 
-export const metadata: Metadata = { title: "COMPASS" };
+export const metadata: Metadata = { title: { absolute: "COMPASS" } };
 
 function PortalLoading() {
   return (

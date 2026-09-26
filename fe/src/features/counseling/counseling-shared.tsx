@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 import type { CounselingEntryMode, DeliveryMode } from "@/lib/api/generated/model";
 
@@ -17,7 +18,7 @@ const counselingErrors: Record<string, string> = {
   counseling_invalid_time: "The recorded start and end times are not valid. Review the actual interaction times.",
   counseling_appointment_already_used: "A Counseling Encounter has already been recorded for this Appointment. Refresh the candidates and your encounter list.",
   counseling_appointment_invalid: "This Appointment is no longer eligible for this Counseling action. Refresh the candidates and try again.",
-  counseling_service_not_configured: "Counseling cannot be recorded because the canonical Counseling Service is not currently configured for this workflow.",
+  counseling_service_not_configured: "Counseling cannot be recorded because the Counseling Service is not configured.",
   counseling_not_permitted: "This Counseling action is not available within your current access.",
   counseling_context_not_found: "This temporary Counseling Context is no longer available.",
   current_academic_year_not_configured: "The current Academic Year is not configured for this Counseling workflow.",
@@ -81,18 +82,13 @@ export function CounselingPageHeading({
   );
 }
 export function CounselingUnavailable({
-  title = "Counseling is unavailable",
-  children = "This workspace is not available within your current access.",
+  title = "Counseling unavailable",
+  children = "Your current access does not include this Counseling workspace.",
 }: {
   title?: string;
   children?: ReactNode;
 }) {
-  return (
-    <section role="status" className="max-w-2xl border-y border-border py-7">
-      <h1 className="font-heading text-2xl font-semibold text-ink">{title}</h1>
-      <p className="mt-3 text-sm leading-6 text-muted">{children}</p>
-    </section>
-  );
+  return <WorkspaceUnavailable title={title}>{children}</WorkspaceUnavailable>;
 }
 
 export function CounselingQueryError({

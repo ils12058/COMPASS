@@ -47,7 +47,7 @@ function parsePage(value: string | null): number {
 
 export function StudentAffiliationsPage() {
   const { user } = usePortalSession();
-  const canViewStructure = user.capabilities.includes("organization.view");
+  const canViewStructure = user.capabilities.includes("organization.structure.view");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -211,10 +211,9 @@ export function StudentAffiliationsPage() {
 
       {!canViewStructure ? (
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-          This capability combination can manage affiliation records returned by
-          the manager API, but it cannot browse Organization structure. COMPASS
-          therefore does not invent College choices for new or changed
-          affiliations.
+          Your current access does not include Organization structure, so
+          College choices for new or changed affiliations are unavailable.
+          Existing affiliations are still listed.
         </p>
       ) : null}
 
@@ -406,8 +405,8 @@ export function StudentAffiliationsPage() {
             {dialog?.studentId ? "Change affiliation" : "Set affiliation"}
           </DialogTitle>
           <DialogDescription>
-            Each Student has one canonical College affiliation. Setting a new
-            College replaces the current relationship.
+            Each Student has one College affiliation. Setting a new College
+            replaces the current affiliation.
           </DialogDescription>
           <div className="mt-6 space-y-6">
             {dialog?.studentId ? (

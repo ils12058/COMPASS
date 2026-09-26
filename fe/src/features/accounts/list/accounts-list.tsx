@@ -275,8 +275,8 @@ export function AccountsList() {
               {filtered ? (
                 <button
                   type="button"
-                  className="mt-3 font-semibold text-brand underline"
-                  onClick={() => router.replace(pathname)}
+                  className="mt-3 inline-flex min-h-10 items-center font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  onClick={() => router.replace(pathname, { scroll: false })}
                 >
                   Clear filters
                 </button>

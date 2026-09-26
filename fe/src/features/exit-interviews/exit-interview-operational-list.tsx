@@ -124,7 +124,7 @@ export function ExitInterviewOperationalList({
         />
       ) : null}
       {queue.isPending ? (
-        <div className="space-y-3" aria-busy="true" aria-label="Loading Exit Interview queue">
+        <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading Exit Interview queue…</span>
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />

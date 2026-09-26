@@ -40,7 +40,7 @@ import {
 
 export function ResponsibilitiesPage() {
   const { user } = usePortalSession();
-  const canViewStructure = user.capabilities.includes("organization.view");
+  const canViewStructure = user.capabilities.includes("organization.structure.view");
   const queryClient = useQueryClient();
   const responsibilities = useOrganizationListCounselorResponsibilities(
     {},
@@ -235,8 +235,9 @@ export function ResponsibilitiesPage() {
               College counselors
             </h2>
             <p className="mt-2 text-sm text-muted">
-              One explicit responsible Counselor may be assigned to each
-              College. Head Guidance fallback remains backend-owned.
+              One responsible Counselor may be assigned to each College. When
+              none is assigned, default routing uses the Head Guidance
+              Counselor.
             </p>
           </div>
         </div>
@@ -345,9 +346,8 @@ export function ResponsibilitiesPage() {
 
         {!canViewStructure ? (
           <p className="mt-3 text-xs leading-5 text-muted">
-            Structure viewing is not available in this capability combination,
-            so COMPASS shows only explicit College responsibilities returned by
-            the manager API. It does not invent unassigned College choices.
+            Your current access does not include Organization structure, so only
+            Colleges that already have a responsible Counselor are listed.
           </p>
         ) : null}
       </section>
@@ -501,7 +501,7 @@ export function ResponsibilitiesPage() {
               disabled={collegePending || !counselorId}
               onClick={() => void saveCollege()}
             >
-              {setCollege.isPending ? "Saving…" : "Assign Counselor"}
+              {setCollege.isPending ? "Assigning…" : "Assign Counselor"}
             </Button>
           </div>
         </DialogContent>
@@ -522,7 +522,7 @@ export function ResponsibilitiesPage() {
           <AlertDialogTitle>Remove responsible Counselor?</AlertDialogTitle>
           <AlertDialogDescription>
             {collegeRemoval
-              ? `${collegeRemoval.label} will no longer have an explicit responsible Counselor. Default routing may use other canonical fallback behavior.`
+              ? `${collegeRemoval.label} will no longer have a responsible Counselor. Default routing will use the Head Guidance Counselor when one is designated.`
               : "The explicit responsibility will be removed."}
           </AlertDialogDescription>
           {action.messages}
@@ -602,7 +602,7 @@ export function ResponsibilitiesPage() {
               disabled={staffPending || !staffId || !supervisorId}
               onClick={() => void saveStaff()}
             >
-              {setSupervisor.isPending ? "Saving…" : "Set supervisor"}
+              {setSupervisor.isPending ? "Setting supervisor…" : "Set supervisor"}
             </Button>
           </div>
         </DialogContent>

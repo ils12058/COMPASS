@@ -119,12 +119,12 @@ export function DirectCallSlipCreatePage() {
   const selectedDestination = callSlipDestinationLabel(draft.destinationType, draft.otherDestination);
 
   return (
-    <main className="space-y-7">
+    <div className="space-y-7">
       <CallSlipHeading title="Issue Call Slip" description="Record a Call Slip not requiring the linked Referral workflow." backHref="/portal/call-slips" />
       <form className="max-w-3xl space-y-8" onSubmit={prepare} aria-busy={create.isPending}>
         <section aria-labelledby="direct-call-slip-student-heading" className="border-b border-border pb-7">
           <h2 id="direct-call-slip-student-heading" className="font-heading text-xl font-semibold text-ink">Student</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Choose from Students returned by Call Slip-specific discovery. Do not select an issuer; the backend determines who issues and records the permit.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">Search Students available for Call Slips. The issuer is recorded automatically.</p>
           <div className="mt-4">
             <EligibleStudentPicker
               label="Choose Student"
@@ -181,6 +181,6 @@ export function DirectCallSlipCreatePage() {
         </AlertDialogContent>
       </AlertDialog>
       <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setNotice("Verification complete. Review and confirm the issuance again."); setConfirmOpen(true); }} />
-    </main>
+    </div>
   );
 }

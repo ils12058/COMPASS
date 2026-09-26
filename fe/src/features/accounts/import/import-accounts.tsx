@@ -17,6 +17,18 @@ import { CompassApiError } from "@/lib/api/errors";
 const template =
   "institutional_id,email,first_name,middle_name,last_name,suffix,role\n";
 
+const rowActionLabels: Record<string, [review: string, committed: string]> = {
+  CREATE: ["Create", "Created"],
+  SKIP: ["Skip", "Skipped"],
+  CONFLICT: ["Conflict", "Conflict"],
+  INVALID: ["Invalid", "Invalid"],
+};
+
+function rowActionLabel(action: string, committed: boolean): string {
+  const labels = rowActionLabels[action];
+  return labels ? labels[committed ? 1 : 0] : action;
+}
+
 type CsvIssue = {
   row: number | null;
   institutionalId: string;
@@ -238,7 +250,7 @@ export function ImportAccounts() {
           <p className="mt-2 text-sm text-muted">
             {report.valid
               ? report.committed
-                ? "The backend committed this import."
+                ? "The import was completed."
                 : "The CSV is valid for import. Records may change before commit."
               : "Resolve the conflicts or invalid rows, then validate the CSV again."}
           </p>
@@ -288,7 +300,9 @@ export function ImportAccounts() {
                     <td className="px-3 py-3">{row.row_number}</td>
                     <td className="px-3 py-3">{row.institutional_id || "—"}</td>
                     <td className="px-3 py-3">{row.email || "—"}</td>
-                    <td className="px-3 py-3 font-semibold">{row.action}</td>
+                    <td className="px-3 py-3 font-semibold">
+                      {rowActionLabel(row.action, report.committed)}
+                    </td>
                     <td className="px-3 py-3">{row.message || "—"}</td>
                   </tr>
                 ))}

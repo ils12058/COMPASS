@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { NotificationCenter } from "@/features/notifications/notification-center/notification-center";
 
-export const metadata: Metadata = { title: "Notifications | COMPASS" };
+export const metadata: Metadata = { title: "Notifications" };
 
 function safePage(value: string | string[] | undefined): number {
   const parsed = Number(Array.isArray(value) ? value[0] : value);

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import {
   AvailabilityModeScope,
   type WeeklyWindowResponse,
@@ -147,22 +148,11 @@ function AvailabilityUnavailable({
   management?: boolean;
 }) {
   return (
-    <section className="max-w-xl border-y border-border py-8">
-      <h1 className="font-heading text-3xl font-bold text-ink">
-        Availability unavailable
-      </h1>
-      <p className="mt-3 text-sm leading-6 text-muted">
-        {management
-          ? "Your current access does not include Availability administration."
-          : "Your current access does not include this Availability workspace."}
-      </p>
-      <Link
-        href="/portal"
-        className="mt-5 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        Return to Home
-      </Link>
-    </section>
+    <WorkspaceUnavailable title="Availability unavailable">
+      {management
+        ? "Your current access does not include Availability administration."
+        : "Your current access does not include this Availability workspace."}
+    </WorkspaceUnavailable>
   );
 }
 

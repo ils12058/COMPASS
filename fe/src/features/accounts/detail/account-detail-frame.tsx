@@ -69,7 +69,7 @@ export function AccountDetailFrame({
         <div className="mt-5 flex gap-3">
           <Link
             href={listHref}
-            className="inline-flex min-h-10 items-center text-sm font-semibold text-brand underline"
+            className="inline-flex min-h-10 items-center text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             Back to Accounts
           </Link>

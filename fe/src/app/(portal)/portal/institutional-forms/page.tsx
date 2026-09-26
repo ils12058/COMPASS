@@ -1,8 +1,12 @@
+import type { Metadata } from "next";
+
 import { InstitutionalFormsPage } from "@/features/institution-configuration/institutional-forms-page";
 
 type InstitutionalFormsRouteProps = {
   searchParams: Promise<{ family?: string | string[] }>;
 };
+
+export const metadata: Metadata = { title: "Institutional Forms" };
 
 export default async function Page({
   searchParams,
