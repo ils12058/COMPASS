@@ -7374,6 +7374,7 @@
         "type": "object"
       },
       "EmailChangeConfirmRequest": {
+        "additionalProperties": false,
         "properties": {
           "challenge_id": {
             "anyOf": [
@@ -7429,6 +7430,7 @@
         "type": "object"
       },
       "EmailChangeRequest": {
+        "additionalProperties": false,
         "properties": {
           "current_email_challenge_id": {
             "anyOf": [
@@ -7502,6 +7504,7 @@
         "type": "object"
       },
       "EmailChangeSecurityChallengeRequest": {
+        "additionalProperties": false,
         "properties": {
           "turnstile_token": {
             "anyOf": [
@@ -13073,6 +13076,7 @@
         "type": "string"
       },
       "LoginMFARequest": {
+        "additionalProperties": false,
         "properties": {
           "code": {
             "title": "Code",
@@ -13091,6 +13095,7 @@
         "type": "object"
       },
       "LoginRequest": {
+        "additionalProperties": false,
         "properties": {
           "email": {
             "title": "Email",
@@ -13185,6 +13190,7 @@
         "type": "object"
       },
       "MFARequest": {
+        "additionalProperties": false,
         "properties": {
           "code": {
             "title": "Code",
@@ -14663,6 +14669,7 @@
         "type": "string"
       },
       "PasswordAccessConfirmRequest": {
+        "additionalProperties": false,
         "properties": {
           "challenge_id": {
             "format": "uuid",
@@ -14700,6 +14707,7 @@
         "type": "object"
       },
       "PasswordAccessRequest": {
+        "additionalProperties": false,
         "properties": {
           "email": {
             "title": "Email",
@@ -14749,6 +14757,7 @@
         "type": "object"
       },
       "PasswordChangeRequest": {
+        "additionalProperties": false,
         "properties": {
           "current_password": {
             "anyOf": [

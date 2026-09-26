@@ -12,6 +12,7 @@ from django.utils import timezone
 from ninja import Router, Schema, Status
 from ninja.security import APIKeyCookie
 from ninja.utils import check_csrf
+from pydantic import ConfigDict
 
 from compass.accounts.policy import DESIGNATION_CODES
 from compass.accounts.services import effective_capabilities
@@ -82,6 +83,10 @@ from compass.common.rate_limit import client_ip
 router = Router(tags=["auth"])
 
 
+class StrictSchema(Schema):
+    model_config = ConfigDict(extra="forbid")
+
+
 class UserSummary(Schema):
     id: UUID
     email: str
@@ -97,7 +102,7 @@ class CSRFResponse(Schema):
     csrf_token: str
 
 
-class LoginRequest(Schema):
+class LoginRequest(StrictSchema):
     email: str
     password: str
     trust_browser: bool = False
@@ -113,16 +118,16 @@ class LoginResponse(Schema):
     user: UserSummary | None = None
 
 
-class MFARequest(Schema):
+class MFARequest(StrictSchema):
     code: str
 
 
-class LoginMFARequest(Schema):
+class LoginMFARequest(StrictSchema):
     method: str
     code: str
 
 
-class PasswordAccessRequest(Schema):
+class PasswordAccessRequest(StrictSchema):
     email: str
     turnstile_token: str | None = None
 
@@ -133,7 +138,7 @@ class PasswordAccessRequestResponse(Schema):
     message: str
 
 
-class PasswordAccessConfirmRequest(Schema):
+class PasswordAccessConfirmRequest(StrictSchema):
     challenge_id: UUID
     code: str
     new_password: str
@@ -143,7 +148,7 @@ class PasswordAccessConfirmResponse(Schema):
     password_set: bool
 
 
-class PasswordChangeRequest(Schema):
+class PasswordChangeRequest(StrictSchema):
     current_password: str | None = None
     new_password: str
 
@@ -152,7 +157,7 @@ class PasswordChangeResponse(Schema):
     changed: bool
 
 
-class EmailChangeSecurityChallengeRequest(Schema):
+class EmailChangeSecurityChallengeRequest(StrictSchema):
     turnstile_token: str | None = None
 
 
@@ -161,7 +166,7 @@ class EmailChangeSecurityChallengeResponse(Schema):
     expires_at: datetime
 
 
-class EmailChangeRequest(Schema):
+class EmailChangeRequest(StrictSchema):
     new_email: str
     turnstile_token: str | None = None
     current_email_challenge_id: UUID | None = None
@@ -174,7 +179,7 @@ class EmailChangeRequestResponse(Schema):
     expires_at: datetime
 
 
-class EmailChangeConfirmRequest(Schema):
+class EmailChangeConfirmRequest(StrictSchema):
     code: str
     request_id: UUID | None = None
     challenge_id: UUID | None = None

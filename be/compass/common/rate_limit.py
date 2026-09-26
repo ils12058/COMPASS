@@ -1,8 +1,4 @@
-"""Reusable Redis-backed rate-limit primitives.
-
-Policies are deliberately not attached to endpoints yet. Product-facing limits should be
-chosen with the relevant domain owner instead of being guessed in the foundation layer.
-"""
+"""Reusable Redis-backed rate-limit primitives and trusted proxy client address parsing."""
 
 from __future__ import annotations
 
@@ -126,10 +122,16 @@ def _trusted_proxy(remote_addr: str | None) -> bool:
 
 
 def client_ip(request) -> str:
-    """Return the peer address, honoring forwarded headers only from a trusted proxy."""
+    """Prefer the proxy's canonical address over caller-supplied forwarding headers."""
     remote_addr = request.META.get("REMOTE_ADDR")
     if _trusted_proxy(remote_addr):
-        forwarded = request.META.get("HTTP_CF_CONNECTING_IP") or request.META.get("HTTP_X_REAL_IP")
+        forwarded = request.META.get("HTTP_X_REAL_IP")
+        if forwarded:
+            try:
+                return str(ipaddress.ip_address(forwarded.strip()))
+            except ValueError:
+                return remote_addr or "unknown"
+        forwarded = request.META.get("HTTP_CF_CONNECTING_IP")
         if forwarded:
             try:
                 return str(ipaddress.ip_address(forwarded.strip()))

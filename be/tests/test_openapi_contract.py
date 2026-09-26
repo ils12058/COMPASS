@@ -1015,6 +1015,18 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _operation(schema, "/api/v1/auth/password/confirm", "post")["requestBody"]["content"][
         "application/json"
     ]["schema"]["$ref"].endswith("/PasswordAccessConfirmRequest")
+    for request_schema in (
+        "LoginRequest",
+        "MFARequest",
+        "LoginMFARequest",
+        "PasswordAccessRequest",
+        "PasswordAccessConfirmRequest",
+        "PasswordChangeRequest",
+        "EmailChangeSecurityChallengeRequest",
+        "EmailChangeRequest",
+        "EmailChangeConfirmRequest",
+    ):
+        assert schemas[request_schema]["additionalProperties"] is False
     mandatory_setup = _operation(schema, "/api/v1/auth/mfa/totp/bootstrap/setup", "post")
     assert mandatory_setup["operationId"] == "authStartMandatoryTotpBootstrap"
     assert "security" not in mandatory_setup

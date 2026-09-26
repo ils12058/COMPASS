@@ -166,6 +166,23 @@ def test_password_login_is_generic_and_stores_only_a_session_digest():
 
 
 @pytest.mark.django_db
+def test_login_rejects_unknown_mutation_fields_before_creating_security_state():
+    user = make_user()
+    client = Client()
+
+    response = post_json(
+        client,
+        "/api/v1/auth/login",
+        {"email": user.email, "password": "correct-password", "role": "IT_ADMIN"},
+        headers=csrf_headers(client),
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+    assert AuthSession.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_authenticated_student_contract_exposes_effective_capabilities_without_scope_leaks():
     sync_policy()
     user = make_user(email="auth-contract-student@example.edu", role_code="STUDENT")
