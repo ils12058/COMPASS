@@ -41,6 +41,7 @@ ACADEMIC_YEAR_CURRENT_CHANGED = "academic_year.current_changed"
 INSTITUTIONAL_FORM_REVISION_REGISTERED = "institutional_form.revision_registered"
 INSTITUTIONAL_FORM_REVISION_ACTIVATED = "institutional_form.revision_activated"
 INSTITUTIONAL_FORM_REVISION_DEACTIVATED = "institutional_form.revision_deactivated"
+INSTITUTIONAL_FORMS_SYNCED = "institutional_forms.synced"
 SERVICE_CREATED = "service.created"
 SERVICE_UPDATED = "service.updated"
 SERVICE_ENABLED = "service.enabled"
@@ -175,6 +176,7 @@ __all__ = [
     "INSTITUTIONAL_FORM_REVISION_REGISTERED",
     "INSTITUTIONAL_FORM_REVISION_ACTIVATED",
     "INSTITUTIONAL_FORM_REVISION_DEACTIVATED",
+    "INSTITUTIONAL_FORMS_SYNCED",
     "SERVICE_CREATED",
     "SERVICE_UPDATED",
     "SERVICE_ENABLED",
