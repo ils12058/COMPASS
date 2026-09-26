@@ -17,8 +17,8 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.counseling.models import CounselingEncounter
+from compass.institutional_forms.canonical import supported_schema_versions
 from compass.institutional_forms.models import FormFamily, FormRevision
-from compass.institutional_forms.services import SUPPORTED_SCHEMA_VERSIONS
 from compass.organization.models import (
     Campus,
     College,
@@ -157,7 +157,7 @@ def test_referral_form_family_bootstraps_exact_historical_qms_identity():
     assert family.title == "Referral Slip"
     assert revision.internal_schema_version == 1
     assert revision.status == "ACTIVE"
-    assert SUPPORTED_SCHEMA_VERSIONS["referral_slip"] == frozenset({1})
+    assert supported_schema_versions("referral_slip") == frozenset({1})
 
 
 @pytest.mark.django_db
