@@ -1,5 +1,9 @@
 # ADR-059 — Clarify Reference and Administrative Capability Semantics
 
+> **Refined by ADR-063 (2026-09-27).** `institutional_forms.view` remains the read authority,
+> while `institutional_forms.manage` is retired because Form Revision compatibility is no longer
+> a portal-managed configuration concern.
+
 **Status:** Accepted
 **Date:** 2026-09-25
 
