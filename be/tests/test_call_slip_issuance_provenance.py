@@ -28,6 +28,7 @@ from tests.test_call_slips import (
     create_from_referral_for,
     create_referral_for,
     csrf,
+    ensure_call_slip_form_revision,
     make_head,
     setup_scope,
     sync_policy,
@@ -265,6 +266,8 @@ def test_provenance_migration_classifies_existing_rows_without_fabricating_histo
     from django.db.migrations.executor import MigrationExecutor
 
     sync_policy()
+    # Transactional tests run after earlier flushes removed migration-seeded rows.
+    ensure_call_slip_form_revision()
     counselor, _other, _gss, student, _student_b = setup_scope()
     live_id = create_for(counselor, student, key="mig-live", fingerprint="1" * 64).pk
     unknown_id = create_for(counselor, student, key="mig-unknown", fingerprint="2" * 64).pk

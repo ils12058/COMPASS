@@ -26,7 +26,10 @@ from compass.inventory.services import (
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
 from compass.organization.models import Campus, College, Program
-from tests.inventory_test_helpers import minimum_normalized_inventory_values
+from tests.inventory_test_helpers import (
+    ensure_inventory_form_revision,
+    minimum_normalized_inventory_values,
+)
 
 
 def sync_policy() -> None:
@@ -311,6 +314,8 @@ def test_psgc_verification_runs_before_inventory_locks_are_taken(monkeypatch):
     from django.db import close_old_connections, connection
 
     sync_policy()
+    # Transactional tests run after earlier flushes removed migration-seeded rows.
+    ensure_inventory_form_revision()
     admin = make_user("psgc-lock-admin@example.edu", "IT_ADMIN")
     student = make_user("psgc-lock-student@example.edu", "STUDENT")
     configure_year(admin)
@@ -357,7 +362,8 @@ def test_psgc_verification_runs_before_inventory_locks_are_taken(monkeypatch):
                         finally:
                             cursor.execute("ROLLBACK")
                 finally:
-                    close_old_connections()
+                    # Thread-local connections persist under CONN_MAX_AGE; close explicitly.
+                    connection.close()
 
             worker = threading.Thread(target=probe)
             worker.start()

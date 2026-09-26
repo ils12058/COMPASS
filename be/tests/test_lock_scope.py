@@ -81,7 +81,8 @@ def test_password_login_does_not_hold_the_shared_role_row(monkeypatch):
                     finally:
                         cursor.execute("ROLLBACK")
             finally:
-                close_old_connections()
+                # Thread-local connections persist under CONN_MAX_AGE; close explicitly.
+                connection.close()
 
         worker = threading.Thread(target=other_session)
         worker.start()
