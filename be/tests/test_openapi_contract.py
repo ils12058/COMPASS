@@ -212,9 +212,6 @@ EXPECTED_OPERATION_IDS = {
     "academicYearsSetCurrent",
     "institutionalFormsList",
     "institutionalFormsRevisionsList",
-    "institutionalFormsRevisionsRegister",
-    "institutionalFormsRevisionsActivate",
-    "institutionalFormsRevisionsDeactivate",
     "inventoryGetMyStatus",
     "inventoryGetMyCurrent",
     "inventoryEnsureMyCurrent",
@@ -368,6 +365,23 @@ def _operation(schema: dict, path: str, method: str) -> dict:
 
 def _response_statuses(operation: dict) -> set[int]:
     return {int(status) for status in operation["responses"]}
+
+
+def test_institutional_forms_contract_is_read_only_and_projects_support() -> None:
+    schema = _generated_schema()
+    paths = schema["paths"]
+
+    revisions_path = "/api/v1/institutional-forms/{family_key}/revisions"
+    assert set(paths[revisions_path]) == {"get"}
+    assert (
+        paths[revisions_path]["get"]["operationId"]
+        == "institutionalFormsRevisionsList"
+    )
+    assert "/api/v1/institutional-forms/revisions/{revision_id}/activate" not in paths
+    assert "/api/v1/institutional-forms/revisions/{revision_id}/deactivate" not in paths
+
+    properties = schema["components"]["schemas"]["FormRevisionResponse"]["properties"]
+    assert properties["supported"] == {"title": "Supported", "type": "boolean"}
 
 
 def test_overview_summary_contract_is_typed_and_nullable_by_domain() -> None:
