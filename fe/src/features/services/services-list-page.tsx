@@ -13,8 +13,10 @@ import {
   ServicesQueryError,
   ServicesSearchField,
   ServicesStatusBadge,
+  ServicesSystemRequiredBadge,
   servicesSelectClass,
 } from "@/features/services/services-shared";
+import { isSystemRequiredService } from "@/features/services/system-required-service";
 import {
   AppointmentPolicy,
   DeliveryMode,
@@ -205,6 +207,9 @@ export function ServicesListPage() {
                     </Link>
                     {canManage ? (
                       <ServicesStatusBadge active={service.is_active} />
+                    ) : null}
+                    {isSystemRequiredService(service) ? (
+                      <ServicesSystemRequiredBadge />
                     ) : null}
                   </div>
                   <p className="mt-1 font-mono text-xs text-muted">
