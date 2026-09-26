@@ -534,6 +534,7 @@ def test_action_cannot_predate_known_gco_receipt():
 @pytest.mark.django_db
 def test_active_unsupported_form_revision_blocks_new_referrals_and_history_keeps_snapshot():
     sync_policy()
+    call_command("sync_institutional_forms", verbosity=0)
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
     first = create_for(head, student, key="first-form", fingerprint="a" * 64)
