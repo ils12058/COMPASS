@@ -361,7 +361,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     assert user.has_capability("academic_years.view")
     assert user.has_capability("academic_years.manage")
     assert user.has_capability("institutional_forms.view")
-    assert user.has_capability("institutional_forms.manage")
+    assert not user.has_capability("institutional_forms.manage")
     assert user.has_capability("document_branding.view")
     assert user.has_capability("document_branding.manage")
     assert user.has_capability("services.catalog.view")
