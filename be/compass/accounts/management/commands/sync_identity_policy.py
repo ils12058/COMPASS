@@ -77,14 +77,10 @@ class Command(BaseCommand):
             counts["retired_role_grants_deleted"] = RoleCapability.objects.filter(
                 capability__code__in=RETIRED_CAPABILITY_CODES
             ).count()
-            RoleCapability.objects.filter(
+            RoleCapability.objects.filter(capability__code__in=RETIRED_CAPABILITY_CODES).delete()
+            counts["retired_designation_grants_deleted"] = DesignationCapability.objects.filter(
                 capability__code__in=RETIRED_CAPABILITY_CODES
-            ).delete()
-            counts["retired_designation_grants_deleted"] = (
-                DesignationCapability.objects.filter(
-                    capability__code__in=RETIRED_CAPABILITY_CODES
-                ).count()
-            )
+            ).count()
             DesignationCapability.objects.filter(
                 capability__code__in=RETIRED_CAPABILITY_CODES
             ).delete()
