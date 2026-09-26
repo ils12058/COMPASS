@@ -373,10 +373,7 @@ def test_institutional_forms_contract_is_read_only_and_projects_support() -> Non
 
     revisions_path = "/api/v1/institutional-forms/{family_key}/revisions"
     assert set(paths[revisions_path]) == {"get"}
-    assert (
-        paths[revisions_path]["get"]["operationId"]
-        == "institutionalFormsRevisionsList"
-    )
+    assert paths[revisions_path]["get"]["operationId"] == "institutionalFormsRevisionsList"
     assert "/api/v1/institutional-forms/revisions/{revision_id}/activate" not in paths
     assert "/api/v1/institutional-forms/revisions/{revision_id}/deactivate" not in paths
 
