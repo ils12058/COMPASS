@@ -170,7 +170,7 @@ def require_active_supported_form_revision(family_key: str) -> FormRevision:
 def activate_form_revision(*, revision_id: UUID, context: AuditContext) -> FormRevision:
     with transaction.atomic():
         revision = (
-            FormRevision.objects.select_for_update()
+            FormRevision.objects.select_for_update(of=("self",))
             .select_related("family")
             .filter(pk=revision_id)
             .first()
@@ -215,7 +215,7 @@ def activate_form_revision(*, revision_id: UUID, context: AuditContext) -> FormR
 def deactivate_form_revision(*, revision_id: UUID, context: AuditContext) -> FormRevision:
     with transaction.atomic():
         revision = (
-            FormRevision.objects.select_for_update()
+            FormRevision.objects.select_for_update(of=("self",))
             .select_related("family")
             .filter(pk=revision_id)
             .first()

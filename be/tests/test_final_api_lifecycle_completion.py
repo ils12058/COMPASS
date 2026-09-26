@@ -539,7 +539,7 @@ def test_referral_and_call_slip_void_preserve_history_and_enable_corrected_reiss
         other_destination="",
         report_at=timezone.now() + timedelta(days=1),
         referral_id=referral.pk,
-        notify_student=False,
+        notify_student=True,
         idempotency_key="void-first",
         request_fingerprint="b" * 64,
         context=appointment_context(head),
@@ -605,6 +605,11 @@ def test_referral_and_call_slip_void_preserve_history_and_enable_corrected_reiss
         reason="Replacement also withdrawn for Referral correction",
         context=appointment_context(head),
     )
+    # The replacement was a quiet historical entry, so its void stays quiet too.
+    assert not Notification.objects.filter(
+        event_code="call_slip.voided",
+        source_id=replacement.pk,
+    ).exists()
     voided_referral = void_referral(
         actor=head,
         referral_id=referral.pk,
@@ -657,6 +662,14 @@ def test_good_moral_requested_cancellation_is_retained_and_issued_remains_immuta
         target_id=str(item.pk),
     )
     assert "Duplicate pending request" not in json.dumps(event.metadata)
+    assert "cancellation" not in cancelled.json()
+    assert "Duplicate pending request" not in cancelled.content.decode()
+    operational = good_moral_auth_client(counselor).get(f"/api/v1/good-moral/requests/{item.pk}")
+    assert operational.status_code == 200
+    assert operational.json()["cancellation"] == {
+        "cancelled_by": {"id": str(student.pk), "display_name": student.get_full_name()},
+        "reason": "Duplicate pending request",
+    }
     with pytest.raises(GoodMoralConflict):
         update_request(
             actor=counselor,
@@ -688,3 +701,38 @@ def test_good_moral_requested_cancellation_is_retained_and_issued_remains_immuta
             self_service=False,
             context=appointment_context(counselor),
         )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("indicator", "historical_values"),
+    [
+        ("PWD", {"pwd_status": "PWD"}),
+        ("FOUR_PS_BENEFICIARY", {"four_ps_status": "BENEFICIARY"}),
+        ("MOTHER_DECEASED", {"mother_life_status": "DECEASED"}),
+    ],
+)
+def test_roster_indicator_filter_uses_only_the_current_submitted_inventory(
+    indicator, historical_values
+):
+    sync_policy()
+    head = make_head(f"indicator-head-{indicator.lower()}@example.edu")
+    previous = AcademicYear.objects.create(label="2098-2099")
+    current = AcademicYear.objects.create(label="2099-2100", is_current=True)
+    _, college, program = make_org(f"IND-{indicator}")
+    student = make_support_user(f"indicator-{indicator.lower()}@example.edu")
+    affiliate(student, college)
+    make_inventory(
+        student=student,
+        year=previous,
+        program=program,
+        suffix=f"{indicator}-previous",
+        **historical_values,
+    )
+    make_inventory(student=student, year=current, program=program, suffix=f"{indicator}-current")
+
+    client = support_auth_client(head)
+    filtered = client.get("/api/v1/student-support/students", {"indicator": indicator})
+
+    assert filtered.status_code == 200
+    assert filtered.json()["items"] == []

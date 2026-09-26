@@ -11,10 +11,12 @@ from ninja import Router, Schema
 from pydantic import ConfigDict
 
 from compass.audit.context import AuditContext
+from compass.audit.models import AuditActorType
 from compass.authentication.api import session_auth
 from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.notifications.models import EmailDeliveryStatus
 
 from .activity import (
     DEFAULT_PAGE_SIZE as ACTIVITY_DEFAULT_PAGE_SIZE,
@@ -33,10 +35,12 @@ from .email_operations import (
     DEFAULT_PAGE_SIZE as EMAIL_DEFAULT_PAGE_SIZE,
 )
 from .email_operations import (
+    EmailDeliveryFailureCode,
     EmailDeliveryNotFound,
     EmailDeliveryNotRetryable,
     EmailDeliveryOperationsError,
     EmailDeliveryPaginationError,
+    EmailDeliveryRetryBlocker,
     get_email_delivery_summary,
     list_email_deliveries,
     retry_email_delivery,
@@ -112,6 +116,20 @@ class CommandCatalogResponse(StrictSchema):
     commands: list[CommandCatalogEntryResponse]
 
 
+class EmailDeliveryStatusValue(StrEnum):
+    PENDING = EmailDeliveryStatus.PENDING
+    PROCESSING = EmailDeliveryStatus.PROCESSING
+    SENT = EmailDeliveryStatus.SENT
+    FAILED = EmailDeliveryStatus.FAILED
+    CANCELLED = EmailDeliveryStatus.CANCELLED
+
+
+class TechnicalActivityActorType(StrEnum):
+    USER = AuditActorType.USER
+    SYSTEM = AuditActorType.SYSTEM
+    ANONYMOUS = AuditActorType.ANONYMOUS
+
+
 class PublicPlatformStatus(StrEnum):
     OPERATIONAL = "operational"
     MAINTENANCE_SCHEDULED = "maintenance_scheduled"
@@ -126,8 +144,8 @@ class PlatformPublicStatusResponse(StrictSchema):
 
 
 class MaintenanceResponse(StrictSchema):
-    state: str
-    source: str
+    state: MaintenanceState
+    source: MaintenanceSource
     message: str
     manual_expected_end_at: datetime | None
     scheduled_start_at: datetime | None
@@ -160,14 +178,16 @@ class EmailDeliverySummaryResponse(StrictSchema):
 class EmailDeliveryItemResponse(StrictSchema):
     id: UUID
     event_code: str
-    status: str
+    status: EmailDeliveryStatusValue
     attempt_count: int
     created_at: datetime
     updated_at: datetime
     last_attempt_at: datetime | None
     next_attempt_at: datetime | None
     sent_at: datetime | None
-    failure_code: str
+    failure_code: EmailDeliveryFailureCode | None
+    manual_retry_allowed: bool
+    manual_retry_blocker: EmailDeliveryRetryBlocker | None
 
 
 class EmailDeliveryPageResponse(StrictSchema):
@@ -183,7 +203,7 @@ class TechnicalActivityItemResponse(StrictSchema):
     title: str
     description: str
     occurred_at: datetime
-    actor_type: str
+    actor_type: TechnicalActivityActorType
     actor_display_name: str | None
 
 
@@ -211,8 +231,8 @@ def _context(request) -> AuditContext:
 
 def _maintenance_view(snapshot: MaintenanceSnapshot) -> MaintenanceResponse:
     return MaintenanceResponse(
-        state=snapshot.state.value,
-        source=snapshot.source.value,
+        state=snapshot.state,
+        source=snapshot.source,
         message=snapshot.message,
         manual_expected_end_at=snapshot.manual_expected_end_at,
         scheduled_start_at=snapshot.scheduled_start_at,
@@ -244,6 +264,23 @@ def _raise_email_error(exc: EmailDeliveryOperationsError) -> NoReturn:
     if isinstance(exc, EmailDeliveryPaginationError):
         raise APIError(422, "invalid_email_delivery_request", str(exc)) from exc
     raise APIError(500, "internal_error", "The EmailDelivery operation failed.") from exc
+
+
+def _email_delivery_item(item) -> EmailDeliveryItemResponse:
+    return EmailDeliveryItemResponse(
+        id=item.id,
+        event_code=item.event_code,
+        status=item.status,
+        attempt_count=item.attempt_count,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+        last_attempt_at=item.last_attempt_at,
+        next_attempt_at=item.next_attempt_at,
+        sent_at=item.sent_at,
+        failure_code=item.failure_code,
+        manual_retry_allowed=item.manual_retry_allowed,
+        manual_retry_blocker=item.manual_retry_blocker,
+    )
 
 
 @router.get(
@@ -480,29 +517,19 @@ def platform_email_deliveries(
     request,
     page: int = 1,
     page_size: int = EMAIL_DEFAULT_PAGE_SIZE,
-    status: str | None = None,
+    status: EmailDeliveryStatusValue | None = None,
 ):
     _require(request, "platform_operations.view")
     try:
-        result = list_email_deliveries(page=page, page_size=page_size, status=status)
+        result = list_email_deliveries(
+            page=page,
+            page_size=page_size,
+            status=status.value if status is not None else None,
+        )
     except EmailDeliveryOperationsError as exc:
         _raise_email_error(exc)
     return EmailDeliveryPageResponse(
-        items=[
-            EmailDeliveryItemResponse(
-                id=item.id,
-                event_code=item.event_code,
-                status=item.status,
-                attempt_count=item.attempt_count,
-                created_at=item.created_at,
-                updated_at=item.updated_at,
-                last_attempt_at=item.last_attempt_at,
-                next_attempt_at=item.next_attempt_at,
-                sent_at=item.sent_at,
-                failure_code=item.failure_code,
-            )
-            for item in result.items
-        ],
+        items=[_email_delivery_item(item) for item in result.items],
         page=result.page,
         page_size=result.page_size,
         has_next=result.has_next,
@@ -525,18 +552,7 @@ def platform_email_delivery_retry(request, delivery_id: UUID):
         )
     except EmailDeliveryOperationsError as exc:
         _raise_email_error(exc)
-    return EmailDeliveryItemResponse(
-        id=item.id,
-        event_code=item.event_code,
-        status=item.status,
-        attempt_count=item.attempt_count,
-        created_at=item.created_at,
-        updated_at=item.updated_at,
-        last_attempt_at=item.last_attempt_at,
-        next_attempt_at=item.next_attempt_at,
-        sent_at=item.sent_at,
-        failure_code=item.failure_code,
-    )
+    return _email_delivery_item(item)
 
 
 @router.get(

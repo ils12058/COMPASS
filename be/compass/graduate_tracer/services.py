@@ -250,7 +250,10 @@ def ensure_my_response(
     _validate_graduated_student(student)
     with transaction.atomic():
         locked = (
-            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
         )
         if locked is None:
             raise GraduateTracerNotFound("The Student account was not found.")
@@ -266,17 +269,18 @@ def ensure_my_response(
 
         profile = get_person_profile_context(locked)
         try:
-            item = GraduateTracerResponse.objects.create(
-                student=locked,
-                instrument_schema_version=GTS_SCHEMA_VERSION,
-                name_snapshot=profile.full_name.strip(),
-                permanent_address_snapshot=profile.permanent_address.strip(),
-                email_snapshot=profile.email.strip(),
-                telephone_contact_numbers_snapshot=profile.contact_number.strip(),
-                mobile_number_snapshot="",
-                birth_date=profile.date_of_birth,
-                civil_status=_profile_civil_status(profile.civil_status),
-            )
+            with transaction.atomic():
+                item = GraduateTracerResponse.objects.create(
+                    student=locked,
+                    instrument_schema_version=GTS_SCHEMA_VERSION,
+                    name_snapshot=profile.full_name.strip(),
+                    permanent_address_snapshot=profile.permanent_address.strip(),
+                    email_snapshot=profile.email.strip(),
+                    telephone_contact_numbers_snapshot=profile.contact_number.strip(),
+                    mobile_number_snapshot="",
+                    birth_date=profile.date_of_birth,
+                    civil_status=_profile_civil_status(profile.civil_status),
+                )
         except IntegrityError:
             concurrent = GraduateTracerResponse.objects.filter(
                 student_id=locked.pk,
@@ -574,7 +578,10 @@ def replace_my_draft(
 
     with transaction.atomic():
         locked_student = (
-            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
         )
         if locked_student is None:
             raise GraduateTracerNotFound("The Student account was not found.")
@@ -785,7 +792,10 @@ def submit_my_response(
 
     with transaction.atomic():
         locked_student = (
-            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
         )
         if locked_student is None:
             raise GraduateTracerNotFound("The Student account was not found.")

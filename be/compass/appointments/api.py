@@ -23,12 +23,14 @@ from compass.common.idempotency import (
     IdempotencyUnavailable,
     RedisIdempotencyStore,
     StoredResponse,
+    abandon_after_unexpected_failure,
     request_fingerprint,
 )
-from compass.service_catalog.api import DeliveryMode
+from compass.service_catalog.api import AppointmentPolicy, DeliveryMode
 
 from .services import (
     DEFAULT_PAGE_SIZE,
+    AppointmentActionBlocker,
     AppointmentCancellationConflict,
     AppointmentCurrentAcademicYearNotConfigured,
     AppointmentCurrentInventoryRequired,
@@ -43,6 +45,7 @@ from .services import (
     AppointmentTimeConflict,
     AppointmentTimeUnavailable,
     InvalidAppointmentInput,
+    appointment_actions_for,
     cancel_appointment,
     complete_appointment,
     create_student_appointment,
@@ -123,7 +126,7 @@ class AppointmentBookingServiceSummary(StrictSchema):
     code: str
     name: str
     description: str
-    appointment_policy: str
+    appointment_policy: AppointmentPolicy
     delivery_modes: list[DeliveryMode]
     default_duration_minutes: int
     cancellation_cutoff_minutes: int | None
@@ -153,6 +156,23 @@ class AppointmentResponse(StrictSchema):
     completed_at: datetime | None
     no_show_at: datetime | None
     created_at: datetime
+
+
+class AppointmentActionStateResponse(StrictSchema):
+    allowed: bool
+    blocker: AppointmentActionBlocker | None
+
+
+class AppointmentActionsResponse(StrictSchema):
+    cancel: AppointmentActionStateResponse
+    reschedule: AppointmentActionStateResponse
+    reassign: AppointmentActionStateResponse
+    complete: AppointmentActionStateResponse
+    mark_no_show: AppointmentActionStateResponse
+
+
+class AppointmentDetailResponse(AppointmentResponse):
+    actions: AppointmentActionsResponse
 
 
 class AppointmentPageResponse(StrictSchema):
@@ -367,6 +387,7 @@ def appointments_list_my(
     status: AppointmentStatus | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
+    upcoming: bool = False,
     ordering: AppointmentListOrdering = AppointmentListOrdering.START_DESC,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
@@ -378,6 +399,7 @@ def appointments_list_my(
             status=status.value if status else None,
             from_date=from_date,
             to_date=to_date,
+            upcoming=upcoming,
             ordering=ordering,
             page=page,
             page_size=page_size,
@@ -584,6 +606,9 @@ def appointments_create_my(
     except AppointmentError as exc:
         _abandon_or_503(store, decision.reservation)
         _raise(exc)
+    except Exception:
+        abandon_after_unexpected_failure(store, decision.reservation)
+        raise
 
     response = _json_response(_appointment(item), status=201)
     _complete_or_503(store, decision.reservation, response)
@@ -606,6 +631,7 @@ def appointments_list_managed(
     from_date: date | None = None,
     to_date: date | None = None,
     search: str | None = None,
+    upcoming: bool = False,
     ordering: AppointmentListOrdering = AppointmentListOrdering.START_DESC,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
@@ -622,6 +648,7 @@ def appointments_list_managed(
             from_date=from_date,
             to_date=to_date,
             search=search,
+            upcoming=upcoming,
             ordering=ordering,
             page=page,
             page_size=page_size,
@@ -636,9 +663,13 @@ def appointments_list_managed(
     }
 
 
+def _action_state(state) -> dict[str, object]:
+    return {"allowed": state.allowed, "blocker": state.blocker}
+
+
 @router.get(
     "/{appointment_id}",
-    response=response_with_errors(AppointmentResponse, 401, 403, 404, 422),
+    response=response_with_errors(AppointmentDetailResponse, 401, 403, 404, 422),
     auth=session_auth,
     operation_id="appointmentsGet",
 )
@@ -647,7 +678,17 @@ def appointments_get(request, appointment_id: UUID):
         item = get_appointment_for_actor(appointment_id=appointment_id, actor=request.auth_user)
     except AppointmentError as exc:
         _raise(exc)
-    return _appointment(item)
+    actions = appointment_actions_for(actor=request.auth_user, item=item)
+    return {
+        **_appointment(item),
+        "actions": {
+            "cancel": _action_state(actions.cancel),
+            "reschedule": _action_state(actions.reschedule),
+            "reassign": _action_state(actions.reassign),
+            "complete": _action_state(actions.complete),
+            "mark_no_show": _action_state(actions.mark_no_show),
+        },
+    }
 
 
 @router.post(

@@ -1127,6 +1127,77 @@
         "title": "AnnualIncomeStatusValue",
         "type": "string"
       },
+      "AppointmentActionBlocker": {
+        "description": "Why an Appointment action is not currently available to the requesting actor.",
+        "enum": [
+          "NOT_PERMITTED",
+          "NOT_SCHEDULED",
+          "ALREADY_STARTED",
+          "NOT_STARTED",
+          "NOT_ENDED",
+          "CUTOFF_PASSED",
+          "CURRENT_STUDENT_REQUIRED",
+          "ECOUNSELING_ROOM_LINKED",
+          "ROUTINE_INTERVIEW_LINKED",
+          "COUNSELING_ENCOUNTER_LINKED"
+        ],
+        "title": "AppointmentActionBlocker",
+        "type": "string"
+      },
+      "AppointmentActionStateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed": {
+            "title": "Allowed",
+            "type": "boolean"
+          },
+          "blocker": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AppointmentActionBlocker"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "allowed",
+          "blocker"
+        ],
+        "title": "AppointmentActionStateResponse",
+        "type": "object"
+      },
+      "AppointmentActionsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "cancel": {
+            "$ref": "#/components/schemas/AppointmentActionStateResponse"
+          },
+          "complete": {
+            "$ref": "#/components/schemas/AppointmentActionStateResponse"
+          },
+          "mark_no_show": {
+            "$ref": "#/components/schemas/AppointmentActionStateResponse"
+          },
+          "reassign": {
+            "$ref": "#/components/schemas/AppointmentActionStateResponse"
+          },
+          "reschedule": {
+            "$ref": "#/components/schemas/AppointmentActionStateResponse"
+          }
+        },
+        "required": [
+          "cancel",
+          "reschedule",
+          "reassign",
+          "complete",
+          "mark_no_show"
+        ],
+        "title": "AppointmentActionsResponse",
+        "type": "object"
+      },
       "AppointmentBookingServiceListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -1163,8 +1234,7 @@
         "additionalProperties": false,
         "properties": {
           "appointment_policy": {
-            "title": "Appointment Policy",
-            "type": "string"
+            "$ref": "#/components/schemas/AppointmentPolicy"
           },
           "cancellation_cutoff_minutes": {
             "anyOf": [
@@ -1259,6 +1329,125 @@
           "starts_at"
         ],
         "title": "AppointmentCreateRequest",
+        "type": "object"
+      },
+      "AppointmentDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/AppointmentActionsResponse"
+          },
+          "cancellation_cutoff_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancellation Cutoff Minutes"
+          },
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "no_show_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Show At"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderSummaryResponse"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "service": {
+            "$ref": "#/components/schemas/ServiceSummaryResponse"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppointmentStatus"
+          },
+          "student": {
+            "$ref": "#/components/schemas/AppointmentStudentSummary"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "student_id",
+          "student",
+          "service",
+          "provider",
+          "delivery_mode",
+          "starts_at",
+          "ends_at",
+          "status",
+          "cancellation_cutoff_minutes",
+          "cancelled_at",
+          "completed_at",
+          "no_show_at",
+          "created_at",
+          "actions"
+        ],
+        "title": "AppointmentDetailResponse",
         "type": "object"
       },
       "AppointmentHistoryActorResponse": {
@@ -1726,8 +1915,7 @@
         "additionalProperties": false,
         "properties": {
           "delivery_mode": {
-            "title": "Delivery Mode",
-            "type": "string"
+            "$ref": "#/components/schemas/DeliveryMode"
           },
           "ends_at": {
             "format": "date-time",
@@ -1749,8 +1937,7 @@
             "type": "string"
           },
           "status": {
-            "title": "Status",
-            "type": "string"
+            "$ref": "#/components/schemas/AppointmentStatus"
           }
         },
         "required": [
@@ -1835,8 +2022,7 @@
             "type": "boolean"
           },
           "role": {
-            "title": "Role",
-            "type": "string"
+            "$ref": "#/components/schemas/RoleCode"
           }
         },
         "required": [
@@ -2405,6 +2591,15 @@
         "title": "CallSlipInterviewEndedRequest",
         "type": "object"
       },
+      "CallSlipIssuanceModeValue": {
+        "enum": [
+          "LIVE",
+          "HISTORICAL",
+          "LEGACY_UNKNOWN"
+        ],
+        "title": "CallSlipIssuanceModeValue",
+        "type": "string"
+      },
       "CallSlipLifecycleStateValue": {
         "enum": [
           "ACTIVE",
@@ -2481,6 +2676,9 @@
             ],
             "title": "Interview Ended At"
           },
+          "issuance_mode": {
+            "$ref": "#/components/schemas/CallSlipIssuanceModeValue"
+          },
           "issued_by": {
             "$ref": "#/components/schemas/CallSlipPersonSummary"
           },
@@ -2532,6 +2730,10 @@
             "title": "Updated At",
             "type": "string"
           },
+          "void_notifies_student": {
+            "title": "Void Notifies Student",
+            "type": "boolean"
+          },
           "void_reason": {
             "title": "Void Reason",
             "type": "string"
@@ -2566,6 +2768,8 @@
           "created_at",
           "referral",
           "recorded_by",
+          "issuance_mode",
+          "void_notifies_student",
           "void_reason",
           "updated_at"
         ],
@@ -3516,7 +3720,7 @@
         "properties": {
           "scopes": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/ECounselingConsentScope"
             },
             "title": "Scopes",
             "type": "array"
@@ -3544,8 +3748,7 @@
             "title": "Decided At"
           },
           "decision": {
-            "title": "Decision",
-            "type": "string"
+            "$ref": "#/components/schemas/ECounselingConsentDecision"
           },
           "effective": {
             "title": "Effective",
@@ -3562,8 +3765,7 @@
             "type": "string"
           },
           "scope": {
-            "title": "Scope",
-            "type": "string"
+            "$ref": "#/components/schemas/ECounselingConsentScope"
           },
           "withdrawn_at": {
             "anyOf": [
@@ -3643,13 +3845,12 @@
           "delivery_mode": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/DeliveryMode"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Delivery Mode"
+            ]
           },
           "id": {
             "format": "uuid",
@@ -3657,8 +3858,7 @@
             "type": "string"
           },
           "kind": {
-            "title": "Kind",
-            "type": "string"
+            "$ref": "#/components/schemas/ContextHistoryKind"
           },
           "occurred_at": {
             "format": "date-time",
@@ -3687,8 +3887,7 @@
             "title": "Reference Code"
           },
           "status": {
-            "title": "Status",
-            "type": "string"
+            "$ref": "#/components/schemas/ContextHistoryStatus"
           },
           "title": {
             "title": "Title",
@@ -3707,6 +3906,34 @@
         ],
         "title": "ContextHistoryItemResponse",
         "type": "object"
+      },
+      "ContextHistoryKind": {
+        "enum": [
+          "APPOINTMENT",
+          "REFERRAL",
+          "CALL_SLIP",
+          "ROUTINE_INTERVIEW"
+        ],
+        "title": "ContextHistoryKind",
+        "type": "string"
+      },
+      "ContextHistoryStatus": {
+        "description": "Per-kind history states: Appointment status, Referral receipt, Call Slip interview end,\nRoutine Intake submission, and VOIDED for voided Referrals and Call Slips.",
+        "enum": [
+          "SCHEDULED",
+          "CANCELLED",
+          "COMPLETED",
+          "NO_SHOW",
+          "RECORDED",
+          "RECEIVED",
+          "PENDING",
+          "ENDED",
+          "DRAFT",
+          "SUBMITTED",
+          "VOIDED"
+        ],
+        "title": "ContextHistoryStatus",
+        "type": "string"
       },
       "ContextIdentityResponse": {
         "additionalProperties": false,
@@ -3782,12 +4009,10 @@
         "additionalProperties": false,
         "properties": {
           "entry_mode": {
-            "title": "Entry Mode",
-            "type": "string"
+            "$ref": "#/components/schemas/CounselingEntryMode"
           },
           "evaluation_status": {
-            "title": "Evaluation Status",
-            "type": "string"
+            "$ref": "#/components/schemas/RoutineEvaluationStatus"
           },
           "id": {
             "format": "uuid",
@@ -3795,8 +4020,7 @@
             "type": "string"
           },
           "intake_status": {
-            "title": "Intake Status",
-            "type": "string"
+            "$ref": "#/components/schemas/RoutineIntakeStatus"
           }
         },
         "required": [
@@ -3966,8 +4190,7 @@
             "type": "string"
           },
           "status": {
-            "title": "Status",
-            "type": "string"
+            "$ref": "#/components/schemas/AppointmentStatus"
           },
           "student": {
             "$ref": "#/components/schemas/CounselingAppointmentCandidateStudent"
@@ -4173,18 +4396,16 @@
         "properties": {
           "available_sections": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/CounselingContextSection"
             },
             "title": "Available Sections",
             "type": "array"
           },
           "delivery_mode": {
-            "title": "Delivery Mode",
-            "type": "string"
+            "$ref": "#/components/schemas/DeliveryMode"
           },
           "entry_mode": {
-            "title": "Entry Mode",
-            "type": "string"
+            "$ref": "#/components/schemas/CounselingEntryMode"
           },
           "matching_encounter": {
             "anyOf": [
@@ -4242,6 +4463,16 @@
         ],
         "title": "CounselingContextOverviewResponse",
         "type": "object"
+      },
+      "CounselingContextSection": {
+        "enum": [
+          "SUPPORT_INDICATORS",
+          "INVENTORY",
+          "HISTORY",
+          "SHARED_SUMMARIES"
+        ],
+        "title": "CounselingContextSection",
+        "type": "string"
       },
       "CounselingContextSharedSummariesResponse": {
         "additionalProperties": false,
@@ -4380,8 +4611,7 @@
             "type": "string"
           },
           "status": {
-            "title": "Status",
-            "type": "string"
+            "$ref": "#/components/schemas/AppointmentStatus"
           }
         },
         "required": [
@@ -6068,8 +6298,7 @@
         "additionalProperties": false,
         "properties": {
           "evaluation_status": {
-            "title": "Evaluation Status",
-            "type": "string"
+            "$ref": "#/components/schemas/RoutineEvaluationStatus"
           },
           "id": {
             "format": "uuid",
@@ -6077,8 +6306,7 @@
             "type": "string"
           },
           "intake_status": {
-            "title": "Intake Status",
-            "type": "string"
+            "$ref": "#/components/schemas/RoutineIntakeStatus"
           }
         },
         "required": [
@@ -7212,6 +7440,64 @@
         "title": "DocumentBrandingUpdateRequest",
         "type": "object"
       },
+      "ECounselingCaptureStatus": {
+        "enum": [
+          "NOT_STARTED",
+          "START_REQUESTED",
+          "ACTIVE",
+          "STOP_REQUESTED",
+          "STOPPED",
+          "READY",
+          "ERROR"
+        ],
+        "title": "ECounselingCaptureStatus",
+        "type": "string"
+      },
+      "ECounselingConsentDecision": {
+        "enum": [
+          "PENDING",
+          "APPROVED",
+          "DENIED"
+        ],
+        "title": "ECounselingConsentDecision",
+        "type": "string"
+      },
+      "ECounselingConsentScope": {
+        "enum": [
+          "AUDIO_VIDEO_RECORDING",
+          "LIVE_TRANSCRIPTION",
+          "TRANSCRIPT_STORAGE"
+        ],
+        "title": "ECounselingConsentScope",
+        "type": "string"
+      },
+      "ECounselingConsentStatus": {
+        "description": "Workspace consent projection; WITHDRAWN derives from an approved, withdrawn decision.",
+        "enum": [
+          "NOT_REQUESTED",
+          "PENDING",
+          "APPROVED",
+          "DENIED",
+          "WITHDRAWN"
+        ],
+        "title": "ECounselingConsentStatus",
+        "type": "string"
+      },
+      "ECounselingMediaKind": {
+        "enum": [
+          "RECORDING",
+          "TRANSCRIPTION"
+        ],
+        "title": "ECounselingMediaKind",
+        "type": "string"
+      },
+      "ECounselingProvider": {
+        "enum": [
+          "DAILY"
+        ],
+        "title": "ECounselingProvider",
+        "type": "string"
+      },
       "EducationEntryPayload": {
         "additionalProperties": false,
         "properties": {
@@ -7541,6 +7827,18 @@
         "title": "EmailChangeSecurityChallengeResponse",
         "type": "object"
       },
+      "EmailDeliveryFailureCode": {
+        "description": "Closed, provider-neutral failure classification exposed to operators.",
+        "enum": [
+          "transport_error",
+          "template_error",
+          "send_returned_zero",
+          "recipient_inactive",
+          "unknown_failure"
+        ],
+        "title": "EmailDeliveryFailureCode",
+        "type": "string"
+      },
       "EmailDeliveryItemResponse": {
         "additionalProperties": false,
         "properties": {
@@ -7558,8 +7856,14 @@
             "type": "string"
           },
           "failure_code": {
-            "title": "Failure Code",
-            "type": "string"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmailDeliveryFailureCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "id": {
             "format": "uuid",
@@ -7577,6 +7881,20 @@
               }
             ],
             "title": "Last Attempt At"
+          },
+          "manual_retry_allowed": {
+            "title": "Manual Retry Allowed",
+            "type": "boolean"
+          },
+          "manual_retry_blocker": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmailDeliveryRetryBlocker"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "next_attempt_at": {
             "anyOf": [
@@ -7603,8 +7921,7 @@
             "title": "Sent At"
           },
           "status": {
-            "title": "Status",
-            "type": "string"
+            "$ref": "#/components/schemas/EmailDeliveryStatusValue"
           },
           "updated_at": {
             "format": "date-time",
@@ -7622,7 +7939,9 @@
           "last_attempt_at",
           "next_attempt_at",
           "sent_at",
-          "failure_code"
+          "failure_code",
+          "manual_retry_allowed",
+          "manual_retry_blocker"
         ],
         "title": "EmailDeliveryItemResponse",
         "type": "object"
@@ -7658,6 +7977,27 @@
         ],
         "title": "EmailDeliveryPageResponse",
         "type": "object"
+      },
+      "EmailDeliveryRetryBlocker": {
+        "description": "Why a delivery is not currently eligible for one manual retry.",
+        "enum": [
+          "NOT_FAILED",
+          "FAILURE_NOT_RETRYABLE",
+          "RECIPIENT_INACTIVE"
+        ],
+        "title": "EmailDeliveryRetryBlocker",
+        "type": "string"
+      },
+      "EmailDeliveryStatusValue": {
+        "enum": [
+          "PENDING",
+          "PROCESSING",
+          "SENT",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "title": "EmailDeliveryStatusValue",
+        "type": "string"
       },
       "EmailDeliverySummaryResponse": {
         "additionalProperties": false,
@@ -9188,120 +9528,6 @@
         "title": "GeographicLocationPayload",
         "type": "object"
       },
-      "GlobalPrivacyReviewPageResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "has_next": {
-            "title": "Has Next",
-            "type": "boolean"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/GlobalPrivacyReviewResponse"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "page": {
-            "title": "Page",
-            "type": "integer"
-          },
-          "page_size": {
-            "title": "Page Size",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "page",
-          "page_size",
-          "has_next"
-        ],
-        "title": "GlobalPrivacyReviewPageResponse",
-        "type": "object"
-      },
-      "GlobalPrivacyReviewResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "findings_summary": {
-            "title": "Findings Summary",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "processing_activity": {
-            "$ref": "#/components/schemas/ProcessingSummary"
-          },
-          "processing_activity_id": {
-            "format": "uuid",
-            "title": "Processing Activity Id",
-            "type": "string"
-          },
-          "recommendations_summary": {
-            "title": "Recommendations Summary",
-            "type": "string"
-          },
-          "resolution_summary": {
-            "title": "Resolution Summary",
-            "type": "string"
-          },
-          "resolved_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resolved At"
-          },
-          "review_type": {
-            "$ref": "#/components/schemas/ReviewTypeValue"
-          },
-          "reviewed_by": {
-            "$ref": "#/components/schemas/ActorSummary"
-          },
-          "scope_summary": {
-            "title": "Scope Summary",
-            "type": "string"
-          },
-          "status": {
-            "$ref": "#/components/schemas/ReviewStatusValue"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "processing_activity_id",
-          "review_type",
-          "status",
-          "scope_summary",
-          "findings_summary",
-          "recommendations_summary",
-          "resolution_summary",
-          "reviewed_by",
-          "created_at",
-          "updated_at",
-          "resolved_at",
-          "processing_activity"
-        ],
-        "title": "GlobalPrivacyReviewResponse",
-        "type": "object"
-      },
       "GoodMoralCancellationPayload": {
         "additionalProperties": false,
         "properties": {
@@ -9314,6 +9540,31 @@
           "reason"
         ],
         "title": "GoodMoralCancellationPayload",
+        "type": "object"
+      },
+      "GoodMoralCancellationSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "cancelled_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cancelled_by",
+          "reason"
+        ],
+        "title": "GoodMoralCancellationSummary",
         "type": "object"
       },
       "GoodMoralCorrectionPayload": {
@@ -9684,6 +9935,236 @@
           "items"
         ],
         "title": "GoodMoralHistoryResponse",
+        "type": "object"
+      },
+      "GoodMoralOperationalDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicYearSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applicant_name": {
+            "title": "Applicant Name",
+            "type": "string"
+          },
+          "cancellation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralCancellationSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled At"
+          },
+          "college": {
+            "title": "College",
+            "type": "string"
+          },
+          "course": {
+            "title": "Course",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "degree": {
+            "title": "Degree",
+            "type": "string"
+          },
+          "document_template_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Template Key"
+          },
+          "document_template_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Template Version"
+          },
+          "form_revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormRevisionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graduation_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inventory_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inventory Id"
+          },
+          "issued_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued At"
+          },
+          "issued_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issued_by_name_snapshot": {
+            "title": "Issued By Name Snapshot",
+            "type": "string"
+          },
+          "major": {
+            "title": "Major",
+            "type": "string"
+          },
+          "official_receipt_amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Receipt Amount"
+          },
+          "official_receipt_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Receipt Date"
+          },
+          "official_receipt_number": {
+            "title": "Official Receipt Number",
+            "type": "string"
+          },
+          "semester": {
+            "title": "Semester",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GoodMoralStatusValue"
+          },
+          "student": {
+            "$ref": "#/components/schemas/PersonSummary"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "variant": {
+            "$ref": "#/components/schemas/GoodMoralVariantValue"
+          },
+          "year_level": {
+            "title": "Year Level",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "variant",
+          "status",
+          "applicant_name",
+          "issued_at",
+          "cancelled_at",
+          "created_at",
+          "updated_at",
+          "student",
+          "inventory_id",
+          "academic_year",
+          "major",
+          "year_level",
+          "college",
+          "course",
+          "semester",
+          "degree",
+          "graduation_date",
+          "official_receipt_number",
+          "official_receipt_date",
+          "official_receipt_amount",
+          "form_revision",
+          "document_template_key",
+          "document_template_version",
+          "issued_by",
+          "issued_by_name_snapshot",
+          "cancellation"
+        ],
+        "title": "GoodMoralOperationalDetailResponse",
         "type": "object"
       },
       "GoodMoralPageResponse": {
@@ -10145,6 +10626,9 @@
           "status": {
             "$ref": "#/components/schemas/GraduateTracerStatusValue"
           },
+          "student": {
+            "$ref": "#/components/schemas/GraduateTracerStudentSummary"
+          },
           "student_id": {
             "format": "uuid",
             "title": "Student Id",
@@ -10229,6 +10713,7 @@
         "required": [
           "id",
           "student_id",
+          "student",
           "instrument_schema_version",
           "status",
           "submitted_at",
@@ -13037,8 +13522,7 @@
             "type": "string"
           },
           "provider": {
-            "title": "Provider",
-            "type": "string"
+            "$ref": "#/components/schemas/ECounselingProvider"
           },
           "room_url": {
             "title": "Room Url",
@@ -13075,6 +13559,14 @@
         "title": "LivingArrangementValue",
         "type": "string"
       },
+      "LoginMFAMethod": {
+        "enum": [
+          "totp",
+          "recovery"
+        ],
+        "title": "LoginMFAMethod",
+        "type": "string"
+      },
       "LoginMFARequest": {
         "additionalProperties": false,
         "properties": {
@@ -13083,8 +13575,7 @@
             "type": "string"
           },
           "method": {
-            "title": "Method",
-            "type": "string"
+            "$ref": "#/components/schemas/LoginMFAMethod"
           }
         },
         "required": [
@@ -13149,7 +13640,7 @@
           },
           "mfa_methods": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/LoginMFAMethod"
             },
             "title": "Mfa Methods",
             "type": "array"
@@ -13323,12 +13814,10 @@
             "title": "Scheduled Start At"
           },
           "source": {
-            "title": "Source",
-            "type": "string"
+            "$ref": "#/components/schemas/MaintenanceSource"
           },
           "state": {
-            "title": "State",
-            "type": "string"
+            "$ref": "#/components/schemas/MaintenanceState"
           }
         },
         "required": [
@@ -13369,6 +13858,24 @@
         ],
         "title": "MaintenanceScheduleRequest",
         "type": "object"
+      },
+      "MaintenanceSource": {
+        "enum": [
+          "NONE",
+          "MANUAL",
+          "SCHEDULED"
+        ],
+        "title": "MaintenanceSource",
+        "type": "string"
+      },
+      "MaintenanceState": {
+        "enum": [
+          "NORMAL",
+          "SCHEDULED",
+          "MAINTENANCE"
+        ],
+        "title": "MaintenanceState",
+        "type": "string"
       },
       "ManagedEmailChangeRequest": {
         "additionalProperties": false,
@@ -13440,12 +13947,10 @@
         "additionalProperties": false,
         "properties": {
           "kind": {
-            "title": "Kind",
-            "type": "string"
+            "$ref": "#/components/schemas/ECounselingMediaKind"
           },
           "status": {
-            "title": "Status",
-            "type": "string"
+            "$ref": "#/components/schemas/ECounselingCaptureStatus"
           },
           "storage_enabled": {
             "title": "Storage Enabled",
@@ -13748,8 +14253,7 @@
             "title": "Profile Photo Url"
           },
           "role": {
-            "title": "Role",
-            "type": "string"
+            "$ref": "#/components/schemas/RoleCode"
           },
           "suffix": {
             "title": "Suffix",
@@ -13912,6 +14416,42 @@
         "title": "NoticePage",
         "type": "object"
       },
+      "NoticePublishBlocker": {
+        "description": "Server-owned reasons a notice revision cannot be published right now.",
+        "enum": [
+          "NOTICE_RETIRED",
+          "REVISION_NOT_DRAFT",
+          "EFFECTIVE_DATE_MISSING",
+          "EFFECTIVE_DATE_IN_FUTURE"
+        ],
+        "title": "NoticePublishBlocker",
+        "type": "string"
+      },
+      "NoticePublishReadinessResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "blocker": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NoticePublishBlocker"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ready",
+          "blocker"
+        ],
+        "title": "NoticePublishReadinessResponse",
+        "type": "object"
+      },
       "NoticeResponse": {
         "additionalProperties": false,
         "properties": {
@@ -13923,6 +14463,26 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "current_revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NoticeRevisionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "draft_revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NoticeRevisionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "id": {
             "format": "uuid",
@@ -13948,10 +14508,58 @@
           "code",
           "name",
           "is_active",
+          "current_revision",
+          "draft_revision",
           "created_at",
           "updated_at"
         ],
         "title": "NoticeResponse",
+        "type": "object"
+      },
+      "NoticeRevisionSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "effective_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective On"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "revision_number": {
+            "title": "Revision Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "revision_number",
+          "effective_on",
+          "published_at"
+        ],
+        "title": "NoticeRevisionSummary",
         "type": "object"
       },
       "NoticeUpdate": {
@@ -14014,6 +14622,15 @@
         "title": "NotificationPageResponse",
         "type": "object"
       },
+      "NotificationPolicy": {
+        "enum": [
+          "MANDATORY_SECURITY",
+          "MANDATORY_OPERATIONAL",
+          "OPTIONAL_INFORMATIONAL"
+        ],
+        "title": "NotificationPolicy",
+        "type": "string"
+      },
       "NotificationPreferenceResponse": {
         "additionalProperties": false,
         "properties": {
@@ -14069,8 +14686,7 @@
             "type": "string"
           },
           "policy": {
-            "title": "Policy",
-            "type": "string"
+            "$ref": "#/components/schemas/NotificationPolicy"
           },
           "read_at": {
             "anyOf": [
@@ -14097,8 +14713,14 @@
             "title": "Target Id"
           },
           "target_type": {
-            "title": "Target Type",
-            "type": "string"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NotificationTargetType"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "title": {
             "title": "Title",
@@ -14119,6 +14741,23 @@
         ],
         "title": "NotificationResponse",
         "type": "object"
+      },
+      "NotificationTargetType": {
+        "description": "Closed set of in-app destinations a Notification may point at.",
+        "enum": [
+          "ACCOUNT_SECURITY",
+          "APPOINTMENT",
+          "CALL_SLIP",
+          "COUNSELING_SHARED_SUMMARY",
+          "E_COUNSELING",
+          "EXIT_INTERVIEW",
+          "FEEDBACK",
+          "GOOD_MORAL",
+          "INVENTORY",
+          "ROUTINE_INTERVIEW"
+        ],
+        "title": "NotificationTargetType",
+        "type": "string"
       },
       "OccupationCategoryValue": {
         "enum": [
@@ -14230,8 +14869,7 @@
             "type": "boolean"
           },
           "role": {
-            "title": "Role",
-            "type": "string"
+            "$ref": "#/components/schemas/RoleCode"
           }
         },
         "required": [
@@ -14991,6 +15629,23 @@
         "title": "PostGraduationFieldValue",
         "type": "string"
       },
+      "PrivacyActivityArtifactFormat": {
+        "enum": [
+          "PDF",
+          "XLSX"
+        ],
+        "title": "PrivacyActivityArtifactFormat",
+        "type": "string"
+      },
+      "PrivacyActivityArtifactType": {
+        "enum": [
+          "graduate_tracer",
+          "student_profiling",
+          "good_moral_certificate"
+        ],
+        "title": "PrivacyActivityArtifactType",
+        "type": "string"
+      },
       "PrivacyActivityCategory": {
         "enum": [
           "DATA_RELEASE",
@@ -15018,24 +15673,22 @@
           "artifact_format": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/PrivacyActivityArtifactFormat"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Artifact Format"
+            ]
           },
           "artifact_type": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/PrivacyActivityArtifactType"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Artifact Type"
+            ]
           },
           "category": {
             "$ref": "#/components/schemas/PrivacyActivityCategory"
@@ -15604,6 +16257,9 @@
             "title": "Id",
             "type": "string"
           },
+          "processing_activity": {
+            "$ref": "#/components/schemas/ProcessingSummary"
+          },
           "processing_activity_id": {
             "format": "uuid",
             "title": "Processing Activity Id",
@@ -15651,6 +16307,7 @@
         "required": [
           "id",
           "processing_activity_id",
+          "processing_activity",
           "review_type",
           "status",
           "scope_summary",
@@ -16377,12 +17034,10 @@
         "additionalProperties": false,
         "properties": {
           "capture_status": {
-            "title": "Capture Status",
-            "type": "string"
+            "$ref": "#/components/schemas/ECounselingCaptureStatus"
           },
           "consent_status": {
-            "title": "Consent Status",
-            "type": "string"
+            "$ref": "#/components/schemas/ECounselingConsentStatus"
           }
         },
         "required": [
@@ -18022,6 +18677,9 @@
             "title": "Notice Id",
             "type": "string"
           },
+          "publish_readiness": {
+            "$ref": "#/components/schemas/NoticePublishReadinessResponse"
+          },
           "published_at": {
             "anyOf": [
               {
@@ -18070,6 +18728,7 @@
           "body",
           "requires_acknowledgment",
           "effective_on",
+          "publish_readiness",
           "created_at",
           "updated_at",
           "published_at"
@@ -19170,6 +19829,10 @@
             "title": "Is Active",
             "type": "boolean"
           },
+          "is_system_required": {
+            "title": "Is System Required",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -19203,6 +19866,7 @@
           "delivery_modes",
           "provider_roles",
           "is_active",
+          "is_system_required",
           "created_at",
           "updated_at"
         ],
@@ -19964,8 +20628,7 @@
             "type": "string"
           },
           "intake_status": {
-            "title": "Intake Status",
-            "type": "string"
+            "$ref": "#/components/schemas/RoutineIntakeStatus"
           }
         },
         "required": [
@@ -20315,6 +20978,15 @@
         "title": "TOTPSetupResponse",
         "type": "object"
       },
+      "TechnicalActivityActorType": {
+        "enum": [
+          "USER",
+          "SYSTEM",
+          "ANONYMOUS"
+        ],
+        "title": "TechnicalActivityActorType",
+        "type": "string"
+      },
       "TechnicalActivityItemResponse": {
         "additionalProperties": false,
         "properties": {
@@ -20330,8 +21002,7 @@
             "title": "Actor Display Name"
           },
           "actor_type": {
-            "title": "Actor Type",
-            "type": "string"
+            "$ref": "#/components/schemas/TechnicalActivityActorType"
           },
           "description": {
             "title": "Description",
@@ -20416,16 +21087,13 @@
         "additionalProperties": false,
         "properties": {
           "capture_status": {
-            "title": "Capture Status",
-            "type": "string"
+            "$ref": "#/components/schemas/ECounselingCaptureStatus"
           },
           "consent_status": {
-            "title": "Consent Status",
-            "type": "string"
+            "$ref": "#/components/schemas/ECounselingConsentStatus"
           },
           "storage_consent_status": {
-            "title": "Storage Consent Status",
-            "type": "string"
+            "$ref": "#/components/schemas/ECounselingConsentStatus"
           },
           "storage_enabled": {
             "title": "Storage Enabled",
@@ -20624,14 +21292,14 @@
         "properties": {
           "capabilities": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/CapabilityCode"
             },
             "title": "Capabilities",
             "type": "array"
           },
           "designations": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/DesignationCode"
             },
             "title": "Designations",
             "type": "array"
@@ -20654,19 +21322,17 @@
             "type": "string"
           },
           "role": {
-            "title": "Role",
-            "type": "string"
+            "$ref": "#/components/schemas/RoleCode"
           },
           "student_lifecycle_status": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/StudentLifecycleCode"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Student Lifecycle Status"
+            ]
           }
         },
         "required": [
@@ -23874,6 +24540,16 @@
           },
           {
             "in": "query",
+            "name": "upcoming",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Upcoming",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
             "name": "ordering",
             "required": false,
             "schema": {
@@ -24410,6 +25086,16 @@
           },
           {
             "in": "query",
+            "name": "upcoming",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Upcoming",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
             "name": "ordering",
             "required": false,
             "schema": {
@@ -24520,7 +25206,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AppointmentResponse"
+                  "$ref": "#/components/schemas/AppointmentDetailResponse"
                 }
               }
             },
@@ -28495,6 +29181,21 @@
           },
           {
             "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CallSlipLifecycleStateValue"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
             "name": "page",
             "required": false,
             "schema": {
@@ -28805,6 +29506,21 @@
                 }
               ],
               "title": "To Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CallSlipLifecycleStateValue"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           {
@@ -34622,7 +35338,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GoodMoralDetailResponse"
+                  "$ref": "#/components/schemas/GoodMoralOperationalDetailResponse"
                 }
               }
             },
@@ -34698,7 +35414,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GoodMoralDetailResponse"
+                  "$ref": "#/components/schemas/GoodMoralOperationalDetailResponse"
                 }
               }
             },
@@ -34796,7 +35512,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GoodMoralDetailResponse"
+                  "$ref": "#/components/schemas/GoodMoralOperationalDetailResponse"
                 }
               }
             },
@@ -34884,7 +35600,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GoodMoralDetailResponse"
+                  "$ref": "#/components/schemas/GoodMoralOperationalDetailResponse"
                 }
               }
             },
@@ -40415,13 +41131,12 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/components/schemas/EmailDeliveryStatusValue"
                 },
                 {
                   "type": "null"
                 }
-              ],
-              "title": "Status"
+              ]
             }
           }
         ],
@@ -41162,6 +41877,22 @@
                   "type": "null"
                 }
               ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active"
             }
           }
         ],
@@ -43235,6 +43966,22 @@
               ],
               "title": "Is Active"
             }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
           }
         ],
         "responses": {
@@ -43684,7 +44431,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GlobalPrivacyReviewPageResponse"
+                  "$ref": "#/components/schemas/PrivacyReviewPageResponse"
                 }
               }
             },

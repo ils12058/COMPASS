@@ -21,6 +21,21 @@ class NotificationChannel(StrEnum):
     EMAIL = "EMAIL"
 
 
+class NotificationTargetType(StrEnum):
+    """Closed set of in-app destinations a Notification may point at."""
+
+    ACCOUNT_SECURITY = "ACCOUNT_SECURITY"
+    APPOINTMENT = "APPOINTMENT"
+    CALL_SLIP = "CALL_SLIP"
+    COUNSELING_SHARED_SUMMARY = "COUNSELING_SHARED_SUMMARY"
+    E_COUNSELING = "E_COUNSELING"
+    EXIT_INTERVIEW = "EXIT_INTERVIEW"
+    FEEDBACK = "FEEDBACK"
+    GOOD_MORAL = "GOOD_MORAL"
+    INVENTORY = "INVENTORY"
+    ROUTINE_INTERVIEW = "ROUTINE_INTERVIEW"
+
+
 class NotificationEvent(StrEnum):
     CALL_SLIP_ISSUED = "call_slip.issued"
     APPOINTMENT_SCHEDULED = "appointment.scheduled"

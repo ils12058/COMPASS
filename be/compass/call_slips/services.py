@@ -47,7 +47,12 @@ from compass.referrals.services import (
     ensure_call_slip_action,
 )
 
-from .models import CallSlip, CallSlipDestinationType
+from .models import (
+    CallSlip,
+    CallSlipDestinationType,
+    CallSlipIssuanceMode,
+    CallSlipLifecycleState,
+)
 
 CALL_SLIP_FORM_FAMILY_KEY = "call_slip"
 OPERATIONAL_ROLES = frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
@@ -324,6 +329,19 @@ def _apply_date_filters(queryset, *, from_date: date | None, to_date: date | Non
     return queryset
 
 
+def _apply_state_filter(queryset, state: str | CallSlipLifecycleState | None):
+    if state is None:
+        return queryset
+    normalized = state.value if isinstance(state, CallSlipLifecycleState) else str(state)
+    if normalized == CallSlipLifecycleState.ACTIVE:
+        return queryset.filter(voided_at__isnull=True, interview_ended_at__isnull=True)
+    if normalized == CallSlipLifecycleState.COMPLETED:
+        return queryset.filter(voided_at__isnull=True, interview_ended_at__isnull=False)
+    if normalized == CallSlipLifecycleState.VOIDED:
+        return queryset.filter(voided_at__isnull=False)
+    raise InvalidCallSlipInput("state must be ACTIVE, COMPLETED, or VOIDED.")
+
+
 def _page(queryset, *, page: int, page_size: int) -> CallSlipPage:
     page, page_size = _pagination(page, page_size)
     offset = (page - 1) * page_size
@@ -379,7 +397,10 @@ def _prepare_creation_input(
 
 def _lock_creation_actor(actor: User) -> User:
     locked_actor = (
-        User.objects.select_for_update().select_related("role").filter(pk=actor.pk).first()
+        User.objects.select_for_update(of=("self",))
+        .select_related("role")
+        .filter(pk=actor.pk)
+        .first()
     )
     if locked_actor is None:
         raise CallSlipNotPermitted("The authenticated Guidance actor no longer exists.")
@@ -417,7 +438,7 @@ def _resolve_issuer_locked(actor: User) -> User:
             "Guidance Services Staff requires a current supervising Counselor."
         )
     supervisor = (
-        User.objects.select_for_update()
+        User.objects.select_for_update(of=("self",))
         .select_related("role")
         .filter(pk=supervision.supervisor_id)
         .first()
@@ -478,7 +499,12 @@ def _create_new_call_slip_locked(
     context: AuditContext,
 ) -> CallSlip:
     issuer = _resolve_issuer_locked(actor)
-    student = User.objects.select_for_update().select_related("role").filter(pk=student_id).first()
+    student = (
+        User.objects.select_for_update(of=("self",))
+        .select_related("role")
+        .filter(pk=student_id)
+        .first()
+    )
     student = _validate_student(student)
     if not _student_in_scope(actor, student.pk):
         raise CallSlipNotPermitted(
@@ -504,6 +530,9 @@ def _create_new_call_slip_locked(
                 destination_type=prepared.destination_type,
                 other_destination=prepared.other_destination,
                 report_at=prepared.report_at,
+                issuance_mode=(
+                    CallSlipIssuanceMode.LIVE if notify_student else CallSlipIssuanceMode.HISTORICAL
+                ),
                 issued_by=issuer,
                 issued_by_name_snapshot=issuer.get_full_name(),
                 form_revision=revision,
@@ -704,10 +733,9 @@ def count_my_active_call_slips(actor: User) -> int | None:
         or not actor.has_capability("call_slips.view_self")
     ):
         return None
-    return CallSlip.objects.filter(
-        student_id=actor.pk,
-        voided_at__isnull=True,
-        interview_ended_at__isnull=True,
+    return _apply_state_filter(
+        CallSlip.objects.filter(student_id=actor.pk),
+        CallSlipLifecycleState.ACTIVE,
     ).count()
 
 
@@ -719,14 +747,10 @@ def count_active_call_slips(actor: User) -> int | None:
         or not actor.has_capability("call_slips.view")
     ):
         return None
-    return (
-        _scope_queryset(CallSlip.objects.all(), actor)
-        .filter(
-            voided_at__isnull=True,
-            interview_ended_at__isnull=True,
-        )
-        .count()
-    )
+    return _apply_state_filter(
+        _scope_queryset(CallSlip.objects.all(), actor),
+        CallSlipLifecycleState.ACTIVE,
+    ).count()
 
 
 def list_call_slips(
@@ -740,12 +764,16 @@ def list_call_slips(
     from_date: date | None = None,
     to_date: date | None = None,
     include_voided: bool = False,
+    state: str | CallSlipLifecycleState | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> CallSlipPage:
     _validate_operational_actor(actor)
     qs = _scope_queryset(_queryset(), actor)
-    if not include_voided:
+    if state is not None:
+        # An explicit lifecycle state is authoritative over the legacy include_voided toggle.
+        qs = _apply_state_filter(qs, state)
+    elif not include_voided:
         qs = qs.filter(voided_at__isnull=True)
     if student_id is not None:
         qs = qs.filter(student_id=student_id)
@@ -783,11 +811,13 @@ def list_my_call_slips(
     actor: User,
     from_date: date | None = None,
     to_date: date | None = None,
+    state: str | CallSlipLifecycleState | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> CallSlipPage:
     _validate_student_actor(actor)
     qs = _queryset().filter(student_id=actor.pk)
+    qs = _apply_state_filter(qs, state)
     qs = _apply_date_filters(qs, from_date=from_date, to_date=to_date)
     return _page(
         qs.order_by("-report_at", "-created_at", "id"),
@@ -952,12 +982,13 @@ def void_call_slip(
                 "transition": "ACTIVE -> VOIDED",
             },
         )
-        create_notification_for_event(
-            recipient=item.student,
-            event=NotificationEvent.CALL_SLIP_VOIDED,
-            source_type="call_slip",
-            source_id=item.pk,
-            target_type="CALL_SLIP",
-            target_id=item.pk,
-        )
+        if item.void_notifies_student:
+            create_notification_for_event(
+                recipient=item.student,
+                event=NotificationEvent.CALL_SLIP_VOIDED,
+                source_type="call_slip",
+                source_id=item.pk,
+                target_type="CALL_SLIP",
+                target_id=item.pk,
+            )
         return _queryset().get(pk=item.pk)

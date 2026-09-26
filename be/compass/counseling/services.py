@@ -179,7 +179,7 @@ def get_counseling_service(*, require_active: bool = True, for_update: bool = Fa
 def _lock_users(*user_ids: UUID) -> dict[UUID, User]:
     unique_ids = sorted(set(user_ids), key=str)
     rows = list(
-        User.objects.select_for_update()
+        User.objects.select_for_update(of=("self",))
         .select_related("role")
         .filter(pk__in=unique_ids)
         .order_by("pk")

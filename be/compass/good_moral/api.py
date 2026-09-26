@@ -161,6 +161,15 @@ class GoodMoralDetailResponse(GoodMoralSummaryResponse):
     issued_by_name_snapshot: str
 
 
+class GoodMoralCancellationSummary(StrictSchema):
+    cancelled_by: PersonSummary | None
+    reason: str
+
+
+class GoodMoralOperationalDetailResponse(GoodMoralDetailResponse):
+    cancellation: GoodMoralCancellationSummary | None
+
+
 class GoodMoralHistoryResponse(StrictSchema):
     items: list[GoodMoralSummaryResponse]
 
@@ -234,6 +243,16 @@ def _summary(item) -> dict[str, object]:
         "created_at": item.created_at,
         "updated_at": item.updated_at,
     }
+
+
+def _operational_detail(item) -> dict[str, object]:
+    cancellation = None
+    if item.cancelled_at is not None:
+        cancellation = {
+            "cancelled_by": _person(item.cancelled_by) if item.cancelled_by_id else None,
+            "reason": item.cancellation_reason,
+        }
+    return {**_detail(item), "cancellation": cancellation}
 
 
 def _detail(item) -> dict[str, object]:
@@ -527,7 +546,7 @@ def good_moral_download(request, request_id: UUID):
 
 @router.post(
     "/requests/{request_id}/cancel",
-    response=response_with_errors(GoodMoralDetailResponse, 401, 403, 404, 409, 422),
+    response=response_with_errors(GoodMoralOperationalDetailResponse, 401, 403, 404, 409, 422),
     auth=session_auth,
     operation_id="goodMoralCancelRequest",
 )
@@ -547,12 +566,12 @@ def good_moral_cancel_request(
         )
     except GoodMoralError as exc:
         _raise(exc)
-    return _detail(item)
+    return _operational_detail(item)
 
 
 @router.post(
     "/requests/{request_id}/issue",
-    response=response_with_errors(GoodMoralDetailResponse, 401, 403, 404, 409, 422),
+    response=response_with_errors(GoodMoralOperationalDetailResponse, 401, 403, 404, 409, 422),
     auth=session_auth,
     operation_id="goodMoralIssueRequest",
 )
@@ -566,12 +585,12 @@ def good_moral_issue(request, request_id: UUID):
         )
     except GoodMoralError as exc:
         _raise(exc)
-    return _detail(item)
+    return _operational_detail(item)
 
 
 @router.get(
     "/requests/{request_id}",
-    response=response_with_errors(GoodMoralDetailResponse, 401, 403, 404),
+    response=response_with_errors(GoodMoralOperationalDetailResponse, 401, 403, 404),
     auth=session_auth,
     operation_id="goodMoralGetRequest",
 )
@@ -581,12 +600,12 @@ def good_moral_get(request, request_id: UUID):
         item = get_request(actor=request.auth_user, request_id=request_id)
     except GoodMoralError as exc:
         _raise(exc)
-    return _detail(item)
+    return _operational_detail(item)
 
 
 @router.patch(
     "/requests/{request_id}",
-    response=response_with_errors(GoodMoralDetailResponse, 401, 403, 404, 409, 422),
+    response=response_with_errors(GoodMoralOperationalDetailResponse, 401, 403, 404, 409, 422),
     auth=session_auth,
     operation_id="goodMoralUpdateRequest",
 )
@@ -601,4 +620,4 @@ def good_moral_update(request, request_id: UUID, payload: GoodMoralCorrectionPay
         )
     except GoodMoralError as exc:
         _raise(exc)
-    return _detail(item)
+    return _operational_detail(item)

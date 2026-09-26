@@ -9,6 +9,7 @@ from uuid import UUID
 from ninja import Router, Schema
 from pydantic import ConfigDict
 
+from compass.appointments.api import AppointmentStatus
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
@@ -17,8 +18,11 @@ from compass.inventory.api import (
     counselor_inventory_detail_payload,
 )
 from compass.inventory.services import CurrentAcademicYearNotConfigured
+from compass.routine_interviews.api import RoutineEvaluationStatus, RoutineIntakeStatus
+from compass.service_catalog.api import DeliveryMode
 from compass.student_support.services import StudentSupportConfigurationConflict
 
+from .api import CounselingEntryMode
 from .context_access import (
     CounselingContextNotFound,
     CounselingContextSource,
@@ -48,6 +52,37 @@ class CounselingContextInventoryStatus(StrEnum):
     MISSING = "MISSING"
     DRAFT = "DRAFT"
     SUBMITTED = "SUBMITTED"
+
+
+class CounselingContextSection(StrEnum):
+    SUPPORT_INDICATORS = "SUPPORT_INDICATORS"
+    INVENTORY = "INVENTORY"
+    HISTORY = "HISTORY"
+    SHARED_SUMMARIES = "SHARED_SUMMARIES"
+
+
+class ContextHistoryKind(StrEnum):
+    APPOINTMENT = "APPOINTMENT"
+    REFERRAL = "REFERRAL"
+    CALL_SLIP = "CALL_SLIP"
+    ROUTINE_INTERVIEW = "ROUTINE_INTERVIEW"
+
+
+class ContextHistoryStatus(StrEnum):
+    """Per-kind history states: Appointment status, Referral receipt, Call Slip interview end,
+    Routine Intake submission, and VOIDED for voided Referrals and Call Slips."""
+
+    SCHEDULED = AppointmentStatus.SCHEDULED
+    CANCELLED = AppointmentStatus.CANCELLED
+    COMPLETED = AppointmentStatus.COMPLETED
+    NO_SHOW = AppointmentStatus.NO_SHOW
+    RECORDED = "RECORDED"
+    RECEIVED = "RECEIVED"
+    PENDING = "PENDING"
+    ENDED = "ENDED"
+    DRAFT = RoutineIntakeStatus.DRAFT
+    SUBMITTED = RoutineIntakeStatus.SUBMITTED
+    VOIDED = "VOIDED"
 
 
 class ContextIdentityResponse(StrictSchema):
@@ -84,9 +119,9 @@ class ContextStudentOverviewResponse(StrictSchema):
 
 class ContextRoutineInterviewResponse(StrictSchema):
     id: UUID
-    entry_mode: str
-    intake_status: str
-    evaluation_status: str
+    entry_mode: CounselingEntryMode
+    intake_status: RoutineIntakeStatus
+    evaluation_status: RoutineEvaluationStatus
 
 
 class ContextEncounterResponse(StrictSchema):
@@ -99,13 +134,13 @@ class CounselingContextOverviewResponse(StrictSchema):
     student: ContextStudentOverviewResponse
     source_type: CounselingContextAnchorType
     source_id: UUID
-    entry_mode: str
-    delivery_mode: str
+    entry_mode: CounselingEntryMode
+    delivery_mode: DeliveryMode
     valid_from: datetime
     valid_until: datetime
     routine_interview: ContextRoutineInterviewResponse | None
     matching_encounter: ContextEncounterResponse | None
-    available_sections: list[str]
+    available_sections: list[CounselingContextSection]
 
 
 class ContextSupportIndicatorResponse(StrictSchema):
@@ -128,12 +163,12 @@ class CounselingContextInventoryResponse(StrictSchema):
 
 class ContextHistoryItemResponse(StrictSchema):
     id: UUID
-    kind: str
+    kind: ContextHistoryKind
     occurred_at: datetime
     title: str
-    status: str
+    status: ContextHistoryStatus
     reference_code: str | None
-    delivery_mode: str | None
+    delivery_mode: DeliveryMode | None
     provider: ContextIdentityResponse | None
 
 

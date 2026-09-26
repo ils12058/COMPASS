@@ -66,6 +66,36 @@ class AppointmentListOrdering(StrEnum):
     START_DESC = "START_DESC"
 
 
+class AppointmentActionBlocker(StrEnum):
+    """Why an Appointment action is not currently available to the requesting actor."""
+
+    NOT_PERMITTED = "NOT_PERMITTED"
+    NOT_SCHEDULED = "NOT_SCHEDULED"
+    ALREADY_STARTED = "ALREADY_STARTED"
+    NOT_STARTED = "NOT_STARTED"
+    NOT_ENDED = "NOT_ENDED"
+    CUTOFF_PASSED = "CUTOFF_PASSED"
+    CURRENT_STUDENT_REQUIRED = "CURRENT_STUDENT_REQUIRED"
+    ECOUNSELING_ROOM_LINKED = "ECOUNSELING_ROOM_LINKED"
+    ROUTINE_INTERVIEW_LINKED = "ROUTINE_INTERVIEW_LINKED"
+    COUNSELING_ENCOUNTER_LINKED = "COUNSELING_ENCOUNTER_LINKED"
+
+
+@dataclass(frozen=True, slots=True)
+class AppointmentActionState:
+    allowed: bool
+    blocker: AppointmentActionBlocker | None
+
+
+@dataclass(frozen=True, slots=True)
+class AppointmentActions:
+    cancel: AppointmentActionState
+    reschedule: AppointmentActionState
+    reassign: AppointmentActionState
+    complete: AppointmentActionState
+    mark_no_show: AppointmentActionState
+
+
 class AppointmentError(RuntimeError):
     pass
 
@@ -289,11 +319,7 @@ def count_upcoming_self_appointments(
     ):
         return None
 
-    current = now or timezone.now()
-    queryset = Appointment.objects.filter(
-        status=AppointmentStatus.SCHEDULED,
-        starts_at__gte=current,
-    )
+    queryset = _apply_upcoming_filter(Appointment.objects.all(), upcoming=True, now=now)
     if actor.role.code == "STUDENT":
         return queryset.filter(student_id=actor.pk).count()
     if actor.role.code == "COUNSELOR":
@@ -314,12 +340,19 @@ def count_upcoming_managed_appointments(
     ):
         return None
 
-    current = now or timezone.now()
     queryset = scope_managed_appointments(Appointment.objects.all(), actor)
+    return _apply_upcoming_filter(queryset, upcoming=True, now=now).count()
+
+
+def _apply_upcoming_filter(queryset, *, upcoming: bool, now: datetime | None):
+    """Match the Overview upcoming population: SCHEDULED and not yet started (server time)."""
+
+    if not upcoming:
+        return queryset
     return queryset.filter(
         status=AppointmentStatus.SCHEDULED,
-        starts_at__gte=current,
-    ).count()
+        starts_at__gte=now or timezone.now(),
+    )
 
 
 def list_my_appointments(
@@ -328,9 +361,11 @@ def list_my_appointments(
     status: str | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
+    upcoming: bool = False,
     ordering: str | AppointmentListOrdering = AppointmentListOrdering.START_DESC,
     page: int = DEFAULT_PAGE_SIZE // DEFAULT_PAGE_SIZE,
     page_size: int = DEFAULT_PAGE_SIZE,
+    now: datetime | None = None,
 ) -> AppointmentPage:
     normalized_status = _normalized_status(status)
     normalized_ordering = _normalized_list_ordering(ordering)
@@ -343,6 +378,7 @@ def list_my_appointments(
         qs = qs.none()
     if normalized_status is not None:
         qs = qs.filter(status=normalized_status)
+    qs = _apply_upcoming_filter(qs, upcoming=upcoming, now=now)
     qs = _apply_date_filters(qs, from_date=from_date, to_date=to_date)
     return _page(
         qs.order_by(*_ordering_fields(normalized_ordering)),
@@ -362,9 +398,11 @@ def list_managed_appointments(
     from_date: date | None = None,
     to_date: date | None = None,
     search: str | None = None,
+    upcoming: bool = False,
     ordering: str | AppointmentListOrdering = AppointmentListOrdering.START_DESC,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
+    now: datetime | None = None,
 ) -> AppointmentPage:
     normalized_status = _normalized_status(status)
     normalized_ordering = _normalized_list_ordering(ordering)
@@ -382,6 +420,7 @@ def list_managed_appointments(
         qs = qs.filter(service_id=service_id)
     if normalized_mode is not None:
         qs = qs.filter(delivery_mode=normalized_mode)
+    qs = _apply_upcoming_filter(qs, upcoming=upcoming, now=now)
     qs = _apply_date_filters(qs, from_date=from_date, to_date=to_date)
     if search is not None:
         if not isinstance(search, str):
@@ -1502,6 +1541,102 @@ def list_eligible_counselors(
     )
     return tuple(
         EligibleCounselor(user=item, is_default=item.pk == default_id) for item in counselors
+    )
+
+
+_ALLOWED = AppointmentActionState(allowed=True, blocker=None)
+
+
+def _blocked(blocker: AppointmentActionBlocker) -> AppointmentActionState:
+    return AppointmentActionState(allowed=False, blocker=blocker)
+
+
+def _first_blocker(*checks: AppointmentActionBlocker | None) -> AppointmentActionState:
+    for blocker in checks:
+        if blocker is not None:
+            return _blocked(blocker)
+    return _ALLOWED
+
+
+def appointment_actions_for(
+    *,
+    actor: User,
+    item: Appointment,
+    now: datetime | None = None,
+) -> AppointmentActions:
+    """Project which lifecycle actions the requesting actor may attempt right now.
+
+    This mirrors the mutation rules using server time and linked records so clients do not
+    offer impossible actions. It is advisory: every mutation still revalidates under locks.
+    """
+
+    from compass.counseling.models import CounselingEncounter
+    from compass.ecounseling.models import ECounselingRoom
+    from compass.routine_interviews.models import RoutineInterview
+
+    current = now or timezone.now()
+    self_mode = (
+        actor.is_active
+        and actor.role.code == "STUDENT"
+        and actor.pk == item.student_id
+        and actor.has_capability("appointments.manage_self")
+    )
+    manager = not self_mode and appointment_management_access_allowed(actor, item)
+    denied = _blocked(AppointmentActionBlocker.NOT_PERMITTED)
+    if not self_mode and not manager:
+        return AppointmentActions(
+            cancel=denied,
+            reschedule=denied,
+            reassign=denied,
+            complete=denied,
+            mark_no_show=denied,
+        )
+
+    scheduled = item.status == AppointmentStatus.SCHEDULED
+    not_scheduled = None if scheduled else AppointmentActionBlocker.NOT_SCHEDULED
+    started = AppointmentActionBlocker.ALREADY_STARTED if current >= item.starts_at else None
+    cutoff = None
+    if self_mode and item.cancellation_cutoff_minutes is not None:
+        boundary = item.starts_at - timedelta(minutes=item.cancellation_cutoff_minutes)
+        if current > boundary:
+            cutoff = AppointmentActionBlocker.CUTOFF_PASSED
+
+    room_linked = encounter_linked = routine_linked = None
+    if scheduled:
+        if ECounselingRoom.objects.filter(appointment_id=item.pk).exists():
+            room_linked = AppointmentActionBlocker.ECOUNSELING_ROOM_LINKED
+        if manager and CounselingEncounter.objects.filter(appointment_id=item.pk).exists():
+            encounter_linked = AppointmentActionBlocker.COUNSELING_ENCOUNTER_LINKED
+        if manager and RoutineInterview.objects.filter(appointment_id=item.pk).exists():
+            routine_linked = AppointmentActionBlocker.ROUTINE_INTERVIEW_LINKED
+
+    cancel = _first_blocker(not_scheduled, started, cutoff)
+    if self_mode:
+        lifecycle = (
+            None if is_current_student(actor) else AppointmentActionBlocker.CURRENT_STUDENT_REQUIRED
+        )
+        return AppointmentActions(
+            cancel=cancel,
+            reschedule=_first_blocker(not_scheduled, started, lifecycle, cutoff, room_linked),
+            reassign=denied,
+            complete=denied,
+            mark_no_show=denied,
+        )
+    return AppointmentActions(
+        cancel=cancel,
+        reschedule=_first_blocker(not_scheduled, started, room_linked),
+        reassign=_first_blocker(
+            not_scheduled, started, routine_linked, encounter_linked, room_linked
+        ),
+        complete=_first_blocker(
+            not_scheduled,
+            AppointmentActionBlocker.NOT_STARTED if current < item.starts_at else None,
+        ),
+        mark_no_show=_first_blocker(
+            not_scheduled,
+            AppointmentActionBlocker.NOT_ENDED if current < item.ends_at else None,
+            encounter_linked,
+        ),
     )
 
 

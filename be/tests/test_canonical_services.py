@@ -356,6 +356,30 @@ def test_api_rejects_reserved_create_disable_and_provider_removal():
 
 
 @pytest.mark.django_db
+def test_service_projection_marks_only_canonical_services_as_system_required():
+    sync_policy()
+    admin = user("system-required-admin@example.edu", "IT_ADMIN")
+    client, headers = auth_client(admin)
+    canonical = Service.objects.get(pk=sync_canonical_services().service_id)
+    created = client.post(
+        "/api/v1/services",
+        data=json.dumps({"code": "ADMISSION", "name": "Admission", "appointment_policy": "NONE"}),
+        content_type="application/json",
+        **headers,
+    )
+    assert created.status_code == 201
+    assert created.json()["is_system_required"] is False
+
+    detail = client.get(f"/api/v1/services/{canonical.pk}").json()
+    assert detail["is_system_required"] is True
+    rows = client.get("/api/v1/services?include_inactive=true").json()["items"]
+    assert {row["code"]: row["is_system_required"] for row in rows} == {
+        "ADMISSION": False,
+        "COUNSELING": True,
+    }
+
+
+@pytest.mark.django_db
 def test_student_booking_discovers_fresh_service_without_availability():
     sync_policy()
     student = user("student@example.edu", "STUDENT")

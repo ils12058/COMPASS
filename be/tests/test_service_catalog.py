@@ -617,3 +617,20 @@ def test_cancellation_cutoff_is_nonnegative_and_validated_with_active_appointmen
     )
     assert changed.appointment_policy == "NONE"
     assert changed.cancellation_cutoff_minutes is None
+
+
+@pytest.mark.django_db
+def test_activation_requires_an_eligible_counselor_provider_role():
+    sync_policy()
+    actor = make_user("legacy-provider-admin@example.edu", "IT_ADMIN")
+    service = configured_service(actor)
+    ServiceProviderRole.objects.filter(service=service).delete()
+    ServiceProviderRole.objects.create(
+        service=service,
+        role=Role.objects.get(code="GUIDANCE_SERVICES_STAFF"),
+    )
+
+    with pytest.raises(ServiceCatalogConflict, match="Counselor provider role"):
+        set_service_active(service_id=service.pk, is_active=True, context=context(actor))
+    service.refresh_from_db()
+    assert service.is_active is False
