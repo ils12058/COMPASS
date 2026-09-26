@@ -20,6 +20,7 @@ from tests.test_appointments import (
     auth_client,
     create_affiliation,
     create_list_appointment,
+    csrf,
     make_user,
     sync_policy,
 )
@@ -224,3 +225,34 @@ def test_upcoming_filter_matches_overview_population():
     assert [item["id"] for item in api] == [str(upcoming.pk)]
     overview = auth_client(student).get("/api/v1/overview").json()["student"]
     assert overview["upcoming_appointments_count"] == len(api)
+
+
+@pytest.mark.django_db
+def test_cancellation_error_codes_come_from_exception_types_not_message_text():
+    sync_policy()
+    student, manager, service = setup_participants("cancelcode")
+    now = timezone.now()
+    within_cutoff = create_list_appointment(
+        reference_code="APT-2099-900041",
+        student=student,
+        provider=manager,
+        service=service,
+        starts_at=now + timedelta(minutes=10),
+    )
+    started = create_list_appointment(
+        reference_code="APT-2099-900042",
+        student=student,
+        provider=manager,
+        service=service,
+        starts_at=now - timedelta(minutes=10),
+    )
+    client = auth_client(student)
+    headers = csrf(client)
+
+    cutoff = client.post(f"/api/v1/appointments/{within_cutoff.pk}/cancel", **headers)
+    assert cutoff.status_code == 409
+    assert cutoff.json()["error"]["code"] == "appointment_cancellation_cutoff_passed"
+
+    lifecycle = client.post(f"/api/v1/appointments/{started.pk}/cancel", **headers)
+    assert lifecycle.status_code == 409
+    assert lifecycle.json()["error"]["code"] == "appointment_cancellation_conflict"

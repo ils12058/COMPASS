@@ -29,6 +29,7 @@ from .services import (
     GoodMoralAffiliationRequired,
     GoodMoralConfigurationConflict,
     GoodMoralConflict,
+    GoodMoralCreationConflict,
     GoodMoralCurrentStudentRequired,
     GoodMoralDocumentUnavailable,
     GoodMoralError,
@@ -217,6 +218,9 @@ def _raise(exc: GoodMoralError) -> NoReturn:
         raise APIError(409, "good_moral_affiliation_required", str(exc)) from exc
     if isinstance(exc, GoodMoralConfigurationConflict):
         raise APIError(409, "good_moral_configuration_conflict", str(exc)) from exc
+    if isinstance(exc, GoodMoralCreationConflict):
+        # Same stable code as the other idempotent creation routes.
+        raise APIError(409, "idempotency_key_conflict", str(exc)) from exc
     if isinstance(exc, GoodMoralConflict):
         raise APIError(409, "good_moral_conflict", str(exc)) from exc
     if isinstance(exc, GoodMoralDocumentUnavailable):

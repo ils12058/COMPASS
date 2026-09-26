@@ -128,6 +128,10 @@ class AppointmentCancellationConflict(AppointmentError):
     pass
 
 
+class AppointmentCancellationCutoffPassed(AppointmentCancellationConflict):
+    pass
+
+
 class AppointmentLifecycleConflict(AppointmentError):
     pass
 
@@ -937,7 +941,7 @@ def cancel_appointment(
         if not administrative and item.cancellation_cutoff_minutes is not None:
             boundary = item.starts_at - timedelta(minutes=item.cancellation_cutoff_minutes)
             if current > boundary:
-                raise AppointmentCancellationConflict(
+                raise AppointmentCancellationCutoffPassed(
                     "The Appointment cancellation cutoff has passed."
                 )
 

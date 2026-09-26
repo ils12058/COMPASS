@@ -276,9 +276,35 @@ def resolve_counseling_context(
     )
 
 
+def counseling_context_available(
+    *,
+    actor: User,
+    anchor_type: CounselingContextSource | str,
+    anchor_id: UUID,
+    now: datetime | None = None,
+) -> bool:
+    """Whether ``actor`` could open this Counseling Context right now.
+
+    Detail responses project this so clients do not rebuild the time-bounded rule. It is
+    advisory: opening the Context resolves access again.
+    """
+
+    try:
+        resolve_counseling_context(
+            actor=actor,
+            anchor_type=anchor_type,
+            anchor_id=anchor_id,
+            now=now,
+        )
+    except CounselingContextNotFound:
+        return False
+    return True
+
+
 __all__ = [
     "CounselingContextAccess",
     "CounselingContextNotFound",
     "CounselingContextSource",
+    "counseling_context_available",
     "resolve_counseling_context",
 ]

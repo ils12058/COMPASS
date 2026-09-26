@@ -1372,6 +1372,10 @@
             ],
             "title": "Completed At"
           },
+          "counseling_context_available": {
+            "title": "Counseling Context Available",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1445,7 +1449,8 @@
           "completed_at",
           "no_show_at",
           "created_at",
-          "actions"
+          "actions",
+          "counseling_context_available"
         ],
         "title": "AppointmentDetailResponse",
         "type": "object"
@@ -6052,6 +6057,10 @@
               }
             ]
           },
+          "counseling_context_available": {
+            "title": "Counseling Context Available",
+            "type": "boolean"
+          },
           "counseling_encounter": {
             "anyOf": [
               {
@@ -6153,6 +6162,7 @@
           "form_revision",
           "appointment",
           "counseling_encounter",
+          "counseling_context_available",
           "created_at"
         ],
         "title": "CounselorRoutineDetailResponse",

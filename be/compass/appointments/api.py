@@ -32,6 +32,7 @@ from .services import (
     DEFAULT_PAGE_SIZE,
     AppointmentActionBlocker,
     AppointmentCancellationConflict,
+    AppointmentCancellationCutoffPassed,
     AppointmentCurrentAcademicYearNotConfigured,
     AppointmentCurrentInventoryRequired,
     AppointmentCurrentStudentRequired,
@@ -173,6 +174,8 @@ class AppointmentActionsResponse(StrictSchema):
 
 class AppointmentDetailResponse(AppointmentResponse):
     actions: AppointmentActionsResponse
+    # True only for the assigned Counselor while this Appointment's Counseling Context is open.
+    counseling_context_available: bool
 
 
 class AppointmentPageResponse(StrictSchema):
@@ -275,14 +278,10 @@ def _raise(exc: AppointmentError) -> NoReturn:
         raise APIError(409, "appointment_time_conflict", str(exc)) from exc
     if isinstance(exc, AppointmentLifecycleConflict):
         raise APIError(409, "appointment_lifecycle_conflict", str(exc)) from exc
+    if isinstance(exc, AppointmentCancellationCutoffPassed):
+        raise APIError(409, "appointment_cancellation_cutoff_passed", str(exc)) from exc
     if isinstance(exc, AppointmentCancellationConflict):
-        message = str(exc)
-        code = (
-            "appointment_cancellation_cutoff_passed"
-            if "cutoff" in message.lower()
-            else "appointment_cancellation_conflict"
-        )
-        raise APIError(409, code, message) from exc
+        raise APIError(409, "appointment_cancellation_conflict", str(exc)) from exc
     if isinstance(exc, (AppointmentNotSchedulable, AppointmentReferenceConflict)):
         raise APIError(409, "appointment_not_schedulable", str(exc)) from exc
     raise APIError(
@@ -678,9 +677,19 @@ def appointments_get(request, appointment_id: UUID):
         item = get_appointment_for_actor(appointment_id=appointment_id, actor=request.auth_user)
     except AppointmentError as exc:
         _raise(exc)
+    from compass.counseling.context_access import (
+        CounselingContextSource,
+        counseling_context_available,
+    )
+
     actions = appointment_actions_for(actor=request.auth_user, item=item)
     return {
         **_appointment(item),
+        "counseling_context_available": counseling_context_available(
+            actor=request.auth_user,
+            anchor_type=CounselingContextSource.APPOINTMENT,
+            anchor_id=item.pk,
+        ),
         "actions": {
             "cancel": _action_state(actions.cancel),
             "reschedule": _action_state(actions.reschedule),
