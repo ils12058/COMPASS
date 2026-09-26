@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, time, timedelta
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -7,7 +9,9 @@ from zoneinfo import ZoneInfo
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
+from django.db import close_old_connections, connection, transaction
 from django.test import Client, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from compass.accounts.models import (
@@ -16,14 +20,17 @@ from compass.accounts.models import (
     User,
     UserDesignation,
 )
+from compass.appointments import services as appointment_services
 from compass.appointments.models import Appointment
 from compass.appointments.services import (
     AppointmentLifecycleConflict,
     AppointmentNotFound,
     AppointmentNotSchedulable,
+    AppointmentTimeConflict,
     list_bookable_slots,
     list_reassignment_candidates,
     list_reschedule_slots,
+    reschedule_appointment,
 )
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
@@ -456,14 +463,19 @@ def test_booking_slots_use_service_cadence_conflicts_statuses_and_boundaries():
     target = next_monday()
     now = target - timedelta(hours=1)
 
-    initial = list_bookable_slots(
-        student=student,
-        service_id=service.pk,
-        provider_id=provider.pk,
-        delivery_mode="IN_PERSON",
-        target_date=target.date(),
-        now=now,
-    )
+    with CaptureQueriesContext(connection) as queries:
+        initial = list_bookable_slots(
+            student=student,
+            service_id=service.pk,
+            provider_id=provider.pk,
+            delivery_mode="IN_PERSON",
+            target_date=target.date(),
+            now=now,
+        )
+    reservation_queries = [
+        query for query in queries if 'FROM "appointments_appointment"' in query["sql"]
+    ]
+    assert len(reservation_queries) == 1
     assert [row.starts_at.hour for row in initial.items] == [8, 9, 10, 11]
 
     raw_appointment(
@@ -530,6 +542,86 @@ def test_booking_slots_use_service_cadence_conflicts_statuses_and_boundaries():
         now=target,
     )
     assert [row.starts_at.hour for row in after_eight.items] == [11]
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_reschedule_rechecks_overlap_after_the_shared_participant_lock(monkeypatch):
+    sync_policy()
+    admin = make_user("reschedule-race-admin@example.edu", "IT_ADMIN")
+    student_a = make_user("reschedule-race-a@example.edu", "STUDENT")
+    student_b = make_user("reschedule-race-b@example.edu", "STUDENT")
+    provider = make_user("reschedule-race-provider@example.edu", "COUNSELOR")
+    service = make_service(admin)
+    configure(provider, admin)
+    start = next_monday()
+    desired = start + timedelta(hours=2)
+    now = start - timedelta(days=1)
+    first = raw_appointment(
+        reference="APT-2099-RACE01",
+        student=student_a,
+        provider=provider,
+        service=service,
+        starts_at=start,
+    )
+    second = raw_appointment(
+        reference="APT-2099-RACE02",
+        student=student_b,
+        provider=provider,
+        service=service,
+        starts_at=start + timedelta(hours=3),
+    )
+
+    lock_reached = threading.Event()
+    original_lock_users = appointment_services._lock_users
+
+    def observed_lock_users(*user_ids):
+        if threading.current_thread() is not threading.main_thread():
+            lock_reached.set()
+        return original_lock_users(*user_ids)
+
+    monkeypatch.setattr(appointment_services, "_lock_users", observed_lock_users)
+
+    def reschedule_first():
+        close_old_connections()
+        try:
+            try:
+                reschedule_appointment(
+                    appointment_id=first.pk,
+                    actor=student_a,
+                    starts_at=desired,
+                    reason="",
+                    administrative=False,
+                    context=context(student_a),
+                    now=now,
+                )
+            except AppointmentTimeConflict:
+                return "conflict"
+            return "rescheduled"
+        finally:
+            connection.close()
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        with transaction.atomic():
+            User.objects.select_for_update().get(pk=provider.pk)
+            future = executor.submit(reschedule_first)
+            assert lock_reached.wait(timeout=5)
+            assert not future.done()
+            reschedule_appointment(
+                appointment_id=second.pk,
+                actor=student_b,
+                starts_at=desired,
+                reason="",
+                administrative=False,
+                context=context(student_b),
+                now=now,
+            )
+        assert future.result(timeout=10) == "conflict"
+
+    first.refresh_from_db()
+    second.refresh_from_db()
+    assert first.starts_at == start
+    assert second.starts_at == desired
 
 
 @pytest.mark.django_db

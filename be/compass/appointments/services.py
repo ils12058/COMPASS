@@ -495,7 +495,7 @@ def _resolve_booking_provider(student: User, provider_id: UUID | None) -> User:
 def _lock_users(*user_ids: UUID) -> dict[UUID, User]:
     unique_ids = sorted(set(user_ids), key=str)
     rows = list(
-        User.objects.select_for_update()
+        User.objects.select_for_update(of=("self",))
         .select_related("role")
         .filter(pk__in=unique_ids)
         .order_by("pk")
@@ -577,28 +577,28 @@ def _candidate_slots(
 ) -> tuple[BookableSlot, ...]:
     if duration <= timedelta(0):
         raise AppointmentNotSchedulable("The Appointment duration must be positive.")
+    if not windows:
+        return ()
+    first_start = min(window.starts_at for window in windows)
+    last_end = max(window.ends_at for window in windows)
+    reservations = Appointment.objects.filter(
+        Q(provider_id=provider_id) | Q(student_id=student_id),
+        status=AppointmentStatus.SCHEDULED,
+        starts_at__lt=last_end,
+        ends_at__gt=first_start,
+    )
+    if exclude_appointment_id is not None:
+        reservations = reservations.exclude(pk=exclude_appointment_id)
+    busy_intervals = tuple(reservations.values_list("starts_at", "ends_at"))
     items: list[BookableSlot] = []
     local_now = now.astimezone(_institution_zone())
     for window in windows:
         starts_at = window.starts_at
         while starts_at + duration <= window.ends_at:
             ends_at = starts_at + duration
-            if (
-                starts_at > local_now
-                and not _has_overlap(
-                    field="provider_id",
-                    user_id=provider_id,
-                    starts_at=starts_at,
-                    ends_at=ends_at,
-                    exclude_appointment_id=exclude_appointment_id,
-                )
-                and not _has_overlap(
-                    field="student_id",
-                    user_id=student_id,
-                    starts_at=starts_at,
-                    ends_at=ends_at,
-                    exclude_appointment_id=exclude_appointment_id,
-                )
+            if starts_at > local_now and not any(
+                busy_start < ends_at and busy_end > starts_at
+                for busy_start, busy_end in busy_intervals
             ):
                 items.append(
                     BookableSlot(
@@ -1022,7 +1022,7 @@ def reschedule_appointment(
 
     with transaction.atomic():
         item = (
-            Appointment.objects.select_for_update()
+            Appointment.objects.select_for_update(of=("self",))
             .select_related("student__role", "provider__role", "service")
             .filter(pk=appointment_id)
             .first()
@@ -1040,12 +1040,19 @@ def reschedule_appointment(
                 or not actor.has_capability("appointments.manage_self")
             ):
                 raise AppointmentNotFound("The requested Appointment was not found.")
-            if not is_current_student(actor):
-                raise AppointmentCurrentStudentRequired(
-                    "Current Student lifecycle is required to reschedule an Appointment."
-                )
 
         _require_scheduled_before_start(item, now=current)
+
+        # Serialize on the same participant rows as booking before checking overlaps.
+        # Lock only Appointment above so joined Role and Service rows are not locked
+        # incidentally or in a database-dependent order.
+        participants = _lock_users(item.student_id, item.provider_id)
+        locked_student = participants[item.student_id]
+        locked_provider = participants[item.provider_id]
+        if not administrative and not is_current_student(locked_student):
+            raise AppointmentCurrentStudentRequired(
+                "Current Student lifecycle is required to reschedule an Appointment."
+            )
 
         if not administrative and item.cancellation_cutoff_minutes is not None:
             boundary = item.starts_at - timedelta(minutes=item.cancellation_cutoff_minutes)
@@ -1060,9 +1067,10 @@ def reschedule_appointment(
                 "and cannot be rescheduled."
             )
 
+        service = Service.objects.select_for_update().get(pk=item.service_id)
         _validate_existing_service(
-            service=item.service,
-            provider=item.provider,
+            service=service,
+            provider=locked_provider,
             delivery_mode=item.delivery_mode,
         )
         duration = item.ends_at - item.starts_at
@@ -1172,7 +1180,7 @@ def reassign_appointment(
 
     with transaction.atomic():
         item = (
-            Appointment.objects.select_for_update()
+            Appointment.objects.select_for_update(of=("self",))
             .select_related("student__role", "provider__role", "service")
             .filter(pk=appointment_id)
             .first()
@@ -1188,12 +1196,16 @@ def reassign_appointment(
         _require_reassignment_relationships_clear(item)
 
         new_provider = (
-            User.objects.select_for_update().select_related("role").filter(pk=provider_id).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=provider_id)
+            .first()
         )
         if new_provider is None:
             raise AppointmentNotSchedulable("The selected Counselor was not found.")
+        service = Service.objects.select_for_update().get(pk=item.service_id)
         _validate_existing_service(
-            service=item.service,
+            service=service,
             provider=new_provider,
             delivery_mode=item.delivery_mode,
         )

@@ -1,12 +1,9 @@
-# COMPASS backend foundation
+# COMPASS backend
 
-This directory contains the backend foundation for COMPASS plus Accounts / Identity, Audit Trail,
-Authentication / Account Security, self-activity projections, and purpose-built Account Management.
-It intentionally stops before broader business workflows: configuration, health, error handling,
-request correlation, rate-limit and idempotency primitives, external-service adapters, account
-identity, capability policy, server-managed authentication, administrative account management, and
-local/live-staging container wiring are included. Organization & Scope, Service Catalog, Availability, and the Appointment foundation are included;
-downstream service-delivery and Counseling workflows remain deferred.
+This directory contains the current COMPASS backend, including account security, Organization,
+Service Catalog, Availability, Appointments, Counseling, Student workflows, reporting,
+publications, platform operations, and Privacy Governance. Deployment-critical canonical
+configuration is synchronized explicitly after migrations; ordinary requests do not create it.
 
 ## Baseline
 
@@ -30,7 +27,7 @@ downstream service-delivery and Counseling workflows remain deferred.
 - Capability-authorized administrative Account Management with recent-MFA step-up
 - Self-service initial password setup and password recovery through email OTP
 
-The dependency lockfile is committed with this foundation. The chosen Python version is 3.13
+The dependency lockfile is committed with the backend. The chosen Python version is 3.13
 because the current Celery 5.6 support matrix lists CPython 3.9 through 3.13; host Python 3.14
 can still be used to install `uv`, but the project runtime remains pinned to 3.13.
 
@@ -154,8 +151,10 @@ until it succeeds.
 ## Audit Trail development
 
 The Audit Trail records meaningful business and security actions for accountability. It is separate
-from structured operational logs, HTTP access logs, and domain records. There is no audit read API
-yet; future domains must record sensitive reads explicitly at their service/use-case boundary.
+from structured operational logs, HTTP access logs, and domain records. My Activity, Security
+Activity, Platform Activity, and Privacy Activity expose curated allowlisted projections; there is
+no general raw AuditEvent browser. Sensitive data releases record audit events at the domain
+boundary.
 
 Record an event directly and keep a successful state change and its `SUCCESS` event in the same
 `transaction.atomic()` block:
@@ -183,8 +182,9 @@ Use `AuditContext.system()` for management commands and internal processes, and
 `AuditContext.anonymous()` for meaningful unauthenticated security events. Metadata must be a
 small, explicit JSON object; never include passwords, hashes, tokens, credentials, request or
 response bodies, or confidential counseling content. Audit events cannot be edited or deleted
-through normal application ORM paths. Retention, tamper-proof storage, and capability-scoped
-audit viewing are deferred to later policy and domain work.
+through normal application ORM paths. Retention execution and tamper-proof external storage remain
+separate policy and deployment decisions; the Privacy Governance retention records do not execute
+deletion or archival.
 
 ## My Activity and Security Activity
 
@@ -262,15 +262,12 @@ The same commands can run with the normal backend environment by omitting the
 route, so it remains usable when `API_DOCS_ENABLED=false`. When enabled, local Swagger is at
 `/api/v1/docs` and the raw schema is at `/api/v1/openapi.json`.
 
-Operation IDs are stable public identifiers (`health<Action>`, `auth<Action>`, `me<Action>`,
-`accounts<Action>`, `organization<Action>`, `services<Action>`, `availability<Action>`, and
-`appointments<Action>`), and tags are bounded domains rather than user roles. Intentional path, method,
-operation ID, parameter, schema, status-code, enum, or security changes must update the artifact
-in the same change. Future frontend work should use relative `/api/` requests through a same-origin
-proxy or ingress, preserve browser cookie credentials and Django CSRF behavior, and never read or
-store the HttpOnly authentication cookie. A future Next.js server adapter may need explicit
-request-scoped cookie forwarding for SSR; the backend contract does not weaken cookie security for
-that case. Orval configuration and generated TypeScript belong to the future `fe/` workspace.
+Operation IDs are stable public identifiers with domain-specific prefixes, and tags are bounded
+domains rather than user roles. Intentional path, method, operation ID, parameter, schema,
+status-code, enum, or security changes must update the artifact in the same change. The `fe/`
+client is generated from this contract. Browser requests use the same-origin `/api/` proxy,
+preserve cookie credentials and Django CSRF behavior, and never read or store the HttpOnly
+authentication cookie.
 
 ## Live-staging outline
 
@@ -334,8 +331,8 @@ the Compose services when deployment automation is introduced.
 - Authentication failures are externally generic; opaque session and trusted-session credentials,
   passwords, MFA codes, OTP values, and Turnstile tokens are not placed in API JSON or audit
   metadata. Cookie-authenticated state changes require Django CSRF validation.
-- Redis rate limiting uses an atomic Lua `INCR`/`EXPIRE` operation, but no endpoint policy is
-  invented here. Turnstile verification is a separate server-side adapter and is not a rate limit.
+- Redis rate limiting uses an atomic Lua `INCR`/`EXPIRE` operation for the established
+  authentication abuse boundaries. Turnstile verification is a separate server-side adapter.
 - Idempotency is a reusable Redis reservation/replay boundary keyed by actor + method + route +
   idempotency key and compared by request fingerprint. Appointment booking is its first endpoint
   consumer. It is not transactionally atomic with PostgreSQL and never replaces database locking
@@ -348,26 +345,23 @@ the Compose services when deployment automation is introduced.
 
 ## Decisions
 
-See [`docs/decisions/`](docs/decisions/) for the foundation ADRs, including the deliberate choices
+See [`docs/decisions/`](docs/decisions/) for the accepted ADRs, including the deliberate choices
 to use Django Ninja, omit admin, keep PostgreSQL authoritative, separate Redis concerns, abstract
-S3-compatible storage, separate capability from future scope, use one environment-driven settings
+S3-compatible storage, separate capability from resource scope, use one environment-driven settings
 module, propagate correlation IDs, define idempotency semantics, establish explicit account
 identity policy, keep Audit Trail recording explicit and separate from operational logs, use
 server-managed cookie sessions for authentication, and keep Account Management purpose-built with
 an explicit `accounts.manage` boundary. The API contract ADR establishes stable operation IDs,
-machine-friendly tags, shared error schemas, and the committed deterministic OpenAPI artifact for
-future frontend client generation.
+machine-friendly tags, shared error schemas, and the committed deterministic OpenAPI artifact used
+by the frontend generator.
 
 ## Known verification gaps
 
 The Compose files are designed for Podman; image pulls, Caddy validation, and a full multi-container
-smoke test require a running Podman machine and are listed as deployment checks. MinIO is
-appropriate for local S3 compatibility testing; live-staging should use the approved external
-provider after its lifecycle, retention, backup, and TLS policy are confirmed. The email OTP
-foundation has no user-facing recovery endpoint yet; password reset, organization/scope, Activity
-Log, and Audit read APIs remain separate follow-up slices. The current Account Management
-implementation does not provide onboarding/invitation, organizational responsibility, resource
-assignment, or role/designation/capability definition CRUD.
+smoke test require a running Podman machine and are deployment checks. MinIO is appropriate for
+local S3 compatibility testing; live-staging should use the approved external provider after its
+lifecycle, retention, backup, and TLS policy are confirmed. Account Management remains
+purpose-built and does not provide generic role, designation, or capability definition CRUD.
 
 
 ## Organization and default responsibility scope
@@ -383,9 +377,9 @@ The Service Catalog is the institution-wide configuration boundary for what the 
 Counseling Office offers. A Service is more fundamental than Appointment: each Service stores an
 appointment policy (`NONE`, `OPTIONAL`, or `REQUIRED`), one or more supported delivery modes
 (`IN_PERSON` and/or `ONLINE`), an optional default schedulable duration, and the operational
-roles that may potentially act as primary provider (`COUNSELOR` and
-`GUIDANCE_SERVICES_STAFF`). ONLINE Counseling is a delivery mode, not a separate E-Counseling
-Service.
+roles that may potentially act as primary provider (`COUNSELOR` only). Guidance Services Staff
+can administer scoped Appointments but cannot act as Appointment providers. ONLINE Counseling is a
+delivery mode, not a separate E-Counseling Service.
 
 New Services are created inactive and are enabled explicitly only after the active configuration
 invariant is satisfied. OPTIONAL/REQUIRED Services need a default duration; any configured
@@ -413,8 +407,8 @@ POST  /api/v1/services/{service_id}/disable
 
 Service Catalog configuration emits `service.created`, `service.updated`, `service.enabled`,
 and `service.disabled` Audit Trail events. These are deliberately not projected into My Activity
-or Security Activity. Availability, Appointment, ServiceDelivery, Counseling encounters, Good
-Moral, Exit Interview, Customer Feedback, and workflow-specific rules remain deferred.
+or Security Activity. Appointment, Counseling, Good Moral, Exit Interview, and Feedback workflows
+now consume this configuration through their own domain rules.
 
 
 ## Availability
@@ -425,9 +419,9 @@ unavailability exceptions. Weekly rows are local wall-clock values interpreted w
 calculation uses half-open `[start, end)` semantics. Empty schedules fail closed and semantic
 weekly overlaps are rejected for the same delivery-mode context.
 
-Provider and Office schedules are independent. A provider must be an active Counselor or Guidance
-Services Staff member to receive new schedule configuration; GSS never inherits a supervising
-Counselor's schedule. Counselors may manage only their own Provider Availability through the
+Provider and Office schedules are independent. A provider must be an active Counselor to receive
+new schedule configuration. Historical GSS schedule rows remain readable but do not confer live
+provider eligibility. Counselors may manage only their own Provider Availability through the
 `/availability/me/...` API using `availability.manage_self`. Head Guidance Counselors remain
 Counselors and receive separate administrative `availability.manage` authority through their
 Head designation. GSS has no self-management grant by default. Administrative Availability
@@ -437,9 +431,8 @@ Effective/base Availability is computed from Provider weekly Availability inters
 weekly Availability, minus applicable Office and Provider exceptions. Service Catalog remains the
 source of truth for active Service state, delivery-mode support, role-level provider eligibility,
 and normal default duration. Results shorter than the Service default duration are discarded, but
-longer intervals are returned whole; no slots are generated or persisted. Effective queries are
-bounded to 31 days and do not subtract Appointment reservations because the Appointment domain has
-not been introduced yet.
+longer intervals are returned whole; no slots are persisted. Effective queries are bounded to
+31 days. Appointment booking additionally checks reservations and exposes bookable slots.
 
 ```text
 GET    /api/v1/availability/office/weekly
@@ -461,12 +454,11 @@ GET    /api/v1/availability/providers/{provider_id}/effective
 ```
 
 Availability configuration is audited synchronously but is not projected into My Activity or
-Security Activity. Counseling's current one-hour norm remains Service configuration
-(`default_duration_minutes = 60`), not a maximum. The confirmed Counseling cancellation cutoff of
-30 minutes before Appointment start is explicitly deferred to the future Appointment domain.
+Security Activity. Counseling's default one-hour duration and 30-minute cancellation cutoff are
+Service configuration and are enforced by Appointment booking and cancellation.
 
 
-## Appointment foundation
+## Appointments
 
 Appointments are shared reservation records, not Counseling encounters. Student self-booking
 derives the Student from the authenticated account, resolves either an explicitly selected active
@@ -494,6 +486,6 @@ administrative cancellation requires recent MFA. Head Guidance Counselor receive
 management through designation. IT Admin does not receive Appointment business-data authority by
 default.
 
-There is no Appointment PATCH/DELETE, slot table, rescheduling, completion/no-show state,
-replacement-provider automation, room scheduling, notification workflow, Call Slip integration, or
-Counseling/e-Counseling delivery in this foundation.
+Appointments now support bounded slot discovery, rescheduling, reassignment, completion, no-show,
+notifications, and the related Counseling and E-Counseling workflows. There is no generic
+Appointment PATCH/DELETE or persisted slot table.
