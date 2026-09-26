@@ -4,7 +4,11 @@ import { Suspense, type ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PortalBoundary } from "@/features/portal/components/portal-boundary";
 
-export const metadata: Metadata = { title: { absolute: "COMPASS" } };
+// An absolute title with no template would drop the root "%s | COMPASS"
+// suffix for every portal page, so the portal restates it.
+export const metadata: Metadata = {
+  title: { absolute: "COMPASS", template: "%s | COMPASS" },
+};
 
 function PortalLoading() {
   return (
