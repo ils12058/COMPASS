@@ -1,4 +1,4 @@
-"""Narrow API for QMS-issued institutional form revision metadata."""
+"""Read-only API for synchronized institutional controlled-form metadata."""
 
 from __future__ import annotations
 
@@ -6,12 +6,10 @@ from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
-from ninja import Router, Schema, Status
+from ninja import Router, Schema
 from pydantic import ConfigDict
 
-from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
-from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.institutional_forms.models import FormRevisionStatus
@@ -19,12 +17,9 @@ from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     InstitutionalFormError,
     InstitutionalFormNotFound,
-    InvalidInstitutionalFormInput,
-    activate_form_revision,
-    deactivate_form_revision,
+    is_supported_form_revision,
     list_form_families,
     list_form_revisions,
-    register_form_revision,
 )
 
 router = Router(tags=["institutional-forms"])
@@ -46,6 +41,7 @@ class FormRevisionResponse(StrictSchema):
     official_revision: str | None
     internal_schema_version: int
     status: FormRevisionStatusValue
+    supported: bool
 
 
 class FormFamilyResponse(StrictSchema):
@@ -62,24 +58,9 @@ class FormRevisionListResponse(StrictSchema):
     items: list[FormRevisionResponse]
 
 
-class FormRevisionRegisterRequest(StrictSchema):
-    official_code: str
-    official_revision: str
-    internal_schema_version: int
-
-
-def _context(request) -> AuditContext:
-    return AuditContext.from_request(request, actor=request.auth_user)
-
-
-def _require(request, capability: str, *, recent_mfa: bool = False) -> None:
+def _require(request, capability: str) -> None:
     if not request.auth_user.has_capability(capability):
         raise APIError(403, "permission_denied", f"The {capability} capability is required.")
-    if recent_mfa:
-        try:
-            require_recent_mfa(request.auth_session)
-        except RecentMFARequired as exc:
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
 
 
 def _raise(exc: InstitutionalFormError) -> NoReturn:
@@ -87,8 +68,6 @@ def _raise(exc: InstitutionalFormError) -> NoReturn:
         raise APIError(404, "institutional_form_not_found", str(exc)) from exc
     if isinstance(exc, InstitutionalFormConflict):
         raise APIError(409, "institutional_form_conflict", str(exc)) from exc
-    if isinstance(exc, InvalidInstitutionalFormInput):
-        raise APIError(422, "invalid_institutional_form_request", str(exc)) from exc
     raise APIError(
         500,
         "internal_error",
@@ -108,6 +87,7 @@ def _revision(item) -> dict[str, object]:
         "official_revision": item.official_revision,
         "internal_schema_version": item.internal_schema_version,
         "status": item.status,
+        "supported": is_supported_form_revision(item),
     }
 
 
@@ -135,60 +115,3 @@ def institutional_form_revisions_list(request, family_key: str):
     except InstitutionalFormError as exc:
         _raise(exc)
     return {"items": [_revision(item) for item in items]}
-
-
-@router.post(
-    "/{family_key}/revisions",
-    response=response_with_errors(
-        FormRevisionResponse, 401, 403, 404, 409, 422, success_status=201
-    ),
-    auth=session_auth,
-    operation_id="institutionalFormsRevisionsRegister",
-)
-def institutional_form_revisions_register(
-    request,
-    family_key: str,
-    payload: FormRevisionRegisterRequest,
-):
-    _require(request, "institutional_forms.manage", recent_mfa=True)
-    try:
-        item = register_form_revision(
-            family_key=family_key,
-            official_code=payload.official_code,
-            official_revision=payload.official_revision,
-            internal_schema_version=payload.internal_schema_version,
-            context=_context(request),
-        )
-    except InstitutionalFormError as exc:
-        _raise(exc)
-    return Status(201, _revision(item))
-
-
-@router.post(
-    "/revisions/{revision_id}/activate",
-    response=response_with_errors(FormRevisionResponse, 401, 403, 404, 409, 422),
-    auth=session_auth,
-    operation_id="institutionalFormsRevisionsActivate",
-)
-def institutional_form_revision_activate(request, revision_id: UUID):
-    _require(request, "institutional_forms.manage", recent_mfa=True)
-    try:
-        return _revision(activate_form_revision(revision_id=revision_id, context=_context(request)))
-    except InstitutionalFormError as exc:
-        _raise(exc)
-
-
-@router.post(
-    "/revisions/{revision_id}/deactivate",
-    response=response_with_errors(FormRevisionResponse, 401, 403, 404, 409, 422),
-    auth=session_auth,
-    operation_id="institutionalFormsRevisionsDeactivate",
-)
-def institutional_form_revision_deactivate(request, revision_id: UUID):
-    _require(request, "institutional_forms.manage", recent_mfa=True)
-    try:
-        return _revision(
-            deactivate_form_revision(revision_id=revision_id, context=_context(request))
-        )
-    except InstitutionalFormError as exc:
-        _raise(exc)
