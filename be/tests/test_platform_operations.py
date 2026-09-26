@@ -397,6 +397,7 @@ def test_public_liveness_and_readiness_do_not_depend_on_platform_probes(client):
     cursor = MagicMock()
     with (
         patch("compass.api.v1.health.connection.cursor", return_value=cursor),
+        patch("compass.api.v1.health.canonical_counseling_readiness", return_value=(True, "ok")),
         patch(
             "compass.platform_ops.diagnostics.Mailer.probe_connection",
             side_effect=RuntimeError("smtp unavailable"),
@@ -406,5 +407,5 @@ def test_public_liveness_and_readiness_do_not_depend_on_platform_probes(client):
     assert ready.status_code == 200
     assert ready.json() == {
         "status": "ok",
-        "checks": {"application": "ok", "database": "ok"},
+        "checks": {"application": "ok", "database": "ok", "canonical_services": "ok"},
     }

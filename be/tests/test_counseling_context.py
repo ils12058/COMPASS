@@ -50,7 +50,7 @@ from compass.routine_interviews.services import (
     replace_my_intake,
     submit_my_intake,
 )
-from compass.service_catalog.services import create_service, set_service_active
+from compass.service_catalog.services import set_service_active
 from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
@@ -58,6 +58,7 @@ from compass.student_support.models import (
     StudentSupportProfile,
 )
 from compass.student_support.services import build_student_support_context
+from tests.canonical_service_helpers import legacy_counseling_service
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
@@ -112,7 +113,7 @@ def make_org(code: str) -> tuple[Campus, College, Program]:
 
 
 def make_counseling_service(admin: User):
-    service = create_service(
+    service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
         appointment_policy="OPTIONAL",

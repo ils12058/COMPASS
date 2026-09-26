@@ -46,6 +46,8 @@ uv sync
 podman compose --profile local build web
 podman compose --profile local up -d
 podman compose --profile local run --rm web python manage.py migrate
+podman compose --profile local run --rm web python manage.py sync_identity_policy
+podman compose --profile local run --rm web python manage.py sync_canonical_services
 podman compose --profile local run --rm web python manage.py check
 ```
 
@@ -125,10 +127,12 @@ it after the MinIO service is available if the bucket needs to be bootstrapped a
 podman compose --profile local run --rm minio-init
 ```
 
-Synchronize the version-controlled identity policy before creating an initial IT administrator:
+Synchronize required configuration before creating an initial IT administrator:
 
 ```sh
 uv run python manage.py sync_identity_policy
+uv run python manage.py sync_canonical_services
+uv run python manage.py check
 uv run python manage.py create_it_admin \
   --email it-admin@example.edu \
   --first-name IT \
@@ -139,6 +143,13 @@ The bootstrap command prompts for the password and never accepts it as a command
 Use `--password-stdin` for a controlled non-interactive deployment. Re-running policy sync is
 safe; it updates known definitions, adds missing baseline grants, and retains unknown database
 rows. `create_it_admin` refuses an existing account unless `--idempotent` is explicitly supplied.
+Run migrations before identity policy synchronization: `accounts.0006` reconciles legacy
+capability codes first. Run `sync_identity_policy` before `sync_canonical_services` because the
+canonical Counseling Service requires the COUNSELOR Role. Canonical Service synchronization is
+idempotent: it creates the active IN_PERSON Counseling Service on a fresh installation and repairs
+required configuration in place while preserving valid institutional settings. It is an explicit
+deployment operation, not request-time or startup-time provisioning. Readiness remains failed
+until it succeeds.
 
 ## Audit Trail development
 
@@ -280,6 +291,8 @@ Start only the non-local services on the droplet:
 ```sh
 podman compose up -d
 podman compose run --rm web python manage.py migrate
+podman compose run --rm web python manage.py sync_identity_policy
+podman compose run --rm web python manage.py sync_canonical_services
 podman compose run --rm web python manage.py check --deploy
 ```
 
@@ -310,7 +323,9 @@ the Compose services when deployment automation is introduced.
 ## API and infrastructure conventions
 
 - `GET /api/v1/health/live` is process-only liveness.
-- `GET /api/v1/health/ready` checks PostgreSQL with `SELECT 1` and returns 503 when unavailable.
+- `GET /api/v1/health/ready` checks PostgreSQL with `SELECT 1` and verifies read-only canonical
+  Counseling configuration; it returns 503 when either is unavailable or invalid. ONLINE delivery,
+  Daily, Counselor Availability, Academic Year, and Student Inventory are not readiness gates.
 - Every response receives a valid `X-Request-ID`; a supplied ID is reused only when it is a
   canonical UUID. Invalid values are replaced. Logs contain controlled JSON fields and never
   include request bodies, query strings, tokens, or credentials.

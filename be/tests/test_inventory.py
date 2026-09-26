@@ -30,7 +30,8 @@ from compass.inventory.services import (
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
 from compass.organization.models import Campus, College, Program
-from compass.service_catalog.services import create_service, set_service_active
+from compass.service_catalog.services import set_service_active
+from tests.canonical_service_helpers import legacy_counseling_service
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
@@ -94,7 +95,7 @@ def set_inventory_context(
 
 
 def active_service(actor: User, *, requires_inventory: bool):
-    service = create_service(
+    service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
         appointment_policy="OPTIONAL",

@@ -45,6 +45,7 @@ from compass.organization.models import (
     StudentAffiliation,
 )
 from compass.service_catalog.services import create_service, set_service_active
+from tests.canonical_service_helpers import legacy_counseling_service
 
 
 def sync_policy() -> None:
@@ -93,7 +94,7 @@ def create_counseling_service(
     delivery_modes: list[str] | None = None,
     provider_roles: list[str] | None = None,
 ):
-    service = create_service(
+    service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
         appointment_policy="OPTIONAL",
@@ -655,7 +656,9 @@ def test_historical_correction_survives_service_deactivation():
         ended_at=ended_at,
         context=context(counselor),
     )
-    set_service_active(service_id=service.pk, is_active=False, context=context(admin))
+    # Simulate historical drift; normal Catalog operations now forbid this transition.
+    service.is_active = False
+    service.save(update_fields=["is_active", "updated_at"])
 
     corrected = update_encounter(
         encounter_id=item.pk,
@@ -1210,7 +1213,9 @@ def test_historical_encounter_appointment_candidates_mirror_update_authority():
         created_by=counselor,
     )
 
-    set_service_active(service_id=service.pk, is_active=False, context=context(admin))
+    # Simulate historical drift; normal Catalog operations now forbid this transition.
+    service.is_active = False
+    service.save(update_fields=["is_active", "updated_at"])
     service.provider_role_assignments.all().delete()
 
     client = auth_client(counselor)

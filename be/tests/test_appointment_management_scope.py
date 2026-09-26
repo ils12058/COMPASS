@@ -32,6 +32,7 @@ from compass.organization.models import (
     StudentAffiliation,
 )
 from compass.service_catalog.services import create_service, set_service_active
+from tests.canonical_service_helpers import legacy_counseling_service
 
 
 def sync_policy() -> None:
@@ -86,7 +87,7 @@ def make_service(actor: User):
 
 
 def make_counseling_service(actor: User):
-    service = create_service(
+    service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
         appointment_policy="OPTIONAL",

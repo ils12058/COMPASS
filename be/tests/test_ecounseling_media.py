@@ -47,7 +47,8 @@ from compass.ecounseling.services import (
 )
 from compass.integrations.daily import DailyUnavailable
 from compass.notifications.models import EmailDelivery, Notification
-from compass.service_catalog.services import create_service, set_service_active
+from compass.service_catalog.services import set_service_active
+from tests.canonical_service_helpers import legacy_counseling_service
 
 
 class FakeMediaDailyClient:
@@ -143,7 +144,7 @@ def context(user: User) -> AuditContext:
 
 
 def create_counseling_service(admin: User):
-    service = create_service(
+    service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
         appointment_policy="OPTIONAL",

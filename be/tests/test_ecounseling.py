@@ -35,7 +35,8 @@ from compass.ecounseling.services import (
     process_daily_webhook,
 )
 from compass.integrations.daily import DailyUnavailable
-from compass.service_catalog.services import create_service, set_service_active
+from compass.service_catalog.services import set_service_active
+from tests.canonical_service_helpers import legacy_counseling_service
 
 
 class FakeDailyClient:
@@ -119,7 +120,7 @@ def csrf(client: Client) -> dict[str, str]:
 
 
 def create_counseling_service(admin: User):
-    service = create_service(
+    service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
         appointment_policy="OPTIONAL",

@@ -19,6 +19,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import (
     MAX_SERVICE_DURATION_MINUTES,
     MIN_SERVICE_DURATION_MINUTES,
@@ -52,6 +53,14 @@ class InvalidServiceCatalogInput(ServiceCatalogError):
 
 class ServiceCatalogConflict(ServiceCatalogError):
     pass
+
+
+class CanonicalServiceRequired(ServiceCatalogConflict):
+    """A normal catalog mutation would break required Counseling configuration."""
+
+
+class CanonicalServiceReserved(ServiceCatalogConflict):
+    """The canonical code can only be provisioned by deployment synchronization."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -255,6 +264,10 @@ def create_service(
     context: AuditContext,
 ) -> Service:
     normalized_code = normalize_service_code(code)
+    if normalized_code == COUNSELING_SERVICE_CODE:
+        raise CanonicalServiceReserved(
+            "COUNSELING is system-managed. Run sync_canonical_services to provision it."
+        )
     normalized_name = _normalize_name(name)
     normalized_description = _normalize_description(description)
     normalized_policy = _normalize_policy(appointment_policy)
@@ -362,6 +375,11 @@ def update_service(
             else current_roles
         )
 
+        if service.code == COUNSELING_SERVICE_CODE and "COUNSELOR" not in next_roles:
+            raise CanonicalServiceRequired(
+                "The canonical Counseling Service must permit the COUNSELOR provider role."
+            )
+
         if service.is_active:
             _validate_active_configuration(
                 name=next_name,
@@ -430,16 +448,25 @@ def set_service_active(
         service = Service.objects.select_for_update().filter(pk=service_id).first()
         if service is None:
             raise ServiceCatalogNotFound("The requested Service was not found.")
+        if service.code == COUNSELING_SERVICE_CODE and not is_active:
+            raise CanonicalServiceRequired(
+                "The canonical Counseling Service is required by COMPASS and cannot be disabled."
+            )
         if service.is_active == is_active:
             return get_service(service.pk)
         if is_active:
+            roles = _configured_provider_roles(service.pk)
+            if service.code == COUNSELING_SERVICE_CODE and "COUNSELOR" not in roles:
+                raise CanonicalServiceRequired(
+                    "The canonical Counseling Service must permit the COUNSELOR provider role."
+                )
             _validate_active_configuration(
                 name=service.name,
                 appointment_policy=service.appointment_policy,
                 default_duration_minutes=service.default_duration_minutes,
                 cancellation_cutoff_minutes=service.cancellation_cutoff_minutes,
                 delivery_modes=_configured_modes(service.pk),
-                provider_roles=_configured_provider_roles(service.pk),
+                provider_roles=roles,
             )
         service.is_active = is_active
         service.save(update_fields=["is_active", "updated_at"])

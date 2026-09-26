@@ -65,6 +65,7 @@ from compass.routine_interviews.services import (
 )
 from compass.service_catalog.models import ServiceProviderRole
 from compass.service_catalog.services import create_service, set_service_active
+from tests.canonical_service_helpers import legacy_counseling_service
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
@@ -116,7 +117,7 @@ def configure_program() -> Program:
 
 
 def create_counseling_service(actor: User, *, modes: list[str] | None = None):
-    service = create_service(
+    service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
         appointment_policy="OPTIONAL",
@@ -1229,12 +1230,15 @@ def test_direct_options_fail_when_counselor_is_not_canonical_service_provider():
     service = create_counseling_service(admin)
     client = auth_client(counselor)
 
-    set_service_active(service_id=service.pk, is_active=False, context=context(admin))
+    # Simulate invalid persisted configuration, which normal Catalog operations now prevent.
+    service.is_active = False
+    service.save(update_fields=["is_active", "updated_at"])
     inactive = client.get("/api/v1/routine-interviews/direct/options")
     assert inactive.status_code == 409
     assert inactive.json()["error"]["code"] == "routine_interview_appointment_invalid"
 
-    set_service_active(service_id=service.pk, is_active=True, context=context(admin))
+    service.is_active = True
+    service.save(update_fields=["is_active", "updated_at"])
     ServiceProviderRole.objects.filter(service_id=service.pk).delete()
     ineligible = client.get("/api/v1/routine-interviews/direct/options")
     assert ineligible.status_code == 409

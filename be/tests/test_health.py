@@ -15,7 +15,10 @@ def test_live_endpoint_is_process_only(client):
 
 def test_ready_endpoint_checks_postgres(client):
     cursor = MagicMock()
-    with patch("compass.api.v1.health.connection.cursor", return_value=cursor) as cursor_factory:
+    with (
+        patch("compass.api.v1.health.connection.cursor", return_value=cursor) as cursor_factory,
+        patch("compass.api.v1.health.canonical_counseling_readiness", return_value=(True, "ok")),
+    ):
         response = client.get("/api/v1/health/ready")
 
     assert response.status_code == 200
@@ -35,7 +38,10 @@ def test_internal_ready_probe_can_use_trusted_forwarded_https_without_disabling_
     assert plain["Location"].startswith("https://")
 
     cursor = MagicMock()
-    with patch("compass.api.v1.health.connection.cursor", return_value=cursor):
+    with (
+        patch("compass.api.v1.health.connection.cursor", return_value=cursor),
+        patch("compass.api.v1.health.canonical_counseling_readiness", return_value=(True, "ok")),
+    ):
         trusted_probe = client.get(
             "/api/v1/health/ready",
             HTTP_HOST="localhost",
