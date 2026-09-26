@@ -155,6 +155,7 @@ jobs:
           tests/test_platform_activity.py
           tests/test_runtime_operations_audit.py
           tests/test_privacy_governance.py
+          tests/test_privacy_governance_expansion.py
           tests/test_privacy_activity.py
           tests/test_privacy_release_audit.py
           tests/test_compass_doctor.py

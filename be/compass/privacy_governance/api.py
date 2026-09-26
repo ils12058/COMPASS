@@ -87,6 +87,19 @@ class ActorSummary(StrictSchema):
     display_name: str
 
 
+class RetentionSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+    is_active: bool
+
+
+class ProcessingSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
 class ProcessingActivityResponse(StrictSchema):
     id: UUID
     code: str
@@ -96,7 +109,9 @@ class ProcessingActivityResponse(StrictSchema):
     personal_data_categories: list[str]
     authorized_access_summary: str
     safeguards_summary: str
+    data_subject_choice_summary: str
     retention_policy_reference: str
+    retention_policy: RetentionSummary | None
     policy_basis_reference: str
     is_active: bool
     created_at: datetime
@@ -118,6 +133,8 @@ class ProcessingActivityCreateRequest(StrictSchema):
     personal_data_categories: list[str]
     authorized_access_summary: str
     safeguards_summary: str
+    data_subject_choice_summary: str = ""
+    retention_policy_id: UUID | None = None
     retention_policy_reference: str = ""
     policy_basis_reference: str = ""
 
@@ -129,6 +146,8 @@ class ProcessingActivityUpdateRequest(StrictSchema):
     personal_data_categories: list[str] | None = None
     authorized_access_summary: str | None = None
     safeguards_summary: str | None = None
+    data_subject_choice_summary: str | None = None
+    retention_policy_id: UUID | None = None
     retention_policy_reference: str | None = None
     policy_basis_reference: str | None = None
 
@@ -150,6 +169,17 @@ class PrivacyReviewResponse(StrictSchema):
 
 class PrivacyReviewPageResponse(StrictSchema):
     items: list[PrivacyReviewResponse]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class GlobalPrivacyReviewResponse(PrivacyReviewResponse):
+    processing_activity: ProcessingSummary
+
+
+class GlobalPrivacyReviewPageResponse(StrictSchema):
+    items: list[GlobalPrivacyReviewResponse]
     page: int
     page_size: int
     has_next: bool
@@ -284,7 +314,18 @@ def _processing(item) -> dict[str, object]:
         "personal_data_categories": item.personal_data_categories,
         "authorized_access_summary": item.authorized_access_summary,
         "safeguards_summary": item.safeguards_summary,
+        "data_subject_choice_summary": item.data_subject_choice_summary,
         "retention_policy_reference": item.retention_policy_reference,
+        "retention_policy": (
+            {
+                "id": item.retention_policy.pk,
+                "code": item.retention_policy.code,
+                "name": item.retention_policy.name,
+                "is_active": item.retention_policy.is_active,
+            }
+            if item.retention_policy_id
+            else None
+        ),
         "policy_basis_reference": item.policy_basis_reference,
         "is_active": item.is_active,
         "created_at": item.created_at,
@@ -309,6 +350,51 @@ def _review(item) -> dict[str, object]:
         "created_at": item.created_at,
         "updated_at": item.updated_at,
         "resolved_at": item.resolved_at,
+    }
+
+
+@router.get(
+    "/reviews",
+    response=response_with_errors(GlobalPrivacyReviewPageResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="privacyGovernanceListAllReviews",
+)
+def review_global_list(
+    request,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    status: ReviewStatusValue | None = None,
+    review_type: ReviewTypeValue | None = None,
+    processing_activity_id: UUID | None = None,
+):
+    _require(request, "privacy_governance.view")
+    from .services import list_all_privacy_reviews
+
+    try:
+        result = list_all_privacy_reviews(
+            page=page,
+            page_size=page_size,
+            status=status.value if status is not None else None,
+            review_type=review_type.value if review_type is not None else None,
+            processing_activity_id=processing_activity_id,
+        )
+    except PrivacyGovernanceError as exc:
+        _raise(exc)
+    return {
+        "items": [
+            _review(item)
+            | {
+                "processing_activity": {
+                    "id": item.processing_activity_id,
+                    "code": item.processing_activity.code,
+                    "name": item.processing_activity.name,
+                }
+            }
+            for item in result.items
+        ],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
     }
 
 

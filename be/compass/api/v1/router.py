@@ -33,6 +33,8 @@ from compass.organization.api import router as organization_router
 from compass.overview.api import router as overview_router
 from compass.platform_ops.api import router as platform_operations_router
 from compass.privacy_governance.api import router as privacy_governance_router
+from compass.privacy_governance.expansion_api import public_router as public_privacy_router
+from compass.privacy_governance.expansion_api import router as privacy_expansion_router
 from compass.reference_data.api import router as reference_data_router
 from compass.referrals.api import router as referrals_router
 from compass.reports.api import router as reports_router
@@ -234,6 +236,8 @@ api.add_router("/public/announcements", public_announcements_router)
 api.add_router("/public/resources", public_resources_router)
 api.add_router("/platform", platform_operations_router)
 api.add_router("/privacy", privacy_governance_router)
+api.add_router("/privacy", privacy_expansion_router)
+api.add_router("/privacy", public_privacy_router)
 api.add_router("/document-branding", document_branding_router)
 api.add_router("/e-counseling", ecounseling_router)
 api.add_router("/integrations/daily", daily_router)
