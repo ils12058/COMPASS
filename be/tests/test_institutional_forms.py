@@ -203,9 +203,7 @@ def test_canonical_sync_repairs_drift_preserves_ids_and_historical_references():
     inventory_family.save(update_fields=["title", "updated_at"])
     inventory_revision.internal_schema_version = 999
     inventory_revision.status = "INACTIVE"
-    inventory_revision.save(
-        update_fields=["internal_schema_version", "status", "updated_at"]
-    )
+    inventory_revision.save(update_fields=["internal_schema_version", "status", "updated_at"])
     legacy = FormRevision.objects.create(
         family=inventory_family,
         official_code="LEGACY-LOCAL-FORM",
