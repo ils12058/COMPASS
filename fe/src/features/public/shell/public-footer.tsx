@@ -21,6 +21,9 @@ export function PublicFooter() {
           <Link className="min-h-9 py-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand" href="/resources">
             Resources
           </Link>
+          <Link className="min-h-9 py-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand" href="/privacy">
+            Privacy
+          </Link>
           <Link className="min-h-9 py-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand" href="/login">
             Sign in
           </Link>
