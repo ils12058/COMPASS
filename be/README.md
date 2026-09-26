@@ -141,7 +141,7 @@ uv run python manage.py create_it_admin \
 The bootstrap command prompts for the password and never accepts it as a command-line argument.
 Use `--password-stdin` for a controlled non-interactive deployment. Re-running policy sync is
 safe; it updates known definitions, adds missing baseline grants, and retains unknown database
-rows. `create_it_admin` refuses an existing account unless `--idempotent` is explicitly supplied.
+rows except capability codes that the canonical policy explicitly marks as retired. `create_it_admin` refuses an existing account unless `--idempotent` is explicitly supplied.
 Run migrations before identity policy synchronization: `accounts.0006` reconciles legacy
 capability codes first. Run `sync_identity_policy` before `sync_canonical_services` because the
 canonical Counseling Service requires the COUNSELOR Role. Canonical Service synchronization is
