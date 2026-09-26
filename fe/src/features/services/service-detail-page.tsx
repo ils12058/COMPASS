@@ -19,8 +19,10 @@ import {
   ServicesPageHeading,
   ServicesQueryError,
   ServicesStatusBadge,
+  ServicesSystemRequiredBadge,
   useServicesAction,
 } from "@/features/services/services-shared";
+import { isSystemRequiredService } from "@/features/services/system-required-service";
 import {
   AppointmentPolicy,
   DeliveryMode,
@@ -89,6 +91,7 @@ export function ServiceDetailPage() {
   const hasLegacyGss = service.provider_roles.includes(
     ProviderRoleCode.GUIDANCE_SERVICES_STAFF,
   );
+  const systemRequired = isSystemRequiredService(service);
 
   async function refresh() {
     await Promise.all([
@@ -144,7 +147,15 @@ export function ServiceDetailPage() {
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <p className="font-mono text-xs text-muted">{service.code}</p>
         {canManage ? <ServicesStatusBadge active={service.is_active} /> : null}
+        {systemRequired ? <ServicesSystemRequiredBadge /> : null}
       </div>
+      {systemRequired ? (
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+          COMPASS uses this Service for Counseling, Routine Interviews, and
+          E-Counseling, so it must stay active and always allow Counselors. Its
+          other settings can be changed.
+        </p>
+      ) : null}
 
       {createdNotice ? (
         <p role="status" className="mt-5 text-sm text-success">
@@ -327,16 +338,22 @@ export function ServiceDetailPage() {
               </div>
             </dl>
             <div className="mt-5">
-              <Button
-                variant={service.is_active ? "danger" : "primary"}
-                onClick={() => {
-                  action.setError(null);
-                  action.setNotice(null);
-                  setLifecycleOpen(true);
-                }}
-              >
-                {service.is_active ? "Disable Service" : "Enable Service"}
-              </Button>
+              {systemRequired && service.is_active ? (
+                <p className="text-sm text-muted">
+                  This Service is required by COMPASS and cannot be disabled.
+                </p>
+              ) : (
+                <Button
+                  variant={service.is_active ? "danger" : "primary"}
+                  onClick={() => {
+                    action.setError(null);
+                    action.setNotice(null);
+                    setLifecycleOpen(true);
+                  }}
+                >
+                  {service.is_active ? "Disable Service" : "Enable Service"}
+                </Button>
+              )}
             </div>
           </section>
         ) : null}

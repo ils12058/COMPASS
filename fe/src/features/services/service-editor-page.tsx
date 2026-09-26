@@ -14,6 +14,7 @@ import {
   servicesSelectClass,
   useServicesAction,
 } from "@/features/services/services-shared";
+import { isSystemRequiredService } from "@/features/services/system-required-service";
 import {
   AppointmentPolicy,
   ConfigurableProviderRoleCode,
@@ -79,7 +80,11 @@ function initialFromService(service: ServiceResponse): ServiceFormState {
     requiresCurrentInventory: service.requires_current_inventory,
     inPerson: service.delivery_modes.includes(DeliveryMode.IN_PERSON),
     online: service.delivery_modes.includes(DeliveryMode.ONLINE),
-    counselor: service.provider_roles.includes(ProviderRoleCode.COUNSELOR),
+    // A system-required Service must keep Counselor eligibility, so saving
+    // always sends it and repairs a row that lost it.
+    counselor:
+      isSystemRequiredService(service) ||
+      service.provider_roles.includes(ProviderRoleCode.COUNSELOR),
   };
 }
 
@@ -87,6 +92,7 @@ function ServiceForm({
   initial,
   active,
   legacyProviderAssignment = false,
+  systemRequired = false,
   submitting,
   submitLabel,
   pendingLabel,
@@ -97,6 +103,7 @@ function ServiceForm({
   initial: ServiceFormState;
   active: boolean;
   legacyProviderAssignment?: boolean;
+  systemRequired?: boolean;
   submitting: boolean;
   submitLabel: string;
   pendingLabel: string;
@@ -381,6 +388,10 @@ function ServiceForm({
             type="checkbox"
             className="h-4 w-4 accent-brand"
             checked={values.counselor}
+            disabled={systemRequired}
+            aria-describedby={
+              systemRequired ? "service-counselor-required" : undefined
+            }
             onChange={(event) =>
               setValues((current) => ({
                 ...current,
@@ -390,6 +401,14 @@ function ServiceForm({
           />
           Counselor
         </label>
+        {systemRequired ? (
+          <p
+            id="service-counselor-required"
+            className="mt-1 max-w-3xl text-xs leading-5 text-muted"
+          >
+            COMPASS requires Counselors to remain eligible for Counseling.
+          </p>
+        ) : null}
         <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">
           Provider eligibility is role-level configuration. It does not assign
           specific Counselors or define their availability.
@@ -584,6 +603,7 @@ export function EditServicePage() {
         initial={initial}
         active={service.is_active}
         legacyProviderAssignment={hasLegacyProvider}
+        systemRequired={isSystemRequiredService(service)}
         submitting={update.isPending}
         submitLabel="Save changes"
         pendingLabel="Saving…"

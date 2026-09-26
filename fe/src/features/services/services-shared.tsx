@@ -28,6 +28,10 @@ const knownErrors: Record<string, string> = {
     "The Service configuration conflicts with the current Service Catalog rules.",
   invalid_service_catalog_request:
     "The Service request contains a value that is not accepted by the Service Catalog.",
+  canonical_service_reserved:
+    "The COUNSELING code is reserved for the Counseling Service that COMPASS provides. Use a different Service code.",
+  canonical_service_required:
+    "Counseling is required by COMPASS. It must stay active and allow Counselors.",
   recent_mfa_required: "Recent authenticator verification is required.",
 };
 
@@ -212,6 +216,14 @@ export function ServicesStatusBadge({ active }: { active: boolean }) {
       }
     >
       {active ? "Active" : "Inactive"}
+    </span>
+  );
+}
+
+export function ServicesSystemRequiredBadge() {
+  return (
+    <span className="inline-flex rounded-full border border-info/30 bg-info/10 px-2 py-0.5 text-xs font-semibold text-info">
+      System-required
     </span>
   );
 }
