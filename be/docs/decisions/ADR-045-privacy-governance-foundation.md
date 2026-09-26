@@ -320,3 +320,7 @@ introduced by PR #28, and adds Privacy Governance focused tests.
 
 Temporary narrow rechecks may still be used after an isolated failure, but the checked-in workflow
 must represent the canonical coverage before merge.
+
+## Later expansion
+
+ADR-061 adds versioned Privacy Notices, exact-revision acknowledgment, a human-readable Retention Policy register, a descriptive Processing Activity choice summary, and global Privacy Review discovery. Those later records do not change this ADR's DPO designation boundary or introduce automatic retention execution. Statements above describing three initial persistence models, nine initial privacy mutation actions, and excluded broader workflows describe the original foundation at the time it was accepted.

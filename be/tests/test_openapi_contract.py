@@ -52,6 +52,25 @@ EXPECTED_OPERATION_IDS = {
     "privacyGovernanceUpdateIncident",
     "privacyGovernanceResolveIncident",
     "privacyGovernanceListActivity",
+    "privacyGovernanceListAllReviews",
+    "privacyGovernanceListRetentionPolicies",
+    "privacyGovernanceCreateRetentionPolicy",
+    "privacyGovernanceGetRetentionPolicy",
+    "privacyGovernanceUpdateRetentionPolicy",
+    "privacyGovernanceRetireRetentionPolicy",
+    "privacyGovernanceListNotices",
+    "privacyGovernanceCreateNotice",
+    "privacyGovernanceGetNotice",
+    "privacyGovernanceUpdateNotice",
+    "privacyGovernanceRetireNotice",
+    "privacyGovernanceListNoticeRevisions",
+    "privacyGovernanceCreateNoticeRevision",
+    "privacyGovernanceGetNoticeRevision",
+    "privacyGovernanceUpdateNoticeRevision",
+    "privacyGovernancePublishNoticeRevision",
+    "privacyGovernanceListMyNotices",
+    "privacyGovernanceAcknowledgeMyNotice",
+    "privacyGovernanceListPublicNotices",
     "authGetCsrf",
     "authRequestEmailChangeSecurityChallenge",
     "authRequestEmailChange",
@@ -2586,3 +2605,33 @@ def test_good_moral_request_creation_idempotency_openapi_contract() -> None:
                 "schema"
             ]
             assert error_schema["$ref"].endswith("/APIErrorResponse")
+
+
+def test_privacy_expansion_contract_keeps_public_and_self_boundaries() -> None:
+    schema = _generated_schema()
+    public = _operation(schema, "/api/v1/privacy/public-notices", "get")
+    self_list = _operation(schema, "/api/v1/privacy/my-notices", "get")
+    acknowledge = _operation(schema, "/api/v1/privacy/my-notices/{revision_id}/acknowledge", "post")
+    assert "security" not in public
+    assert self_list["security"] == [{"OpaqueSessionAuth": []}]
+    assert acknowledge["security"] == [{"OpaqueSessionAuth": []}]
+    assert _response_statuses(acknowledge) >= {200, 401, 403, 404, 409, 422}
+    assert schema["components"]["schemas"]["AudienceValue"]["enum"] == [
+        "PUBLIC",
+        "STUDENT",
+        "STAFF",
+    ]
+    assert schema["components"]["schemas"]["RevisionStatusValue"]["enum"] == [
+        "DRAFT",
+        "PUBLISHED",
+        "SUPERSEDED",
+    ]
+    processing = schema["components"]["schemas"]["ProcessingActivityResponse"]["properties"]
+    assert "data_subject_choice_summary" in processing
+    assert "retention_policy" in processing
+    for path in (
+        "/api/v1/privacy/retention-policies/{policy_id}",
+        "/api/v1/privacy/notices/{notice_id}",
+        "/api/v1/privacy/notice-revisions/{revision_id}",
+    ):
+        assert "delete" not in schema["paths"][path]

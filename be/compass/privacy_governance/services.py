@@ -37,6 +37,7 @@ from .models import (
     PrivacyReviewStatus,
     PrivacyReviewType,
     ProcessingActivity,
+    RetentionPolicy,
 )
 
 DEFAULT_PAGE_SIZE = 20
@@ -169,7 +170,11 @@ def _changed_fields(changes: Mapping[str, object]) -> list[str]:
 
 
 def get_processing_activity(processing_id: UUID) -> ProcessingActivity:
-    item = ProcessingActivity.objects.filter(pk=processing_id).first()
+    item = (
+        ProcessingActivity.objects.select_related("retention_policy")
+        .filter(pk=processing_id)
+        .first()
+    )
     if item is None:
         raise PrivacyRecordNotFound("processing activity was not found")
     return item
@@ -182,7 +187,7 @@ def list_processing_activities(
     is_active: bool | None = None,
 ) -> ProcessingPage:
     page, page_size = _validate_page(page=page, page_size=page_size)
-    queryset = ProcessingActivity.objects.order_by("code")
+    queryset = ProcessingActivity.objects.select_related("retention_policy").order_by("code")
     if is_active is not None:
         queryset = queryset.filter(is_active=is_active)
     offset = (page - 1) * page_size
@@ -208,9 +213,12 @@ def create_processing_activity(
     safeguards_summary: object,
     retention_policy_reference: object = "",
     policy_basis_reference: object = "",
+    data_subject_choice_summary: object = "",
+    retention_policy_id: UUID | None = None,
 ) -> ProcessingActivity:
     cleaned_code = _clean_code(code)
     with transaction.atomic():
+        policy = _assignable_retention_policy(retention_policy_id)
         if ProcessingActivity.objects.filter(code=cleaned_code).exists():
             raise PrivacyConflict("processing activity code already exists")
         item = ProcessingActivity(
@@ -243,6 +251,10 @@ def create_processing_activity(
                 label="policy_basis_reference",
                 maximum=255,
             ),
+            data_subject_choice_summary=_clean_optional(
+                data_subject_choice_summary, label="data_subject_choice_summary", maximum=2_000
+            ),
+            retention_policy=policy,
         )
         _validate_model(item)
         try:
@@ -275,6 +287,8 @@ def update_processing_activity(
         "safeguards_summary",
         "retention_policy_reference",
         "policy_basis_reference",
+        "data_subject_choice_summary",
+        "retention_policy_id",
     }
     unexpected = set(changes) - allowed
     if unexpected:
@@ -299,13 +313,25 @@ def update_processing_activity(
                 cleaned[field] = _clean_required(value, label=field, maximum=2_000)
             elif field in {"data_subject_categories", "personal_data_categories"}:
                 cleaned[field] = _clean_categories(value, label=field)
+            elif field == "retention_policy_id":
+                cleaned[field] = _assignable_retention_policy(value)
+            elif field == "data_subject_choice_summary":
+                cleaned[field] = _clean_optional(value, label=field, maximum=2_000)
             else:
                 cleaned[field] = _clean_optional(value, label=field, maximum=255)
 
         for field, value in cleaned.items():
-            setattr(item, field, value)
+            setattr(item, "retention_policy" if field == "retention_policy_id" else field, value)
         _validate_model(item)
-        item.save(update_fields=[*cleaned.keys(), "updated_at"])
+        item.save(
+            update_fields=[
+                *(
+                    "retention_policy" if field == "retention_policy_id" else field
+                    for field in cleaned
+                ),
+                "updated_at",
+            ]
+        )
         record_event(
             context=context,
             action=PRIVACY_PROCESSING_UPDATED,
@@ -315,6 +341,17 @@ def update_processing_activity(
             metadata={"changed_fields": _changed_fields(cleaned)},
         )
     return item
+
+
+def _assignable_retention_policy(policy_id: UUID | None) -> RetentionPolicy | None:
+    if policy_id is None:
+        return None
+    policy = RetentionPolicy.objects.select_for_update().filter(pk=policy_id).first()
+    if policy is None:
+        raise PrivacyRecordNotFound("retention policy was not found")
+    if not policy.is_active:
+        raise PrivacyConflict("retired retention policy cannot be assigned")
+    return policy
 
 
 def retire_processing_activity(
@@ -378,6 +415,37 @@ def get_privacy_review(review_id: UUID) -> PrivacyReview:
     if item is None:
         raise PrivacyRecordNotFound("privacy review was not found")
     return item
+
+
+def list_all_privacy_reviews(
+    *,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    status: str | None = None,
+    review_type: str | None = None,
+    processing_activity_id: UUID | None = None,
+) -> ReviewPage:
+    page, page_size = _validate_page(page=page, page_size=page_size)
+    if status is not None and status not in PrivacyReviewStatus.values:
+        raise PrivacyInputError("status is not supported")
+    if review_type is not None and review_type not in PrivacyReviewType.values:
+        raise PrivacyInputError("review_type is not supported")
+    queryset = PrivacyReview.objects.select_related("processing_activity", "reviewed_by")
+    if status is not None:
+        queryset = queryset.filter(status=status)
+    if review_type is not None:
+        queryset = queryset.filter(review_type=review_type)
+    if processing_activity_id is not None:
+        queryset = queryset.filter(processing_activity_id=processing_activity_id)
+    records = list(
+        queryset.order_by("-created_at", "-id")[(page - 1) * page_size : page * page_size + 1]
+    )
+    return ReviewPage(
+        items=tuple(records[:page_size]),
+        page=page,
+        page_size=page_size,
+        has_next=len(records) > page_size,
+    )
 
 
 def list_privacy_reviews(

@@ -23,9 +23,18 @@ from compass.audit.actions import (
     PRIVACY_INCIDENT_CREATED,
     PRIVACY_INCIDENT_RESOLVED,
     PRIVACY_INCIDENT_UPDATED,
+    PRIVACY_NOTICE_CREATED,
+    PRIVACY_NOTICE_RETIRED,
+    PRIVACY_NOTICE_REVISION_CREATED,
+    PRIVACY_NOTICE_REVISION_PUBLISHED,
+    PRIVACY_NOTICE_REVISION_UPDATED,
+    PRIVACY_NOTICE_UPDATED,
     PRIVACY_PROCESSING_CREATED,
     PRIVACY_PROCESSING_RETIRED,
     PRIVACY_PROCESSING_UPDATED,
+    PRIVACY_RETENTION_CREATED,
+    PRIVACY_RETENTION_RETIRED,
+    PRIVACY_RETENTION_UPDATED,
     PRIVACY_REVIEW_CREATED,
     PRIVACY_REVIEW_RESOLVED,
     PRIVACY_REVIEW_UPDATED,
@@ -380,6 +389,51 @@ def _account_security(event: AuditEvent) -> PrivacyActivityItem | None:
 
 
 _GOVERNANCE_PRESENTATION = {
+    PRIVACY_RETENTION_CREATED: (
+        "Retention policy created",
+        "A retention policy governance record was created.",
+        "privacy.retention",
+    ),
+    PRIVACY_RETENTION_UPDATED: (
+        "Retention policy updated",
+        "A retention policy governance record was updated.",
+        "privacy.retention",
+    ),
+    PRIVACY_RETENTION_RETIRED: (
+        "Retention policy retired",
+        "A retention policy governance record was retired.",
+        "privacy.retention",
+    ),
+    PRIVACY_NOTICE_CREATED: (
+        "Privacy notice created",
+        "A privacy notice family and draft were created.",
+        "privacy.notice",
+    ),
+    PRIVACY_NOTICE_UPDATED: (
+        "Privacy notice updated",
+        "A privacy notice family was updated.",
+        "privacy.notice",
+    ),
+    PRIVACY_NOTICE_RETIRED: (
+        "Privacy notice retired",
+        "A privacy notice family was retired.",
+        "privacy.notice",
+    ),
+    PRIVACY_NOTICE_REVISION_CREATED: (
+        "Privacy notice revision created",
+        "A draft privacy notice revision was created.",
+        "privacy.notice.revision",
+    ),
+    PRIVACY_NOTICE_REVISION_UPDATED: (
+        "Privacy notice revision updated",
+        "A draft privacy notice revision was updated.",
+        "privacy.notice.revision",
+    ),
+    PRIVACY_NOTICE_REVISION_PUBLISHED: (
+        "Privacy notice revision published",
+        "A privacy notice revision was published.",
+        "privacy.notice.revision",
+    ),
     PRIVACY_PROCESSING_CREATED: (
         "Processing activity created",
         "A Privacy Processing Register entry was created.",
