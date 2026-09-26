@@ -27,9 +27,7 @@ class UnsupportedInstitutionalFormRevision(InstitutionalFormConflict):
 
 
 def list_form_families() -> tuple[FormFamily, ...]:
-    return tuple(
-        FormFamily.objects.filter(key__in=CANONICAL_FORM_FAMILY_KEYS).order_by("key")
-    )
+    return tuple(FormFamily.objects.filter(key__in=CANONICAL_FORM_FAMILY_KEYS).order_by("key"))
 
 
 def get_form_family_by_key(family_key: str) -> FormFamily:
@@ -37,9 +35,7 @@ def get_form_family_by_key(family_key: str) -> FormFamily:
         raise InstitutionalFormNotFound("The requested Form Family is not supported by COMPASS.")
     family = FormFamily.objects.filter(key=family_key).first()
     if family is None:
-        raise InstitutionalFormNotFound(
-            "The requested canonical Form Family is not synchronized."
-        )
+        raise InstitutionalFormNotFound("The requested canonical Form Family is not synchronized.")
     return family
 
 
