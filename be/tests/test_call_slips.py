@@ -586,6 +586,7 @@ def test_concurrent_same_actor_retry_creates_one_call_slip(monkeypatch):
 @pytest.mark.django_db
 def test_form_revision_snapshot_survives_future_activation_and_unsupported_active_blocks_create():
     sync_policy()
+    call_command("sync_institutional_forms", verbosity=0)
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
     first = create_for(head, student, key="form-first", fingerprint="a" * 64)
