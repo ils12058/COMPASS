@@ -26,6 +26,7 @@ from compass.audit.services import record_event
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
+    UnsupportedInstitutionalFormRevision,
     require_active_supported_form_revision,
 )
 from compass.operational_students import (
@@ -281,11 +282,11 @@ def _normalize_occurred_at(
 def _active_referral_revision():
     try:
         return require_active_supported_form_revision(REFERRAL_FORM_FAMILY_KEY)
+    except UnsupportedInstitutionalFormRevision as exc:
+        raise ReferralConfigurationConflict(
+            "The active Referral Slip Form Revision is not supported by this COMPASS version."
+        ) from exc
     except InstitutionalFormConflict as exc:
-        if "does not support" in str(exc):
-            raise ReferralConfigurationConflict(
-                "The active Referral Slip Form Revision is not supported by this COMPASS version."
-            ) from exc
         raise ReferralConfigurationConflict(
             "No active supported Referral Slip Form Revision is configured."
         ) from exc
