@@ -375,11 +375,17 @@ def test_f14_requires_active_supported_controlled_revision():
     assert missing.status_code == 409
     assert missing.json()["error"]["code"] == "feedback_configuration_conflict"
 
-    revision.status = "ACTIVE"
-    revision.internal_schema_version = 999
-    revision.save(update_fields=["status", "internal_schema_version", "updated_at"])
+    unsupported_revision = FormRevision.objects.create(
+        family=revision.family,
+        official_code="UNCONFIRMED-F14",
+        official_revision="1",
+        internal_schema_version=1,
+        status="ACTIVE",
+    )
     unsupported = post_json(client, "/api/v1/feedback/customer-feedback", valid_f14_payload())
     assert unsupported.status_code == 409
+    assert unsupported.json()["error"]["code"] == "feedback_configuration_conflict"
+    assert unsupported_revision.internal_schema_version == 1
 
 
 @pytest.mark.django_db
