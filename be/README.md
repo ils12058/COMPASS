@@ -45,6 +45,7 @@ podman compose --profile local up -d
 podman compose --profile local run --rm web python manage.py migrate
 podman compose --profile local run --rm web python manage.py sync_identity_policy
 podman compose --profile local run --rm web python manage.py sync_canonical_services
+podman compose --profile local run --rm web python manage.py sync_institutional_forms
 podman compose --profile local run --rm web python manage.py check
 ```
 
@@ -129,6 +130,7 @@ Synchronize required configuration before creating an initial IT administrator:
 ```sh
 uv run python manage.py sync_identity_policy
 uv run python manage.py sync_canonical_services
+uv run python manage.py sync_institutional_forms
 uv run python manage.py check
 uv run python manage.py create_it_admin \
   --email it-admin@example.edu \
@@ -147,6 +149,11 @@ idempotent: it creates the active IN_PERSON Counseling Service on a fresh instal
 required configuration in place while preserving valid institutional settings. It is an explicit
 deployment operation, not request-time or startup-time provisioning. Readiness remains failed
 until it succeeds.
+
+Canonical Institutional Forms synchronization is also explicit and idempotent. It reconciles the
+code-owned supported Form Family and Revision definitions into PostgreSQL while preserving stable
+row IDs and historical FormRevision references. It does not contact an external QMS and it is not
+a readiness gate; deployments must still run `sync_institutional_forms` after migrations.
 
 ## Audit Trail development
 
@@ -290,6 +297,7 @@ podman compose up -d
 podman compose run --rm web python manage.py migrate
 podman compose run --rm web python manage.py sync_identity_policy
 podman compose run --rm web python manage.py sync_canonical_services
+podman compose run --rm web python manage.py sync_institutional_forms
 podman compose run --rm web python manage.py check --deploy
 ```
 
