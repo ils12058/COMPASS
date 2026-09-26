@@ -46,8 +46,8 @@ from compass.good_moral.services import (
 from compass.good_moral.services import (
     create_my_graduate as create_my_graduate_service,
 )
+from compass.institutional_forms.bootstrap import sync_institutional_forms
 from compass.institutional_forms.models import FormRevision
-from compass.institutional_forms.services import activate_form_revision
 from compass.inventory.models import StudentInventory
 from compass.notifications.models import EmailDelivery, Notification, NotificationPreference
 from compass.organization.models import AcademicYear, Campus, College, StudentAffiliation
@@ -653,7 +653,15 @@ def test_good_moral_issuance_requires_active_supported_variant_revision():
         family__key="good_moral_graduate",
         status="ACTIVE",
     )
-    FormRevision.objects.filter(pk=revision.pk).update(internal_schema_version=999)
+    revision.status = "INACTIVE"
+    revision.save(update_fields=["status", "updated_at"])
+    FormRevision.objects.create(
+        family=revision.family,
+        official_code="UNCONFIRMED-GOOD-MORAL",
+        official_revision="1",
+        internal_schema_version=1,
+        status="ACTIVE",
+    )
 
     with pytest.raises(GoodMoralConfigurationConflict):
         issue_request(
@@ -734,17 +742,19 @@ def test_saved_render_provenance_drives_html_after_current_data_and_revision_cha
     inventory.course_currently_enrolled = "Changed Course"
     inventory.save(update_fields=["course_currently_enrolled", "updated_at"])
 
-    future_revision = FormRevision.objects.create(
-        family=issued.form_revision.family,
+    canonical_revision = issued.form_revision
+    canonical_revision.status = "INACTIVE"
+    canonical_revision.save(update_fields=["status", "updated_at"])
+    historical_revision = FormRevision.objects.create(
+        family=canonical_revision.family,
         official_code="CNSC-OP-GCO-01F4",
         official_revision="1",
         internal_schema_version=1,
-        status="INACTIVE",
+        status="ACTIVE",
     )
-    activate_form_revision(
-        revision_id=future_revision.pk,
-        context=AuditContext.system(),
-    )
+    sync_institutional_forms()
+    historical_revision.refresh_from_db()
+    assert historical_revision.status == "INACTIVE"
 
     issued = GoodMoralRequest.objects.select_related(
         "academic_year",
