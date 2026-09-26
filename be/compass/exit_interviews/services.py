@@ -494,7 +494,10 @@ def ensure_my_current(
     _validate_student(student)
     with transaction.atomic():
         locked_student = (
-            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
         )
         if locked_student is None:
             raise ExitInterviewNotFound("The Student account was not found.")
@@ -520,19 +523,20 @@ def ensure_my_current(
         reference_date = timezone.localdate()
         home_address = profile.current_address.strip() or profile.permanent_address.strip()
         try:
-            item = ExitInterview.objects.create(
-                student=locked_student,
-                academic_year=current,
-                inventory=inventory,
-                student_name_snapshot=profile.full_name.strip(),
-                age_snapshot=_age_on(profile.date_of_birth, reference_date),
-                civil_status_snapshot=profile.civil_status.strip(),
-                course_snapshot=inventory.course_currently_enrolled.strip(),
-                major_snapshot=inventory.major.strip(),
-                email_snapshot=profile.email.strip(),
-                home_address_snapshot=home_address,
-                contact_number_snapshot=profile.contact_number.strip(),
-            )
+            with transaction.atomic():
+                item = ExitInterview.objects.create(
+                    student=locked_student,
+                    academic_year=current,
+                    inventory=inventory,
+                    student_name_snapshot=profile.full_name.strip(),
+                    age_snapshot=_age_on(profile.date_of_birth, reference_date),
+                    civil_status_snapshot=profile.civil_status.strip(),
+                    course_snapshot=inventory.course_currently_enrolled.strip(),
+                    major_snapshot=inventory.major.strip(),
+                    email_snapshot=profile.email.strip(),
+                    home_address_snapshot=home_address,
+                    contact_number_snapshot=profile.contact_number.strip(),
+                )
         except IntegrityError:
             concurrent = ExitInterview.objects.filter(
                 student_id=locked_student.pk,
@@ -697,7 +701,7 @@ def submit_my_current(
 
     with transaction.atomic():
         item = (
-            ExitInterview.objects.select_for_update()
+            ExitInterview.objects.select_for_update(of=("self",))
             .select_related("academic_year", "inventory")
             .filter(student_id=student.pk, academic_year_id=current.pk)
             .first()
@@ -753,7 +757,7 @@ def submit_mine(
 
     with transaction.atomic():
         item = (
-            ExitInterview.objects.select_for_update()
+            ExitInterview.objects.select_for_update(of=("self",))
             .select_related("academic_year", "inventory")
             .filter(pk=exit_interview_id, student_id=student.pk)
             .first()
@@ -874,7 +878,7 @@ def reopen_for_correction(
 
     with transaction.atomic():
         item = (
-            ExitInterview.objects.select_for_update()
+            ExitInterview.objects.select_for_update(of=("self", "student"))
             .select_related("academic_year", "student__role")
             .filter(pk=exit_interview_id)
             .first()

@@ -60,7 +60,10 @@ def change_password(
 
     with transaction.atomic():
         locked_user = (
-            User.objects.select_for_update().select_related("role").filter(pk=user.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=user.pk)
+            .first()
         )
         if (
             locked_user is None

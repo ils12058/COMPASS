@@ -15,12 +15,15 @@ import {
   getAuthGetSessionQueryKey,
   useAuthVerifyLoginMfa,
 } from "@/lib/api/generated/auth/auth";
+import { LoginMFAMethod } from "@/lib/api/generated/model";
 
 export function MfaVerification() {
   const flow = useAuthFlow();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const preferredMethod = flow.mfaMethods.includes("totp") ? "totp" : flow.mfaMethods[0];
+  const preferredMethod = flow.mfaMethods.includes(LoginMFAMethod.totp)
+    ? LoginMFAMethod.totp
+    : flow.mfaMethods[0];
   const [method, setMethod] = useState(preferredMethod);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +43,7 @@ export function MfaVerification() {
     );
   }
 
-  const usingRecovery = method === "recovery";
+  const usingRecovery = method === LoginMFAMethod.recovery;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,7 +65,7 @@ export function MfaVerification() {
     }
   }
 
-  function switchMethod(nextMethod: "recovery" | "totp") {
+  function switchMethod(nextMethod: LoginMFAMethod) {
     setMethod(nextMethod);
     setCode("");
     setError(null);
@@ -100,20 +103,20 @@ export function MfaVerification() {
         </Button>
       </form>
 
-      {flow.mfaMethods.includes("recovery") && !usingRecovery ? (
+      {flow.mfaMethods.includes(LoginMFAMethod.recovery) && !usingRecovery ? (
         <button
           type="button"
-          onClick={() => switchMethod("recovery")}
+          onClick={() => switchMethod(LoginMFAMethod.recovery)}
           className="mt-5 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           Use a recovery code instead
         </button>
       ) : null}
 
-      {flow.mfaMethods.includes("totp") && usingRecovery ? (
+      {flow.mfaMethods.includes(LoginMFAMethod.totp) && usingRecovery ? (
         <button
           type="button"
-          onClick={() => switchMethod("totp")}
+          onClick={() => switchMethod(LoginMFAMethod.totp)}
           className="mt-5 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           Use an authenticator code instead

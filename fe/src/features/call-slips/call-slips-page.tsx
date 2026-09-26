@@ -14,7 +14,7 @@ import { CanonicalPagination } from "@/features/portal/components/canonical-pagi
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { useCallSlipsList, useCallSlipsListMy } from "@/lib/api/generated/call-slips/call-slips";
-import { CallSlipDestinationTypeValue } from "@/lib/api/generated/model";
+import { CallSlipDestinationTypeValue, CallSlipLifecycleStateValue } from "@/lib/api/generated/model";
 import type { CallSlipDestinationTypeValue as CallSlipDestinationType } from "@/lib/api/generated/model";
 import { formatDateTime } from "@/lib/date-time";
 
@@ -24,14 +24,20 @@ export type CallSlipListFilters = {
   fromDate: string;
   toDate: string;
   includeVoided: boolean;
+  state: "" | CallSlipLifecycleStateValue;
   page: number;
 };
 
 export type CallSlipStudentListFilters = {
   fromDate: string;
   toDate: string;
+  state: "" | CallSlipLifecycleStateValue;
   page: number;
 };
+
+function lifecycleStateFrom(value: string): "" | CallSlipLifecycleStateValue {
+  return Object.values(CallSlipLifecycleStateValue).find((state) => state === value) ?? "";
+}
 
 function operationalFiltersToUrl(filters: CallSlipListFilters): string {
   const params = new URLSearchParams();
@@ -40,6 +46,7 @@ function operationalFiltersToUrl(filters: CallSlipListFilters): string {
   if (filters.fromDate) params.set("from_date", filters.fromDate);
   if (filters.toDate) params.set("to_date", filters.toDate);
   if (filters.includeVoided) params.set("include_voided", "true");
+  if (filters.state) params.set("state", filters.state);
   if (filters.page > 1) params.set("page", String(filters.page));
   const query = params.toString();
   return query ? `/portal/call-slips?${query}` : "/portal/call-slips";
@@ -49,6 +56,7 @@ function studentFiltersToUrl(filters: CallSlipStudentListFilters): string {
   const params = new URLSearchParams();
   if (filters.fromDate) params.set("from_date", filters.fromDate);
   if (filters.toDate) params.set("to_date", filters.toDate);
+  if (filters.state) params.set("state", filters.state);
   if (filters.page > 1) params.set("page", String(filters.page));
   const query = params.toString();
   return query ? `/portal/call-slips?${query}` : "/portal/call-slips";
@@ -77,6 +85,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
     {
       ...(filters.fromDate ? { from_date: filters.fromDate } : {}),
       ...(filters.toDate ? { to_date: filters.toDate } : {}),
+      ...(filters.state ? { state: filters.state } : {}),
       page: filters.page,
       page_size: 20,
     },
@@ -91,12 +100,21 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
 
   const data = slips.data?.data;
   const items = data?.items ?? [];
-  const hasFilters = Boolean(filters.fromDate || filters.toDate || filters.page > 1);
+  const hasFilters = Boolean(filters.fromDate || filters.toDate || filters.state || filters.page > 1);
 
   return (
     <div className="space-y-7">
       <CallSlipHeading title="My Call Slips" description="Review Call Slips issued to you." />
-      <form onSubmit={submitFilters} className="grid gap-4 border-b border-border pb-6 sm:grid-cols-2 sm:items-end">
+      <form onSubmit={submitFilters} className="grid gap-4 border-b border-border pb-6 sm:grid-cols-3 sm:items-end">
+        <div className="grid gap-2">
+          <Label htmlFor="my-call-slips-state">Status</Label>
+          <select id="my-call-slips-state" className="min-h-11 w-full rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" value={draft.state} onChange={(event) => setDraft({ ...draft, state: lifecycleStateFrom(event.target.value) })}>
+            <option value="">All statuses</option>
+            {Object.values(CallSlipLifecycleStateValue).map((state) => (
+              <option key={state} value={state}>{callSlipStateLabel(state, true)}</option>
+            ))}
+          </select>
+        </div>
         <div className="grid gap-2">
           <Label htmlFor="my-call-slips-from">From</Label>
           <Input id="my-call-slips-from" type="date" value={draft.fromDate} onChange={(event) => setDraft({ ...draft, fromDate: event.target.value })} />
@@ -106,9 +124,9 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
           <Input id="my-call-slips-to" type="date" value={draft.toDate} onChange={(event) => setDraft({ ...draft, toDate: event.target.value })} />
         </div>
         {draft.fromDate && draft.toDate && draft.fromDate > draft.toDate ? (
-          <p role="alert" className="text-sm text-danger sm:col-span-2">From date must not be after To date.</p>
+          <p role="alert" className="text-sm text-danger sm:col-span-3">From date must not be after To date.</p>
         ) : null}
-        <div className="flex flex-wrap gap-2 sm:col-span-2">
+        <div className="flex flex-wrap gap-2 sm:col-span-3">
           <Button type="submit" variant="secondary">Apply filters</Button>
           {hasFilters ? <Link href="/portal/call-slips" className="inline-flex min-h-10 items-center px-3 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</Link> : null}
         </div>
@@ -148,12 +166,21 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
   );
 }
 
+// Voided records stay limited to operational managers, as with the Include voided toggle.
+function effectiveState(
+  filters: CallSlipListFilters,
+  canManage: boolean,
+): "" | CallSlipLifecycleStateValue {
+  return filters.state === CallSlipLifecycleStateValue.VOIDED && !canManage ? "" : filters.state;
+}
+
 function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters }) {
   const router = useRouter();
   const { user } = usePortalSession();
   const access = getCallSlipAccess(user);
   const referralAccess = getReferralAccess(user);
   const [draft, setDraft] = useState(() => access.canManageOperational ? filters : { ...filters, includeVoided: false });
+  const state = effectiveState(filters, access.canManageOperational);
   const slips = useCallSlipsList(
     {
       ...(filters.search ? { search: filters.search } : {}),
@@ -161,6 +188,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
       ...(filters.fromDate ? { from_date: filters.fromDate } : {}),
       ...(filters.toDate ? { to_date: filters.toDate } : {}),
       ...(filters.includeVoided && access.canManageOperational ? { include_voided: true } : {}),
+      ...(state ? { state } : {}),
       page: filters.page,
       page_size: 20,
     },
@@ -176,8 +204,10 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
 
   const data = slips.data?.data;
   const items = data?.items ?? [];
-  const effectiveFilters = access.canManageOperational ? filters : { ...filters, includeVoided: false };
-  const hasFilters = Boolean(effectiveFilters.search || effectiveFilters.destination || effectiveFilters.fromDate || effectiveFilters.toDate || effectiveFilters.includeVoided || effectiveFilters.page > 1);
+  const effectiveFilters = access.canManageOperational
+    ? filters
+    : { ...filters, includeVoided: false, state: effectiveState(filters, false) };
+  const hasFilters = Boolean(effectiveFilters.search || effectiveFilters.destination || effectiveFilters.fromDate || effectiveFilters.toDate || effectiveFilters.includeVoided || effectiveFilters.state || effectiveFilters.page > 1);
 
   return (
     <div className="space-y-7">
@@ -201,6 +231,15 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
             <option value="">All destinations</option>
             <option value={CallSlipDestinationTypeValue.GUIDANCE_OFFICE}>Guidance Office</option>
             <option value={CallSlipDestinationTypeValue.OTHER}>Other</option>
+          </select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="call-slips-state">Status</Label>
+          <select id="call-slips-state" className="min-h-11 w-full rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" value={draft.state} onChange={(event) => setDraft({ ...draft, state: lifecycleStateFrom(event.target.value) })}>
+            <option value="">{access.canManageOperational ? "Active and completed" : "All statuses"}</option>
+            <option value={CallSlipLifecycleStateValue.ACTIVE}>{callSlipStateLabel(CallSlipLifecycleStateValue.ACTIVE, false)}</option>
+            <option value={CallSlipLifecycleStateValue.COMPLETED}>{callSlipStateLabel(CallSlipLifecycleStateValue.COMPLETED, false)}</option>
+            {access.canManageOperational ? <option value={CallSlipLifecycleStateValue.VOIDED}>{callSlipStateLabel(CallSlipLifecycleStateValue.VOIDED, false)}</option> : null}
           </select>
         </div>
         <div className="grid gap-2"><Label htmlFor="call-slips-from">From</Label><Input id="call-slips-from" type="date" value={draft.fromDate} onChange={(event) => setDraft({ ...draft, fromDate: event.target.value })} /></div>

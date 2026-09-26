@@ -602,6 +602,7 @@ def test_profile_edit_does_not_rewrite_inventory_referral_or_call_slip_history()
         destination_type="GUIDANCE_OFFICE",
         other_destination="",
         report_at=timezone.now() + timedelta(days=1),
+        issuance_mode="HISTORICAL",
         issued_by=counselor,
         issued_by_name_snapshot="Historical Counselor",
         form_revision=revision,

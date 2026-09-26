@@ -15,6 +15,7 @@ from compass.authentication.api import session_auth
 from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.service_catalog.canonical import is_system_required_service_code
 from compass.service_catalog.services import (
     DEFAULT_PAGE_SIZE,
     CanonicalServiceRequired,
@@ -96,6 +97,7 @@ class ServiceResponse(StrictSchema):
     delivery_modes: list[DeliveryMode]
     provider_roles: list[ProviderRoleCode]
     is_active: bool
+    is_system_required: bool
     created_at: datetime
     updated_at: datetime
 
@@ -154,6 +156,7 @@ def _service(item) -> dict[str, object]:
             assignment.role.code for assignment in item.provider_role_assignments.all()
         ),
         "is_active": item.is_active,
+        "is_system_required": is_system_required_service_code(item.code),
         "created_at": item.created_at,
         "updated_at": item.updated_at,
     }

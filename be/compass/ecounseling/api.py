@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 from typing import Literal, NoReturn
 from uuid import UUID
 
@@ -10,11 +11,14 @@ from django.http import HttpResponse
 from ninja import Router, Schema
 from pydantic import ConfigDict
 
+from compass.appointments.api import AppointmentStatus
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.integrations.daily import DailyWebhookSignatureInvalid
+from compass.routine_interviews.api import RoutineEvaluationStatus, RoutineIntakeStatus
+from compass.service_catalog.api import DeliveryMode
 
 from .media import (
     ECounselingConsentConflict,
@@ -32,6 +36,7 @@ from .media import (
     stop_transcription,
     withdraw_my_consent,
 )
+from .models import ConsentDecision, ConsentScope, MediaCaptureKind, MediaCaptureStatus
 from .services import (
     ECounselingAppointmentNotEligible,
     ECounselingCurrentStudentRequired,
@@ -58,13 +63,54 @@ class StrictSchema(Schema):
     model_config = ConfigDict(extra="forbid")
 
 
+class ECounselingConsentScope(StrEnum):
+    AUDIO_VIDEO_RECORDING = ConsentScope.AUDIO_VIDEO_RECORDING
+    LIVE_TRANSCRIPTION = ConsentScope.LIVE_TRANSCRIPTION
+    TRANSCRIPT_STORAGE = ConsentScope.TRANSCRIPT_STORAGE
+
+
+class ECounselingConsentDecision(StrEnum):
+    PENDING = ConsentDecision.PENDING
+    APPROVED = ConsentDecision.APPROVED
+    DENIED = ConsentDecision.DENIED
+
+
+class ECounselingConsentStatus(StrEnum):
+    """Workspace consent projection; WITHDRAWN derives from an approved, withdrawn decision."""
+
+    NOT_REQUESTED = "NOT_REQUESTED"
+    PENDING = ConsentDecision.PENDING
+    APPROVED = ConsentDecision.APPROVED
+    DENIED = ConsentDecision.DENIED
+    WITHDRAWN = "WITHDRAWN"
+
+
+class ECounselingMediaKind(StrEnum):
+    RECORDING = MediaCaptureKind.RECORDING
+    TRANSCRIPTION = MediaCaptureKind.TRANSCRIPTION
+
+
+class ECounselingCaptureStatus(StrEnum):
+    NOT_STARTED = MediaCaptureStatus.NOT_STARTED
+    START_REQUESTED = MediaCaptureStatus.START_REQUESTED
+    ACTIVE = MediaCaptureStatus.ACTIVE
+    STOP_REQUESTED = MediaCaptureStatus.STOP_REQUESTED
+    STOPPED = MediaCaptureStatus.STOPPED
+    READY = MediaCaptureStatus.READY
+    ERROR = MediaCaptureStatus.ERROR
+
+
+class ECounselingProvider(StrEnum):
+    DAILY = "DAILY"
+
+
 class AppointmentWorkspaceSummary(StrictSchema):
     id: UUID
     reference_code: str
     starts_at: datetime
     ends_at: datetime
-    status: str
-    delivery_mode: str
+    status: AppointmentStatus
+    delivery_mode: DeliveryMode
 
 
 class PersonWorkspaceSummary(StrictSchema):
@@ -80,11 +126,11 @@ class ProviderReadiness(StrictSchema):
 
 class StudentRoutineWorkspaceSummary(StrictSchema):
     id: UUID
-    intake_status: str
+    intake_status: RoutineIntakeStatus
 
 
 class CounselorRoutineWorkspaceSummary(StudentRoutineWorkspaceSummary):
-    evaluation_status: str
+    evaluation_status: RoutineEvaluationStatus
 
 
 class CounselingEncounterWorkspaceSummary(StrictSchema):
@@ -93,14 +139,14 @@ class CounselingEncounterWorkspaceSummary(StrictSchema):
 
 
 class RecordingWorkspaceState(StrictSchema):
-    consent_status: str
-    capture_status: str
+    consent_status: ECounselingConsentStatus
+    capture_status: ECounselingCaptureStatus
 
 
 class TranscriptionWorkspaceState(StrictSchema):
-    consent_status: str
-    storage_consent_status: str
-    capture_status: str
+    consent_status: ECounselingConsentStatus
+    storage_consent_status: ECounselingConsentStatus
+    capture_status: ECounselingCaptureStatus
     storage_enabled: bool
 
 
@@ -127,7 +173,7 @@ class CounselorWorkspaceResponse(StrictSchema):
 
 
 class JoinCredentialResponse(StrictSchema):
-    provider: str
+    provider: ECounselingProvider
     room_url: str
     meeting_token: str
     token_expires_at: datetime
@@ -137,8 +183,8 @@ class JoinCredentialResponse(StrictSchema):
 
 class ConsentResponse(StrictSchema):
     id: UUID
-    scope: str
-    decision: str
+    scope: ECounselingConsentScope
+    decision: ECounselingConsentDecision
     requested_at: datetime
     decided_at: datetime | None
     withdrawn_at: datetime | None
@@ -150,7 +196,7 @@ class ConsentListResponse(StrictSchema):
 
 
 class ConsentRequest(StrictSchema):
-    scopes: list[str]
+    scopes: list[ECounselingConsentScope]
 
 
 class ConsentDecisionRequest(StrictSchema):
@@ -162,8 +208,8 @@ class TranscriptionStartRequest(StrictSchema):
 
 
 class MediaCaptureResponse(StrictSchema):
-    kind: str
-    status: str
+    kind: ECounselingMediaKind
+    status: ECounselingCaptureStatus
     storage_enabled: bool
 
 
@@ -294,7 +340,7 @@ def ecounseling_request_consent(request, appointment_id: UUID, payload: ConsentR
         items = request_consents(
             counselor=request.auth_user,
             appointment_id=appointment_id,
-            scopes=payload.scopes,
+            scopes=[scope.value for scope in payload.scopes],
             context=_context(request),
         )
         return {"items": items}
@@ -443,7 +489,7 @@ def ecounseling_create_join_credential(
     response["Cache-Control"] = "no-store, private"
     response["Pragma"] = "no-cache"
     return {
-        "provider": "DAILY",
+        "provider": ECounselingProvider.DAILY,
         "room_url": credential.room_url,
         "meeting_token": credential.meeting_token,
         "token_expires_at": credential.token_expires_at,

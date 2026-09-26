@@ -1247,3 +1247,40 @@ def test_feedback_replay_storage_contains_only_submission_response_and_digests(m
     assert raw_key not in audit_metadata
     assert raw_key not in str(CustomerFeedbackResponse.objects.get().__dict__)
     assert raw_key not in str(ClientSatisfactionResponse.objects.get().__dict__)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("path", "payload_factory", "service_name"),
+    [
+        ("/api/v1/feedback/customer-feedback", valid_f14_payload, "create_customer_feedback"),
+        ("/api/v1/feedback/csm", valid_csm_payload, "create_csm_response"),
+    ],
+)
+def test_unexpected_failure_releases_reservation_so_same_intent_can_retry(
+    monkeypatch,
+    path,
+    payload_factory,
+    service_name,
+):
+    sync_policy()
+    student = make_user(f"unexpected-{service_name}@example.edu")
+    client = auth_client(student)
+    redis = FakeRedis()
+    use_idempotency_store(monkeypatch, RedisIdempotencyStore(redis, ttl_seconds=60))
+    original = getattr(feedback_api, service_name)
+
+    def fail_once(**kwargs):
+        monkeypatch.setattr(feedback_api, service_name, original)
+        raise RuntimeError("unexpected database outage")
+
+    monkeypatch.setattr(feedback_api, service_name, fail_once)
+    client.raise_request_exception = False
+    key = f"unexpected-{service_name}"
+
+    failed = post_json(client, path, payload_factory(), idempotency_key=key)
+    assert failed.status_code == 500
+    assert redis.records == {}
+
+    retried = post_json(client, path, payload_factory(), idempotency_key=key)
+    assert retried.status_code == 201

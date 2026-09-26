@@ -195,6 +195,76 @@ def test_email_delivery_list_is_bounded_filterable_and_pii_safe():
 
 
 @pytest.mark.django_db
+def test_email_delivery_list_projects_backend_owned_manual_retry_eligibility():
+    sync_policy()
+    admin = make_user("retry-projection-admin@example.edu", "IT_ADMIN")
+    active = make_user("retry-projection-active@example.edu")
+    inactive = make_user("retry-projection-inactive@example.edu")
+    retryable = make_delivery(
+        active, status=EmailDeliveryStatus.FAILED, failure_code="send_returned_zero"
+    )
+    template_failure = make_delivery(
+        active, status=EmailDeliveryStatus.FAILED, failure_code="template_error"
+    )
+    unknown_failure = make_delivery(
+        active, status=EmailDeliveryStatus.FAILED, failure_code="smtp said something private"
+    )
+    inactive_recipient = make_delivery(
+        inactive, status=EmailDeliveryStatus.FAILED, failure_code="transport_error"
+    )
+    pending = make_delivery(active, status=EmailDeliveryStatus.PENDING)
+    inactive.is_active = False
+    inactive.save(update_fields=["is_active", "updated_at"])
+
+    client = auth_client(admin)
+    response = client.get("/api/v1/platform/email-deliveries?page_size=50")
+
+    assert response.status_code == 200
+    items = {item["id"]: item for item in response.json()["items"]}
+    assert items[str(retryable.pk)]["manual_retry_allowed"] is True
+    assert items[str(retryable.pk)]["manual_retry_blocker"] is None
+    assert items[str(template_failure.pk)]["manual_retry_allowed"] is False
+    assert items[str(template_failure.pk)]["manual_retry_blocker"] == "FAILURE_NOT_RETRYABLE"
+    assert items[str(unknown_failure.pk)]["failure_code"] == "unknown_failure"
+    assert items[str(unknown_failure.pk)]["manual_retry_blocker"] == "FAILURE_NOT_RETRYABLE"
+    assert items[str(inactive_recipient.pk)]["manual_retry_allowed"] is False
+    assert items[str(inactive_recipient.pk)]["manual_retry_blocker"] == "RECIPIENT_INACTIVE"
+    assert items[str(pending.pk)]["failure_code"] is None
+    assert items[str(pending.pk)]["manual_retry_blocker"] == "NOT_FAILED"
+
+    serialized = response.content.decode()
+    assert inactive.email not in serialized
+    assert "smtp said something private" not in serialized
+
+    recent = auth_client(admin, recent_mfa=True)
+    retried = recent.post(
+        f"/api/v1/platform/email-deliveries/{retryable.pk}/retry",
+        **csrf(recent),
+    )
+    assert retried.status_code == 200
+    assert retried.json()["status"] == "PENDING"
+    assert retried.json()["failure_code"] is None
+    assert retried.json()["manual_retry_allowed"] is False
+    assert retried.json()["manual_retry_blocker"] == "NOT_FAILED"
+
+
+@pytest.mark.django_db
+def test_email_delivery_list_query_count_does_not_grow_per_row(django_assert_max_num_queries):
+    sync_policy()
+    admin = make_user("retry-query-admin@example.edu", "IT_ADMIN")
+    for index in range(12):
+        recipient = make_user(f"retry-query-recipient-{index}@example.edu")
+        make_delivery(recipient, status=EmailDeliveryStatus.FAILED, failure_code="transport_error")
+    client = auth_client(admin)
+    client.get("/api/v1/platform/email-deliveries?page_size=1")
+
+    with django_assert_max_num_queries(6):
+        response = client.get("/api/v1/platform/email-deliveries?page_size=50")
+    assert response.status_code == 200
+    assert len(response.json()["items"]) == 12
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     ("status", "failure_code"),
     [

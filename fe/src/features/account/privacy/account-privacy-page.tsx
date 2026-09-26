@@ -8,8 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { PlainTextBlock } from "@/features/privacy-governance/plain-text-block";
 import {
-  isPrivacyConflict,
-  privacyConflictMessages,
+  hasPrivacyConflictCode,
+  PrivacyConflictCode,
   privacyErrorMessage,
 } from "@/features/privacy-governance/privacy-governance-errors";
 import { audienceSummary } from "@/features/privacy-governance/privacy-governance-presentation";
@@ -107,7 +107,10 @@ export function AccountPrivacyPage() {
       setStatus(`“${notice.title}” acknowledged.`);
     } catch (caught) {
       setError(acknowledgeErrorMessage(caught));
-      if (isPrivacyConflict(caught, privacyConflictMessages.noticeNotCurrent)) {
+      if (
+        hasPrivacyConflictCode(caught, PrivacyConflictCode.noticeRevisionNotCurrent) ||
+        hasPrivacyConflictCode(caught, PrivacyConflictCode.acknowledgmentNotApplicable)
+      ) {
         void queryClient.invalidateQueries({
           queryKey: getPrivacyGovernanceListMyNoticesQueryKey(),
         });

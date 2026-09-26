@@ -423,6 +423,7 @@ def test_destination_database_constraint_preserves_source_invariant():
                 destination_type="GUIDANCE_OFFICE",
                 other_destination="Should fail",
                 report_at=timezone.now(),
+                issuance_mode="LIVE",
                 issued_by=head,
                 issued_by_name_snapshot=head.get_full_name(),
                 form_revision=revision,

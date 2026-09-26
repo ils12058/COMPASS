@@ -4,56 +4,50 @@ import {
   readApiErrorMessage,
 } from "@/lib/api/errors";
 
-// Privacy Governance conflicts share one error code, so the stable backend
-// messages identify the specific rule that was hit.
-export const privacyConflictMessages = {
-  retiredPolicyAssignment: "retired retention policy cannot be assigned",
-  policyInUse: "active processing activities must be reassigned before retirement",
-  noticeDraftExists: "privacy notice already has a draft",
-  revisionNotEditable: "only a draft of an active privacy notice can be edited",
-  revisionNotPublishable: "only a draft of an active notice can be published",
-  futureEffectiveDate: "notice effective date must be today or earlier",
-  noticeNotCurrent: "notice revision is no longer current; refresh notices",
+// Stable backend conflict codes; each maps to a distinct recovery in the workspace.
+export const PrivacyConflictCode = {
+  codeInUse: "privacy_code_in_use",
+  retentionPolicyInUse: "privacy_retention_policy_in_use",
+  retentionPolicyRetired: "privacy_retention_policy_retired",
+  noticeRetired: "privacy_notice_retired",
+  noticeDraftExists: "privacy_notice_draft_exists",
+  noticeRevisionImmutable: "privacy_notice_revision_immutable",
+  noticeNotYetEffective: "privacy_notice_not_yet_effective",
+  noticeRevisionNotCurrent: "privacy_notice_revision_not_current",
+  acknowledgmentNotApplicable: "privacy_notice_acknowledgment_not_applicable",
+  recordResolved: "privacy_record_resolved",
+  incidentStatusInvalid: "privacy_incident_status_invalid",
 } as const;
 
-const conflictCopy: Record<string, string> = {
-  [privacyConflictMessages.retiredPolicyAssignment]:
-    "This Retention Policy is retired and cannot be assigned to an active Processing Activity.",
-  [privacyConflictMessages.policyInUse]:
+export type PrivacyConflictCode = (typeof PrivacyConflictCode)[keyof typeof PrivacyConflictCode];
+
+const conflictCopy: Record<PrivacyConflictCode, string> = {
+  [PrivacyConflictCode.codeInUse]: "This code is already in use. Use a different code.",
+  [PrivacyConflictCode.retentionPolicyInUse]:
     "This Retention Policy is still assigned to an active Processing Activity and cannot be retired yet.",
-  [privacyConflictMessages.noticeDraftExists]:
+  [PrivacyConflictCode.retentionPolicyRetired]:
+    "This Retention Policy is retired. Retired policies cannot be edited or newly assigned.",
+  [PrivacyConflictCode.noticeRetired]:
+    "This Privacy Notice is retired, so it and its revisions can no longer be changed.",
+  [PrivacyConflictCode.noticeDraftExists]:
     "This Privacy Notice already has a draft revision. Open the existing draft instead.",
-  [privacyConflictMessages.revisionNotEditable]:
+  [PrivacyConflictCode.noticeRevisionImmutable]:
     "Published and historical revisions cannot be edited. Create a new revision instead.",
-  [privacyConflictMessages.revisionNotPublishable]:
-    "Only a draft revision of an active Privacy Notice can be published.",
-  [privacyConflictMessages.futureEffectiveDate]:
+  [PrivacyConflictCode.noticeNotYetEffective]:
     "This revision cannot be published before its effective date. Set an effective date of today or earlier to publish it.",
-  [privacyConflictMessages.noticeNotCurrent]:
+  [PrivacyConflictCode.noticeRevisionNotCurrent]:
     "This notice changed while you were viewing it. Refresh to review the current revision.",
-  "notice revision does not require acknowledgment":
-    "This notice does not ask for acknowledgment.",
-  "notice revision is not applicable to this account":
-    "This notice does not apply to your account.",
-  "retired privacy notice cannot be edited": "Retired Privacy Notices cannot be edited.",
-  "retired privacy notice cannot receive revisions":
-    "Retired Privacy Notices cannot receive new revisions.",
-  "retired retention policy cannot be edited": "Retired Retention Policies cannot be edited.",
-  "resolved privacy reviews cannot be edited": "Resolved reviews cannot be edited.",
-  "privacy review is already resolved": "This review is already resolved.",
-  "use the resolve operation to resolve a privacy incident":
-    "Use Resolve incident to resolve this incident.",
-  "privacy incident status cannot move backward":
-    "An incident cannot move back to an earlier status.",
-  "resolved privacy incidents cannot be edited": "Resolved incidents cannot be edited.",
-  "privacy incident is already resolved": "This incident is already resolved.",
-  "processing activity code already exists":
-    "A Processing Activity with this code already exists. Use a different code.",
-  "retention policy code already exists":
-    "A Retention Policy with this code already exists. Use a different code.",
-  "privacy notice code already exists":
-    "A Privacy Notice with this code already exists. Use a different code.",
+  [PrivacyConflictCode.acknowledgmentNotApplicable]:
+    "This notice does not ask for your acknowledgment.",
+  [PrivacyConflictCode.recordResolved]:
+    "This record is already resolved and can no longer be changed.",
+  [PrivacyConflictCode.incidentStatusInvalid]:
+    "An incident can only move forward. Use Resolve incident to resolve it.",
 };
+
+function isPrivacyConflictCode(code: string | undefined): code is PrivacyConflictCode {
+  return Object.values(PrivacyConflictCode).some((value) => value === code);
+}
 
 const inputCopy: Record<string, string> = {
   "code must contain only uppercase letters, digits, dot, underscore, or hyphen":
@@ -61,15 +55,6 @@ const inputCopy: Record<string, string> = {
   "audiences must be a nonempty bounded list": "Select at least one audience.",
   "estimated_affected_subjects must be a nonnegative integer":
     "Estimated affected people must be a whole number of zero or more.",
-};
-
-const notFoundCopy: Record<string, string> = {
-  "retention policy was not found": "The selected Retention Policy is no longer available.",
-  "processing activity was not found": "This Processing Activity is no longer available.",
-  "privacy review was not found": "This review is no longer available.",
-  "privacy notice was not found": "This Privacy Notice is no longer available.",
-  "privacy notice revision was not found": "This notice revision is no longer available.",
-  "privacy incident was not found": "This privacy incident is no longer available.",
 };
 
 export type PrivacyFieldLabels = Record<string, string>;
@@ -124,15 +109,16 @@ export function privacyErrorMessage(
   const code = readApiErrorCode(error.body);
   const message = readApiErrorMessage(error.body) ?? "";
 
+  if (isPrivacyConflictCode(code)) return conflictCopy[code];
   switch (code) {
     case "recent_mfa_required":
       return "Recent authenticator verification is required.";
     case "permission_denied":
       return "Your current access does not allow this Privacy Governance action.";
     case "privacy_record_not_found":
-      return notFoundCopy[message] ?? "This privacy record is no longer available.";
+      return "This privacy record is no longer available. Refresh and try again.";
     case "privacy_governance_conflict":
-      return conflictCopy[message] ?? (message ? sentence(message) : fallback);
+      return message ? sentence(message) : fallback;
     case "invalid_privacy_governance_input":
       return message ? translateInput(message, labels) : fallback;
     case "validation_error": {
@@ -147,12 +133,8 @@ export function privacyErrorMessage(
   }
 }
 
-export function isPrivacyConflict(error: unknown, backendMessage: string): boolean {
-  return (
-    error instanceof CompassApiError &&
-    readApiErrorCode(error.body) === "privacy_governance_conflict" &&
-    readApiErrorMessage(error.body) === backendMessage
-  );
+export function hasPrivacyConflictCode(error: unknown, code: PrivacyConflictCode): boolean {
+  return error instanceof CompassApiError && readApiErrorCode(error.body) === code;
 }
 
 export function isRecentMfaRequired(error: unknown): boolean {

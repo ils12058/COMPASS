@@ -9,6 +9,7 @@ from uuid import UUID
 from ninja import Router, Schema, Status
 from pydantic import ConfigDict
 
+from compass.accounts.api_codes import RoleCode
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
@@ -125,7 +126,7 @@ class OrganizationPersonSummary(StrictSchema):
     institutional_id: str | None
     full_name: str
     email: str
-    role: str
+    role: RoleCode
     is_active: bool
 
 

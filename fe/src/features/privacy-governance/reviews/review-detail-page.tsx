@@ -37,7 +37,6 @@ import {
 } from "@/lib/api/generated/model";
 import { getOverviewGetSummaryQueryKey } from "@/lib/api/generated/overview/overview";
 import {
-  usePrivacyGovernanceGetProcessingActivity,
   usePrivacyGovernanceGetReview,
   usePrivacyGovernanceResolveReview,
   usePrivacyGovernanceUpdateReview,
@@ -111,10 +110,6 @@ export function ReviewDetailPage() {
   const { canManage } = usePrivacyAccess();
   const queryClient = useQueryClient();
   const detail = usePrivacyGovernanceGetReview(reviewId, { query: { retry: false } });
-  const processingId = detail.data?.data.processing_activity_id ?? "";
-  const processing = usePrivacyGovernanceGetProcessingActivity(processingId, {
-    query: { enabled: Boolean(processingId), retry: false },
-  });
   const resolve = usePrivacyGovernanceResolveReview();
   const action = usePrivacyAction(reviewFieldLabels);
   const [editing, setEditing] = useState(false);
@@ -138,7 +133,7 @@ export function ReviewDetailPage() {
   const review = detail.data.data;
   const isOpen = review.status === ReviewStatusValue.OPEN;
   const manageable = canManage && isOpen;
-  const activity = processing.data?.data;
+  const activity = review.processing_activity;
   const reviewKind = review.review_type === "PIA" ? "PIA" : "privacy review";
 
   async function confirmResolve() {
@@ -216,14 +211,12 @@ export function ReviewDetailPage() {
           <dt className="text-xs font-semibold text-muted">Processing Activity</dt>
           <dd className="mt-1 break-words text-sm text-ink">
             <Link
-              href={`/portal/privacy/processing-activities/${review.processing_activity_id}`}
+              href={`/portal/privacy/processing-activities/${activity.id}`}
               className={textLinkClass}
             >
-              {activity ? activity.name : "Open processing activity"}
+              {activity.name}
             </Link>
-            {activity ? (
-              <span className="ml-2 font-mono text-xs text-muted">{activity.code}</span>
-            ) : null}
+            <span className="ml-2 font-mono text-xs text-muted">{activity.code}</span>
           </dd>
         </div>
         <div>

@@ -4,6 +4,26 @@ from datetime import date
 from uuid import UUID
 
 
+def ensure_inventory_form_revision() -> None:
+    """Restore the migration-seeded Individual Inventory revision after transactional flushes."""
+
+    from compass.institutional_forms.models import FormFamily, FormRevision
+
+    family, _ = FormFamily.objects.get_or_create(
+        key="individual_inventory",
+        defaults={"title": "Individual Inventory"},
+    )
+    FormRevision.objects.get_or_create(
+        family=family,
+        internal_schema_version=1,
+        defaults={
+            "official_code": "CNSC-OP-GCO-01F5",
+            "official_revision": "0",
+            "status": "ACTIVE",
+        },
+    )
+
+
 def minimum_normalized_inventory_values(
     *,
     program_id: UUID,

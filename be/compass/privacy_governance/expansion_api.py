@@ -15,6 +15,7 @@ from compass.common.errors import APIError
 
 from . import expansion as service
 from .api import _context, _raise, _require
+from .expansion import NoticePublishBlocker
 from .models import PrivacyNoticeAcknowledgment
 from .services import PrivacyGovernanceError
 
@@ -114,11 +115,17 @@ def retention_list(
     page: int = 1,
     page_size: int = service.DEFAULT_PAGE_SIZE,
     is_active: bool | None = None,
+    search: str | None = None,
 ):
     _require(request, "privacy_governance.view")
     try:
         return _page(
-            service.list_retention(is_active=is_active, page_number=page, page_size=page_size),
+            service.list_retention(
+                is_active=is_active,
+                search=search,
+                page_number=page,
+                page_size=page_size,
+            ),
             _retention,
         )
     except PrivacyGovernanceError as exc:
@@ -188,11 +195,20 @@ def retention_retire(request, policy_id: UUID):
         _raise(exc)
 
 
+class NoticeRevisionSummary(StrictSchema):
+    id: UUID
+    revision_number: int
+    effective_on: date | None
+    published_at: datetime | None
+
+
 class NoticeResponse(StrictSchema):
     id: UUID
     code: str
     name: str
     is_active: bool
+    current_revision: NoticeRevisionSummary | None
+    draft_revision: NoticeRevisionSummary | None
     created_at: datetime
     updated_at: datetime
 
@@ -202,6 +218,11 @@ class NoticePage(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+
+
+class NoticePublishReadinessResponse(StrictSchema):
+    ready: bool
+    blocker: NoticePublishBlocker | None
 
 
 class RevisionResponse(StrictSchema):
@@ -215,6 +236,7 @@ class RevisionResponse(StrictSchema):
     body: str
     requires_acknowledgment: bool
     effective_on: date | None
+    publish_readiness: NoticePublishReadinessResponse
     created_at: datetime
     updated_at: datetime
     published_at: datetime | None
@@ -254,18 +276,33 @@ class RevisionUpdate(StrictSchema):
     effective_on: date | None = None
 
 
+def _revision_summary(item):
+    if item is None:
+        return None
+    return {
+        "id": item.pk,
+        "revision_number": item.revision_number,
+        "effective_on": item.effective_on,
+        "published_at": item.published_at,
+    }
+
+
 def _notice(item):
+    current, draft = service.notice_open_revisions(item)
     return {
         "id": item.pk,
         "code": item.code,
         "name": item.name,
         "is_active": item.is_active,
+        "current_revision": _revision_summary(current),
+        "draft_revision": _revision_summary(draft),
         "created_at": item.created_at,
         "updated_at": item.updated_at,
     }
 
 
 def _revision(item):
+    readiness = service.notice_publish_readiness(item)
     return {
         "id": item.pk,
         "notice_id": item.notice_id,
@@ -277,6 +314,7 @@ def _revision(item):
         "body": item.body,
         "requires_acknowledgment": item.requires_acknowledgment,
         "effective_on": item.effective_on,
+        "publish_readiness": {"ready": readiness.ready, "blocker": readiness.blocker},
         "created_at": item.created_at,
         "updated_at": item.updated_at,
         "published_at": item.published_at,

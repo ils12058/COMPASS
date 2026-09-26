@@ -4,12 +4,13 @@ import type { ReactNode } from "react";
 
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
+import type { CapabilityCode } from "@/lib/api/generated/model";
 
-export function hasPlatformView(user: { capabilities: string[] }): boolean {
+export function hasPlatformView(user: { capabilities: readonly CapabilityCode[] }): boolean {
   return user.capabilities.includes("platform_operations.view");
 }
 
-export function hasPlatformManage(user: { capabilities: string[] }): boolean {
+export function hasPlatformManage(user: { capabilities: readonly CapabilityCode[] }): boolean {
   return user.capabilities.includes("platform_operations.manage");
 }
 

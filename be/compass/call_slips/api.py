@@ -21,7 +21,7 @@ from compass.privacy_governance.releases import (
     record_call_slip_release,
 )
 
-from .models import CallSlipDestinationType, CallSlipLifecycleState
+from .models import CallSlipDestinationType, CallSlipIssuanceMode, CallSlipLifecycleState
 from .services import (
     DEFAULT_PAGE_SIZE,
     CallSlipConfigurationConflict,
@@ -75,6 +75,12 @@ class CallSlipLifecycleStateValue(StrEnum):
     ACTIVE = CallSlipLifecycleState.ACTIVE
     COMPLETED = CallSlipLifecycleState.COMPLETED
     VOIDED = CallSlipLifecycleState.VOIDED
+
+
+class CallSlipIssuanceModeValue(StrEnum):
+    LIVE = CallSlipIssuanceMode.LIVE
+    HISTORICAL = CallSlipIssuanceMode.HISTORICAL
+    LEGACY_UNKNOWN = CallSlipIssuanceMode.LEGACY_UNKNOWN
 
 
 class CallSlipCreateRequest(StrictSchema):
@@ -166,6 +172,8 @@ class CallSlipStudentResponse(StrictSchema):
 class CallSlipOperationalResponse(CallSlipStudentResponse):
     referral: CallSlipReferralSummary | None
     recorded_by: CallSlipPersonSummary | None
+    issuance_mode: CallSlipIssuanceModeValue
+    void_notifies_student: bool
     void_reason: str
     updated_at: datetime
 
@@ -325,6 +333,8 @@ def _operational_view(item) -> dict[str, object]:
             else None
         ),
         "recorded_by": _person(item.recorded_by) if item.recorded_by_id else None,
+        "issuance_mode": item.issuance_mode,
+        "void_notifies_student": item.void_notifies_student,
         "void_reason": item.void_reason,
         "updated_at": item.updated_at,
     }
@@ -340,6 +350,7 @@ def call_slips_list_my(
     request,
     from_date: date | None = None,
     to_date: date | None = None,
+    state: CallSlipLifecycleStateValue | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -349,6 +360,7 @@ def call_slips_list_my(
             actor=request.auth_user,
             from_date=from_date,
             to_date=to_date,
+            state=state.value if state is not None else None,
             page=page,
             page_size=page_size,
         )
@@ -457,6 +469,7 @@ def call_slips_list(
     from_date: date | None = None,
     to_date: date | None = None,
     include_voided: bool = False,
+    state: CallSlipLifecycleStateValue | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -472,6 +485,7 @@ def call_slips_list(
             from_date=from_date,
             to_date=to_date,
             include_voided=include_voided,
+            state=state.value if state is not None else None,
             page=page,
             page_size=page_size,
         )

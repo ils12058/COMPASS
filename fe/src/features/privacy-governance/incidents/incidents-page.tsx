@@ -31,8 +31,22 @@ import { formatDateTime } from "@/lib/date-time";
 import { IncidentStatusValue } from "@/lib/api/generated/model";
 import { usePrivacyGovernanceListIncidents } from "@/lib/api/generated/privacy-governance/privacy-governance";
 
-function statusFilterFrom(value: string | null): IncidentStatusValue | undefined {
+// "ACTIVE" is the unresolved population counted on the Overview (Open, Assessing, Contained).
+const ACTIVE_FILTER = "ACTIVE";
+type IncidentFilter = IncidentStatusValue | typeof ACTIVE_FILTER;
+
+function statusFilterFrom(value: string | null): IncidentFilter | undefined {
+  if (value === ACTIVE_FILTER) return ACTIVE_FILTER;
   return Object.values(IncidentStatusValue).find((status) => status === value);
+}
+
+function filterParams(filter: IncidentFilter | undefined) {
+  if (filter === ACTIVE_FILTER) return { active: true };
+  return filter ? { status: filter } : {};
+}
+
+function filterLabel(filter: IncidentFilter): string {
+  return filter === ACTIVE_FILTER ? "active" : incidentStatusLabels[filter].toLowerCase();
 }
 
 export function IncidentsPage() {
@@ -40,7 +54,7 @@ export function IncidentsPage() {
   const { searchParams, page, update, setPage } = useListSearchParams();
   const status = statusFilterFrom(searchParams.get("status"));
   const query = usePrivacyGovernanceListIncidents(
-    { page, page_size: PRIVACY_PAGE_SIZE, ...(status ? { status } : {}) },
+    { page, page_size: PRIVACY_PAGE_SIZE, ...filterParams(status) },
     { query: { retry: false, placeholderData: keepPreviousData } },
   );
   const result = query.data?.data;
@@ -65,6 +79,7 @@ export function IncidentsPage() {
           onChange={(event) => update({ status: statusFilterFrom(event.target.value) ?? null })}
         >
           <option value="">All</option>
+          <option value={ACTIVE_FILTER}>Active (not resolved)</option>
           {Object.values(IncidentStatusValue).map((option) => (
             <option key={option} value={option}>
               {incidentStatusLabels[option]}
@@ -88,7 +103,7 @@ export function IncidentsPage() {
       ) : result && result.items.length === 0 ? (
         status ? (
           <EmptyListState
-            message={`No ${incidentStatusLabels[status].toLowerCase()} privacy incidents.`}
+            message={`No ${filterLabel(status)} privacy incidents.`}
             action={
               <Button variant="secondary" onClick={() => update({ status: null })}>
                 Show all incidents

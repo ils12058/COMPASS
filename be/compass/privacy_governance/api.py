@@ -18,6 +18,8 @@ from compass.common.errors import APIError
 
 from .activity import DEFAULT_PAGE_SIZE as ACTIVITY_DEFAULT_PAGE_SIZE
 from .activity import (
+    PrivacyActivityArtifactFormat,
+    PrivacyActivityArtifactType,
     PrivacyActivityCategory,
     PrivacyActivityPaginationError,
     list_privacy_activity,
@@ -155,6 +157,7 @@ class ProcessingActivityUpdateRequest(StrictSchema):
 class PrivacyReviewResponse(StrictSchema):
     id: UUID
     processing_activity_id: UUID
+    processing_activity: ProcessingSummary
     review_type: ReviewTypeValue
     status: ReviewStatusValue
     scope_summary: str
@@ -169,17 +172,6 @@ class PrivacyReviewResponse(StrictSchema):
 
 class PrivacyReviewPageResponse(StrictSchema):
     items: list[PrivacyReviewResponse]
-    page: int
-    page_size: int
-    has_next: bool
-
-
-class GlobalPrivacyReviewResponse(PrivacyReviewResponse):
-    processing_activity: ProcessingSummary
-
-
-class GlobalPrivacyReviewPageResponse(StrictSchema):
-    items: list[GlobalPrivacyReviewResponse]
     page: int
     page_size: int
     has_next: bool
@@ -251,8 +243,8 @@ class PrivacyActivityItemResponse(StrictSchema):
     description: str
     occurred_at: datetime
     actor_display_name: str | None
-    artifact_type: str | None
-    artifact_format: str | None
+    artifact_type: PrivacyActivityArtifactType | None
+    artifact_format: PrivacyActivityArtifactFormat | None
     scope: str | None
     resource_reference: str | None
 
@@ -298,7 +290,7 @@ def _raise(exc: PrivacyGovernanceError) -> NoReturn:
     if isinstance(exc, PrivacyRecordNotFound):
         raise APIError(404, "privacy_record_not_found", str(exc)) from exc
     if isinstance(exc, PrivacyConflict):
-        raise APIError(409, "privacy_governance_conflict", str(exc)) from exc
+        raise APIError(409, exc.code.value, str(exc)) from exc
     if isinstance(exc, PrivacyInputError):
         raise APIError(422, "invalid_privacy_governance_input", str(exc)) from exc
     raise APIError(500, "internal_error", "The privacy governance operation failed.") from exc
@@ -337,6 +329,11 @@ def _review(item) -> dict[str, object]:
     return {
         "id": item.pk,
         "processing_activity_id": item.processing_activity_id,
+        "processing_activity": {
+            "id": item.processing_activity_id,
+            "code": item.processing_activity.code,
+            "name": item.processing_activity.name,
+        },
         "review_type": item.review_type,
         "status": item.status,
         "scope_summary": item.scope_summary,
@@ -355,7 +352,7 @@ def _review(item) -> dict[str, object]:
 
 @router.get(
     "/reviews",
-    response=response_with_errors(GlobalPrivacyReviewPageResponse, 401, 403, 422),
+    response=response_with_errors(PrivacyReviewPageResponse, 401, 403, 422),
     auth=session_auth,
     operation_id="privacyGovernanceListAllReviews",
 )
@@ -381,17 +378,7 @@ def review_global_list(
     except PrivacyGovernanceError as exc:
         _raise(exc)
     return {
-        "items": [
-            _review(item)
-            | {
-                "processing_activity": {
-                    "id": item.processing_activity_id,
-                    "code": item.processing_activity.code,
-                    "name": item.processing_activity.name,
-                }
-            }
-            for item in result.items
-        ],
+        "items": [_review(item) for item in result.items],
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
@@ -699,6 +686,7 @@ def incident_list(
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     status: IncidentStatusValue | None = None,
+    active: bool | None = None,
 ):
     _require(request, "privacy_governance.view")
     try:
@@ -706,6 +694,7 @@ def incident_list(
             page=page,
             page_size=page_size,
             status=status.value if status is not None else None,
+            active=active,
         )
     except PrivacyGovernanceError as exc:
         _raise(exc)

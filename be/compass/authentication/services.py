@@ -221,7 +221,7 @@ def authenticate_login(
     try:
         with transaction.atomic():
             user = (
-                User.objects.select_for_update()
+                User.objects.select_for_update(of=("self",))
                 .select_related("role")
                 .filter(email__iexact=normalized_email)
                 .first()
@@ -340,7 +340,7 @@ def start_login_totp_enrollment(
     challenge = _resolve_totp_enrollment_challenge(request, now=current)
     with transaction.atomic():
         user = (
-            User.objects.select_for_update()
+            User.objects.select_for_update(of=("self",))
             .select_related("role")
             .filter(pk=challenge.user_id)
             .first()
@@ -387,7 +387,7 @@ def confirm_login_totp_enrollment(
 
     with transaction.atomic():
         user = (
-            User.objects.select_for_update()
+            User.objects.select_for_update(of=("self",))
             .select_related("role")
             .filter(pk=challenge.user_id)
             .first()
@@ -452,7 +452,7 @@ def complete_login_mfa(
     try:
         with transaction.atomic():
             locked_challenge = (
-                LoginChallenge.objects.select_for_update()
+                LoginChallenge.objects.select_for_update(of=("self", "user"))
                 .select_related("user")
                 .filter(pk=challenge.pk)
                 .first()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 from django.conf import settings
@@ -14,6 +15,12 @@ from ninja.security import APIKeyCookie
 from ninja.utils import check_csrf
 from pydantic import ConfigDict
 
+from compass.accounts.api_codes import (
+    CapabilityCode,
+    DesignationCode,
+    RoleCode,
+    StudentLifecycleCode,
+)
 from compass.accounts.policy import DESIGNATION_CODES
 from compass.accounts.services import effective_capabilities
 from compass.audit.context import AuditContext
@@ -87,15 +94,20 @@ class StrictSchema(Schema):
     model_config = ConfigDict(extra="forbid")
 
 
+class LoginMFAMethod(StrEnum):
+    TOTP = "totp"
+    RECOVERY = "recovery"
+
+
 class UserSummary(Schema):
     id: UUID
     email: str
     first_name: str
     last_name: str
-    role: str
-    student_lifecycle_status: str | None
-    designations: list[str]
-    capabilities: list[str]
+    role: RoleCode
+    student_lifecycle_status: StudentLifecycleCode | None
+    designations: list[DesignationCode]
+    capabilities: list[CapabilityCode]
 
 
 class CSRFResponse(Schema):
@@ -112,7 +124,7 @@ class LoginRequest(StrictSchema):
 class LoginResponse(Schema):
     authenticated: bool
     mfa_required: bool
-    mfa_methods: list[str]
+    mfa_methods: list[LoginMFAMethod]
     session_id: UUID | None = None
     challenge_expires_at: datetime | None = None
     user: UserSummary | None = None
@@ -123,7 +135,7 @@ class MFARequest(StrictSchema):
 
 
 class LoginMFARequest(StrictSchema):
-    method: str
+    method: LoginMFAMethod
     code: str
 
 
@@ -837,7 +849,7 @@ def verify_login_mfa(request, payload: LoginMFARequest, response: HttpResponse):
     try:
         result = complete_login_mfa(
             request=request,
-            method=payload.method,
+            method=payload.method.value,
             code=payload.code,
         )
     except AuthenticationRateLimited as exc:

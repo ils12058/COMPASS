@@ -26,7 +26,10 @@ from compass.inventory.services import (
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
 from compass.organization.models import Campus, College, Program
-from tests.inventory_test_helpers import minimum_normalized_inventory_values
+from tests.inventory_test_helpers import (
+    ensure_inventory_form_revision,
+    minimum_normalized_inventory_values,
+)
 
 
 def sync_policy() -> None:
@@ -302,3 +305,116 @@ def test_not_specified_geography_never_requires_psgc_lookup(monkeypatch):
 
     submitted = submit_current_inventory(student=student, context=context(student))
     assert submitted.submitted_at is not None
+
+
+@pytest.mark.django_db(transaction=True)
+def test_psgc_verification_runs_before_inventory_locks_are_taken(monkeypatch):
+    import threading
+
+    from django.db import close_old_connections, connection
+
+    sync_policy()
+    # Transactional tests run after earlier flushes removed migration-seeded rows.
+    ensure_inventory_form_revision()
+    admin = make_user("psgc-lock-admin@example.edu", "IT_ADMIN")
+    student = make_user("psgc-lock-student@example.edu", "STUDENT")
+    configure_year(admin)
+    program = configure_program()
+    ensure_current_inventory(student=student, context=context(student))
+    values = minimum_normalized_inventory_values(program_id=program.pk)
+    values["geographic_locations"] = [
+        {
+            "kind": "CURRENT",
+            "not_specified": False,
+            "region_psgc_code": "1300000000",
+            "region_name_snapshot": "Draft NCR",
+            "province_psgc_code": "",
+            "province_name_snapshot": "",
+            "city_municipality_psgc_code": "1380600000",
+            "city_municipality_name_snapshot": "Draft Manila",
+            "barangay_psgc_code": "",
+            "barangay_name_snapshot": "",
+        }
+    ]
+    replace_current_inventory(student=student, values=values)
+    observed: list[bool] = []
+
+    class ProbingPSGC(CanonicalPSGC):
+        def require_region(self, code: str):
+            def probe():
+                close_old_connections()
+                try:
+                    with connection.cursor() as cursor:
+                        cursor.execute("BEGIN")
+                        try:
+                            cursor.execute(
+                                "SELECT id FROM accounts_user WHERE id = %s FOR UPDATE NOWAIT",
+                                [student.pk],
+                            )
+                            cursor.execute(
+                                "SELECT id FROM organization_program WHERE id = %s "
+                                "FOR UPDATE NOWAIT",
+                                [program.pk],
+                            )
+                            observed.append(True)
+                        except Exception:
+                            observed.append(False)
+                        finally:
+                            cursor.execute("ROLLBACK")
+                finally:
+                    # Thread-local connections persist under CONN_MAX_AGE; close explicitly.
+                    connection.close()
+
+            worker = threading.Thread(target=probe)
+            worker.start()
+            worker.join(timeout=10)
+            return super().require_region(code)
+
+    monkeypatch.setattr(
+        inventory_services.PSGCClient,
+        "from_settings",
+        classmethod(lambda cls: ProbingPSGC()),
+    )
+
+    submitted = submit_current_inventory(student=student, context=context(student))
+
+    assert submitted.submitted_at is not None
+    assert observed == [True]
+    assert (
+        submitted.geographic_locations.get(kind="CURRENT").city_municipality_name_snapshot
+        == "City of Manila"
+    )
+
+
+@pytest.mark.django_db
+def test_ensure_recovers_from_a_concurrent_insert_without_an_aborted_transaction(monkeypatch):
+    from compass.inventory.models import StudentInventory
+
+    sync_policy()
+    admin = make_user("ensure-race-admin@example.edu", "IT_ADMIN")
+    student = make_user("ensure-race-student@example.edu", "STUDENT")
+    year = configure_year(admin)
+    original_revision = inventory_services._active_inventory_revision
+    inserted: list[object] = []
+
+    def revision_after_concurrent_insert():
+        revision = original_revision()
+        # Simulate another request committing the same annual Inventory first.
+        inserted.append(
+            StudentInventory.objects.create(
+                student=student,
+                academic_year=year,
+                form_revision=revision,
+            )
+        )
+        return revision
+
+    monkeypatch.setattr(
+        inventory_services, "_active_inventory_revision", revision_after_concurrent_insert
+    )
+
+    item = ensure_current_inventory(student=student, context=context(student))
+
+    assert item.pk == inserted[0].pk
+    assert StudentInventory.objects.filter(student=student, academic_year=year).count() == 1
+    assert item.support_profile is not None

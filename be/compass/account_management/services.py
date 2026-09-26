@@ -289,7 +289,10 @@ def _lock_users(*, actor_id, target_id=None) -> tuple[User, User | None]:
     if target_id is not None:
         ids.add(target_id)
     locked = (
-        User.objects.select_for_update().select_related("role").filter(pk__in=ids).order_by("id")
+        User.objects.select_for_update(of=("self",))
+        .select_related("role")
+        .filter(pk__in=ids)
+        .order_by("id")
     )
     users = {user.pk: user for user in locked}
     actor = users.get(actor_id)
@@ -354,17 +357,42 @@ def _admin_mutation(*, actor: User, actor_session, target_id=None, authority_cha
         yield locked_actor, locked_target
 
 
-def _active_manager_count() -> int:
-    count = 0
-    candidates = User.objects.filter(is_active=True).select_related("role")
-    for candidate in candidates:
-        if user_has_capability(candidate, ACCOUNT_MANAGE_CAPABILITY):
-            count += 1
-    return count
+def _active_manager_candidates():
+    """Accounts that could hold accounts.manage through a role, designation, or grant override.
+
+    Only these accounts need the exact effective-capability check; scanning every active account
+    (thousands of Students) is unnecessary because none of them can hold the capability otherwise.
+    """
+
+    return (
+        User.objects.filter(is_active=True)
+        .filter(
+            Q(role__capability_grants__capability__code=ACCOUNT_MANAGE_CAPABILITY)
+            | Q(
+                designation_assignments__designation__capability_grants__capability__code=(
+                    ACCOUNT_MANAGE_CAPABILITY
+                )
+            )
+            | Q(
+                capability_overrides__capability__code=ACCOUNT_MANAGE_CAPABILITY,
+                capability_overrides__effect=UserCapabilityOverride.Effect.GRANT,
+            )
+        )
+        .distinct()
+        .select_related("role")
+        .order_by("id")
+    )
+
+
+def _active_manager_exists() -> bool:
+    return any(
+        user_has_capability(candidate, ACCOUNT_MANAGE_CAPABILITY)
+        for candidate in _active_manager_candidates()
+    )
 
 
 def _ensure_active_manager_remains() -> None:
-    if _active_manager_count() == 0:
+    if not _active_manager_exists():
         raise LastAccountManagerError(
             "the operation would leave no active account with accounts.manage"
         )

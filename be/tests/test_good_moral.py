@@ -1099,7 +1099,7 @@ def test_same_good_moral_key_changed_body_and_cross_variant_conflict():
         **good_moral_create_headers(client, key),
     )
     assert changed.status_code == 409
-    assert changed.json()["error"]["code"] == "good_moral_conflict"
+    assert changed.json()["error"]["code"] == "idempotency_key_conflict"
 
     current.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
     current.save(update_fields=["student_lifecycle_status", "updated_at"])
@@ -1116,7 +1116,7 @@ def test_same_good_moral_key_changed_body_and_cross_variant_conflict():
         **good_moral_create_headers(client, key),
     )
     assert cross_variant.status_code == 409
-    assert cross_variant.json()["error"]["code"] == "good_moral_conflict"
+    assert cross_variant.json()["error"]["code"] == "idempotency_key_conflict"
     assert GoodMoralRequest.objects.filter(student=current).count() == 1
 
     graduate = make_user(
@@ -1146,7 +1146,7 @@ def test_same_good_moral_key_changed_body_and_cross_variant_conflict():
         **good_moral_create_headers(graduate_client, graduate_key),
     )
     assert graduate_changed.status_code == 409
-    assert graduate_changed.json()["error"]["code"] == "good_moral_conflict"
+    assert graduate_changed.json()["error"]["code"] == "idempotency_key_conflict"
     assert GoodMoralRequest.objects.filter(student=graduate).count() == 1
 
 

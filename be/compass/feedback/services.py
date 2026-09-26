@@ -271,7 +271,10 @@ def create_customer_feedback(
     _validate_student(student, "feedback.submit_customer_feedback")
     with transaction.atomic():
         locked = (
-            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
         )
         if locked is None:
             raise FeedbackNotFound("The Student account was not found.")
@@ -350,7 +353,10 @@ def create_csm_response(
     normalized = _normalize_csm(values)
     with transaction.atomic():
         locked = (
-            User.objects.select_for_update().select_related("role").filter(pk=student.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=student.pk)
+            .first()
         )
         if locked is None:
             raise FeedbackNotFound("The Student account was not found.")

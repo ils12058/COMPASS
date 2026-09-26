@@ -24,6 +24,7 @@ import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { inventoryErrorMessage } from "@/features/inventory/inventory-shared";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { routineErrorMessage } from "@/features/routine-interviews/routine-interviews-shared";
+import { PENDING_ROUTINE_EVALUATIONS, REQUESTED_GOOD_MORAL } from "@/features/portal/home/overview-presentation";
 
 export type OverviewAttentionItem = {
   id: string;
@@ -314,7 +315,7 @@ export function useOverviewAttention(
         "counselor-routine-unavailable",
         "Routine evaluation preview",
         routineErrorMessage(counselorRoutines.error, "Routine evaluation previews could not be loaded."),
-        "/portal/routine-interviews",
+        PENDING_ROUTINE_EVALUATIONS,
         "Open Routine Interviews",
         () => void counselorRoutines.refetch(),
       );
@@ -325,7 +326,7 @@ export function useOverviewAttention(
         id: "counselor-routine-summary",
         title: "Routine evaluations pending",
         detail: "Your Overview summary still reports pending evaluations. Open the workspace to review them.",
-        href: "/portal/routine-interviews",
+        href: PENDING_ROUTINE_EVALUATIONS,
         actionLabel: "Open Routine Interviews",
       });
     }
@@ -354,7 +355,7 @@ export function useOverviewAttention(
         "good-moral-unavailable",
         "Good Moral request preview",
         goodMoralErrorMessage(goodMoralRequests.error, "Good Moral request previews could not be loaded."),
-        "/portal/good-moral",
+        REQUESTED_GOOD_MORAL,
         "Open Good Moral",
         () => void goodMoralRequests.refetch(),
       );
@@ -365,7 +366,7 @@ export function useOverviewAttention(
         id: "good-moral-summary",
         title: "Good Moral requests",
         detail: "Your Overview summary still reports requests awaiting issuance. Open the workspace to review them.",
-        href: "/portal/good-moral",
+        href: REQUESTED_GOOD_MORAL,
         actionLabel: "Open Good Moral",
       });
     }

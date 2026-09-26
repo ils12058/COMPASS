@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { CallSlipsPage, type CallSlipListFilters, type CallSlipStudentListFilters } from "@/features/call-slips/call-slips-page";
-import { CallSlipDestinationTypeValue } from "@/lib/api/generated/model";
+import { CallSlipDestinationTypeValue, CallSlipLifecycleStateValue } from "@/lib/api/generated/model";
 
 type SearchValue = string | string[] | undefined;
 
@@ -28,6 +28,8 @@ export default async function Page({
   const destination = destinationValue === CallSlipDestinationTypeValue.GUIDANCE_OFFICE || destinationValue === CallSlipDestinationTypeValue.OTHER
     ? destinationValue
     : "";
+  const stateValue = singleValue(query.state);
+  const state = Object.values(CallSlipLifecycleStateValue).find((value) => value === stateValue) ?? "";
   const page = pageNumber(singleValue(query.page));
   const fromDate = singleValue(query.from_date);
   const toDate = singleValue(query.to_date);
@@ -37,9 +39,10 @@ export default async function Page({
     fromDate,
     toDate,
     includeVoided: singleValue(query.include_voided) === "true",
+    state,
     page,
   };
-  const studentFilters: CallSlipStudentListFilters = { fromDate, toDate, page };
+  const studentFilters: CallSlipStudentListFilters = { fromDate, toDate, state, page };
 
   return (
     <Suspense fallback={<Skeleton className="h-96 w-full" />}>

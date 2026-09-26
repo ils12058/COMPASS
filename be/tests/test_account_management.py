@@ -512,7 +512,7 @@ def test_last_manager_and_self_target_safety_are_enforced():
     ).exists()
 
     target.refresh_from_db()
-    with patch.object(management_services, "_active_manager_count", return_value=0):
+    with patch.object(management_services, "_active_manager_exists", return_value=False):
         blocked = client.put(
             f"/api/v1/accounts/{target.pk}/role",
             data=json.dumps({"role": "COUNSELOR"}),
@@ -1341,3 +1341,29 @@ def test_clean_institutional_officer_can_change_role_without_inferred_gco_relati
     assert officer.role.code == "COUNSELOR"
     assert not CounselorResponsibility.objects.filter(counselor=officer).exists()
     assert not StaffSupervision.objects.filter(supervisor=officer).exists()
+
+
+@pytest.mark.django_db
+def test_last_manager_check_only_evaluates_accounts_that_can_hold_manage_authority(
+    django_assert_max_num_queries,
+):
+    from compass.account_management import services as management_services
+    from compass.accounts.models import Capability, UserCapabilityOverride
+
+    sync_policy()
+    for index in range(25):
+        make_user(email=f"bulk-student-{index}@example.edu", role="STUDENT")
+    admin = make_user(email="candidate-admin@example.edu", role="IT_ADMIN")
+    granted = make_user(email="candidate-override@example.edu", role="COUNSELOR")
+    UserCapabilityOverride.objects.create(
+        user=granted,
+        capability=Capability.objects.get(code="accounts.manage"),
+        effect=UserCapabilityOverride.Effect.GRANT,
+        reason="Temporary coverage",
+        created_by=admin,
+    )
+
+    candidates = set(management_services._active_manager_candidates())
+    assert candidates == {admin, granted}
+    with django_assert_max_num_queries(6):
+        assert management_services._active_manager_exists() is True

@@ -298,6 +298,9 @@ class CounselorRoutineDetailResponse(StrictSchema):
     form_revision: RoutineFormRevisionSummary | None
     appointment: RoutineAppointmentSummary | None
     counseling_encounter: RoutineEncounterSummary | None
+    # Whether this Counselor can open the related Counseling Context now: the linked
+    # Appointment's Context, or the direct Routine Interview's Context.
+    counseling_context_available: bool
     created_at: datetime
 
 
@@ -516,7 +519,26 @@ def _counselor_summary(item) -> dict[str, object]:
     }
 
 
-def _counselor_detail(item) -> dict[str, object]:
+def _counseling_context_available(actor, item) -> bool:
+    from compass.counseling.context_access import (
+        CounselingContextSource,
+        counseling_context_available,
+    )
+
+    if item.appointment_id is not None:
+        return counseling_context_available(
+            actor=actor,
+            anchor_type=CounselingContextSource.APPOINTMENT,
+            anchor_id=item.appointment_id,
+        )
+    return counseling_context_available(
+        actor=actor,
+        anchor_type=CounselingContextSource.ROUTINE_INTERVIEW,
+        anchor_id=item.pk,
+    )
+
+
+def _counselor_detail(item, *, actor) -> dict[str, object]:
     return {
         "id": item.pk,
         "student": _person(item.student),
@@ -532,6 +554,7 @@ def _counselor_detail(item) -> dict[str, object]:
         "form_revision": _revision(item),
         "appointment": _appointment(item),
         "counseling_encounter": _encounter(item),
+        "counseling_context_available": _counseling_context_available(actor, item),
         "created_at": item.created_at,
     }
 
@@ -850,7 +873,7 @@ def routine_interviews_get_assigned(request, routine_interview_id: UUID):
         )
     except RoutineInterviewError as exc:
         _raise(exc)
-    return _counselor_detail(item)
+    return _counselor_detail(item, actor=request.auth_user)
 
 
 @router.put(
@@ -873,7 +896,7 @@ def routine_interviews_replace_assigned_evaluation(
         )
     except RoutineInterviewError as exc:
         _raise(exc)
-    return _counselor_detail(item)
+    return _counselor_detail(item, actor=request.auth_user)
 
 
 @router.post(
@@ -897,4 +920,4 @@ def routine_interviews_finalize_assigned_evaluation(
         )
     except RoutineInterviewError as exc:
         _raise(exc)
-    return _counselor_detail(item)
+    return _counselor_detail(item, actor=request.auth_user)

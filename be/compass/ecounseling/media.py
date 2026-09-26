@@ -79,6 +79,17 @@ MEDIA_WEBHOOK_TYPES = frozenset(
 )
 
 
+# A late or duplicate "started" delivery must not regress a capture that is already stopping,
+# stopped, or finished (ADR-026). STOP_REQUESTED stays pending until provider reconciliation.
+_NO_REGRESSION_TO_ACTIVE = frozenset(
+    {
+        MediaCaptureStatus.STOP_REQUESTED,
+        MediaCaptureStatus.STOPPED,
+        MediaCaptureStatus.READY,
+    }
+)
+
+
 class ECounselingConsentNotFound(ECounselingError):
     pass
 
@@ -1053,10 +1064,7 @@ def process_media_webhook_event(
                 capture.stop_requested_at = timezone.now()
                 capture.error_code = "CONSENT_NOT_EFFECTIVE"
                 stop_for_policy = True
-            elif capture.status not in {
-                MediaCaptureStatus.STOPPED,
-                MediaCaptureStatus.READY,
-            }:
+            elif capture.status not in _NO_REGRESSION_TO_ACTIVE:
                 capture.status = MediaCaptureStatus.ACTIVE
                 capture.error_code = None
 
@@ -1103,10 +1111,7 @@ def process_media_webhook_event(
                     "CONSENT_NOT_EFFECTIVE" if not live_ok else "STORAGE_CONSENT_NOT_EFFECTIVE"
                 )
                 stop_for_policy = True
-            elif capture.status not in {
-                MediaCaptureStatus.STOPPED,
-                MediaCaptureStatus.READY,
-            }:
+            elif capture.status not in _NO_REGRESSION_TO_ACTIVE:
                 capture.status = MediaCaptureStatus.ACTIVE
                 capture.error_code = None
 

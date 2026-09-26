@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum, StrEnum
+from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
@@ -11,8 +11,13 @@ from ninja import File, Router, Schema, Status
 from ninja.files import UploadedFile
 from pydantic import ConfigDict
 
-from compass.accounts.models import StudentLifecycleStatus, UserCapabilityOverride
-from compass.accounts.policy import CAPABILITY_CODES, DESIGNATION_CODES, ROLE_CODES
+from compass.accounts.api_codes import (
+    CapabilityCode,
+    DesignationCode,
+    RoleCode,
+    StudentLifecycleCode,
+)
+from compass.accounts.models import UserCapabilityOverride
 from compass.audit.context import AuditContext
 from compass.authentication.abuse import AuthenticationRateLimited
 from compass.authentication.api import session_auth
@@ -79,17 +84,6 @@ from .services import (
 )
 
 router = Router(tags=["accounts"])
-
-
-def _code_enum(name: str, codes: frozenset[str]) -> type[Enum]:
-    members = {code.replace(".", "_").replace("-", "_").upper(): code for code in sorted(codes)}
-    return Enum(name, members, module=__name__, type=str)
-
-
-RoleCode = _code_enum("RoleCode", ROLE_CODES)
-DesignationCode = _code_enum("DesignationCode", DESIGNATION_CODES)
-CapabilityCode = _code_enum("CapabilityCode", CAPABILITY_CODES)
-StudentLifecycleCode = _code_enum("StudentLifecycleCode", frozenset(StudentLifecycleStatus.values))
 
 
 class StrictSchema(Schema):

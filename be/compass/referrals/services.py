@@ -368,7 +368,10 @@ def create_referral(
 
     with transaction.atomic():
         locked_actor = (
-            User.objects.select_for_update().select_related("role").filter(pk=actor.pk).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=actor.pk)
+            .first()
         )
         if locked_actor is None:
             raise ReferralNotPermitted("The authenticated Guidance actor no longer exists.")
@@ -385,7 +388,10 @@ def create_referral(
             return _detail_queryset().get(pk=existing.pk)
 
         student = (
-            User.objects.select_for_update().select_related("role").filter(pk=student_id).first()
+            User.objects.select_for_update(of=("self",))
+            .select_related("role")
+            .filter(pk=student_id)
+            .first()
         )
         student = _validate_student(student)
         if not _student_in_scope(locked_actor, student.pk):
@@ -788,10 +794,13 @@ def void_referral(
 
         from compass.call_slips.models import CallSlip
 
-        if CallSlip.objects.filter(
-            referral_id=item.pk,
-            voided_at__isnull=True,
-        ).exists():
+        linked = CallSlip.objects.filter(referral_id=item.pk, voided_at__isnull=True).first()
+        if linked is not None:
+            if linked.interview_ended_at is not None:
+                raise ReferralVoidConflict(
+                    "A Referral with a completed linked Call Slip is historical and cannot be "
+                    "voided."
+                )
             raise ReferralVoidConflict(
                 "Void the active linked Call Slip before voiding this Referral."
             )

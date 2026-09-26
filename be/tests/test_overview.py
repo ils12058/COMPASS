@@ -170,6 +170,7 @@ def make_call_slip(
         course_year_snapshot="BSIS 4",
         destination_type=CallSlipDestinationType.GUIDANCE_OFFICE,
         report_at=timezone.now() + timedelta(days=1),
+        issuance_mode="LIVE",
         issued_by=issuer,
         issued_by_name_snapshot=issuer.get_full_name(),
         form_revision=revision,
