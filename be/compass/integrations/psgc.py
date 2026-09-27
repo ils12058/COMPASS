@@ -17,6 +17,7 @@ logger = logging.getLogger("compass.psgc")
 
 _CODE_RE = re.compile(r"^\d{10}$")
 _VERSION_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_USER_AGENT = "COMPASS-PSGC-Client/1.0 (+https://staging-api.compass-gco.com)"
 _PAGE_SIZE = 1000
 _MAX_PAGES = 100
 
@@ -133,7 +134,11 @@ class PSGCClient:
             f"{self.base_url}/{quote(self.version, safe='')}/{quote(level, safe='')}"
             f"?{urlencode(query)}"
         )
-        request = Request(url, headers={"Accept": "application/json"}, method="GET")
+        request = Request(
+            url,
+            headers={"Accept": "application/json", "User-Agent": _USER_AGENT},
+            method="GET",
+        )
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:
                 raw = response.read()

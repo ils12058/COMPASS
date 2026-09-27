@@ -178,6 +178,17 @@ def test_daily_webhook_hmac_verification_accepts_valid_and_rejects_invalid_or_st
         now_epoch=now,
     )
 
+    timestamp_milliseconds = str(int(now * 1000))
+    signature_milliseconds = _signature(secret, timestamp_milliseconds, body)
+    verify_daily_webhook(
+        raw_body=body,
+        signature=signature_milliseconds,
+        timestamp=timestamp_milliseconds,
+        secret_b64=secret_b64,
+        max_age_seconds=300,
+        now_epoch=now,
+    )
+
     with pytest.raises(DailyWebhookSignatureInvalid):
         verify_daily_webhook(
             raw_body=body,

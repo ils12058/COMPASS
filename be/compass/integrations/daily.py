@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import json
 import logging
+import math
 import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
@@ -220,11 +221,15 @@ def verify_daily_webhook(
         timestamp_value = float(timestamp)
     except (ValueError, TypeError) as exc:
         raise DailyWebhookSignatureInvalid("Daily webhook signature is invalid.") from exc
-    if not secret or max_age_seconds <= 0:
+    if not secret or max_age_seconds <= 0 or not math.isfinite(timestamp_value):
         raise DailyWebhookSignatureInvalid("Daily webhook signature is invalid.")
     current = time.time() if now_epoch is None else float(now_epoch)
     if abs(current - timestamp_value) > max_age_seconds:
-        raise DailyWebhookSignatureInvalid("Daily webhook timestamp is stale.")
+        # Daily currently sends X-Webhook-Timestamp in Unix milliseconds. Keep signing
+        # the exact header string below, but normalize milliseconds for replay-age checks.
+        timestamp_seconds = timestamp_value / 1000
+        if abs(current - timestamp_seconds) > max_age_seconds:
+            raise DailyWebhookSignatureInvalid("Daily webhook timestamp is stale.")
 
     signed = timestamp.encode("utf-8") + b"." + raw_body
     expected = base64.b64encode(hmac.new(secret, signed, hashlib.sha256).digest()).decode("ascii")
