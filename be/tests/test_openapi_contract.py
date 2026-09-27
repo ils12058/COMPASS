@@ -1930,11 +1930,7 @@ def test_privacy_governance_openapi_is_reduced_to_retained_system_controls() -> 
         assert not any(name.startswith(removed_prefix) for name in schemas)
 
     serialized = json.dumps(
-        {
-            name: value
-            for name, value in schemas.items()
-            if name.startswith("PrivacyActivity")
-        }
+        {name: value for name, value in schemas.items() if name.startswith("PrivacyActivity")}
     ).lower()
     for forbidden in (
         "raw_metadata",
@@ -2515,7 +2511,9 @@ def test_good_moral_request_creation_idempotency_openapi_contract() -> None:
             assert error_schema["$ref"].endswith("/APIErrorResponse")
 
 
-def test_privacy_expansion_contract_keeps_notice_boundaries_and_typed_retention_categories() -> None:
+def test_privacy_expansion_contract_keeps_notice_boundaries_and_typed_retention_categories() -> (
+    None
+):
     schema = _generated_schema()
     public = _operation(schema, "/api/v1/privacy/public-notices", "get")
     self_list = _operation(schema, "/api/v1/privacy/my-notices", "get")
