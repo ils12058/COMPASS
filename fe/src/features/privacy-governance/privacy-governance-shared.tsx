@@ -3,7 +3,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 import {
   AlertDialog,
@@ -13,7 +13,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -26,16 +25,8 @@ import {
   privacyErrorMessage,
   type PrivacyFieldLabels,
 } from "@/features/privacy-governance/privacy-governance-errors";
-import {
-  incidentStatusLabels,
-  reviewStatusLabels,
-  revisionStatusLabels,
-} from "@/features/privacy-governance/privacy-governance-presentation";
-import type {
-  IncidentStatusValue,
-  ReviewStatusValue,
-  RevisionStatusValue,
-} from "@/lib/api/generated/model";
+import { revisionStatusLabels } from "@/features/privacy-governance/privacy-governance-presentation";
+import type { RevisionStatusValue } from "@/lib/api/generated/model";
 
 export const PRIVACY_PAGE_SIZE = 20;
 
@@ -220,24 +211,10 @@ export function ActiveBadge({ active }: { active: boolean }) {
   );
 }
 
-export function ReviewStatusBadge({ status }: { status: ReviewStatusValue }) {
-  return (
-    <PrivacyBadge tone={status === "OPEN" ? "info" : "neutral"}>
-      {reviewStatusLabels[status]}
-    </PrivacyBadge>
-  );
-}
-
 export function RevisionStatusBadge({ status }: { status: RevisionStatusValue }) {
   const tone: BadgeTone =
     status === "PUBLISHED" ? "success" : status === "DRAFT" ? "warning" : "neutral";
   return <PrivacyBadge tone={tone}>{revisionStatusLabels[status]}</PrivacyBadge>;
-}
-
-export function IncidentStatusBadge({ status }: { status: IncidentStatusValue }) {
-  const tone: BadgeTone =
-    status === "RESOLVED" ? "neutral" : status === "OPEN" ? "warning" : "info";
-  return <PrivacyBadge tone={tone}>{incidentStatusLabels[status]}</PrivacyBadge>;
 }
 
 export function PrivacyListSkeleton({ rows = 5, label }: { rows?: number; label: string }) {
@@ -377,113 +354,6 @@ export function CategoryList({ items }: { items: readonly string[] }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-const MAX_CATEGORY_ITEMS = 32;
-const MAX_CATEGORY_LENGTH = 80;
-
-export function CategoryInput({
-  id,
-  label,
-  hint,
-  values,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  values: string[];
-  onChange: (values: string[]) => void;
-}) {
-  const [draft, setDraft] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const hintId = `${id}-hint`;
-  const messageId = `${id}-message`;
-  const full = values.length >= MAX_CATEGORY_ITEMS;
-
-  function add() {
-    const value = draft.trim();
-    if (!value) return;
-    if (values.some((item) => item.toLocaleLowerCase() === value.toLocaleLowerCase())) {
-      setMessage(`"${value}" is already listed.`);
-      return;
-    }
-    onChange([...values, value]);
-    setDraft("");
-    setMessage(null);
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      add();
-    }
-  }
-
-  return (
-    <fieldset className="grid gap-2">
-      <legend className="text-sm font-medium text-ink">{label}</legend>
-      {hint ? (
-        <p id={hintId} className="text-xs leading-5 text-muted">
-          {hint}
-        </p>
-      ) : null}
-      {values.length > 0 ? (
-        <ul className="flex flex-wrap gap-2" aria-label={label}>
-          {values.map((item) => (
-            <li
-              key={item}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-surface-subtle py-0.5 pl-2.5 pr-1 text-sm text-ink"
-            >
-              <span className="break-all">{item}</span>
-              <button
-                type="button"
-                className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-sm text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                onClick={() => onChange(values.filter((value) => value !== item))}
-              >
-                <span aria-hidden="true">×</span>
-                <span className="sr-only">Remove {item}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <div className="flex max-w-xl gap-2">
-        <Input
-          id={id}
-          value={draft}
-          maxLength={MAX_CATEGORY_LENGTH}
-          disabled={full}
-          aria-describedby={[hint ? hintId : null, message ? messageId : null]
-            .filter(Boolean)
-            .join(" ") || undefined}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            setMessage(null);
-          }}
-          onKeyDown={onKeyDown}
-        />
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={full || !draft.trim()}
-          onClick={add}
-        >
-          Add
-        </Button>
-      </div>
-      {message ? (
-        <p id={messageId} role="status" className="text-xs text-muted">
-          {message}
-        </p>
-      ) : null}
-      {full ? (
-        <p className="text-xs text-muted">
-          {MAX_CATEGORY_ITEMS} entries is the maximum. Remove one to add another.
-        </p>
-      ) : null}
-    </fieldset>
   );
 }
 
@@ -686,9 +556,8 @@ export const tableRowHeaderClass = "px-3 py-4 text-left align-top font-normal";
 export const recordLinkClass =
   "font-semibold text-ink hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
-// Generated query keys start with the request path. Invalidating a record
-// family (list, details, and nested lists) keeps embedded summaries such as a
-// Retention Policy name on Processing Activities current after a change.
+// Generated query keys start with the request path. Invalidating a retained
+// record family keeps list/detail projections synchronized after mutations.
 export function invalidatePrivacyRecords(queryClient: QueryClient, ...paths: string[]) {
   return queryClient.invalidateQueries({
     predicate: (query) => {
@@ -702,13 +571,10 @@ export function invalidatePrivacyRecords(queryClient: QueryClient, ...paths: str
 }
 
 export const privacyPaths = {
-  processingActivities: "/api/v1/privacy/processing-activities",
-  reviews: "/api/v1/privacy/reviews",
   retentionPolicies: "/api/v1/privacy/retention-policies",
   notices: "/api/v1/privacy/notices",
   noticeRevisions: "/api/v1/privacy/notice-revisions",
   myNotices: "/api/v1/privacy/my-notices",
   publicNotices: "/api/v1/privacy/public-notices",
-  incidents: "/api/v1/privacy/incidents",
   activity: "/api/v1/privacy/activity",
 } as const;
