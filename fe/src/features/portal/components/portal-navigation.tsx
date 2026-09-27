@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { canManageAnnouncements } from "@/features/announcements/announcements-access";
 import { hasAvailabilityWorkspace } from "@/features/availability/availability-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
@@ -17,6 +18,7 @@ import { canAttemptReports } from "@/features/reports/reports-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { hasPrivacyGovernanceWorkspace } from "@/features/privacy-governance/privacy-governance-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
+import { canManageResources } from "@/features/resources/resources-access";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { hasServicesWorkspace } from "@/features/services/services-access";
 import {
@@ -105,6 +107,8 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
     "platform_operations.view",
   );
   const hasReports = canAttemptReports(user);
+  const hasAnnouncements = canManageAnnouncements(user);
+  const hasResources = canManageResources(user);
   const hasPrivacyGovernance = hasPrivacyGovernanceWorkspace(user);
 
   const guidanceLinks: { href: string; label: string; visible: boolean }[] = [
@@ -180,6 +184,20 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
                   {link.label}
                 </NavItem>
               ))}
+          </NavSection>
+        ) : null}
+        {hasAnnouncements || hasResources ? (
+          <NavSection label="Content">
+            {hasAnnouncements ? (
+              <NavItem href="/portal/announcements" current={isWithin("/portal/announcements")} onNavigate={onNavigate}>
+                Announcements
+              </NavItem>
+            ) : null}
+            {hasResources ? (
+              <NavItem href="/portal/resources" current={isWithin("/portal/resources")} onNavigate={onNavigate}>
+                Resources
+              </NavItem>
+            ) : null}
           </NavSection>
         ) : null}
         {hasReports ? (

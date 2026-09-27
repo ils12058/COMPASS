@@ -1,5 +1,6 @@
 "use client";
 
+import { OverviewAnnouncements } from "@/features/portal/home/overview-announcements";
 import { OverviewAttention } from "@/features/portal/home/overview-attention";
 import { OverviewQuickAccess } from "@/features/portal/home/overview-quick-access";
 import { OverviewSummary } from "@/features/portal/home/overview-summary";
@@ -62,6 +63,7 @@ export function PortalHome() {
       />
       <OverviewAttention data={attention} />
       <OverviewUpcoming items={upcoming} />
+      <OverviewAnnouncements />
       <OverviewQuickAccess links={quickAccess} />
     </section>
   );

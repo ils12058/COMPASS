@@ -12,7 +12,12 @@ import {
 } from "@/features/public/shared/presentation";
 import { PublicPagination } from "@/features/public/shared/public-pagination";
 import { PublicListSkeleton, PublicSectionError } from "@/features/public/shared/public-state";
-import { useResourcesListPublic } from "@/lib/api/generated/resources/resources";
+import {
+  isSignedOutError,
+  useReaderAudience,
+  useSessionRecheck,
+} from "@/features/public/shared/use-reader-audience";
+import { useResourcesListPublic, useResourcesListVisible } from "@/lib/api/generated/resources/resources";
 import type { ResourceCategoryValue, ResourceKindValue } from "@/lib/api/generated/model";
 
 type ResourceListProps =
@@ -29,10 +34,19 @@ export function ResourceList(props: ResourceListProps) {
   const category = isPreview ? undefined : props.category;
   const kind = isPreview ? undefined : props.kind;
   const page = isPreview ? 1 : props.page;
-  const query = useResourcesListPublic(
-    { category, kind, page, page_size: isPreview ? 4 : 8 },
-    { query: { placeholderData: keepPreviousData } },
-  );
+  const params = { category, kind, page, page_size: isPreview ? 4 : 8 };
+  const audience = useReaderAudience();
+  const account = useResourcesListVisible(params, {
+    query: { enabled: audience === "account", placeholderData: keepPreviousData, retry: false },
+  });
+  const signedOut = isSignedOutError(account.error);
+  useSessionRecheck(signedOut);
+  const readsAccount = audience === "account" && !signedOut;
+  const publicQuery = useResourcesListPublic(params, {
+    query: { enabled: audience === "public" || signedOut, placeholderData: keepPreviousData },
+  });
+  const query = readsAccount ? account : publicQuery;
+  const loading = audience === "pending" || query.isPending;
 
   const buildPageHref = (nextPage: number) => {
     const params = new URLSearchParams();
@@ -46,21 +60,25 @@ export function ResourceList(props: ResourceListProps) {
     <div>
       {!isPreview ? <ResourceFilters category={category} kind={kind} /> : null}
 
-      {query.isPending ? <PublicListSkeleton rows={isPreview ? 4 : 6} /> : null}
+      {loading ? <PublicListSkeleton rows={isPreview ? 4 : 6} /> : null}
 
-      {query.isError ? (
+      {!loading && query.isError ? (
         <PublicSectionError
-          message="Public resources could not be loaded."
+          message={readsAccount ? "Resources could not be loaded." : "Public resources could not be loaded."}
           onRetry={() => void query.refetch()}
         />
       ) : null}
 
-      {query.isSuccess && query.data.data.items.length === 0 ? (
+      {!loading && query.isSuccess && query.data.data.items.length === 0 ? (
         <div className="border-y border-border py-6">
           <p className="text-sm leading-6 text-muted">
             {category || kind
-              ? "No public resources match the selected filters."
-              : "No public resources are available right now."}
+              ? readsAccount
+                ? "No resources match the selected filters."
+                : "No public resources match the selected filters."
+              : readsAccount
+                ? "No resources are available right now."
+                : "No public resources are available right now."}
           </p>
           {category || kind ? (
             <Link className="mt-3 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/resources">
@@ -70,7 +88,7 @@ export function ResourceList(props: ResourceListProps) {
         </div>
       ) : null}
 
-      {query.isSuccess && query.data.data.items.length > 0 ? (
+      {!loading && query.isSuccess && query.data.data.items.length > 0 ? (
         <div aria-busy={query.isFetching}>
           <ul className={isPreview ? "grid gap-x-10 md:grid-cols-2" : "divide-y divide-border border-y border-border"}>
             {query.data.data.items.map((resource) => (

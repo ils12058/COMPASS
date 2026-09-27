@@ -176,6 +176,23 @@ h6 {
   padding: 0;
 }
 
+/* The Markdown editor's writing surface uses the published-page typography;
+   its frame shows focus, so the editable itself draws no outline. */
+.markdown-editor-content {
+  min-height: 18rem;
+  padding: 1rem 1.25rem;
+  outline: none;
+}
+
+.markdown-editor-content > :first-child {
+  margin-top: 0;
+}
+
+.markdown-editor-content .ProseMirror-selectednode {
+  outline: 2px solid var(--compass-focus);
+  outline-offset: 2px;
+}
+
 @media (max-width: 639px) {
   .public-hero-campus {
     background-position: 62% 100%;
