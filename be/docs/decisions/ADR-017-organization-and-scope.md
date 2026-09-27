@@ -1,5 +1,10 @@
 # ADR-017: Organization and default responsibility scope
 
+> **Refined by ADR-064 (2026-09-27).** Campus, College/top-level academic unit, and Program are now
+> institutionally canonical reference structure synchronized by deployment. Runtime management
+> remains only for Student affiliation, Counselor responsibility, and Staff supervision.
+
+
 ## Context
 
 COMPASS needs enough institutional structure to route students to the people normally responsible for them without turning organizational affiliation into permanent authorization. Roles, designations, capabilities, organizational responsibility, and future resource/case assignment are separate concepts.
