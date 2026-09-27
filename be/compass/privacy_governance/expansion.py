@@ -194,9 +194,7 @@ def _record_categories(value: object) -> list[str]:
         try:
             code = RetentionRecordCategory(item).value
         except ValueError as exc:
-            raise PrivacyInputError(
-                "record_categories must use supported category codes"
-            ) from exc
+            raise PrivacyInputError("record_categories must use supported category codes") from exc
         if code in seen:
             raise PrivacyInputError("record_categories must not contain duplicate items")
         seen.add(code)
