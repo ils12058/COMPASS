@@ -321,6 +321,14 @@ introduced by PR #28, and adds Privacy Governance focused tests.
 Temporary narrow rechecks may still be used after an isolated failure, but the checked-in workflow
 must represent the canonical coverage before merge.
 
-## Later expansion
+## Later decisions
 
-ADR-061 adds versioned Privacy Notices, exact-revision acknowledgment, a human-readable Retention Policy register, a descriptive Processing Activity choice summary, and global Privacy Review discovery. Those later records do not change this ADR's DPO designation boundary or introduce automatic retention execution. Statements above describing three initial persistence models, nine initial privacy mutation actions, and excluded broader workflows describe the original foundation at the time it was accepted.
+ADR-061 added versioned Privacy Notices, exact-revision acknowledgment, and descriptive Retention
+Policies.
+
+ADR-065 subsequently narrows the live Privacy Governance subsystem. Processing Activities, Privacy
+Reviews/PIAs, and Privacy Incidents are no longer live COMPASS workflows because no adopted
+institutional source process currently makes COMPASS authoritative for those registers. The DPO
+designation/capability boundary, sensitive artifact release auditing, and curated Privacy & Security
+Activity projection established here remain authoritative. Historical audit actions may still be
+presented safely, but no live Processing/Review/Incident workflow remains.
