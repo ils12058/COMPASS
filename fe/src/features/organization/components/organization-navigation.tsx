@@ -25,7 +25,7 @@ function NavLink({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
-// Rendered inside OrganizationGate, so management tabs are always available.
+// Rendered inside OrganizationGate: reference structure is read-only, while relationship tabs remain manageable.
 export function OrganizationNavigation() {
   const { user } = usePortalSession();
   const canViewStructure = canViewOrganizationStructure(user);
