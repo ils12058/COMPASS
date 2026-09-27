@@ -4,6 +4,7 @@ from pathlib import Path
 
 from compass.common.build_metadata import read_project_version, validate_runtime_build_identity
 from compass.common.config import env, env_bool, env_csv, env_float, env_int, required_env
+from compass.routine_interviews.crypto import keyring_reuses_secret, parse_keyring
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -332,6 +333,15 @@ if AUTH_TOTP_INTERVAL_SECONDS < 1 or AUTH_TOTP_VALID_WINDOW < 0 or AUTH_TOTP_DIG
 AUTH_TOTP_ENCRYPTION_KEY = env("AUTH_TOTP_ENCRYPTION_KEY", "")
 if not IS_LOCAL_STAGING and not AUTH_TOTP_ENCRYPTION_KEY:
     raise ValueError("AUTH_TOTP_ENCRYPTION_KEY is required in live-staging")
+
+# Routine Interview content has its own ordered Fernet keyring (ADR-066): the first key encrypts,
+# every listed key decrypts. PostgreSQL holds only ciphertext for that content, so the keyring is
+# required in every environment and there is no fallback key.
+ROUTINE_INTERVIEW_ENCRYPTION_KEYS = parse_keyring(required_env("ROUTINE_INTERVIEW_ENCRYPTION_KEYS"))
+if keyring_reuses_secret(ROUTINE_INTERVIEW_ENCRYPTION_KEYS, SECRET_KEY, AUTH_TOTP_ENCRYPTION_KEY):
+    raise ValueError(
+        "ROUTINE_INTERVIEW_ENCRYPTION_KEYS must not reuse SECRET_KEY or AUTH_TOTP_ENCRYPTION_KEY"
+    )
 
 AUTH_EMAIL_OTP_TTL_SECONDS = env_int("AUTH_EMAIL_OTP_TTL_SECONDS", 10 * 60)
 AUTH_EMAIL_OTP_MAX_ATTEMPTS = env_int("AUTH_EMAIL_OTP_MAX_ATTEMPTS", 5)

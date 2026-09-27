@@ -38,6 +38,7 @@ Prerequisites: Podman, `podman-compose` (or a compatible `podman compose` provid
 ```sh
 cd /Users/reynantlntno/Projects/COMPASS/be
 cp .env.example .env
+# Set ROUTINE_INTERVIEW_ENCRYPTION_KEYS in .env first; see "Routine Interview content encryption".
 uv python install 3.13
 uv sync
 podman compose --profile local build web
@@ -267,6 +268,37 @@ domain records. Legacy policies may remain unclassified until deliberately mappe
 reduction migration fails closed before removing obsolete workflow tables when any legacy rows
 exist; those rows require a separate explicit institutional archive/migration decision.
 
+## Routine Interview content encryption
+
+Routine Interview Student Intake and Counselor Evaluation content is stored only as authenticated
+Fernet ciphertext bound to its record and section. Relationships, status, and timestamps remain
+queryable metadata (ADR-066). `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` is required in every environment.
+It is an ordered, comma-separated keyring: the first key encrypts new content and every listed key
+can decrypt. Generate each key without putting it in the repository, and never reuse `SECRET_KEY`
+or `AUTH_TOTP_ENCRYPTION_KEY`:
+
+```sh
+uv run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+```
+
+Content encrypted under a lost key cannot be recovered, including from backups. Deployments must
+therefore escrow every key away from the database host and its backups.
+
+```sh
+uv run python manage.py rotate_routine_interview_encryption --dry-run
+uv run python manage.py rotate_routine_interview_encryption
+```
+
+The dry run verifies every stored token and reports counts only. The real run re-encrypts older
+tokens under the primary key in row-locked batches without changing timestamps, and is safe to
+interrupt and repeat. To rotate:
+
+1. Configure `NEW,OLD` and restart web, worker, and beat.
+2. Run the command until nothing is left to re-encrypt.
+3. Retire `OLD` only after every backup that may hold content under it has expired.
+
+ADR-066 has the first-deployment runbook and the threat model.
+
 ## API Contract
 
 The committed [`../contracts/openapi.json`](../contracts/openapi.json) is the development contract
@@ -309,6 +341,9 @@ Create a deployment-only `.env` from the same settings contract and set:
 - `TURNSTILE_ENABLED=true`, the server-only Turnstile secret, and expected hostname/action values;
 - a valid `AUTH_TOTP_ENCRYPTION_KEY` in deployment secret storage, `AUTH_COOKIE_SECURE=true`,
   and explicit auth cookie/origin policy;
+- a dedicated `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` keyring, escrowed away from database backups;
+  follow the ADR-066 runbook, including a verified backup, before the first deployment that
+  includes `routine_interviews.0003`;
 - `CADDY_ADDRESS` and `CADDY_HEALTH_HOST` to the staging hostname,
   `PROXY_BIND_ADDRESS=0.0.0.0`, and ports 80/443.
 

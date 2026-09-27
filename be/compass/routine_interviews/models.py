@@ -5,8 +5,6 @@ from __future__ import annotations
 import uuid
 
 from django.conf import settings
-from django.contrib.postgres.fields import ArrayField
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from compass.appointments.models import Appointment
@@ -81,48 +79,12 @@ class RoutineInterview(models.Model):
     intake_submitted_at = models.DateTimeField(null=True, blank=True)
     evaluation_finalized_at = models.DateTimeField(null=True, blank=True)
 
-    # Student Intake — source Questions 1–7.
-    coping_with_college_challenges = models.TextField(blank=True, default="")
-    coping_remarks = models.TextField(blank=True, default="")
-    college_experience = models.TextField(blank=True, default="")
-    reason_for_choosing_institution = models.TextField(blank=True, default="")
-    difficulties_encountered = models.TextField(blank=True, default="")
-    stress_anxiety_causes = models.TextField(blank=True, default="")
-    stress_anxiety_management = models.TextField(blank=True, default="")
-    family_description = models.TextField(blank=True, default="")
-    concerns = ArrayField(
-        models.CharField(max_length=40, choices=RoutineConcern.choices),
-        default=list,
-        blank=True,
-    )
-    other_concern_specification = models.TextField(blank=True, default="")
-    concerns_explanation = models.TextField(blank=True, default="")
-    college_adjustment_and_peer_group = models.TextField(blank=True, default="")
-    academic_goals = models.TextField(blank=True, default="")
-    career_goals = models.TextField(blank=True, default="")
-
-    # Counselor Evaluation — explicitly separated by the source "No writing beyond this point".
-    academic_adjustment_rating = models.PositiveSmallIntegerField(
-        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)]
-    )
-    physical_adjustment_rating = models.PositiveSmallIntegerField(
-        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)]
-    )
-    social_adjustment_rating = models.PositiveSmallIntegerField(
-        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)]
-    )
-    spiritual_adjustment_rating = models.PositiveSmallIntegerField(
-        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)]
-    )
-    financial_adjustment_rating = models.PositiveSmallIntegerField(
-        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)]
-    )
-    emotional_adjustment_rating = models.PositiveSmallIntegerField(
-        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)]
-    )
-    other_adjustment = models.TextField(blank=True, default="")
-    special_concern = models.TextField(blank=True, default="")
-    recommendations = models.TextField(blank=True, default="")
+    # Student Intake (source Questions 1–7) and Counselor Evaluation (after the source's "No
+    # writing beyond this point") are stored only as authenticated ciphertext bound to this record
+    # and section (ADR-066). Read and write them through ``content`` after authorizing the actor;
+    # queues, summaries, and counts use the plaintext metadata above and never decrypt.
+    student_intake_ciphertext = models.TextField(editable=False)
+    counselor_evaluation_ciphertext = models.TextField(editable=False)
 
     # Direct creation retries use a persistent, actor-scoped digest rather than response replay.
     direct_creation_key_digest = models.CharField(max_length=64, null=True, blank=True, unique=True)
@@ -165,21 +127,14 @@ class RoutineInterview(models.Model):
                 ),
                 name="routine_finalized_requires_encounter",
             ),
-            *[
-                models.CheckConstraint(
-                    condition=(
-                        models.Q(**{f"{field}__isnull": True})
-                        | (models.Q(**{f"{field}__gte": 1}) & models.Q(**{f"{field}__lte": 10}))
-                    ),
-                    name=f"routine_{prefix}_rating_range",
-                )
-                for field, prefix in (
-                    ("academic_adjustment_rating", "academic"),
-                    ("physical_adjustment_rating", "physical"),
-                    ("social_adjustment_rating", "social"),
-                    ("spiritual_adjustment_rating", "spiritual"),
-                    ("financial_adjustment_rating", "financial"),
-                    ("emotional_adjustment_rating", "emotional"),
-                )
-            ],
+            # Every row carries both sections, even when empty, so a blank column can never be
+            # mistaken for an empty form. Rating ranges are enforced by the API and services.
+            models.CheckConstraint(
+                condition=~models.Q(student_intake_ciphertext=""),
+                name="routine_intake_ciphertext_present",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(counselor_evaluation_ciphertext=""),
+                name="routine_evaluation_ciphertext_present",
+            ),
         ]

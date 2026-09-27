@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from enum import StrEnum
 from typing import NoReturn
@@ -18,11 +19,11 @@ from compass.common.idempotency import request_fingerprint
 from compass.inventory.services import CurrentAcademicYearNotConfigured
 from compass.service_catalog.api import DeliveryMode
 
+from .content import read_evaluation, read_intake
+from .errors import RoutineContentUnavailable
 from .models import RoutineConcern
 from .services import (
     DEFAULT_PAGE_SIZE,
-    EVALUATION_FIELDS,
-    INTAKE_FIELDS,
     InvalidRoutineInterviewInput,
     RoutineInterviewAppointmentInvalid,
     RoutineInterviewCreationConflict,
@@ -55,6 +56,7 @@ from .services import (
 
 router = Router(tags=["routine-interviews"])
 DIRECT_CREATE_ROUTE = "/api/v1/routine-interviews"
+logger = logging.getLogger("compass.routine_interviews")
 
 
 class StrictSchema(Schema):
@@ -357,6 +359,21 @@ def _raise(exc: Exception) -> NoReturn:
         raise APIError(409, "idempotency_key_conflict", str(exc)) from exc
     if isinstance(exc, InvalidRoutineInterviewInput):
         raise APIError(422, "routine_interview_invalid", str(exc)) from exc
+    if isinstance(exc, RoutineContentUnavailable):
+        logger.error(
+            "routine interview content unavailable",
+            extra={
+                "event": "routine_interview_content_unavailable",
+                "routine_interview_id": str(exc.routine_interview_id),
+                "section": exc.section,
+                "reason": exc.reason,
+            },
+        )
+        raise APIError(
+            500,
+            "routine_interview_content_unavailable",
+            "The Routine Interview content is unavailable.",
+        ) from exc
     if isinstance(exc, RoutineInterviewError):
         raise APIError(
             500,
@@ -473,12 +490,11 @@ def _encounter_candidate(item) -> dict[str, object]:
     }
 
 
-def _intake(item) -> dict[str, object]:
-    return {field: getattr(item, field) for field in INTAKE_FIELDS}
-
-
-def _evaluation(item) -> dict[str, object]:
-    return {field: getattr(item, field) for field in EVALUATION_FIELDS}
+def _content(read, item) -> dict[str, object]:
+    try:
+        return read(item)
+    except RoutineContentUnavailable as exc:
+        _raise(exc)
 
 
 def _student_summary(item) -> dict[str, object]:
@@ -498,7 +514,8 @@ def _student_summary(item) -> dict[str, object]:
 
 
 def _student_detail(item) -> dict[str, object]:
-    return {**_student_summary(item), "intake": _intake(item)}
+    # Only the Student's own Intake; the Counselor Evaluation is never decrypted on this path.
+    return {**_student_summary(item), "intake": _content(read_intake, item)}
 
 
 def _counselor_summary(item) -> dict[str, object]:
@@ -547,10 +564,11 @@ def _counselor_detail(item, *, actor) -> dict[str, object]:
         "delivery_mode": item.delivery_mode,
         "intake_status": "SUBMITTED" if item.intake_submitted_at else "DRAFT",
         "intake_submitted_at": item.intake_submitted_at,
-        "intake": _intake(item) if item.intake_submitted_at else None,
+        # Draft answers stay with the Student: they are not even decrypted for the Counselor.
+        "intake": _content(read_intake, item) if item.intake_submitted_at else None,
         "evaluation_status": "FINALIZED" if item.evaluation_finalized_at else "DRAFT",
         "evaluation_finalized_at": item.evaluation_finalized_at,
-        "evaluation": _evaluation(item),
+        "evaluation": _content(read_evaluation, item),
         "form_revision": _revision(item),
         "appointment": _appointment(item),
         "counseling_encounter": _encounter(item),
