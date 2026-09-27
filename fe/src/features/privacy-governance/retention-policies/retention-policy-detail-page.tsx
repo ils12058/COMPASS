@@ -19,6 +19,7 @@ import {
   usePrivacyAccess,
   usePrivacyAction,
 } from "@/features/privacy-governance/privacy-governance-shared";
+import { retentionRecordCategoryLabels } from "@/features/privacy-governance/privacy-governance-presentation";
 import {
   RETENTION_BOUNDARY_NOTE,
   retentionChanges,
@@ -60,11 +61,7 @@ function RetentionPolicyEditor({
       "The retention policy could not be saved.",
     );
     if (!result) return;
-    await invalidatePrivacyRecords(
-      queryClient,
-      privacyPaths.retentionPolicies,
-      privacyPaths.processingActivities,
-    );
+    await invalidatePrivacyRecords(queryClient, privacyPaths.retentionPolicies);
     onDone(true);
   }
 
@@ -128,11 +125,7 @@ export function RetentionPolicyDetailPage() {
     if (!result) return;
     setRetireOpen(false);
     action.setNotice("Retention policy retired.");
-    void invalidatePrivacyRecords(
-      queryClient,
-      privacyPaths.retentionPolicies,
-      privacyPaths.processingActivities,
-    );
+    void invalidatePrivacyRecords(queryClient, privacyPaths.retentionPolicies);
   }
 
   return (
@@ -200,7 +193,24 @@ export function RetentionPolicyDetailPage() {
             {RETENTION_BOUNDARY_NOTE}
           </p>
           <div className="max-w-4xl divide-y divide-border border-y border-border">
-            <DetailSection title="What records does this cover?">
+            <DetailSection title="Records covered">
+              {policy.record_categories.length > 0 ? (
+                <ul className="mb-4 flex max-w-3xl flex-wrap gap-2">
+                  {policy.record_categories.map((category) => (
+                    <li
+                      key={category}
+                      className="rounded-md border border-border bg-surface-subtle px-2.5 py-1 text-sm text-ink"
+                    >
+                      {retentionRecordCategoryLabels[category]}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mb-4 text-sm text-muted">
+                  No COMPASS record category has been assigned yet.
+                </p>
+              )}
+              <p className="mb-2 text-xs font-semibold text-muted">Scope / records covered</p>
               <PlainTextBlock text={policy.scope_summary} />
             </DetailSection>
             <DetailSection title="When does the retention period start?">
@@ -248,8 +258,9 @@ export function RetentionPolicyDetailPage() {
         title="Retire this retention policy?"
         description={
           <p>
-            Retired policies remain in governance history and cannot be assigned to
-            new active Processing Activities.
+            Retired policies remain in governance history with their record-category
+            mapping and approved guidance. Retiring a policy does not delete, archive,
+            anonymize, or otherwise change domain records.
           </p>
         }
         confirmLabel="Retire retention policy"
