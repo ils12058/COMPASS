@@ -33,7 +33,7 @@ import {
 } from "@/features/privacy-governance/privacy-governance-presentation";
 import { reviewDuePassed } from "@/features/privacy-governance/retention-policies/retention-policy-form";
 import { usePrivacyGovernanceListRetentionPolicies } from "@/lib/api/generated/privacy-governance/privacy-governance";
-import { RetentionRecordCategoryValue } from "@/lib/api/generated/model";
+import type { RetentionRecordCategoryValue } from "@/lib/api/generated/model";
 import { formatDateOnly } from "@/lib/date-time";
 
 function recordCategoryFrom(value: string | null): RetentionRecordCategoryValue | undefined {
