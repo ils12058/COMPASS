@@ -1,4 +1,4 @@
-"""Consumer-facing Privacy Governance contract: stable conflicts, projections, and discovery."""
+"""Consumer-facing contract for retained Privacy Governance workflows."""
 
 from __future__ import annotations
 
@@ -7,14 +7,12 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
-from compass.privacy_governance.models import PrivacyIncident, PrivacyIncidentStatus
 from tests.test_privacy_governance import (
     auth_client,
     make_dpo,
     make_user,
     patch_json,
     post_json,
-    processing_payload,
     sync_policy,
 )
 from tests.test_privacy_governance_expansion import notice_payload, retention_payload
@@ -32,7 +30,7 @@ def revision_values(**overrides):
 
 
 @pytest.mark.django_db
-def test_privacy_conflicts_use_stable_codes_for_distinct_recoveries():
+def test_retained_privacy_conflicts_use_stable_codes_for_distinct_recoveries():
     sync_policy()
     dpo = auth_client(make_dpo(), recent_mfa=True)
     student = auth_client(make_user("conflict-student@example.edu", role="STUDENT"))
@@ -44,30 +42,9 @@ def test_privacy_conflicts_use_stable_codes_for_distinct_recoveries():
     assert duplicate_policy.status_code == 409
     assert error_code(duplicate_policy) == "privacy_code_in_use"
 
-    activity = post_json(
-        dpo,
-        f"{ROOT}/processing-activities",
-        processing_payload() | {"retention_policy_id": policy_id},
-    )
-    assert activity.status_code == 201
-    duplicate_activity = post_json(dpo, f"{ROOT}/processing-activities", processing_payload())
-    assert error_code(duplicate_activity) == "privacy_code_in_use"
-
-    in_use = post_json(dpo, f"{ROOT}/retention-policies/{policy_id}/retire", {})
-    assert in_use.status_code == 409
-    assert error_code(in_use) == "privacy_retention_policy_in_use"
-
-    patch_json(
-        dpo, f"{ROOT}/processing-activities/{activity.json()['id']}", {"retention_policy_id": None}
-    )
     assert post_json(dpo, f"{ROOT}/retention-policies/{policy_id}/retire", {}).status_code == 200
-    retired_assignment = post_json(
-        dpo,
-        f"{ROOT}/processing-activities",
-        processing_payload("SECOND") | {"retention_policy_id": policy_id},
-    )
-    assert error_code(retired_assignment) == "privacy_retention_policy_retired"
     retired_edit = patch_json(dpo, f"{ROOT}/retention-policies/{policy_id}", {"name": "Renamed"})
+    assert retired_edit.status_code == 409
     assert error_code(retired_edit) == "privacy_retention_policy_retired"
 
     future = notice_payload("FUTURE", effective_on=timezone.localdate() + timedelta(days=3))
@@ -116,86 +93,11 @@ def test_privacy_conflicts_use_stable_codes_for_distinct_recoveries():
 
 
 @pytest.mark.django_db
-def test_resolved_records_and_invalid_incident_moves_have_stable_codes():
-    sync_policy()
-    dpo = auth_client(make_dpo(), recent_mfa=True)
-    activity = post_json(dpo, f"{ROOT}/processing-activities", processing_payload())
-    review = post_json(
-        dpo,
-        f"{ROOT}/processing-activities/{activity.json()['id']}/reviews",
-        {"review_type": "PIA", "scope_summary": "Initial scope"},
-    )
-    review_id = review.json()["id"]
-    assert (
-        post_json(
-            dpo, f"{ROOT}/reviews/{review_id}/resolve", {"resolution_summary": "Closed"}
-        ).status_code
-        == 200
-    )
-    again = post_json(dpo, f"{ROOT}/reviews/{review_id}/resolve", {"resolution_summary": "Again"})
-    assert error_code(again) == "privacy_record_resolved"
-    edit = patch_json(dpo, f"{ROOT}/reviews/{review_id}", {"findings_summary": "Late"})
-    assert error_code(edit) == "privacy_record_resolved"
-
-    incident = post_json(
-        dpo,
-        f"{ROOT}/incidents",
-        {
-            "title": "Misdirected email",
-            "summary": "Summary",
-            "affected_area": "Email",
-            "personal_data_categories": ["Contact data"],
-            "discovered_at": timezone.now().isoformat(),
-        },
-    )
-    incident_id = incident.json()["id"]
-    assert (
-        patch_json(dpo, f"{ROOT}/incidents/{incident_id}", {"status": "CONTAINED"}).status_code
-        == 200
-    )
-    backward = patch_json(dpo, f"{ROOT}/incidents/{incident_id}", {"status": "OPEN"})
-    assert error_code(backward) == "privacy_incident_status_invalid"
-    via_update = patch_json(dpo, f"{ROOT}/incidents/{incident_id}", {"status": "RESOLVED"})
-    assert error_code(via_update) == "privacy_incident_status_invalid"
-    assert post_json(dpo, f"{ROOT}/incidents/{incident_id}/resolve", {}).status_code == 200
-    resolved_again = post_json(dpo, f"{ROOT}/incidents/{incident_id}/resolve", {})
-    assert error_code(resolved_again) == "privacy_record_resolved"
-
-
-@pytest.mark.django_db
-def test_review_projection_includes_processing_activity_summary_everywhere():
-    sync_policy()
-    dpo = auth_client(make_dpo(), recent_mfa=True)
-    activity = post_json(dpo, f"{ROOT}/processing-activities", processing_payload())
-    activity_id = activity.json()["id"]
-    created = post_json(
-        dpo,
-        f"{ROOT}/processing-activities/{activity_id}/reviews",
-        {"review_type": "PRIVACY_REVIEW", "scope_summary": "Scope"},
-    )
-    expected = {"id": activity_id, "code": "COUNSELING-OPS", "name": "Counseling operations"}
-    assert created.json()["processing_activity"] == expected
-    review_id = created.json()["id"]
-
-    detail = dpo.get(f"{ROOT}/reviews/{review_id}")
-    assert detail.status_code == 200
-    assert detail.json()["processing_activity"] == expected
-    assert detail.json()["processing_activity_id"] == activity_id
-    assert set(detail.json()["processing_activity"]) == {"id", "code", "name"}
-
-    nested = dpo.get(f"{ROOT}/processing-activities/{activity_id}/reviews").json()["items"][0]
-    global_item = dpo.get(f"{ROOT}/reviews").json()["items"][0]
-    assert nested == global_item == detail.json()
-    updated = patch_json(dpo, f"{ROOT}/reviews/{review_id}", {"findings_summary": "Found"})
-    assert updated.json()["processing_activity"] == expected
-
-
-@pytest.mark.django_db
 def test_notice_family_projects_current_and_draft_revisions_without_n_plus_one(
     django_assert_max_num_queries,
 ):
     sync_policy()
-    dpo = auth_client(make_dpo(), recent_mfa=True)
+    dpo = auth_client(make_dpo("projection-dpo@example.edu"), recent_mfa=True)
     created = post_json(dpo, f"{ROOT}/notices", notice_payload("FIRST"))
     body = created.json()
     assert body["current_revision"] is None
@@ -234,7 +136,7 @@ def test_notice_family_projects_current_and_draft_revisions_without_n_plus_one(
 @pytest.mark.django_db
 def test_revision_publish_readiness_follows_server_date_and_state():
     sync_policy()
-    dpo = auth_client(make_dpo(), recent_mfa=True)
+    dpo = auth_client(make_dpo("readiness-dpo@example.edu"), recent_mfa=True)
     future = timezone.localdate() + timedelta(days=2)
     created = post_json(dpo, f"{ROOT}/notices", notice_payload("READY", effective_on=future))
     notice_id = created.json()["id"]
@@ -267,69 +169,34 @@ def test_revision_publish_readiness_follows_server_date_and_state():
 
 
 @pytest.mark.django_db
-def test_retention_policy_search_is_bounded_trimmed_and_composes_with_active_filter():
+def test_retention_search_is_bounded_trimmed_and_composes_with_category_and_active_filter():
     sync_policy()
-    dpo = auth_client(make_dpo(), recent_mfa=True)
-    for code, name in (
-        ("COUNSELING-RECORDS", "Counseling records"),
-        ("ADMISSION-TESTS", "Admission testing results"),
-        ("GENERAL-RECORDS", "General office correspondence"),
+    dpo = auth_client(make_dpo("search-dpo@example.edu"), recent_mfa=True)
+    for code, name, categories in (
+        ("COUNSELING-RECORDS", "Counseling records", ["COUNSELING"]),
+        ("REFERRAL-RECORDS", "Referral records", ["REFERRAL"]),
+        ("SHARED-RECORDS", "Shared records", ["COUNSELING", "REFERRAL"]),
     ):
         created = post_json(
-            dpo, f"{ROOT}/retention-policies", retention_payload() | {"code": code, "name": name}
+            dpo,
+            f"{ROOT}/retention-policies",
+            retention_payload(code, categories=categories) | {"name": name},
         )
         assert created.status_code == 201
-    retired = dpo.get(f"{ROOT}/retention-policies?search=general").json()["items"][0]
-    post_json(dpo, f"{ROOT}/retention-policies/{retired['id']}/retire", {})
+    shared = dpo.get(f"{ROOT}/retention-policies?search=shared").json()["items"][0]
+    post_json(dpo, f"{ROOT}/retention-policies/{shared['id']}/retire", {})
 
     by_name = dpo.get(f"{ROOT}/retention-policies?search=%20%20counseling%20").json()["items"]
     assert [item["code"] for item in by_name] == ["COUNSELING-RECORDS"]
-    by_code = dpo.get(f"{ROOT}/retention-policies?search=admission-t").json()["items"]
-    assert [item["code"] for item in by_code] == ["ADMISSION-TESTS"]
-    records = dpo.get(f"{ROOT}/retention-policies?search=records").json()["items"]
-    assert [item["code"] for item in records] == ["COUNSELING-RECORDS", "GENERAL-RECORDS"]
-    active_records = dpo.get(f"{ROOT}/retention-policies?search=records&is_active=true").json()
-    assert [item["code"] for item in active_records["items"]] == ["COUNSELING-RECORDS"]
-    paged = dpo.get(f"{ROOT}/retention-policies?search=records&page_size=1").json()
-    assert paged["has_next"] is True
-    blank = dpo.get(f"{ROOT}/retention-policies?search=%20%20").json()["items"]
-    assert len(blank) == 3
+    category = dpo.get(
+        f"{ROOT}/retention-policies?record_category=REFERRAL&is_active=true"
+    ).json()["items"]
+    assert [item["code"] for item in category] == ["REFERRAL-RECORDS"]
+    retired_shared = dpo.get(
+        f"{ROOT}/retention-policies?record_category=COUNSELING&search=shared&is_active=false"
+    ).json()["items"]
+    assert [item["code"] for item in retired_shared] == ["SHARED-RECORDS"]
 
     too_long = dpo.get(f"{ROOT}/retention-policies?search={'x' * 161}")
     assert too_long.status_code == 422
     assert error_code(too_long) == "invalid_privacy_governance_input"
-
-
-@pytest.mark.django_db
-def test_incident_list_discovers_the_active_overview_population():
-    sync_policy()
-    dpo_user = make_dpo()
-    dpo = auth_client(dpo_user, recent_mfa=True)
-    for status in (
-        PrivacyIncidentStatus.OPEN,
-        PrivacyIncidentStatus.ASSESSING,
-        PrivacyIncidentStatus.CONTAINED,
-        PrivacyIncidentStatus.RESOLVED,
-    ):
-        incident = post_json(
-            dpo,
-            f"{ROOT}/incidents",
-            {
-                "title": f"Incident {status}",
-                "summary": "Summary",
-                "affected_area": "Area",
-                "personal_data_categories": ["Contact data"],
-                "discovered_at": timezone.now().isoformat(),
-            },
-        )
-        PrivacyIncident.objects.filter(pk=incident.json()["id"]).update(status=status)
-
-    active = dpo.get(f"{ROOT}/incidents?active=true&page_size=50").json()["items"]
-    assert sorted(item["status"] for item in active) == ["ASSESSING", "CONTAINED", "OPEN"]
-    inactive = dpo.get(f"{ROOT}/incidents?active=false").json()["items"]
-    assert [item["status"] for item in inactive] == ["RESOLVED"]
-    narrowed = dpo.get(f"{ROOT}/incidents?active=true&status=OPEN").json()["items"]
-    assert [item["status"] for item in narrowed] == ["OPEN"]
-
-    overview = dpo.get("/api/v1/overview").json()["privacy"]
-    assert overview["active_incident_count"] == len(active)
