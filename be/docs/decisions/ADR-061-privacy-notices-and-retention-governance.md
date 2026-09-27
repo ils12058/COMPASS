@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-26
 - Scope: Privacy Governance expansion after ADR-045
+- Refined by: ADR-065 (Processing/Review/Incident workflows removed; Retention Policies mapped to closed COMPASS record categories)
 
 ## Context
 
@@ -23,3 +24,11 @@ A global filtered Reviews/PIAs endpoint provides the operational queue with a sm
 ## Consequences
 
 The future `/portal/privacy` workspace can show Processing Activities, Reviews/PIAs, Privacy Notices, Retention Policies, Incidents, and Privacy & Security Activity using authoritative API pages. A general user can read applicable current notices and acknowledge a required revision. The frontend must label acknowledgment accurately and safely render notice body as plain text. No legal content, compliance score, legal determination, automatic retention execution, or confidential record browser is introduced.
+
+## Later refinement
+
+ADR-065 keeps the Notice, acknowledgment, and Retention Policy parts of this decision but removes
+the Processing Activity relationship, global Review/PIA queue, Privacy Incident workflow, and
+Overview privacy counters. Retention Policy retirement is therefore no longer blocked by an active
+Processing Activity. Retention Policies instead carry a closed descriptive mapping to implemented
+COMPASS record categories and still execute no retention action.
