@@ -347,8 +347,6 @@ def test_environment_endpoint_is_safe_resolved_projection_with_no_secret_values(
         assert sentinel not in serialized
 
 
-
-
 def test_public_liveness_and_readiness_do_not_depend_on_platform_probes(client):
     with (
         patch(
