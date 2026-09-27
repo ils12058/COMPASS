@@ -39,6 +39,7 @@ from compass.organization.models import (
     Program,
     StudentAffiliation,
 )
+from compass.routine_interviews.content import read_evaluation, read_intake
 from compass.routine_interviews.matching import routine_interview_encounter_matches
 from compass.routine_interviews.models import RoutineInterview
 from compass.routine_interviews.services import (
@@ -382,7 +383,7 @@ def test_intake_other_rule_is_submission_only_and_submitted_intake_locks_without
         routine_interview_id=item.pk,
         values={"concerns": ["OTHER"], "other_concern_specification": ""},
     )
-    assert draft.other_concern_specification == ""
+    assert read_intake(draft)["other_concern_specification"] == ""
     assert not AuditEvent.objects.filter(action="routine_interview.intake_submitted").exists()
     with pytest.raises(InvalidRoutineInterviewInput, match="other_concern_specification"):
         submit_my_intake(student=student, routine_interview_id=item.pk, context=context(student))
@@ -396,7 +397,7 @@ def test_intake_other_rule_is_submission_only_and_submitted_intake_locks_without
             "academic_goals": "Finish the academic year well.",
         },
     )
-    assert cleared.other_concern_specification == ""
+    assert read_intake(cleared)["other_concern_specification"] == ""
     submitted = submit_my_intake(
         student=student,
         routine_interview_id=item.pk,
@@ -426,6 +427,8 @@ def test_api_keeps_student_draft_private_and_never_returns_counselor_evaluation_
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     unrelated = make_user("unrelated@example.edu", "COUNSELOR")
     gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    dpo = make_user("dpo@example.edu", "INSTITUTIONAL_OFFICER")
+    UserDesignation.objects.create(user=dpo, designation=Designation.objects.get(code="DPO"))
     head = make_user("head@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
         user=head,
@@ -441,6 +444,8 @@ def test_api_keeps_student_draft_private_and_never_returns_counselor_evaluation_
     unrelated_client = auth_client(unrelated)
     gss_client = auth_client(gss)
     head_client = auth_client(head)
+    admin_client = auth_client(admin)
+    dpo_client = auth_client(dpo)
 
     student_update = student_client.put(
         f"/api/v1/routine-interviews/me/{item.pk}/intake",
@@ -463,6 +468,9 @@ def test_api_keeps_student_draft_private_and_never_returns_counselor_evaluation_
     assert unrelated_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 404
     assert gss_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 403
     assert head_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 404
+    for operational_client in (gss_client, admin_client, dpo_client):
+        assert operational_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 403
+        assert operational_client.get(f"/api/v1/routine-interviews/me/{item.pk}").status_code == 403
 
     submitted = student_client.post(
         f"/api/v1/routine-interviews/me/{item.pk}/submit",
@@ -495,9 +503,13 @@ def test_api_keeps_student_draft_private_and_never_returns_counselor_evaluation_
     student_detail = student_client.get(f"/api/v1/routine-interviews/me/{item.pk}")
     assert student_detail.status_code == 200
     body = student_detail.json()
+    assert body["intake_status"] == "SUBMITTED"
+    assert body["intake"]["coping_with_college_challenges"] == "Private draft text"
+    assert body["intake"]["concerns"] == ["SUICIDAL_THOUGHT_TENDENCY"]
     assert "evaluation" not in body
     assert "special_concern" not in body
     assert "recommendations" not in body
+    assert "Counselor-only" not in student_detail.content.decode()
 
 
 @pytest.mark.django_db
@@ -533,8 +545,8 @@ def test_evaluation_requires_submitted_intake_enforces_rating_range_and_locks_af
             "other_adjustment": "Optional source textual addition",
         },
     )
-    assert saved.academic_adjustment_rating == 1
-    assert saved.emotional_adjustment_rating == 10
+    assert read_evaluation(saved)["academic_adjustment_rating"] == 1
+    assert read_evaluation(saved)["emotional_adjustment_rating"] == 10
     with pytest.raises(InvalidRoutineInterviewInput):
         replace_assigned_evaluation(
             counselor=counselor,
@@ -691,6 +703,8 @@ def test_sensitive_intake_and_counselor_text_never_enter_routine_audit_metadata(
         counselor=counselor,
         routine_interview_id=item.pk,
         values={
+            "academic_adjustment_rating": 9,
+            "emotional_adjustment_rating": 2,
             "special_concern": "Highly private counselor concern",
             "recommendations": "Highly private recommendation",
         },
@@ -707,7 +721,7 @@ def test_sensitive_intake_and_counselor_text_never_enter_routine_audit_metadata(
         ended_at=end,
         created_by=counselor,
     )
-    finalize_assigned_evaluation(
+    finalized = finalize_assigned_evaluation(
         counselor=counselor,
         routine_interview_id=item.pk,
         encounter_id=encounter.pk,
@@ -723,6 +737,12 @@ def test_sensitive_intake_and_counselor_text_never_enter_routine_audit_metadata(
     )
     assert "Highly private" not in serialized
     assert "SUICIDAL" not in serialized
+    for forbidden in ("concerns", "rating", "special_concern", "recommendations", "payload"):
+        assert forbidden not in serialized
+    # Neither ciphertext nor anything that looks like a Fernet token belongs in audit metadata.
+    assert finalized.student_intake_ciphertext not in serialized
+    assert finalized.counselor_evaluation_ciphertext not in serialized
+    assert "gAAAAA" not in serialized
 
 
 @pytest.mark.django_db
@@ -816,7 +836,7 @@ def test_non_current_student_routine_is_read_only_while_counselor_can_finish_exi
         routine_interview_id=item.pk,
         values={"academic_adjustment_rating": 7},
     )
-    assert saved.academic_adjustment_rating == 7
+    assert read_evaluation(saved)["academic_adjustment_rating"] == 7
 
     end = timezone.now() - timedelta(minutes=5)
     encounter = CounselingEncounter.objects.create(

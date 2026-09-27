@@ -76,6 +76,11 @@ The six source ratings are nullable while drafting and constrained to 1–10 whe
 `other_adjustment`, `special_concern`, and `recommendations` remain explicit source-oriented fields.
 No additional psychotherapy/progress/SOAP notes, diagnosis, or treatment plan is introduced.
 
+Since ADR-066, both sections are stored only as authenticated ciphertext bound to their record and
+section. The 1–10 range is enforced by the API schema and services rather than PostgreSQL check
+constraints, and content is decrypted only after the Student or assigned-Counselor relationship
+below has been resolved.
+
 Student responses never include Counselor Evaluation fields. Only the actual assigned Counselor may
 read or mutate the Counselor side of a Routine Interview. Capabilities are necessary but never
 replace the resource relationship. Students receive `routine_interviews.view_self` and

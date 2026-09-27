@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import uuid
 from dataclasses import dataclass
 from uuid import UUID
 
-from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -47,6 +47,18 @@ from compass.service_catalog.services import (
     service_supports_delivery_mode,
 )
 
+from .content import (
+    EVALUATION_FIELDS,
+    INTAKE_FIELDS,
+    RATING_FIELDS,
+    InvalidRoutineContent,
+    initial_content,
+    read_evaluation,
+    read_intake,
+    write_evaluation,
+    write_intake,
+)
+from .errors import RoutineInterviewError
 from .matching import (
     RoutineEncounterMatchIssue,
     routine_interview_encounter_match_issue,
@@ -58,34 +70,6 @@ ROUTINE_FORM_FAMILY_KEY = "routine_interview"
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_SEARCH_LENGTH = 160
-INTAKE_FIELDS = (
-    "coping_with_college_challenges",
-    "coping_remarks",
-    "college_experience",
-    "reason_for_choosing_institution",
-    "difficulties_encountered",
-    "stress_anxiety_causes",
-    "stress_anxiety_management",
-    "family_description",
-    "concerns",
-    "other_concern_specification",
-    "concerns_explanation",
-    "college_adjustment_and_peer_group",
-    "academic_goals",
-    "career_goals",
-)
-EVALUATION_FIELDS = (
-    "academic_adjustment_rating",
-    "physical_adjustment_rating",
-    "social_adjustment_rating",
-    "spiritual_adjustment_rating",
-    "financial_adjustment_rating",
-    "emotional_adjustment_rating",
-    "other_adjustment",
-    "special_concern",
-    "recommendations",
-)
-RATING_FIELDS = EVALUATION_FIELDS[:6]
 DIRECT_ENTRY_MODES = frozenset(
     {
         CounselingEntryMode.WALK_IN,
@@ -93,10 +77,6 @@ DIRECT_ENTRY_MODES = frozenset(
         CounselingEntryMode.REFERRED,
     }
 )
-
-
-class RoutineInterviewError(RuntimeError):
-    pass
 
 
 class RoutineInterviewNotFound(RoutineInterviewError):
@@ -374,9 +354,11 @@ def ensure_for_appointment(
 
         inventory = _submitted_inventory(student)
         revision = _optional_form_revision()
+        routine_interview_id = uuid.uuid4()
         try:
             with transaction.atomic():
                 item = RoutineInterview.objects.create(
+                    id=routine_interview_id,
                     student=student,
                     counselor=counselor,
                     inventory=inventory,
@@ -385,6 +367,7 @@ def ensure_for_appointment(
                     entry_mode=CounselingEntryMode.APPOINTMENT,
                     delivery_mode=appointment.delivery_mode,
                     created_by=student,
+                    **initial_content(routine_interview_id),
                 )
         except IntegrityError:
             concurrent = RoutineInterview.objects.filter(appointment_id=appointment.pk).first()
@@ -474,12 +457,14 @@ def create_direct(
         )
         inventory = _submitted_inventory(student)
         revision = _optional_form_revision()
+        routine_interview_id = uuid.uuid4()
 
         try:
             # Keep the uniqueness race inside its own savepoint. If PostgreSQL rejects the insert,
             # the outer transaction remains usable for the idempotent recovery lookup below.
             with transaction.atomic():
                 item = RoutineInterview.objects.create(
+                    id=routine_interview_id,
                     student=student,
                     counselor=locked_counselor,
                     inventory=inventory,
@@ -490,6 +475,7 @@ def create_direct(
                     created_by=locked_counselor,
                     direct_creation_key_digest=digest,
                     direct_request_fingerprint=request_fingerprint,
+                    **initial_content(routine_interview_id),
                 )
         except IntegrityError:
             concurrent = RoutineInterview.objects.filter(direct_creation_key_digest=digest).first()
@@ -845,17 +831,19 @@ def _normalize_concerns(raw) -> list[str]:
     return normalized
 
 
-def _validate_intake_submission(item: RoutineInterview) -> None:
-    if RoutineConcern.OTHER in item.concerns and not item.other_concern_specification.strip():
+def _validate_intake_submission(intake: dict[str, object]) -> None:
+    concerns = intake["concerns"]
+    specification = str(intake["other_concern_specification"]).strip()
+    if RoutineConcern.OTHER in concerns and not specification:
         raise InvalidRoutineInterviewInput(
             "other_concern_specification is required when OTHER concern is selected."
         )
     meaningful_text = any(
-        getattr(item, field).strip()
+        str(intake[field]).strip()
         for field in INTAKE_FIELDS
         if field not in {"concerns", "other_concern_specification"}
     )
-    if not meaningful_text and not item.concerns and not item.other_concern_specification.strip():
+    if not meaningful_text and not concerns and not specification:
         raise InvalidRoutineInterviewInput(
             "At least one Student Intake response or concern is required before submission."
         )
@@ -884,33 +872,24 @@ def replace_my_intake(
         if item.intake_submitted_at is not None:
             raise RoutineInterviewIntakeSubmitted("A submitted Student Intake is locked.")
 
+        intake = read_intake(item)
         for field in INTAKE_FIELDS:
             if field not in values:
                 continue
             if field == "concerns":
-                item.concerns = _normalize_concerns(values[field])
+                intake["concerns"] = _normalize_concerns(values[field])
             else:
-                setattr(item, field, values[field])
-        if RoutineConcern.OTHER not in item.concerns:
-            item.other_concern_specification = ""
+                intake[field] = values[field]
+        if RoutineConcern.OTHER not in intake["concerns"]:
+            intake["other_concern_specification"] = ""
 
         try:
-            item.full_clean(
-                exclude=(
-                    "student",
-                    "counselor",
-                    "inventory",
-                    "appointment",
-                    "counseling_encounter",
-                    "form_revision",
-                    "created_by",
-                )
-            )
-        except ValidationError as exc:
+            write_intake(item, intake)
+        except InvalidRoutineContent as exc:
             raise InvalidRoutineInterviewInput(
                 "The Student Intake contains invalid values."
             ) from exc
-        item.save(update_fields=[*INTAKE_FIELDS, "updated_at"])
+        item.save(update_fields=["student_intake_ciphertext", "updated_at"])
         return _queryset().get(pk=item.pk)
 
 
@@ -937,7 +916,7 @@ def submit_my_intake(
             raise RoutineInterviewInventoryRequired(
                 "The bound submitted Individual Inventory is inconsistent."
             )
-        _validate_intake_submission(item)
+        _validate_intake_submission(read_intake(item))
         item.intake_submitted_at = timezone.now()
         item.save(update_fields=["intake_submitted_at", "updated_at"])
         record_event(
@@ -955,9 +934,9 @@ def submit_my_intake(
         return _queryset().get(pk=item.pk)
 
 
-def _validate_evaluation_values(item: RoutineInterview) -> None:
+def _validate_evaluation_values(evaluation: dict[str, object]) -> None:
     for field in RATING_FIELDS:
-        value = getattr(item, field)
+        value = evaluation[field]
         if value is not None and (type(value) is not int or not 1 <= value <= 10):
             raise InvalidRoutineInterviewInput(f"{field} must be between 1 and 10 when supplied.")
 
@@ -991,27 +970,18 @@ def replace_assigned_evaluation(
             raise RoutineInterviewEvaluationFinalized(
                 "The Counselor Evaluation is finalized and locked."
             )
+        evaluation = read_evaluation(item)
         for field in EVALUATION_FIELDS:
             if field in values:
-                setattr(item, field, values[field])
-        _validate_evaluation_values(item)
+                evaluation[field] = values[field]
+        _validate_evaluation_values(evaluation)
         try:
-            item.full_clean(
-                exclude=(
-                    "student",
-                    "counselor",
-                    "inventory",
-                    "appointment",
-                    "counseling_encounter",
-                    "form_revision",
-                    "created_by",
-                )
-            )
-        except ValidationError as exc:
+            write_evaluation(item, evaluation)
+        except InvalidRoutineContent as exc:
             raise InvalidRoutineInterviewInput(
                 "The Counselor Evaluation contains invalid values."
             ) from exc
-        item.save(update_fields=[*EVALUATION_FIELDS, "updated_at"])
+        item.save(update_fields=["counselor_evaluation_ciphertext", "updated_at"])
         return _queryset().get(pk=item.pk)
 
 
@@ -1076,7 +1046,8 @@ def finalize_assigned_evaluation(
         if item.evaluation_finalized_at is not None:
             return _queryset().get(pk=item.pk)
 
-        _validate_evaluation_values(item)
+        # Finalization locks the Evaluation permanently, so prove it is readable and valid first.
+        _validate_evaluation_values(read_evaluation(item))
         if item.appointment_id is not None:
             encounter = (
                 CounselingEncounter.objects.select_for_update(of=("self",))

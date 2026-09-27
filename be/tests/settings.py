@@ -5,6 +5,8 @@
 
 import os
 
+from cryptography.fernet import Fernet
+
 
 _TEST_ENV = {
     "APP_ENV": "local-staging",
@@ -30,6 +32,8 @@ _TEST_ENV = {
     "DEFAULT_FROM_EMAIL": "no-reply@testserver",
     "TURNSTILE_ENABLED": "false",
     "API_DOCS_ENABLED": "true",
+    # Ephemeral per test process; never a deployment key.
+    "ROUTINE_INTERVIEW_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
 }
 
 for _name, _value in _TEST_ENV.items():

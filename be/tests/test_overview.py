@@ -31,6 +31,7 @@ from compass.organization.models import (
     StaffSupervision,
     StudentAffiliation,
 )
+from compass.routine_interviews.content import initial_content
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.models import Service
 
@@ -113,6 +114,15 @@ def make_inventory(student: User, *, suffix: str) -> StudentInventory:
         academic_year=year,
         form_revision=revision,
         full_name_snapshot=student.get_full_name(),
+    )
+
+
+def make_routine(**fields) -> RoutineInterview:
+    routine_interview_id = uuid4()
+    return RoutineInterview.objects.create(
+        id=routine_interview_id,
+        **fields,
+        **initial_content(routine_interview_id),
     )
 
 
@@ -285,7 +295,7 @@ def test_student_overview_counts_exact_actionable_records_only() -> None:
 
     own_inventory = make_inventory(student, suffix="own")
     other_inventory = make_inventory(other, suffix="other")
-    RoutineInterview.objects.create(
+    make_routine(
         student=student,
         counselor=counselor,
         inventory=own_inventory,
@@ -293,7 +303,7 @@ def test_student_overview_counts_exact_actionable_records_only() -> None:
         delivery_mode="IN_PERSON",
         created_by=counselor,
     )
-    RoutineInterview.objects.create(
+    make_routine(
         student=student,
         counselor=counselor,
         inventory=own_inventory,
@@ -302,7 +312,7 @@ def test_student_overview_counts_exact_actionable_records_only() -> None:
         intake_submitted_at=now,
         created_by=counselor,
     )
-    RoutineInterview.objects.create(
+    make_routine(
         student=other,
         counselor=counselor,
         inventory=other_inventory,
@@ -420,7 +430,7 @@ def test_guidance_overview_preserves_counselor_gss_and_head_scope() -> None:
 
     inventory_a = make_inventory(student_a, suffix="guidance-a")
     inventory_b = make_inventory(student_b, suffix="guidance-b")
-    RoutineInterview.objects.create(
+    make_routine(
         student=student_a,
         counselor=counselor,
         inventory=inventory_a,
@@ -429,7 +439,7 @@ def test_guidance_overview_preserves_counselor_gss_and_head_scope() -> None:
         intake_submitted_at=now,
         created_by=counselor,
     )
-    RoutineInterview.objects.create(
+    make_routine(
         student=student_a,
         counselor=counselor,
         inventory=inventory_a,
@@ -437,7 +447,7 @@ def test_guidance_overview_preserves_counselor_gss_and_head_scope() -> None:
         delivery_mode="IN_PERSON",
         created_by=counselor,
     )
-    RoutineInterview.objects.create(
+    make_routine(
         student=student_b,
         counselor=other_counselor,
         inventory=inventory_b,
