@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import cast
 
 _MISSING = object()
@@ -10,6 +11,15 @@ _MISSING = object()
 
 def env[T](name: str, default: T | object = _MISSING) -> str | T:
     value = os.environ.get(name)
+    file_name = f"{name}_FILE"
+    file_path = os.environ.get(file_name)
+    if file_path:
+        if value:
+            raise ValueError(f"{name} and {file_name} cannot both be set")
+        try:
+            value = Path(file_path).read_text(encoding="utf-8").rstrip("\r\n")
+        except (OSError, UnicodeError):
+            raise ValueError(f"{file_name} could not be read") from None
     if value is None or value == "":
         if default is _MISSING:
             raise ValueError(f"{name} is required")

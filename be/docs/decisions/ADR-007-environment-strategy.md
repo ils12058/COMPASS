@@ -14,5 +14,8 @@ must provide external object storage and real SMTP. API docs default on locally 
 ## Consequences
 
 Configuration errors fail fast. Secrets stay in deployment environment files/secret stores and
-are not committed. Differences are visible in `.env.example`, Compose profiles, and deployment
-checks rather than hidden in code branches.
+are not committed. Environment helpers accept either `SETTING_NAME` or
+`SETTING_NAME_FILE=/run/secrets/name`; they reject two non-empty sources and report file errors
+without disclosing the path or contents. A Compose secret must be mounted into every application
+service that needs the setting. Differences are visible in `.env.example`, Compose profiles, and
+deployment checks rather than hidden in code branches.
