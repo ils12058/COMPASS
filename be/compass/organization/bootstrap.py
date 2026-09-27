@@ -56,14 +56,8 @@ def _get_or_create_campus(*, code: str, name: str) -> tuple[Campus, bool]:
         return Campus.objects.select_for_update().get(code=code), False
 
 
-def _get_or_create_college(
-    *, campus: Campus, code: str, name: str
-) -> tuple[College, bool]:
-    college = (
-        College.objects.select_for_update()
-        .filter(campus=campus, code=code)
-        .first()
-    )
+def _get_or_create_college(*, campus: Campus, code: str, name: str) -> tuple[College, bool]:
+    college = College.objects.select_for_update().filter(campus=campus, code=code).first()
     if college is not None:
         return college, False
     try:
@@ -73,14 +67,8 @@ def _get_or_create_college(
         return College.objects.select_for_update().get(campus=campus, code=code), False
 
 
-def _get_or_create_program(
-    *, college: College, code: str, name: str
-) -> tuple[Program, bool]:
-    program = (
-        Program.objects.select_for_update()
-        .filter(college=college, code=code)
-        .first()
-    )
+def _get_or_create_program(*, college: College, code: str, name: str) -> tuple[Program, bool]:
+    program = Program.objects.select_for_update().filter(college=college, code=code).first()
     if program is not None:
         return program, False
     try:
