@@ -119,9 +119,7 @@ CANONICAL_CAMPUSES = (
             CanonicalCollege(
                 code="CFAST",
                 name="College of Fisheries, Aquatic Sciences, and Technology",
-                programs=(
-                    _program("BSF", "Bachelor of Science in Fisheries"),
-                ),
+                programs=(_program("BSF", "Bachelor of Science in Fisheries"),),
             ),
         ),
     ),
@@ -135,7 +133,9 @@ CANONICAL_CAMPUSES = (
                 programs=(
                     _program("BSAGRI", "Bachelor of Science in Agriculture"),
                     _program("BSES", "Bachelor of Science in Environmental Science"),
-                    _program("BSABE", "Bachelor of Science in Agricultural and Biosystems Engineering"),
+                    _program(
+                        "BSABE", "Bachelor of Science in Agricultural and Biosystems Engineering"
+                    ),
                 ),
             ),
         ),
@@ -195,11 +195,17 @@ def _validate_registry() -> None:
         for college in campus.colleges:
             college_count += 1
             if not college.code or not college.name:
-                raise RuntimeError(f"canonical College code and name are required under {campus.code}")
+                raise RuntimeError(
+                    f"canonical College code and name are required under {campus.code}"
+                )
             if len(college.code) > 32 or len(college.name) > 160:
-                raise RuntimeError(f"canonical College exceeds DB limits: {campus.code}/{college.code}")
+                raise RuntimeError(
+                    f"canonical College exceeds DB limits: {campus.code}/{college.code}"
+                )
             if college.code in college_codes:
-                raise RuntimeError(f"duplicate canonical College code: {campus.code}/{college.code}")
+                raise RuntimeError(
+                    f"duplicate canonical College code: {campus.code}/{college.code}"
+                )
             college_codes.add(college.code)
 
             program_codes: set[str] = set()
@@ -237,9 +243,7 @@ CANONICAL_CAMPUS_BY_CODE: Mapping[str, CanonicalCampus] = MappingProxyType(
 )
 CANONICAL_CAMPUS_CODES = frozenset(CANONICAL_CAMPUS_BY_CODE)
 CANONICAL_COLLEGE_IDENTITIES = frozenset(
-    (campus.code, college.code)
-    for campus in CANONICAL_CAMPUSES
-    for college in campus.colleges
+    (campus.code, college.code) for campus in CANONICAL_CAMPUSES for college in campus.colleges
 )
 CANONICAL_PROGRAM_IDENTITIES = frozenset(
     (campus.code, college.code, program.code)
