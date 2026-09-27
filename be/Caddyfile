@@ -17,7 +17,12 @@
 	}
 	header {
 		-Server
+		X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
 	}
+	respond /robots.txt <<ROBOTS
+		User-agent: *
+		Disallow: /
+		ROBOTS
 	reverse_proxy web:8000 {
 		health_uri /api/v1/health/ready
 		health_headers {
