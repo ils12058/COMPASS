@@ -15,9 +15,7 @@ class Command(BaseCommand):
                 self.style.SUCCESS(
                     "Synchronized Organization catalog: "
                     + ", ".join(
-                        f"{key}={value}"
-                        for key, value in result.metadata().items()
-                        if value
+                        f"{key}={value}" for key, value in result.metadata().items() if value
                     )
                 )
             )
