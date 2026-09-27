@@ -42,9 +42,7 @@ from .services import (
 
 AUDIENCES = frozenset({"PUBLIC", "STUDENT", "STAFF"})
 MAX_SEARCH_LENGTH = 160
-RETENTION_RECORD_CATEGORY_CODES = frozenset(
-    category.value for category in RetentionRecordCategory
-)
+RETENTION_RECORD_CATEGORY_CODES = frozenset(category.value for category in RetentionRecordCategory)
 RETENTION_FIELDS = {
     "name": (160, True),
     "scope_summary": (2000, True),
