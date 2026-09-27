@@ -134,21 +134,7 @@ export function getOverviewMetrics(
     addMetric(metrics, "Email deliveries sent today", summary.platform.email_sent_today_count, emailHref);
   }
 
-  if (summary.privacy) {
-    const hasPrivacy = hasPrivacyGovernanceWorkspace(user);
-    addMetric(
-      metrics,
-      "Open privacy reviews",
-      summary.privacy.open_review_count,
-      hasPrivacy ? "/portal/privacy/reviews?status=OPEN" : undefined,
-    );
-    addMetric(
-      metrics,
-      "Active privacy incidents",
-      summary.privacy.active_incident_count,
-      hasPrivacy ? "/portal/privacy/incidents?status=ACTIVE" : undefined,
-    );
-  }
+
 
   return metrics;
 }

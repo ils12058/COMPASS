@@ -6,7 +6,7 @@
 ## Context
 
 The authenticated COMPASS Portal needs a useful home Overview for Students, Guidance operational
-users, IT Administrators, and the Data Protection Officer. Existing operational list APIs are
+users and IT Administrators. Existing operational list APIs are
 intentionally paginated and expose `items`, `page`, `page_size`, and `has_next` rather than an
 authoritative total count. A page length is therefore not a valid source for dashboard totals.
 
@@ -46,8 +46,9 @@ institution-wide through the canonical organizational resolver.
 Platform metrics are limited to the compatible IT_ADMIN platform-operations identity and reuse the
 existing EmailDelivery summary service.
 
-Privacy metrics require the compatible INSTITUTIONAL_OFFICER + DPO designation and effective
-privacy-governance view authority. A capability override alone does not fabricate DPO identity.
+ADR-065 removes the earlier Privacy Review/Incident counters. Privacy Governance remains a
+capability-based workspace but does not expose an Overview metric section without a concrete,
+actionable retained population.
 
 ### Deliberate exclusions
 

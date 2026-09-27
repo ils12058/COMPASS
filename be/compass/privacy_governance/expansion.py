@@ -23,8 +23,8 @@ from .models import (
     PrivacyNoticeAcknowledgment,
     PrivacyNoticeRevision,
     PrivacyNoticeRevisionStatus,
-    ProcessingActivity,
     RetentionPolicy,
+    RetentionRecordCategory,
 )
 from .services import (
     DEFAULT_PAGE_SIZE,
@@ -42,6 +42,7 @@ from .services import (
 
 AUDIENCES = frozenset({"PUBLIC", "STUDENT", "STAFF"})
 MAX_SEARCH_LENGTH = 160
+RETENTION_RECORD_CATEGORY_CODES = frozenset(category.value for category in RetentionRecordCategory)
 RETENTION_FIELDS = {
     "name": (160, True),
     "scope_summary": (2000, True),
@@ -173,19 +174,53 @@ def _audit(
     )
 
 
-def _retention_values(values: dict[str, Any]) -> dict[str, Any]:
+def _record_categories(value: object) -> list[str]:
+    if not isinstance(value, list):
+        raise PrivacyInputError("record_categories must be a list")
+    if not value:
+        raise PrivacyInputError("record_categories must contain at least one category")
+    if len(value) > len(RETENTION_RECORD_CATEGORY_CODES):
+        raise PrivacyInputError(
+            f"record_categories may contain at most {len(RETENTION_RECORD_CATEGORY_CODES)} items"
+        )
+
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        if not isinstance(item, str):
+            raise PrivacyInputError("record_categories must use supported category codes")
+        try:
+            code = RetentionRecordCategory(item).value
+        except ValueError as exc:
+            raise PrivacyInputError("record_categories must use supported category codes") from exc
+        if code in seen:
+            raise PrivacyInputError("record_categories must not contain duplicate items")
+        seen.add(code)
+        cleaned.append(code)
+    return cleaned
+
+
+def _retention_values(
+    values: dict[str, Any],
+    *,
+    require_record_categories: bool = False,
+) -> dict[str, Any]:
     cleaned: dict[str, Any] = {}
     for field, value in values.items():
         if field in RETENTION_FIELDS:
             maximum, required = RETENTION_FIELDS[field]
             cleaner = _clean_required if required else _clean_optional
             cleaned[field] = cleaner(value, label=field, maximum=maximum)
+        elif field == "record_categories":
+            cleaned[field] = _record_categories(value)
         elif field in {"effective_on", "review_due_on"}:
             if value is not None and not isinstance(value, date):
                 raise PrivacyInputError(f"{field} must be a date")
             cleaned[field] = value
         else:
             raise PrivacyInputError("retention policy contains unsupported fields")
+    if require_record_categories and "record_categories" not in cleaned:
+        raise PrivacyInputError("record_categories must contain at least one category")
     return cleaned
 
 
@@ -200,12 +235,19 @@ def list_retention(
     *,
     is_active: bool | None = None,
     search: str | None = None,
+    record_category: RetentionRecordCategory | str | None = None,
     page_number: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
     queryset = RetentionPolicy.objects.order_by("code", "id")
     if is_active is not None:
         queryset = queryset.filter(is_active=is_active)
+    if record_category is not None:
+        try:
+            category = RetentionRecordCategory(str(record_category)).value
+        except ValueError as exc:
+            raise PrivacyInputError("record_category must use a supported category code") from exc
+        queryset = queryset.filter(record_categories__contains=[category])
     if search is not None:
         if not isinstance(search, str):
             raise PrivacyInputError("search must be text")
@@ -218,7 +260,7 @@ def list_retention(
 
 
 def create_retention(*, code: str, context: AuditContext, **values):
-    cleaned = _retention_values(values)
+    cleaned = _retention_values(values, require_record_categories=True)
     normalized = _clean_code(code)
     with transaction.atomic():
         if RetentionPolicy.objects.filter(code=normalized).exists():
@@ -286,11 +328,6 @@ def retire_retention(*, policy_id: UUID, context: AuditContext):
             raise PrivacyRecordNotFound("retention policy was not found")
         if not item.is_active:
             return item
-        if ProcessingActivity.objects.filter(retention_policy=item, is_active=True).exists():
-            raise PrivacyConflict(
-                "active processing activities must be reassigned before retirement",
-                code=PrivacyConflictCode.RETENTION_POLICY_IN_USE,
-            )
         item.is_active = False
         item.save(update_fields=["is_active", "updated_at"])
         _audit(

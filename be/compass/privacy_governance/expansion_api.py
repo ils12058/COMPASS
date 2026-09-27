@@ -16,7 +16,7 @@ from compass.common.errors import APIError
 from . import expansion as service
 from .api import _context, _raise, _require
 from .expansion import NoticePublishBlocker
-from .models import PrivacyNoticeAcknowledgment
+from .models import PrivacyNoticeAcknowledgment, RetentionRecordCategory
 from .services import PrivacyGovernanceError
 
 router = Router(tags=["privacy-governance"])
@@ -43,10 +43,23 @@ class RevisionStatusValue(StrEnum):
     SUPERSEDED = "SUPERSEDED"
 
 
+class RetentionRecordCategoryValue(StrEnum):
+    INDIVIDUAL_INVENTORY = RetentionRecordCategory.INDIVIDUAL_INVENTORY
+    COUNSELING = RetentionRecordCategory.COUNSELING
+    ROUTINE_INTERVIEW = RetentionRecordCategory.ROUTINE_INTERVIEW
+    REFERRAL = RetentionRecordCategory.REFERRAL
+    CALL_SLIP = RetentionRecordCategory.CALL_SLIP
+    GOOD_MORAL = RetentionRecordCategory.GOOD_MORAL
+    EXIT_INTERVIEW = RetentionRecordCategory.EXIT_INTERVIEW
+    GRADUATE_TRACER = RetentionRecordCategory.GRADUATE_TRACER
+    CUSTOMER_FEEDBACK = RetentionRecordCategory.CUSTOMER_FEEDBACK
+
+
 class RetentionResponse(StrictSchema):
     id: UUID
     code: str
     name: str
+    record_categories: list[RetentionRecordCategoryValue]
     scope_summary: str
     retention_trigger_summary: str
     retention_period_summary: str
@@ -69,6 +82,7 @@ class RetentionPage(StrictSchema):
 class RetentionCreate(StrictSchema):
     code: str
     name: str
+    record_categories: list[RetentionRecordCategoryValue]
     scope_summary: str
     retention_trigger_summary: str
     retention_period_summary: str
@@ -80,6 +94,7 @@ class RetentionCreate(StrictSchema):
 
 class RetentionUpdate(StrictSchema):
     name: str | None = None
+    record_categories: list[RetentionRecordCategoryValue] | None = None
     scope_summary: str | None = None
     retention_trigger_summary: str | None = None
     retention_period_summary: str | None = None
@@ -116,6 +131,7 @@ def retention_list(
     page_size: int = service.DEFAULT_PAGE_SIZE,
     is_active: bool | None = None,
     search: str | None = None,
+    record_category: RetentionRecordCategoryValue | None = None,
 ):
     _require(request, "privacy_governance.view")
     try:
@@ -123,6 +139,7 @@ def retention_list(
             service.list_retention(
                 is_active=is_active,
                 search=search,
+                record_category=record_category.value if record_category is not None else None,
                 page_number=page,
                 page_size=page_size,
             ),

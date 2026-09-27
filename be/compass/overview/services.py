@@ -15,11 +15,6 @@ from compass.appointments.services import (
 from compass.call_slips.services import count_active_call_slips, count_my_active_call_slips
 from compass.good_moral.services import count_my_requested_requests, count_requested_requests
 from compass.platform_ops.email_operations import get_email_delivery_summary
-from compass.privacy_governance.services import (
-    count_active_incidents,
-    count_open_reviews,
-    privacy_overview_access_allowed,
-)
 from compass.routine_interviews.services import (
     count_my_draft_intakes,
     count_pending_assigned_evaluations,
@@ -56,18 +51,11 @@ class PlatformOverviewSummary:
 
 
 @dataclass(frozen=True, slots=True)
-class PrivacyOverviewSummary:
-    open_review_count: int | None
-    active_incident_count: int | None
-
-
-@dataclass(frozen=True, slots=True)
 class OverviewSummary:
     generated_at: datetime
     student: StudentOverviewSummary | None = None
     guidance: GuidanceOverviewSummary | None = None
     platform: PlatformOverviewSummary | None = None
-    privacy: PrivacyOverviewSummary | None = None
 
 
 def build_overview_summary(actor: User, *, now: datetime | None = None) -> OverviewSummary:
@@ -79,7 +67,6 @@ def build_overview_summary(actor: User, *, now: datetime | None = None) -> Overv
     student: StudentOverviewSummary | None = None
     guidance: GuidanceOverviewSummary | None = None
     platform: PlatformOverviewSummary | None = None
-    privacy: PrivacyOverviewSummary | None = None
 
     if role == "STUDENT":
         student = StudentOverviewSummary(
@@ -121,16 +108,9 @@ def build_overview_summary(actor: User, *, now: datetime | None = None) -> Overv
             email_failed_count=email.failed_count,
             email_sent_today_count=email.sent_today,
         )
-    elif role == "INSTITUTIONAL_OFFICER" and privacy_overview_access_allowed(actor):
-        privacy = PrivacyOverviewSummary(
-            open_review_count=count_open_reviews(actor),
-            active_incident_count=count_active_incidents(actor),
-        )
-
     return OverviewSummary(
         generated_at=current,
         student=student,
         guidance=guidance,
         platform=platform,
-        privacy=privacy,
     )

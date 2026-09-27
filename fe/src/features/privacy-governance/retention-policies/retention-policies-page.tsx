@@ -4,6 +4,7 @@ import { keepPreviousData } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   ActiveBadge,
@@ -16,6 +17,7 @@ import {
   PrivacyPageHeader,
   PrivacyQueryError,
   primaryLinkClass,
+  privacySelectClass,
   recordLinkClass,
   RefreshingNotice,
   tableCellClass,
@@ -25,16 +27,33 @@ import {
   useListSearchParams,
   usePrivacyAccess,
 } from "@/features/privacy-governance/privacy-governance-shared";
+import {
+  retentionRecordCategoryLabels,
+  retentionRecordCategoryOrder,
+} from "@/features/privacy-governance/privacy-governance-presentation";
 import { reviewDuePassed } from "@/features/privacy-governance/retention-policies/retention-policy-form";
-import { formatDateOnly } from "@/lib/date-time";
 import { usePrivacyGovernanceListRetentionPolicies } from "@/lib/api/generated/privacy-governance/privacy-governance";
+import type { RetentionRecordCategoryValue } from "@/lib/api/generated/model";
+import { formatDateOnly } from "@/lib/date-time";
+
+function recordCategoryFrom(value: string | null): RetentionRecordCategoryValue | undefined {
+  return retentionRecordCategoryOrder.find((category) => category === value);
+}
 
 export function RetentionPoliciesPage() {
   const { canManage } = usePrivacyAccess();
   const { searchParams, page, update, setPage } = useListSearchParams();
   const lifecycle = lifecycleFilterFrom(searchParams.get("status"));
+  const search = searchParams.get("search") ?? "";
+  const recordCategory = recordCategoryFrom(searchParams.get("record_category"));
   const query = usePrivacyGovernanceListRetentionPolicies(
-    { page, page_size: PRIVACY_PAGE_SIZE, ...lifecycleParams(lifecycle) },
+    {
+      page,
+      page_size: PRIVACY_PAGE_SIZE,
+      ...lifecycleParams(lifecycle),
+      search: search || undefined,
+      record_category: recordCategory,
+    },
     { query: { retry: false, placeholderData: keepPreviousData } },
   );
   const result = query.data?.data;
@@ -48,15 +67,48 @@ export function RetentionPoliciesPage() {
     <section>
       <PrivacyPageHeader
         title="Retention Policies"
-        description="Document approved retention guidance used by COMPASS. These records do not automatically delete data."
+        description="Maintain institution-approved lifecycle guidance mapped to COMPASS record categories. These policies do not automatically delete, archive, or anonymize records."
         action={createLink}
       />
 
-      <LifecycleFilter
-        id="retention-policy-status"
-        value={lifecycle}
-        onChange={(value) => update({ status: value === "active" ? null : value })}
-      />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(14rem,1fr)_14rem_18rem]">
+        <div className="grid gap-2">
+          <label htmlFor="retention-policy-search" className="text-sm font-medium text-ink">
+            Search
+          </label>
+          <Input
+            id="retention-policy-search"
+            value={search}
+            placeholder="Policy code or name"
+            onChange={(event) => update({ search: event.target.value || null })}
+          />
+        </div>
+        <LifecycleFilter
+          id="retention-policy-status"
+          value={lifecycle}
+          onChange={(value) => update({ status: value === "active" ? null : value })}
+        />
+        <div className="grid gap-2">
+          <label htmlFor="retention-policy-category" className="text-sm font-medium text-ink">
+            Record category
+          </label>
+          <select
+            id="retention-policy-category"
+            className={privacySelectClass}
+            value={recordCategory ?? ""}
+            onChange={(event) =>
+              update({ record_category: event.target.value || null })
+            }
+          >
+            <option value="">All record categories</option>
+            {retentionRecordCategoryOrder.map((category) => (
+              <option key={category} value={category}>
+                {retentionRecordCategoryLabels[category]}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {query.isPending ? (
         <div className="mt-5">
@@ -71,23 +123,22 @@ export function RetentionPoliciesPage() {
           />
         </div>
       ) : result && result.items.length === 0 ? (
-        lifecycle === "all" && page === 1 ? (
+        lifecycle === "all" && !search && !recordCategory && page === 1 ? (
           <EmptyListState
             message="No retention policies have been recorded."
             action={createLink}
           />
         ) : (
           <EmptyListState
-            message={
-              lifecycle === "retired"
-                ? "No retired retention policies."
-                : lifecycle === "active"
-                  ? "No active retention policies."
-                  : "No retention policies on this page."
-            }
+            message="No retention policies match the current filters."
             action={
-              <Button variant="secondary" onClick={() => update({ status: "all" })}>
-                Show all retention policies
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  update({ status: "all", search: null, record_category: null })
+                }
+              >
+                Clear filters
               </Button>
             }
           />
@@ -96,7 +147,7 @@ export function RetentionPoliciesPage() {
         <>
           <RefreshingNotice show={query.isFetching} label="Refreshing retention policies…" />
           <div className="mt-5 overflow-x-auto border-y border-border">
-            <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
+            <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
               <caption className="sr-only">Retention Policies</caption>
               <thead className={tableHeadClass}>
                 <tr>
@@ -104,7 +155,10 @@ export function RetentionPoliciesPage() {
                     Policy
                   </th>
                   <th scope="col" className={tableHeaderCellClass}>
-                    Records covered
+                    COMPASS record categories
+                  </th>
+                  <th scope="col" className={tableHeaderCellClass}>
+                    Scope
                   </th>
                   <th scope="col" className={tableHeaderCellClass}>
                     Review due
@@ -128,6 +182,19 @@ export function RetentionPoliciesPage() {
                         {policy.code}
                       </span>
                     </th>
+                    <td className={tableCellClass + " min-w-52"}>
+                      {policy.record_categories.length > 0 ? (
+                        <ul className="space-y-1 text-sm text-ink">
+                          {policy.record_categories.map((category) => (
+                            <li key={category}>{retentionRecordCategoryLabels[category]}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="text-muted">
+                          No COMPASS record category has been assigned yet.
+                        </span>
+                      )}
+                    </td>
                     <td className={tableCellClass + " max-w-md text-ink"}>
                       <p className="line-clamp-2 break-words">{policy.scope_summary}</p>
                     </td>

@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { PrivacyFieldLabels } from "@/features/privacy-governance/privacy-governance-errors";
-import { formatLongDate } from "@/features/privacy-governance/privacy-governance-presentation";
+import {
+  formatLongDate,
+  retentionRecordCategoryLabels,
+  retentionRecordCategoryOrder,
+} from "@/features/privacy-governance/privacy-governance-presentation";
 import {
   FieldHint,
   FormSection,
@@ -15,16 +19,18 @@ import {
 import { localDateInputValue } from "@/lib/date-time";
 import type {
   RetentionCreate,
+  RetentionRecordCategoryValue,
   RetentionResponse,
   RetentionUpdate,
 } from "@/lib/api/generated/model";
 
 export const RETENTION_BOUNDARY_NOTE =
-  "Retention Policies document institutional guidance. COMPASS does not automatically delete records from these settings.";
+  "Retention Policies document institution-approved lifecycle guidance. COMPASS does not automatically delete, archive, or anonymize records from these settings.";
 
 export type RetentionFormValues = {
   code: string;
   name: string;
+  recordCategories: RetentionRecordCategoryValue[];
   scope: string;
   trigger: string;
   period: string;
@@ -37,7 +43,8 @@ export type RetentionFormValues = {
 export const retentionFieldLabels: PrivacyFieldLabels = {
   code: "Code",
   name: "Name",
-  scope_summary: "What records does this cover?",
+  record_categories: "COMPASS record categories",
+  scope_summary: "Scope / records covered",
   retention_trigger_summary: "When does the retention period start?",
   retention_period_summary: "How long are records kept?",
   disposition_summary: "What happens after the retention period?",
@@ -49,6 +56,7 @@ export const retentionFieldLabels: PrivacyFieldLabels = {
 export const emptyRetentionValues: RetentionFormValues = {
   code: "",
   name: "",
+  recordCategories: [],
   scope: "",
   trigger: "",
   period: "",
@@ -62,6 +70,7 @@ export function retentionFormValues(item: RetentionResponse): RetentionFormValue
   return {
     code: item.code,
     name: item.name,
+    recordCategories: [...item.record_categories],
     scope: item.scope_summary,
     trigger: item.retention_trigger_summary,
     period: item.retention_period_summary,
@@ -76,6 +85,7 @@ export function retentionCreateRequest(values: RetentionFormValues): RetentionCr
   return {
     code: values.code,
     name: values.name,
+    record_categories: values.recordCategories,
     scope_summary: values.scope,
     retention_trigger_summary: values.trigger,
     retention_period_summary: values.period,
@@ -92,6 +102,9 @@ export function retentionChanges(
 ): RetentionUpdate {
   const changes: RetentionUpdate = {};
   if (values.name !== initial.name) changes.name = values.name;
+  if (values.recordCategories.join("\u0000") !== initial.recordCategories.join("\u0000")) {
+    changes.record_categories = values.recordCategories;
+  }
   if (values.scope !== initial.scope) changes.scope_summary = values.scope;
   if (values.trigger !== initial.trigger) changes.retention_trigger_summary = values.trigger;
   if (values.period !== initial.period) changes.retention_period_summary = values.period;
@@ -153,6 +166,67 @@ function QuestionField({
   );
 }
 
+function RecordCategorySelector({
+  values,
+  onChange,
+  error,
+  legacyUnclassified,
+}: {
+  values: RetentionRecordCategoryValue[];
+  onChange: (values: RetentionRecordCategoryValue[]) => void;
+  error: string | null;
+  legacyUnclassified: boolean;
+}) {
+  function toggle(category: RetentionRecordCategoryValue, checked: boolean) {
+    if (checked) {
+      onChange(
+        retentionRecordCategoryOrder.filter(
+          (item) => item === category || values.includes(item),
+        ),
+      );
+      return;
+    }
+    onChange(values.filter((item) => item !== category));
+  }
+
+  return (
+    <fieldset
+      className="grid gap-3"
+      aria-describedby={error ? "retention-category-error" : "retention-category-hint"}
+    >
+      <legend className="text-sm font-medium text-ink">COMPASS record categories</legend>
+      <FieldHint id="retention-category-hint">
+        Select each implemented COMPASS record class this human-approved policy applies to.
+        Categories identify records only; they do not execute retention actions.
+        {legacyUnclassified
+          ? " This legacy policy may remain unclassified until an authorized operator deliberately maps it."
+          : ""}
+      </FieldHint>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {retentionRecordCategoryOrder.map((category) => (
+          <label
+            key={category}
+            className="flex min-h-11 items-start gap-3 rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink"
+          >
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-brand"
+              checked={values.includes(category)}
+              onChange={(event) => toggle(category, event.target.checked)}
+            />
+            <span>{retentionRecordCategoryLabels[category]}</span>
+          </label>
+        ))}
+      </div>
+      {error ? (
+        <p id="retention-category-error" role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
+    </fieldset>
+  );
+}
+
 export function RetentionPolicyForm({
   mode,
   initial,
@@ -173,6 +247,7 @@ export function RetentionPolicyForm({
   onSubmit: (values: RetentionFormValues) => void;
 }) {
   const [values, setValues] = useState(initial);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
   function set<K extends keyof RetentionFormValues>(key: K, value: RetentionFormValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -180,6 +255,13 @@ export function RetentionPolicyForm({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const mustRemainClassified =
+      mode === "create" || initial.recordCategories.length > 0;
+    if (mustRemainClassified && values.recordCategories.length === 0) {
+      setCategoryError("Select at least one COMPASS record category.");
+      return;
+    }
+    setCategoryError(null);
     onSubmit(values);
   }
 
@@ -225,14 +307,29 @@ export function RetentionPolicyForm({
         </div>
       </FormSection>
 
-      <FormSection title="Retention guidance" description={RETENTION_BOUNDARY_NOTE}>
+      <FormSection
+        title="Records covered"
+        description="Map the policy to real COMPASS record classes, then add institution-approved scope detail."
+      >
+        <RecordCategorySelector
+          values={values.recordCategories}
+          error={categoryError}
+          legacyUnclassified={mode === "edit" && initial.recordCategories.length === 0}
+          onChange={(recordCategories) => {
+            set("recordCategories", recordCategories);
+            if (recordCategories.length > 0) setCategoryError(null);
+          }}
+        />
         <QuestionField
           id="retention-scope"
-          label="What records does this cover?"
+          label="Scope / records covered"
           maxLength={2000}
           value={values.scope}
           onChange={(value) => set("scope", value)}
         />
+      </FormSection>
+
+      <FormSection title="Retention guidance" description={RETENTION_BOUNDARY_NOTE}>
         <QuestionField
           id="retention-trigger"
           label="When does the retention period start?"

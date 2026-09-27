@@ -4,15 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const links: { href: string; label: string; related?: string }[] = [
-  { href: "/portal/privacy/processing-activities", label: "Processing Activities" },
-  { href: "/portal/privacy/reviews", label: "Reviews & PIAs" },
   {
     href: "/portal/privacy/notices",
     label: "Privacy Notices",
     related: "/portal/privacy/notice-revisions",
   },
   { href: "/portal/privacy/retention-policies", label: "Retention Policies" },
-  { href: "/portal/privacy/incidents", label: "Incidents" },
   { href: "/portal/privacy/activity", label: "Privacy & Security Activity" },
 ];
 

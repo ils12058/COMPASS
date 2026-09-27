@@ -254,6 +254,19 @@ authentication state; the last active account with effective `accounts.manage` i
 PostgreSQL row-lock coordination point. Definitions remain code-controlled, while per-user
 overrides require a non-empty reason and optional future expiry.
 
+## Privacy Governance
+
+Privacy Governance is intentionally limited to implemented COMPASS system controls: versioned
+Privacy Notices, exact-revision acknowledgment, human-approved Retention Policies, and curated
+Privacy & Security Activity. Processing Activity, Privacy Review/PIA, and Privacy Incident
+case-management workflows are not live COMPASS features.
+
+Retention Policies use a closed code-owned mapping to implemented COMPASS record categories. The
+mapping is descriptive only: it does not delete, archive, anonymize, notify, or otherwise mutate
+domain records. Legacy policies may remain unclassified until deliberately mapped. The scope
+reduction migration fails closed before removing obsolete workflow tables when any legacy rows
+exist; those rows require a separate explicit institutional archive/migration decision.
+
 ## API Contract
 
 The committed [`../contracts/openapi.json`](../contracts/openapi.json) is the development contract

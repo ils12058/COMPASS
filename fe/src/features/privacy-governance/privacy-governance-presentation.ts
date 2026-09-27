@@ -1,50 +1,9 @@
 import {
   AudienceValue,
-  IncidentStatusValue,
-  type NotificationAssessmentValue,
+  RetentionRecordCategoryValue,
   type PrivacyActivityCategory,
-  type ReviewStatusValue,
-  type ReviewTypeValue,
   type RevisionStatusValue,
 } from "@/lib/api/generated/model";
-
-export const reviewTypeTitles: Record<ReviewTypeValue, string> = {
-  PRIVACY_REVIEW: "Privacy review",
-  PIA: "Privacy impact assessment",
-};
-
-export const reviewTypeOptionLabels: Record<ReviewTypeValue, string> = {
-  PRIVACY_REVIEW: "Privacy review",
-  PIA: "Privacy impact assessment (PIA)",
-};
-
-export const reviewTypeShortLabels: Record<ReviewTypeValue, string> = {
-  PRIVACY_REVIEW: "Privacy review",
-  PIA: "PIA",
-};
-
-export const reviewStatusLabels: Record<ReviewStatusValue, string> = {
-  OPEN: "Open",
-  RESOLVED: "Resolved",
-};
-
-export const incidentStatusLabels: Record<IncidentStatusValue, string> = {
-  OPEN: "Open",
-  ASSESSING: "Assessing",
-  CONTAINED: "Contained",
-  RESOLVED: "Resolved",
-};
-
-// Human-entered governance assessment; not a legal determination.
-export const notificationAssessmentLabels: Record<
-  NotificationAssessmentValue,
-  string
-> = {
-  NOT_ASSESSED: "Not assessed",
-  NOT_REQUIRED: "Not required",
-  REQUIRED: "Required",
-  COMPLETED: "Completed",
-};
 
 export const revisionStatusLabels: Record<RevisionStatusValue, string> = {
   DRAFT: "Draft",
@@ -84,21 +43,32 @@ export const activityCategoryLabels: Record<PrivacyActivityCategory, string> = {
   PRIVACY_GOVERNANCE: "Privacy governance",
 };
 
-const incidentStatusOrder: IncidentStatusValue[] = [
-  IncidentStatusValue.OPEN,
-  IncidentStatusValue.ASSESSING,
-  IncidentStatusValue.CONTAINED,
-];
+export const retentionRecordCategoryLabels: Record<
+  RetentionRecordCategoryValue,
+  string
+> = {
+  INDIVIDUAL_INVENTORY: "Individual Inventory",
+  COUNSELING: "Counseling records",
+  ROUTINE_INTERVIEW: "Routine Interview records",
+  REFERRAL: "Referral records",
+  CALL_SLIP: "Call Slip records",
+  GOOD_MORAL: "Good Moral requests and issuance records",
+  EXIT_INTERVIEW: "Exit Interview records",
+  GRADUATE_TRACER: "Graduate Tracer responses",
+  CUSTOMER_FEEDBACK: "Customer Feedback / CSM records",
+};
 
-// The backend only moves incidents forward and resolves them through the
-// dedicated resolve operation, so the edit form offers the current status and
-// later non-resolved stages only.
-export function editableIncidentStatuses(
-  current: IncidentStatusValue,
-): IncidentStatusValue[] {
-  const index = incidentStatusOrder.indexOf(current);
-  return index === -1 ? [] : incidentStatusOrder.slice(index);
-}
+export const retentionRecordCategoryOrder: RetentionRecordCategoryValue[] = [
+  RetentionRecordCategoryValue.INDIVIDUAL_INVENTORY,
+  RetentionRecordCategoryValue.COUNSELING,
+  RetentionRecordCategoryValue.ROUTINE_INTERVIEW,
+  RetentionRecordCategoryValue.REFERRAL,
+  RetentionRecordCategoryValue.CALL_SLIP,
+  RetentionRecordCategoryValue.GOOD_MORAL,
+  RetentionRecordCategoryValue.EXIT_INTERVIEW,
+  RetentionRecordCategoryValue.GRADUATE_TRACER,
+  RetentionRecordCategoryValue.CUSTOMER_FEEDBACK,
+];
 
 export function formatLongDate(value: string): string {
   const date = new Date(`${value}T12:00:00`);

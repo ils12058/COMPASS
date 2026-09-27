@@ -9,14 +9,12 @@ from django.test import Client
 from django.utils import timezone
 
 from compass.accounts.models import (
-    Capability,
     Designation,
     Role,
     StudentLifecycleStatus,
     User,
     UserDesignation,
 )
-from compass.accounts.services import set_user_capability_override
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.authentication.sessions import create_auth_session
 from compass.call_slips.models import CallSlip, CallSlipDestinationType
@@ -32,13 +30,6 @@ from compass.organization.models import (
     CounselorResponsibility,
     StaffSupervision,
     StudentAffiliation,
-)
-from compass.privacy_governance.models import (
-    PrivacyIncident,
-    PrivacyIncidentStatus,
-    PrivacyReview,
-    PrivacyReviewStatus,
-    ProcessingActivity,
 )
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.models import Service
@@ -228,7 +219,7 @@ def test_overview_requires_authentication_and_preserves_zero_vs_null() -> None:
     response = auth_client(student).get("/api/v1/overview")
     assert response.status_code == 200
     body = response.json()
-    assert set(body) == {"generated_at", "student", "guidance", "platform", "privacy"}
+    assert set(body) == {"generated_at", "student", "guidance", "platform"}
     assert body["student"] == {
         "upcoming_appointments_count": 0,
         "routine_intake_draft_count": 0,
@@ -237,7 +228,6 @@ def test_overview_requires_authentication_and_preserves_zero_vs_null() -> None:
     }
     assert body["guidance"] is None
     assert body["platform"] is None
-    assert body["privacy"] is None
 
     student.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
     student.save(update_fields=["student_lifecycle_status", "updated_at"])
@@ -505,7 +495,7 @@ def test_guidance_overview_preserves_counselor_gss_and_head_scope() -> None:
 
 
 @pytest.mark.django_db
-def test_platform_and_privacy_sections_use_compatible_domain_identity() -> None:
+def test_platform_section_and_dpo_overview_have_no_invented_privacy_metrics() -> None:
     sync_policy()
     admin = make_user("overview-admin@example.edu", "IT_ADMIN")
     recipient = make_user(
@@ -537,9 +527,9 @@ def test_platform_and_privacy_sections_use_compatible_domain_identity() -> None:
         assert delivery.pk is not None
 
     platform = auth_client(admin).get("/api/v1/overview").json()
+    assert set(platform) == {"generated_at", "student", "guidance", "platform"}
     assert platform["student"] is None
     assert platform["guidance"] is None
-    assert platform["privacy"] is None
     assert platform["platform"] == {
         "email_pending_count": 1,
         "email_due_pending_count": 1,
@@ -549,67 +539,9 @@ def test_platform_and_privacy_sections_use_compatible_domain_identity() -> None:
 
     dpo = make_dpo()
     ordinary_officer = make_user("overview-officer@example.edu", "INSTITUTIONAL_OFFICER")
-    processing = ProcessingActivity.objects.create(
-        code="OVERVIEW",
-        name="Overview Processing",
-        purpose="Synthetic test purpose",
-        data_subject_categories=["Student"],
-        personal_data_categories=["Profile"],
-        authorized_access_summary="Synthetic",
-        safeguards_summary="Synthetic",
-    )
-    PrivacyReview.objects.create(
-        processing_activity=processing,
-        review_type="PRIVACY_REVIEW",
-        status=PrivacyReviewStatus.OPEN,
-        scope_summary="Synthetic",
-        reviewed_by=dpo,
-    )
-    PrivacyReview.objects.create(
-        processing_activity=processing,
-        review_type="PRIVACY_REVIEW",
-        status=PrivacyReviewStatus.RESOLVED,
-        scope_summary="Synthetic",
-        reviewed_by=dpo,
-        resolved_at=timezone.now(),
-    )
-    for status in (
-        PrivacyIncidentStatus.OPEN,
-        PrivacyIncidentStatus.ASSESSING,
-        PrivacyIncidentStatus.CONTAINED,
-        PrivacyIncidentStatus.RESOLVED,
-    ):
-        PrivacyIncident.objects.create(
-            reference_code=f"OV-{status}",
-            title=f"{status} incident",
-            summary="Synthetic",
-            affected_area="Synthetic",
-            personal_data_categories=["Profile"],
-            status=status,
-            discovered_at=timezone.now(),
-            resolved_at=timezone.now() if status == PrivacyIncidentStatus.RESOLVED else None,
-        )
-
-    privacy = auth_client(dpo).get("/api/v1/overview").json()
-    assert privacy["privacy"] == {
-        "open_review_count": 1,
-        "active_incident_count": 3,
-    }
-    assert privacy["student"] is None
-    assert privacy["guidance"] is None
-    assert privacy["platform"] is None
-
-    ordinary = auth_client(ordinary_officer).get("/api/v1/overview").json()
-    assert ordinary["student"] is None
-    assert ordinary["guidance"] is None
-    assert ordinary["platform"] is None
-    assert ordinary["privacy"] is None
-
-    set_user_capability_override(
-        user=ordinary_officer,
-        capability=Capability.objects.get(code="privacy_governance.view"),
-        effect="GRANT",
-        reason="Synthetic override must not fabricate DPO identity",
-    )
-    overridden = auth_client(ordinary_officer).get("/api/v1/overview").json()
-    assert overridden["privacy"] is None
+    for actor in (dpo, ordinary_officer):
+        body = auth_client(actor).get("/api/v1/overview").json()
+        assert set(body) == {"generated_at", "student", "guidance", "platform"}
+        assert body["student"] is None
+        assert body["guidance"] is None
+        assert body["platform"] is None

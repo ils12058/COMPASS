@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function Page() {
-  redirect("/portal/privacy/processing-activities");
+  redirect("/portal/privacy/notices");
 }
