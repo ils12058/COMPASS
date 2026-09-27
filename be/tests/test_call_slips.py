@@ -33,8 +33,8 @@ from compass.call_slips.services import (
 )
 from compass.counseling.models import CounselingEncounter, CounselingSharedSummary
 from compass.ecounseling.models import ECounselingRoom
+from compass.institutional_forms.canonical import supported_schema_versions
 from compass.institutional_forms.models import FormFamily, FormRevision
-from compass.institutional_forms.services import SUPPORTED_SCHEMA_VERSIONS
 from compass.notifications.delivery import render_notification_email
 from compass.notifications.models import EmailDelivery, Notification, NotificationPreference
 from compass.notifications.policy import NotificationEvent, NotificationPolicy
@@ -236,7 +236,7 @@ def test_call_slip_form_family_bootstraps_exact_historical_identity():
     assert family.title == "Interview Permit / Call Slip"
     assert revision.internal_schema_version == 1
     assert revision.status == "ACTIVE"
-    assert SUPPORTED_SCHEMA_VERSIONS["call_slip"] == frozenset({1})
+    assert supported_schema_versions("call_slip") == frozenset({1})
 
 
 @pytest.mark.django_db
@@ -586,6 +586,7 @@ def test_concurrent_same_actor_retry_creates_one_call_slip(monkeypatch):
 @pytest.mark.django_db
 def test_form_revision_snapshot_survives_future_activation_and_unsupported_active_blocks_create():
     sync_policy()
+    call_command("sync_institutional_forms", verbosity=0)
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
     first = create_for(head, student, key="form-first", fingerprint="a" * 64)
@@ -603,15 +604,17 @@ def test_form_revision_snapshot_survives_future_activation_and_unsupported_activ
     with pytest.raises(CallSlipConfigurationConflict, match="not supported"):
         create_for(head, student, key="unsupported", fingerprint="b" * 64)
 
-    unsupported.status = "INACTIVE"
-    unsupported.save(update_fields=["status", "updated_at"])
-    replacement = FormRevision.objects.create(
+    call_command("sync_institutional_forms", verbosity=0)
+    unsupported.refresh_from_db()
+    replacement = FormRevision.objects.get(
         family=family,
         official_code="CNSC-OP-GTA-01F8",
-        official_revision="1",
+        official_revision="0",
         internal_schema_version=1,
-        status="ACTIVE",
     )
+    assert unsupported.status == "INACTIVE"
+    assert replacement.status == "ACTIVE"
+
     second = create_for(head, student, key="form-second", fingerprint="c" * 64)
     first.refresh_from_db()
     assert first.form_revision_id == original_revision_id

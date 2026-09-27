@@ -11,6 +11,7 @@ from compass.accounts.models import (
     DesignationCapability,
     Role,
     RoleCapability,
+    UserCapabilityOverride,
 )
 from compass.accounts.policy import (
     CAPABILITY_DEFINITIONS,
@@ -25,6 +26,7 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 
 RENAMED_LEGACY_CAPABILITY_CODES = ("organization.view", "services.view")
+RETIRED_CAPABILITY_CODES = ("institutional_forms.manage",)
 
 
 def _sync_definition(model, definition) -> tuple[object, str]:
@@ -60,6 +62,10 @@ class Command(BaseCommand):
             "capabilities_updated": 0,
             "role_grants_created": 0,
             "designation_grants_created": 0,
+            "retired_role_grants_deleted": 0,
+            "retired_designation_grants_deleted": 0,
+            "retired_overrides_deleted": 0,
+            "retired_capabilities_deleted": 0,
         }
 
         with transaction.atomic():
@@ -68,6 +74,27 @@ class Command(BaseCommand):
                     "Legacy capability rows remain. Run accounts migration "
                     "0006_rename_reference_capabilities before sync_identity_policy."
                 )
+            counts["retired_role_grants_deleted"] = RoleCapability.objects.filter(
+                capability__code__in=RETIRED_CAPABILITY_CODES
+            ).count()
+            RoleCapability.objects.filter(capability__code__in=RETIRED_CAPABILITY_CODES).delete()
+            counts["retired_designation_grants_deleted"] = DesignationCapability.objects.filter(
+                capability__code__in=RETIRED_CAPABILITY_CODES
+            ).count()
+            DesignationCapability.objects.filter(
+                capability__code__in=RETIRED_CAPABILITY_CODES
+            ).delete()
+            counts["retired_overrides_deleted"] = UserCapabilityOverride.objects.filter(
+                capability__code__in=RETIRED_CAPABILITY_CODES
+            ).count()
+            UserCapabilityOverride.objects.filter(
+                capability__code__in=RETIRED_CAPABILITY_CODES
+            ).delete()
+            counts["retired_capabilities_deleted"] = Capability.objects.filter(
+                code__in=RETIRED_CAPABILITY_CODES
+            ).count()
+            Capability.objects.filter(code__in=RETIRED_CAPABILITY_CODES).delete()
+
             roles = {}
             for definition in ROLE_DEFINITIONS:
                 role, result = _sync_definition(Role, definition)
@@ -135,4 +162,12 @@ class Command(BaseCommand):
             f"role grants created={counts['role_grants_created']}; "
             f"designation grants created={counts['designation_grants_created']}. "
             "Unknown database rows were retained."
+        )
+        self.stdout.write(
+            "Retired capability state: "
+            f"role grants deleted={counts['retired_role_grants_deleted']}; "
+            f"designation grants deleted={counts['retired_designation_grants_deleted']}; "
+            f"overrides deleted={counts['retired_overrides_deleted']}; "
+            f"capabilities deleted={counts['retired_capabilities_deleted']}. "
+            "Other unknown database rows were retained."
         )

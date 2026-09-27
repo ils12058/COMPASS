@@ -6,11 +6,10 @@ import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { canManageInstitutionalForms, canViewInstitutionalForms } from "@/features/institution-configuration/institution-access";
+import { canViewInstitutionalForms } from "@/features/institution-configuration/institution-access";
 import { institutionConfigurationErrorMessage } from "@/features/institution-configuration/institution-action";
-import { InstitutionWorkspaceUnavailable } from "@/features/institution-configuration/institution-shared";
 import { FormRevisionList } from "@/features/institution-configuration/form-revision-list";
-import { FormRevisionRegistration } from "@/features/institution-configuration/form-revision-registration";
+import { InstitutionWorkspaceUnavailable } from "@/features/institution-configuration/institution-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   useInstitutionalFormsList,
@@ -28,20 +27,13 @@ export function InstitutionalFormsPage({
     return <InstitutionWorkspaceUnavailable workspace="Institutional Forms" />;
   }
 
-  return (
-    <InstitutionalFormsWorkspace
-      requestedFamily={requestedFamily}
-      canManage={canManageInstitutionalForms(user)}
-    />
-  );
+  return <InstitutionalFormsWorkspace requestedFamily={requestedFamily} />;
 }
 
 function InstitutionalFormsWorkspace({
   requestedFamily,
-  canManage,
 }: {
   requestedFamily?: string;
-  canManage: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -75,7 +67,9 @@ function InstitutionalFormsWorkspace({
         Institutional Forms
       </h1>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-        QMS-issued Form Family and revision metadata. This workspace does not edit or preview the forms themselves.
+        Supported controlled-form identities used by this COMPASS deployment. Form
+        compatibility is maintained with the application, while existing records retain
+        the revision they were created with.
       </p>
 
       {families.isError && !families.data ? (
@@ -91,7 +85,10 @@ function InstitutionalFormsWorkspace({
           </Button>
         </div>
       ) : families.isPending && !families.data ? (
-        <div className="mt-8 grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]" aria-busy="true">
+        <div
+          className="mt-8 grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]"
+          aria-busy="true"
+        >
           <div className="space-y-3">
             <Skeleton className="h-6 w-36" />
             <Skeleton className="h-12 w-full" />
@@ -106,7 +103,7 @@ function InstitutionalFormsWorkspace({
         </div>
       ) : familyItems.length === 0 ? (
         <p className="mt-8 border-y border-border py-5 text-sm text-muted">
-          No Institutional Form Families are available.
+          No synchronized Institutional Form Families are available.
         </p>
       ) : selectedFamily ? (
         <div className="mt-8 grid min-w-0 gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
@@ -138,24 +135,16 @@ function InstitutionalFormsWorkspace({
           </nav>
 
           <section aria-labelledby="selected-form-family-heading" className="min-w-0">
-            <div className="flex min-w-0 flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
-              <div className="min-w-0">
-                <h2
-                  id="selected-form-family-heading"
-                  className="break-words font-heading text-2xl font-semibold text-ink"
-                >
-                  {selectedFamily.title}
-                </h2>
-                <p className="mt-2 break-all text-sm text-muted">
-                  Family key: <code className="font-mono">{selectedFamily.key}</code>
-                </p>
-              </div>
-              {canManage ? (
-                <FormRevisionRegistration
-                  familyKey={selectedFamily.key}
-                  familyTitle={selectedFamily.title}
-                />
-              ) : null}
+            <div className="min-w-0 border-b border-border pb-5">
+              <h2
+                id="selected-form-family-heading"
+                className="break-words font-heading text-2xl font-semibold text-ink"
+              >
+                {selectedFamily.title}
+              </h2>
+              <p className="mt-2 break-all text-sm text-muted">
+                Family key: <code className="font-mono">{selectedFamily.key}</code>
+              </p>
             </div>
 
             <h3 className="mt-6 font-heading text-lg font-semibold text-ink">
@@ -169,7 +158,11 @@ function InstitutionalFormsWorkspace({
                     "Form Revisions for this family could not be loaded.",
                   )}
                 </p>
-                <Button variant="secondary" className="mt-3" onClick={() => void revisions.refetch()}>
+                <Button
+                  variant="secondary"
+                  className="mt-3"
+                  onClick={() => void revisions.refetch()}
+                >
                   Retry
                 </Button>
               </div>
@@ -181,28 +174,23 @@ function InstitutionalFormsWorkspace({
               </div>
             ) : revisionItems.length === 0 ? (
               <div className="mt-4 border-y border-border py-5">
-                <p className="text-sm text-ink">
-                  No Form Revisions are registered for this Form Family.
+                <p className="text-sm leading-6 text-muted">
+                  No confirmed official Form Revision is currently recorded for this
+                  supported Form Family.
                 </p>
-                {canManage ? (
-                  <p className="mt-2 text-sm leading-6 text-muted">
-                    Register a Form Revision to record its official QMS identity.
-                  </p>
-                ) : null}
               </div>
             ) : (
               <>
                 {revisions.isError ? (
                   <p role="alert" className="mt-4 text-sm leading-6 text-danger">
-                    The revision list could not be refreshed. The displayed data may be out of date.
+                    The revision list could not be refreshed. The displayed data may be out
+                    of date.
                   </p>
                 ) : null}
                 <div className="mt-4">
                   <FormRevisionList
-                    familyKey={selectedFamily.key}
                     familyTitle={selectedFamily.title}
                     revisions={revisionItems}
-                    canManage={canManage}
                   />
                 </div>
               </>

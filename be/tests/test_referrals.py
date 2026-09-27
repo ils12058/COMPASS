@@ -17,8 +17,8 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.counseling.models import CounselingEncounter
+from compass.institutional_forms.canonical import supported_schema_versions
 from compass.institutional_forms.models import FormFamily, FormRevision
-from compass.institutional_forms.services import SUPPORTED_SCHEMA_VERSIONS
 from compass.organization.models import (
     Campus,
     College,
@@ -157,7 +157,7 @@ def test_referral_form_family_bootstraps_exact_historical_qms_identity():
     assert family.title == "Referral Slip"
     assert revision.internal_schema_version == 1
     assert revision.status == "ACTIVE"
-    assert SUPPORTED_SCHEMA_VERSIONS["referral_slip"] == frozenset({1})
+    assert supported_schema_versions("referral_slip") == frozenset({1})
 
 
 @pytest.mark.django_db
@@ -534,6 +534,7 @@ def test_action_cannot_predate_known_gco_receipt():
 @pytest.mark.django_db
 def test_active_unsupported_form_revision_blocks_new_referrals_and_history_keeps_snapshot():
     sync_policy()
+    call_command("sync_institutional_forms", verbosity=0)
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
     first = create_for(head, student, key="first-form", fingerprint="a" * 64)
@@ -551,15 +552,17 @@ def test_active_unsupported_form_revision_blocks_new_referrals_and_history_keeps
     with pytest.raises(ReferralConfigurationConflict, match="not supported"):
         create_for(head, student, key="unsupported", fingerprint="b" * 64)
 
-    unsupported.status = "INACTIVE"
-    unsupported.save(update_fields=["status", "updated_at"])
-    replacement = FormRevision.objects.create(
+    call_command("sync_institutional_forms", verbosity=0)
+    unsupported.refresh_from_db()
+    replacement = FormRevision.objects.get(
         family=family,
         official_code="CNSC-OP-GTA-01F9",
-        official_revision="2",
+        official_revision="1",
         internal_schema_version=1,
-        status="ACTIVE",
     )
+    assert unsupported.status == "INACTIVE"
+    assert replacement.status == "ACTIVE"
+
     second = create_for(head, student, key="second-form", fingerprint="c" * 64)
     first.refresh_from_db()
     assert first.form_revision_id == first_revision_id

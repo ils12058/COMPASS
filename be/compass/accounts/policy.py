@@ -148,11 +148,6 @@ CAPABILITY_DEFINITIONS = (
         description="View recorded QMS-issued institutional Form Family and Revision metadata.",
     ),
     CapabilityDefinition(
-        code="institutional_forms.manage",
-        name="Manage institutional form metadata",
-        description="Register and activate QMS-issued institutional Form Revision metadata.",
-    ),
-    CapabilityDefinition(
         code="services.catalog.view",
         name="View service catalog",
         description=(
@@ -571,7 +566,6 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "academic_years.view",
             "academic_years.manage",
             "institutional_forms.view",
-            "institutional_forms.manage",
             "document_branding.view",
             "document_branding.manage",
             "exit_interviews.view",

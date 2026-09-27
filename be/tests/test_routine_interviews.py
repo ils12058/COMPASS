@@ -24,12 +24,8 @@ from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.counseling.models import CounselingEncounter
 from compass.counseling.services import create_encounter
+from compass.institutional_forms.canonical import supported_schema_versions
 from compass.institutional_forms.models import FormFamily, FormRevision
-from compass.institutional_forms.services import (
-    SUPPORTED_SCHEMA_VERSIONS,
-    activate_form_revision,
-    register_form_revision,
-)
 from compass.inventory.services import (
     ensure_current_inventory,
     replace_current_inventory,
@@ -51,6 +47,7 @@ from compass.routine_interviews.services import (
     RoutineInterviewCurrentStudentRequired,
     RoutineInterviewEncounterMismatch,
     RoutineInterviewEvaluationFinalized,
+    RoutineInterviewFormRevisionUnsupported,
     RoutineInterviewIntakeRequired,
     RoutineInterviewIntakeSubmitted,
     RoutineInterviewInventoryRequired,
@@ -189,7 +186,7 @@ def test_routine_form_family_and_capabilities_are_explicit_without_fake_qms_revi
     family = FormFamily.objects.get(key="routine_interview")
     assert family.title == "Routine Interview Form"
     assert not FormRevision.objects.filter(family=family).exists()
-    assert SUPPORTED_SCHEMA_VERSIONS["routine_interview"] == frozenset({1})
+    assert supported_schema_versions("routine_interview") == frozenset({1})
 
     assert student.has_capability("routine_interviews.view_self")
     assert student.has_capability("routine_interviews.manage_self")
@@ -644,7 +641,7 @@ def test_finalization_rejects_direct_entry_mode_mismatch_and_appointment_nonappo
 
 
 @pytest.mark.django_db
-def test_active_compatible_form_revision_is_snapshotted_without_rewriting_existing_routines():
+def test_unconfirmed_active_form_revision_is_rejected_without_rewriting_existing_routines():
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     student = make_user("student@example.edu", "STUDENT")
@@ -654,29 +651,21 @@ def test_active_compatible_form_revision_is_snapshotted_without_rewriting_existi
     create_counseling_service(admin)
 
     family = FormFamily.objects.get(key="routine_interview")
-    first_revision = register_form_revision(
-        family_key=family.key,
+    first = direct_routine(counselor=counselor, student=student, key="key-1")
+    assert first.form_revision_id is None
+
+    FormRevision.objects.create(
+        family=family,
         official_code="TEST-QMS-ROUTINE",
         official_revision="A",
         internal_schema_version=1,
-        context=context(admin),
-    )
-    activate_form_revision(revision_id=first_revision.pk, context=context(admin))
-    first = direct_routine(counselor=counselor, student=student, key="key-1")
-    assert first.form_revision_id == first_revision.pk
-
-    first_revision.status = "INACTIVE"
-    first_revision.save(update_fields=["status", "updated_at"])
-    second_revision = FormRevision.objects.create(
-        family=family,
-        official_code="TEST-QMS-ROUTINE-B",
-        official_revision="B",
-        internal_schema_version=1,
         status="ACTIVE",
     )
+    with pytest.raises(RoutineInterviewFormRevisionUnsupported):
+        direct_routine(counselor=counselor, student=student, key="key-2")
+
     first.refresh_from_db()
-    assert first.form_revision_id == first_revision.pk
-    assert second_revision.status == "ACTIVE"
+    assert first.form_revision_id is None
 
 
 @pytest.mark.django_db

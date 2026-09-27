@@ -25,6 +25,7 @@ from compass.audit.services import record_event
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
+    UnsupportedInstitutionalFormRevision,
     require_active_supported_form_revision,
 )
 from compass.notifications.policy import NotificationEvent
@@ -352,11 +353,11 @@ def _page(queryset, *, page: int, page_size: int) -> CallSlipPage:
 def _active_call_slip_revision():
     try:
         return require_active_supported_form_revision(CALL_SLIP_FORM_FAMILY_KEY)
+    except UnsupportedInstitutionalFormRevision as exc:
+        raise CallSlipConfigurationConflict(
+            "The active Call Slip Form Revision is not supported by this COMPASS version."
+        ) from exc
     except InstitutionalFormConflict as exc:
-        if "does not support" in str(exc):
-            raise CallSlipConfigurationConflict(
-                "The active Call Slip Form Revision is not supported by this COMPASS version."
-            ) from exc
         raise CallSlipConfigurationConflict(
             "No active supported Call Slip Form Revision is configured."
         ) from exc
