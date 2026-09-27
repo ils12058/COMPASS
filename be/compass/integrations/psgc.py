@@ -188,7 +188,9 @@ class PSGCClient:
         return rows
 
     def _normalize_row(self, row: dict[str, object]) -> PSGCReference:
-        code = row.get("psgc_code")
+        # PSA's live response calls the identifier "code". Keep the alternate key
+        # accepted for older cached fixtures and compatible response versions.
+        code = row.get("code", row.get("psgc_code"))
         name = row.get("area_name")
         if not isinstance(code, str) or not _CODE_RE.fullmatch(code.strip()):
             raise PSGCInvalidResponse("PSGC reference service returned an invalid code.")

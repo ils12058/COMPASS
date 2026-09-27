@@ -57,7 +57,7 @@ def row(
     bgy: int = 0,
 ) -> dict[str, object]:
     return {
-        "psgc_code": code,
+        "code": code,
         "area_name": name,
         "geographic_level": level,
         "reg": reg,
@@ -68,7 +68,7 @@ def row(
 
 
 def envelope(rows: list[dict[str, object]]) -> dict[str, object]:
-    return {"results": {"psgc_data": rows}}
+    return {"results": rows}
 
 
 def test_psgc_client_uses_configured_version_token_and_parses_reference_levels(monkeypatch):
@@ -168,6 +168,19 @@ def test_psgc_client_handles_pagination_and_cache_without_token_in_cache_key(mon
     assert second == first
     assert len(calls) == 2
     assert "do-not-cache-this-token" not in service._cache_key("regions", {})
+
+
+def test_psgc_client_accepts_legacy_psgc_code_field():
+    item = client()._normalize_row(
+        {
+            "psgc_code": "0500000000",
+            "area_name": "Region V",
+            "geographic_level": "Reg",
+            "reg": 5,
+        }
+    )
+
+    assert (item.code, item.name) == ("0500000000", "Region V")
 
 
 def test_psgc_transport_and_invalid_payload_errors_are_sanitized(monkeypatch):
