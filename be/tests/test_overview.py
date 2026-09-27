@@ -545,4 +545,3 @@ def test_platform_section_and_dpo_overview_have_no_invented_privacy_metrics() ->
         assert body["student"] is None
         assert body["guidance"] is None
         assert body["platform"] is None
-
