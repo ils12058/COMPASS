@@ -35,8 +35,10 @@
   --shadow-dialog: var(--compass-shadow-dialog);
 }
 
-* {
-  border-color: var(--compass-border);
+@layer base {
+  * {
+    border-color: var(--compass-border);
+  }
 }
 
 html {
