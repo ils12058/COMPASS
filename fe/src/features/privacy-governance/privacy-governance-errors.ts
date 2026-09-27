@@ -7,7 +7,6 @@ import {
 // Stable backend conflict codes; each maps to a distinct recovery in the workspace.
 export const PrivacyConflictCode = {
   codeInUse: "privacy_code_in_use",
-  retentionPolicyInUse: "privacy_retention_policy_in_use",
   retentionPolicyRetired: "privacy_retention_policy_retired",
   noticeRetired: "privacy_notice_retired",
   noticeDraftExists: "privacy_notice_draft_exists",
@@ -15,16 +14,12 @@ export const PrivacyConflictCode = {
   noticeNotYetEffective: "privacy_notice_not_yet_effective",
   noticeRevisionNotCurrent: "privacy_notice_revision_not_current",
   acknowledgmentNotApplicable: "privacy_notice_acknowledgment_not_applicable",
-  recordResolved: "privacy_record_resolved",
-  incidentStatusInvalid: "privacy_incident_status_invalid",
 } as const;
 
 export type PrivacyConflictCode = (typeof PrivacyConflictCode)[keyof typeof PrivacyConflictCode];
 
 const conflictCopy: Record<PrivacyConflictCode, string> = {
   [PrivacyConflictCode.codeInUse]: "This code is already in use. Use a different code.",
-  [PrivacyConflictCode.retentionPolicyInUse]:
-    "This Retention Policy is still assigned to an active Processing Activity and cannot be retired yet.",
   [PrivacyConflictCode.retentionPolicyRetired]:
     "This Retention Policy is retired. Retired policies cannot be edited or newly assigned.",
   [PrivacyConflictCode.noticeRetired]:
@@ -39,10 +34,6 @@ const conflictCopy: Record<PrivacyConflictCode, string> = {
     "This notice changed while you were viewing it. Refresh to review the current revision.",
   [PrivacyConflictCode.acknowledgmentNotApplicable]:
     "This notice does not ask for your acknowledgment.",
-  [PrivacyConflictCode.recordResolved]:
-    "This record is already resolved and can no longer be changed.",
-  [PrivacyConflictCode.incidentStatusInvalid]:
-    "An incident can only move forward. Use Resolve incident to resolve it.",
 };
 
 function isPrivacyConflictCode(code: string | undefined): code is PrivacyConflictCode {
@@ -66,6 +57,7 @@ const baseFieldLabels: PrivacyFieldLabels = {
   summary: "Summary",
   effective_on: "Effective date",
   review_due_on: "Review due",
+  record_categories: "COMPASS record categories",
   policy_reference: "Policy reference",
   requires_acknowledgment: "Require acknowledgment",
 };
