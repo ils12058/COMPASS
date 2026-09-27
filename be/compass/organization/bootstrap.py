@@ -158,7 +158,7 @@ def _sync_organization_catalog() -> CanonicalOrganizationSyncResult:
     # Programs are safe to retire from new selection without rewriting historical
     # StudentInventory foreign keys.
     legacy_programs = tuple(
-        Program.objects.select_for_update()
+        Program.objects.select_for_update(of=("self",))
         .select_related("college__campus")
         .filter(is_active=True)
         .exclude(pk__in=canonical_program_ids)
@@ -172,7 +172,7 @@ def _sync_organization_catalog() -> CanonicalOrganizationSyncResult:
     # Colleges carry live GCO routing. Unknown active rows are only retired when
     # doing so cannot invalidate an existing affiliation or responsibility.
     legacy_colleges = tuple(
-        College.objects.select_for_update()
+        College.objects.select_for_update(of=("self",))
         .select_related("campus")
         .filter(is_active=True)
         .exclude(pk__in=canonical_college_ids)
