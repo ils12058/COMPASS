@@ -3125,8 +3125,6 @@
           "call_slips.view_self",
           "counseling.manage_assigned",
           "counseling.view_assigned",
-          "document_branding.manage",
-          "document_branding.view",
           "ecounseling.consent_self",
           "ecounseling.join_assigned",
           "ecounseling.join_self",
@@ -11447,8 +11445,8 @@
           "daily_hours_class": {
             "anyOf": [
               {
-                "maximum": 24,
-                "minimum": 0,
+                "maximum": 24.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -11464,8 +11462,8 @@
           "daily_hours_library": {
             "anyOf": [
               {
-                "maximum": 24,
-                "minimum": 0,
+                "maximum": 24.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -11481,8 +11479,8 @@
           "daily_hours_other": {
             "anyOf": [
               {
-                "maximum": 24,
-                "minimum": 0,
+                "maximum": 24.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -11498,8 +11496,8 @@
           "daily_hours_recreation": {
             "anyOf": [
               {
-                "maximum": 24,
-                "minimum": 0,
+                "maximum": 24.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -11515,8 +11513,8 @@
           "daily_hours_rest": {
             "anyOf": [
               {
-                "maximum": 24,
-                "minimum": 0,
+                "maximum": 24.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -11532,8 +11530,8 @@
           "daily_hours_studying": {
             "anyOf": [
               {
-                "maximum": 24,
-                "minimum": 0,
+                "maximum": 24.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -20674,8 +20672,6 @@
                 "call_slips.view_self",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
-                "document_branding.manage",
-                "document_branding.view",
                 "ecounseling.consent_self",
                 "ecounseling.join_assigned",
                 "ecounseling.join_self",
@@ -20837,8 +20833,6 @@
                 "call_slips.view_self",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
-                "document_branding.manage",
-                "document_branding.view",
                 "ecounseling.consent_self",
                 "ecounseling.join_assigned",
                 "ecounseling.join_self",
