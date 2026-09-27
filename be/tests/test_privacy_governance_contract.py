@@ -188,9 +188,9 @@ def test_retention_search_is_bounded_trimmed_and_composes_with_category_and_acti
 
     by_name = dpo.get(f"{ROOT}/retention-policies?search=%20%20counseling%20").json()["items"]
     assert [item["code"] for item in by_name] == ["COUNSELING-RECORDS"]
-    category = dpo.get(
-        f"{ROOT}/retention-policies?record_category=REFERRAL&is_active=true"
-    ).json()["items"]
+    category = dpo.get(f"{ROOT}/retention-policies?record_category=REFERRAL&is_active=true").json()[
+        "items"
+    ]
     assert [item["code"] for item in category] == ["REFERRAL-RECORDS"]
     retired_shared = dpo.get(
         f"{ROOT}/retention-policies?record_category=COUNSELING&search=shared&is_active=false"
