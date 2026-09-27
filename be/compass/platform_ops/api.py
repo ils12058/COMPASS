@@ -25,7 +25,6 @@ from .activity import (
     TechnicalActivityPaginationError,
     list_technical_activity,
 )
-from .catalog import COMMAND_CATALOG, CommandCategory
 from .diagnostics import (
     DiagnosticStatus,
     collect_environment_diagnostics,
@@ -99,21 +98,6 @@ class PlatformEnvironmentResponse(StrictSchema):
     timestamp: datetime
     startup_limitation: str
     categories: list[EnvironmentCategoryResponse]
-
-
-class CommandCatalogEntryResponse(StrictSchema):
-    code: str
-    category: CommandCategory
-    display_name: str
-    purpose: str
-    invocation: str
-    mutates_state: bool
-    notes: str
-
-
-class CommandCatalogResponse(StrictSchema):
-    execution_supported: bool
-    commands: list[CommandCatalogEntryResponse]
 
 
 class EmailDeliveryStatusValue(StrEnum):
@@ -370,32 +354,6 @@ def platform_environment(request):
                 ],
             )
             for category in environment.categories
-        ],
-    )
-
-
-@router.get(
-    "/commands",
-    response=response_with_errors(CommandCatalogResponse, 401, 403),
-    auth=session_auth,
-    operation_id="platformOperationsCommandCatalog",
-    summary="List approved operator command guidance",
-)
-def platform_command_catalog(request):
-    _require(request, "platform_operations.view")
-    return CommandCatalogResponse(
-        execution_supported=False,
-        commands=[
-            CommandCatalogEntryResponse(
-                code=item.code,
-                category=item.category,
-                display_name=item.display_name,
-                purpose=item.purpose,
-                invocation=item.invocation,
-                mutates_state=item.mutates_state,
-                notes=item.notes,
-            )
-            for item in COMMAND_CATALOG
         ],
     )
 
