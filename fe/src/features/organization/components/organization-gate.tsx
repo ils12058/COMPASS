@@ -9,8 +9,8 @@ import {
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 
-// Structure reads alone are reference data for selectors in other workflows;
-// the Organization workspace follows management authority (ADR-059).
+// Structure reads remain safe reference data for other workflows. The standalone
+// Organization workspace is still entered through operational management authority (ADR-064).
 export function OrganizationGate({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
   return canManageOrganization(user) ? (
