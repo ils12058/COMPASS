@@ -5,6 +5,7 @@ from dataclasses import fields
 import pytest
 from django.apps import apps
 from django.core.management import call_command
+from django.utils import timezone
 
 from compass.accounts.models import Role, User
 from compass.accounts.profiles import PersonProfileContext
