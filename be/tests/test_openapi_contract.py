@@ -124,23 +124,11 @@ EXPECTED_OPERATION_IDS = {
     "accountsRevokeTrustedSessions",
     "accountsResetMfa",
     "organizationListCampuses",
-    "organizationCreateCampus",
     "organizationGetCampus",
-    "organizationUpdateCampus",
-    "organizationEnableCampus",
-    "organizationDisableCampus",
     "organizationListColleges",
-    "organizationCreateCollege",
     "organizationGetCollege",
-    "organizationUpdateCollege",
-    "organizationEnableCollege",
-    "organizationDisableCollege",
     "organizationListPrograms",
-    "organizationCreateProgram",
     "organizationGetProgram",
-    "organizationUpdateProgram",
-    "organizationEnableProgram",
-    "organizationDisableProgram",
     "organizationListCounselorResponsibilities",
     "organizationSetCollegeCounselor",
     "organizationRemoveCollegeCounselor",
@@ -872,8 +860,6 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "GraduateTracerTrainingPayload",
         "ProgramSummary",
         "ProgramListResponse",
-        "ProgramCreateRequest",
-        "ProgramUpdateRequest",
         "InventoryProgramSummary",
         "CivilStatusCategoryValue",
         "CurrentReligionCategoryValue",
@@ -1096,11 +1082,6 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
 
     program_summary = schemas["ProgramSummary"]["properties"]
     assert {"id", "code", "name", "college", "is_active"} == set(program_summary)
-    program_create = schemas["ProgramCreateRequest"]["properties"]
-    assert {"college_id", "code", "name"} == set(program_create)
-    program_update = schemas["ProgramUpdateRequest"]["properties"]
-    assert {"code", "name"} == set(program_update)
-
     inventory_payload = schemas["InventoryPayload"]["properties"]
     assert {
         "program_id",
@@ -1375,26 +1356,13 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         403,
         422,
     }
-    assert _response_statuses(_operation(schema, "/api/v1/organization/programs", "post")) >= {
-        201,
-        401,
-        403,
-        404,
-        409,
-        422,
-    }
+    assert "post" not in schema["paths"]["/api/v1/organization/programs"]
     assert _response_statuses(
         _operation(schema, "/api/v1/organization/programs/{program_id}", "get")
     ) >= {200, 401, 403, 404, 422}
-    assert _response_statuses(
-        _operation(schema, "/api/v1/organization/programs/{program_id}", "patch")
-    ) >= {200, 401, 403, 404, 409, 422}
-    assert _response_statuses(
-        _operation(schema, "/api/v1/organization/programs/{program_id}/enable", "post")
-    ) >= {200, 401, 403, 404, 409, 422}
-    assert _response_statuses(
-        _operation(schema, "/api/v1/organization/programs/{program_id}/disable", "post")
-    ) >= {200, 401, 403, 404, 409, 422}
+    assert "patch" not in schema["paths"]["/api/v1/organization/programs/{program_id}"]
+    assert "/api/v1/organization/programs/{program_id}/enable" not in schema["paths"]
+    assert "/api/v1/organization/programs/{program_id}/disable" not in schema["paths"]
 
     assert _response_statuses(
         _operation(
