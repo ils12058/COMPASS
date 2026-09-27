@@ -1944,6 +1944,7 @@ def test_privacy_governance_openapi_is_reduced_to_retained_system_controls() -> 
     ):
         assert forbidden not in serialized
 
+
 def test_availability_provider_discovery_openapi_contract() -> None:
     schema = _generated_schema()
     operation = _operation(schema, "/api/v1/availability/providers", "get")
