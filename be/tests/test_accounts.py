@@ -160,7 +160,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert Designation.objects.count() == 2
     assert Capability.objects.count() == 64
     assert RoleCapability.objects.count() == 77
-    assert DesignationCapability.objects.count() == 17
+    assert DesignationCapability.objects.count() == 15
 
 
 @pytest.mark.django_db
@@ -168,6 +168,8 @@ def test_policy_sync_removes_all_retired_capability_state():
     sync_policy()
     retired_codes = (
         "institutional_forms.manage",
+        "document_branding.view",
+        "document_branding.manage",
     )
     assert set(retired_codes).isdisjoint(CAPABILITY_CODES)
 
