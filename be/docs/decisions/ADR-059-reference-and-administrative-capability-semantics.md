@@ -1,5 +1,10 @@
 # ADR-059 — Clarify Reference and Administrative Capability Semantics
 
+> **Further refined by ADR-064 (2026-09-27).** `organization.structure.view` remains the safe
+> Campus/College/Program read authority. `organization.manage` now governs only genuine GCO
+> operational relationships and people discovery; institutional topology is deployment-synchronized.
+
+
 > **Refined by ADR-063 (2026-09-27).** `institutional_forms.view` remains the read authority,
 > while `institutional_forms.manage` is retired because Form Revision compatibility is no longer
 > a portal-managed configuration concern.

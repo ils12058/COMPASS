@@ -5,26 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.db.models import Q
 
 from compass.accounts.models import User
 from compass.audit.actions import (
-    ORGANIZATION_CAMPUS_CREATED,
-    ORGANIZATION_CAMPUS_DISABLED,
-    ORGANIZATION_CAMPUS_ENABLED,
-    ORGANIZATION_CAMPUS_UPDATED,
-    ORGANIZATION_COLLEGE_CREATED,
-    ORGANIZATION_COLLEGE_DISABLED,
-    ORGANIZATION_COLLEGE_ENABLED,
-    ORGANIZATION_COLLEGE_UPDATED,
     ORGANIZATION_COUNSELOR_RESPONSIBILITY_ASSIGNED,
     ORGANIZATION_COUNSELOR_RESPONSIBILITY_CHANGED,
     ORGANIZATION_COUNSELOR_RESPONSIBILITY_REMOVED,
-    ORGANIZATION_PROGRAM_CREATED,
-    ORGANIZATION_PROGRAM_DISABLED,
-    ORGANIZATION_PROGRAM_ENABLED,
-    ORGANIZATION_PROGRAM_UPDATED,
     ORGANIZATION_STAFF_SUPERVISION_ASSIGNED,
     ORGANIZATION_STAFF_SUPERVISION_CHANGED,
     ORGANIZATION_STAFF_SUPERVISION_REMOVED,
@@ -42,7 +30,6 @@ from compass.organization.models import (
     Program,
     StaffSupervision,
     StudentAffiliation,
-    normalize_code,
 )
 
 DEFAULT_PAGE_SIZE = 20
@@ -91,24 +78,6 @@ class StudentAffiliationPage:
     page: int
     page_size: int
     has_next: bool
-
-
-def _clean_name(value: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise InvalidOrganizationInput("name is required")
-    cleaned = value.strip()
-    if len(cleaned) > 160:
-        raise InvalidOrganizationInput("name is too long")
-    return cleaned
-
-
-def _clean_code(value: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise InvalidOrganizationInput("code is required")
-    cleaned = normalize_code(value)
-    if len(cleaned) > 32:
-        raise InvalidOrganizationInput("code is too long")
-    return cleaned
 
 
 def _actor(context: AuditContext) -> User | None:
@@ -233,75 +202,6 @@ def get_campus(campus_id: UUID) -> Campus:
     return campus
 
 
-def create_campus(*, code: str, name: str, context: AuditContext) -> Campus:
-    with transaction.atomic():
-        try:
-            campus = Campus.objects.create(code=_clean_code(code), name=_clean_name(name))
-        except IntegrityError as exc:
-            raise OrganizationConflict("A campus with this code already exists.") from exc
-        record_event(
-            context=context,
-            action=ORGANIZATION_CAMPUS_CREATED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.campus",
-            target_id=campus.pk,
-            metadata={"code": campus.code},
-        )
-        return campus
-
-
-def update_campus(*, campus_id: UUID, changes: dict[str, object], context: AuditContext) -> Campus:
-    with transaction.atomic():
-        campus = Campus.objects.select_for_update().filter(pk=campus_id).first()
-        if campus is None:
-            raise OrganizationNotFound("The requested campus was not found.")
-        normalized = {}
-        if "code" in changes:
-            normalized["code"] = _clean_code(changes["code"])
-        if "name" in changes:
-            normalized["name"] = _clean_name(changes["name"])
-        changed = [key for key, value in normalized.items() if getattr(campus, key) != value]
-        if not changed:
-            return campus
-        for key in changed:
-            setattr(campus, key, normalized[key])
-        try:
-            campus.save(update_fields=[*changed, "updated_at"])
-        except IntegrityError as exc:
-            raise OrganizationConflict("A campus with this code already exists.") from exc
-        record_event(
-            context=context,
-            action=ORGANIZATION_CAMPUS_UPDATED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.campus",
-            target_id=campus.pk,
-            metadata={"changed_fields": changed},
-        )
-        return campus
-
-
-def set_campus_active(*, campus_id: UUID, is_active: bool, context: AuditContext) -> Campus:
-    with transaction.atomic():
-        campus = Campus.objects.select_for_update().filter(pk=campus_id).first()
-        if campus is None:
-            raise OrganizationNotFound("The requested campus was not found.")
-        if campus.is_active == is_active:
-            return campus
-        if not is_active and College.objects.filter(campus_id=campus.pk, is_active=True).exists():
-            raise OrganizationConflict("Disable active Colleges before disabling this Campus.")
-        campus.is_active = is_active
-        campus.save(update_fields=["is_active", "updated_at"])
-        record_event(
-            context=context,
-            action=ORGANIZATION_CAMPUS_ENABLED if is_active else ORGANIZATION_CAMPUS_DISABLED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.campus",
-            target_id=campus.pk,
-            metadata={},
-        )
-        return campus
-
-
 def list_colleges(
     *, campus_id: UUID | None = None, is_active: bool | None = None, search: str | None = None
 ) -> tuple[College, ...]:
@@ -347,224 +247,6 @@ def get_program(program_id: UUID) -> Program:
     if program is None:
         raise OrganizationNotFound("The requested program was not found.")
     return program
-
-
-def create_program(
-    *,
-    college_id: UUID,
-    code: str,
-    name: str,
-    context: AuditContext,
-) -> Program:
-    with transaction.atomic():
-        college = (
-            College.objects.select_for_update(of=("self", "campus"))
-            .select_related("campus")
-            .filter(pk=college_id)
-            .first()
-        )
-        if college is None:
-            raise OrganizationNotFound("The requested college was not found.")
-        if not college.is_active or not college.campus.is_active:
-            raise OrganizationConflict(
-                "A Program can only be created under an active College and Campus."
-            )
-        try:
-            program = Program.objects.create(
-                college=college,
-                code=_clean_code(code),
-                name=_clean_name(name),
-            )
-        except IntegrityError as exc:
-            raise OrganizationConflict(
-                "A Program with this code already exists in the College."
-            ) from exc
-        record_event(
-            context=context,
-            action=ORGANIZATION_PROGRAM_CREATED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.program",
-            target_id=program.pk,
-            metadata={
-                "college_id": str(college.pk),
-                "code": program.code,
-            },
-        )
-        return program
-
-
-def update_program(
-    *, program_id: UUID, changes: dict[str, object], context: AuditContext
-) -> Program:
-    with transaction.atomic():
-        program = (
-            Program.objects.select_for_update(of=("self", "college", "college__campus"))
-            .select_related("college__campus")
-            .filter(pk=program_id)
-            .first()
-        )
-        if program is None:
-            raise OrganizationNotFound("The requested program was not found.")
-        normalized: dict[str, object] = {}
-        if "code" in changes:
-            normalized["code"] = _clean_code(changes["code"])
-        if "name" in changes:
-            normalized["name"] = _clean_name(changes["name"])
-        changed = [key for key, value in normalized.items() if getattr(program, key) != value]
-        if not changed:
-            return program
-        for key in changed:
-            setattr(program, key, normalized[key])
-        try:
-            program.save(update_fields=[*changed, "updated_at"])
-        except IntegrityError as exc:
-            raise OrganizationConflict(
-                "A Program with this code already exists in the College."
-            ) from exc
-        record_event(
-            context=context,
-            action=ORGANIZATION_PROGRAM_UPDATED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.program",
-            target_id=program.pk,
-            metadata={"changed_fields": changed},
-        )
-        return program
-
-
-def set_program_active(*, program_id: UUID, is_active: bool, context: AuditContext) -> Program:
-    with transaction.atomic():
-        program = (
-            Program.objects.select_for_update(of=("self", "college", "college__campus"))
-            .select_related("college__campus")
-            .filter(pk=program_id)
-            .first()
-        )
-        if program is None:
-            raise OrganizationNotFound("The requested program was not found.")
-        if program.is_active == is_active:
-            return program
-        if is_active and (not program.college.is_active or not program.college.campus.is_active):
-            raise OrganizationConflict(
-                "Enable the parent College and Campus before enabling this Program."
-            )
-        program.is_active = is_active
-        program.save(update_fields=["is_active", "updated_at"])
-        record_event(
-            context=context,
-            action=ORGANIZATION_PROGRAM_ENABLED if is_active else ORGANIZATION_PROGRAM_DISABLED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.program",
-            target_id=program.pk,
-            metadata={
-                "college_id": str(program.college_id),
-                "code": program.code,
-            },
-        )
-        return program
-
-
-def create_college(*, campus_id: UUID, code: str, name: str, context: AuditContext) -> College:
-    with transaction.atomic():
-        campus = Campus.objects.select_for_update().filter(pk=campus_id).first()
-        if campus is None:
-            raise OrganizationNotFound("The requested campus was not found.")
-        if not campus.is_active:
-            raise OrganizationConflict("A College cannot be created under an inactive Campus.")
-        try:
-            college = College.objects.create(
-                campus=campus,
-                code=_clean_code(code),
-                name=_clean_name(name),
-            )
-        except IntegrityError as exc:
-            raise OrganizationConflict(
-                "A College with this code already exists in the Campus."
-            ) from exc
-        record_event(
-            context=context,
-            action=ORGANIZATION_COLLEGE_CREATED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.college",
-            target_id=college.pk,
-            metadata={"campus_id": str(campus.pk), "code": college.code},
-        )
-        return college
-
-
-def update_college(
-    *, college_id: UUID, changes: dict[str, object], context: AuditContext
-) -> College:
-    with transaction.atomic():
-        college = (
-            College.objects.select_for_update(of=("self", "campus"))
-            .select_related("campus")
-            .filter(pk=college_id)
-            .first()
-        )
-        if college is None:
-            raise OrganizationNotFound("The requested college was not found.")
-        normalized = {}
-        if "code" in changes:
-            normalized["code"] = _clean_code(changes["code"])
-        if "name" in changes:
-            normalized["name"] = _clean_name(changes["name"])
-        changed = [key for key, value in normalized.items() if getattr(college, key) != value]
-        if not changed:
-            return college
-        for key in changed:
-            setattr(college, key, normalized[key])
-        try:
-            college.save(update_fields=[*changed, "updated_at"])
-        except IntegrityError as exc:
-            raise OrganizationConflict(
-                "A College with this code already exists in the Campus."
-            ) from exc
-        record_event(
-            context=context,
-            action=ORGANIZATION_COLLEGE_UPDATED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.college",
-            target_id=college.pk,
-            metadata={"changed_fields": changed},
-        )
-        return college
-
-
-def set_college_active(*, college_id: UUID, is_active: bool, context: AuditContext) -> College:
-    with transaction.atomic():
-        college = (
-            College.objects.select_for_update(of=("self", "campus"))
-            .select_related("campus")
-            .filter(pk=college_id)
-            .first()
-        )
-        if college is None:
-            raise OrganizationNotFound("The requested college was not found.")
-        if college.is_active == is_active:
-            return college
-        if is_active and not college.campus.is_active:
-            raise OrganizationConflict("Enable the parent Campus before enabling this College.")
-        if not is_active and (
-            StudentAffiliation.objects.filter(college_id=college.pk).exists()
-            or CounselorResponsibility.objects.filter(college_id=college.pk).exists()
-            or Program.objects.filter(college_id=college.pk, is_active=True).exists()
-        ):
-            raise OrganizationConflict(
-                "Remove or reassign current organizational relationships "
-                "before disabling this College."
-            )
-        college.is_active = is_active
-        college.save(update_fields=["is_active", "updated_at"])
-        record_event(
-            context=context,
-            action=ORGANIZATION_COLLEGE_ENABLED if is_active else ORGANIZATION_COLLEGE_DISABLED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.college",
-            target_id=college.pk,
-            metadata={},
-        )
-        return college
 
 
 def _lock_user_with_role(

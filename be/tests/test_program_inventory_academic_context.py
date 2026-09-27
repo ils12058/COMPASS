@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-import json
 from dataclasses import fields
 
 import pytest
 from django.apps import apps
 from django.core.management import call_command
-from django.test import Client
 from django.utils import timezone
 
 from compass.accounts.models import Role, User
 from compass.accounts.profiles import PersonProfileContext
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
-from compass.authentication.sessions import create_auth_session
 from compass.inventory.models import StudentInventory
 from compass.inventory.services import (
     InvalidInventoryInput,
@@ -32,13 +29,6 @@ from compass.organization.models import (
     College,
     Program,
     StudentAffiliation,
-)
-from compass.organization.services import (
-    OrganizationConflict,
-    create_program,
-    set_college_active,
-    set_program_active,
-    update_program,
 )
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
@@ -61,24 +51,6 @@ def context(actor: User) -> AuditContext:
     return AuditContext.user(actor)
 
 
-def auth_client(user: User, *, recent_mfa: bool = True) -> Client:
-    now = timezone.now()
-    issued = create_auth_session(
-        user,
-        now=now,
-        mfa_verified_at=now if recent_mfa else None,
-    )
-    client = Client()
-    client.cookies["compass_session"] = issued.token
-    return client
-
-
-def csrf(client: Client) -> dict[str, str]:
-    response = client.get("/api/v1/auth/csrf")
-    assert response.status_code == 200
-    return {"HTTP_X_CSRFTOKEN": response.json()["csrf_token"]}
-
-
 def configure_year(actor: User, label: str = "2026-2027"):
     year = create_academic_year(label=label, context=context(actor))
     return set_current_academic_year(academic_year_id=year.pk, context=context(actor))
@@ -98,191 +70,10 @@ def make_program(
         code=college_code,
         name=f"{college_code} College",
     )
-    return create_program(
-        college_id=college.pk,
+    return Program.objects.create(
+        college=college,
         code=program_code,
         name=program_name,
-        context=context(actor),
-    )
-
-
-@pytest.mark.django_db
-def test_program_catalog_normalizes_code_and_is_unique_within_college_only():
-    sync_policy()
-    actor = make_user("program-admin@example.edu", "IT_ADMIN")
-    campus = Campus.objects.create(code="MAIN", name="Main Campus")
-    college_a = College.objects.create(campus=campus, code="A", name="College A")
-    college_b = College.objects.create(campus=campus, code="B", name="College B")
-
-    first = create_program(
-        college_id=college_a.pk,
-        code="  bsis ",
-        name="  BS Information Systems  ",
-        context=context(actor),
-    )
-    assert first.code == "BSIS"
-    assert first.name == "BS Information Systems"
-    assert first.college_id == college_a.pk
-
-    with pytest.raises(OrganizationConflict, match="already exists"):
-        create_program(
-            college_id=college_a.pk,
-            code="bsis",
-            name="Duplicate",
-            context=context(actor),
-        )
-
-    other = create_program(
-        college_id=college_b.pk,
-        code="BSIS",
-        name="BS Information Systems",
-        context=context(actor),
-    )
-    assert other.college_id == college_b.pk
-
-
-@pytest.mark.django_db
-def test_program_hierarchy_activation_rules_and_parent_college_disable_guard():
-    sync_policy()
-    actor = make_user("hierarchy-admin@example.edu", "IT_ADMIN")
-    program = make_program(actor)
-    college = program.college
-    campus = college.campus
-
-    with pytest.raises(OrganizationConflict):
-        set_college_active(college_id=college.pk, is_active=False, context=context(actor))
-
-    disabled = set_program_active(
-        program_id=program.pk,
-        is_active=False,
-        context=context(actor),
-    )
-    assert not disabled.is_active
-    set_college_active(college_id=college.pk, is_active=False, context=context(actor))
-    with pytest.raises(OrganizationConflict, match="parent College and Campus"):
-        set_program_active(
-            program_id=program.pk,
-            is_active=True,
-            context=context(actor),
-        )
-
-    college.is_active = True
-    college.save(update_fields=["is_active", "updated_at"])
-    campus.is_active = False
-    campus.save(update_fields=["is_active", "updated_at"])
-    with pytest.raises(OrganizationConflict, match="parent College and Campus"):
-        set_program_active(
-            program_id=program.pk,
-            is_active=True,
-            context=context(actor),
-        )
-
-    inactive_college = College.objects.create(
-        campus=Campus.objects.create(code="SECOND", name="Second Campus"),
-        code="INACTIVE",
-        name="Inactive College",
-        is_active=False,
-    )
-    with pytest.raises(OrganizationConflict, match="active College and Campus"):
-        create_program(
-            college_id=inactive_college.pk,
-            code="TEST",
-            name="Test Program",
-            context=context(actor),
-        )
-
-    inactive_campus = Campus.objects.create(code="THIRD", name="Third Campus", is_active=False)
-    active_child = College.objects.create(
-        campus=inactive_campus,
-        code="ACTIVE",
-        name="Active Child",
-        is_active=True,
-    )
-    with pytest.raises(OrganizationConflict, match="active College and Campus"):
-        create_program(
-            college_id=active_child.pk,
-            code="TEST2",
-            name="Test Program 2",
-            context=context(actor),
-        )
-
-
-@pytest.mark.django_db
-def test_program_update_keeps_college_ownership_and_audits_structural_changes():
-    sync_policy()
-    actor = make_user("update-program@example.edu", "IT_ADMIN")
-    program = make_program(actor)
-    original_college_id = program.college_id
-
-    updated = update_program(
-        program_id=program.pk,
-        changes={"code": "  bsis-new ", "name": "  Bachelor of Science in IS  "},
-        context=context(actor),
-    )
-    assert updated.code == "BSIS-NEW"
-    assert updated.name == "Bachelor of Science in IS"
-    assert updated.college_id == original_college_id
-    assert AuditEvent.objects.filter(action="organization.program.created").count() == 1
-    assert AuditEvent.objects.filter(action="organization.program.updated").count() == 1
-
-
-@pytest.mark.django_db
-def test_program_api_uses_existing_view_manage_and_recent_mfa_boundary():
-    sync_policy()
-    admin = make_user("api-admin@example.edu", "IT_ADMIN")
-    student = make_user("api-student@example.edu", "STUDENT")
-    campus = Campus.objects.create(code="MAIN", name="Main Campus")
-    college = College.objects.create(campus=campus, code="CCMS", name="CCMS")
-
-    stale = auth_client(admin, recent_mfa=False)
-    stale_create = stale.post(
-        "/api/v1/organization/programs",
-        data=json.dumps(
-            {
-                "college_id": str(college.pk),
-                "code": "BSIS",
-                "name": "BS Information Systems",
-            }
-        ),
-        content_type="application/json",
-        **csrf(stale),
-    )
-    assert stale_create.status_code == 403
-
-    fresh = auth_client(admin)
-    created = fresh.post(
-        "/api/v1/organization/programs",
-        data=json.dumps(
-            {
-                "college_id": str(college.pk),
-                "code": "bsis",
-                "name": "BS Information Systems",
-            }
-        ),
-        content_type="application/json",
-        **csrf(fresh),
-    )
-    assert created.status_code == 201
-    program_id = created.json()["id"]
-
-    student_client = auth_client(student)
-    listed = student_client.get("/api/v1/organization/programs")
-    assert listed.status_code == 200
-    assert listed.json()["items"][0]["id"] == program_id
-    assert (
-        student_client.post(
-            "/api/v1/organization/programs",
-            data=json.dumps(
-                {
-                    "college_id": str(college.pk),
-                    "code": "NOPE",
-                    "name": "Denied",
-                }
-            ),
-            content_type="application/json",
-            **csrf(student_client),
-        ).status_code
-        == 403
     )
 
 
@@ -361,7 +152,7 @@ def test_inactive_program_or_parent_chain_blocks_edit_and_submission():
         values={"program_id": program.pk, "year_level": 1},
     )
 
-    set_program_active(program_id=program.pk, is_active=False, context=context(actor))
+    Program.objects.filter(pk=program.pk).update(is_active=False)
     with pytest.raises(InventoryConflict, match="must all be active"):
         submit_current_inventory(student=student, context=context(student))
     with pytest.raises(InventoryConflict, match="must all be active"):
@@ -396,12 +187,10 @@ def test_submitted_inventory_snapshot_survives_program_rename_and_deactivation()
     submitted = submit_current_inventory(student=student, context=context(student))
     frozen_course = submitted.course_currently_enrolled
 
-    update_program(
-        program_id=program.pk,
-        changes={"name": "Bachelor of Science in Information Systems"},
-        context=context(actor),
+    Program.objects.filter(pk=program.pk).update(
+        name="Bachelor of Science in Information Systems",
+        is_active=False,
     )
-    set_program_active(program_id=program.pk, is_active=False, context=context(actor))
 
     historical = get_my_inventory_history_item(
         student=student,
@@ -425,11 +214,10 @@ def test_inventory_program_does_not_mutate_guidance_student_affiliation():
     college_a = College.objects.create(campus=campus_a, code="A", name="College A")
     campus_b = Campus.objects.create(code="B", name="Campus B")
     college_b = College.objects.create(campus=campus_b, code="B", name="College B")
-    program_b = create_program(
-        college_id=college_b.pk,
+    program_b = Program.objects.create(
+        college=college_b,
         code="BSCPE",
         name="BS Computer Engineering",
-        context=context(actor),
     )
     StudentAffiliation.objects.create(student=student, college=college_a, assigned_by=actor)
     affiliation_audits_before = AuditEvent.objects.filter(

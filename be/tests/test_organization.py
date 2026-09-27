@@ -28,7 +28,6 @@ from compass.organization.models import (
     StudentAffiliation,
 )
 from compass.organization.services import (
-    OrganizationConflict,
     effective_responsibility_colleges,
     resolve_default_counselor_for_student,
     set_counselor_responsibility,
@@ -123,15 +122,13 @@ def test_structural_reads_are_available_without_organization_management():
             assert (
                 client.get("/api/v1/organization/people", {"role": "COUNSELOR"}).status_code == 403
             )
-            assert (
-                client.post(
-                    "/api/v1/organization/campuses",
-                    data=json.dumps({"code": "DENIED", "name": "Denied"}),
-                    content_type="application/json",
-                    **csrf(client),
-                ).status_code
-                == 403
+            removed_write = client.post(
+                "/api/v1/organization/campuses",
+                data=json.dumps({"code": "DENIED", "name": "Denied"}),
+                content_type="application/json",
+                **csrf(client),
             )
+            assert removed_write.status_code in {404, 405}
 
     officer = make_user("read-officer@example.edu", "INSTITUTIONAL_OFFICER")
     assert auth_client(officer).get("/api/v1/organization/campuses").status_code == 403
@@ -370,60 +367,87 @@ def test_role_changes_are_blocked_until_organization_relationship_is_removed():
 
 
 @pytest.mark.django_db
-def test_structure_disable_refuses_active_children_and_current_assignments():
+def test_structural_write_routes_are_removed_instead_of_forbidden():
     sync_policy()
-    actor = make_user("admin@example.edu", "IT_ADMIN")
+    actor = make_user("structure-admin@example.edu", "IT_ADMIN")
+    client = auth_client(actor)
     campus = Campus.objects.create(code="M", name="Main")
     college = College.objects.create(campus=campus, code="C", name="College")
-    student = make_user("s@example.edu", "STUDENT")
-    StudentAffiliation.objects.create(student=student, college=college, assigned_by=actor)
+    program = Program.objects.create(college=college, code="P", name="Program")
+    headers = csrf(client)
 
-    from compass.organization.services import set_campus_active, set_college_active
+    requests = (
+        ("post", "/api/v1/organization/campuses", {"code": "N", "name": "North"}),
+        ("patch", f"/api/v1/organization/campuses/{campus.pk}", {"name": "Changed"}),
+        ("post", f"/api/v1/organization/campuses/{campus.pk}/enable", None),
+        ("post", f"/api/v1/organization/campuses/{campus.pk}/disable", None),
+        (
+            "post",
+            "/api/v1/organization/colleges",
+            {"campus_id": str(campus.pk), "code": "N", "name": "New"},
+        ),
+        ("patch", f"/api/v1/organization/colleges/{college.pk}", {"name": "Changed"}),
+        ("post", f"/api/v1/organization/colleges/{college.pk}/enable", None),
+        ("post", f"/api/v1/organization/colleges/{college.pk}/disable", None),
+        (
+            "post",
+            "/api/v1/organization/programs",
+            {"college_id": str(college.pk), "code": "N", "name": "New"},
+        ),
+        ("patch", f"/api/v1/organization/programs/{program.pk}", {"name": "Changed"}),
+        ("post", f"/api/v1/organization/programs/{program.pk}/enable", None),
+        ("post", f"/api/v1/organization/programs/{program.pk}/disable", None),
+    )
 
-    with pytest.raises(OrganizationConflict):
-        set_campus_active(campus_id=campus.pk, is_active=False, context=context(actor))
-    with pytest.raises(OrganizationConflict):
-        set_college_active(college_id=college.pk, is_active=False, context=context(actor))
+    for method, path, payload in requests:
+        response = getattr(client, method)(
+            path,
+            data=json.dumps(payload) if payload is not None else None,
+            content_type="application/json",
+            **headers,
+        )
+        assert response.status_code in {404, 405}
 
 
 @pytest.mark.django_db
-def test_manager_api_uses_capability_and_recent_mfa_not_role_shortcut():
+def test_organization_manage_still_governs_operational_relationships_with_recent_mfa():
     sync_policy()
-    counselor = make_user("head@example.edu", "COUNSELOR")
+    campus = Campus.objects.create(code="M", name="Main")
+    college = College.objects.create(campus=campus, code="C", name="College")
+    head = make_user("head@example.edu", "COUNSELOR")
+    assigned = make_user("assigned@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
-        user=counselor,
+        user=head,
         designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
     )
 
-    stale = auth_client(counselor, recent_mfa=False)
-    response = stale.post(
-        "/api/v1/organization/campuses",
-        data=json.dumps({"code": "M", "name": "Main"}),
+    stale = auth_client(head, recent_mfa=False)
+    stale_response = stale.put(
+        f"/api/v1/organization/colleges/{college.pk}/counselor",
+        data=json.dumps({"counselor_id": str(assigned.pk)}),
         content_type="application/json",
         **csrf(stale),
     )
-    assert response.status_code == 403
+    assert stale_response.status_code == 403
 
-    fresh = auth_client(counselor)
-    created = fresh.post(
-        "/api/v1/organization/campuses",
-        data=json.dumps({"code": "m", "name": "Main"}),
+    fresh = auth_client(head)
+    assigned_response = fresh.put(
+        f"/api/v1/organization/colleges/{college.pk}/counselor",
+        data=json.dumps({"counselor_id": str(assigned.pk)}),
         content_type="application/json",
         **csrf(fresh),
     )
-    assert created.status_code == 201
-    assert created.json()["code"] == "M"
+    assert assigned_response.status_code == 200
+    assert assigned_response.json()["counselor"]["id"] == str(assigned.pk)
 
     UserCapabilityOverride.objects.create(
-        user=counselor,
+        user=head,
         capability=Capability.objects.get(code="organization.manage"),
         effect="REVOKE",
         reason="separation",
     )
-    denied = fresh.post(
-        "/api/v1/organization/campuses",
-        data=json.dumps({"code": "N", "name": "North"}),
-        content_type="application/json",
+    denied = fresh.delete(
+        f"/api/v1/organization/colleges/{college.pk}/counselor",
         **csrf(fresh),
     )
     assert denied.status_code == 403

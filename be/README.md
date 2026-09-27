@@ -46,6 +46,7 @@ podman compose --profile local run --rm web python manage.py migrate
 podman compose --profile local run --rm web python manage.py sync_identity_policy
 podman compose --profile local run --rm web python manage.py sync_canonical_services
 podman compose --profile local run --rm web python manage.py sync_institutional_forms
+podman compose --profile local run --rm web python manage.py sync_organization_catalog
 podman compose --profile local run --rm web python manage.py check
 ```
 
@@ -131,6 +132,7 @@ Synchronize required configuration before creating an initial IT administrator:
 uv run python manage.py sync_identity_policy
 uv run python manage.py sync_canonical_services
 uv run python manage.py sync_institutional_forms
+uv run python manage.py sync_organization_catalog
 uv run python manage.py check
 uv run python manage.py create_it_admin \
   --email it-admin@example.edu \
@@ -154,6 +156,13 @@ Canonical Institutional Forms synchronization is also explicit and idempotent. I
 code-owned supported Form Family and Revision definitions into PostgreSQL while preserving stable
 row IDs and historical FormRevision references. It does not contact an external QMS and it is not
 a readiness gate; deployments must still run `sync_institutional_forms` after migrations.
+
+Canonical Organization synchronization is likewise explicit and idempotent. The current UCN Campus,
+College/top-level academic-unit, and base Program catalog is source-controlled and projected into
+PostgreSQL by `sync_organization_catalog`. Canonical rows keep stable UUIDs, drift is repaired, and
+historical/noncanonical rows are retained; unsafe live routing conflicts fail closed for operator
+reconciliation. This synchronization is deployment-owned, not a request-time/startup mutation or a
+readiness gate.
 
 ## Audit Trail development
 
@@ -298,6 +307,7 @@ podman compose run --rm web python manage.py migrate
 podman compose run --rm web python manage.py sync_identity_policy
 podman compose run --rm web python manage.py sync_canonical_services
 podman compose run --rm web python manage.py sync_institutional_forms
+podman compose run --rm web python manage.py sync_organization_catalog
 podman compose run --rm web python manage.py check --deploy
 ```
 
@@ -382,9 +392,23 @@ purpose-built and does not provide generic role, designation, or capability defi
 
 ## Organization and default responsibility scope
 
-The Organization domain models an explicit Campus -> College structure, current student college affiliation, one default counselor per College, and Guidance Services Staff supervision. Effective organizational scope is default responsibility/routing context rather than a permanent authorization wall: future preferred-counselor and case-specific assignment rules may cross those boundaries. An active Counselor holding the HEAD_GUIDANCE_COUNSELOR designation has institution-wide responsibility over active Colleges under active Campuses and is the deterministic fallback only when exactly one valid Head exists.
+The Organization domain keeps Campus -> College/top-level academic unit -> Program as a relational
+projection of the current UCN institutional catalog. Campus, College, and Program are canonical
+reference structure synchronized by deployment; ordinary portal users do not create, edit, enable,
+or disable that institutional topology. PostgreSQL rows remain so Inventory, reporting, routing,
+and historical foreign keys retain stable relational identities.
 
-Safe Campus, College, and Program reads use the scope-free `organization.structure.view` capability. Responsibility, supervision, affiliation, people picker, and structure mutations require `organization.manage`; mutations reuse recent-MFA step-up and are audited synchronously. No Campus or College delete endpoints are exposed.
+Student affiliation, one default Counselor responsibility per College, and Guidance Services Staff
+supervision remain genuine GCO operational relationships. Effective organizational scope is default
+responsibility/routing context rather than a permanent authorization wall. An active Counselor
+holding the HEAD_GUIDANCE_COUNSELOR designation has institution-wide responsibility over active
+Colleges under active Campuses and is the deterministic fallback only when exactly one valid Head
+exists.
+
+Safe Campus, College, and Program reads use `organization.structure.view`. `organization.manage`
+continues to govern Counselor responsibility, staff supervision, Student affiliation, and eligible
+people discovery; consequential relationship mutations still require recent MFA and synchronous
+audit recording. No ordinary user capability mutates institutional topology.
 
 
 ## Service Catalog
