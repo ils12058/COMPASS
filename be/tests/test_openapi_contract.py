@@ -37,23 +37,7 @@ EXPECTED_OPERATION_IDS = {
     "platformOperationsListEmailDeliveries",
     "platformOperationsRetryEmailDelivery",
     "platformOperationsListActivity",
-    "privacyGovernanceListProcessingActivities",
-    "privacyGovernanceGetProcessingActivity",
-    "privacyGovernanceCreateProcessingActivity",
-    "privacyGovernanceUpdateProcessingActivity",
-    "privacyGovernanceRetireProcessingActivity",
-    "privacyGovernanceListReviews",
-    "privacyGovernanceCreateReview",
-    "privacyGovernanceGetReview",
-    "privacyGovernanceUpdateReview",
-    "privacyGovernanceResolveReview",
-    "privacyGovernanceListIncidents",
-    "privacyGovernanceCreateIncident",
-    "privacyGovernanceGetIncident",
-    "privacyGovernanceUpdateIncident",
-    "privacyGovernanceResolveIncident",
     "privacyGovernanceListActivity",
-    "privacyGovernanceListAllReviews",
     "privacyGovernanceListRetentionPolicies",
     "privacyGovernanceCreateRetentionPolicy",
     "privacyGovernanceGetRetentionPolicy",
@@ -385,7 +369,7 @@ def test_overview_summary_contract_is_typed_and_nullable_by_domain() -> None:
 
     schemas = schema["components"]["schemas"]
     root = schemas["OverviewSummaryResponse"]["properties"]
-    assert set(root) == {"generated_at", "student", "guidance", "platform", "privacy"}
+    assert set(root) == {"generated_at", "student", "guidance", "platform"}
 
     expected_fields = {
         "OverviewStudentSummary": {
@@ -407,11 +391,8 @@ def test_overview_summary_contract_is_typed_and_nullable_by_domain() -> None:
             "email_failed_count",
             "email_sent_today_count",
         },
-        "OverviewPrivacySummary": {
-            "open_review_count",
-            "active_incident_count",
-        },
     }
+    assert "OverviewPrivacySummary" not in schemas
     for schema_name, fields in expected_fields.items():
         properties = schemas[schema_name]["properties"]
         assert set(properties) == fields
@@ -1920,119 +1901,52 @@ def test_platform_operations_openapi_runtime_surface_and_secret_safety() -> None
         assert forbidden not in serialized
 
 
-def test_privacy_governance_openapi_is_purpose_built_and_has_no_delete_or_global_audit() -> None:
+def test_privacy_governance_openapi_is_reduced_to_retained_system_controls() -> None:
     schema = _generated_schema()
 
-    read_operations = {
-        ("/api/v1/privacy/processing-activities", "get"): (
-            "privacyGovernanceListProcessingActivities",
-            {200, 401, 403, 422},
-        ),
-        ("/api/v1/privacy/processing-activities/{processing_id}", "get"): (
-            "privacyGovernanceGetProcessingActivity",
-            {200, 401, 403, 404},
-        ),
-        ("/api/v1/privacy/processing-activities/{processing_id}/reviews", "get"): (
-            "privacyGovernanceListReviews",
-            {200, 401, 403, 404, 422},
-        ),
-        ("/api/v1/privacy/reviews/{review_id}", "get"): (
-            "privacyGovernanceGetReview",
-            {200, 401, 403, 404},
-        ),
-        ("/api/v1/privacy/incidents", "get"): (
-            "privacyGovernanceListIncidents",
-            {200, 401, 403, 422},
-        ),
-        ("/api/v1/privacy/incidents/{incident_id}", "get"): (
-            "privacyGovernanceGetIncident",
-            {200, 401, 403, 404},
-        ),
-        ("/api/v1/privacy/activity", "get"): (
-            "privacyGovernanceListActivity",
-            {200, 401, 403, 422},
-        ),
-    }
-    for (path, method), (operation_id, statuses) in read_operations.items():
-        operation = _operation(schema, path, method)
-        assert operation["operationId"] == operation_id
-        assert operation["tags"] == ["privacy-governance"]
-        assert _response_statuses(operation) >= statuses
+    activity = _operation(schema, "/api/v1/privacy/activity", "get")
+    assert activity["operationId"] == "privacyGovernanceListActivity"
+    assert activity["tags"] == ["privacy-governance"]
+    assert _response_statuses(activity) >= {200, 401, 403, 422}
 
-    mutation_operations = {
-        (
-            "/api/v1/privacy/processing-activities",
-            "post",
-        ): "privacyGovernanceCreateProcessingActivity",
-        (
-            "/api/v1/privacy/processing-activities/{processing_id}",
-            "patch",
-        ): "privacyGovernanceUpdateProcessingActivity",
-        (
-            "/api/v1/privacy/processing-activities/{processing_id}/retire",
-            "post",
-        ): "privacyGovernanceRetireProcessingActivity",
-        (
-            "/api/v1/privacy/processing-activities/{processing_id}/reviews",
-            "post",
-        ): "privacyGovernanceCreateReview",
-        ("/api/v1/privacy/reviews/{review_id}", "patch"): "privacyGovernanceUpdateReview",
-        (
-            "/api/v1/privacy/reviews/{review_id}/resolve",
-            "post",
-        ): "privacyGovernanceResolveReview",
-        ("/api/v1/privacy/incidents", "post"): "privacyGovernanceCreateIncident",
-        (
-            "/api/v1/privacy/incidents/{incident_id}",
-            "patch",
-        ): "privacyGovernanceUpdateIncident",
-        (
-            "/api/v1/privacy/incidents/{incident_id}/resolve",
-            "post",
-        ): "privacyGovernanceResolveIncident",
-    }
-    for (path, method), operation_id in mutation_operations.items():
-        operation = _operation(schema, path, method)
-        assert operation["operationId"] == operation_id
-        assert operation["tags"] == ["privacy-governance"]
-        assert {401, 403} <= _response_statuses(operation)
-
-    for path in (
+    for removed_path in (
+        "/api/v1/privacy/processing-activities",
         "/api/v1/privacy/processing-activities/{processing_id}",
+        "/api/v1/privacy/processing-activities/{processing_id}/retire",
+        "/api/v1/privacy/processing-activities/{processing_id}/reviews",
+        "/api/v1/privacy/reviews",
         "/api/v1/privacy/reviews/{review_id}",
+        "/api/v1/privacy/reviews/{review_id}/resolve",
+        "/api/v1/privacy/incidents",
         "/api/v1/privacy/incidents/{incident_id}",
+        "/api/v1/privacy/incidents/{incident_id}/resolve",
     ):
-        assert "delete" not in schema["paths"][path]
+        assert removed_path not in schema["paths"]
 
     assert "/api/v1/privacy/audit-events" not in schema["paths"]
 
-    privacy_schemas = {
-        name: value
-        for name, value in schema["components"]["schemas"].items()
-        if name.startswith(
-            (
-                "ProcessingActivity",
-                "PrivacyReview",
-                "PrivacyIncident",
-                "PrivacyActivity",
-            )
-        )
-    }
-    serialized = json.dumps(privacy_schemas).lower()
+    schemas = schema["components"]["schemas"]
+    for removed_prefix in ("ProcessingActivity", "PrivacyReview", "PrivacyIncident"):
+        assert not any(name.startswith(removed_prefix) for name in schemas)
+
+    serialized = json.dumps(
+        {
+            name: value
+            for name, value in schemas.items()
+            if name.startswith("PrivacyActivity")
+        }
+    ).lower()
     for forbidden in (
-        "is_compliant",
-        "attachment",
-        "upload",
-        "file_bytes",
         "raw_metadata",
         "ip_address",
         "user_agent",
         "password",
         "otp",
         "session_token",
+        "counseling_note",
+        "inventory_content",
     ):
         assert forbidden not in serialized
-
 
 def test_availability_provider_discovery_openapi_contract() -> None:
     schema = _generated_schema()
@@ -2601,7 +2515,7 @@ def test_good_moral_request_creation_idempotency_openapi_contract() -> None:
             assert error_schema["$ref"].endswith("/APIErrorResponse")
 
 
-def test_privacy_expansion_contract_keeps_public_and_self_boundaries() -> None:
+def test_privacy_expansion_contract_keeps_notice_boundaries_and_typed_retention_categories() -> None:
     schema = _generated_schema()
     public = _operation(schema, "/api/v1/privacy/public-notices", "get")
     self_list = _operation(schema, "/api/v1/privacy/my-notices", "get")
@@ -2610,19 +2524,35 @@ def test_privacy_expansion_contract_keeps_public_and_self_boundaries() -> None:
     assert self_list["security"] == [{"OpaqueSessionAuth": []}]
     assert acknowledge["security"] == [{"OpaqueSessionAuth": []}]
     assert _response_statuses(acknowledge) >= {200, 401, 403, 404, 409, 422}
-    assert schema["components"]["schemas"]["AudienceValue"]["enum"] == [
-        "PUBLIC",
-        "STUDENT",
-        "STAFF",
+
+    schemas = schema["components"]["schemas"]
+    assert schemas["AudienceValue"]["enum"] == ["PUBLIC", "STUDENT", "STAFF"]
+    assert schemas["RevisionStatusValue"]["enum"] == ["DRAFT", "PUBLISHED", "SUPERSEDED"]
+    assert schemas["RetentionRecordCategoryValue"]["enum"] == [
+        "INDIVIDUAL_INVENTORY",
+        "COUNSELING",
+        "ROUTINE_INTERVIEW",
+        "REFERRAL",
+        "CALL_SLIP",
+        "GOOD_MORAL",
+        "EXIT_INTERVIEW",
+        "GRADUATE_TRACER",
+        "CUSTOMER_FEEDBACK",
     ]
-    assert schema["components"]["schemas"]["RevisionStatusValue"]["enum"] == [
-        "DRAFT",
-        "PUBLISHED",
-        "SUPERSEDED",
-    ]
-    processing = schema["components"]["schemas"]["ProcessingActivityResponse"]["properties"]
-    assert "data_subject_choice_summary" in processing
-    assert "retention_policy" in processing
+
+    for schema_name in ("RetentionResponse", "RetentionCreate", "RetentionUpdate"):
+        assert "record_categories" in schemas[schema_name]["properties"]
+    assert "record_categories" in schemas["RetentionCreate"]["required"]
+
+    retention_list = _operation(schema, "/api/v1/privacy/retention-policies", "get")
+    category_parameter = next(
+        parameter
+        for parameter in retention_list["parameters"]
+        if parameter["name"] == "record_category" and parameter["in"] == "query"
+    )
+    assert category_parameter.get("required", False) is False
+    assert "RetentionRecordCategoryValue" in json.dumps(category_parameter)
+
     for path in (
         "/api/v1/privacy/retention-policies/{policy_id}",
         "/api/v1/privacy/notices/{notice_id}",
