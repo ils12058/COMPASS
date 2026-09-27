@@ -147,7 +147,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
     assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
     assert RoleCapability.objects.count() == 77
-    assert DesignationCapability.objects.count() == 17
+    assert DesignationCapability.objects.count() == 15
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -158,49 +158,45 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 66
+    assert Capability.objects.count() == 64
     assert RoleCapability.objects.count() == 77
     assert DesignationCapability.objects.count() == 17
 
 
 @pytest.mark.django_db
-def test_policy_sync_removes_retired_institutional_forms_manage_state():
+def test_policy_sync_removes_all_retired_capability_state():
     sync_policy()
-    assert "institutional_forms.manage" not in CAPABILITY_CODES
-
-    retired = Capability.objects.create(
-        code="institutional_forms.manage",
-        name="Retired institutional forms management",
+    retired_codes = (
+        "institutional_forms.manage",
     )
+    assert set(retired_codes).isdisjoint(CAPABILITY_CODES)
+
     counselor_role = Role.objects.get(code="COUNSELOR")
     head = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
-    RoleCapability.objects.create(role=counselor_role, capability=retired)
-    DesignationCapability.objects.create(designation=head, capability=retired)
-    user = make_user(role=counselor_role, email="retired-forms-authority@example.edu")
-    UserCapabilityOverride.objects.create(
-        user=user,
-        capability=retired,
-        effect=UserCapabilityOverride.Effect.GRANT,
-        reason="Legacy override that must not survive retirement",
-    )
-
-    assert not user.has_capability("institutional_forms.manage")
+    user = make_user(role=counselor_role, email="retired-authority@example.edu")
+    for code in retired_codes:
+        retired = Capability.objects.create(code=code, name=f"Retired {code}")
+        RoleCapability.objects.create(role=counselor_role, capability=retired)
+        DesignationCapability.objects.create(designation=head, capability=retired)
+        UserCapabilityOverride.objects.create(
+            user=user,
+            capability=retired,
+            effect=UserCapabilityOverride.Effect.GRANT,
+            reason="Legacy override that must not survive retirement",
+        )
+        assert not user.has_capability(code)
 
     output = StringIO()
     call_command("sync_identity_policy", stdout=output)
 
-    assert not Capability.objects.filter(code="institutional_forms.manage").exists()
-    assert not RoleCapability.objects.filter(capability__code="institutional_forms.manage").exists()
-    assert not DesignationCapability.objects.filter(
-        capability__code="institutional_forms.manage"
-    ).exists()
-    assert not UserCapabilityOverride.objects.filter(
-        capability__code="institutional_forms.manage"
-    ).exists()
-    assert "role grants deleted=1" in output.getvalue()
-    assert "designation grants deleted=1" in output.getvalue()
-    assert "overrides deleted=1" in output.getvalue()
-    assert "capabilities deleted=1" in output.getvalue()
+    assert not Capability.objects.filter(code__in=retired_codes).exists()
+    assert not RoleCapability.objects.filter(capability__code__in=retired_codes).exists()
+    assert not DesignationCapability.objects.filter(capability__code__in=retired_codes).exists()
+    assert not UserCapabilityOverride.objects.filter(capability__code__in=retired_codes).exists()
+    assert "role grants deleted=3" in output.getvalue()
+    assert "designation grants deleted=3" in output.getvalue()
+    assert "overrides deleted=3" in output.getvalue()
+    assert "capabilities deleted=3" in output.getvalue()
 
 
 @pytest.mark.django_db
@@ -259,7 +255,6 @@ def test_counselor_baseline_adds_scoped_authority_without_admin_expansion():
         "institutional_forms.manage",
         "organization.manage",
         "services.manage",
-        "document_branding.manage",
         "feedback.view_customer_feedback",
         "feedback.view_csm",
         "graduate_tracer.view",
@@ -308,8 +303,6 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "academic_years.view",
         "academic_years.manage",
         "institutional_forms.view",
-        "document_branding.view",
-        "document_branding.manage",
         "exit_interviews.view",
         "exit_interviews.reopen",
         "services.catalog.view",
@@ -362,8 +355,6 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     assert user.has_capability("academic_years.manage")
     assert user.has_capability("institutional_forms.view")
     assert not user.has_capability("institutional_forms.manage")
-    assert user.has_capability("document_branding.view")
-    assert user.has_capability("document_branding.manage")
     assert user.has_capability("services.catalog.view")
     assert user.has_capability("services.manage")
     assert user.has_capability("availability.view")

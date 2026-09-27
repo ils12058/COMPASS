@@ -167,6 +167,14 @@ def test_student_support_capability_is_counselor_only_by_default_and_head_inheri
 
 
 @pytest.mark.django_db
+def test_student_support_roster_endpoint_is_removed():
+    sync_policy()
+    counselor = make_user("support-no-roster@example.edu", "COUNSELOR")
+    response = auth_client(counselor).get("/api/v1/student-support/students")
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
 def test_unsupported_role_override_still_cannot_access_support_context():
     sync_policy()
     admin = make_user("support-override-admin@example.edu", "IT_ADMIN")

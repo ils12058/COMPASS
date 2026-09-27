@@ -27,7 +27,6 @@ EXPECTED_OPERATION_IDS = {
     "platformPublicStatus",
     "platformOperationsHealth",
     "platformOperationsEnvironment",
-    "platformOperationsCommandCatalog",
     "platformOperationsGetMaintenance",
     "platformOperationsEnableMaintenance",
     "platformOperationsDisableMaintenance",
@@ -200,7 +199,6 @@ EXPECTED_OPERATION_IDS = {
     "referenceDataListPSGCCitiesMunicipalities",
     "referenceDataListPSGCBarangays",
     "studentSupportGetContext",
-    "studentSupportListStudents",
     "reportsGetScope",
     "overviewGetSummary",
     "reportsGetStudentProfile",
@@ -307,8 +305,6 @@ EXPECTED_OPERATION_IDS = {
     "resourcesListPublic",
     "resourcesGetPublic",
     "resourcesDownloadPublicFile",
-    "documentBrandingGetProfile",
-    "documentBrandingUpdateProfile",
     "eCounselingGetMyWorkspace",
     "eCounselingGetAssignedWorkspace",
     "eCounselingListMyConsents",
@@ -431,6 +427,14 @@ def test_exit_interview_head_review_contract_protects_drafts_and_reopen_response
     for status in (401, 403, 404, 409, 422):
         response_schema = reopen["responses"][str(status)]["content"]["application/json"]["schema"]
         assert response_schema["$ref"].endswith("/APIErrorResponse")
+
+
+def test_reduced_product_surfaces_are_absent_from_openapi() -> None:
+    schema = _generated_schema()
+    paths = schema["paths"]
+    assert "/api/v1/document-branding/profile" not in paths
+    assert "/api/v1/student-support/students" not in paths
+    assert "/api/v1/platform/commands" not in paths
 
 
 PDF_DOWNLOAD_PATHS = (
@@ -604,7 +608,6 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "notifications",
         "announcements",
         "resources",
-        "document-branding",
         "e-counseling",
         "platform-operations",
         "privacy-governance",
@@ -1607,20 +1610,6 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         200,
         401,
     }
-    assert _response_statuses(_operation(schema, "/api/v1/document-branding/profile", "get")) >= {
-        200,
-        401,
-        403,
-        503,
-    }
-    assert _response_statuses(_operation(schema, "/api/v1/document-branding/profile", "patch")) >= {
-        200,
-        401,
-        403,
-        422,
-        503,
-    }
-
     for method, path, operation in iter_operations(schema):
         for status, response in operation["responses"].items():
             if int(status) in {400, 401, 403, 404, 409, 422, 429, 502, 503}:
@@ -1815,7 +1804,6 @@ def test_platform_operations_openapi_runtime_surface_and_secret_safety() -> None
     read_only = {
         "/api/v1/platform/health": "platformOperationsHealth",
         "/api/v1/platform/environment": "platformOperationsEnvironment",
-        "/api/v1/platform/commands": "platformOperationsCommandCatalog",
         "/api/v1/platform/maintenance": "platformOperationsGetMaintenance",
         "/api/v1/platform/email-deliveries/summary": "platformOperationsGetEmailDeliverySummary",
         "/api/v1/platform/email-deliveries": "platformOperationsListEmailDeliveries",
