@@ -34,14 +34,8 @@ class OverviewPlatformSummary(StrictSchema):
     email_sent_today_count: int | None
 
 
-class OverviewPrivacySummary(StrictSchema):
-    open_review_count: int | None
-    active_incident_count: int | None
-
-
 class OverviewSummaryResponse(StrictSchema):
     generated_at: datetime
     student: OverviewStudentSummary | None
     guidance: OverviewGuidanceSummary | None
     platform: OverviewPlatformSummary | None
-    privacy: OverviewPrivacySummary | None
