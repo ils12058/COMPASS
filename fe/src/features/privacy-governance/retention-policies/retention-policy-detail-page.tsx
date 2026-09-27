@@ -19,7 +19,9 @@ import {
   usePrivacyAccess,
   usePrivacyAction,
 } from "@/features/privacy-governance/privacy-governance-shared";
-import { retentionRecordCategoryLabels } from "@/features/privacy-governance/privacy-governance-presentation";
+import {
+  retentionRecordCategoryLabels,
+} from "@/features/privacy-governance/privacy-governance-presentation";
 import {
   RETENTION_BOUNDARY_NOTE,
   retentionChanges,
