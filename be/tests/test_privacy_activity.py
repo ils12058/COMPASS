@@ -18,6 +18,7 @@ from compass.audit.actions import (
     COUNSELING_ENCOUNTER_UPDATED,
     DOCUMENT_DOWNLOAD_RELEASED,
     PRIVACY_INCIDENT_CREATED,
+    PRIVACY_REVIEW_RESOLVED,
     REPORT_EXPORT_RELEASED,
 )
 from compass.audit.context import AuditContext
@@ -298,6 +299,34 @@ def test_privacy_governance_projection_never_copies_incident_narrative():
     assert item["title"] == "Privacy incident recorded"
     assert item["resource_reference"] == str(incident_id)
     assert "SENTINEL INCIDENT NARRATIVE" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_historical_removed_workflow_audit_event_remains_safely_presentable():
+    sync_policy()
+    dpo = make_dpo("historical-review-dpo@example.edu")
+    review_id = uuid4()
+    event = record_event(
+        context=audited_context(dpo),
+        action=PRIVACY_REVIEW_RESOLVED,
+        outcome="SUCCESS",
+        target_type="privacy.review",
+        target_id=review_id,
+        metadata={
+            "resolution_summary": "SENTINEL LEGACY REVIEW NARRATIVE",
+            "status": "RESOLVED",
+        },
+    )
+
+    response = auth_client(dpo).get("/api/v1/privacy/activity?category=PRIVACY_GOVERNANCE")
+
+    assert response.status_code == 200
+    item = next(row for row in response.json()["items"] if row["id"] == str(event.pk))
+    assert item["title"] == "Privacy review resolved"
+    assert item["resource_reference"] == str(review_id)
+    serialized = response.content.decode()
+    assert "SENTINEL LEGACY REVIEW NARRATIVE" not in serialized
+    assert "resolution_summary" not in serialized
 
 
 @pytest.mark.django_db
