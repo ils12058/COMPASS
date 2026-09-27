@@ -28,6 +28,7 @@ import {
   DeliveryMode,
 } from "@/lib/api/generated/model";
 import { useAppointmentsListManaged } from "@/lib/api/generated/appointments/appointments";
+import { useServicesList } from "@/lib/api/generated/services/services";
 
 const controlClass = "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
@@ -43,12 +44,15 @@ function isOrdering(value: string | null): value is AppointmentListOrdering {
   return value !== null && Object.values(AppointmentListOrdering).includes(value as AppointmentListOrdering);
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
 function pageValue(value: string | null): number {
   const parsed = Number.parseInt(value ?? "1", 10);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1;
 }
 
 function ManagedAppointmentsList() {
+  const { user } = usePortalSession();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -69,10 +73,22 @@ function ManagedAppointmentsList() {
     ? orderingParam
     : AppointmentListOrdering.START_ASC;
   const page = pageValue(searchParams.get("page"));
+  // Service choices come from the Service Catalog, which every Appointment
+  // manager can read; the list shows Service names, never identifiers.
+  const canFilterService = user.capabilities.includes("services.catalog.view");
+  const serviceParam = searchParams.get("service") ?? "";
+  const serviceId = canFilterService && UUID_PATTERN.test(serviceParam) ? serviceParam : undefined;
+  const services = useServicesList(
+    { page: 1, page_size: 50 },
+    { query: { enabled: canFilterService, retry: false, staleTime: 5 * 60_000 } },
+  );
+  const serviceOptions = services.data?.data.items ?? [];
+  const selectedServiceKnown = serviceOptions.some((service) => service.id === serviceId);
 
   const list = useAppointmentsListManaged(
     {
       ...(search ? { search } : {}),
+      ...(serviceId ? { service_id: serviceId } : {}),
       ...(status ? { status } : {}),
       ...(upcoming ? { upcoming: true } : {}),
       ...(mode ? { delivery_mode: mode } : {}),
@@ -116,7 +132,7 @@ function ManagedAppointmentsList() {
 
   const pageData = list.data?.data;
   const items = pageData?.items ?? [];
-  const hasFilters = Boolean(search || mode || fromDate || toDate || (statusParam !== null && statusParam !== "ALL"));
+  const hasFilters = Boolean(search || serviceId || mode || fromDate || toDate || (statusParam !== null && statusParam !== "ALL"));
 
   return (
     <section aria-labelledby="manage-appointments-heading">
@@ -128,8 +144,8 @@ function ManagedAppointmentsList() {
       />
 
       <div className="border-y border-border py-5">
-        <form onSubmit={submitSearch} className="grid gap-4 lg:grid-cols-[minmax(16rem,2fr)_repeat(5,minmax(9rem,1fr))_auto] lg:items-end">
-          <div className="grid gap-2">
+        <form onSubmit={submitSearch} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+          <div className="grid gap-2 sm:col-span-2">
             <Label htmlFor="managed-appointment-search">Search</Label>
             <Input
               key={search}
@@ -140,6 +156,31 @@ function ManagedAppointmentsList() {
               placeholder="Search by reference, Student name, or Institutional ID"
             />
           </div>
+          {canFilterService ? (
+            <div className="grid gap-2">
+              <Label htmlFor="managed-appointment-service">Service</Label>
+              <select
+                id="managed-appointment-service"
+                className={controlClass}
+                value={serviceId ?? ""}
+                disabled={services.isPending && !serviceId}
+                onChange={(event) => updateFilter("service", event.target.value)}
+              >
+                <option value="">All Services</option>
+                {serviceId && !selectedServiceKnown ? (
+                  <option value={serviceId}>
+                    {services.isPending ? "Loading Service…" : "Selected Service"}
+                  </option>
+                ) : null}
+                {serviceOptions.map((service) => (
+                  <option key={service.id} value={service.id}>{service.name}</option>
+                ))}
+              </select>
+              {services.isError ? (
+                <p className="text-xs text-warning">Service choices could not be loaded.</p>
+              ) : null}
+            </div>
+          ) : null}
           <div className="grid gap-2">
             <Label htmlFor="managed-appointment-status">Status</Label>
             <select id="managed-appointment-status" className={controlClass} value={upcoming ? UPCOMING_APPOINTMENTS_VIEW : status ?? "ALL"} onChange={(event) => updateFilter("status", event.target.value)}>
@@ -174,7 +215,9 @@ function ManagedAppointmentsList() {
               <option value={AppointmentListOrdering.START_DESC}>Latest first</option>
             </select>
           </div>
-          <Button type="submit" variant="secondary">Search</Button>
+          <div className="flex items-end">
+            <Button type="submit" variant="secondary">Search</Button>
+          </div>
         </form>
       </div>
 
@@ -204,7 +247,7 @@ function ManagedAppointmentsList() {
               href={updateAppointmentQuery(
                 pathname,
                 new URLSearchParams(searchParams.toString()),
-                { search: "", status: "ALL", mode: "", from: "", to: "" },
+                { search: "", service: "", status: "ALL", mode: "", from: "", to: "" },
               )}
               className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >

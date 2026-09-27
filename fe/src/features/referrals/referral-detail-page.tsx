@@ -22,6 +22,8 @@ import { usePortalSession } from "@/features/portal/components/portal-session";
 import { ReferralActionsSection } from "@/features/referrals/referral-action-section";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { ReferralCallSlipSection } from "@/features/referrals/referral-call-slip-section";
+import { canViewStudentSupportContext } from "@/features/student-support/student-support-access";
+import { StudentSupportContextSection } from "@/features/student-support/student-support-context-section";
 import {
   ReferralAccessUnavailable,
   ReferralHeading,
@@ -47,6 +49,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
   const { user } = usePortalSession();
   const referralAccess = getReferralAccess(user);
   const callSlipAccess = getCallSlipAccess(user);
+  const canViewSupportContext = canViewStudentSupportContext(user);
   const referral = useReferralsGet(referralId, {
     query: { enabled: referralAccess.canView, retry: false },
   });
@@ -125,6 +128,8 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
           <dd className="mt-1 text-sm text-ink">{item.course_year_block_snapshot}</dd>
         </div>
       </RecordSection>
+
+      {canViewSupportContext ? <StudentSupportContextSection studentId={item.student.id} /> : null}
 
       <RecordSection title="Chronology">
         <div>

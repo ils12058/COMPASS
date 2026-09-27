@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePortalSession } from "@/features/portal/components/portal-session";
 import type { RoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { RoutineDirectCreateDialog } from "@/features/routine-interviews/routine-direct-create-dialog";
 import {
@@ -27,9 +28,11 @@ import {
   RoutineEvaluationStatus,
   RoutineIntakeStatus,
 } from "@/lib/api/generated/model";
+import { useAcademicYearsList } from "@/lib/api/generated/academic-years/academic-years";
 import { useRoutineInterviewsListAssigned } from "@/lib/api/generated/routine-interviews/routine-interviews";
 
 const tableCell = "px-4 py-3 align-top text-sm";
+const UUID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 function positivePage(value: string | null): number {
   const parsed = Number.parseInt(value ?? "1", 10);
@@ -67,10 +70,21 @@ export function CounselorRoutineWorkspace({
 }: {
   access: RoutineInterviewAccess;
 }) {
+  const { user } = usePortalSession();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
+  // Routine Interviews are annual; Counselors narrow the queue with the same
+  // Academic Year list the Inventory roster uses.
+  const canFilterYear = user.capabilities.includes("academic_years.view");
+  const yearParam = searchParams.get("academic_year_id") ?? "";
+  const academicYearId = canFilterYear && UUID_PATTERN.test(yearParam) ? yearParam : undefined;
+  const academicYears = useAcademicYearsList({
+    query: { enabled: canFilterYear && access.canViewAssigned, retry: false, staleTime: 5 * 60_000 },
+  });
+  const years = academicYears.data?.data.items ?? [];
+  const selectedYearKnown = years.some((year) => year.id === academicYearId);
 
   const search = searchParams.get("search") ?? "";
   const deliveryParam = enumParam(searchParams.get("delivery_mode"), DeliveryMode);
@@ -79,6 +93,7 @@ export function CounselorRoutineWorkspace({
   const page = positivePage(searchParams.get("page"));
   const filters = {
     ...(search.trim() ? { search: search.trim() } : {}),
+    ...(academicYearId ? { academic_year_id: academicYearId } : {}),
     ...(deliveryParam ? { delivery_mode: deliveryParam } : {}),
     ...(intakeParam ? { intake_status: intakeParam } : {}),
     ...(evaluationParam ? { evaluation_status: evaluationParam } : {}),
@@ -90,7 +105,7 @@ export function CounselorRoutineWorkspace({
   });
   const pageData = queue.data?.data;
   const items = pageData?.items ?? [];
-  const hasFilters = Boolean(search || deliveryParam || intakeParam || evaluationParam);
+  const hasFilters = Boolean(search || academicYearId || deliveryParam || intakeParam || evaluationParam);
 
   function setFilter(name: string, value: string) {
     router.replace(
@@ -121,7 +136,7 @@ export function CounselorRoutineWorkspace({
       {access.canViewAssigned ? (
         <section aria-labelledby="assigned-routine-interviews">
           <h2 id="assigned-routine-interviews" className="sr-only">Assigned Routine Interviews</h2>
-          <div className="mb-5 grid gap-4 border-y border-border py-5 sm:grid-cols-2 xl:grid-cols-4">
+          <div className={`mb-5 grid gap-4 border-y border-border py-5 sm:grid-cols-2 ${canFilterYear ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
             <form
               className="grid gap-2 sm:col-span-2 xl:col-span-1"
               onSubmit={(event) => {
@@ -142,6 +157,33 @@ export function CounselorRoutineWorkspace({
               />
               <Button type="submit" variant="secondary" className="justify-self-start">Search</Button>
             </form>
+            {canFilterYear ? (
+              <div className="grid gap-2">
+                <Label htmlFor="routine-queue-year">Academic Year</Label>
+                <select
+                  id="routine-queue-year"
+                  className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  value={academicYearId ?? ""}
+                  disabled={academicYears.isPending && !academicYearId}
+                  onChange={(event) => setFilter("academic_year_id", event.target.value)}
+                >
+                  <option value="">All Academic Years</option>
+                  {academicYearId && !selectedYearKnown ? (
+                    <option value={academicYearId}>
+                      {academicYears.isPending ? "Loading Academic Year…" : "Selected Academic Year"}
+                    </option>
+                  ) : null}
+                  {years.map((year) => (
+                    <option key={year.id} value={year.id}>
+                      {year.label}{year.is_current ? " · Current" : ""}
+                    </option>
+                  ))}
+                </select>
+                {academicYears.isError ? (
+                  <p className="text-xs text-warning">Academic Year choices could not be loaded.</p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="grid gap-2">
               <Label htmlFor="routine-queue-delivery">Delivery mode</Label>
               <select
@@ -182,7 +224,7 @@ export function CounselorRoutineWorkspace({
               </select>
             </div>
             {hasFilters ? (
-              <div className="sm:col-span-2 xl:col-span-4">
+              <div className="sm:col-span-2 xl:col-span-full">
                 <Button
                   variant="quiet"
                   onClick={() => router.replace(pathname, { scroll: false })}

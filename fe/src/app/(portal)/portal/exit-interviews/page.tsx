@@ -17,6 +17,8 @@ function positiveInteger(value: string): number | undefined {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
 function pageNumber(value: string): number {
   return positiveInteger(value) ?? 1;
 }
@@ -35,6 +37,7 @@ export default async function Page({
 }) {
   const query = await searchParams;
   const statusValue = singleValue(query.status);
+  const academicYearValue = singleValue(query.academic_year_id);
   const filters: ExitInterviewOperationalFilters = {
     search: singleValue(query.search),
     status:
@@ -42,6 +45,7 @@ export default async function Page({
       statusValue === ExitInterviewStatusValue.SUBMITTED
         ? statusValue
         : "",
+    academicYearId: UUID_PATTERN.test(academicYearValue) ? academicYearValue : "",
     page: pageNumber(singleValue(query.page)),
     pageSize: pageSize(singleValue(query.page_size)),
   };

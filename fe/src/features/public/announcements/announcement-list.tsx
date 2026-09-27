@@ -4,10 +4,18 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { Pin } from "lucide-react";
 import Link from "next/link";
 
-import { useAnnouncementsListPublic } from "@/lib/api/generated/announcements/announcements";
+import {
+  useAnnouncementsListPublic,
+  useAnnouncementsListVisible,
+} from "@/lib/api/generated/announcements/announcements";
 import { formatPublicDate } from "@/features/public/shared/presentation";
 import { PublicPagination } from "@/features/public/shared/public-pagination";
 import { PublicListSkeleton, PublicSectionError } from "@/features/public/shared/public-state";
+import {
+  isSignedOutError,
+  useReaderAudience,
+  useSessionRecheck,
+} from "@/features/public/shared/use-reader-audience";
 
 type AnnouncementListProps =
   | { mode: "preview" }
@@ -16,17 +24,25 @@ type AnnouncementListProps =
 export function AnnouncementList(props: AnnouncementListProps) {
   const isPreview = props.mode === "preview";
   const page = isPreview ? 1 : props.page;
-  const query = useAnnouncementsListPublic(
-    { page, page_size: isPreview ? 3 : 10 },
-    { query: { placeholderData: keepPreviousData } },
-  );
+  const params = { page, page_size: isPreview ? 3 : 10 };
+  const audience = useReaderAudience();
+  const account = useAnnouncementsListVisible(params, {
+    query: { enabled: audience === "account", placeholderData: keepPreviousData, retry: false },
+  });
+  const signedOut = isSignedOutError(account.error);
+  useSessionRecheck(signedOut);
+  const readsAccount = audience === "account" && !signedOut;
+  const publicQuery = useAnnouncementsListPublic(params, {
+    query: { enabled: audience === "public" || signedOut, placeholderData: keepPreviousData },
+  });
+  const query = readsAccount ? account : publicQuery;
 
-  if (query.isPending) return <PublicListSkeleton rows={isPreview ? 3 : 5} />;
+  if (audience === "pending" || query.isPending) return <PublicListSkeleton rows={isPreview ? 3 : 5} />;
 
   if (query.isError) {
     return (
       <PublicSectionError
-        message="Public announcements could not be loaded."
+        message={readsAccount ? "Announcements could not be loaded." : "Public announcements could not be loaded."}
         onRetry={() => void query.refetch()}
       />
     );
@@ -37,7 +53,9 @@ export function AnnouncementList(props: AnnouncementListProps) {
   if (result.items.length === 0) {
     return (
       <p className="border-y border-border py-6 text-sm leading-6 text-muted">
-        No public announcements are available right now.
+        {readsAccount
+          ? "No announcements are available right now."
+          : "No public announcements are available right now."}
       </p>
     );
   }
