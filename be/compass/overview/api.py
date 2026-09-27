@@ -31,5 +31,4 @@ def overview_get_summary(request):
         "student": summary.student,
         "guidance": summary.guidance,
         "platform": summary.platform,
-        "privacy": summary.privacy,
     }
