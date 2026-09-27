@@ -14,7 +14,7 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 from .assets import DocumentAssetError, get_document_assets, get_print_css
-from .services import DocumentBrandingConfigurationError, get_branding_profile
+from .services import get_document_branding
 from .template_specs import (
     DocumentTemplateSpec,
     UnknownDocumentTemplate,
@@ -64,11 +64,11 @@ def render_document_html(
     context: dict[str, Any] | None = None,
 ) -> tuple[str, DocumentTemplateSpec]:
     spec = _safe_template_spec(template_key, template_version)
+    branding = get_document_branding()
     try:
-        branding = get_branding_profile()
         assets = get_document_assets(include_accreditation_footer=spec.include_accreditation_footer)
         print_css = get_print_css()
-    except (DocumentBrandingConfigurationError, DocumentAssetError) as exc:
+    except DocumentAssetError as exc:
         raise DocumentTemplateError("Document presentation resources are not configured.") from exc
 
     caller_context = dict(context or {})
