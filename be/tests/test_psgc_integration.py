@@ -72,7 +72,7 @@ def envelope(rows: list[dict[str, object]]) -> dict[str, object]:
 
 
 def test_psgc_client_uses_configured_version_token_and_parses_reference_levels(monkeypatch):
-    calls: list[tuple[str, dict[str, list[str]], float]] = []
+    calls: list[tuple[str, dict[str, list[str]], float, str | None]] = []
 
     region = row("0500000000", "Region V", level="Reg", reg=5)
     province = row("0501600000", "Camarines Norte", level="Prov", reg=5, prv=16)
@@ -90,7 +90,7 @@ def test_psgc_client_uses_configured_version_token_and_parses_reference_levels(m
     def fake_urlopen(request, timeout):
         split = urlsplit(request.full_url)
         query = parse_qs(split.query)
-        calls.append((split.path, query, timeout))
+        calls.append((split.path, query, timeout, request.get_header("User-agent")))
         if split.path.endswith("/regions"):
             return FakeResponse(envelope([region]))
         if split.path.endswith("/provinces"):
@@ -123,12 +123,16 @@ def test_psgc_client_uses_configured_version_token_and_parses_reference_levels(m
     ] == [("0501607001", "Barangay I")]
 
     assert calls
-    assert all("/Q2_2026/" in path for path, _, _ in calls)
-    assert all(query["token"] == ["test-psa-token"] for _, query, _ in calls)
-    assert all(timeout == 3 for _, _, timeout in calls)
-    province_query = next(query for path, query, _ in calls if path.endswith("/provinces"))
-    locality_query = next(query for path, query, _ in calls if path.endswith("/municipalities"))
-    barangay_query = next(query for path, query, _ in calls if path.endswith("/barangays"))
+    assert all("/Q2_2026/" in path for path, _, _, _ in calls)
+    assert all(query["token"] == ["test-psa-token"] for _, query, _, _ in calls)
+    assert all(timeout == 3 for _, _, timeout, _ in calls)
+    assert all(
+        user_agent == "COMPASS-PSGC-Client/1.0 (+https://staging-api.compass-gco.com)"
+        for _, _, _, user_agent in calls
+    )
+    province_query = next(query for path, query, _, _ in calls if path.endswith("/provinces"))
+    locality_query = next(query for path, query, _, _ in calls if path.endswith("/municipalities"))
+    barangay_query = next(query for path, query, _, _ in calls if path.endswith("/barangays"))
     assert province_query["reg"] == ["5"]
     assert locality_query["reg"] == ["5"]
     assert locality_query["prv"] == ["16"]
