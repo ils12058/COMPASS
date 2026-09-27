@@ -189,7 +189,8 @@ api = NinjaAPI(
             {
                 "name": "privacy-governance",
                 "description": (
-                    "DPO privacy-governance records and curated privacy/security oversight."
+                    "COMPASS Privacy Notices, Retention Policy governance, and curated "
+                    "privacy/security oversight."
                 ),
             },
         ]
