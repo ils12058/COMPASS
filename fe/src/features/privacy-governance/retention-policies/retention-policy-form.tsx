@@ -170,10 +170,12 @@ function RecordCategorySelector({
   values,
   onChange,
   error,
+  legacyUnclassified,
 }: {
   values: RetentionRecordCategoryValue[];
   onChange: (values: RetentionRecordCategoryValue[]) => void;
   error: string | null;
+  legacyUnclassified: boolean;
 }) {
   function toggle(category: RetentionRecordCategoryValue, checked: boolean) {
     if (checked) {
@@ -196,6 +198,9 @@ function RecordCategorySelector({
       <FieldHint id="retention-category-hint">
         Select each implemented COMPASS record class this human-approved policy applies to.
         Categories identify records only; they do not execute retention actions.
+        {legacyUnclassified
+          ? " This legacy policy may remain unclassified until an authorized operator deliberately maps it."
+          : ""}
       </FieldHint>
       <div className="grid gap-2 sm:grid-cols-2">
         {retentionRecordCategoryOrder.map((category) => (
@@ -250,7 +255,9 @@ export function RetentionPolicyForm({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (values.recordCategories.length === 0) {
+    const mustRemainClassified =
+      mode === "create" || initial.recordCategories.length > 0;
+    if (mustRemainClassified && values.recordCategories.length === 0) {
       setCategoryError("Select at least one COMPASS record category.");
       return;
     }
@@ -307,6 +314,7 @@ export function RetentionPolicyForm({
         <RecordCategorySelector
           values={values.recordCategories}
           error={categoryError}
+          legacyUnclassified={mode === "edit" && initial.recordCategories.length === 0}
           onChange={(recordCategories) => {
             set("recordCategories", recordCategories);
             if (recordCategories.length > 0) setCategoryError(null);
