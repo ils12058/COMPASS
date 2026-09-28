@@ -138,10 +138,7 @@ def test_platform_operations_routes_require_authentication_and_capability():
     client = auth_client(student)
     assert client.get("/api/v1/platform/health").status_code == 403
     assert client.get("/api/v1/platform/environment").status_code == 403
-    assert (
-        client.post("/api/v1/platform/health/worker-smoke", **csrf(client)).status_code
-        == 403
-    )
+    assert client.post("/api/v1/platform/health/worker-smoke", **csrf(client)).status_code == 403
     assert client.get("/api/v1/platform/commands").status_code == 404
 
 
