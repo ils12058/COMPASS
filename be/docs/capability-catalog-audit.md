@@ -20,7 +20,7 @@ Role abbreviations: IT = IT Admin, C = Counselor, GSS = Guidance Services Staff,
 | `academic_years.view` | View academic years | Reference/discovery | C, Head | organization | institution-configuration, inventory | Retained |
 | `academic_years.manage` | Manage academic years | Management/configuration | Head | organization | institution-configuration | Retained |
 | `institutional_forms.view` | View institutional form metadata | Reference/discovery | C, Head | institutional_forms | institution-configuration | Retained |
-| `institutional_forms.manage` | Manage institutional form metadata | Management/configuration | Head | institutional_forms | institution-configuration | Retained |
+| `institutional_forms.manage` | Manage institutional form metadata | Management/configuration | — | — | — | Retired |
 | `services.catalog.view` | View service catalog | Reference/discovery | IT, C, GSS, S | service_catalog | portal, services | Renamed in place |
 | `services.manage` | Manage service catalog | Management/configuration | IT, Head | service_catalog | services | Retained |
 | `availability.view` | View availability | Mixed; split deferred | IT, C, GSS, S | availability | availability | Retained; split design needed |
@@ -65,8 +65,8 @@ Role abbreviations: IT = IT Admin, C = Counselor, GSS = Guidance Services Staff,
 | `graduate_tracer.view_self` | View own Graduate Tracer response | Self-service | S | graduate_tracer | graduate-tracer | Retained |
 | `graduate_tracer.manage_self` | Manage own Graduate Tracer response | Self-service | S | graduate_tracer | graduate-tracer | Retained |
 | `graduate_tracer.view` | View Graduate Tracer responses | Reporting/oversight | Head | graduate_tracer | graduate-tracer | Retained |
-| `document_branding.view` | View document branding | Management/configuration | Head | documents | — | Retained |
-| `document_branding.manage` | Manage document branding | Management/configuration | Head | documents | — | Retained |
+| `document_branding.view` | View document branding | Canonical/source-owned | — | — | — | Retired |
+| `document_branding.manage` | Manage document branding | Canonical/source-owned | — | — | — | Retired |
 | `announcements.manage` | Manage GCO announcements | Management/configuration | C, GSS | announcements | — | Retained |
 | `resources.manage` | Manage curated GCO resources | Management/configuration | C, GSS | resources | — | Retained |
 | `ecounseling.view_self` | View own E-Counseling workspace | Self-service | S | ecounseling | ecounseling | Retained |

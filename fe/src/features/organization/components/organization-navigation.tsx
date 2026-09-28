@@ -34,11 +34,7 @@ export function OrganizationNavigation() {
     <div className="mb-8 border-b border-border">
       <div className="flex flex-wrap gap-x-5 gap-y-2">
         {canViewStructure ? (
-          <>
-            <NavLink href="/portal/organization/campuses">Campuses</NavLink>
-            <NavLink href="/portal/organization/colleges">Colleges</NavLink>
-            <NavLink href="/portal/organization/programs">Programs</NavLink>
-          </>
+          <NavLink href="/portal/organization">Structure</NavLink>
         ) : null}
         <NavLink href="/portal/organization/responsibilities">
           Responsibilities

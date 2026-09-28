@@ -26,7 +26,11 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 
 RENAMED_LEGACY_CAPABILITY_CODES = ("organization.view", "services.view")
-RETIRED_CAPABILITY_CODES = ("institutional_forms.manage",)
+RETIRED_CAPABILITY_CODES = (
+    "institutional_forms.manage",
+    "document_branding.view",
+    "document_branding.manage",
+)
 
 
 def _sync_definition(model, definition) -> tuple[object, str]:

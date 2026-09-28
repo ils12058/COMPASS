@@ -10,7 +10,6 @@ from django.test import Client
 from django.utils import timezone
 
 from compass.accounts.models import Designation, Role, User, UserDesignation
-from compass.audit.context import AuditContext
 from compass.authentication.sessions import create_auth_session
 from compass.documents.assets import get_print_css
 from compass.documents.rendering import (
@@ -18,7 +17,6 @@ from compass.documents.rendering import (
     DocumentRenderResult,
     render_document_html,
 )
-from compass.documents.services import update_branding_profile
 from compass.documents.template_specs import LayoutFamily, get_template_spec
 from compass.organization.models import Campus, College, CounselorResponsibility
 from compass.reports import api as reports_api
@@ -356,15 +354,7 @@ def test_pdf_endpoint_maps_report_and_render_errors(
 
 
 @pytest.mark.django_db
-def test_rendered_html_uses_current_branding_report_context_and_required_sections():
-    update_branding_profile(
-        changes={
-            "institution_name": "Synthetic Current University",
-            "institution_short_name": "SCU",
-            "former_institution_name": None,
-        },
-        context=AuditContext.system(),
-    )
+def test_rendered_html_uses_canonical_branding_report_context_and_required_sections():
     report = synthetic_report(program_count=2)
     context = build_student_profiling_print_context(report)
     html, spec = render_document_html(
@@ -376,9 +366,9 @@ def test_rendered_html_uses_current_branding_report_context_and_required_section
     assert spec.layout_family is LayoutFamily.REPORT
     assert spec.include_accreditation_footer is False
     assert spec.show_page_numbers is True
-    assert "Synthetic Current University" in html
+    assert "University of Camarines Norte" in html
     assert "Guidance and Counseling Office" in html
-    assert "Camarines Norte State College" not in html
+    assert "Camarines Norte State College" in html
     assert "STUDENTS&#x27; PROFILE" in html or "STUDENTS' PROFILE" in html
     assert "2026-2027" in html
     assert "All Campuses" in html

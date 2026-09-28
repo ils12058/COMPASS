@@ -65,6 +65,29 @@ When `API_DOCS_ENABLED=true`, the versioned OpenAPI UI is at
 `http://localhost:8080/api/v1/docs`. Mailpit is at `http://localhost:8025`; MinIO's API is on
 port 9000 and its local console is on port 9001. Both are bound to loopback by default.
 
+## Operator command reference
+
+Deployment and diagnostic commands are operator tooling, not browser workflows. Run them from an
+authorized deployment environment; COMPASS does not expose an HTTP command catalog or command
+execution endpoint.
+
+```sh
+python manage.py create_it_admin --email <operator-email> --first-name <first-name> --last-name <last-name>
+python manage.py sync_identity_policy
+python manage.py migrate --noinput
+python manage.py check --deploy
+python manage.py export_openapi --check
+python manage.py compass_doctor
+python manage.py compass_doctor --configuration-only
+python manage.py compass_doctor --worker-smoke
+```
+
+create_it_admin, sync_identity_policy, and migrate change persisted state. The deployment
+check, OpenAPI check, and normal/configuration-only diagnostics are read-only. --worker-smoke
+explicitly sends the existing harmless diagnostic task so an operator can verify broker/worker/result
+execution; it is not a persistent heartbeat. Browser-based shell, arbitrary command execution,
+backup/restore, Redis manipulation, and Celery purge remain unsupported.
+
 ## Authentication and account security development
 
 Authentication uses a random, server-managed opaque credential in the configurable

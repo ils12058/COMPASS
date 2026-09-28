@@ -93,7 +93,8 @@ CAPABILITY_DEFINITIONS = (
         code="platform_operations.view",
         name="View platform operations",
         description=(
-            "View safe COMPASS platform health, configuration diagnostics, and operator guidance."
+            "View safe COMPASS platform health, configuration diagnostics, email delivery state, "
+            "technical runtime activity, and maintenance state."
         ),
     ),
     CapabilityDefinition(
@@ -391,16 +392,6 @@ CAPABILITY_DEFINITIONS = (
         description="View submitted Graduate Tracer responses for Head Guidance oversight.",
     ),
     CapabilityDefinition(
-        code="document_branding.view",
-        name="View document branding",
-        description="View the approved institutional and GCO document identity configuration.",
-    ),
-    CapabilityDefinition(
-        code="document_branding.manage",
-        name="Manage document branding",
-        description="Manage the approved institutional and GCO document identity configuration.",
-    ),
-    CapabilityDefinition(
         code="announcements.manage",
         name="Manage GCO announcements",
         description=(
@@ -563,8 +554,6 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "academic_years.view",
             "academic_years.manage",
             "institutional_forms.view",
-            "document_branding.view",
-            "document_branding.manage",
             "exit_interviews.view",
             "exit_interviews.reopen",
             "feedback.view_customer_feedback",

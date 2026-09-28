@@ -11,7 +11,6 @@ export function PlatformNavigation() {
     ["/portal/platform/email-delivery", "Email delivery"],
     ["/portal/platform/environment", "Environment"],
     ["/portal/platform/activity", "Technical activity"],
-    ["/portal/platform/commands", "Operator commands"],
   ] as const;
 
   return (

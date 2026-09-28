@@ -18,7 +18,6 @@ from compass.call_slips.api import router as call_slips_router
 from compass.common.errors import register_exception_handlers
 from compass.counseling.api import router as counseling_router
 from compass.counseling.context_api import router as counseling_context_router
-from compass.documents.api import router as document_branding_router
 from compass.ecounseling.api import daily_router
 from compass.ecounseling.api import router as ecounseling_router
 from compass.exit_interviews.api import router as exit_interviews_router
@@ -172,10 +171,6 @@ api = NinjaAPI(
                 ),
             },
             {
-                "name": "document-branding",
-                "description": "Approved institutional and GCO document identity configuration.",
-            },
-            {
                 "name": "e-counseling",
                 "description": "Secure ONLINE Counseling workspace and Daily provider boundary.",
             },
@@ -183,7 +178,7 @@ api = NinjaAPI(
                 "name": "platform-operations",
                 "description": (
                     "Capability-authorized COMPASS platform health, configuration diagnostics, "
-                    "and operator guidance."
+                    "runtime operations, email delivery state, and technical activity."
                 ),
             },
             {
@@ -239,7 +234,6 @@ api.add_router("/platform", platform_operations_router)
 api.add_router("/privacy", privacy_governance_router)
 api.add_router("/privacy", privacy_expansion_router)
 api.add_router("/privacy", public_privacy_router)
-api.add_router("/document-branding", document_branding_router)
 api.add_router("/e-counseling", ecounseling_router)
 api.add_router("/integrations/daily", daily_router)
 register_exception_handlers(api)

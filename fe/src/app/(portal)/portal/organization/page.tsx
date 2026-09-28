@@ -1,5 +1,10 @@
-import { OrganizationIndex } from "@/features/organization/components/organization-index";
+import { OrganizationStructureGate } from "@/features/organization/components/organization-gate";
+import { OrganizationStructurePage } from "@/features/organization/structure/organization-structure-page";
 
 export default function Page() {
-  return <OrganizationIndex />;
+  return (
+    <OrganizationStructureGate>
+      <OrganizationStructurePage />
+    </OrganizationStructureGate>
+  );
 }

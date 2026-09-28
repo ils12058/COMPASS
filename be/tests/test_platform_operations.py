@@ -16,7 +16,6 @@ from compass.accounts.policy import CAPABILITY_CODES
 from compass.accounts.services import effective_capabilities, set_user_capability_override
 from compass.api.v1.constants import API_VERSION
 from compass.authentication.sessions import create_auth_session
-from compass.platform_ops.catalog import COMMAND_CATALOG
 from compass.platform_ops.diagnostics import (
     DiagnosticCheck,
     DiagnosticStatus,
@@ -124,13 +123,13 @@ def test_platform_operations_routes_require_authentication_and_capability():
     anonymous = Client()
     assert anonymous.get("/api/v1/platform/health").status_code == 401
     assert anonymous.get("/api/v1/platform/environment").status_code == 401
-    assert anonymous.get("/api/v1/platform/commands").status_code == 401
+    assert anonymous.get("/api/v1/platform/commands").status_code == 404
 
     student = make_user("no-platform-access@example.edu", "STUDENT")
     client = auth_client(student)
     assert client.get("/api/v1/platform/health").status_code == 403
     assert client.get("/api/v1/platform/environment").status_code == 403
-    assert client.get("/api/v1/platform/commands").status_code == 403
+    assert client.get("/api/v1/platform/commands").status_code == 404
 
 
 def test_database_probe_uses_existing_select_one_semantics_and_sanitizes_failure():
@@ -346,37 +345,6 @@ def test_environment_endpoint_is_safe_resolved_projection_with_no_secret_values(
         "SENTINEL_TOTP_KEY",
     ):
         assert sentinel not in serialized
-
-
-@pytest.mark.django_db
-def test_command_catalog_is_curated_deterministic_and_never_executes_from_browser():
-    sync_policy()
-    admin = make_user("catalog-admin@example.edu", "IT_ADMIN")
-    response = auth_client(admin).get("/api/v1/platform/commands")
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["execution_supported"] is False
-    expected_codes = [item.code for item in COMMAND_CATALOG]
-    assert [item["code"] for item in body["commands"]] == expected_codes
-    assert {item["category"] for item in body["commands"]} <= {
-        "BOOTSTRAP",
-        "DEPLOYMENT",
-        "DIAGNOSTIC",
-    }
-
-    serialized = json.dumps(body).lower()
-    for forbidden in (
-        " manage.py shell",
-        " manage.py dbshell",
-        "flush",
-        "backup now",
-        "restore",
-        "redis-cli",
-        "celery purge",
-    ):
-        assert forbidden not in serialized
-    assert Client().post("/api/v1/platform/commands/run").status_code == 404
 
 
 def test_public_liveness_and_readiness_do_not_depend_on_platform_probes(client):
