@@ -17,6 +17,7 @@ from compass.accounts.models import (
     User,
     UserDesignation,
 )
+from compass.accounts.services import set_user_capability_override
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.common.idempotency import (
@@ -1410,6 +1411,38 @@ def test_student_opportunity_api_is_owned_and_reports_instrument_availability():
     counselor = auth_client(make_user("opportunity-counselor@example.edu", role="COUNSELOR", lifecycle=None))
     assert counselor.get("/api/v1/feedback/opportunities").status_code == 403
     assert Client().get("/api/v1/feedback/opportunities").status_code == 401
+
+
+@pytest.mark.django_db
+def test_opportunity_list_uses_current_instrument_capabilities():
+    sync_policy()
+    student = make_user("opportunity-capabilities@example.edu")
+    opportunity = test_opportunity(student)
+    set_user_capability_override(
+        user=student,
+        capability="feedback.submit_csm",
+        effect="REVOKE",
+        reason="Test CSM revocation",
+    )
+    client = auth_client(student)
+
+    listed = client.get("/api/v1/feedback/opportunities")
+    assert listed.status_code == 200
+    assert len(listed.json()) == 1
+    assert listed.json()[0]["can_submit_customer_feedback"] is True
+    assert listed.json()[0]["can_submit_csm"] is False
+
+    FeedbackOpportunity.objects.filter(pk=opportunity.pk).update(
+        customer_feedback_submitted_at=timezone.now()
+    )
+    assert client.get("/api/v1/feedback/opportunities").json() == []
+
+    detail = client.get(f"/api/v1/feedback/opportunities/{opportunity.pk}")
+    assert detail.status_code == 200
+    assert detail.json()["customer_feedback_submitted"] is True
+    assert detail.json()["csm_submitted"] is False
+    assert detail.json()["can_submit_customer_feedback"] is False
+    assert detail.json()["can_submit_csm"] is False
 
 
 @pytest.mark.django_db
