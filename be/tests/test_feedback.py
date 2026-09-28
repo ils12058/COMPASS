@@ -166,10 +166,14 @@ def post_json(
 ):
     key = idempotency_key or f"feedback-{uuid.uuid4()}"
     body = dict(payload)
-    if path in {
-        "/api/v1/feedback/customer-feedback",
-        "/api/v1/feedback/csm",
-    } and "opportunity_id" not in body:
+    if (
+        path
+        in {
+            "/api/v1/feedback/customer-feedback",
+            "/api/v1/feedback/csm",
+        }
+        and "opportunity_id" not in body
+    ):
         actor = client.feedback_actor
         cache_key = (path, key)
         opportunity_id = client.feedback_opportunities.get(cache_key)
@@ -1415,7 +1419,9 @@ def test_student_opportunity_api_is_owned_and_reports_instrument_availability():
     assert denied.status_code == 404
     assert denied.json()["error"]["code"] == "feedback_opportunity_not_found"
 
-    counselor = auth_client(make_user("opportunity-counselor@example.edu", role="COUNSELOR", lifecycle=None))
+    counselor = auth_client(
+        make_user("opportunity-counselor@example.edu", role="COUNSELOR", lifecycle=None)
+    )
     assert counselor.get("/api/v1/feedback/opportunities").status_code == 403
     assert Client().get("/api/v1/feedback/opportunities").status_code == 401
 
