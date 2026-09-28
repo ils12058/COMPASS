@@ -638,4 +638,3 @@ def test_good_moral_requested_cancellation_is_retained_and_issued_remains_immuta
             self_service=False,
             context=appointment_context(counselor),
         )
-
