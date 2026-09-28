@@ -84,11 +84,7 @@ class FeedbackPage:
 
 
 def _validate_student_account(actor: User) -> None:
-    if (
-        not getattr(actor, "pk", None)
-        or not actor.is_active
-        or actor.role.code != "STUDENT"
-    ):
+    if not getattr(actor, "pk", None) or not actor.is_active or actor.role.code != "STUDENT":
         raise FeedbackNotPermitted("Active Student Feedback access is required.")
 
 
