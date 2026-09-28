@@ -219,6 +219,8 @@ EXPECTED_OPERATION_IDS = {
     "goodMoralIssueRequest",
     "goodMoralCancelRequest",
     "goodMoralDownloadCertificate",
+    "feedbackListMyOpportunities",
+    "feedbackGetMyOpportunity",
     "feedbackSubmitCustomerFeedback",
     "feedbackListCustomerFeedbackResponses",
     "feedbackGetCustomerFeedbackResponse",
@@ -2433,6 +2435,45 @@ def test_feedback_submission_idempotency_openapi_contract() -> None:
     assert csm["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith(
         "/CSMSubmitRequest"
     )
+
+    schemas = schema["components"]["schemas"]
+    for request_name in ("CustomerFeedbackSubmitRequest", "CSMSubmitRequest"):
+        request = schemas[request_name]
+        assert "opportunity_id" in request["properties"]
+        assert "opportunity_id" in request["required"]
+        assert request["properties"]["opportunity_id"]["format"] == "uuid"
+
+    opportunities = _operation(schema, "/api/v1/feedback/opportunities", "get")
+    assert opportunities["operationId"] == "feedbackListMyOpportunities"
+    assert opportunities["tags"] == ["feedback"]
+    assert opportunities["security"] == [{"OpaqueSessionAuth": []}]
+    assert _response_statuses(opportunities) >= {200, 401, 403}
+
+    detail = _operation(
+        schema,
+        "/api/v1/feedback/opportunities/{opportunity_id}",
+        "get",
+    )
+    assert detail["operationId"] == "feedbackGetMyOpportunity"
+    assert _response_statuses(detail) >= {200, 401, 403, 404}
+    path_parameter = next(
+        parameter for parameter in detail["parameters"] if parameter["name"] == "opportunity_id"
+    )
+    assert path_parameter["in"] == "path"
+    assert path_parameter["required"] is True
+    assert path_parameter["schema"]["format"] == "uuid"
+
+    opportunity = schemas["FeedbackOpportunityResponse"]
+    assert set(opportunity["properties"]) == {
+        "id",
+        "service_kind",
+        "service_label",
+        "service_completed_at",
+        "customer_feedback_submitted",
+        "csm_submitted",
+        "can_submit_customer_feedback",
+        "can_submit_csm",
+    }
 
 
 def test_referral_call_slip_atomic_issuance_openapi_contract() -> None:
