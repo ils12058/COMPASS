@@ -518,7 +518,8 @@ def create_csm_response(
         _validate_student(locked, "feedback.submit_csm")
         if opportunity.csm_submitted_at is not None:
             raise FeedbackAlreadySubmitted(
-                "Client Satisfaction Measurement for this completed service has already been submitted."
+                "Client Satisfaction Measurement for this completed service "
+                "has already been submitted."
             )
         normalized = _normalize_csm(values)
         item = ClientSatisfactionResponse.objects.create(**normalized)
