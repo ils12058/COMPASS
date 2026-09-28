@@ -15,7 +15,9 @@ export function getGraduateTracerAccess(user: UserSummary): GraduateTracerAccess
   const isStudent = user.role === "STUDENT";
   const isGraduatedStudent = user.student_lifecycle_status === "GRADUATED";
   const canViewSelf =
-    isStudent && user.capabilities.includes("graduate_tracer.view_self");
+    isStudent &&
+    isGraduatedStudent &&
+    user.capabilities.includes("graduate_tracer.view_self");
   const canManageSelf =
     isStudent &&
     isGraduatedStudent &&
