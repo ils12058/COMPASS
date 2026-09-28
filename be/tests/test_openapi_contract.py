@@ -2356,6 +2356,33 @@ def test_counseling_frontend_readiness_openapi_contract() -> None:
         assert forbidden not in serialized
 
 
+def test_ecounseling_join_and_context_readiness_openapi_contract() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    readiness = schemas["ProviderReadiness"]
+    assert {
+        "daily_enabled",
+        "room_provisioned",
+        "join_allowed",
+        "join_available_from",
+        "join_available_until",
+        "join_state",
+    } == set(readiness["properties"])
+    assert readiness["properties"]["join_state"]["$ref"].endswith("/ECounselingJoinState")
+    assert schemas["ECounselingJoinState"]["enum"] == [
+        "TOO_EARLY",
+        "OPEN",
+        "CLOSED",
+        "PROVIDER_DISABLED",
+    ]
+
+    counselor_workspace = schemas["CounselorWorkspaceResponse"]
+    assert (
+        counselor_workspace["properties"]["counseling_context_available"]["type"] == "boolean"
+    )
+
+
 def test_feedback_submission_idempotency_openapi_contract() -> None:
     schema = _generated_schema()
     expected = {

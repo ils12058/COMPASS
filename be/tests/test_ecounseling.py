@@ -27,6 +27,8 @@ from compass.ecounseling.models import DailyWebhookReceipt, ECounselingRoom
 from compass.ecounseling.services import (
     ECounselingAppointmentNotEligible,
     ECounselingCurrentStudentRequired,
+    ECounselingJoinNotAvailable,
+    ECounselingJoinState,
     ECounselingNotPermitted,
     ECounselingProviderUnavailable,
     create_join_credential,
@@ -198,11 +200,14 @@ def test_workspace_is_read_only_relationship_scoped_and_does_not_provision_room(
         student_view = get_student_workspace(student=student, appointment_id=appointment.pk)
         counselor_view = get_counselor_workspace(counselor=counselor, appointment_id=appointment.pk)
 
-    assert student_view["provider_readiness"] == {
-        "daily_enabled": False,
-        "room_provisioned": False,
-        "join_allowed": False,
-    }
+    readiness = student_view["provider_readiness"]
+    assert readiness == counselor_view["provider_readiness"]
+    assert readiness["daily_enabled"] is False
+    assert readiness["room_provisioned"] is False
+    assert readiness["join_allowed"] is False
+    assert readiness["join_state"] == ECounselingJoinState.PROVIDER_DISABLED
+    assert readiness["join_available_from"] == appointment.starts_at - timedelta(minutes=10)
+    assert readiness["join_available_until"] == appointment.ends_at + timedelta(minutes=15)
     assert student_view["routine_interview"] is None
     assert "student" not in student_view
     assert "counseling_encounter" not in student_view
@@ -210,6 +215,126 @@ def test_workspace_is_read_only_relationship_scoped_and_does_not_provision_room(
     assert counselor_view["counseling_encounter"] is None
     assert ECounselingRoom.objects.count() == 0
 
+    with pytest.raises(ECounselingNotPermitted):
+        get_counselor_workspace(counselor=unrelated, appointment_id=appointment.pk)
+
+
+@pytest.mark.django_db
+def test_join_window_state_boundaries_room_expiry_and_token_cap_are_consistent():
+    sync_policy()
+    admin = make_user("timing-admin@example.edu", "IT_ADMIN")
+    student = make_user("timing-student@example.edu", "STUDENT")
+    counselor = make_user("timing-counselor@example.edu", "COUNSELOR")
+    service = create_counseling_service(admin)
+    appointment = make_appointment(student=student, counselor=counselor, service=service)
+    fake = FakeDailyClient()
+
+    join_from = appointment.starts_at - timedelta(minutes=10)
+    join_until = appointment.ends_at + timedelta(minutes=15)
+    cases = (
+        (join_from - timedelta(seconds=1), ECounselingJoinState.TOO_EARLY, False),
+        (join_from, ECounselingJoinState.OPEN, True),
+        (appointment.starts_at + timedelta(minutes=30), ECounselingJoinState.OPEN, True),
+        (appointment.ends_at, ECounselingJoinState.OPEN, True),
+        (appointment.ends_at + timedelta(minutes=14), ECounselingJoinState.OPEN, True),
+        (join_until, ECounselingJoinState.OPEN, True),
+        (join_until + timedelta(seconds=1), ECounselingJoinState.CLOSED, False),
+    )
+
+    with override_settings(
+        DAILY_ENABLED=True,
+        DAILY_MEETING_TOKEN_TTL_SECONDS=300,
+        ECOUNSELING_JOIN_EARLY_SECONDS=600,
+        ECOUNSELING_REJOIN_GRACE_SECONDS=900,
+    ):
+        for current, expected_state, expected_allowed in cases:
+            student_view = get_student_workspace(
+                student=student,
+                appointment_id=appointment.pk,
+                now=current,
+            )
+            counselor_view = get_counselor_workspace(
+                counselor=counselor,
+                appointment_id=appointment.pk,
+                now=current,
+            )
+            for view in (student_view, counselor_view):
+                readiness = view["provider_readiness"]
+                assert readiness["join_available_from"] == join_from
+                assert readiness["join_available_until"] == join_until
+                assert readiness["join_state"] == expected_state
+                assert readiness["join_allowed"] is expected_allowed
+
+        first = create_join_credential(
+            actor=student,
+            appointment_id=appointment.pk,
+            context=context(student),
+            daily_client=fake,
+            now=join_from,
+        )
+        final_practical = create_join_credential(
+            actor=counselor,
+            appointment_id=appointment.pk,
+            context=context(counselor),
+            daily_client=fake,
+            now=join_until - timedelta(seconds=60),
+        )
+        with pytest.raises(ECounselingJoinNotAvailable):
+            create_join_credential(
+                actor=student,
+                appointment_id=appointment.pk,
+                context=context(student),
+                daily_client=fake,
+                now=join_until + timedelta(seconds=1),
+            )
+
+    assert first.room.room_expires_at == join_until
+    assert fake.created_rooms[0][1] == int(join_until.timestamp())
+    assert first.token_expires_at == join_from + timedelta(minutes=5)
+    assert final_practical.token_expires_at == join_until
+    assert fake.tokens[-1][3] == int(join_until.timestamp())
+
+
+@pytest.mark.django_db
+def test_counselor_workspace_projects_current_context_availability_without_widening_access():
+    sync_policy()
+    admin = make_user("context-admin@example.edu", "IT_ADMIN")
+    student = make_user("context-student@example.edu", "STUDENT")
+    counselor = make_user("context-counselor@example.edu", "COUNSELOR")
+    unrelated = make_user("context-unrelated@example.edu", "COUNSELOR")
+    service = create_counseling_service(admin)
+    appointment = make_appointment(student=student, counselor=counselor, service=service)
+    base = timezone.now()
+    appointment.starts_at = base + timedelta(hours=2)
+    appointment.ends_at = appointment.starts_at + timedelta(hours=1)
+    appointment.save(update_fields=["starts_at", "ends_at", "updated_at"])
+
+    with override_settings(
+        DAILY_ENABLED=True,
+        ECOUNSELING_JOIN_EARLY_SECONDS=600,
+        ECOUNSELING_REJOIN_GRACE_SECONDS=900,
+        COUNSELING_CONTEXT_PRE_APPOINTMENT_HOURS=1,
+        COUNSELING_CONTEXT_UNCOMPLETED_GRACE_HOURS=1,
+    ):
+        before = get_counselor_workspace(
+            counselor=counselor,
+            appointment_id=appointment.pk,
+            now=appointment.starts_at - timedelta(hours=1, seconds=1),
+        )
+        inside = get_counselor_workspace(
+            counselor=counselor,
+            appointment_id=appointment.pk,
+            now=appointment.starts_at - timedelta(minutes=30),
+        )
+        after = get_counselor_workspace(
+            counselor=counselor,
+            appointment_id=appointment.pk,
+            now=appointment.ends_at + timedelta(hours=1, seconds=1),
+        )
+
+    assert before["counseling_context_available"] is False
+    assert inside["counseling_context_available"] is True
+    assert after["counseling_context_available"] is False
     with pytest.raises(ECounselingNotPermitted):
         get_counselor_workspace(counselor=unrelated, appointment_id=appointment.pk)
 
