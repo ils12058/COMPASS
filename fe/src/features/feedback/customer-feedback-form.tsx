@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { usePortalSession } from "@/features/portal/components/portal-session";
-import { FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage } from "@/features/feedback/feedback-shared";
+import { FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { feedbackSubmitCustomerFeedback, useFeedbackGetMyOpportunity } from "@/lib/api/generated/feedback/feedback";
 import { CustomerFeedbackAccommodatedByValue, CustomerFeedbackRatingValue, CustomerFeedbackServiceValue, type CustomerFeedbackSubmitRequest } from "@/lib/api/generated/model";
@@ -100,7 +100,8 @@ export function CustomerFeedbackForm() {
   const { user } = usePortalSession();
   const access = getFeedbackAccess(user);
   const searchParams = useSearchParams();
-  const opportunityId = searchParams.get("opportunity");
+  const opportunityParam = searchParams.get("opportunity");
+  const opportunityId = feedbackOpportunityId(opportunityParam);
   const opportunity = useFeedbackGetMyOpportunity(opportunityId ?? "", {
     query: {
       retry: false,
@@ -137,8 +138,12 @@ export function CustomerFeedbackForm() {
   if (!opportunityId) {
     return (
       <FeedbackAccessUnavailable
-        title="Choose a completed service"
-        message="Open Feedback and choose the completed service you want to review."
+        title={opportunityParam ? "Customer Feedback unavailable" : "Choose a completed service"}
+        message={
+          opportunityParam
+            ? "This Feedback opportunity is not available."
+            : "Open Feedback and choose the completed service you want to review."
+        }
       />
     );
   }
