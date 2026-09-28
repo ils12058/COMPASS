@@ -1070,7 +1070,9 @@ def test_ordinary_rerun_is_idempotent_and_preserves_established_credentials(seed
 
 
 @pytest.mark.django_db
-def test_feedback_opportunities_reconcile_known_demo_sources_without_recreating_raw_responses(seeded):
+def test_feedback_opportunities_reconcile_known_demo_sources_without_recreating_raw_responses(
+    seeded,
+):
     raw_customer_ids = set(CustomerFeedbackResponse.objects.values_list("pk", flat=True))
     raw_csm_ids = set(ClientSatisfactionResponse.objects.values_list("pk", flat=True))
 
