@@ -15,7 +15,9 @@ from compass.accounts.models import Designation, Role, User, UserDesignation
 from compass.accounts.policy import CAPABILITY_CODES
 from compass.accounts.services import effective_capabilities, set_user_capability_override
 from compass.api.v1.constants import API_VERSION
+from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.notifications.models import Notification
 from compass.platform_ops.diagnostics import (
     DiagnosticCheck,
     DiagnosticStatus,
@@ -49,11 +51,17 @@ def auth_client(user: User) -> Client:
     return client
 
 
+def csrf(client: Client) -> dict[str, str]:
+    response = client.get("/api/v1/auth/csrf")
+    assert response.status_code == 200
+    return {"HTTP_X_CSRFTOKEN": response.json()["csrf_token"]}
+
+
 def healthy_platform_health() -> PlatformHealth:
     return PlatformHealth(
         status=DiagnosticStatus.HEALTHY,
         timestamp=timezone.now(),
-        summary="Required passive platform dependencies are healthy.",
+        summary="All checked platform dependencies are responding.",
         checks=(
             DiagnosticCheck(
                 code="database",
@@ -123,12 +131,17 @@ def test_platform_operations_routes_require_authentication_and_capability():
     anonymous = Client()
     assert anonymous.get("/api/v1/platform/health").status_code == 401
     assert anonymous.get("/api/v1/platform/environment").status_code == 401
+    assert anonymous.post("/api/v1/platform/health/worker-smoke").status_code == 401
     assert anonymous.get("/api/v1/platform/commands").status_code == 404
 
     student = make_user("no-platform-access@example.edu", "STUDENT")
     client = auth_client(student)
     assert client.get("/api/v1/platform/health").status_code == 403
     assert client.get("/api/v1/platform/environment").status_code == 403
+    assert (
+        client.post("/api/v1/platform/health/worker-smoke", **csrf(client)).status_code
+        == 403
+    )
     assert client.get("/api/v1/platform/commands").status_code == 404
 
 
@@ -181,12 +194,20 @@ def test_redis_concerns_and_celery_broker_fail_independently(failed_index):
             DiagnosticStatus.UNAVAILABLE if index == failed_index else DiagnosticStatus.HEALTHY
         )
         assert by_code[code].status == expected
-    assert by_code["celery_worker"].status == DiagnosticStatus.NOT_CHECKED
-    assert by_code["celery_beat"].status == DiagnosticStatus.NOT_CHECKED
+    assert set(by_code) == {
+        "database",
+        "redis_cache",
+        "redis_rate_limit",
+        "redis_idempotency",
+        "celery_broker",
+        "object_storage",
+        "smtp",
+    }
     assert "password" not in json.dumps(
         [{"summary": item.summary, "code": item.code} for item in health.checks]
     )
     assert health.status == DiagnosticStatus.DEGRADED
+    assert health.summary == "One or more checked platform dependencies are unavailable."
 
 
 def test_storage_probe_treats_false_as_success_and_sanitizes_exceptions():
@@ -227,10 +248,14 @@ def test_smtp_probe_is_connection_only_and_never_sends_message():
     assert "private-host" not in failed.summary
 
 
-@override_settings(DAILY_ENABLED=False, TURNSTILE_ENABLED=False)
-def test_disabled_external_integrations_are_reported_honestly_without_provider_calls():
+@pytest.mark.parametrize(
+    ("daily_enabled", "turnstile_enabled"),
+    [(False, False), (True, True)],
+)
+def test_automatic_health_contains_only_real_probes(daily_enabled, turnstile_enabled):
     cursor = MagicMock()
     with (
+        override_settings(DAILY_ENABLED=daily_enabled, TURNSTILE_ENABLED=turnstile_enabled),
         patch("compass.platform_ops.diagnostics.connection.cursor", return_value=cursor),
         patch("compass.platform_ops.diagnostics.redis.Redis.from_url") as redis_factory,
         patch("compass.platform_ops.diagnostics.ObjectStorage.exists", return_value=False),
@@ -239,29 +264,17 @@ def test_disabled_external_integrations_are_reported_honestly_without_provider_c
         redis_factory.return_value.ping.return_value = True
         health = collect_platform_health()
 
-    by_code = {item.code: item for item in health.checks}
-    assert by_code["daily"].status == DiagnosticStatus.DISABLED
-    assert by_code["turnstile"].status == DiagnosticStatus.DISABLED
+    assert [item.code for item in health.checks] == [
+        "database",
+        "redis_cache",
+        "redis_rate_limit",
+        "redis_idempotency",
+        "celery_broker",
+        "object_storage",
+        "smtp",
+    ]
     assert health.status == DiagnosticStatus.HEALTHY
-
-
-@override_settings(DAILY_ENABLED=True, TURNSTILE_ENABLED=True)
-def test_enabled_external_integrations_are_not_passively_called_or_falsely_green():
-    cursor = MagicMock()
-    with (
-        patch("compass.platform_ops.diagnostics.connection.cursor", return_value=cursor),
-        patch("compass.platform_ops.diagnostics.redis.Redis.from_url") as redis_factory,
-        patch("compass.platform_ops.diagnostics.ObjectStorage.exists", return_value=False),
-        patch("compass.platform_ops.diagnostics.Mailer.probe_connection"),
-    ):
-        redis_factory.return_value.ping.return_value = True
-        health = collect_platform_health()
-
-    by_code = {item.code: item for item in health.checks}
-    assert by_code["daily"].status == DiagnosticStatus.NOT_CHECKED
-    assert by_code["turnstile"].status == DiagnosticStatus.NOT_CHECKED
-    assert health.status == DiagnosticStatus.HEALTHY
-    assert "not performed" in health.summary
+    assert health.summary == "All checked platform dependencies are responding."
 
 
 def test_overall_status_derivation_is_deterministic():
@@ -330,6 +343,20 @@ def test_environment_endpoint_is_safe_resolved_projection_with_no_secret_values(
     assert application_values["build_id"] == settings.COMPASS_BUILD_ID
     assert application_values["build_timestamp"] is None
 
+    authentication_values = {
+        value["code"]: value["value"] for value in categories["authentication"]["values"]
+    }
+    daily_values = {value["code"]: value["value"] for value in categories["daily"]["values"]}
+    notification_values = {
+        value["code"]: value["value"]
+        for value in categories["notification_delivery"]["values"]
+    }
+    assert authentication_values["turnstile_enabled"] is settings.TURNSTILE_ENABLED
+    assert authentication_values["turnstile_configured"] is True
+    assert daily_values["enabled"] is settings.DAILY_ENABLED
+    assert daily_values["credentials_configured"] is True
+    assert "recovery_schedule_configured" in notification_values
+
     serialized = json.dumps(body)
     for sentinel in (
         "SENTINEL_DJANGO_SECRET",
@@ -345,6 +372,87 @@ def test_environment_endpoint_is_safe_resolved_projection_with_no_secret_values(
         "SENTINEL_TOTP_KEY",
     ):
         assert sentinel not in serialized
+
+
+@pytest.mark.django_db
+def test_worker_smoke_endpoint_uses_view_capability_default_timeout_and_creates_no_rows():
+    sync_policy()
+    viewer = make_user("worker-viewer@example.edu", "COUNSELOR")
+    set_user_capability_override(
+        user=viewer,
+        capability="platform_operations.view",
+        effect="GRANT",
+        reason="Temporary worker diagnostic access",
+    )
+    client = auth_client(viewer)
+    before_audit = AuditEvent.objects.count()
+    before_notifications = Notification.objects.count()
+
+    with patch(
+        "compass.platform_ops.api.run_worker_smoke",
+        return_value=DiagnosticCheck(
+            code="celery_worker_smoke",
+            label="Background worker",
+            status=DiagnosticStatus.HEALTHY,
+            summary="A diagnostic task completed successfully.",
+        ),
+    ) as worker:
+        response = client.post(
+            "/api/v1/platform/health/worker-smoke?timeout_seconds=999",
+            **csrf(client),
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "code": "celery_worker_smoke",
+        "label": "Background worker",
+        "status": "HEALTHY",
+        "summary": "A diagnostic task completed successfully.",
+    }
+    worker.assert_called_once_with()
+    assert AuditEvent.objects.count() == before_audit
+    assert Notification.objects.count() == before_notifications
+
+
+@pytest.mark.django_db
+def test_worker_smoke_unavailable_is_diagnostic_data_not_api_failure():
+    sync_policy()
+    admin = make_user("worker-unavailable@example.edu", "IT_ADMIN")
+    client = auth_client(admin)
+    with patch(
+        "compass.platform_ops.api.run_worker_smoke",
+        return_value=DiagnosticCheck(
+            code="celery_worker_smoke",
+            label="Background worker",
+            status=DiagnosticStatus.UNAVAILABLE,
+            summary="The dependency did not respond successfully to the safe diagnostic probe.",
+        ),
+    ):
+        response = client.post("/api/v1/platform/health/worker-smoke", **csrf(client))
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "UNAVAILABLE"
+    assert "broker" not in response.json()["summary"].lower()
+    assert "credential" not in response.json()["summary"].lower()
+
+
+@pytest.mark.django_db
+def test_worker_smoke_unexpected_failure_returns_safe_server_error():
+    sync_policy()
+    admin = make_user("worker-error@example.edu", "IT_ADMIN")
+    client = auth_client(admin)
+    with patch(
+        "compass.platform_ops.api.run_worker_smoke",
+        side_effect=RuntimeError("redis://user:secret@private-broker/task-secret"),
+    ):
+        response = client.post("/api/v1/platform/health/worker-smoke", **csrf(client))
+
+    assert response.status_code == 500
+    body = response.json()
+    assert body["error"]["code"] == "worker_smoke_failed"
+    serialized = json.dumps(body)
+    assert "private-broker" not in serialized
+    assert "task-secret" not in serialized
 
 
 def test_public_liveness_and_readiness_do_not_depend_on_platform_probes(client):
