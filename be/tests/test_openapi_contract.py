@@ -2378,9 +2378,7 @@ def test_ecounseling_join_and_context_readiness_openapi_contract() -> None:
     ]
 
     counselor_workspace = schemas["CounselorWorkspaceResponse"]
-    assert (
-        counselor_workspace["properties"]["counseling_context_available"]["type"] == "boolean"
-    )
+    assert counselor_workspace["properties"]["counseling_context_available"]["type"] == "boolean"
 
 
 def test_feedback_submission_idempotency_openapi_contract() -> None:
