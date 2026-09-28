@@ -361,77 +361,14 @@ def test_no_show_is_terminal_and_rejects_existing_counseling_encounter():
 
 
 @pytest.mark.django_db
-def test_student_support_roster_is_scoped_current_privacy_minimized_and_filterable():
+def test_student_support_roster_surface_is_removed():
     sync_policy()
     counselor = make_support_user("roster-final-counselor@example.edu", "COUNSELOR")
-    no_scope = make_support_user("roster-final-none@example.edu", "COUNSELOR")
-    gss = make_support_user("roster-final-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
     head = make_head("roster-final-head@example.edu")
-    year = AcademicYear.objects.create(label="2099-2100", is_current=True)
-    _, college, program = make_org("FINAL")
-    submitted = make_support_user("alpha.roster@example.edu")
-    submitted.institutional_id = "FINAL-001"
-    submitted.save(update_fields=["institutional_id", "updated_at"])
-    draft = make_support_user("beta.roster@example.edu")
-    missing = make_support_user("gamma.roster@example.edu")
-    affiliate(submitted, college)
-    affiliate(draft, college)
-    affiliate(missing, college)
-    CounselorResponsibility.objects.create(college=college, counselor=counselor)
-    make_inventory(
-        student=submitted,
-        year=year,
-        program=program,
-        suffix="final-submitted",
-        pwd_status="PWD",
-        four_ps_status="BENEFICIARY",
-    )
-    make_inventory(
-        student=draft,
-        year=year,
-        program=program,
-        suffix="final-draft",
-        submitted=False,
-        pwd_status="PWD",
-    )
+    gss = make_support_user("roster-final-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
 
-    client = support_auth_client(counselor)
-    roster = client.get("/api/v1/student-support/students", {"page_size": 2})
-    assert roster.status_code == 200
-    assert roster.json()["page_size"] == 2
-    assert roster.json()["has_next"] is True
-    assert "total_count" not in roster.json()
-
-    searched = client.get("/api/v1/student-support/students", {"search": "FINAL-001"})
-    assert searched.status_code == 200
-    row = searched.json()["items"][0]
-    assert row["student"]["id"] == str(submitted.pk)
-    assert row["inventory_status"] == "SUBMITTED"
-    assert {item["code"] for item in row["indicators"]} >= {"PWD", "FOUR_PS_BENEFICIARY"}
-    serialized = json.dumps(row)
-    for forbidden in ("current_address", "income", "fears", "counseling_history"):
-        assert forbidden not in serialized
-
-    filtered = client.get(
-        "/api/v1/student-support/students",
-        {"indicator": "PWD"},
-    )
-    assert filtered.status_code == 200
-    assert [item["student"]["id"] for item in filtered.json()["items"]] == [str(submitted.pk)]
-    assert (
-        support_auth_client(no_scope).get("/api/v1/student-support/students").json()["items"] == []
-    )
-    assert support_auth_client(gss).get("/api/v1/student-support/students").status_code == 403
-    head_ids = {
-        row["student"]["id"]
-        for row in support_auth_client(head)
-        .get(
-            "/api/v1/student-support/students",
-            {"page_size": 50},
-        )
-        .json()["items"]
-    }
-    assert {str(submitted.pk), str(draft.pk), str(missing.pk)} <= head_ids
+    for actor in (counselor, head, gss):
+        assert support_auth_client(actor).get("/api/v1/student-support/students").status_code == 404
 
 
 @pytest.mark.django_db
@@ -702,37 +639,3 @@ def test_good_moral_requested_cancellation_is_retained_and_issued_remains_immuta
             context=appointment_context(counselor),
         )
 
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("indicator", "historical_values"),
-    [
-        ("PWD", {"pwd_status": "PWD"}),
-        ("FOUR_PS_BENEFICIARY", {"four_ps_status": "BENEFICIARY"}),
-        ("MOTHER_DECEASED", {"mother_life_status": "DECEASED"}),
-    ],
-)
-def test_roster_indicator_filter_uses_only_the_current_submitted_inventory(
-    indicator, historical_values
-):
-    sync_policy()
-    head = make_head(f"indicator-head-{indicator.lower()}@example.edu")
-    previous = AcademicYear.objects.create(label="2098-2099")
-    current = AcademicYear.objects.create(label="2099-2100", is_current=True)
-    _, college, program = make_org(f"IND-{indicator}")
-    student = make_support_user(f"indicator-{indicator.lower()}@example.edu")
-    affiliate(student, college)
-    make_inventory(
-        student=student,
-        year=previous,
-        program=program,
-        suffix=f"{indicator}-previous",
-        **historical_values,
-    )
-    make_inventory(student=student, year=current, program=program, suffix=f"{indicator}-current")
-
-    client = support_auth_client(head)
-    filtered = client.get("/api/v1/student-support/students", {"indicator": indicator})
-
-    assert filtered.status_code == 200
-    assert filtered.json()["items"] == []
