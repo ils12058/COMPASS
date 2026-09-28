@@ -300,7 +300,7 @@ def test_customer_feedback_form_is_controlled_but_csm_is_not_registered_as_f14()
         StudentLifecycleStatus.FORMER,
     ],
 )
-def test_all_student_lifecycles_can_submit_both_feedback_instruments_without_prerequisites(
+def test_all_student_lifecycles_can_submit_both_feedback_instruments_for_completed_services(
     lifecycle,
 ):
     sync_policy()
