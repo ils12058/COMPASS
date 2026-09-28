@@ -44,7 +44,6 @@ from compass.good_moral.services import (
 )
 from compass.integrations.storage import ObjectStorage
 from compass.notifications.models import Notification
-from compass.organization.models import AcademicYear, CounselorResponsibility
 from compass.referrals.services import (
     ReferralVoidConflict,
     record_action,
@@ -95,13 +94,10 @@ from tests.test_notifications import (
 )
 from tests.test_profile_photos import MemoryBackend, image_upload
 from tests.test_student_support import (
-    affiliate,
-    make_head,
-    make_inventory,
-    make_org,
+    auth_client as support_auth_client,
 )
 from tests.test_student_support import (
-    auth_client as support_auth_client,
+    make_head,
 )
 from tests.test_student_support import (
     make_user as make_support_user,

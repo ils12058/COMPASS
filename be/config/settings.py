@@ -80,6 +80,7 @@ INSTALLED_APPS = [
     "compass.ecounseling",
     "compass.platform_ops",
     "compass.privacy_governance",
+    "compass.demo_seed",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -400,6 +401,10 @@ if NOTIFICATION_EMAIL_CLAIM_TTL_SECONDS <= SMTP_TIMEOUT:
 DOCUMENT_RENDER_TIMEOUT_SECONDS = env_int("DOCUMENT_RENDER_TIMEOUT_SECONDS", 30)
 if not 1 <= DOCUMENT_RENDER_TIMEOUT_SECONDS <= 120:
     raise ValueError("DOCUMENT_RENDER_TIMEOUT_SECONDS must be between 1 and 120")
+
+# Operator opt-in for the synthetic ``seed_demo_staging`` dataset. The command also enforces its
+# own explicit staging allowlist, so this flag can never enable seeding anywhere else.
+DEMO_SEEDING_ENABLED = env_bool("DEMO_SEEDING_ENABLED", IS_LOCAL_STAGING)
 
 API_DOCS_ENABLED = env_bool("API_DOCS_ENABLED", IS_LOCAL_STAGING)
 if not IS_LOCAL_STAGING and API_DOCS_ENABLED:

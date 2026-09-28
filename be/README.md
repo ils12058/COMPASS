@@ -80,9 +80,13 @@ python manage.py export_openapi --check
 python manage.py compass_doctor
 python manage.py compass_doctor --configuration-only
 python manage.py compass_doctor --worker-smoke
+python manage.py seed_demo_staging
 ```
 
-create_it_admin, sync_identity_policy, and migrate change persisted state. The deployment
+create_it_admin, sync_identity_policy, seed_demo_staging, and migrate change persisted state.
+seed_demo_staging loads the synthetic staging demo dataset; it runs only in local-staging or
+live-staging with `DEMO_SEEDING_ENABLED=true` and is documented in
+[`docs/staging-demo-seeding.md`](docs/staging-demo-seeding.md). The deployment
 check, OpenAPI check, and normal/configuration-only diagnostics are read-only. --worker-smoke
 explicitly sends the existing harmless diagnostic task so an operator can verify broker/worker/result
 execution; it is not a persistent heartbeat. Browser-based shell, arbitrary command execution,

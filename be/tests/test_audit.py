@@ -384,7 +384,7 @@ def test_policy_sync_records_one_event_only_when_it_changes_policy():
 @pytest.mark.django_db
 def test_policy_sync_rolls_back_if_audit_recording_fails():
     with patch(
-        "compass.accounts.management.commands.sync_identity_policy.record_event",
+        "compass.accounts.bootstrap.record_event",
         side_effect=RuntimeError("audit database unavailable"),
     ):
         with pytest.raises(RuntimeError, match="audit database unavailable"):
