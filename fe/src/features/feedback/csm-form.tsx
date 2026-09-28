@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -129,14 +129,7 @@ export function CsmForm() {
   const intentRef = useRef<CsmIntent | null>(null);
   const isUncertain = uncertainIntent !== null;
   const opportunityData = opportunity.data?.data;
-
-  useEffect(() => {
-    const label = opportunityData?.service_label;
-    if (!label) return;
-    setDraft((current) =>
-      current.service.trim() ? current : { ...current, service: label },
-    );
-  }, [opportunityData?.service_label]);
+  const serviceValue = draft.service || opportunityData?.service_label || "";
 
   if (!access.canSubmitCsm) return <FeedbackAccessUnavailable title="Client Satisfaction Measurement unavailable" />;
   if (!opportunityId) {
@@ -208,7 +201,9 @@ export function CsmForm() {
     setError(null);
     if (isUncertain) return;
     if (!event.currentTarget.reportValidity()) return;
-    setPreparedBody(makeCsmBody(draft, opportunityData.id));
+    setPreparedBody(
+      makeCsmBody({ ...draft, service: serviceValue }, opportunityData.id),
+    );
     setConfirmationOpen(true);
   }
 
@@ -271,7 +266,7 @@ export function CsmForm() {
             <div className="grid gap-5 sm:grid-cols-2">
               <div><FeedbackFieldLabel htmlFor="csm-age" required>Age</FeedbackFieldLabel><Input id="csm-age" className="mt-2" type="number" min={0} max={150} step={1} required value={draft.age} onChange={(event) => setDraft((current) => ({ ...current, age: event.target.value }))} /></div>
               <div><FeedbackFieldLabel htmlFor="csm-region" required>Region of Residence</FeedbackFieldLabel><Input id="csm-region" className="mt-2" required value={draft.region} onChange={(event) => setDraft((current) => ({ ...current, region: event.target.value }))} /></div>
-              <div className="sm:col-span-2"><FeedbackFieldLabel htmlFor="csm-service" required>Service Availed</FeedbackFieldLabel><Input id="csm-service" className="mt-2" required value={draft.service} onChange={(event) => setDraft((current) => ({ ...current, service: event.target.value }))} /></div>
+              <div className="sm:col-span-2"><FeedbackFieldLabel htmlFor="csm-service" required>Service Availed</FeedbackFieldLabel><Input id="csm-service" className="mt-2" required value={serviceValue} onChange={(event) => setDraft((current) => ({ ...current, service: event.target.value }))} /></div>
             </div>
           </FeedbackSection>
 
