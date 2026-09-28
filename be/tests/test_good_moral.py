@@ -624,10 +624,13 @@ def test_f4_issue_rechecks_current_lifecycle_and_duplicate_issue_is_idempotent()
         ).count()
         == 1
     )
-    assert FeedbackOpportunity.objects.filter(
-        source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
-        source_id=item.pk,
-    ).count() == 1
+    assert (
+        FeedbackOpportunity.objects.filter(
+            source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
+            source_id=item.pk,
+        ).count()
+        == 1
+    )
 
 
 @pytest.mark.django_db
