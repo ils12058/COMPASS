@@ -131,7 +131,7 @@ export function FeedbackEntryPage() {
             id="feedback-services-heading"
             className="font-heading text-xl font-semibold text-ink"
           >
-            Services waiting for feedback
+            Completed services
           </h2>
 
           {invalidSelected ? (
