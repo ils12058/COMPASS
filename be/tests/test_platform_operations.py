@@ -345,8 +345,7 @@ def test_environment_endpoint_is_safe_resolved_projection_with_no_secret_values(
     }
     daily_values = {value["code"]: value["value"] for value in categories["daily"]["values"]}
     notification_values = {
-        value["code"]: value["value"]
-        for value in categories["notification_delivery"]["values"]
+        value["code"]: value["value"] for value in categories["notification_delivery"]["values"]
     }
     assert authentication_values["turnstile_enabled"] is settings.TURNSTILE_ENABLED
     assert authentication_values["turnstile_configured"] is True
