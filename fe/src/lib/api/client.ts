@@ -1,5 +1,6 @@
 import { clearCsrfToken, getCsrfToken } from "@/lib/api/csrf";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
+import { parseResponseBody } from "@/lib/api/response-body";
 
 const API_ROOT = "/api/v1";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
@@ -31,24 +32,6 @@ function serializeHeaders(headers: Headers): Record<string, string> {
   return values;
 }
 
-async function parseBody(response: Response): Promise<unknown> {
-  if (response.status === 204 || response.status === 205 || !response.body) {
-    return undefined;
-  }
-
-  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-  if (contentType.includes("json") || contentType.includes("+json")) {
-    const text = await response.text();
-    return text.length > 0 ? JSON.parse(text) : undefined;
-  }
-
-  if (contentType.startsWith("text/") || contentType.includes("xml")) {
-    return response.text();
-  }
-
-  return response.blob();
-}
-
 export async function compassFetch<T>(
   url: string,
   options: RequestInit = {},
@@ -67,7 +50,7 @@ export async function compassFetch<T>(
     headers,
     credentials: "include",
   });
-  const body = await parseBody(response);
+  const body = await parseResponseBody(response);
   const responseHeaders = serializeHeaders(response.headers);
 
   if (!response.ok) {
