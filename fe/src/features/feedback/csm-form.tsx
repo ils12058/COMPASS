@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
-import { FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage } from "@/features/feedback/feedback-shared";
+import { FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
 import { feedbackSubmitCsm, useFeedbackGetMyOpportunity } from "@/lib/api/generated/feedback/feedback";
 import { CSMCC1Value, CSMCC2Value, CSMCC3Value, CSMClientTypeValue, CSMRatingValue, CSMSexValue, type CSMSubmitRequest } from "@/lib/api/generated/model";
 
@@ -111,7 +111,8 @@ export function CsmForm() {
   const { user } = usePortalSession();
   const access = getFeedbackAccess(user);
   const searchParams = useSearchParams();
-  const opportunityId = searchParams.get("opportunity");
+  const opportunityParam = searchParams.get("opportunity");
+  const opportunityId = feedbackOpportunityId(opportunityParam);
   const opportunity = useFeedbackGetMyOpportunity(opportunityId ?? "", {
     query: {
       retry: false,
@@ -141,8 +142,16 @@ export function CsmForm() {
   if (!opportunityId) {
     return (
       <FeedbackAccessUnavailable
-        title="Choose a completed service"
-        message="Open Feedback and choose the completed service you want to review."
+        title={
+          opportunityParam
+            ? "Client Satisfaction Measurement unavailable"
+            : "Choose a completed service"
+        }
+        message={
+          opportunityParam
+            ? "This Feedback opportunity is not available."
+            : "Open Feedback and choose the completed service you want to review."
+        }
       />
     );
   }
