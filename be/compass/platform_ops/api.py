@@ -29,6 +29,7 @@ from .diagnostics import (
     DiagnosticStatus,
     collect_environment_diagnostics,
     collect_platform_health,
+    run_worker_smoke,
 )
 from .email_operations import (
     DEFAULT_PAGE_SIZE as EMAIL_DEFAULT_PAGE_SIZE,
@@ -324,6 +325,31 @@ def platform_health(request):
             )
             for item in health.checks
         ],
+    )
+
+
+@router.post(
+    "/health/worker-smoke",
+    response=response_with_errors(HealthCheckResponse, 401, 403, 500),
+    auth=session_auth,
+    operation_id="platformOperationsWorkerSmoke",
+    summary="Run a bounded background worker diagnostic",
+)
+def platform_worker_smoke(request):
+    _require(request, "platform_operations.view")
+    try:
+        result = run_worker_smoke()
+    except Exception as exc:
+        raise APIError(
+            500,
+            "worker_smoke_failed",
+            "The background worker diagnostic could not be completed.",
+        ) from exc
+    return HealthCheckResponse(
+        code=result.code,
+        label=result.label,
+        status=result.status,
+        summary=result.summary,
     )
 
 
