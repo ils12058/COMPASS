@@ -14,6 +14,8 @@ export function feedbackErrorMessage(error: unknown, fallback: string): string {
   const known: Record<string, string> = {
     permission_denied: "You do not have permission to use this Feedback workspace.",
     feedback_not_found: "The requested Feedback response could not be found.",
+    feedback_opportunity_not_found: "This Feedback opportunity is not available.",
+    feedback_already_submitted: "Feedback for this service has already been submitted.",
     feedback_configuration_conflict:
       "Feedback is temporarily unavailable because its configuration needs attention.",
     invalid_feedback_request:
