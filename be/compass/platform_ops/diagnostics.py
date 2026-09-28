@@ -211,7 +211,7 @@ def run_worker_smoke(
             f"{WORKER_SMOKE_MAX_TIMEOUT_SECONDS:g} seconds"
         )
     code = "celery_worker_smoke"
-    label = "Celery worker smoke"
+    label = "Background worker"
     try:
         result = infrastructure_noop.delay()
         payload = result.get(timeout=timeout_seconds)
@@ -224,63 +224,7 @@ def run_worker_smoke(
         code=code,
         label=label,
         status=DiagnosticStatus.HEALTHY,
-        summary="A harmless diagnostic task was executed and its result was received.",
-    )
-
-
-def celery_worker_passive_status() -> DiagnosticCheck:
-    return DiagnosticCheck(
-        code="celery_worker",
-        label="Celery worker",
-        status=DiagnosticStatus.NOT_CHECKED,
-        summary="Run the COMPASS doctor worker smoke check for active worker verification.",
-        required=False,
-    )
-
-
-def celery_beat_passive_status() -> DiagnosticCheck:
-    return DiagnosticCheck(
-        code="celery_beat",
-        label="Celery Beat",
-        status=DiagnosticStatus.NOT_CHECKED,
-        summary="Runtime Beat heartbeat is not available in this COMPASS slice.",
-        required=False,
-    )
-
-
-def daily_passive_status() -> DiagnosticCheck:
-    if not settings.DAILY_ENABLED:
-        return DiagnosticCheck(
-            code="daily",
-            label="Daily.co",
-            status=DiagnosticStatus.DISABLED,
-            summary="Daily.co integration is disabled.",
-            required=False,
-        )
-    return DiagnosticCheck(
-        code="daily",
-        label="Daily.co",
-        status=DiagnosticStatus.NOT_CHECKED,
-        summary="Daily.co is enabled; passive provider connectivity is not checked.",
-        required=False,
-    )
-
-
-def turnstile_passive_status() -> DiagnosticCheck:
-    if not settings.TURNSTILE_ENABLED:
-        return DiagnosticCheck(
-            code="turnstile",
-            label="Cloudflare Turnstile",
-            status=DiagnosticStatus.DISABLED,
-            summary="Turnstile integration is disabled.",
-            required=False,
-        )
-    return DiagnosticCheck(
-        code="turnstile",
-        label="Cloudflare Turnstile",
-        status=DiagnosticStatus.NOT_CHECKED,
-        summary="Turnstile is enabled; passive provider connectivity is not checked.",
-        required=False,
+        summary="A diagnostic task completed successfully.",
     )
 
 
@@ -311,24 +255,13 @@ def collect_platform_health() -> PlatformHealth:
         ("object_storage", "Object storage", probe_object_storage),
         ("smtp", "SMTP", probe_smtp),
     )
-    checked = tuple(_safe_probe(probe, code=code, label=label) for code, label, probe in probes)
-    checks = checked + (
-        celery_worker_passive_status(),
-        celery_beat_passive_status(),
-        daily_passive_status(),
-        turnstile_passive_status(),
-    )
+    checks = tuple(_safe_probe(probe, code=code, label=label) for code, label, probe in probes)
     status = derive_overall_status(checks)
-    has_not_checked = any(item.status == DiagnosticStatus.NOT_CHECKED for item in checks)
-    if status == DiagnosticStatus.DEGRADED:
-        summary = "One or more required passive platform dependencies are unavailable."
-    elif has_not_checked:
-        summary = (
-            "Required passive dependencies are healthy; some runtime/provider checks "
-            "were intentionally not performed."
-        )
-    else:
-        summary = "Required passive platform dependencies are healthy."
+    summary = (
+        "One or more checked platform dependencies are unavailable."
+        if status == DiagnosticStatus.DEGRADED
+        else "All checked platform dependencies are responding."
+    )
     return PlatformHealth(
         status=status,
         timestamp=timezone.now(),
@@ -544,8 +477,6 @@ __all__ = [
     "DiagnosticStatus",
     "EnvironmentDiagnostics",
     "PlatformHealth",
-    "celery_beat_passive_status",
-    "celery_worker_passive_status",
     "collect_environment_diagnostics",
     "collect_platform_health",
     "derive_overall_status",

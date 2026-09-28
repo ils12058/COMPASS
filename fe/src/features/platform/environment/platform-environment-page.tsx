@@ -22,7 +22,10 @@ export function PlatformEnvironmentPage() {
 
   return (
     <section>
-      <PlatformPageHeader title="Environment" />
+      <PlatformPageHeader
+        title="Environment"
+        description="Resolved non-secret configuration for this deployment. These values show how COMPASS is configured, not whether external services are currently reachable."
+      />
 
       {environment.isPending ? <PlatformRowsSkeleton rows={5} /> : null}
       {environment.isError && !result ? (
@@ -38,8 +41,8 @@ export function PlatformEnvironmentPage() {
             {result.startup_limitation}
           </p>
           <p className="mb-5 text-xs text-muted">
-            Resolved values only. Secrets and raw environment configuration are
-            not shown. Checked <PlatformTimestamp value={result.timestamp} />.
+            Secrets and raw environment configuration are not shown. Resolved{" "}
+            <PlatformTimestamp value={result.timestamp} />.
           </p>
 
           {result.categories.length ? (

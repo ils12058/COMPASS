@@ -26,6 +26,7 @@ EXPECTED_OPERATION_IDS = {
     "healthReady",
     "platformPublicStatus",
     "platformOperationsHealth",
+    "platformOperationsWorkerSmoke",
     "platformOperationsEnvironment",
     "platformOperationsGetMaintenance",
     "platformOperationsEnableMaintenance",
@@ -1814,6 +1815,10 @@ def test_platform_operations_openapi_runtime_surface_and_secret_safety() -> None
         assert _response_statuses(path_item["get"]) >= {200, 401, 403}
 
     mutations = {
+        ("/api/v1/platform/health/worker-smoke", "post"): (
+            "platformOperationsWorkerSmoke",
+            {200, 401, 403, 500},
+        ),
         ("/api/v1/platform/maintenance/enable", "post"): (
             "platformOperationsEnableMaintenance",
             {200, 401, 403, 409, 422},
@@ -1840,6 +1845,12 @@ def test_platform_operations_openapi_runtime_surface_and_secret_safety() -> None
         assert operation["operationId"] == operation_id
         assert operation["tags"] == ["platform-operations"]
         assert _response_statuses(operation) >= statuses
+
+    worker_smoke = _operation(schema, "/api/v1/platform/health/worker-smoke", "post")
+    assert "requestBody" not in worker_smoke
+    assert worker_smoke.get("parameters", []) == []
+    worker_success = worker_smoke["responses"]["200"]["content"]["application/json"]["schema"]
+    assert worker_success["$ref"].endswith("/HealthCheckResponse")
 
     assert "/api/v1/platform/commands/run" not in schema["paths"]
     assert "/api/v1/platform/email-deliveries/retry" not in schema["paths"]
