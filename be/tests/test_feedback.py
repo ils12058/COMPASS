@@ -75,7 +75,6 @@ def auth_client(user: User) -> Client:
     client = Client()
     client.cookies["compass_session"] = issued.token
     client.feedback_actor = user
-    client.feedback_opportunities = {}
     return client
 
 
@@ -164,27 +163,22 @@ def post_json(
     *,
     idempotency_key: str | None = None,
 ):
-    body = dict(payload)
     if path in {
         "/api/v1/feedback/customer-feedback",
         "/api/v1/feedback/csm",
-    } and "opportunity_id" not in body:
+    } and "opportunity_id" not in payload:
         actor = client.feedback_actor
-        cache_key = (path, id(payload))
-        opportunity_id = client.feedback_opportunities.get(cache_key)
-        if opportunity_id is None:
-            service_kind = CustomerFeedbackService.COUNSELING
-            if path.endswith("customer-feedback"):
-                services = set(body.get("services_received", []))
-                if (
-                    CustomerFeedbackService.COUNSELING not in services
-                    and CustomerFeedbackService.REQUEST_FOR_CERTIFICATION in services
-                ):
-                    service_kind = CustomerFeedbackService.REQUEST_FOR_CERTIFICATION
-            opportunity = test_opportunity(actor, service_kind=service_kind)
-            opportunity_id = opportunity.pk
-            client.feedback_opportunities[cache_key] = opportunity_id
-        body["opportunity_id"] = str(opportunity_id)
+        service_kind = CustomerFeedbackService.COUNSELING
+        if path.endswith("customer-feedback"):
+            services = set(payload.get("services_received", []))
+            if (
+                CustomerFeedbackService.COUNSELING not in services
+                and CustomerFeedbackService.REQUEST_FOR_CERTIFICATION in services
+            ):
+                service_kind = CustomerFeedbackService.REQUEST_FOR_CERTIFICATION
+        opportunity = test_opportunity(actor, service_kind=service_kind)
+        payload["opportunity_id"] = str(opportunity.pk)
+    body = dict(payload)
 
     return client.post(
         path,
