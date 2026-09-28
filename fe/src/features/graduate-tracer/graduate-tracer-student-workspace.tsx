@@ -92,7 +92,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
           <GraduateTracerForm key={detail.id} detail={detail} />
         ) : (
           <div className="space-y-5">
-            <p className="border-l-4 border-warning bg-warning/5 px-4 py-3 text-sm leading-6 text-ink">This saved draft is read-only because Graduate Tracer editing is unavailable under your current Student lifecycle or access.</p>
+            <p className="border-l-4 border-warning bg-warning/5 px-4 py-3 text-sm leading-6 text-ink">This saved draft is read-only with your current access.</p>
             <GraduateTracerResponse detail={detail} />
           </div>
         )}
@@ -123,7 +123,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
             {needsStatusCheck ? <Button className="mt-3" variant="secondary" onClick={() => void checkResponseStatus()} disabled={response.isFetching}>{response.isFetching ? "Checking…" : "Check response status"}</Button> : null}
           </>
         ) : (
-          <p className="mt-4 text-sm leading-6 text-ink">Graduate Tracer participation is available when the Student lifecycle is Graduated. Your current lifecycle does not allow a response to be started.</p>
+          <p className="mt-4 text-sm leading-6 text-ink">Your current access does not allow a Graduate Tracer response to be started.</p>
         )}
       </div>
     </section>
