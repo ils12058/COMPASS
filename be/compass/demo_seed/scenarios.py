@@ -803,14 +803,12 @@ def good_moral_student(session: SeedSession) -> None:
     )
     align_timestamps(duplicate, created_at=t.past(10, 9, 17), updated_at=cancelled_at)
 
-    # Before issuing, the Counselor records the receipt and corrects the certificate-local College
-    # wording (the template already reads "in the College of ...").
+    # Before issuing, the Counselor records the receipt.
     receipt = narratives.GOOD_MORAL_CURRENT_RECEIPT
     update_request(
         actor=session.user(COUNSELOR_B.key),
         request_id=request.pk,
         changes={
-            "college_snapshot": narratives.GOOD_MORAL_CURRENT["college"],
             "official_receipt_number": receipt["official_receipt_number"],
             "official_receipt_date": t.business_day(-9),
             "official_receipt_amount": Decimal(receipt["amount"]),

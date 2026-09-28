@@ -51,8 +51,7 @@ class StudentPersona(Persona):
     program_code: str = ""
     # Lifecycle the persona ends with; historical back-entry runs while the Student was CURRENT.
     lifecycle: Lifecycle = Lifecycle.CURRENT
-    # Graduated and former Students keep no College affiliation, so they never appear as current
-    # classmates in scoped Guidance pickers.
+    # Graduated and former Students keep no current College affiliation.
     affiliated: bool = True
     civil_status: str = "Single"
     home_address: str = ""

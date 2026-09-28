@@ -386,11 +386,10 @@ GRADUATING_EXIT_INTERVIEW_DRAFT = _exit_interview(
 
 # --- Good Moral --------------------------------------------------------------------------------
 
-# The certificate template supplies the words "year" and "semester" itself. The semester comes
-# from each request's date (``timeline.academic_semester``).
+# The semester comes from each request's date (``timeline.academic_semester``). Certificate
+# presentation handles full labels and fragments without changing these request values.
 GOOD_MORAL_CURRENT = {
     "year_level": "3rd",
-    "college": "Business and Public Administration",
 }
 GOOD_MORAL_CURRENT_RECEIPT = {"official_receipt_number": "DEMO-OR-0142", "amount": "50.00"}
 GOOD_MORAL_DUPLICATE_CANCEL_REASON = "Duplicate request submitted by mistake."

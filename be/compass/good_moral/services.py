@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
@@ -853,6 +854,14 @@ def cancel_request(
         return _queryset().get(pk=item.pk)
 
 
+def _certificate_fragment(value: str, wrapper: str) -> str:
+    """Remove one template-supplied wrapper without changing the saved snapshot."""
+
+    original = value.strip()
+    fragment = re.sub(wrapper, "", original, count=1, flags=re.IGNORECASE).strip()
+    return fragment or original
+
+
 def build_certificate_render_context(item: GoodMoralRequest) -> dict[str, object]:
     """Build an issued certificate only from frozen request/QMS provenance."""
 
@@ -867,14 +876,22 @@ def build_certificate_render_context(item: GoodMoralRequest) -> dict[str, object
     ):
         raise GoodMoralConfigurationConflict("Issued Good Moral provenance is incomplete.")
 
+    year_level = item.year_level_snapshot
+    college = item.college_snapshot
+    semester = item.semester_snapshot
+    if item.variant == GoodMoralVariant.CURRENT_STUDENT:
+        year_level = _certificate_fragment(year_level, r"\s+year$")
+        college = _certificate_fragment(college, r"^college\s+of\s+")
+        semester = _certificate_fragment(semester, r"\s+semester$")
+
     return {
         "certificate": {
             "applicant_name": item.applicant_name_snapshot,
-            "year_level": item.year_level_snapshot,
-            "college": item.college_snapshot,
+            "year_level": year_level,
+            "college": college,
             "course": item.course_snapshot,
             "major": item.major_snapshot,
-            "semester": item.semester_snapshot,
+            "semester": semester,
             "academic_year": item.academic_year.label if item.academic_year_id else "",
             "degree": item.degree_snapshot,
             "graduation_date": item.graduation_date,

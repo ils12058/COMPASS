@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -780,6 +781,100 @@ def test_saved_render_provenance_drives_html_after_current_data_and_revision_cha
     assert "CNSC-OP-GCO-01F4" in html
     assert "Revision: 0" in html
     assert "Page 1 of 1" in html
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    (
+        "year_level",
+        "college_name",
+        "semester",
+        "expected_year",
+        "expected_college",
+        "expected_term",
+    ),
+    [
+        (
+            "3rd Year",
+            "College of Computing and Multimedia Studies",
+            "First Semester",
+            "3rd",
+            "Computing and Multimedia Studies",
+            "First",
+        ),
+        (
+            "Fourth",
+            "Computing and Multimedia Studies",
+            "First",
+            "Fourth",
+            "Computing and Multimedia Studies",
+            "First",
+        ),
+        (
+            " third YEAR ",
+            " cOLLeGe of Visual Arts ",
+            " 1st semester ",
+            "third",
+            "Visual Arts",
+            "1st",
+        ),
+    ],
+)
+def test_f4_render_uses_full_labels_and_fragments_without_changing_snapshots(
+    year_level, college_name, semester, expected_year, expected_college, expected_term
+):
+    sync_policy()
+    student = make_user("f4.labels@example.edu")
+    counselor = make_user("f4.issuer@example.edu", role="COUNSELOR")
+    affiliation = make_affiliation(student)
+    affiliation.college.name = college_name
+    affiliation.college.save(update_fields=["name", "updated_at"])
+    academic_year = make_academic_year()
+    make_inventory(student, academic_year)
+    item = create_my_current_student(
+        student=student,
+        year_level=year_level,
+        semester=semester,
+        context=AuditContext.user(student),
+    )
+    issued = issue_request(
+        actor=counselor,
+        request_id=item.pk,
+        context=AuditContext.user(counselor),
+    )
+    saved = (
+        issued.year_level_snapshot,
+        issued.college_snapshot,
+        issued.semester_snapshot,
+    )
+    context = build_certificate_render_context(issued)
+    html, _ = render_document_html(
+        issued.document_template_key,
+        issued.document_template_version,
+        context=context,
+    )
+    rendered_text = " ".join(re.sub(r"<[^>]+>", " ", html).split())
+
+    assert f"{expected_year} year student" in rendered_text
+    assert f"College of {expected_college}" in rendered_text
+    assert f"{expected_term} semester of academic year {academic_year.label}" in rendered_text
+    assert "Year year" not in rendered_text
+    assert "College of College of" not in rendered_text
+    assert "Semester semester" not in rendered_text
+    issued.refresh_from_db()
+    assert (
+        issued.year_level_snapshot,
+        issued.college_snapshot,
+        issued.semester_snapshot,
+    ) == saved
+
+    detail = auth_client(student).get(f"/api/v1/good-moral/me/{issued.pk}")
+    assert detail.status_code == 200
+    assert (
+        detail.json()["year_level"],
+        detail.json()["college"],
+        detail.json()["semester"],
+    ) == saved
 
 
 @pytest.mark.django_db
