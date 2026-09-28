@@ -55,6 +55,7 @@ def test_canonical_branding_contains_only_confirmed_identity():
     assert branding.office_location is None
 
 
+@pytest.mark.django_db
 def test_document_branding_api_is_removed():
     assert Client().get("/api/v1/document-branding/profile").status_code == 404
 
