@@ -103,19 +103,20 @@ function useECounselingBoundaryRefresh(
   const lastTriggeredBoundaryRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const joinState = readiness?.join_state;
     const boundary =
-      readiness?.join_state === ECounselingJoinState.TOO_EARLY
+      joinState === ECounselingJoinState.TOO_EARLY
         ? readiness.join_available_from
-        : readiness?.join_state === ECounselingJoinState.OPEN
+        : joinState === ECounselingJoinState.OPEN
           ? readiness.join_available_until
           : null;
 
-    if (!boundary) return;
+    if (!joinState || !boundary) return;
 
     const boundaryTime = Date.parse(boundary);
     if (!Number.isFinite(boundaryTime)) return;
 
-    const boundaryKey = `${appointmentId}:${readiness.join_state}:${boundary}`;
+    const boundaryKey = `${appointmentId}:${joinState}:${boundary}`;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
 
