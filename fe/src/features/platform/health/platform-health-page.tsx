@@ -4,6 +4,7 @@ import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { platformErrorMessage } from "@/features/platform/platform-actions";
 import {
   PlatformPageHeader,
   PlatformQueryError,
@@ -11,7 +12,6 @@ import {
   PlatformStatusBadge,
   PlatformTimestamp,
 } from "@/features/platform/platform-presentation";
-import { platformErrorMessage } from "@/features/platform/platform-actions";
 import type { HealthCheckResponse } from "@/lib/api/generated/model";
 import {
   usePlatformOperationsHealth,
@@ -117,59 +117,63 @@ export function PlatformHealthPage() {
             )}
           </section>
 
-          <section className="mt-8 border-t border-border pt-6" aria-labelledby="platform-worker-heading">
-            <h2
-              id="platform-worker-heading"
-              className="font-heading text-xl font-semibold text-ink"
-            >
-              Background worker
-            </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-              Run a harmless background task to verify that a worker can receive
-              and complete queued work.
-            </p>
-
-            <div className="mt-4 border-y border-border py-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  {workerResult ? (
-                    <>
-                      <PlatformStatusBadge status={workerResult.status} />
-                      <p className="mt-2 text-sm leading-6 text-muted">
-                        {workerResult.summary}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm font-semibold text-ink">Not checked</p>
-                      <p className="mt-1 text-sm leading-6 text-muted">
-                        This page has not run a worker diagnostic in this session.
-                      </p>
-                    </>
-                  )}
-                  {workerError ? (
-                    <p role="alert" className="mt-2 text-sm leading-6 text-danger">
-                      {workerError}
-                    </p>
-                  ) : null}
-                </div>
-                <Button
-                  variant="secondary"
-                  disabled={workerSmoke.isPending}
-                  aria-busy={workerSmoke.isPending}
-                  onClick={() => void checkWorker()}
-                >
-                  {workerSmoke.isPending
-                    ? "Checking…"
-                    : workerResult
-                      ? "Check again"
-                      : "Check worker"}
-                </Button>
-              </div>
-            </div>
-          </section>
         </>
       ) : null}
+
+      <section
+        className="mt-8 border-t border-border pt-6"
+        aria-labelledby="platform-worker-heading"
+      >
+        <h2
+          id="platform-worker-heading"
+          className="font-heading text-xl font-semibold text-ink"
+        >
+          Background worker
+        </h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
+          Run a harmless background task to verify that a worker can receive and
+          complete queued work.
+        </p>
+
+        <div className="mt-4 border-y border-border py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              {workerResult ? (
+                <>
+                  <PlatformStatusBadge status={workerResult.status} />
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    {workerResult.summary}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-ink">Not checked</p>
+                  <p className="mt-1 text-sm leading-6 text-muted">
+                    This page has not run a worker diagnostic in this session.
+                  </p>
+                </>
+              )}
+              {workerError ? (
+                <p role="alert" className="mt-2 text-sm leading-6 text-danger">
+                  {workerError}
+                </p>
+              ) : null}
+            </div>
+            <Button
+              variant="secondary"
+              disabled={workerSmoke.isPending}
+              aria-busy={workerSmoke.isPending}
+              onClick={() => void checkWorker()}
+            >
+              {workerSmoke.isPending
+                ? "Checking…"
+                : workerResult
+                  ? "Check again"
+                  : "Check worker"}
+            </Button>
+          </div>
+        </div>
+      </section>
     </section>
   );
 }
