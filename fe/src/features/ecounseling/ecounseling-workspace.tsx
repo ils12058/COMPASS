@@ -106,9 +106,9 @@ function useECounselingBoundaryRefresh(
     const joinState = readiness?.join_state;
     const boundary =
       joinState === ECounselingJoinState.TOO_EARLY
-        ? readiness.join_available_from
+        ? readiness?.join_available_from
         : joinState === ECounselingJoinState.OPEN
-          ? readiness.join_available_until
+          ? readiness?.join_available_until
           : null;
 
     if (!joinState || !boundary) return;
