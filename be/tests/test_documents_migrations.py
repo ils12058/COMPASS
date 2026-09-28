@@ -7,6 +7,20 @@ from django.db.migrations.executor import MigrationExecutor
 BEFORE = [("documents", "0001_initial")]
 AFTER = [("documents", "0002_remove_documentbrandingprofile")]
 
+CANONICAL_PROFILE = {
+    "key": "default",
+    "country_line": "Republic of the Philippines",
+    "institution_name": "University of Camarines Norte",
+    "institution_short_name": "UCN",
+    "former_institution_name": "Camarines Norte State College",
+    "office_name": "Guidance and Counseling Office",
+}
+
+
+def create_canonical_legacy_profile(apps):
+    profile_model = apps.get_model("documents", "DocumentBrandingProfile")
+    return profile_model.objects.create(**CANONICAL_PROFILE)
+
 
 @pytest.mark.django_db(transaction=True)
 def test_branding_removal_migration_drops_matching_default_profile():
@@ -14,7 +28,8 @@ def test_branding_removal_migration_drops_matching_default_profile():
     executor.migrate(BEFORE)
     old_apps = executor.loader.project_state(BEFORE).apps
     LegacyProfile = old_apps.get_model("documents", "DocumentBrandingProfile")
-    assert LegacyProfile.objects.filter(key="default").count() == 1
+    profile = create_canonical_legacy_profile(old_apps)
+    assert LegacyProfile.objects.filter(pk=profile.pk, key="default").count() == 1
 
     try:
         executor = MigrationExecutor(connection)
@@ -32,7 +47,7 @@ def test_branding_removal_migration_refuses_divergent_persisted_values_without_l
     executor.migrate(BEFORE)
     old_apps = executor.loader.project_state(BEFORE).apps
     LegacyProfile = old_apps.get_model("documents", "DocumentBrandingProfile")
-    profile = LegacyProfile.objects.get(key="default")
+    profile = create_canonical_legacy_profile(old_apps)
     secret_value = "private-branding-contact@example.invalid"
     profile.institution_contact_email = secret_value
     profile.save(update_fields=["institution_contact_email"])
