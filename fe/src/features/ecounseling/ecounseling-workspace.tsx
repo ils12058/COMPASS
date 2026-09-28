@@ -96,6 +96,7 @@ const JOIN_BOUNDARY_REFRESH_BUFFER_MS = 500;
 const MAX_BROWSER_TIMEOUT_MS = 2_147_000_000;
 
 function useECounselingBoundaryRefresh(
+  appointmentId: string,
   readiness: ProviderReadiness | undefined,
   refetchWorkspace: () => Promise<unknown>,
 ) {
@@ -114,7 +115,7 @@ function useECounselingBoundaryRefresh(
     const boundaryTime = Date.parse(boundary);
     if (!Number.isFinite(boundaryTime)) return;
 
-    const boundaryKey = `${readiness.join_state}:${boundary}`;
+    const boundaryKey = `${appointmentId}:${readiness.join_state}:${boundary}`;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
 
@@ -138,6 +139,7 @@ function useECounselingBoundaryRefresh(
       if (timer !== null) clearTimeout(timer);
     };
   }, [
+    appointmentId,
     readiness?.join_available_from,
     readiness?.join_available_until,
     readiness?.join_state,
@@ -171,7 +173,7 @@ function StudentWorkspace({ appointmentId, access }: { appointmentId: string; ac
   const data = workspace.data?.data;
   const media = data?.media;
 
-  useECounselingBoundaryRefresh(data?.provider_readiness, workspace.refetch);
+  useECounselingBoundaryRefresh(appointmentId, data?.provider_readiness, workspace.refetch);
   useEffect(() => { joinMutationRef.current = joinCredential; }, [joinCredential]);
   useEffect(() => () => joinMutationRef.current.reset(), []);
 
@@ -240,7 +242,7 @@ function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; 
   const data = workspace.data?.data;
   const media = data?.media;
 
-  useECounselingBoundaryRefresh(data?.provider_readiness, workspace.refetch);
+  useECounselingBoundaryRefresh(appointmentId, data?.provider_readiness, workspace.refetch);
   const context = useCounselingContextGetOverview(CounselingContextAnchorType.APPOINTMENT, appointmentId, {
     query: { enabled: Boolean(data?.counseling_context_available), retry: false },
   });
