@@ -37,6 +37,11 @@ from compass.counseling.services import (
     list_encounter_appointment_candidates,
     update_encounter,
 )
+from compass.feedback.models import (
+    CustomerFeedbackService,
+    FeedbackOpportunity,
+    FeedbackOpportunitySourceType,
+)
 from compass.notifications.models import EmailDelivery, Notification
 from compass.organization.models import (
     Campus,
@@ -234,15 +239,23 @@ def test_direct_encounter_records_actual_completed_time_without_fake_appointment
     assert item.entry_mode == entry_mode
     assert item.ended_at - item.started_at == timedelta(minutes=75)
     assert AuditEvent.objects.filter(action="counseling.encounter.created").count() == 1
+    opportunity = FeedbackOpportunity.objects.get(
+        source_type=FeedbackOpportunitySourceType.COUNSELING_ENCOUNTER,
+        source_id=item.pk,
+    )
+    assert opportunity.student_id == student.pk
+    assert opportunity.service_kind == CustomerFeedbackService.COUNSELING
+    assert opportunity.service_label_snapshot == "Counseling"
+    assert opportunity.service_completed_at == item.ended_at
     invitation = Notification.objects.get(
         recipient=student,
         event_code="feedback.invitation",
-        source_type="counseling_encounter",
-        source_id=item.pk,
+        source_type="feedback_opportunity",
+        source_id=opportunity.pk,
     )
     assert invitation.policy == "OPTIONAL_INFORMATIONAL"
     assert invitation.target_type == "FEEDBACK"
-    assert invitation.target_id is None
+    assert invitation.target_id == opportunity.pk
     assert EmailDelivery.objects.filter(notification=invitation).exists()
 
 
@@ -288,6 +301,7 @@ def test_encounter_creation_rolls_back_when_feedback_notification_persistence_fa
         recipient=student,
         event_code="feedback.invitation",
     ).exists()
+    assert not FeedbackOpportunity.objects.filter(student=student).exists()
 
 
 @pytest.mark.django_db
@@ -326,13 +340,20 @@ def test_appointment_origin_derives_identity_service_and_mode_but_keeps_actual_t
     assert item.ended_at == ended_at
     appointment.refresh_from_db()
     assert appointment.status == "SCHEDULED"
+    opportunity = FeedbackOpportunity.objects.get(
+        source_type=FeedbackOpportunitySourceType.COUNSELING_ENCOUNTER,
+        source_id=item.pk,
+    )
+    assert opportunity.student_id == student.pk
+    assert opportunity.service_completed_at == ended_at
     invitation = Notification.objects.get(
         recipient=student,
         event_code="feedback.invitation",
-        source_type="counseling_encounter",
-        source_id=item.pk,
+        source_type="feedback_opportunity",
+        source_id=opportunity.pk,
     )
     assert invitation.policy == "OPTIONAL_INFORMATIONAL"
+    assert invitation.target_id == opportunity.pk
     assert EmailDelivery.objects.filter(notification=invitation).exists()
 
 
