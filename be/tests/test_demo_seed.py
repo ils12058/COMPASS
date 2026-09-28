@@ -90,7 +90,11 @@ from compass.demo_seed.timeline import (
 )
 from compass.documents.rendering import render_document_html
 from compass.exit_interviews.models import ExitInterview, ExitInterviewStatus
-from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
+from compass.feedback.models import (
+    ClientSatisfactionResponse,
+    CustomerFeedbackResponse,
+    FeedbackOpportunity,
+)
 from compass.good_moral.models import GoodMoralRequest, GoodMoralStatus, GoodMoralVariant
 from compass.good_moral.services import build_certificate_render_context
 from compass.graduate_tracer.models import GraduateTracerResponse, GraduateTracerStatus
@@ -748,6 +752,17 @@ class SeededDemoDatasetTests(TestCase):
         )
         assert len(set(overall)) > 1
         assert ClientSatisfactionResponse.objects.count() == 4
+        reconciled = FeedbackOpportunity.objects.filter(
+            customer_feedback_submitted_at__isnull=False,
+            csm_submitted_at__isnull=False,
+        )
+        assert reconciled.count() == 4
+        assert set(reconciled.values_list("student__email", flat=True)) == {
+            demo_user(SECOND_YEAR).email,
+            demo_user(GOOD_MORAL).email,
+            demo_user(RECENT_GRADUATE).email,
+            demo_user(REFERRED).email,
+        }
         patterns = {
             tuple(getattr(item, f"sqd{index}") for index in range(9))
             for item in ClientSatisfactionResponse.objects.all()
@@ -1018,6 +1033,7 @@ def _snapshot() -> dict[str, object]:
         "tracer": GraduateTracerResponse.objects.count(),
         "feedback": CustomerFeedbackResponse.objects.count(),
         "csm": ClientSatisfactionResponse.objects.count(),
+        "feedback_opportunities": FeedbackOpportunity.objects.count(),
         "announcements": Announcement.objects.count(),
         "resources": Resource.objects.count(),
         "notices": PrivacyNotice.objects.count(),
@@ -1051,6 +1067,27 @@ def test_ordinary_rerun_is_idempotent_and_preserves_established_credentials(seed
     assert report.existing["Scenarios"] == 9
     assert demo_user(SECOND_YEAR).check_password("a password the student chose later")
     assert not demo_user(FORMER_STAFF).is_active
+
+
+@pytest.mark.django_db
+def test_feedback_opportunities_reconcile_known_demo_sources_without_recreating_raw_responses(seeded):
+    raw_customer_ids = set(CustomerFeedbackResponse.objects.values_list("pk", flat=True))
+    raw_csm_ids = set(ClientSatisfactionResponse.objects.values_list("pk", flat=True))
+
+    FeedbackOpportunity.objects.all().delete()
+    Notification.objects.filter(source_type="feedback_opportunity").delete()
+
+    report = seed_demo_staging()
+
+    assert set(CustomerFeedbackResponse.objects.values_list("pk", flat=True)) == raw_customer_ids
+    assert set(ClientSatisfactionResponse.objects.values_list("pk", flat=True)) == raw_csm_ids
+    reconciled = FeedbackOpportunity.objects.filter(
+        customer_feedback_submitted_at__isnull=False,
+        csm_submitted_at__isnull=False,
+    )
+    assert reconciled.count() == 4
+    assert report.existing["Customer Feedback"] == 4
+    assert report.existing["CSM responses"] == 4
 
 
 @pytest.mark.django_db
