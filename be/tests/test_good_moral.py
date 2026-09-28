@@ -1367,6 +1367,10 @@ def test_create_replay_returns_current_cancelled_and_issued_resource_state():
     assert replay_cancelled.status_code == 201
     assert replay_cancelled.json()["id"] == cancelled_id
     assert replay_cancelled.json()["status"] == GoodMoralStatus.CANCELLED
+    assert not FeedbackOpportunity.objects.filter(
+        source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
+        source_id=uuid.UUID(cancelled_id),
+    ).exists()
     assert (
         AuditEvent.objects.filter(
             action="good_moral.request_created",
