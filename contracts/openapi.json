@@ -6109,6 +6109,10 @@
           "appointment": {
             "$ref": "#/components/schemas/AppointmentWorkspaceSummary"
           },
+          "counseling_context_available": {
+            "title": "Counseling Context Available",
+            "type": "boolean"
+          },
           "counseling_encounter": {
             "anyOf": [
               {
@@ -6145,6 +6149,7 @@
           "provider_readiness",
           "routine_interview",
           "counseling_encounter",
+          "counseling_context_available",
           "media"
         ],
         "title": "CounselorWorkspaceResponse",
@@ -6957,6 +6962,16 @@
           "WITHDRAWN"
         ],
         "title": "ECounselingConsentStatus",
+        "type": "string"
+      },
+      "ECounselingJoinState": {
+        "enum": [
+          "TOO_EARLY",
+          "OPEN",
+          "CLOSED",
+          "PROVIDER_DISABLED"
+        ],
+        "title": "ECounselingJoinState",
         "type": "string"
       },
       "ECounselingMediaKind": {
@@ -15362,6 +15377,19 @@
             "title": "Join Allowed",
             "type": "boolean"
           },
+          "join_available_from": {
+            "format": "date-time",
+            "title": "Join Available From",
+            "type": "string"
+          },
+          "join_available_until": {
+            "format": "date-time",
+            "title": "Join Available Until",
+            "type": "string"
+          },
+          "join_state": {
+            "$ref": "#/components/schemas/ECounselingJoinState"
+          },
           "room_provisioned": {
             "title": "Room Provisioned",
             "type": "boolean"
@@ -15370,7 +15398,10 @@
         "required": [
           "daily_enabled",
           "room_provisioned",
-          "join_allowed"
+          "join_allowed",
+          "join_available_from",
+          "join_available_until",
+          "join_state"
         ],
         "title": "ProviderReadiness",
         "type": "object"

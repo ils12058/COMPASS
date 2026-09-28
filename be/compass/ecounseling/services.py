@@ -6,6 +6,7 @@ import json
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from uuid import UUID
 
 from django.conf import settings
@@ -19,6 +20,10 @@ from compass.audit.actions import ECOUNSELING_JOIN_AUTHORIZED, ECOUNSELING_ROOM_
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.counseling.context_access import (
+    CounselingContextSource,
+    counseling_context_available,
+)
 from compass.counseling.models import CounselingEncounter
 from compass.counseling.services import CounselingError, get_counseling_service
 from compass.integrations.daily import (
@@ -78,6 +83,20 @@ class ECounselingInvalidProviderResponse(ECounselingError):
 
 class ECounselingInvalidWebhook(ECounselingError):
     pass
+
+
+class ECounselingJoinState(StrEnum):
+    TOO_EARLY = "TOO_EARLY"
+    OPEN = "OPEN"
+    CLOSED = "CLOSED"
+    PROVIDER_DISABLED = "PROVIDER_DISABLED"
+
+
+@dataclass(frozen=True, slots=True)
+class JoinWindow:
+    available_from: datetime
+    available_until: datetime
+    state: ECounselingJoinState
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,14 +183,35 @@ def _require_counselor_relationship(
         )
 
 
-def _room_expiry(appointment: Appointment) -> datetime:
-    return appointment.ends_at + timedelta(seconds=settings.ECOUNSELING_REJOIN_GRACE_SECONDS)
+def _join_window_bounds(appointment: Appointment) -> tuple[datetime, datetime]:
+    return (
+        appointment.starts_at - timedelta(seconds=settings.ECOUNSELING_JOIN_EARLY_SECONDS),
+        appointment.ends_at + timedelta(seconds=settings.ECOUNSELING_REJOIN_GRACE_SECONDS),
+    )
+
+
+def _join_window(appointment: Appointment, *, now: datetime | None = None) -> JoinWindow:
+    current = now or timezone.now()
+    available_from, available_until = _join_window_bounds(appointment)
+    if not settings.DAILY_ENABLED:
+        state = ECounselingJoinState.PROVIDER_DISABLED
+    elif current < available_from:
+        state = ECounselingJoinState.TOO_EARLY
+    elif current <= available_until:
+        state = ECounselingJoinState.OPEN
+    else:
+        state = ECounselingJoinState.CLOSED
+    return JoinWindow(
+        available_from=available_from,
+        available_until=available_until,
+        state=state,
+    )
 
 
 def _join_window_open(appointment: Appointment, *, now: datetime | None = None) -> bool:
     current = now or timezone.now()
-    earliest = appointment.starts_at - timedelta(seconds=settings.ECOUNSELING_JOIN_EARLY_SECONDS)
-    return earliest <= current <= _room_expiry(appointment)
+    available_from, available_until = _join_window_bounds(appointment)
+    return available_from <= current <= available_until
 
 
 def _routine_for_appointment(appointment: Appointment) -> RoutineInterview | None:
@@ -202,17 +242,25 @@ def _appointment_context(appointment: Appointment) -> dict[str, object]:
 
 
 def _provider_readiness(
-    appointment: Appointment, room: ECounselingRoom | None
+    appointment: Appointment,
+    room: ECounselingRoom | None,
+    *,
+    now: datetime | None = None,
 ) -> dict[str, object]:
-    enabled = bool(settings.DAILY_ENABLED)
+    window = _join_window(appointment, now=now)
     return {
-        "daily_enabled": enabled,
+        "daily_enabled": bool(settings.DAILY_ENABLED),
         "room_provisioned": bool(room and room.provisioned_at and room.daily_room_url),
-        "join_allowed": enabled and _join_window_open(appointment),
+        "join_allowed": window.state == ECounselingJoinState.OPEN,
+        "join_available_from": window.available_from,
+        "join_available_until": window.available_until,
+        "join_state": window.state,
     }
 
 
-def get_student_workspace(*, student: User, appointment_id: UUID) -> dict[str, object]:
+def get_student_workspace(
+    *, student: User, appointment_id: UUID, now: datetime | None = None
+) -> dict[str, object]:
     appointment = _load_eligible_appointment(appointment_id)
     _require_student_relationship(
         actor=student,
@@ -235,19 +283,22 @@ def get_student_workspace(*, student: User, appointment_id: UUID) -> dict[str, o
             "id": appointment.provider_id,
             "display_name": appointment.provider.get_full_name(),
         },
-        "provider_readiness": _provider_readiness(appointment, room),
+        "provider_readiness": _provider_readiness(appointment, room, now=now),
         "routine_interview": routine_summary,
         "media": get_media_projection(room),
     }
 
 
-def get_counselor_workspace(*, counselor: User, appointment_id: UUID) -> dict[str, object]:
+def get_counselor_workspace(
+    *, counselor: User, appointment_id: UUID, now: datetime | None = None
+) -> dict[str, object]:
     appointment = _load_eligible_appointment(appointment_id)
     _require_counselor_relationship(
         actor=counselor,
         appointment=appointment,
         capability="ecounseling.view_assigned",
     )
+    current = now or timezone.now()
     routine = _routine_for_appointment(appointment)
     room = _room_for_appointment(appointment)
     encounter = _encounter_for_appointment(appointment)
@@ -269,9 +320,15 @@ def get_counselor_workspace(*, counselor: User, appointment_id: UUID) -> dict[st
             "id": appointment.student_id,
             "display_name": appointment.student.get_full_name(),
         },
-        "provider_readiness": _provider_readiness(appointment, room),
+        "provider_readiness": _provider_readiness(appointment, room, now=current),
         "routine_interview": routine_summary,
         "counseling_encounter": encounter_summary,
+        "counseling_context_available": counseling_context_available(
+            actor=counselor,
+            anchor_type=CounselingContextSource.APPOINTMENT,
+            anchor_id=appointment.pk,
+            now=current,
+        ),
         "media": get_media_projection(room),
     }
 
@@ -357,7 +414,7 @@ def _ensure_provider_room(
     if room.provisioned_at and room.daily_room_url:
         return room
 
-    expiry = _room_expiry(appointment)
+    _, expiry = _join_window_bounds(appointment)
     expiry_epoch = int(expiry.timestamp())
     try:
         try:
@@ -439,10 +496,11 @@ def create_join_credential(
         raise ECounselingNotPermitted("This account cannot join E-Counseling sessions.")
 
     current = now or timezone.now()
-    if not _join_window_open(appointment, now=current):
-        raise ECounselingJoinNotAvailable("E-Counseling join is not available at this time.")
-    if not settings.DAILY_ENABLED:
+    join_window = _join_window(appointment, now=current)
+    if join_window.state == ECounselingJoinState.PROVIDER_DISABLED:
         raise ECounselingProviderDisabled("Daily E-Counseling is disabled.")
+    if join_window.state != ECounselingJoinState.OPEN:
+        raise ECounselingJoinNotAvailable("E-Counseling join is not available at this time.")
 
     client = daily_client
     if client is None:
@@ -458,7 +516,7 @@ def create_join_credential(
         daily_client=client,
         context=context,
     )
-    room_expiry = _room_expiry(appointment)
+    room_expiry = join_window.available_until
     token_expiry = min(
         current + timedelta(seconds=settings.DAILY_MEETING_TOKEN_TTL_SECONDS),
         room_expiry,

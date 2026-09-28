@@ -44,6 +44,7 @@ from .services import (
     ECounselingInvalidProviderResponse,
     ECounselingInvalidWebhook,
     ECounselingJoinNotAvailable,
+    ECounselingJoinState,
     ECounselingNotFound,
     ECounselingNotPermitted,
     ECounselingProviderDisabled,
@@ -122,6 +123,9 @@ class ProviderReadiness(StrictSchema):
     daily_enabled: bool
     room_provisioned: bool
     join_allowed: bool
+    join_available_from: datetime
+    join_available_until: datetime
+    join_state: ECounselingJoinState
 
 
 class StudentRoutineWorkspaceSummary(StrictSchema):
@@ -169,6 +173,7 @@ class CounselorWorkspaceResponse(StrictSchema):
     provider_readiness: ProviderReadiness
     routine_interview: CounselorRoutineWorkspaceSummary | None
     counseling_encounter: CounselingEncounterWorkspaceSummary | None
+    counseling_context_available: bool
     media: MediaWorkspaceState
 
 

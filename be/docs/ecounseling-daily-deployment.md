@@ -16,8 +16,8 @@ DAILY_WEBHOOK_HMAC=<base64-hmac-secret>
 DAILY_HTTP_TIMEOUT_SECONDS=5
 DAILY_MEETING_TOKEN_TTL_SECONDS=300
 DAILY_WEBHOOK_MAX_AGE_SECONDS=300
-ECOUNSELING_JOIN_EARLY_SECONDS=0
-ECOUNSELING_REJOIN_GRACE_SECONDS=0
+ECOUNSELING_JOIN_EARLY_SECONDS=600
+ECOUNSELING_REJOIN_GRACE_SECONDS=900
 ```
 
 Do not commit real API keys or webhook secrets. COMPASS validates positive/bounded timeout and timing
@@ -26,7 +26,7 @@ required.
 
 The meeting-token TTL is intentionally short. `ECOUNSELING_JOIN_EARLY_SECONDS` controls how early a
 new join credential may be minted before the Appointment starts. `ECOUNSELING_REJOIN_GRACE_SECONDS`
-extends the room/new-token horizon after Appointment end. Both default to zero.
+extends the room/new-token horizon after Appointment end. The application defaults are 600 seconds (10 minutes early) and 900 seconds (15 minutes after the scheduled end), respectively. Deployment values may override these bounds when explicitly required.
 
 ## Identity policy synchronization
 
