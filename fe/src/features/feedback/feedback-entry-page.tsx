@@ -10,15 +10,13 @@ import {
   FeedbackDate,
   FeedbackPageHeading,
   FeedbackQueryError,
+  feedbackOpportunityId,
 } from "@/features/feedback/feedback-shared";
 import {
   useFeedbackGetMyOpportunity,
   useFeedbackListMyOpportunities,
 } from "@/lib/api/generated/feedback/feedback";
 import type { FeedbackOpportunityResponse } from "@/lib/api/generated/model";
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function InstrumentAction({
   label,
@@ -91,8 +89,7 @@ export function FeedbackEntryPage() {
   const access = getFeedbackAccess(user);
   const searchParams = useSearchParams();
   const selectedParam = searchParams.get("opportunity");
-  const selectedId =
-    selectedParam && UUID_PATTERN.test(selectedParam) ? selectedParam : null;
+  const selectedId = feedbackOpportunityId(selectedParam);
   const invalidSelected = selectedParam !== null && selectedId === null;
 
   const opportunities = useFeedbackListMyOpportunities({
