@@ -49,7 +49,12 @@ export function notificationDestination(
     return { href: "/portal/good-moral/" + notification.target_id, label: "Open Good Moral request" };
   }
   if (notification.target_type === NotificationTargetType.FEEDBACK) {
-    return { href: "/portal/feedback", label: "Open Feedback" };
+    return {
+      href: notification.target_id
+        ? `/portal/feedback?opportunity=${encodeURIComponent(notification.target_id)}`
+        : "/portal/feedback",
+      label: "Open Feedback",
+    };
   }
   return null;
 }
