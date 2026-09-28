@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -9,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { usePortalSession } from "@/features/portal/components/portal-session";
-import { FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage } from "@/features/feedback/feedback-shared";
+import { FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage } from "@/features/feedback/feedback-shared";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
-import { feedbackSubmitCustomerFeedback } from "@/lib/api/generated/feedback/feedback";
+import { feedbackSubmitCustomerFeedback, useFeedbackGetMyOpportunity } from "@/lib/api/generated/feedback/feedback";
 import { CustomerFeedbackAccommodatedByValue, CustomerFeedbackRatingValue, CustomerFeedbackServiceValue, type CustomerFeedbackSubmitRequest } from "@/lib/api/generated/model";
 import { useProfileGetMyProfile } from "@/lib/api/generated/profile/profile";
 
@@ -71,8 +72,13 @@ const emptyDraft: Draft = {
   futureServiceImprovement: "", courseYear: "",
 };
 
-function makeBody(draft: Draft, respondent: { name: string; address: string; mobile: string }): CustomerFeedbackSubmitRequest {
+function makeBody(
+  draft: Draft,
+  respondent: { name: string; address: string; mobile: string },
+  opportunityId: string,
+): CustomerFeedbackSubmitRequest {
   const body: CustomerFeedbackSubmitRequest = {
+    opportunity_id: opportunityId,
     services_received: draft.services,
     talked_to_guidance_counselor: draft.talkedToCounselor === "yes",
     office_visit_count: Number(draft.officeVisitCount),
@@ -93,7 +99,15 @@ function makeBody(draft: Draft, respondent: { name: string; address: string; mob
 export function CustomerFeedbackForm() {
   const { user } = usePortalSession();
   const access = getFeedbackAccess(user);
-  const profile = useProfileGetMyProfile({ query: { retry: false, enabled: access.canSubmitCustomerFeedback } });
+  const searchParams = useSearchParams();
+  const opportunityId = searchParams.get("opportunity");
+  const opportunity = useFeedbackGetMyOpportunity(opportunityId ?? "", {
+    query: {
+      retry: false,
+      enabled: access.canSubmitCustomerFeedback && Boolean(opportunityId),
+    },
+  });
+  const profile = useProfileGetMyProfile({ query: { retry: false, enabled: access.canSubmitCustomerFeedback && Boolean(opportunityId) } });
   const create = useMutation({ mutationFn: ({ body, key }: { body: CustomerFeedbackSubmitRequest; key: string }) => feedbackSubmitCustomerFeedback(body, { headers: { "Idempotency-Key": key } }), retry: false });
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [respondentOverrides, setRespondentOverrides] = useState<RespondentOverrides>({});
@@ -105,8 +119,61 @@ export function CustomerFeedbackForm() {
   const [serviceError, setServiceError] = useState<string | null>(null);
   const intentRef = useRef<SubmissionIntent | null>(null);
   const isUncertain = uncertainIntent !== null;
+  const opportunityData = opportunity.data?.data;
+  const requiredService = opportunityData?.service_kind;
+
+  useEffect(() => {
+    if (!requiredService) return;
+    setDraft((current) =>
+      current.services.includes(requiredService)
+        ? current
+        : { ...current, services: [requiredService, ...current.services] },
+    );
+  }, [requiredService]);
 
   if (!access.canSubmitCustomerFeedback) {
+    return <FeedbackAccessUnavailable title="Customer Feedback unavailable" />;
+  }
+  if (!opportunityId) {
+    return (
+      <FeedbackAccessUnavailable
+        title="Choose a completed service"
+        message="Open Feedback and choose the completed service you want to review."
+      />
+    );
+  }
+  if (opportunity.isPending) {
+    return <p aria-busy="true" className="py-8 text-sm text-muted">Loading Feedback service…</p>;
+  }
+  if (opportunity.isError) {
+    if (feedbackErrorCode(opportunity.error) === "feedback_opportunity_not_found") {
+      return (
+        <FeedbackAccessUnavailable
+          title="Customer Feedback unavailable"
+          message="This Feedback opportunity is not available."
+        />
+      );
+    }
+    return (
+      <FeedbackQueryError
+        error={opportunity.error}
+        fallback="The completed service could not be loaded."
+        onRetry={() => void opportunity.refetch()}
+      />
+    );
+  }
+  if (!opportunityData) {
+    return <FeedbackAccessUnavailable title="Customer Feedback unavailable" />;
+  }
+  if (opportunityData.customer_feedback_submitted) {
+    return (
+      <FeedbackAccessUnavailable
+        title="Customer Feedback submitted"
+        message="Feedback for this service has already been submitted."
+      />
+    );
+  }
+  if (!opportunityData.can_submit_customer_feedback) {
     return <FeedbackAccessUnavailable title="Customer Feedback unavailable" />;
   }
 
@@ -143,7 +210,12 @@ export function CustomerFeedbackForm() {
     }
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
-    const body = makeBody(draft, respondent);
+    if (requiredService && !draft.services.includes(requiredService)) {
+      setServiceError(`Keep ${opportunityData.service_label} selected for this completed service.`);
+      document.getElementById("feedback-services")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    const body = makeBody(draft, respondent, opportunityData.id);
     setPreparedBody(body);
     setConfirmationOpen(true);
   }
@@ -194,7 +266,7 @@ export function CustomerFeedbackForm() {
 
   return (
     <section aria-labelledby="customer-feedback-heading">
-      <FeedbackPageHeading headingId="customer-feedback-heading" title="Customer Feedback Form" description="Please tell us about the service you received from the GTAO. Your response is submitted as a final response." />
+      <FeedbackPageHeading headingId="customer-feedback-heading" title="Customer Feedback Form" description={`Feedback for ${opportunityData.service_label}. Your response is submitted as a final response.`} />
       <form className="mt-4" onSubmit={prepareSubmission} noValidate>
         {error ? <p role="alert" className="mb-5 border-y border-danger/30 py-3 text-sm text-danger">{error}</p> : null}
         {isUncertain ? (
@@ -213,7 +285,7 @@ export function CustomerFeedbackForm() {
               <div className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
                 {serviceChoices.map((choice) => {
                   const id = `feedback-service-${choice.value.toLowerCase()}`;
-                  return <label key={choice.value} htmlFor={id} className="flex min-h-10 items-center gap-3 text-sm text-ink"><input id={id} type="checkbox" className="h-4 w-4 accent-brand" checked={draft.services.includes(choice.value)} onChange={(event) => changeService(choice.value, event.target.checked)} aria-describedby={serviceError ? "feedback-services-error" : undefined} />{choice.label}</label>;
+                  return <label key={choice.value} htmlFor={id} className="flex min-h-10 items-center gap-3 text-sm text-ink"><input id={id} type="checkbox" className="h-4 w-4 accent-brand" checked={draft.services.includes(choice.value)} disabled={choice.value === requiredService} onChange={(event) => changeService(choice.value, event.target.checked)} aria-describedby={serviceError ? "feedback-services-error" : undefined} />{choice.label}</label>;
                 })}
               </div>
               {draft.services.includes(CustomerFeedbackServiceValue.OTHER) ? (
