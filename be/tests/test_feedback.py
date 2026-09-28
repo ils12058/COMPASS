@@ -26,7 +26,14 @@ from compass.common.idempotency import (
     RedisIdempotencyStore,
 )
 from compass.feedback import api as feedback_api
-from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
+from compass.feedback.models import (
+    ClientSatisfactionResponse,
+    CustomerFeedbackResponse,
+    CustomerFeedbackService,
+    FeedbackOpportunity,
+    FeedbackOpportunitySourceType,
+)
+from compass.feedback.services import ensure_feedback_opportunity
 from compass.institutional_forms.models import FormFamily, FormRevision
 
 
@@ -66,6 +73,8 @@ def auth_client(user: User) -> Client:
     issued = create_auth_session(user, now=timezone.now())
     client = Client()
     client.cookies["compass_session"] = issued.token
+    client.feedback_actor = user
+    client.feedback_opportunities = {}
     return client
 
 
@@ -128,6 +137,25 @@ def valid_csm_payload() -> dict[str, object]:
     }
 
 
+def test_opportunity(
+    student: User,
+    *,
+    service_kind: str = CustomerFeedbackService.COUNSELING,
+) -> FeedbackOpportunity:
+    return ensure_feedback_opportunity(
+        student=student,
+        source_type=FeedbackOpportunitySourceType.COUNSELING_ENCOUNTER,
+        source_id=uuid.uuid4(),
+        service_kind=service_kind,
+        service_label_snapshot=(
+            "Counseling"
+            if service_kind == CustomerFeedbackService.COUNSELING
+            else "Issuance of Good Moral Certificate"
+        ),
+        service_completed_at=timezone.now(),
+    )
+
+
 def post_json(
     client: Client,
     path: str,
@@ -135,9 +163,31 @@ def post_json(
     *,
     idempotency_key: str | None = None,
 ):
+    body = dict(payload)
+    if path in {
+        "/api/v1/feedback/customer-feedback",
+        "/api/v1/feedback/csm",
+    } and "opportunity_id" not in body:
+        actor = client.feedback_actor
+        cache_key = (path, id(payload))
+        opportunity_id = client.feedback_opportunities.get(cache_key)
+        if opportunity_id is None:
+            service_kind = CustomerFeedbackService.COUNSELING
+            if path.endswith("customer-feedback"):
+                services = set(body.get("services_received", []))
+                if (
+                    CustomerFeedbackService.COUNSELING not in services
+                    and CustomerFeedbackService.REQUEST_FOR_CERTIFICATION in services
+                ):
+                    service_kind = CustomerFeedbackService.REQUEST_FOR_CERTIFICATION
+            opportunity = test_opportunity(actor, service_kind=service_kind)
+            opportunity_id = opportunity.pk
+            client.feedback_opportunities[cache_key] = opportunity_id
+        body["opportunity_id"] = str(opportunity_id)
+
     return client.post(
         path,
-        data=json.dumps(payload),
+        data=json.dumps(body),
         content_type="application/json",
         HTTP_IDEMPOTENCY_KEY=idempotency_key or f"feedback-{uuid.uuid4()}",
         **csrf(client),
@@ -325,7 +375,7 @@ def test_f14_other_service_and_counselor_contact_conditionals_are_enforced():
     client = auth_client(student)
 
     other_missing = valid_f14_payload()
-    other_missing["services_received"] = ["OTHER"]
+    other_missing["services_received"] = ["COUNSELING", "OTHER"]
     assert (
         post_json(
             client,
@@ -336,7 +386,7 @@ def test_f14_other_service_and_counselor_contact_conditionals_are_enforced():
     )
 
     other_valid = valid_f14_payload()
-    other_valid["services_received"] = ["OTHER"]
+    other_valid["services_received"] = ["COUNSELING", "OTHER"]
     other_valid["other_service"] = "Document inquiry"
     other_valid["talked_to_guidance_counselor"] = False
     other_valid["accommodated_by"] = "STUDENT_ASSISTANT"
@@ -484,7 +534,7 @@ def test_csm_optional_email_is_voluntary_and_validated_when_supplied():
 
 
 @pytest.mark.django_db
-def test_multiple_feedback_submissions_are_allowed_and_no_human_reference_is_created():
+def test_different_feedback_opportunities_allow_multiple_responses_without_human_reference():
     sync_policy()
     student = make_user("multiple-feedback@example.edu")
     client = auth_client(student)
@@ -525,9 +575,18 @@ def test_feedback_audit_metadata_excludes_response_answers_and_identity_values()
         "official_code",
         "official_revision",
         "internal_schema_version",
+        "opportunity_id",
+        "service_kind",
     }
+    assert f14_event.metadata["service_kind"] == "COUNSELING"
     csm_event = AuditEvent.objects.get(action="feedback.csm_submitted")
-    assert csm_event.metadata == {"instrument_schema_version": 1}
+    assert set(csm_event.metadata) == {
+        "instrument_schema_version",
+        "opportunity_id",
+        "service_kind",
+    }
+    assert csm_event.metadata["instrument_schema_version"] == 1
+    assert csm_event.metadata["service_kind"] == "COUNSELING"
     combined = json.dumps([f14_event.metadata, csm_event.metadata])
     assert "Helpful visit" not in combined
     assert "audit-feedback@example.edu" not in combined
@@ -639,7 +698,7 @@ def test_customer_feedback_review_filters_name_service_dates_and_pagination():
     beta.last_name = "Reviewer"
     beta.save(update_fields=["first_name", "last_name", "updated_at"])
     beta_payload = valid_f14_payload()
-    beta_payload["services_received"] = ["ADMISSION"]
+    beta_payload["services_received"] = ["COUNSELING", "ADMISSION"]
     beta_id = post_json(
         auth_client(beta),
         "/api/v1/feedback/customer-feedback",
@@ -931,7 +990,7 @@ def test_feedback_same_key_is_independent_across_feedback_routes(monkeypatch):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("instrument", ["customer_feedback", "csm"])
-def test_feedback_new_key_allows_new_legitimate_submission(monkeypatch, instrument):
+def test_feedback_new_key_cannot_repeat_same_opportunity_instrument(monkeypatch, instrument):
     sync_policy()
     student = make_user(f"new-key-{instrument}@example.edu")
     client = auth_client(student)
@@ -951,9 +1010,9 @@ def test_feedback_new_key_allows_new_legitimate_submission(monkeypatch, instrume
     second = post_json(client, path, payload, idempotency_key=f"{instrument}-intent-b")
 
     assert first.status_code == 201
-    assert second.status_code == 201
-    assert first.json()["id"] != second.json()["id"]
-    assert model.objects.count() == 2
+    assert second.status_code == 409
+    assert second.json()["error"]["code"] == "feedback_already_submitted"
+    assert model.objects.count() == 1
 
 
 @pytest.mark.django_db
