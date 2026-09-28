@@ -75,6 +75,7 @@ def auth_client(user: User) -> Client:
     client = Client()
     client.cookies["compass_session"] = issued.token
     client.feedback_actor = user
+    client.feedback_opportunities = {}
     return client
 
 
@@ -163,28 +164,33 @@ def post_json(
     *,
     idempotency_key: str | None = None,
 ):
+    key = idempotency_key or f"feedback-{uuid.uuid4()}"
+    body = dict(payload)
     if path in {
         "/api/v1/feedback/customer-feedback",
         "/api/v1/feedback/csm",
-    } and "opportunity_id" not in payload:
+    } and "opportunity_id" not in body:
         actor = client.feedback_actor
-        service_kind = CustomerFeedbackService.COUNSELING
-        if path.endswith("customer-feedback"):
-            services = set(payload.get("services_received", []))
-            if (
-                CustomerFeedbackService.COUNSELING not in services
-                and CustomerFeedbackService.REQUEST_FOR_CERTIFICATION in services
-            ):
-                service_kind = CustomerFeedbackService.REQUEST_FOR_CERTIFICATION
-        opportunity = test_opportunity(actor, service_kind=service_kind)
-        payload["opportunity_id"] = str(opportunity.pk)
-    body = dict(payload)
+        cache_key = (path, key)
+        opportunity_id = client.feedback_opportunities.get(cache_key)
+        if opportunity_id is None:
+            service_kind = CustomerFeedbackService.COUNSELING
+            if path.endswith("customer-feedback"):
+                services = set(body.get("services_received", []))
+                if (
+                    CustomerFeedbackService.COUNSELING not in services
+                    and CustomerFeedbackService.REQUEST_FOR_CERTIFICATION in services
+                ):
+                    service_kind = CustomerFeedbackService.REQUEST_FOR_CERTIFICATION
+            opportunity_id = test_opportunity(actor, service_kind=service_kind).pk
+            client.feedback_opportunities[cache_key] = opportunity_id
+        body["opportunity_id"] = str(opportunity_id)
 
     return client.post(
         path,
         data=json.dumps(body),
         content_type="application/json",
-        HTTP_IDEMPOTENCY_KEY=idempotency_key or f"feedback-{uuid.uuid4()}",
+        HTTP_IDEMPOTENCY_KEY=key,
         **csrf(client),
     )
 
@@ -996,13 +1002,16 @@ def test_feedback_new_key_cannot_repeat_same_opportunity_instrument(monkeypatch,
     store = RedisIdempotencyStore(FakeRedis(), ttl_seconds=60)
     use_idempotency_store(monkeypatch, store)
 
+    opportunity = test_opportunity(student)
     if instrument == "customer_feedback":
         path = "/api/v1/feedback/customer-feedback"
         payload = valid_f14_payload()
+        payload["opportunity_id"] = str(opportunity.pk)
         model = CustomerFeedbackResponse
     else:
         path = "/api/v1/feedback/csm"
         payload = valid_csm_payload()
+        payload["opportunity_id"] = str(opportunity.pk)
         model = ClientSatisfactionResponse
 
     first = post_json(client, path, payload, idempotency_key=f"{instrument}-intent-a")
