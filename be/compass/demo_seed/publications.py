@@ -48,7 +48,7 @@ from compass.resources.services import archive_resource, create_resource, publis
 from . import narratives, publication_data
 from .cast import DPO, HEAD_GUIDANCE, PERSONAS_BY_KEY, SECOND_YEAR
 from .publication_data import AnnouncementSpec, ResourceSpec
-from .support import SeedSession, align_timestamps
+from .support import DemoSeedError, SeedSession, align_timestamps
 
 DRAFTED_BEFORE_PUBLISHING = timedelta(minutes=25)
 ARCHIVED_AFTER = timedelta(days=28)
@@ -269,7 +269,7 @@ def _demo_feedback_opportunity(
             .first()
         )
         if encounter is None:
-            raise RuntimeError(
+            raise DemoSeedError(
                 f"Demo Feedback source Counseling Encounter is missing for {persona_key}."
             )
         return ensure_feedback_opportunity(
@@ -291,7 +291,7 @@ def _demo_feedback_opportunity(
         .first()
     )
     if request is None or request.issued_at is None:
-        raise RuntimeError(f"Demo Feedback source issued Good Moral request is missing for {persona_key}.")
+        raise DemoSeedError(f"Demo Feedback source issued Good Moral request is missing for {persona_key}.")
     return ensure_feedback_opportunity(
         student=student,
         source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
