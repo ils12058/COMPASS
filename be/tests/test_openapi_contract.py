@@ -1403,6 +1403,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         401,
         403,
         404,
+        409,
     }
     assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/me", "put")) >= {
         200,

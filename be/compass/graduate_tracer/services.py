@@ -162,12 +162,11 @@ def _validate_student_access(student: User, capability: str) -> None:
         raise GraduateTracerNotPermitted("Active Student Graduate Tracer access is required.")
 
 
-def _validate_graduated_student(student: User) -> None:
-    _validate_student_access(student, "graduate_tracer.manage_self")
+def _validate_graduated_student_access(student: User, capability: str) -> None:
+    _validate_student_access(student, capability)
     if student.student_lifecycle_status != StudentLifecycleStatus.GRADUATED:
         raise GraduateTracerGraduatedStudentRequired(
-            "Graduated Student lifecycle is required to create, edit, or submit "
-            "Graduate Tracer data."
+            "Graduated Student lifecycle is required for Graduate Tracer self-service."
         )
 
 
@@ -247,7 +246,7 @@ def ensure_my_response(
     student: User,
     context: AuditContext,
 ) -> GraduateTracerResponse:
-    _validate_graduated_student(student)
+    _validate_graduated_student_access(student, "graduate_tracer.manage_self")
     with transaction.atomic():
         locked = (
             User.objects.select_for_update(of=("self",))
@@ -257,7 +256,7 @@ def ensure_my_response(
         )
         if locked is None:
             raise GraduateTracerNotFound("The Student account was not found.")
-        _validate_graduated_student(locked)
+        _validate_graduated_student_access(locked, "graduate_tracer.manage_self")
 
         existing = (
             GraduateTracerResponse.objects.select_for_update()
@@ -307,7 +306,7 @@ def ensure_my_response(
 
 
 def get_my_response(student: User) -> GraduateTracerResponse:
-    _validate_student_access(student, "graduate_tracer.view_self")
+    _validate_graduated_student_access(student, "graduate_tracer.view_self")
     item = (
         _queryset()
         .filter(student_id=student.pk, instrument_schema_version=GTS_SCHEMA_VERSION)
@@ -570,7 +569,7 @@ def replace_my_draft(
     student: User,
     values: dict[str, object],
 ) -> GraduateTracerResponse:
-    _validate_graduated_student(student)
+    _validate_graduated_student_access(student, "graduate_tracer.manage_self")
     normalized = _normalize_root(values)
     education = _normalize_education_rows(values.get("education", []))
     professional_exams = _normalize_exam_rows(values.get("professional_exams", []))
@@ -585,7 +584,7 @@ def replace_my_draft(
         )
         if locked_student is None:
             raise GraduateTracerNotFound("The Student account was not found.")
-        _validate_graduated_student(locked_student)
+        _validate_graduated_student_access(locked_student, "graduate_tracer.manage_self")
         item = (
             GraduateTracerResponse.objects.select_for_update()
             .filter(
@@ -785,7 +784,7 @@ def submit_my_response(
     context: AuditContext,
     now: datetime | None = None,
 ) -> GraduateTracerResponse:
-    _validate_graduated_student(student)
+    _validate_graduated_student_access(student, "graduate_tracer.manage_self")
     submitted_at = now or timezone.now()
     if timezone.is_naive(submitted_at):
         raise InvalidGraduateTracerInput("The submission time must be timezone-aware.")
@@ -799,7 +798,7 @@ def submit_my_response(
         )
         if locked_student is None:
             raise GraduateTracerNotFound("The Student account was not found.")
-        _validate_graduated_student(locked_student)
+        _validate_graduated_student_access(locked_student, "graduate_tracer.manage_self")
         item = (
             GraduateTracerResponse.objects.select_for_update()
             .filter(

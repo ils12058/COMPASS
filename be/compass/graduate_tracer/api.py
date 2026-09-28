@@ -534,7 +534,7 @@ def graduate_tracer_ensure_my_response(request):
 
 @router.get(
     "/me",
-    response=response_with_errors(GraduateTracerDetailResponse, 401, 403, 404),
+    response=response_with_errors(GraduateTracerDetailResponse, 401, 403, 404, 409),
     auth=session_auth,
     operation_id="graduateTracerGetMyResponse",
 )
