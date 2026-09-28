@@ -32,6 +32,7 @@ from compass.call_slips.services import (
 )
 from compass.counseling.models import CounselingEncounter
 from compass.counseling.services import create_encounter
+from compass.feedback.models import FeedbackOpportunity, FeedbackOpportunitySourceType
 from compass.counseling.shared_summaries import (
     publish_assigned_shared_summary,
     put_assigned_shared_summary,
