@@ -208,6 +208,10 @@ def _join_window(appointment: Appointment, *, now: datetime | None = None) -> Jo
     )
 
 
+def _join_window_open(appointment: Appointment, *, now: datetime | None = None) -> bool:
+    return _join_window(appointment, now=now).state == ECounselingJoinState.OPEN
+
+
 def _routine_for_appointment(appointment: Appointment) -> RoutineInterview | None:
     return RoutineInterview.objects.filter(appointment_id=appointment.pk).first()
 
