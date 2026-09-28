@@ -9,6 +9,7 @@ from uuid import UUID
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -253,8 +254,6 @@ def list_my_opportunities(*, actor: User) -> tuple[FeedbackOpportunity, ...]:
     can_customer, can_csm = _opportunity_capabilities(actor)
     if not can_customer and not can_csm:
         return ()
-
-    from django.db.models import Q
 
     available = Q()
     if can_customer:
