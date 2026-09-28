@@ -18,6 +18,8 @@ from compass.audit.actions import COUNSELING_ENCOUNTER_CREATED, COUNSELING_ENCOU
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.feedback.models import CustomerFeedbackService, FeedbackOpportunitySourceType
+from compass.feedback.services import ensure_feedback_opportunity
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
@@ -304,12 +306,21 @@ def _create_row(
                     "appointment_id": str(appointment.pk) if appointment is not None else None,
                 },
             )
+            opportunity = ensure_feedback_opportunity(
+                student=student,
+                source_type=FeedbackOpportunitySourceType.COUNSELING_ENCOUNTER,
+                source_id=encounter.pk,
+                service_kind=CustomerFeedbackService.COUNSELING,
+                service_label_snapshot="Counseling",
+                service_completed_at=encounter.ended_at,
+            )
             create_notification_for_event(
                 recipient=student,
                 event=NotificationEvent.FEEDBACK_INVITATION,
-                source_type="counseling_encounter",
-                source_id=encounter.pk,
+                source_type="feedback_opportunity",
+                source_id=opportunity.pk,
                 target_type="FEEDBACK",
+                target_id=opportunity.pk,
             )
     except IntegrityError as exc:
         if appointment is not None:
