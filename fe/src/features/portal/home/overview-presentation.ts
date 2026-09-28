@@ -176,7 +176,11 @@ export function getOverviewQuickAccess(user: UserSummary): OverviewQuickAccessLi
   add("referrals", "Referrals", referralAccess.hasWorkspace ? "/portal/referrals" : undefined);
   add("call-slips", "Call Slips", callSlipAccess.hasWorkspace ? "/portal/call-slips" : undefined);
   add("good-moral", "Good Moral", goodMoralAccess.hasWorkspace ? "/portal/good-moral" : undefined);
-  add("feedback", "Feedback", feedbackAccess.hasWorkspace ? "/portal/feedback" : undefined);
+  add(
+    "feedback",
+    "Feedback",
+    feedbackAccess.hasOperationalWorkspace ? "/portal/feedback" : undefined,
+  );
   add("reports", "Reports", canAttemptReports(user) ? "/portal/reports" : undefined);
   add("accounts", "Accounts", user.capabilities.includes("accounts.manage") ? "/portal/accounts" : undefined);
   add(
