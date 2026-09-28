@@ -2299,6 +2299,11 @@
             "title": "Email",
             "type": "string"
           },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          },
           "region_of_residence": {
             "title": "Region Of Residence",
             "type": "string"
@@ -2344,6 +2349,7 @@
           }
         },
         "required": [
+          "opportunity_id",
           "client_type",
           "sex",
           "age",
@@ -6684,6 +6690,11 @@
             "title": "Office Visit Count",
             "type": "integer"
           },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          },
           "other_service": {
             "default": "",
             "title": "Other Service",
@@ -6735,6 +6746,7 @@
           }
         },
         "required": [
+          "opportunity_id",
           "services_received",
           "talked_to_guidance_counselor",
           "office_visit_count",
@@ -8379,6 +8391,56 @@
           "kind"
         ],
         "title": "FamilyMemberPayload",
+        "type": "object"
+      },
+      "FeedbackOpportunityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "can_submit_csm": {
+            "title": "Can Submit Csm",
+            "type": "boolean"
+          },
+          "can_submit_customer_feedback": {
+            "title": "Can Submit Customer Feedback",
+            "type": "boolean"
+          },
+          "csm_submitted": {
+            "title": "Csm Submitted",
+            "type": "boolean"
+          },
+          "customer_feedback_submitted": {
+            "title": "Customer Feedback Submitted",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "service_completed_at": {
+            "format": "date-time",
+            "title": "Service Completed At",
+            "type": "string"
+          },
+          "service_kind": {
+            "$ref": "#/components/schemas/CustomerFeedbackServiceValue"
+          },
+          "service_label": {
+            "title": "Service Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "service_kind",
+          "service_label",
+          "service_completed_at",
+          "customer_feedback_submitted",
+          "csm_submitted",
+          "can_submit_customer_feedback",
+          "can_submit_csm"
+        ],
+        "title": "FeedbackOpportunityResponse",
         "type": "object"
       },
       "FeedbackSubmissionResponse": {
@@ -32917,6 +32979,125 @@
           }
         ],
         "summary": "Feedback Get Customer Feedback Response",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/feedback/opportunities": {
+      "get": {
+        "operationId": "feedbackListMyOpportunities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeedbackOpportunityResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Feedback List My Opportunities",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/feedback/opportunities/{opportunity_id}": {
+      "get": {
+        "operationId": "feedbackGetMyOpportunity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackOpportunityResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Feedback Get My Opportunity",
         "tags": [
           "feedback"
         ]
