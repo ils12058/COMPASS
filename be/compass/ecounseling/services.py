@@ -209,7 +209,9 @@ def _join_window(appointment: Appointment, *, now: datetime | None = None) -> Jo
 
 
 def _join_window_open(appointment: Appointment, *, now: datetime | None = None) -> bool:
-    return _join_window(appointment, now=now).state == ECounselingJoinState.OPEN
+    current = now or timezone.now()
+    available_from, available_until = _join_window_bounds(appointment)
+    return available_from <= current <= available_until
 
 
 def _routine_for_appointment(appointment: Appointment) -> RoutineInterview | None:
