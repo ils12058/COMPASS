@@ -1349,3 +1349,226 @@ def test_unexpected_failure_releases_reservation_so_same_intent_can_retry(
 
     retried = post_json(client, path, payload_factory(), idempotency_key=key)
     assert retried.status_code == 201
+
+
+@pytest.mark.django_db
+def test_feedback_opportunity_ensure_is_idempotent_for_same_source():
+    sync_policy()
+    student = make_user("opportunity-idempotent@example.edu")
+    source_id = uuid.uuid4()
+    completed_at = timezone.now()
+
+    first = ensure_feedback_opportunity(
+        student=student,
+        source_type=FeedbackOpportunitySourceType.COUNSELING_ENCOUNTER,
+        source_id=source_id,
+        service_kind=CustomerFeedbackService.COUNSELING,
+        service_label_snapshot="Counseling",
+        service_completed_at=completed_at,
+    )
+    second = ensure_feedback_opportunity(
+        student=student,
+        source_type=FeedbackOpportunitySourceType.COUNSELING_ENCOUNTER,
+        source_id=source_id,
+        service_kind=CustomerFeedbackService.COUNSELING,
+        service_label_snapshot="Counseling",
+        service_completed_at=completed_at,
+    )
+
+    assert first.pk == second.pk
+    assert FeedbackOpportunity.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_student_opportunity_api_is_owned_and_reports_instrument_availability():
+    sync_policy()
+    student = make_user("opportunity-owner@example.edu")
+    other = make_user("opportunity-other@example.edu")
+    opportunity = test_opportunity(student)
+    foreign = test_opportunity(other)
+    client = auth_client(student)
+
+    listed = client.get("/api/v1/feedback/opportunities")
+    assert listed.status_code == 200
+    assert [row["id"] for row in listed.json()] == [str(opportunity.pk)]
+    row = listed.json()[0]
+    assert row["service_kind"] == "COUNSELING"
+    assert row["service_label"] == "Counseling"
+    assert row["customer_feedback_submitted"] is False
+    assert row["csm_submitted"] is False
+    assert row["can_submit_customer_feedback"] is True
+    assert row["can_submit_csm"] is True
+
+    detail = client.get(f"/api/v1/feedback/opportunities/{opportunity.pk}")
+    assert detail.status_code == 200
+    assert detail.json()["id"] == str(opportunity.pk)
+
+    denied = client.get(f"/api/v1/feedback/opportunities/{foreign.pk}")
+    assert denied.status_code == 404
+    assert denied.json()["error"]["code"] == "feedback_opportunity_not_found"
+
+    counselor = auth_client(make_user("opportunity-counselor@example.edu", role="COUNSELOR", lifecycle=None))
+    assert counselor.get("/api/v1/feedback/opportunities").status_code == 403
+    assert Client().get("/api/v1/feedback/opportunities").status_code == 401
+
+
+@pytest.mark.django_db
+def test_same_opportunity_supports_each_feedback_instrument_once_independently(monkeypatch):
+    sync_policy()
+    student = make_user("independent-instruments@example.edu")
+    client = auth_client(student)
+    use_idempotency_store(monkeypatch, RedisIdempotencyStore(FakeRedis(), ttl_seconds=60))
+    opportunity = test_opportunity(student)
+
+    f14 = valid_f14_payload()
+    f14["opportunity_id"] = str(opportunity.pk)
+    first_customer = post_json(
+        client,
+        "/api/v1/feedback/customer-feedback",
+        f14,
+        idempotency_key="independent-customer-first",
+    )
+    assert first_customer.status_code == 201
+
+    opportunity.refresh_from_db()
+    assert opportunity.customer_feedback_submitted_at is not None
+    assert opportunity.csm_submitted_at is None
+
+    detail = client.get(f"/api/v1/feedback/opportunities/{opportunity.pk}")
+    assert detail.status_code == 200
+    assert detail.json()["can_submit_customer_feedback"] is False
+    assert detail.json()["can_submit_csm"] is True
+
+    csm = valid_csm_payload()
+    csm["opportunity_id"] = str(opportunity.pk)
+    first_csm = post_json(
+        client,
+        "/api/v1/feedback/csm",
+        csm,
+        idempotency_key="independent-csm-first",
+    )
+    assert first_csm.status_code == 201
+
+    opportunity.refresh_from_db()
+    assert opportunity.customer_feedback_submitted_at is not None
+    assert opportunity.csm_submitted_at is not None
+    assert client.get("/api/v1/feedback/opportunities").json() == []
+
+    second_customer = post_json(
+        client,
+        "/api/v1/feedback/customer-feedback",
+        f14,
+        idempotency_key="independent-customer-second",
+    )
+    second_csm = post_json(
+        client,
+        "/api/v1/feedback/csm",
+        csm,
+        idempotency_key="independent-csm-second",
+    )
+    assert second_customer.status_code == 409
+    assert second_customer.json()["error"]["code"] == "feedback_already_submitted"
+    assert second_csm.status_code == 409
+    assert second_csm.json()["error"]["code"] == "feedback_already_submitted"
+    assert CustomerFeedbackResponse.objects.count() == 1
+    assert ClientSatisfactionResponse.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_customer_feedback_requires_opportunity_service_but_keeps_multi_service_source_field():
+    sync_policy()
+    student = make_user("service-bound-feedback@example.edu")
+    client = auth_client(student)
+    opportunity = test_opportunity(
+        student,
+        service_kind=CustomerFeedbackService.REQUEST_FOR_CERTIFICATION,
+    )
+
+    missing_required = valid_f14_payload()
+    missing_required["opportunity_id"] = str(opportunity.pk)
+    missing_required["services_received"] = ["COUNSELING"]
+    rejected = post_json(client, "/api/v1/feedback/customer-feedback", missing_required)
+    assert rejected.status_code == 422
+    assert rejected.json()["error"]["code"] == "invalid_feedback_request"
+    assert CustomerFeedbackResponse.objects.count() == 0
+
+    valid = valid_f14_payload()
+    valid["opportunity_id"] = str(opportunity.pk)
+    valid["services_received"] = ["REQUEST_FOR_CERTIFICATION", "COUNSELING"]
+    accepted = post_json(client, "/api/v1/feedback/customer-feedback", valid)
+    assert accepted.status_code == 201
+    assert CustomerFeedbackResponse.objects.get().services_received == [
+        "REQUEST_FOR_CERTIFICATION",
+        "COUNSELING",
+    ]
+
+
+@pytest.mark.django_db
+def test_feedback_submission_requires_explicit_owned_opportunity_id():
+    sync_policy()
+    student = make_user("explicit-opportunity@example.edu")
+    other = make_user("foreign-opportunity@example.edu")
+    client = auth_client(student)
+
+    missing = client.post(
+        "/api/v1/feedback/customer-feedback",
+        data=json.dumps(valid_f14_payload()),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="missing-opportunity",
+        **csrf(client),
+    )
+    assert missing.status_code == 422
+
+    foreign = test_opportunity(other)
+    payload = valid_csm_payload()
+    payload["opportunity_id"] = str(foreign.pk)
+    denied = post_json(
+        client,
+        "/api/v1/feedback/csm",
+        payload,
+        idempotency_key="foreign-opportunity",
+    )
+    assert denied.status_code == 404
+    assert denied.json()["error"]["code"] == "feedback_opportunity_not_found"
+    assert ClientSatisfactionResponse.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_different_opportunities_allow_new_submission_for_same_instrument(monkeypatch):
+    sync_policy()
+    student = make_user("different-opportunities@example.edu")
+    client = auth_client(student)
+    use_idempotency_store(monkeypatch, RedisIdempotencyStore(FakeRedis(), ttl_seconds=60))
+    first_opportunity = test_opportunity(student)
+    second_opportunity = test_opportunity(student)
+
+    first_payload = valid_csm_payload()
+    first_payload["opportunity_id"] = str(first_opportunity.pk)
+    second_payload = valid_csm_payload()
+    second_payload["opportunity_id"] = str(second_opportunity.pk)
+
+    first = post_json(
+        client,
+        "/api/v1/feedback/csm",
+        first_payload,
+        idempotency_key="different-opportunity-a",
+    )
+    second = post_json(
+        client,
+        "/api/v1/feedback/csm",
+        second_payload,
+        idempotency_key="different-opportunity-b",
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert ClientSatisfactionResponse.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_raw_feedback_models_remain_unlinked_from_student_and_opportunity():
+    customer_fields = {field.name for field in CustomerFeedbackResponse._meta.fields}
+    csm_fields = {field.name for field in ClientSatisfactionResponse._meta.fields}
+    forbidden = {"student", "user", "respondent", "opportunity", "feedback_opportunity"}
+    assert customer_fields.isdisjoint(forbidden)
+    assert csm_fields.isdisjoint(forbidden)
