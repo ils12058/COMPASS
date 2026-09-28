@@ -122,7 +122,8 @@ before any business record is written.
 Dataset version 1 is anchored to Academic Year 2026-2027 and runs when the institutional date is
 between 2026-09-21 and 2027-04-30. Recent activity is placed on business days before and after the
 run date, so seed close to the demonstration: upcoming Appointments and the active Call Slip fall
-within the following two weeks.
+within the following two weeks. Current-Student Good Moral requests state the semester of their
+own request date (August to December is the first semester, January to May the second).
 
 ## Cast
 
@@ -161,7 +162,7 @@ appear as current classmates in College-scoped Guidance pickers or the current I
 | `SCENARIO_REFERRED_STUDENT` | Dela Paz | Program Chair Referral (and a voided duplicate) → Call Slip action → completed interview recorded as a REFERRED Encounter → direct Routine Interview awaiting evaluation → completed follow-up with published Shared Summary; Indigenous Peoples indicator. |
 | `SCENARIO_COMPLETED_COUNSELING` | Pardo | Last year's Referral and Call Slip entered by the now-disabled staff member; a no-show; a walk-in Encounter with a finalized direct Routine Interview and an unpublished Shared Summary draft; a scheduled follow-up; PWD indicator. |
 | `SCENARIO_GOOD_MORAL` | Alcantara | Issued current-Student Good Moral certificate (renderable) and a self-cancelled duplicate request; father-deceased indicator; feedback. |
-| `SCENARIO_GRADUATING` | Obusan | Delayed final term: Exit Interview draft, pending Good Moral request, career consultation booked with Head Guidance. |
+| `SCENARIO_GRADUATING` | Obusan | Delayed final year: Exit Interview draft, pending Good Moral request, career consultation booked with Head Guidance. |
 | `SCENARIO_ACTIVE_REFERRAL` | Bernardo | Inventory still in draft; a new adviser Referral and a Call Slip issued live for an interview later this week. |
 | `SCENARIO_ALUMNI` | Cabrera | Historical Inventory and Exit Interview; submitted Graduate Tracer; pending graduate Good Moral request. |
 | `SCENARIO_RECENT_GRADUATE` | Rosales | Historical Inventories and Exit Interview; issued graduate Good Moral certificate; Graduate Tracer draft. |

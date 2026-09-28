@@ -60,6 +60,20 @@ def _is_business_day(day: date) -> bool:
     return day.weekday() < 5 and day not in NON_WORKING_DAYS
 
 
+def academic_semester(day: date) -> str:
+    """The semester a dataset date falls in, worded the way a Student writes it on a request.
+
+    The dataset's Academic Year runs August to May: August to December is the first semester and
+    January to May the second. The anchor window never places activity in the midyear term.
+    """
+
+    if day.month >= 8:
+        return "First"
+    if day.month <= 5:
+        return "Second"
+    raise ValueError(f"{day.isoformat()} falls in the midyear term, outside the demo calendar")
+
+
 @dataclass(frozen=True, slots=True)
 class DemoTimeline:
     anchor: date
@@ -113,6 +127,7 @@ __all__ = [
     "EARLIEST_ANCHOR",
     "HISTORICAL_ACADEMIC_YEARS",
     "LATEST_ANCHOR",
+    "academic_semester",
     "institution_today",
     "resolve_timeline",
 ]

@@ -366,7 +366,7 @@ RECENT_GRADUATE_EXIT_INTERVIEW = _exit_interview(
     self_ratings="4 3 4 5 4 4 5 4 5 4 5 5 4 4 4",
     college_ratings="4 4 4 4 4 5 5 5 4 4 5 4 4 3 4 4 4 4 4 4 4 4 4 2 3 3",
 )
-# Delayed graduate finishing this first semester; the draft is still being filled in.
+# Delayed Student in the final year of the program; the draft is still being filled in.
 GRADUATING_EXIT_INTERVIEW_DRAFT = _exit_interview(
     completion="WITH_SOME_DELAY",
     extra_terms=1,
@@ -386,15 +386,15 @@ GRADUATING_EXIT_INTERVIEW_DRAFT = _exit_interview(
 
 # --- Good Moral --------------------------------------------------------------------------------
 
-# The certificate template supplies the words "year" and "semester" itself.
+# The certificate template supplies the words "year" and "semester" itself. The semester comes
+# from each request's date (``timeline.academic_semester``).
 GOOD_MORAL_CURRENT = {
     "year_level": "3rd",
-    "semester": "First",
     "college": "Business and Public Administration",
 }
 GOOD_MORAL_CURRENT_RECEIPT = {"official_receipt_number": "DEMO-OR-0142", "amount": "50.00"}
 GOOD_MORAL_DUPLICATE_CANCEL_REASON = "Duplicate request submitted by mistake."
-GRADUATING_GOOD_MORAL = {"year_level": "5th", "semester": "First"}
+GRADUATING_GOOD_MORAL = {"year_level": "5th"}
 RECENT_GRADUATE_GOOD_MORAL = {
     "degree": "Bachelor of Science in Development Communication",
     "major": "",

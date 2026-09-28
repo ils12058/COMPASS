@@ -45,7 +45,7 @@ ANNOUNCEMENTS = (
     AnnouncementSpec(
         key="consultation_hours",
         author="head_guidance",
-        title="Guidance consultation hours for the first semester",
+        title="Guidance consultation hours for Academic Year 2026-2027",
         body_markdown=(
             "The Guidance and Counseling Office is open for consultations **Monday to Friday, "
             "8:00 AM to 12:00 NN and 1:00 PM to 5:00 PM**.\n\n"

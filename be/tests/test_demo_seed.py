@@ -82,7 +82,11 @@ from compass.demo_seed.narratives import (
     WALK_IN_INTAKE,
 )
 from compass.demo_seed.seed import SEED_RUN_ADVISORY_LOCK_KEY, seed_demo_staging
-from compass.demo_seed.timeline import DemoTimelineError, resolve_timeline
+from compass.demo_seed.timeline import (
+    DemoTimelineError,
+    academic_semester,
+    resolve_timeline,
+)
 from compass.exit_interviews.models import ExitInterview, ExitInterviewStatus
 from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
 from compass.good_moral.models import GoodMoralRequest, GoodMoralStatus, GoodMoralVariant
@@ -714,6 +718,10 @@ class SeededDemoDatasetTests(TestCase):
             variant=GoodMoralVariant.CURRENT_STUDENT, status=GoodMoralStatus.ISSUED
         )
         assert current.academic_year.label == "2026-2027"
+        # A Student states the semester they file in; it follows each request's own date.
+        for item in requests.filter(variant=GoodMoralVariant.CURRENT_STUDENT):
+            filed_on = timezone.localtime(item.created_at).date()
+            assert item.semester_snapshot == academic_semester(filed_on)
 
         exit_interview = ExitInterview.objects.get(student=demo_user(ALUMNI))
         assert exit_interview.self_assessment_ratings.count() == 15
@@ -1126,3 +1134,12 @@ def test_timeline_places_activity_on_business_days_only():
         assert day.weekday() < 5
         assert (day < ANCHOR) is (offset < 0)
     assert timeline.business_day(-1) == ANCHOR - timedelta(days=3)
+
+
+def test_semester_follows_the_dataset_academic_calendar():
+    assert academic_semester(date(2026, 8, 3)) == "First"
+    assert academic_semester(date(2026, 12, 18)) == "First"
+    assert academic_semester(date(2027, 1, 4)) == "Second"
+    assert academic_semester(date(2027, 5, 31)) == "Second"
+    with pytest.raises(ValueError, match="midyear"):
+        academic_semester(date(2027, 6, 15))

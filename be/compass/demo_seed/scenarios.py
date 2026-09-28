@@ -94,7 +94,7 @@ from .support import (
     request_fingerprint,
     settle_notifications,
 )
-from .timeline import CURRENT_ACADEMIC_YEAR
+from .timeline import CURRENT_ACADEMIC_YEAR, academic_semester
 
 # --- Workflow steps --------------------------------------------------------------------------
 
@@ -703,8 +703,8 @@ def completed_counseling(session: SeedSession) -> None:
 
 
 def graduating(session: SeedSession) -> None:
-    """Graduating BSBA Student finishing a delayed final term: Exit Interview in progress, a
-    pending Good Moral request, and a career consultation booked with Head Guidance."""
+    """Graduating BSBA Student in a delayed final year: Exit Interview in progress, a pending
+    Good Moral request, and a career consultation booked with Head Guidance."""
 
     t = session.timeline
     seed_annual_inventory(session, GRADUATING, CURRENT_ACADEMIC_YEAR)
@@ -716,15 +716,16 @@ def graduating(session: SeedSession) -> None:
         submitted=None,
         narrative=narratives.GRADUATING_EXIT_INTERVIEW_DRAFT,
     )
+    requested = t.past(3, 10, 40)
     request = create_my_current_student(
         student=session.user(GRADUATING.key),
         year_level=narratives.GRADUATING_GOOD_MORAL["year_level"],
-        semester=narratives.GRADUATING_GOOD_MORAL["semester"],
+        semester=academic_semester(requested.date()),
         idempotency_key=idempotency_key("good-moral", GRADUATING.key),
         request_fingerprint=request_fingerprint(record="good-moral", student=GRADUATING.key),
         context=session.as_user(GRADUATING.key),
     )
-    align_timestamps(request, created_at=t.past(3, 10, 40), updated_at=t.past(3, 10, 40))
+    align_timestamps(request, created_at=requested, updated_at=requested)
     session.record("Good Moral Requests", created=True)
     _book(
         session,
@@ -771,10 +772,12 @@ def good_moral_student(session: SeedSession) -> None:
     t = session.timeline
     seed_annual_inventory(session, GOOD_MORAL, CURRENT_ACADEMIC_YEAR)
     student = session.user(GOOD_MORAL.key)
+    requested = t.past(10, 9, 15)
+    semester = academic_semester(requested.date())
     request = create_my_current_student(
         student=student,
         year_level=narratives.GOOD_MORAL_CURRENT["year_level"],
-        semester=narratives.GOOD_MORAL_CURRENT["semester"],
+        semester=semester,
         idempotency_key=idempotency_key("good-moral", GOOD_MORAL.key),
         request_fingerprint=request_fingerprint(record="good-moral", student=GOOD_MORAL.key),
         context=session.as_user(GOOD_MORAL.key),
@@ -782,7 +785,7 @@ def good_moral_student(session: SeedSession) -> None:
     duplicate = create_my_current_student(
         student=student,
         year_level=narratives.GOOD_MORAL_CURRENT["year_level"],
-        semester=narratives.GOOD_MORAL_CURRENT["semester"],
+        semester=semester,
         idempotency_key=idempotency_key("good-moral", GOOD_MORAL.key, "duplicate"),
         request_fingerprint=request_fingerprint(
             record="good-moral", student=GOOD_MORAL.key, duplicate=True
@@ -821,7 +824,7 @@ def good_moral_student(session: SeedSession) -> None:
         context=session.as_user(COUNSELOR_B.key),
         now=issued_at,
     )
-    align_timestamps(request, created_at=t.past(10, 9, 15), updated_at=issued_at)
+    align_timestamps(request, created_at=requested, updated_at=issued_at)
     settle_notifications(source_id=request.pk, occurred_at=issued_at)
     session.record("Good Moral Requests", created=True, count=2)
     _mark_read(
