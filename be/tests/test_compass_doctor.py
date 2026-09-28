@@ -56,20 +56,6 @@ def health_fixture(status: DiagnosticStatus = DiagnosticStatus.HEALTHY) -> Platf
                 status=check_status,
                 summary="Synthetic safe database result.",
             ),
-            DiagnosticCheck(
-                code="celery_worker",
-                label="Celery worker",
-                status=DiagnosticStatus.NOT_CHECKED,
-                summary="Run the COMPASS doctor worker smoke check for active worker verification.",
-                required=False,
-            ),
-            DiagnosticCheck(
-                code="celery_beat",
-                label="Celery Beat",
-                status=DiagnosticStatus.NOT_CHECKED,
-                summary="Runtime Beat heartbeat is not available in this COMPASS slice.",
-                required=False,
-            ),
         ),
     )
 
@@ -94,7 +80,7 @@ def test_configuration_only_skips_runtime_and_worker_smoke():
     assert "Application configuration" in output.getvalue()
 
 
-def test_default_doctor_uses_shared_passive_diagnostics_and_does_not_smoke_worker():
+def test_default_doctor_runs_only_automatic_health_and_does_not_smoke_worker():
     output = StringIO()
     with (
         patch(
@@ -112,9 +98,9 @@ def test_default_doctor_uses_shared_passive_diagnostics_and_does_not_smoke_worke
     health.assert_called_once_with()
     worker.assert_not_called()
     rendered = output.getvalue()
-    assert "[WARN] Celery worker" in rendered
-    assert "[WARN] Celery Beat" in rendered
-    assert "Runtime Beat heartbeat is not available" in rendered
+    assert "[OK] PostgreSQL" in rendered
+    assert "Celery worker" not in rendered
+    assert "Celery Beat" not in rendered
 
 
 def test_worker_smoke_invokes_existing_noop_and_recognizes_expected_result():
@@ -164,7 +150,7 @@ def test_doctor_worker_smoke_is_explicit_and_failure_is_nonzero():
             "compass.platform_ops.management.commands.compass_doctor.run_worker_smoke",
             return_value=DiagnosticCheck(
                 code="celery_worker_smoke",
-                label="Celery worker smoke",
+                label="Background worker",
                 status=DiagnosticStatus.UNAVAILABLE,
                 summary="The dependency did not respond successfully to the safe diagnostic probe.",
             ),
