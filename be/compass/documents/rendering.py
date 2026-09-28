@@ -99,6 +99,7 @@ def render_document_pdf(
         template_version,
         context=context,
     )
+    show_report_pagination = spec.show_page_numbers and not (context or {}).get("controlled_form")
     timeout_ms = int(settings.DOCUMENT_RENDER_TIMEOUT_SECONDS * 1000)
     blocked_urls: list[str] = []
 
@@ -159,10 +160,10 @@ def render_document_pdf(
                         format="A4",
                         print_background=True,
                         prefer_css_page_size=True,
-                        display_header_footer=spec.show_page_numbers,
+                        display_header_footer=show_report_pagination,
                         header_template="<span></span>",
                         footer_template=(
-                            _page_footer_template() if spec.show_page_numbers else "<span></span>"
+                            _page_footer_template() if show_report_pagination else "<span></span>"
                         ),
                     )
                 except PlaywrightError as exc:

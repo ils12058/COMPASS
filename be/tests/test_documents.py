@@ -45,14 +45,35 @@ def test_canonical_branding_contains_only_confirmed_identity():
     assert branding.former_institution_name == "Camarines Norte State College"
     assert branding.office_name == "Guidance and Counseling Office"
 
-    assert branding.institution_address is None
-    assert branding.institution_website_url is None
-    assert branding.institution_contact_email is None
-    assert branding.institution_social_url is None
+    assert branding.institution_address == (
+        "F. Pimentel Ave., Brgy. II, Daet, Camarines Norte – 4600, Philippines"
+    )
+    assert branding.institution_website_url == "https://www.ucn.edu.ph"
+    assert branding.institution_contact_email == "president@ucn.edu.ph"
+    assert branding.institution_social_url == "https://www.facebook.com/UCNofficial"
     assert branding.office_parent_unit_name is None
-    assert branding.office_email is None
+    assert branding.office_email == "guidance@compass-gco.com"
     assert branding.office_phone is None
     assert branding.office_location is None
+
+
+def test_accreditation_footer_stays_opt_in_for_real_documents():
+    for key in (
+        "good_moral_current_student",
+        "good_moral_graduate",
+        "referral_slip",
+        "call_slip",
+        "student_profiling_report",
+    ):
+        spec = get_template_spec(key, 1)
+        html, _ = render_document_html(key, 1)
+        assert spec.include_accreditation_footer is False
+        assert '<footer class="accreditation-footer">' not in html
+
+    spec = get_template_spec("foundation_test", 1)
+    html, _ = render_document_html("foundation_test", 1)
+    assert spec.include_accreditation_footer is True
+    assert '<footer class="accreditation-footer">' in html
 
 
 @pytest.mark.django_db
@@ -89,6 +110,11 @@ def test_html_uses_canonical_branding_partials_local_assets_and_autoescaping():
     assert "data:image/png;base64," in html
     assert "University of Camarines Norte" in html
     assert "Guidance and Counseling Office" in html
+    assert "F. Pimentel Ave., Brgy. II, Daet, Camarines Norte – 4600, Philippines" in html
+    assert "https://www.ucn.edu.ph" in html
+    assert "president@ucn.edu.ph" in html
+    assert "https://www.facebook.com/UCNofficial" in html
+    assert "guidance@compass-gco.com" in html
     assert "<script>caller override</script>" not in html
     assert "CNSC-OP-GTA-01F8" in html
     assert "Revision: 0" in html
@@ -112,6 +138,7 @@ def test_code_owned_layout_can_omit_accreditation_footer_and_spec_rejects_unknow
     )
     assert spec.include_accreditation_footer is False
     assert '<footer class="accreditation-footer">' not in html
+    assert '<footer class="controlled-form-metadata">' not in html
     assert get_document_assets(include_accreditation_footer=False)["accreditation_footer"] is None
 
     known = get_template_spec("foundation_test", 1)
