@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -122,15 +122,10 @@ export function CustomerFeedbackForm() {
   const isUncertain = uncertainIntent !== null;
   const opportunityData = opportunity.data?.data;
   const requiredService = opportunityData?.service_kind;
-
-  useEffect(() => {
-    if (!requiredService) return;
-    setDraft((current) =>
-      current.services.includes(requiredService)
-        ? current
-        : { ...current, services: [requiredService, ...current.services] },
-    );
-  }, [requiredService]);
+  const selectedServices =
+    requiredService && !draft.services.includes(requiredService)
+      ? [requiredService, ...draft.services]
+      : draft.services;
 
   if (!access.canSubmitCustomerFeedback) {
     return <FeedbackAccessUnavailable title="Customer Feedback unavailable" />;
@@ -208,19 +203,23 @@ export function CustomerFeedbackForm() {
     setError(null);
     setServiceError(null);
     if (isUncertain) return;
-    if (!draft.services.length) {
+    if (!selectedServices.length) {
       setServiceError("Select at least one service received.");
       document.getElementById("feedback-services")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
-    if (requiredService && !draft.services.includes(requiredService)) {
+    if (requiredService && !selectedServices.includes(requiredService)) {
       setServiceError(`Keep ${opportunityData.service_label} selected for this completed service.`);
       document.getElementById("feedback-services")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    const body = makeBody(draft, respondent, opportunityData.id);
+    const body = makeBody(
+      { ...draft, services: selectedServices },
+      respondent,
+      opportunityData.id,
+    );
     setPreparedBody(body);
     setConfirmationOpen(true);
   }
@@ -290,7 +289,7 @@ export function CustomerFeedbackForm() {
               <div className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
                 {serviceChoices.map((choice) => {
                   const id = `feedback-service-${choice.value.toLowerCase()}`;
-                  return <label key={choice.value} htmlFor={id} className="flex min-h-10 items-center gap-3 text-sm text-ink"><input id={id} type="checkbox" className="h-4 w-4 accent-brand" checked={draft.services.includes(choice.value)} disabled={choice.value === requiredService} onChange={(event) => changeService(choice.value, event.target.checked)} aria-describedby={serviceError ? "feedback-services-error" : undefined} />{choice.label}</label>;
+                  return <label key={choice.value} htmlFor={id} className="flex min-h-10 items-center gap-3 text-sm text-ink"><input id={id} type="checkbox" className="h-4 w-4 accent-brand" checked={selectedServices.includes(choice.value)} disabled={choice.value === requiredService} onChange={(event) => changeService(choice.value, event.target.checked)} aria-describedby={serviceError ? "feedback-services-error" : undefined} />{choice.label}</label>;
                 })}
               </div>
               {draft.services.includes(CustomerFeedbackServiceValue.OTHER) ? (
