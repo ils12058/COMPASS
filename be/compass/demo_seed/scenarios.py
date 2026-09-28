@@ -32,11 +32,11 @@ from compass.call_slips.services import (
 )
 from compass.counseling.models import CounselingEncounter
 from compass.counseling.services import create_encounter
-from compass.feedback.models import FeedbackOpportunity, FeedbackOpportunitySourceType
 from compass.counseling.shared_summaries import (
     publish_assigned_shared_summary,
     put_assigned_shared_summary,
 )
+from compass.feedback.models import FeedbackOpportunity, FeedbackOpportunitySourceType
 from compass.good_moral.models import GoodMoralRequest
 from compass.good_moral.services import (
     cancel_request,
