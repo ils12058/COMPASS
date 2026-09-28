@@ -39,17 +39,21 @@ from .models import (
 )
 from .services import (
     DEFAULT_PAGE_SIZE,
+    FeedbackAlreadySubmitted,
     FeedbackConfigurationConflict,
     FeedbackError,
     FeedbackNotFound,
     FeedbackNotPermitted,
+    FeedbackOpportunityNotFound,
     InvalidFeedbackInput,
     create_csm_response,
     create_customer_feedback,
     get_csm_response,
     get_customer_feedback,
+    get_my_opportunity,
     list_csm_responses,
     list_customer_feedback,
+    list_my_opportunities,
 )
 
 router = Router(tags=["feedback"])
@@ -128,6 +132,7 @@ class CSMRatingValue(IntEnum):
 
 
 class CustomerFeedbackSubmitRequest(StrictSchema):
+    opportunity_id: UUID
     services_received: list[CustomerFeedbackServiceValue]
     other_service: str = ""
     talked_to_guidance_counselor: bool
@@ -158,6 +163,17 @@ class FeedbackSubmissionResponse(StrictSchema):
     id: UUID
     submitted_at: datetime
     submitted: bool
+
+
+class FeedbackOpportunityResponse(StrictSchema):
+    id: UUID
+    service_kind: CustomerFeedbackServiceValue
+    service_label: str
+    service_completed_at: datetime
+    customer_feedback_submitted: bool
+    csm_submitted: bool
+    can_submit_customer_feedback: bool
+    can_submit_csm: bool
 
 
 class FormRevisionSummary(StrictSchema):
@@ -209,6 +225,7 @@ class CustomerFeedbackPageResponse(StrictSchema):
 
 
 class CSMSubmitRequest(StrictSchema):
+    opportunity_id: UUID
     client_type: CSMClientTypeValue
     sex: CSMSexValue
     age: int = Field(ge=0, le=150)
@@ -284,8 +301,12 @@ def _require_viewer(request, capability: str) -> None:
 
 
 def _raise(exc: FeedbackError) -> NoReturn:
+    if isinstance(exc, FeedbackOpportunityNotFound):
+        raise APIError(404, "feedback_opportunity_not_found", str(exc)) from exc
     if isinstance(exc, FeedbackNotFound):
         raise APIError(404, "feedback_not_found", str(exc)) from exc
+    if isinstance(exc, FeedbackAlreadySubmitted):
+        raise APIError(409, "feedback_already_submitted", str(exc)) from exc
     if isinstance(exc, FeedbackNotPermitted):
         raise APIError(403, "permission_denied", str(exc)) from exc
     if isinstance(exc, FeedbackConfigurationConflict):
@@ -297,6 +318,23 @@ def _raise(exc: FeedbackError) -> NoReturn:
 
 def _submission(item) -> dict[str, object]:
     return {"id": item.pk, "submitted_at": item.submitted_at, "submitted": True}
+
+
+def _opportunity_response(item, actor) -> dict[str, object]:
+    customer_submitted = item.customer_feedback_submitted_at is not None
+    csm_submitted = item.csm_submitted_at is not None
+    return {
+        "id": item.pk,
+        "service_kind": item.service_kind,
+        "service_label": item.service_label_snapshot,
+        "service_completed_at": item.service_completed_at,
+        "customer_feedback_submitted": customer_submitted,
+        "csm_submitted": csm_submitted,
+        "can_submit_customer_feedback": (
+            actor.has_capability("feedback.submit_customer_feedback") and not customer_submitted
+        ),
+        "can_submit_csm": actor.has_capability("feedback.submit_csm") and not csm_submitted,
+    }
 
 
 def _json_response(payload: dict[str, object], *, status: int) -> JsonResponse:
@@ -467,6 +505,37 @@ def _csm_detail(item) -> dict[str, object]:
     }
 
 
+@router.get(
+    "/opportunities",
+    response=response_with_errors(list[FeedbackOpportunityResponse], 401, 403),
+    auth=session_auth,
+    operation_id="feedbackListMyOpportunities",
+)
+def feedback_list_my_opportunities(request):
+    try:
+        items = list_my_opportunities(actor=request.auth_user)
+    except FeedbackError as exc:
+        _raise(exc)
+    return [_opportunity_response(item, request.auth_user) for item in items]
+
+
+@router.get(
+    "/opportunities/{opportunity_id}",
+    response=response_with_errors(FeedbackOpportunityResponse, 401, 403, 404),
+    auth=session_auth,
+    operation_id="feedbackGetMyOpportunity",
+)
+def feedback_get_my_opportunity(request, opportunity_id: UUID):
+    try:
+        item = get_my_opportunity(
+            actor=request.auth_user,
+            opportunity_id=opportunity_id,
+        )
+    except FeedbackError as exc:
+        _raise(exc)
+    return _opportunity_response(item, request.auth_user)
+
+
 @router.post(
     "/customer-feedback",
     response=response_with_errors(
@@ -497,9 +566,12 @@ def feedback_submit_customer_feedback(
     assert decision.reservation is not None
 
     try:
+        values = payload.model_dump(mode="python")
+        opportunity_id = values.pop("opportunity_id")
         item = create_customer_feedback(
             student=request.auth_user,
-            values=payload.model_dump(mode="python"),
+            opportunity_id=opportunity_id,
+            values=values,
             context=_context(request),
         )
     except FeedbackError as exc:
@@ -595,9 +667,12 @@ def feedback_submit_csm(
     assert decision.reservation is not None
 
     try:
+        values = payload.model_dump(mode="python")
+        opportunity_id = values.pop("opportunity_id")
         item = create_csm_response(
             student=request.auth_user,
-            values=payload.model_dump(mode="python"),
+            opportunity_id=opportunity_id,
+            values=values,
             context=_context(request),
         )
     except FeedbackError as exc:
