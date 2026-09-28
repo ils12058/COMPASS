@@ -16,8 +16,20 @@ from compass.announcements.services import (
     create_announcement,
     publish_announcement,
 )
-from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
-from compass.feedback.services import create_csm_response, create_customer_feedback
+from compass.counseling.models import CounselingEncounter
+from compass.feedback.models import (
+    ClientSatisfactionResponse,
+    CustomerFeedbackResponse,
+    CustomerFeedbackService,
+    FeedbackOpportunity,
+    FeedbackOpportunitySourceType,
+)
+from compass.feedback.services import (
+    create_csm_response,
+    create_customer_feedback,
+    ensure_feedback_opportunity,
+)
+from compass.good_moral.models import GoodMoralRequest, GoodMoralStatus, GoodMoralVariant
 from compass.privacy_governance.expansion import (
     acknowledge_revision,
     create_notice,
@@ -245,42 +257,126 @@ def _feedback_time(session: SeedSession, persona_key: str, *, offset_minutes: in
     return base + timedelta(minutes=offset_minutes)
 
 
+def _demo_feedback_opportunity(
+    session: SeedSession,
+    persona_key: str,
+) -> FeedbackOpportunity:
+    student = session.user(persona_key)
+    if persona_key in {"second_year", "referred"}:
+        encounter = (
+            CounselingEncounter.objects.filter(student=student)
+            .order_by("-ended_at", "-id")
+            .first()
+        )
+        if encounter is None:
+            raise RuntimeError(
+                f"Demo Feedback source Counseling Encounter is missing for {persona_key}."
+            )
+        return ensure_feedback_opportunity(
+            student=student,
+            source_type=FeedbackOpportunitySourceType.COUNSELING_ENCOUNTER,
+            source_id=encounter.pk,
+            service_kind=CustomerFeedbackService.COUNSELING,
+            service_label_snapshot="Counseling",
+            service_completed_at=encounter.ended_at,
+        )
+
+    request = (
+        GoodMoralRequest.objects.filter(
+            student=student,
+            status=GoodMoralStatus.ISSUED,
+            issued_at__isnull=False,
+        )
+        .order_by("-issued_at", "-id")
+        .first()
+    )
+    if request is None or request.issued_at is None:
+        raise RuntimeError(f"Demo Feedback source issued Good Moral request is missing for {persona_key}.")
+    return ensure_feedback_opportunity(
+        student=student,
+        source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
+        source_id=request.pk,
+        service_kind=CustomerFeedbackService.REQUEST_FOR_CERTIFICATION,
+        service_label_snapshot=(
+            "Issuance of Good Moral Certificate"
+            if request.variant == GoodMoralVariant.CURRENT_STUDENT
+            else "Issuance of Good Moral Certificate (graduate)"
+        ),
+        service_completed_at=request.issued_at,
+    )
+
+
+def _stamp_demo_feedback_marker(
+    opportunity: FeedbackOpportunity,
+    *,
+    customer_feedback_at=None,
+    csm_at=None,
+) -> None:
+    updates: list[str] = []
+    if customer_feedback_at is not None and opportunity.customer_feedback_submitted_at is None:
+        opportunity.customer_feedback_submitted_at = customer_feedback_at
+        updates.append("customer_feedback_submitted_at")
+    if csm_at is not None and opportunity.csm_submitted_at is None:
+        opportunity.csm_submitted_at = csm_at
+        updates.append("csm_submitted_at")
+    if updates:
+        opportunity.save(update_fields=[*updates, "updated_at"])
+
+
 def seed_feedback(session: SeedSession) -> None:
     with transaction.atomic():
+        opportunities = {
+            persona_key: _demo_feedback_opportunity(session, persona_key)
+            for persona_key in FEEDBACK_TIMES
+        }
+
         for persona_key, values in narratives.CUSTOMER_FEEDBACK.items():
             persona = PERSONAS_BY_KEY[persona_key]
-            exists = CustomerFeedbackResponse.objects.filter(
+            existing = CustomerFeedbackResponse.objects.filter(
                 respondent_name_snapshot=persona.full_name,
                 additional_feedback=values["additional_feedback"],
-            ).exists()
-            if not exists:
-                item = create_customer_feedback(
+            ).first()
+            created = existing is None
+            if existing is None:
+                existing = create_customer_feedback(
                     student=session.user(persona_key),
+                    opportunity_id=opportunities[persona_key].pk,
                     values=dict(values),
                     context=session.as_user(persona_key),
                 )
-                align_timestamps(item, submitted_at=_feedback_time(session, persona_key))
-            session.record("Customer Feedback", created=not exists)
+                align_timestamps(existing, submitted_at=_feedback_time(session, persona_key))
+            _stamp_demo_feedback_marker(
+                opportunities[persona_key],
+                customer_feedback_at=existing.submitted_at,
+            )
+            session.record("Customer Feedback", created=created)
 
         for response in narratives.CLIENT_SATISFACTION:
+            persona_key = response["persona"]
             values = {key: value for key, value in response.items() if key != "persona"}
-            exists = ClientSatisfactionResponse.objects.filter(
+            existing = ClientSatisfactionResponse.objects.filter(
                 service_availed=values["service_availed"],
                 suggestions=values["suggestions"],
                 age=values["age"],
                 sex=values["sex"],
-            ).exists()
-            if not exists:
-                item = create_csm_response(
-                    student=session.user(response["persona"]),
+            ).first()
+            created = existing is None
+            if existing is None:
+                existing = create_csm_response(
+                    student=session.user(persona_key),
+                    opportunity_id=opportunities[persona_key].pk,
                     values=values,
-                    context=session.as_user(response["persona"]),
+                    context=session.as_user(persona_key),
                 )
                 align_timestamps(
-                    item,
-                    submitted_at=_feedback_time(session, response["persona"], offset_minutes=6),
+                    existing,
+                    submitted_at=_feedback_time(session, persona_key, offset_minutes=6),
                 )
-            session.record("CSM responses", created=not exists)
+            _stamp_demo_feedback_marker(
+                opportunities[persona_key],
+                csm_at=existing.submitted_at,
+            )
+            session.record("CSM responses", created=created)
 
 
 __all__ = ["seed_feedback", "seed_privacy_governance", "seed_publications"]
