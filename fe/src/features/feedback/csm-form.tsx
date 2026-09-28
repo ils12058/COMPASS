@@ -121,6 +121,7 @@ export function CsmForm() {
   });
   const create = useMutation({ mutationFn: ({ body, key }: { body: CSMSubmitRequest; key: string }) => feedbackSubmitCsm(body, { headers: { "Idempotency-Key": key } }), retry: false });
   const [draft, setDraft] = useState<CsmDraft>(emptyCsmDraft);
+  const [serviceEdited, setServiceEdited] = useState(false);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [preparedBody, setPreparedBody] = useState<CSMSubmitRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -129,7 +130,9 @@ export function CsmForm() {
   const intentRef = useRef<CsmIntent | null>(null);
   const isUncertain = uncertainIntent !== null;
   const opportunityData = opportunity.data?.data;
-  const serviceValue = draft.service || opportunityData?.service_label || "";
+  const serviceValue = serviceEdited
+    ? draft.service
+    : draft.service || opportunityData?.service_label || "";
 
   if (!access.canSubmitCsm) return <FeedbackAccessUnavailable title="Client Satisfaction Measurement unavailable" />;
   if (!opportunityId) {
@@ -266,7 +269,7 @@ export function CsmForm() {
             <div className="grid gap-5 sm:grid-cols-2">
               <div><FeedbackFieldLabel htmlFor="csm-age" required>Age</FeedbackFieldLabel><Input id="csm-age" className="mt-2" type="number" min={0} max={150} step={1} required value={draft.age} onChange={(event) => setDraft((current) => ({ ...current, age: event.target.value }))} /></div>
               <div><FeedbackFieldLabel htmlFor="csm-region" required>Region of Residence</FeedbackFieldLabel><Input id="csm-region" className="mt-2" required value={draft.region} onChange={(event) => setDraft((current) => ({ ...current, region: event.target.value }))} /></div>
-              <div className="sm:col-span-2"><FeedbackFieldLabel htmlFor="csm-service" required>Service Availed</FeedbackFieldLabel><Input id="csm-service" className="mt-2" required value={serviceValue} onChange={(event) => setDraft((current) => ({ ...current, service: event.target.value }))} /></div>
+              <div className="sm:col-span-2"><FeedbackFieldLabel htmlFor="csm-service" required>Service Availed</FeedbackFieldLabel><Input id="csm-service" className="mt-2" required value={serviceValue} onChange={(event) => { setServiceEdited(true); setDraft((current) => ({ ...current, service: event.target.value })); }} /></div>
             </div>
           </FeedbackSection>
 
