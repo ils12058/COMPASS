@@ -4,9 +4,11 @@ export type FeedbackAccess = {
   isStudent: boolean;
   canSubmitCustomerFeedback: boolean;
   canSubmitCsm: boolean;
+  hasStudentSubmissionAccess: boolean;
   canViewCustomerFeedback: boolean;
   canViewCsm: boolean;
-  hasWorkspace: boolean;
+  hasOperationalWorkspace: boolean;
+  canOpenFeedback: boolean;
 };
 
 export function getFeedbackAccess(user: UserSummary): FeedbackAccess {
@@ -19,17 +21,19 @@ export function getFeedbackAccess(user: UserSummary): FeedbackAccess {
     "feedback.view_customer_feedback",
   );
   const canViewCsm = user.capabilities.includes("feedback.view_csm");
+  const hasStudentSubmissionAccess =
+    canSubmitCustomerFeedback || canSubmitCsm;
+  const hasOperationalWorkspace =
+    canViewCustomerFeedback || canViewCsm;
 
   return {
     isStudent,
     canSubmitCustomerFeedback,
     canSubmitCsm,
+    hasStudentSubmissionAccess,
     canViewCustomerFeedback,
     canViewCsm,
-    hasWorkspace:
-      canSubmitCustomerFeedback ||
-      canSubmitCsm ||
-      canViewCustomerFeedback ||
-      canViewCsm,
+    hasOperationalWorkspace,
+    canOpenFeedback: hasStudentSubmissionAccess || hasOperationalWorkspace,
   };
 }

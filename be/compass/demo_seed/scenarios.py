@@ -36,6 +36,7 @@ from compass.counseling.shared_summaries import (
     publish_assigned_shared_summary,
     put_assigned_shared_summary,
 )
+from compass.feedback.models import FeedbackOpportunity, FeedbackOpportunitySourceType
 from compass.good_moral.models import GoodMoralRequest
 from compass.good_moral.services import (
     cancel_request,
@@ -164,7 +165,11 @@ def _encounter(
         now=recorded,
     )
     align_timestamps(encounter, created_at=recorded, updated_at=recorded)
-    settle_notifications(source_id=encounter.pk, occurred_at=recorded)
+    _settle_feedback_invitation(
+        source_type=FeedbackOpportunitySourceType.COUNSELING_ENCOUNTER,
+        source_id=encounter.pk,
+        occurred_at=recorded,
+    )
     session.record("Counseling Encounters", created=True)
     return encounter
 
@@ -363,6 +368,28 @@ def _end_interview(
     align_timestamps(call_slip, updated_at=ended_at)
 
 
+def _feedback_opportunity_for_source(
+    source_type: str,
+    source_id,
+) -> FeedbackOpportunity:
+    return FeedbackOpportunity.objects.get(source_type=source_type, source_id=source_id)
+
+
+def _settle_feedback_invitation(
+    *,
+    source_type: str,
+    source_id,
+    occurred_at: datetime,
+) -> FeedbackOpportunity:
+    opportunity = _feedback_opportunity_for_source(source_type, source_id)
+    settle_notifications(
+        source_id=opportunity.pk,
+        event_code=NotificationEvent.FEEDBACK_INVITATION,
+        occurred_at=occurred_at,
+    )
+    return opportunity
+
+
 def _mark_read(
     session: SeedSession, student: StudentPersona, *, source_id, event: str, at: datetime
 ) -> None:
@@ -513,7 +540,10 @@ def academic_adjustment(session: SeedSession) -> None:
     _mark_read(
         session,
         SECOND_YEAR,
-        source_id=encounter.pk,
+        source_id=_feedback_opportunity_for_source(
+            FeedbackOpportunitySourceType.COUNSELING_ENCOUNTER,
+            encounter.pk,
+        ).pk,
         event=NotificationEvent.FEEDBACK_INVITATION,
         at=t.past(9, 18, 15),
     )
@@ -824,6 +854,11 @@ def good_moral_student(session: SeedSession) -> None:
     )
     align_timestamps(request, created_at=requested, updated_at=issued_at)
     settle_notifications(source_id=request.pk, occurred_at=issued_at)
+    _settle_feedback_invitation(
+        source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
+        source_id=request.pk,
+        occurred_at=issued_at,
+    )
     session.record("Good Moral Requests", created=True, count=2)
     _mark_read(
         session,
@@ -881,6 +916,11 @@ def recent_graduate(session: SeedSession) -> None:
     )
     align_timestamps(request, created_at=t.on(2026, 7, 13, 10, 20), updated_at=issued_at)
     settle_notifications(source_id=request.pk, occurred_at=issued_at)
+    _settle_feedback_invitation(
+        source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
+        source_id=request.pk,
+        occurred_at=issued_at,
+    )
     session.record("Good Moral Requests", created=True)
 
     response = ensure_my_response(student=student, context=session.as_user(RECENT_GRADUATE.key))

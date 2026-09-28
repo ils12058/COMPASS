@@ -7,6 +7,13 @@ import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/ap
 export const feedbackSelectClass =
   "min-h-11 w-full rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
+const feedbackOpportunityIdPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function feedbackOpportunityId(value: string | null): string | null {
+  return value && feedbackOpportunityIdPattern.test(value) ? value : null;
+}
+
 export function feedbackErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
@@ -14,6 +21,8 @@ export function feedbackErrorMessage(error: unknown, fallback: string): string {
   const known: Record<string, string> = {
     permission_denied: "You do not have permission to use this Feedback workspace.",
     feedback_not_found: "The requested Feedback response could not be found.",
+    feedback_opportunity_not_found: "This Feedback opportunity is not available.",
+    feedback_already_submitted: "Feedback for this service has already been submitted.",
     feedback_configuration_conflict:
       "Feedback is temporarily unavailable because its configuration needs attention.",
     invalid_feedback_request:

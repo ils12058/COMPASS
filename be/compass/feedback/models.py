@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 
+from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -22,6 +23,45 @@ class CustomerFeedbackService(models.TextChoices):
         "Application for Admission Test",
     )
     OTHER = "OTHER", "Others (please specify)"
+
+
+class FeedbackOpportunitySourceType(models.TextChoices):
+    COUNSELING_ENCOUNTER = "COUNSELING_ENCOUNTER", "Counseling Encounter"
+    GOOD_MORAL_REQUEST = "GOOD_MORAL_REQUEST", "Good Moral Request"
+
+
+class FeedbackOpportunity(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="feedback_opportunities",
+    )
+    source_type = models.CharField(max_length=32, choices=FeedbackOpportunitySourceType.choices)
+    source_id = models.UUIDField()
+    service_kind = models.CharField(max_length=40, choices=CustomerFeedbackService.choices)
+    service_label_snapshot = models.CharField(max_length=255)
+    service_completed_at = models.DateTimeField()
+    customer_feedback_submitted_at = models.DateTimeField(null=True, blank=True)
+    csm_submitted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("-service_completed_at", "-created_at", "id")
+        indexes = [
+            models.Index(
+                fields=("student", "-service_completed_at"),
+                name="feedback_opp_student_done_idx",
+            )
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("source_type", "source_id"),
+                name="feedback_opp_source_uniq",
+            )
+        ]
 
 
 class CustomerFeedbackAccommodatedBy(models.TextChoices):

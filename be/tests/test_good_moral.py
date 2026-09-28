@@ -24,6 +24,11 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.documents.rendering import render_document_html
+from compass.feedback.models import (
+    CustomerFeedbackService,
+    FeedbackOpportunity,
+    FeedbackOpportunitySourceType,
+)
 from compass.good_moral import services as good_moral_services
 from compass.good_moral.models import GoodMoralRequest, GoodMoralStatus, GoodMoralVariant
 from compass.good_moral.services import (
@@ -560,18 +565,26 @@ def test_f4_issue_rechecks_current_lifecycle_and_duplicate_issue_is_idempotent()
         source_type="good_moral_request",
         source_id=item.pk,
     )
+    opportunity = FeedbackOpportunity.objects.get(
+        source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
+        source_id=item.pk,
+    )
+    assert opportunity.student_id == student.pk
+    assert opportunity.service_kind == CustomerFeedbackService.REQUEST_FOR_CERTIFICATION
+    assert opportunity.service_label_snapshot == "Issuance of Good Moral Certificate"
+    assert opportunity.service_completed_at == issued.issued_at
     feedback_notification = Notification.objects.get(
         recipient=student,
         event_code="feedback.invitation",
-        source_type="good_moral_request",
-        source_id=item.pk,
+        source_type="feedback_opportunity",
+        source_id=opportunity.pk,
     )
     assert issued_notification.policy == "MANDATORY_OPERATIONAL"
     assert issued_notification.target_type == "GOOD_MORAL"
     assert issued_notification.target_id == item.pk
     assert feedback_notification.policy == "OPTIONAL_INFORMATIONAL"
     assert feedback_notification.target_type == "FEEDBACK"
-    assert feedback_notification.target_id is None
+    assert feedback_notification.target_id == opportunity.pk
     assert EmailDelivery.objects.filter(notification=issued_notification).exists()
     assert EmailDelivery.objects.filter(notification=feedback_notification).exists()
 
@@ -607,6 +620,13 @@ def test_f4_issue_rechecks_current_lifecycle_and_duplicate_issue_is_idempotent()
         Notification.objects.filter(
             recipient=student,
             event_code="feedback.invitation",
+            source_id=opportunity.pk,
+        ).count()
+        == 1
+    )
+    assert (
+        FeedbackOpportunity.objects.filter(
+            source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
             source_id=item.pk,
         ).count()
         == 1
@@ -632,10 +652,14 @@ def test_feedback_invitation_email_respects_optional_preference_but_issuance_ema
         event_code="good_moral.issued",
         source_id=item.pk,
     )
+    opportunity = FeedbackOpportunity.objects.get(
+        source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
+        source_id=item.pk,
+    )
     feedback_notification = Notification.objects.get(
         recipient=student,
         event_code="feedback.invitation",
-        source_id=item.pk,
+        source_id=opportunity.pk,
     )
     assert EmailDelivery.objects.filter(notification=issued_notification).exists()
     assert not EmailDelivery.objects.filter(notification=feedback_notification).exists()
@@ -1346,6 +1370,10 @@ def test_create_replay_returns_current_cancelled_and_issued_resource_state():
     assert replay_cancelled.status_code == 201
     assert replay_cancelled.json()["id"] == cancelled_id
     assert replay_cancelled.json()["status"] == GoodMoralStatus.CANCELLED
+    assert not FeedbackOpportunity.objects.filter(
+        source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
+        source_id=uuid.UUID(cancelled_id),
+    ).exists()
     assert (
         AuditEvent.objects.filter(
             action="good_moral.request_created",

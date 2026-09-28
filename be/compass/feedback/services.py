@@ -8,7 +8,8 @@ from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db import transaction
+from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -34,6 +35,8 @@ from .models import (
     CustomerFeedbackRating,
     CustomerFeedbackResponse,
     CustomerFeedbackService,
+    FeedbackOpportunity,
+    FeedbackOpportunitySourceType,
 )
 
 CSM_SCHEMA_VERSION = 1
@@ -56,6 +59,14 @@ class FeedbackNotPermitted(FeedbackError):
     pass
 
 
+class FeedbackOpportunityNotFound(FeedbackNotFound):
+    pass
+
+
+class FeedbackAlreadySubmitted(FeedbackError):
+    pass
+
+
 class FeedbackConfigurationConflict(FeedbackError):
     pass
 
@@ -72,13 +83,14 @@ class FeedbackPage:
     has_next: bool
 
 
+def _validate_student_account(actor: User) -> None:
+    if not getattr(actor, "pk", None) or not actor.is_active or actor.role.code != "STUDENT":
+        raise FeedbackNotPermitted("Active Student Feedback access is required.")
+
+
 def _validate_student(actor: User, capability: str) -> None:
-    if (
-        not getattr(actor, "pk", None)
-        or not actor.is_active
-        or actor.role.code != "STUDENT"
-        or not actor.has_capability(capability)
-    ):
+    _validate_student_account(actor)
+    if not actor.has_capability(capability):
         raise FeedbackNotPermitted("Active Student Feedback submission access is required.")
 
 
@@ -153,6 +165,128 @@ def _validate_submission_range(
         _submission_boundary(submitted_to)
     if submitted_from is not None and submitted_to is not None and submitted_from > submitted_to:
         raise InvalidFeedbackInput("submitted_from must be on or before submitted_to.")
+
+
+def ensure_feedback_opportunity(
+    *,
+    student: User,
+    source_type: str,
+    source_id: UUID,
+    service_kind: str,
+    service_label_snapshot: str,
+    service_completed_at: datetime,
+) -> FeedbackOpportunity:
+    normalized_source_type = _choice(
+        source_type,
+        set(FeedbackOpportunitySourceType.values),
+        "source_type",
+    )
+    normalized_service_kind = _choice(
+        service_kind,
+        {
+            CustomerFeedbackService.COUNSELING,
+            CustomerFeedbackService.REQUEST_FOR_CERTIFICATION,
+        },
+        "service_kind",
+    )
+    label = _clean_text(
+        service_label_snapshot,
+        "service_label_snapshot",
+        255,
+        required=True,
+    )
+    if not isinstance(service_completed_at, datetime) or timezone.is_naive(service_completed_at):
+        raise InvalidFeedbackInput("service_completed_at must be a timezone-aware datetime.")
+    if not getattr(student, "pk", None):
+        raise InvalidFeedbackInput("student must be a saved account.")
+
+    defaults = {
+        "student": student,
+        "service_kind": normalized_service_kind,
+        "service_label_snapshot": label,
+        "service_completed_at": service_completed_at,
+    }
+    try:
+        with transaction.atomic():
+            opportunity, _created = FeedbackOpportunity.objects.get_or_create(
+                source_type=normalized_source_type,
+                source_id=source_id,
+                defaults=defaults,
+            )
+    except IntegrityError:
+        opportunity = FeedbackOpportunity.objects.get(
+            source_type=normalized_source_type,
+            source_id=source_id,
+        )
+
+    expected = (
+        student.pk,
+        normalized_service_kind,
+        label,
+        service_completed_at,
+    )
+    actual = (
+        opportunity.student_id,
+        opportunity.service_kind,
+        opportunity.service_label_snapshot,
+        opportunity.service_completed_at,
+    )
+    if actual != expected:
+        raise FeedbackConfigurationConflict(
+            "The existing Feedback opportunity does not match the completed service provenance."
+        )
+    return opportunity
+
+
+def _opportunity_capabilities(actor: User) -> tuple[bool, bool]:
+    return (
+        actor.has_capability("feedback.submit_customer_feedback"),
+        actor.has_capability("feedback.submit_csm"),
+    )
+
+
+def list_my_opportunities(*, actor: User) -> tuple[FeedbackOpportunity, ...]:
+    _validate_student_account(actor)
+    can_customer, can_csm = _opportunity_capabilities(actor)
+    if not can_customer and not can_csm:
+        return ()
+
+    available = Q()
+    if can_customer:
+        available |= Q(customer_feedback_submitted_at__isnull=True)
+    if can_csm:
+        available |= Q(csm_submitted_at__isnull=True)
+    return tuple(
+        FeedbackOpportunity.objects.filter(student_id=actor.pk)
+        .filter(available)
+        .order_by("-service_completed_at", "-created_at", "id")
+    )
+
+
+def get_my_opportunity(*, actor: User, opportunity_id: UUID) -> FeedbackOpportunity:
+    _validate_student_account(actor)
+    opportunity = FeedbackOpportunity.objects.filter(
+        pk=opportunity_id,
+        student_id=actor.pk,
+    ).first()
+    if opportunity is None:
+        raise FeedbackOpportunityNotFound("The requested Feedback opportunity was not found.")
+    return opportunity
+
+
+def _lock_owned_opportunity(
+    *,
+    student: User,
+    opportunity_id: UUID,
+) -> FeedbackOpportunity:
+    opportunity = (
+        FeedbackOpportunity.objects.select_for_update()
+        .filter(pk=opportunity_id, student_id=student.pk)
+        .first()
+    )
+    if opportunity is None:
+        raise FeedbackOpportunityNotFound("The requested Feedback opportunity was not found.")
+    return opportunity
 
 
 def _normalize_services(raw: object) -> list[str]:
@@ -265,11 +399,16 @@ def _normalize_customer_feedback(values: dict[str, object], profile) -> dict[str
 def create_customer_feedback(
     *,
     student: User,
+    opportunity_id: UUID,
     values: dict[str, object],
     context: AuditContext,
 ) -> CustomerFeedbackResponse:
     _validate_student(student, "feedback.submit_customer_feedback")
     with transaction.atomic():
+        opportunity = _lock_owned_opportunity(
+            student=student,
+            opportunity_id=opportunity_id,
+        )
         locked = (
             User.objects.select_for_update(of=("self",))
             .select_related("role")
@@ -279,13 +418,23 @@ def create_customer_feedback(
         if locked is None:
             raise FeedbackNotFound("The Student account was not found.")
         _validate_student(locked, "feedback.submit_customer_feedback")
+        if opportunity.customer_feedback_submitted_at is not None:
+            raise FeedbackAlreadySubmitted(
+                "Customer Feedback for this completed service has already been submitted."
+            )
         try:
             revision = require_active_supported_form_revision("customer_feedback")
         except InstitutionalFormConflict as exc:
             raise FeedbackConfigurationConflict(str(exc)) from exc
         profile = get_person_profile_context(locked)
         normalized = _normalize_customer_feedback(values, profile)
+        if opportunity.service_kind not in normalized["services_received"]:
+            raise InvalidFeedbackInput(
+                "services_received must include the service for this Feedback opportunity."
+            )
         item = CustomerFeedbackResponse.objects.create(form_revision=revision, **normalized)
+        opportunity.customer_feedback_submitted_at = item.submitted_at
+        opportunity.save(update_fields=["customer_feedback_submitted_at", "updated_at"])
         record_event(
             context=context,
             action=CUSTOMER_FEEDBACK_SUBMITTED,
@@ -297,6 +446,8 @@ def create_customer_feedback(
                 "official_code": revision.official_code,
                 "official_revision": revision.official_revision,
                 "internal_schema_version": revision.internal_schema_version,
+                "opportunity_id": str(opportunity.pk),
+                "service_kind": opportunity.service_kind,
             },
         )
         return _customer_queryset().get(pk=item.pk)
@@ -346,12 +497,16 @@ def _normalize_csm(values: dict[str, object]) -> dict[str, object]:
 def create_csm_response(
     *,
     student: User,
+    opportunity_id: UUID,
     values: dict[str, object],
     context: AuditContext,
 ) -> ClientSatisfactionResponse:
     _validate_student(student, "feedback.submit_csm")
-    normalized = _normalize_csm(values)
     with transaction.atomic():
+        opportunity = _lock_owned_opportunity(
+            student=student,
+            opportunity_id=opportunity_id,
+        )
         locked = (
             User.objects.select_for_update(of=("self",))
             .select_related("role")
@@ -361,14 +516,26 @@ def create_csm_response(
         if locked is None:
             raise FeedbackNotFound("The Student account was not found.")
         _validate_student(locked, "feedback.submit_csm")
+        if opportunity.csm_submitted_at is not None:
+            raise FeedbackAlreadySubmitted(
+                "Client Satisfaction Measurement for this completed service "
+                "has already been submitted."
+            )
+        normalized = _normalize_csm(values)
         item = ClientSatisfactionResponse.objects.create(**normalized)
+        opportunity.csm_submitted_at = item.submitted_at
+        opportunity.save(update_fields=["csm_submitted_at", "updated_at"])
         record_event(
             context=context,
             action=CSM_SUBMITTED,
             outcome=AuditOutcome.SUCCESS,
             target_type="feedback.clientsatisfactionresponse",
             target_id=item.pk,
-            metadata={"instrument_schema_version": CSM_SCHEMA_VERSION},
+            metadata={
+                "instrument_schema_version": CSM_SCHEMA_VERSION,
+                "opportunity_id": str(opportunity.pk),
+                "service_kind": opportunity.service_kind,
+            },
         )
         return item
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
@@ -10,8 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
-import { FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage } from "@/features/feedback/feedback-shared";
-import { feedbackSubmitCsm } from "@/lib/api/generated/feedback/feedback";
+import { FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
+import { feedbackSubmitCsm, useFeedbackGetMyOpportunity } from "@/lib/api/generated/feedback/feedback";
 import { CSMCC1Value, CSMCC2Value, CSMCC3Value, CSMClientTypeValue, CSMRatingValue, CSMSexValue, type CSMSubmitRequest } from "@/lib/api/generated/model";
 
 const clientTypeChoices = [
@@ -89,8 +90,9 @@ const emptyCsmDraft: CsmDraft = {
   clientType: "", sex: "", age: "", region: "", service: "", cc1: "", cc2: "", cc3: "", sqds: {}, suggestions: "", email: "",
 };
 
-function makeCsmBody(draft: CsmDraft): CSMSubmitRequest {
+function makeCsmBody(draft: CsmDraft, opportunityId: string): CSMSubmitRequest {
   return {
+    opportunity_id: opportunityId,
     client_type: draft.clientType as CSMClientTypeValue,
     sex: draft.sex as CSMSexValue,
     age: Number(draft.age),
@@ -108,8 +110,18 @@ function makeCsmBody(draft: CsmDraft): CSMSubmitRequest {
 export function CsmForm() {
   const { user } = usePortalSession();
   const access = getFeedbackAccess(user);
+  const searchParams = useSearchParams();
+  const opportunityParam = searchParams.get("opportunity");
+  const opportunityId = feedbackOpportunityId(opportunityParam);
+  const opportunity = useFeedbackGetMyOpportunity(opportunityId ?? "", {
+    query: {
+      retry: false,
+      enabled: access.canSubmitCsm && Boolean(opportunityId),
+    },
+  });
   const create = useMutation({ mutationFn: ({ body, key }: { body: CSMSubmitRequest; key: string }) => feedbackSubmitCsm(body, { headers: { "Idempotency-Key": key } }), retry: false });
   const [draft, setDraft] = useState<CsmDraft>(emptyCsmDraft);
+  const [serviceEdited, setServiceEdited] = useState(false);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [preparedBody, setPreparedBody] = useState<CSMSubmitRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -117,8 +129,62 @@ export function CsmForm() {
   const [success, setSuccess] = useState<{ submittedAt: string } | null>(null);
   const intentRef = useRef<CsmIntent | null>(null);
   const isUncertain = uncertainIntent !== null;
+  const opportunityData = opportunity.data?.data;
+  const serviceValue = serviceEdited
+    ? draft.service
+    : draft.service || opportunityData?.service_label || "";
 
   if (!access.canSubmitCsm) return <FeedbackAccessUnavailable title="Client Satisfaction Measurement unavailable" />;
+  if (!opportunityId) {
+    return (
+      <FeedbackAccessUnavailable
+        title={
+          opportunityParam
+            ? "Client Satisfaction Measurement unavailable"
+            : "Choose a completed service"
+        }
+        message={
+          opportunityParam
+            ? "This Feedback opportunity is not available."
+            : "Open Feedback and choose the completed service you want to review."
+        }
+      />
+    );
+  }
+  if (opportunity.isPending) {
+    return <p aria-busy="true" className="py-8 text-sm text-muted">Loading Feedback service…</p>;
+  }
+  if (opportunity.isError) {
+    if (feedbackErrorCode(opportunity.error) === "feedback_opportunity_not_found") {
+      return (
+        <FeedbackAccessUnavailable
+          title="Client Satisfaction Measurement unavailable"
+          message="This Feedback opportunity is not available."
+        />
+      );
+    }
+    return (
+      <FeedbackQueryError
+        error={opportunity.error}
+        fallback="The completed service could not be loaded."
+        onRetry={() => void opportunity.refetch()}
+      />
+    );
+  }
+  if (!opportunityData) {
+    return <FeedbackAccessUnavailable title="Client Satisfaction Measurement unavailable" />;
+  }
+  if (opportunityData.csm_submitted) {
+    return (
+      <FeedbackAccessUnavailable
+        title="Client Satisfaction Measurement submitted"
+        message="Feedback for this service has already been submitted."
+      />
+    );
+  }
+  if (!opportunityData.can_submit_csm) {
+    return <FeedbackAccessUnavailable title="Client Satisfaction Measurement unavailable" />;
+  }
 
   function changeCc1(value: CSMCC1Value) {
     setDraft((current) => ({
@@ -138,7 +204,9 @@ export function CsmForm() {
     setError(null);
     if (isUncertain) return;
     if (!event.currentTarget.reportValidity()) return;
-    setPreparedBody(makeCsmBody(draft));
+    setPreparedBody(
+      makeCsmBody({ ...draft, service: serviceValue }, opportunityData.id),
+    );
     setConfirmationOpen(true);
   }
 
@@ -188,7 +256,7 @@ export function CsmForm() {
 
   return (
     <section aria-labelledby="csm-page-heading">
-      <FeedbackPageHeading headingId="csm-page-heading" eyebrow="Client Satisfaction Measurement" title="HELP US SERVE YOU BETTER!" description="The Client Satisfaction Measurement gathers feedback about customer experience with government offices. Taking part is optional; if you choose to continue, please answer the required questions." />
+      <FeedbackPageHeading headingId="csm-page-heading" eyebrow="Client Satisfaction Measurement" title="HELP US SERVE YOU BETTER!" description={`Feedback for ${opportunityData.service_label}. Taking part is optional; if you choose to continue, please answer the required questions.`} />
       <form className="mt-4" onSubmit={prepareSubmission} noValidate>
         {error ? <p role="alert" className="mb-5 border-y border-danger/30 py-3 text-sm text-danger">{error}</p> : null}
         {isUncertain ? <div className="mb-6 border-y border-warning/40 bg-warning/10 px-4 py-4" role="status" aria-live="polite"><p className="text-sm font-semibold text-ink">Submission result not confirmed</p><p className="mt-1 text-sm leading-6 text-muted">Your response is still on this page. Retry the same submission to safely check whether it was received.</p><Button className="mt-3" disabled={create.isPending} onClick={() => void send(uncertainIntent.body)}>{create.isPending ? "Checking submission…" : "Retry same submission"}</Button></div> : null}
@@ -201,7 +269,7 @@ export function CsmForm() {
             <div className="grid gap-5 sm:grid-cols-2">
               <div><FeedbackFieldLabel htmlFor="csm-age" required>Age</FeedbackFieldLabel><Input id="csm-age" className="mt-2" type="number" min={0} max={150} step={1} required value={draft.age} onChange={(event) => setDraft((current) => ({ ...current, age: event.target.value }))} /></div>
               <div><FeedbackFieldLabel htmlFor="csm-region" required>Region of Residence</FeedbackFieldLabel><Input id="csm-region" className="mt-2" required value={draft.region} onChange={(event) => setDraft((current) => ({ ...current, region: event.target.value }))} /></div>
-              <div className="sm:col-span-2"><FeedbackFieldLabel htmlFor="csm-service" required>Service Availed</FeedbackFieldLabel><Input id="csm-service" className="mt-2" required value={draft.service} onChange={(event) => setDraft((current) => ({ ...current, service: event.target.value }))} /></div>
+              <div className="sm:col-span-2"><FeedbackFieldLabel htmlFor="csm-service" required>Service Availed</FeedbackFieldLabel><Input id="csm-service" className="mt-2" required value={serviceValue} onChange={(event) => { setServiceEdited(true); setDraft((current) => ({ ...current, service: event.target.value })); }} /></div>
             </div>
           </FeedbackSection>
 

@@ -31,6 +31,8 @@ from compass.documents.template_specs import (
     UnknownDocumentTemplate,
     get_template_spec,
 )
+from compass.feedback.models import CustomerFeedbackService, FeedbackOpportunitySourceType
+from compass.feedback.services import ensure_feedback_opportunity
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
@@ -774,6 +776,18 @@ def issue_request(
                 "document_template_version": template_version,
             },
         )
+        opportunity = ensure_feedback_opportunity(
+            student=item.student,
+            source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
+            source_id=item.pk,
+            service_kind=CustomerFeedbackService.REQUEST_FOR_CERTIFICATION,
+            service_label_snapshot=(
+                "Issuance of Good Moral Certificate"
+                if item.variant == GoodMoralVariant.CURRENT_STUDENT
+                else "Issuance of Good Moral Certificate (graduate)"
+            ),
+            service_completed_at=issued_at,
+        )
         create_notification_for_event(
             recipient=item.student,
             event=NotificationEvent.GOOD_MORAL_ISSUED,
@@ -785,9 +799,10 @@ def issue_request(
         create_notification_for_event(
             recipient=item.student,
             event=NotificationEvent.FEEDBACK_INVITATION,
-            source_type="good_moral_request",
-            source_id=item.pk,
+            source_type="feedback_opportunity",
+            source_id=opportunity.pk,
             target_type="FEEDBACK",
+            target_id=opportunity.pk,
         )
         return _queryset().get(pk=item.pk)
 
