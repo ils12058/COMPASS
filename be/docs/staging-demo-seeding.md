@@ -72,22 +72,52 @@ podman compose --profile local run --rm -e DEMO_ACCOUNT_PASSWORD web \
   python manage.py seed_demo_staging
 ```
 
-Live staging — enable seeding for this one run only, and pass secrets from the operator shell
-instead of storing them in the droplet `.env`:
+Live staging uses Docker Compose on the Droplet. Run this only after the deployment workflow
+succeeds and public `/api/v1/meta` reports the exact intended `staging` SHA as `build_id` with
+`environment=live-staging`. As the deployment user on the Droplet, use the release image and
+manifest selected by the workflow. The prompts keep the password out of shell history and the
+long-running application `.env`:
 
-```sh
-read -rs DEMO_ACCOUNT_PASSWORD && export DEMO_ACCOUNT_PASSWORD
-podman compose run --rm \
-  -e DEMO_SEEDING_ENABLED=true \
-  -e DEMO_ACCOUNT_PASSWORD \
-  -e DEMO_EMAIL_DOMAIN=demo.example.org \
-  -e DEMO_ONBOARDING_EMAIL=gco-demo-inbox@example.org \
-  web python manage.py seed_demo_staging
+```bash
+seed_demo_live_staging() {
+  local DEPLOY_PATH=/opt/compass DEPLOY_SHA COMPASS_IMAGE VERIFIED_BUILD_SHA
+  local DEMO_ACCOUNT_PASSWORD DEMO_EMAIL_DOMAIN DEMO_ONBOARDING_EMAIL
+  local -a demo_env
+
+  # The deployment workflow writes only COMPASS_IMAGE to this state file.
+  . "$DEPLOY_PATH/.deploy.env" || return
+  export COMPASS_IMAGE
+  DEPLOY_SHA="${COMPASS_IMAGE##*:}"
+  [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || return 1
+  read -r -p 'Verified public /api/v1/meta build_id: ' VERIFIED_BUILD_SHA
+  [[ "$DEPLOY_SHA" == "$VERIFIED_BUILD_SHA" ]] || return 1
+  cd "$DEPLOY_PATH/releases/$DEPLOY_SHA" || return
+  [[ -L .env ]] || return 1
+  docker image inspect "$COMPASS_IMAGE" >/dev/null || return
+
+  read -rs -p 'Demo account password: ' DEMO_ACCOUNT_PASSWORD
+  printf '\n'
+  [[ -n "$DEMO_ACCOUNT_PASSWORD" ]] || return 1
+  read -r -p 'Demo email domain: ' DEMO_EMAIL_DOMAIN
+  [[ -n "$DEMO_EMAIL_DOMAIN" ]] || return 1
+  read -r -p 'Onboarding email (Enter to omit): ' DEMO_ONBOARDING_EMAIL
+  export DEMO_ACCOUNT_PASSWORD DEMO_EMAIL_DOMAIN
+  demo_env=(-e DEMO_SEEDING_ENABLED=true -e DEMO_ACCOUNT_PASSWORD -e DEMO_EMAIL_DOMAIN)
+  if [[ -n "$DEMO_ONBOARDING_EMAIL" ]]; then
+    export DEMO_ONBOARDING_EMAIL
+    demo_env+=(-e DEMO_ONBOARDING_EMAIL)
+  fi
+
+  docker compose -f compose.staging.yaml run --rm --no-deps --pull never -T \
+    "${demo_env[@]}" web python manage.py seed_demo_staging
+}
+seed_demo_live_staging
 ```
 
-Replace the example domain and mailbox with operator-controlled ones. `-e NAME` without a value
-forwards the variable from your shell, which keeps the password out of the process list and out of
-the droplet `.env`.
+Enter an operator-controlled domain and, if onboarding will be demonstrated, an
+operator-controlled mailbox. The deployed image is already cached on the Droplet; `--pull never`
+keeps this one-off run tied to that image. `-e NAME` forwards each value from the operator shell
+without putting it in the command line. The function's local variables disappear when it returns.
 
 The run first synchronizes canonical configuration by calling the same functions as
 `sync_identity_policy`, `sync_organization_catalog`, `sync_institutional_forms`, and
@@ -150,8 +180,9 @@ Emails use `DEMO_EMAIL_DOMAIN`. All ready accounts share `DEMO_ACCOUNT_PASSWORD`
 | Lance Emmanuel R. Bernardo | `demo-student10` | STUDENT — BA English Language Studies 2 | CURRENT | active, ready |
 | Princess Joy E. Alcantara | `demo-student11` | STUDENT — BS Accountancy 3 | CURRENT | active, ready |
 
-Graduated and former Students keep working accounts but no College affiliation, so they never
-appear as current classmates in College-scoped Guidance pickers or the current Inventory roster.
+Graduated and former Students keep working accounts but no College affiliation. Operational
+Guidance Student pickers require CURRENT lifecycle regardless of institutional or College scope;
+the current Inventory roster uses its own current-year eligibility.
 
 ## Scenarios
 

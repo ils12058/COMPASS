@@ -44,7 +44,6 @@ back-entry.
   normal services and API.
 - Seeded audit history is truthful about when it was recorded, while domain records carry the
   synthetic narrative dates.
-- Institution-wide Guidance pickers still list every active Student account regardless of
-  lifecycle; the demo keeps graduates out of College-scoped pickers by giving them no affiliation
-  but does not change that product behavior.
+- Generic operational Guidance Student pickers require CURRENT lifecycle even for institution-wide
+  actors. Graduated and former demo accounts stay active for their lifecycle-specific workflows.
 - A demo reset workflow remains a separate, future decision.

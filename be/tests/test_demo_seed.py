@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from datetime import date, datetime, time, timedelta
 from io import StringIO
 from unittest.mock import patch
@@ -87,6 +88,7 @@ from compass.demo_seed.timeline import (
     academic_semester,
     resolve_timeline,
 )
+from compass.documents.rendering import render_document_html
 from compass.exit_interviews.models import ExitInterview, ExitInterviewStatus
 from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
 from compass.good_moral.models import GoodMoralRequest, GoodMoralStatus, GoodMoralVariant
@@ -489,10 +491,8 @@ class SeededDemoDatasetTests(TestCase):
                 )
                 assert affiliation.college.code == persona.college_code
 
-        # College-scoped Guidance pickers resolve Students through affiliation, so graduates and
-        # former Students never appear as classmates there. (Institution-wide pickers list every
-        # active Student account regardless of lifecycle; that is existing product behavior.)
-        for actor in (COUNSELOR_A, COUNSELOR_B, GUIDANCE_STAFF):
+        # Operational pickers require CURRENT lifecycle even for the institution-wide Head.
+        for actor in (HEAD_GUIDANCE, COUNSELOR_A, COUNSELOR_B, GUIDANCE_STAFF):
             visible = {
                 item.id
                 for item in list_scoped_operational_students(
@@ -718,6 +718,21 @@ class SeededDemoDatasetTests(TestCase):
             variant=GoodMoralVariant.CURRENT_STUDENT, status=GoodMoralStatus.ISSUED
         )
         assert current.academic_year.label == "2026-2027"
+        assert (
+            current.college_snapshot
+            == StudentAffiliation.objects.get(student=current.student).college.name
+        )
+        assert current.college_snapshot.startswith("College of ")
+        html, _ = render_document_html(
+            current.document_template_key,
+            current.document_template_version,
+            context=build_certificate_render_context(current),
+        )
+        rendered_text = " ".join(re.sub(r"<[^>]+>", " ", html).split())
+        assert current.college_snapshot in rendered_text
+        assert "College of College of" not in rendered_text
+        assert "Year year" not in rendered_text
+        assert "Semester semester" not in rendered_text
         # A Student states the semester they file in; it follows each request's own date.
         for item in requests.filter(variant=GoodMoralVariant.CURRENT_STUDENT):
             filed_on = timezone.localtime(item.created_at).date()

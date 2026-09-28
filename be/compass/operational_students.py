@@ -7,7 +7,7 @@ from uuid import UUID
 
 from django.db.models import Q
 
-from compass.accounts.models import User
+from compass.accounts.models import StudentLifecycleStatus, User
 from compass.organization.access_scope import resolve_organizational_access_scope
 
 DEFAULT_PAGE_SIZE = 20
@@ -83,7 +83,11 @@ def list_scoped_operational_students(
     page, page_size = _pagination(page, page_size)
     term = _search_term(search)
     scope = resolve_organizational_access_scope(actor)
-    queryset = User.objects.filter(is_active=True, role__code="STUDENT").select_related(
+    queryset = User.objects.filter(
+        is_active=True,
+        role__code="STUDENT",
+        student_lifecycle_status=StudentLifecycleStatus.CURRENT,
+    ).select_related(
         "role",
         "organization_student_affiliation__college",
         "organization_student_affiliation__college__campus",
