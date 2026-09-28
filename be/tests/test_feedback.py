@@ -606,6 +606,10 @@ def test_only_head_guidance_has_raw_feedback_review_by_default():
     ).json()["id"]
     csm_id = post_json(client, "/api/v1/feedback/csm", valid_csm_payload()).json()["id"]
 
+    # Staff review remains source-faithful and does not require historical raw
+    # responses to have a surviving opportunity relationship.
+    FeedbackOpportunity.objects.all().delete()
+
     head = auth_client(make_head())
     counselor = auth_client(make_user("ordinary@example.edu", role="COUNSELOR", lifecycle=None))
     admin = auth_client(make_user("admin-feedback@example.edu", role="IT_ADMIN", lifecycle=None))
