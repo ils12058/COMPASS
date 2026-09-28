@@ -264,9 +264,7 @@ def _demo_feedback_opportunity(
     student = session.user(persona_key)
     if persona_key in {"second_year", "referred"}:
         encounter = (
-            CounselingEncounter.objects.filter(student=student)
-            .order_by("-ended_at", "-id")
-            .first()
+            CounselingEncounter.objects.filter(student=student).order_by("-ended_at", "-id").first()
         )
         if encounter is None:
             raise DemoSeedError(
@@ -291,7 +289,9 @@ def _demo_feedback_opportunity(
         .first()
     )
     if request is None or request.issued_at is None:
-        raise DemoSeedError(f"Demo Feedback source issued Good Moral request is missing for {persona_key}.")
+        raise DemoSeedError(
+            f"Demo Feedback source issued Good Moral request is missing for {persona_key}."
+        )
     return ensure_feedback_opportunity(
         student=student,
         source_type=FeedbackOpportunitySourceType.GOOD_MORAL_REQUEST,
