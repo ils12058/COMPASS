@@ -10,10 +10,12 @@ from django.test import Client
 from django.utils import timezone
 
 from compass.accounts.models import (
+    Capability,
     Designation,
     Role,
     StudentLifecycleStatus,
     User,
+    UserCapabilityOverride,
     UserDesignation,
 )
 from compass.audit.models import AuditEvent
@@ -195,6 +197,56 @@ def test_only_graduated_students_can_create_gts(lifecycle, expected):
     response = post_empty(auth_client(student), "/api/v1/graduate-tracer/me")
     assert response.status_code == expected
     assert GraduateTracerResponse.objects.count() == (1 if expected == 200 else 0)
+
+
+@pytest.mark.django_db
+def test_current_student_all_self_service_operations_require_graduated_lifecycle():
+    sync_policy()
+    student = make_user(
+        "current-self-service-gts@example.edu",
+        lifecycle=StudentLifecycleStatus.CURRENT,
+    )
+    client = auth_client(student)
+
+    responses = (
+        client.get("/api/v1/graduate-tracer/me"),
+        post_empty(client, "/api/v1/graduate-tracer/me"),
+        put_json(client, "/api/v1/graduate-tracer/me", valid_unemployed_payload()),
+        post_empty(client, "/api/v1/graduate-tracer/me/submit"),
+    )
+    for response in responses:
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "graduated_student_required"
+
+    assert not GraduateTracerResponse.objects.filter(student=student).exists()
+
+
+@pytest.mark.django_db
+def test_graduated_student_self_service_still_requires_capabilities():
+    sync_policy()
+    student = make_user("capability-gated-gts@example.edu")
+    client = auth_client(student)
+
+    UserCapabilityOverride.objects.create(
+        user=student,
+        capability=Capability.objects.get(code="graduate_tracer.view_self"),
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Test Graduate Tracer view revocation.",
+    )
+    view = client.get("/api/v1/graduate-tracer/me")
+    assert view.status_code == 403
+    assert view.json()["error"]["code"] == "permission_denied"
+
+    UserCapabilityOverride.objects.create(
+        user=student,
+        capability=Capability.objects.get(code="graduate_tracer.manage_self"),
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Test Graduate Tracer manage revocation.",
+    )
+    create = post_empty(client, "/api/v1/graduate-tracer/me")
+    assert create.status_code == 403
+    assert create.json()["error"]["code"] == "permission_denied"
+    assert not GraduateTracerResponse.objects.filter(student=student).exists()
 
 
 @pytest.mark.django_db
@@ -543,7 +595,7 @@ def test_submission_freezes_response_and_repeat_submit_is_idempotent():
 
 
 @pytest.mark.django_db
-def test_lifecycle_change_preserves_historical_owner_read_but_blocks_mutation():
+def test_lifecycle_change_blocks_self_service_but_preserves_historical_operational_review():
     sync_policy()
     student = make_user("former-after-gts@example.edu")
     client = auth_client(student)
@@ -552,17 +604,43 @@ def test_lifecycle_change_preserves_historical_owner_read_but_blocks_mutation():
         put_json(client, "/api/v1/graduate-tracer/me", valid_unemployed_payload()).status_code
         == 200
     )
+    submitted = post_empty(client, "/api/v1/graduate-tracer/me/submit")
+    assert submitted.status_code == 200
+    submitted_id = submitted.json()["id"]
+
+    item = GraduateTracerResponse.objects.get(pk=submitted_id)
+    before = {
+        "status": item.status,
+        "submitted_at": item.submitted_at,
+        "name_snapshot": item.name_snapshot,
+        "updated_at": item.updated_at,
+        "education_count": item.education_rows.count(),
+    }
 
     student.student_lifecycle_status = StudentLifecycleStatus.FORMER
     student.save(update_fields=["student_lifecycle_status", "updated_at"])
 
-    assert client.get("/api/v1/graduate-tracer/me").status_code == 200
-    assert (
-        put_json(client, "/api/v1/graduate-tracer/me", valid_unemployed_payload()).status_code
-        == 409
-    )
-    assert post_empty(client, "/api/v1/graduate-tracer/me/submit").status_code == 409
-    assert GraduateTracerResponse.objects.count() == 1
+    self_read = client.get("/api/v1/graduate-tracer/me")
+    self_update = put_json(client, "/api/v1/graduate-tracer/me", valid_unemployed_payload())
+    self_submit = post_empty(client, "/api/v1/graduate-tracer/me/submit")
+    for response in (self_read, self_update, self_submit):
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "graduated_student_required"
+
+    item.refresh_from_db()
+    assert item.status == before["status"]
+    assert item.submitted_at == before["submitted_at"]
+    assert item.name_snapshot == before["name_snapshot"]
+    assert item.updated_at == before["updated_at"]
+    assert item.education_rows.count() == before["education_count"]
+
+    head = auth_client(make_head("historical-gts-head@example.edu"))
+    listed = head.get("/api/v1/graduate-tracer/responses")
+    assert listed.status_code == 200
+    assert submitted_id in [row["id"] for row in listed.json()["items"]]
+    detail = head.get(f"/api/v1/graduate-tracer/responses/{submitted_id}")
+    assert detail.status_code == 200
+    assert detail.json()["id"] == submitted_id
 
 
 @pytest.mark.django_db
