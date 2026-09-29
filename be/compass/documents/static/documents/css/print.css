@@ -307,7 +307,7 @@ body {
 
 
 .good-moral-certificate {
-  font-family: "Times New Roman", Times, serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 11pt;
   line-height: 1.65;
 }
@@ -337,6 +337,12 @@ body {
 
 .good-moral-field-wide {
   min-width: 58mm;
+}
+
+/* Only values supplied by the system use the form's blue entry ink. */
+.generated-value {
+  color: #0000ff;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 .good-moral-signature {

@@ -7,6 +7,7 @@ from django.apps import apps
 from django.test import Client
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright
 
 from compass.audit.actions import DOCUMENT_BRANDING_UPDATED
 from compass.documents import rendering
@@ -74,6 +75,57 @@ def test_accreditation_footer_stays_opt_in_for_real_documents():
     html, _ = render_document_html("foundation_test", 1)
     assert spec.include_accreditation_footer is True
     assert '<footer class="accreditation-footer">' in html
+
+
+@pytest.mark.parametrize(
+    ("template_key", "context", "static_selector"),
+    [
+        (
+            "good_moral_current_student",
+            {"certificate": {"applicant_name": "Filled Student"}},
+            ".good-moral-certificate h1",
+        ),
+        (
+            "good_moral_graduate",
+            {"certificate": {"applicant_name": "Filled Graduate"}},
+            ".good-moral-certificate h1",
+        ),
+        (
+            "referral_slip",
+            {"referral": {"student_name": "Filled Referral"}},
+            ".official-form-label",
+        ),
+        (
+            "call_slip",
+            {"call_slip": {"student_name": "Filled Call Slip"}},
+            ".official-form-label",
+        ),
+    ],
+)
+def test_controlled_forms_color_only_filled_values_blue_and_use_arial(
+    template_key, context, static_selector
+):
+    html, _ = render_document_html(template_key, 1, context=context)
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            page.set_content(html)
+            filled = page.locator(".generated-value").first
+            assert filled.evaluate("element => getComputedStyle(element).color") == "rgb(0, 0, 255)"
+            assert filled.evaluate("element => getComputedStyle(element).fontFamily").startswith(
+                "Arial"
+            )
+            static = page.locator(static_selector).first
+            assert static.evaluate("element => getComputedStyle(element).color") != "rgb(0, 0, 255)"
+            if template_key.startswith("good_moral_"):
+                assert (
+                    page.locator(".good-moral-certificate")
+                    .evaluate("element => getComputedStyle(element).fontFamily")
+                    .startswith("Arial")
+                )
+        finally:
+            browser.close()
 
 
 @pytest.mark.django_db
