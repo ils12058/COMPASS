@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InventoryEditor } from "@/features/inventory/editor/inventory-editor";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
+import { InventoryPdfDownload } from "@/features/inventory/inventory-pdf-download";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { formatInventoryDate, InventoryHeading, InventoryNotice, InventoryQueryError, InventoryStatus } from "@/features/inventory/inventory-shared";
 import { inventoryErrorMessage } from "@/features/inventory/inventory-shared";
@@ -149,6 +150,9 @@ function StudentCurrentInventory() {
         <InventoryStatus status={inventory.status} correctionPending={inventory.correction_pending} />
         {inventory.submitted_at ? <span className="text-sm text-muted">Submitted {formatInventoryDate(inventory.submitted_at)}</span> : null}
       </div>
+      {inventory.status === InventoryStatusValue.SUBMITTED ? (
+        <div className="mt-4"><InventoryPdfDownload inventoryId={inventory.id} studentFacing /></div>
+      ) : null}
       {inventory.status === InventoryStatusValue.DRAFT ? (
         <div className="mt-5">
           <InventoryNotice title="Read-only annual record" tone="warning">

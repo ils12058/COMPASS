@@ -1,0 +1,64 @@
+<section class="individual-inventory-page inventory-page-two">
+  {% include "documents/partials/institution_masthead.html" %}
+  {% include "documents/partials/office_heading.html" %}
+  <main class="inventory-source-body">
+    <p class="inventory-sibling-instruction">Please name below your siblings form eldest to youngest, include yourself. Put X opposite your name, if married, please provide the information called for using the same table below.</p>
+    <table class="inventory-sibling-table">
+      <thead><tr><th>Name</th><th>Sex</th><th>Age</th><th>Educational<br>Attainment</th><th>Occupation</th><th class="inventory-sibling-divider"></th><th>Name</th><th>Sex</th><th>Age</th><th>Educational<br>Attainment</th><th>Occupation</th></tr></thead>
+      <tbody>
+        {% for left, right in inventory_form.sibling_rows %}
+          <tr>
+            <td class="inventory-fit"><span class="generated-value">{% if left.is_self %}X {% endif %}{{ left.name }}</span></td><td class="inventory-fit"><span class="generated-value">{{ left.sex }}</span></td><td class="inventory-fit"><span class="generated-value">{{ left.age }}</span></td><td class="inventory-fit"><span class="generated-value">{{ left.educational_attainment }}</span></td><td class="inventory-fit"><span class="generated-value">{{ left.occupation }}</span></td>
+            <td class="inventory-sibling-divider"></td>
+            <td class="inventory-fit"><span class="generated-value">{% if right.is_self %}X {% endif %}{{ right.name }}</span></td><td class="inventory-fit"><span class="generated-value">{{ right.sex }}</span></td><td class="inventory-fit"><span class="generated-value">{{ right.age }}</span></td><td class="inventory-fit"><span class="generated-value">{{ right.educational_attainment }}</span></td><td class="inventory-fit"><span class="generated-value">{{ right.occupation }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="inventory-section-title inventory-unique-title"><strong>UNIQUE</strong></div>
+    <div class="inventory-row inventory-unique-row"><span>Name of Friends:</span></div>
+    <div class="inventory-row inventory-unique-row indent"><span>In School</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.friends_school }}</span></span></div>
+    <div class="inventory-row inventory-unique-row indent"><span>Outside School</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.friends_outside }}</span></span></div>
+    <div class="inventory-row inventory-unique-row"><span>Special Interest</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.special_interest }}</span></span></div>
+    <div class="inventory-row inventory-unique-row"><span>Special Skills/Talents</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.special_skills }}</span></span></div>
+    <div class="inventory-row inventory-unique-row"><span>Hobbies/ Recreation Activities</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.hobbies }}</span></span></div>
+    <div class="inventory-row inventory-unique-row"><span>Ambition/Goal</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.ambition }}</span></span></div>
+    <div class="inventory-row inventory-unique-row"><span>Characteristics that describe you best</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.characteristics }}</span></span></div>
+    <div class="inventory-section-title"><strong>LIVING CONDITIONS</strong></div>
+    <div class="inventory-living-grid">
+      <div>Where do you live<br>now?</div>
+      <div class="inventory-living-options"><div><span class="inventory-checkbox">{% if inventory_form.living_arrangement == "OWN_HOUSE" %}<span class="generated-value">X</span>{% endif %}</span> Own House</div><div><span class="inventory-checkbox">{% if inventory_form.living_arrangement == "WITH_RELATIVES" %}<span class="generated-value">X</span>{% endif %}</span> With Relatives</div></div>
+      <div class="inventory-boarding-details"><div><span class="inventory-checkbox">{% if inventory_form.living_arrangement == "BOARDING_HOUSE" %}<span class="generated-value">X</span>{% endif %}</span> Boarding House</div><div>Name of Land Lady/lord <span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.landlord }}</span></span></div><div>Complete Address <span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.boarding_address }}</span></span></div></div>
+      <div class="inventory-exclusive">Exclusive for Male/Female? <span class="inventory-checkbox">{% if inventory_form.boarding_exclusive == True %}<span class="generated-value">X</span>{% endif %}</span> Yes <span class="inventory-checkbox">{% if inventory_form.boarding_exclusive == False %}<span class="generated-value">X</span>{% endif %}</span> No</div>
+    </div>
+    <div class="inventory-row inventory-people-row"><span>How many are you in the present place?</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.people_in_place|default_if_none:"" }}</span></span><span>How many persons share the room with you?</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.room_sharers|default_if_none:"" }}</span></span></div>
+    <div class="inventory-section-title"><strong>HEALTH CONDITIONS</strong></div>
+    <div class="inventory-row inventory-health-row"><span>Accidents Experienced</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.accidents }}</span></span><span>Effect</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.accidents_effect }}</span></span></div>
+    <div class="inventory-row inventory-health-row"><span>Operations Experienced</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.operations }}</span></span><span>Effect</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.operations_effect }}</span></span></div>
+    <div>Immunizations you have had:</div>
+    <div class="inventory-immunizations">
+      <span><span class="inventory-checkbox">{% if "CHICKEN_POX" in inventory_form.immunizations %}<span class="generated-value">X</span>{% endif %}</span> Chicken Pox</span>
+      <span><span class="inventory-checkbox">{% if "BOOSTER" in inventory_form.immunizations %}<span class="generated-value">X</span>{% endif %}</span> Booster</span>
+      <span><span class="inventory-checkbox">{% if "MEASLES_MMR" in inventory_form.immunizations %}<span class="generated-value">X</span>{% endif %}</span> Measles MMR</span>
+      <span><span class="inventory-checkbox">{% if "HEPATITIS_B" in inventory_form.immunizations %}<span class="generated-value">X</span>{% endif %}</span> Hepatitis B</span>
+      <span><span class="inventory-checkbox">{% if "MUMPS" in inventory_form.immunizations %}<span class="generated-value">X</span>{% endif %}</span> Mumps</span>
+      <span><span class="inventory-checkbox">{% if "INFLUENZA" in inventory_form.immunizations %}<span class="generated-value">X</span>{% endif %}</span> Influenza</span>
+      <span><span class="inventory-checkbox">{% if "SMALL_POX" in inventory_form.immunizations %}<span class="generated-value">X</span>{% endif %}</span> Small Pox</span>
+      <span><span class="inventory-checkbox">{% if "OTHER" in inventory_form.immunizations %}<span class="generated-value">X</span>{% endif %}</span> Others: <span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.immunization_other }}</span></span></span>
+    </div>
+    <div class="inventory-row inventory-health-measures"><span>Height</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.height }}</span></span><span>Weight</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.weight }}</span></span><span>Physical Disadvantage</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.physical_disadvantage }}</span></span></div>
+    <div class="inventory-row inventory-health-row"><span>Illness this year</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.illness_this_year }}</span></span><span>Previous Illness</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.previous_illness }}</span></span></div>
+    <div class="inventory-section-title"><strong>EDUCATIONAL BACKGROUND</strong></div>
+    <table class="inventory-education-table"><thead><tr><th></th><th>School Attended (with Address)</th><th>Inclusive Years of Attendance</th><th>Awards Received</th></tr></thead><tbody>
+      <tr><th>Preparatory</th><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.PREPARATORY.school }}</span></td><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.PREPARATORY.years }}</span></td><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.PREPARATORY.awards }}</span></td></tr>
+      <tr><th>Elementary (Grade 1 – 6 )</th><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.ELEMENTARY.school }}</span></td><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.ELEMENTARY.years }}</span></td><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.ELEMENTARY.awards }}</span></td></tr>
+      <tr><th>Junior High (Grade 7 – 10)</th><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.JUNIOR_HIGH.school }}</span></td><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.JUNIOR_HIGH.years }}</span></td><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.JUNIOR_HIGH.awards }}</span></td></tr>
+      <tr><th>Senior High (Grade 11 – 12)</th><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.SENIOR_HIGH.school }}</span></td><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.SENIOR_HIGH.years }}</span></td><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.SENIOR_HIGH.awards }}</span></td></tr>
+      <tr><th>Technical/Vocational Degree</th><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.TECHNICAL_VOCATIONAL.school }}</span></td><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.TECHNICAL_VOCATIONAL.years }}</span></td><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.TECHNICAL_VOCATIONAL.awards }}</span></td></tr>
+      <tr><th>Collegiate</th><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.COLLEGIATE.school }}</span></td><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.COLLEGIATE.years }}</span></td><td class="inventory-fit"><span class="generated-value">{{ inventory_form.education.COLLEGIATE.awards }}</span></td></tr>
+    </tbody></table>
+    <div class="inventory-row inventory-contact-row"><span>Course currently enrolled</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.course }}</span></span><span>Major</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.major }}</span></span></div>
+    <div class="inventory-row inventory-schedule-row"><span>Are you satisfied with your present schedule?</span><span><span class="inventory-checkbox">{% if inventory_form.schedule_satisfied == True %}<span class="generated-value">X</span>{% endif %}</span> Yes &nbsp;&nbsp; <span class="inventory-checkbox">{% if inventory_form.schedule_satisfied == False %}<span class="generated-value">X</span>{% endif %}</span> No</span><span>Why?</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.schedule_why }}</span></span></div>
+  </main>
+  {% include "documents/partials/controlled_form_metadata.html" with page_label="Page 2 of 3" %}
+</section>

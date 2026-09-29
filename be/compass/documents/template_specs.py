@@ -28,6 +28,14 @@ class UnknownDocumentTemplate(RuntimeError):
 
 
 _TEMPLATE_SPECS = {
+    ("individual_inventory", 1): DocumentTemplateSpec(
+        key="individual_inventory",
+        version=1,
+        template_name="documents/inventory/individual_inventory.html",
+        layout_family=LayoutFamily.STANDARD_LETTERHEAD,
+        include_accreditation_footer=False,
+        show_page_numbers=False,
+    ),
     ("good_moral_current_student", 1): DocumentTemplateSpec(
         key="good_moral_current_student",
         version=1,
@@ -65,7 +73,7 @@ _TEMPLATE_SPECS = {
         version=1,
         template_name="documents/reports/student_profile.html",
         layout_family=LayoutFamily.REPORT,
-        include_accreditation_footer=False,
+        include_accreditation_footer=True,
         show_page_numbers=True,
     ),
     ("foundation_test", 1): DocumentTemplateSpec(

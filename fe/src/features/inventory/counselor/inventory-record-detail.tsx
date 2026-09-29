@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
+import { InventoryPdfDownload } from "@/features/inventory/inventory-pdf-download";
 import {
   formatInventoryDate,
   InventoryHeading,
@@ -155,6 +156,7 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
           <span className="text-sm text-muted">Last submitted {formatInventoryDate(inventory.last_submitted_at)}</span>
         ) : null}
       </div>
+      <div className="mt-4"><InventoryPdfDownload inventoryId={inventory.id} studentFacing={false} /></div>
 
       <div className="mt-5 flex flex-wrap gap-3">
         <Button variant="secondary" onClick={() => setHistoryOpen((open) => !open)}>

@@ -6,6 +6,6 @@
     <main class="document-body report-body">
       {% block body %}{% endblock %}
     </main>
-    {% include "documents/partials/accreditation_footer.html" %}
+    {% if not document_pdf_footer %}{% include "documents/partials/accreditation_footer.html" %}{% endif %}
   </div>
 {% endblock %}

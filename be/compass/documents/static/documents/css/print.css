@@ -326,6 +326,230 @@ body {
   text-indent: 10mm;
 }
 
+/* F5 has three controlled source pages with a repeated institutional shell. */
+.individual-inventory-page {
+  position: relative;
+  height: 275mm;
+  break-after: page;
+  page-break-after: always;
+}
+
+.individual-inventory-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+.individual-inventory-page .office-heading {
+  margin-bottom: 2.5mm;
+}
+
+.inventory-source-body {
+  width: 180mm;
+  margin: 0 0 0 -5mm;
+  font-size: 8.5pt;
+  line-height: 1.2;
+}
+
+.inventory-source-body .generated-value {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 400;
+}
+
+.inventory-title {
+  margin: 1mm 0 4mm;
+  text-align: center;
+  font-size: 11pt;
+}
+
+.inventory-instructions { margin-bottom: 2mm; }
+.inventory-instructions > span { display: block; text-indent: 11mm; }
+
+.inventory-section-title {
+  position: relative;
+  height: 6mm;
+  margin: 1.2mm 0 0.5mm;
+  border-bottom: 0.22mm solid #333;
+}
+
+.inventory-section-title strong {
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-width: 34mm;
+  padding: 1mm 2.4mm;
+  border: 0.22mm solid #333;
+  text-align: center;
+  background: #fff;
+  font-size: 9pt;
+}
+
+.inventory-row { display: flex; align-items: baseline; gap: 1.1mm; min-height: 4mm; }
+.inventory-row > span:not(.inventory-line) { flex: none; }
+.inventory-line {
+  display: inline-block;
+  flex: 1 1 0;
+  min-width: 4mm;
+  min-height: 3.1mm;
+  border-bottom: 0.17mm solid #333;
+  vertical-align: baseline;
+}
+.inventory-fit { display: block; overflow: hidden; white-space: nowrap; }
+td.inventory-fit { display: table-cell; }
+.inventory-line .generated-value { padding: 0 0.5mm; }
+.inventory-answer-lines {
+  position: relative;
+  display: block;
+  height: 6.5mm;
+  min-height: 6.5mm;
+  overflow: visible;
+  white-space: normal;
+  line-height: 3.15mm;
+  border-bottom: 0;
+}
+.inventory-answer-rule {
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  display: block;
+  height: 0;
+  border-bottom: 0.17mm solid #333;
+}
+.inventory-answer-rule-first { top: 3.15mm; left: 0; }
+.inventory-answer-rule-continuation {
+  right: 0;
+  bottom: 0;
+  left: -31mm;
+}
+.inventory-answer-lines .generated-value {
+  position: relative;
+  z-index: 1;
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.inventory-checkbox {
+  display: inline-flex;
+  width: 5mm;
+  justify-content: center;
+  font-weight: 400;
+}
+.inventory-checkbox::before { content: "[ "; color: #111; }
+.inventory-checkbox::after { content: " ]"; color: #111; }
+.inventory-personal-first {
+  display: grid;
+  grid-template-columns: 9mm 65mm 19mm 18mm 15mm 14mm;
+  column-gap: 3mm;
+}
+.inventory-personal-first .inventory-line { flex: none; min-width: 0; }
+.inventory-personal-first > span:nth-child(5) { white-space: nowrap; }
+.inventory-name-note { padding-left: 12mm; font-size: 6.8pt; }
+.inventory-four-fields .inventory-line { max-width: 21mm; }
+.inventory-four-fields .inventory-line:nth-of-type(6) { max-width: none; }
+.inventory-personal-checks .inventory-line { max-width: 20mm; }
+.inventory-stacked-field { height: 7mm; }
+.inventory-stacked-field .inventory-line { display: block; width: 100%; }
+.inventory-label-line .inventory-line { flex: 1; }
+.inventory-contact-row .inventory-line { flex: 1; }
+.inventory-family-title { margin-top: 1.5mm; }
+
+.inventory-family-table, .inventory-sibling-table, .inventory-education-table,
+.inventory-organizations, .inventory-transport, .inventory-daily-hours table {
+  width: 100%; border-collapse: collapse; table-layout: fixed;
+}
+.inventory-family-table th, .inventory-family-table td,
+.inventory-education-table th, .inventory-education-table td,
+.inventory-organizations th, .inventory-organizations td,
+.inventory-transport th, .inventory-transport td { border: 0; padding: 0 1mm; }
+.inventory-family-table th { width: 21%; text-align: left; font-weight: 400; }
+.inventory-family-table thead th { font-weight: 700; text-align: center; }
+.inventory-family-table td,
+.inventory-education-table td,
+.inventory-organizations td,
+.inventory-transport td {
+  border: 0;
+  background-image: linear-gradient(#333, #333);
+  background-repeat: no-repeat;
+  background-size: calc(100% - 3mm) 0.17mm;
+  background-position: center bottom;
+}
+.inventory-family-table td { width: 26.3%; }
+.inventory-family-table tbody tr { height: 4.7mm; }
+.inventory-parent-status-label { margin: 1.5mm 0 0.5mm; }
+.inventory-parent-statuses { display: grid; grid-template-columns: 1.2fr repeat(3, 1fr); gap: 0.5mm 1mm; font-size: 6.8pt; }
+.inventory-guardian-row { margin-top: 1mm; }
+.inventory-emergency-title { margin: 2mm 0 1mm; }
+.individual-inventory-page .controlled-form-metadata {
+  position: absolute; bottom: 0; left: -5mm; width: 170mm;
+  margin: 0; padding: 0; border: 0;
+}
+
+.inventory-sibling-instruction { margin: 0 0 0.5mm; text-align: center; }
+.inventory-sibling-table { width: 182mm; margin-left: -2.5mm; font-size: 7.4pt; }
+.inventory-sibling-table th, .inventory-sibling-table td { border: 0.17mm solid #333; height: 6.3mm; padding: 0.2mm 0.5mm; }
+.inventory-sibling-table th { height: 6.3mm; }
+.inventory-sibling-table th:nth-child(1), .inventory-sibling-table th:nth-child(7) { width: 16%; }
+.inventory-sibling-table th:nth-child(2), .inventory-sibling-table th:nth-child(8) { width: 5%; }
+.inventory-sibling-table th:nth-child(3), .inventory-sibling-table th:nth-child(9) { width: 5%; }
+.inventory-sibling-table th:nth-child(4), .inventory-sibling-table th:nth-child(10) { width: 11%; }
+.inventory-sibling-table th:nth-child(5), .inventory-sibling-table th:nth-child(11) { width: 11%; }
+.inventory-sibling-divider { width: 1%; border-top: 0 !important; border-bottom: 0 !important; }
+.inventory-unique-title { margin-top: 1mm; }
+.inventory-unique-row > span:first-child { width: 48.5mm; white-space: nowrap; }
+.inventory-unique-row.indent > span:first-child { padding-left: 12mm; }
+.inventory-living-grid { position: relative; display: grid; grid-template-columns: 26.5mm 27.5mm 1fr; gap: 1mm; min-height: 22.5mm; }
+.inventory-living-options { border: 0.17mm solid #333; padding: 1mm; }
+.inventory-living-options > div, .inventory-boarding-details > div { min-height: 5mm; }
+.inventory-boarding-details { grid-column: 3; margin-left: 2.4mm; }
+.inventory-boarding-details .inventory-line { min-width: 26mm; }
+.inventory-exclusive { position: absolute; top: 4mm; right: 0; width: 79mm; white-space: nowrap; font-size: 8.5pt; }
+.inventory-people-row .inventory-line { max-width: 13mm; }
+.inventory-health-row > span:first-child { width: 35mm; }
+.inventory-health-row .inventory-line:first-of-type { max-width: 38mm; }
+.inventory-immunizations { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5mm 1mm; }
+.inventory-health-measures .inventory-line { max-width: 33mm; }
+.inventory-education-table { font-size: 8pt; }
+.inventory-education-table th { text-align: left; font-weight: 400; }
+.inventory-education-table thead th { font-weight: 700; }
+.inventory-education-table th:nth-child(1) { width: 24%; }
+.inventory-education-table th:nth-child(2) { width: 31%; }
+.inventory-education-table th:nth-child(3) { width: 27%; }
+.inventory-education-table th:nth-child(4) { width: 18%; }
+.inventory-education-table tbody tr { height: 4.7mm; }
+.inventory-daily-hours th { font-weight: 400; }
+.inventory-schedule-row .inventory-line { max-width: 38mm; }
+
+.inventory-first-choice { justify-content: space-between; }
+.inventory-choice-grid { display: grid; grid-template-columns: 0.6fr 1fr; gap: 1mm 4mm; margin: 1mm 0; }
+.inventory-choice-grid > span { min-width: 0; }
+.inventory-choice-grid .inventory-line { min-width: 15mm; }
+.inventory-grades-row .inventory-line { max-width: 23mm; }
+.inventory-interest-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5mm 1mm; margin: 1mm 0; }
+.inventory-daily-hours { display: grid; grid-template-columns: 43mm 1fr; border: 0.17mm solid #333; margin-top: 1mm; min-height: 15mm; }
+.inventory-daily-hours > div { padding: 1mm; }
+.inventory-daily-hours > div:first-child { border-right: 0.17mm solid #333; }
+.inventory-daily-hours table { margin-top: 1mm; }
+.inventory-daily-hours th, .inventory-daily-hours td { border: 0.17mm solid #333; text-align: center; }
+.inventory-organizations th { text-align: center; font-weight: 700; }
+.inventory-organizations td { border-bottom: 0; }
+.inventory-organizations tbody tr { height: 4mm; }
+.inventory-transport th { font-weight: 400; text-align: left; }
+.inventory-transport thead th { font-weight: 700; text-align: center; }
+.inventory-transport td { border-bottom: 0; }
+.inventory-transport tbody tr { height: 4mm; }
+.inventory-perception-row { display: flex; justify-content: space-between; gap: 1mm; margin: 1mm 0; font-size: 6.9pt; }
+.inventory-work-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5mm 1mm; margin: 1mm 0; }
+.inventory-counseling-row { margin-top: 1mm; font-size: 7pt; }
+.inventory-signature { width: 42mm; margin: 7mm 5mm 0 auto; text-align: center; }
+.inventory-signature .inventory-line { display: block; }
+.inventory-date-row { width: 54mm; margin-left: auto; }
+.inventory-narrative-row {
+  display: grid;
+  grid-template-columns: 31mm 1fr;
+  min-height: 6.5mm;
+  align-items: start;
+}
+
 .good-moral-field {
   display: inline-block;
   min-width: 28mm;
