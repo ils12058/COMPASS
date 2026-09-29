@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from copy import deepcopy
 from dataclasses import dataclass
 from io import BytesIO
@@ -16,6 +17,8 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 from pypdf import PdfReader, PdfWriter
 
+from compass.common.correlation import get_current_request_id
+
 from .assets import DocumentAssetError, get_document_assets, get_print_css
 from .services import get_document_branding
 from .template_specs import (
@@ -23,6 +26,8 @@ from .template_specs import (
     UnknownDocumentTemplate,
     get_template_spec,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentRenderError(RuntimeError):
@@ -204,40 +209,162 @@ def render_document_pdf(
                               return { ok: false, reason: 'answer rules' };
                             }
                           }
+                          const truncatedFields = [];
+                          const probe = document.createElement('div');
+                          Object.assign(probe.style, {
+                            position: 'fixed', left: '-100000px', top: '0',
+                            visibility: 'hidden', pointerEvents: 'none',
+                            display: 'block', boxSizing: 'border-box',
+                            height: 'auto', maxHeight: 'none', margin: '0',
+                            whiteSpace: 'normal', overflowWrap: 'anywhere',
+                            wordBreak: 'normal',
+                          });
+                          document.body.appendChild(probe);
+                          const measuredHeight = (
+                            text, width, fontSizePt, valueStyle, textIndentPx = 0
+                          ) => {
+                            probe.textContent = text;
+                            Object.assign(probe.style, {
+                              width: `${width}px`, height: 'auto', maxHeight: 'none',
+                              padding: valueStyle.padding, border: valueStyle.border,
+                              fontFamily: valueStyle.fontFamily,
+                              fontSize: `${fontSizePt}pt`,
+                              fontWeight: valueStyle.fontWeight,
+                              fontStyle: valueStyle.fontStyle,
+                              lineHeight: valueStyle.lineHeight,
+                              letterSpacing: valueStyle.letterSpacing,
+                              wordSpacing: valueStyle.wordSpacing,
+                              textTransform: valueStyle.textTransform,
+                              textIndent: `${textIndentPx}px`,
+                            });
+                            return probe.getBoundingClientRect().height;
+                          };
+                          const graphemes = text => {
+                            if (typeof Intl.Segmenter === 'function') {
+                              return [...new Intl.Segmenter(undefined,
+                                { granularity: 'grapheme' }).segment(text)]
+                                .map(part => part.segment);
+                            }
+                            return Array.from(text);
+                          };
                           for (const field of document.querySelectorAll('.inventory-fit')) {
-                            const value = field.querySelector('.generated-value') || field;
-                            const wraps = field.classList.contains('inventory-answer-lines');
+                            let value = field.matches('.generated-value')
+                              ? field : field.querySelector('.generated-value');
+                            if (!value) {
+                              const wrapper = document.createElement('span');
+                              wrapper.className = 'generated-value';
+                              wrapper.textContent = field.textContent;
+                              field.replaceChildren(wrapper);
+                              value = wrapper;
+                            }
+                            const sourceText = value.textContent || '';
+                            if (!sourceText.trim()) continue;
+
                             const fieldStyle = window.getComputedStyle(field);
-                            const availableWidth = field.clientWidth -
+                            const availableWidth = Math.max(1, field.clientWidth -
                               parseFloat(fieldStyle.paddingLeft) -
-                              parseFloat(fieldStyle.paddingRight);
-                            if (value !== field) {
-                              value.style.display = wraps ? 'block' : 'inline-block';
-                              value.style.width = wraps ? '100%' : 'max-content';
-                              value.style.maxWidth = wraps ? `${availableWidth}px` : 'none';
+                              parseFloat(fieldStyle.paddingRight));
+                            const answerLines = field.classList.contains(
+                              'inventory-answer-lines');
+                            const continuationRule = answerLines && field.querySelector(
+                              '.inventory-answer-rule-continuation');
+                            const answerTextIndent = continuationRule
+                              ? Math.max(0, field.getBoundingClientRect().left -
+                                continuationRule.getBoundingClientRect().left)
+                              : 0;
+                            const measureWidth = availableWidth + answerTextIndent;
+                            const availableHeight = Math.max(1, field.clientHeight -
+                              parseFloat(fieldStyle.paddingTop) -
+                              parseFloat(fieldStyle.paddingBottom));
+                            const valueStyle = window.getComputedStyle(value);
+                            const baseSizePt = parseFloat(valueStyle.fontSize) * 72 / 96;
+                            const minSizePt = Math.min(7.1, baseSizePt);
+                            const lineHeightPx = parseFloat(valueStyle.lineHeight) ||
+                              parseFloat(valueStyle.fontSize) * 1.2;
+                            const maxLines = Math.max(1,
+                              Math.floor((availableHeight + 0.5) / lineHeightPx));
+                            const fitHeight = Math.min(
+                              availableHeight, maxLines * lineHeightPx);
+                            const sizes = [];
+                            for (let size = baseSizePt; size > minSizePt + 0.05; size -= 0.2) {
+                              sizes.push(Number(size.toFixed(1)));
+                            }
+                            if (!sizes.length || sizes[sizes.length - 1] !== minSizePt) {
+                              sizes.push(minSizePt);
+                            }
+
+                            let chosenSizePt = null;
+                            let chosenHeight = null;
+                            for (const size of sizes) {
+                              const height = measuredHeight(
+                                sourceText, measureWidth, size, valueStyle, answerTextIndent);
+                              if (height <= fitHeight + 0.5) {
+                                chosenSizePt = size;
+                                chosenHeight = height;
+                                break;
+                              }
+                            }
+
+                            let renderedText = sourceText;
+                            let truncated = false;
+                            if (chosenSizePt === null) {
+                              chosenSizePt = minSizePt;
+                              const parts = graphemes(sourceText);
+                              let low = 0;
+                              let high = parts.length;
+                              while (low < high) {
+                                const middle = Math.ceil((low + high) / 2);
+                                const candidate = `${parts.slice(0, middle).join('').trimEnd()}…`;
+                                const height = measuredHeight(
+                                  candidate, measureWidth, chosenSizePt, valueStyle,
+                                  answerTextIndent);
+                                if (height <= fitHeight + 0.5) {
+                                  low = middle;
+                                } else {
+                                  high = middle - 1;
+                                }
+                              }
+                              renderedText = `${parts.slice(0, low).join('').trimEnd()}…`;
+                              chosenHeight = measuredHeight(
+                                renderedText, measureWidth, chosenSizePt, valueStyle,
+                                answerTextIndent);
+                              truncated = true;
+                              truncatedFields.push({
+                                tag: field.tagName.toLowerCase(),
+                                classes: typeof field.className === 'string'
+                                  ? field.className : '',
+                              });
+                            }
+
+                            const needsWrap = chosenHeight > lineHeightPx + 0.5;
+                            const needsLayout = needsWrap || truncated;
+                            if (chosenSizePt < baseSizePt - 0.05 || needsLayout) {
+                              value.textContent = renderedText;
+                              value.style.fontSize = `${chosenSizePt.toFixed(1)}pt`;
+                              value.style.lineHeight = `${lineHeightPx}px`;
+                            }
+                            if (needsLayout) {
+                              const fieldHeight = field.getBoundingClientRect().height;
+                              field.style.boxSizing = 'border-box';
+                              field.style.height = `${fieldHeight}px`;
+                              field.style.maxHeight = `${fieldHeight}px`;
+                              field.style.overflow = answerLines ? 'visible' : 'hidden';
+                              value.style.display = 'block';
+                              value.style.boxSizing = 'border-box';
+                              value.style.width = `${measureWidth}px`;
+                              value.style.maxWidth = `${measureWidth}px`;
+                              value.style.maxHeight = `${fitHeight}px`;
+                              value.style.overflow = 'hidden';
+                              value.style.whiteSpace = 'normal';
+                              value.style.overflowWrap = 'anywhere';
                               value.style.verticalAlign = 'top';
-                              value.style.overflow = 'visible';
-                            }
-                            value.style.overflow = 'visible';
-                            value.style.whiteSpace = wraps ? 'normal' : 'nowrap';
-                            value.style.overflowWrap = wraps ? 'anywhere' : 'normal';
-                            for (let size = 8.5; size >= 7.1; size -= 0.2) {
-                              value.style.fontSize = `${size.toFixed(1)}pt`;
-                              const textWidth = value.getBoundingClientRect().width;
-                              if ((wraps || textWidth <= availableWidth) &&
-                                  field.scrollHeight <= field.clientHeight + 1) break;
-                            }
-                            const widthOverflow =
-                              !wraps && value.getBoundingClientRect().width > availableWidth + 0.1;
-                            if (widthOverflow ||
-                                field.scrollHeight > field.clientHeight + 1) {
-                              return { ok: false, reason: 'field overflow', tag: field.tagName,
-                                fieldClass: field.className,
-                                width: availableWidth,
-                                textWidth: value.getBoundingClientRect().width,
-                                height: field.clientHeight, scrollHeight: field.scrollHeight };
+                              if (answerTextIndent > 0) {
+                                value.style.marginLeft = `-${answerTextIndent}px`;
+                                value.style.textIndent = `${answerTextIndent}px`;
+                              }
                             }
                           }
+                          probe.remove();
                           for (const section of pages) {
                             const body = section.querySelector('.inventory-source-body');
                             const metadata = section.querySelector('.controlled-form-metadata');
@@ -248,13 +375,25 @@ def render_document_pdf(
                                 metadataTop: metadata.getBoundingClientRect().top };
                             }
                           }
-                          return { ok: true };
+                          return { ok: true, truncatedFields };
                         }"""
                     )
                     if not fit["ok"]:
                         raise DocumentRenderError(
                             "The Individual Inventory content does not fit the controlled form: "
                             f"{fit}."
+                        )
+                    if fit["truncatedFields"]:
+                        logger.warning(
+                            "Individual Inventory PDF values were truncated to fit the form.",
+                            extra={
+                                "event": "inventory_pdf_values_truncated",
+                                "request_id": get_current_request_id(),
+                                "truncated_field_count": len(fit["truncatedFields"]),
+                                "field_classes": sorted({
+                                    item["classes"] for item in fit["truncatedFields"]
+                                }),
+                            },
                         )
 
                 try:
