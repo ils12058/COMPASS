@@ -7,6 +7,7 @@ from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
+from django.http import HttpResponse
 from ninja import Router, Schema
 from pydantic import ConfigDict, Field
 
@@ -14,7 +15,12 @@ from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.privacy_governance.releases import (
+    ReleaseAuditUnavailable,
+    record_exit_interview_release,
+)
 
+from .documents import ExitInterviewDocumentUnavailable, render_exit_interview_pdf
 from .models import (
     CareerMode,
     CollegeFeedbackItem,
@@ -51,6 +57,11 @@ from .services import (
 )
 
 router = Router(tags=["exit-interviews"])
+PDF_SUCCESS_OPENAPI = {
+    "responses": {
+        200: {"content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}}}
+    }
+}
 
 
 class StrictSchema(Schema):
@@ -303,6 +314,8 @@ def _require_head(request, capability: str) -> None:
 
 
 def _raise(exc: ExitInterviewError) -> NoReturn:
+    if isinstance(exc, ExitInterviewDocumentUnavailable):
+        raise APIError(503, "exit_interview_document_unavailable", str(exc)) from exc
     if isinstance(exc, ExitInterviewCurrentStudentRequired):
         raise APIError(409, "current_student_required", str(exc)) from exc
     if isinstance(exc, ExitInterviewNotFound):
@@ -324,6 +337,29 @@ def _raise(exc: ExitInterviewError) -> NoReturn:
         "internal_error",
         "The Exit Interview operation could not be completed.",
     ) from exc
+
+
+def _pdf_response(item, *, context: AuditContext, access_mode: str) -> HttpResponse:
+    try:
+        pdf_bytes = render_exit_interview_pdf(item)
+    except ExitInterviewError as exc:
+        _raise(exc)
+    try:
+        record_exit_interview_release(
+            context=context,
+            exit_interview_id=item.pk,
+            access_mode=access_mode,
+        )
+    except ReleaseAuditUnavailable as exc:
+        raise APIError(
+            503,
+            "release_audit_unavailable",
+            "The Exit Interview could not be released because its required "
+            "privacy audit is unavailable.",
+        ) from exc
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="exit-interview-{item.pk}.pdf"'
+    return response
 
 
 def _academic_year(item) -> dict[str, object]:
@@ -559,6 +595,22 @@ def exit_interviews_get_mine(request, exit_interview_id: UUID):
     return _detail(item)
 
 
+@router.get(
+    "/me/{exit_interview_id}/pdf",
+    response=response_with_errors(None, 401, 403, 404, 409, 503),
+    auth=session_auth,
+    operation_id="exitInterviewsDownloadMyPdf",
+    openapi_extra=PDF_SUCCESS_OPENAPI,
+)
+def exit_interview_download_my_pdf(request, exit_interview_id: UUID):
+    _require_student(request, "exit_interviews.view_self")
+    try:
+        item = get_mine(student=request.auth_user, exit_interview_id=exit_interview_id)
+    except ExitInterviewError as exc:
+        _raise(exc)
+    return _pdf_response(item, context=_context(request), access_mode="SELF")
+
+
 @router.put(
     "/me/{exit_interview_id}",
     response=response_with_errors(ExitInterviewDetailResponse, 401, 403, 404, 409, 422),
@@ -650,6 +702,22 @@ def exit_interviews_get(request, exit_interview_id: UUID):
     except ExitInterviewError as exc:
         _raise(exc)
     return _detail(item)
+
+
+@router.get(
+    "/{exit_interview_id}/pdf",
+    response=response_with_errors(None, 401, 403, 404, 409, 503),
+    auth=session_auth,
+    operation_id="exitInterviewsDownloadPdf",
+    openapi_extra=PDF_SUCCESS_OPENAPI,
+)
+def exit_interview_download_pdf(request, exit_interview_id: UUID):
+    _require_head(request, "exit_interviews.view")
+    try:
+        item = get_for_head(actor=request.auth_user, exit_interview_id=exit_interview_id)
+    except ExitInterviewError as exc:
+        _raise(exc)
+    return _pdf_response(item, context=_context(request), access_mode="HEAD_GUIDANCE")
 
 
 @router.post(

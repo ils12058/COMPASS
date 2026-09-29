@@ -28,6 +28,14 @@ class UnknownDocumentTemplate(RuntimeError):
 
 
 _TEMPLATE_SPECS = {
+    ("exit_interview", 1): DocumentTemplateSpec(
+        key="exit_interview",
+        version=1,
+        template_name="documents/exit_interviews/exit_interview.html",
+        layout_family=LayoutFamily.STANDARD_LETTERHEAD,
+        include_accreditation_footer=False,
+        show_page_numbers=False,
+    ),
     ("individual_inventory", 1): DocumentTemplateSpec(
         key="individual_inventory",
         version=1,
