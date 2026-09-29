@@ -9,7 +9,6 @@ const links: { href: string; label: string; related?: string }[] = [
     label: "Privacy Notices",
     related: "/portal/privacy/notice-revisions",
   },
-  { href: "/portal/privacy/retention-policies", label: "Retention Policies" },
   { href: "/portal/privacy/activity", label: "Privacy & Security Activity" },
 ];
 

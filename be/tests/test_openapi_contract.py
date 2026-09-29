@@ -38,11 +38,6 @@ EXPECTED_OPERATION_IDS = {
     "platformOperationsRetryEmailDelivery",
     "platformOperationsListActivity",
     "privacyGovernanceListActivity",
-    "privacyGovernanceListRetentionPolicies",
-    "privacyGovernanceCreateRetentionPolicy",
-    "privacyGovernanceGetRetentionPolicy",
-    "privacyGovernanceUpdateRetentionPolicy",
-    "privacyGovernanceRetireRetentionPolicy",
     "privacyGovernanceListNotices",
     "privacyGovernanceCreateNotice",
     "privacyGovernanceGetNotice",
@@ -2578,9 +2573,7 @@ def test_good_moral_request_creation_idempotency_openapi_contract() -> None:
             assert error_schema["$ref"].endswith("/APIErrorResponse")
 
 
-def test_privacy_expansion_contract_keeps_notice_boundaries_and_typed_retention_categories() -> (
-    None
-):
+def test_privacy_expansion_contract_keeps_notice_boundaries_and_removes_retention() -> None:
     schema = _generated_schema()
     public = _operation(schema, "/api/v1/privacy/public-notices", "get")
     self_list = _operation(schema, "/api/v1/privacy/my-notices", "get")
@@ -2593,33 +2586,9 @@ def test_privacy_expansion_contract_keeps_notice_boundaries_and_typed_retention_
     schemas = schema["components"]["schemas"]
     assert schemas["AudienceValue"]["enum"] == ["PUBLIC", "STUDENT", "STAFF"]
     assert schemas["RevisionStatusValue"]["enum"] == ["DRAFT", "PUBLISHED", "SUPERSEDED"]
-    assert schemas["RetentionRecordCategoryValue"]["enum"] == [
-        "INDIVIDUAL_INVENTORY",
-        "COUNSELING",
-        "ROUTINE_INTERVIEW",
-        "REFERRAL",
-        "CALL_SLIP",
-        "GOOD_MORAL",
-        "EXIT_INTERVIEW",
-        "GRADUATE_TRACER",
-        "CUSTOMER_FEEDBACK",
-    ]
-
-    for schema_name in ("RetentionResponse", "RetentionCreate", "RetentionUpdate"):
-        assert "record_categories" in schemas[schema_name]["properties"]
-    assert "record_categories" in schemas["RetentionCreate"]["required"]
-
-    retention_list = _operation(schema, "/api/v1/privacy/retention-policies", "get")
-    category_parameter = next(
-        parameter
-        for parameter in retention_list["parameters"]
-        if parameter["name"] == "record_category" and parameter["in"] == "query"
-    )
-    assert category_parameter.get("required", False) is False
-    assert "RetentionRecordCategoryValue" in json.dumps(category_parameter)
-
+    assert not any("Retention" in name for name in schemas)
+    assert not any("/privacy/retention-policies" in path for path in schema["paths"])
     for path in (
-        "/api/v1/privacy/retention-policies/{policy_id}",
         "/api/v1/privacy/notices/{notice_id}",
         "/api/v1/privacy/notice-revisions/{revision_id}",
     ):

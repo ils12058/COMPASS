@@ -8,7 +8,7 @@ notifications fit together.
 > **The dataset is synthetic and intended only for local and live staging demonstrations. It must
 > never be used as production institutional data.** Every name, identifier (`DEMO-2026-…`),
 > address, narrative, receipt number (`DEMO-OR-…`), and policy text is fictional. Privacy Notice
-> and Retention Policy content is explicitly labelled as staging demonstration material.
+> content is explicitly labelled as staging demonstration material.
 
 The command is operator tooling. There is no API, page, button, middleware, or model flag for it,
 and no production code path knows whether a record was seeded.
@@ -210,7 +210,7 @@ historical year as current.
 | Class | Domains |
 | --- | --- |
 | SYNC (reused synchronizers) | Identity policy; Organization catalog; Institutional Forms; canonical Counseling Service |
-| SEED (through domain services) | Academic Years; accounts, designations, profiles; Counselor responsibility, Staff supervision, Student affiliation; ONLINE Counseling delivery; office and provider Availability with two exceptions; Individual Inventory (with Student Support facts); Appointments; Counseling Encounters; Shared Summaries; Routine Interviews; Referrals and actions; Call Slips; Good Moral; Exit Interviews; Graduate Tracer; Customer Feedback; CSM; Announcements; Resources; Retention Policies; Privacy Notices, a draft revision, and one acknowledgment |
+| SEED (through domain services) | Academic Years; accounts, designations, profiles; Counselor responsibility, Staff supervision, Student affiliation; ONLINE Counseling delivery; office and provider Availability with two exceptions; Individual Inventory (with Student Support facts); Appointments; Counseling Encounters; Shared Summaries; Routine Interviews; Referrals and actions; Call Slips; Good Moral; Exit Interviews; Graduate Tracer; Customer Feedback; CSM; Announcements; Resources; Privacy Notices, a draft revision, and one acknowledgment |
 | DERIVED (never written directly) | Portal Overview; Student Support context; Student Profiling and Graduate Tracer reports; My Activity, Security Activity, Privacy & Security Activity; Notifications; controlled-form metadata; Good Moral, Referral, and Call Slip documents |
 | RUNTIME-ONLY (never seeded) | Authentication sessions, trusted sessions, login challenges, email OTP challenges, recent MFA, TOTP factors and recovery codes, email-change requests; Daily rooms, tokens, recordings, webhooks, transcriptions; PSGC cache; Platform Health, Environment, Maintenance; email deliveries; worker state |
 | INTENTIONALLY EMPTY | Structured PSGC geography in Inventories (would need live PSA validation; answered as "not specified"); Resource files (would need object-storage uploads); E-Counseling rooms and media (lazy provider provisioning); Inventory and Exit Interview reopen events (each emails the Student) |

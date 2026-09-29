@@ -7,7 +7,6 @@ import {
 // Stable backend conflict codes; each maps to a distinct recovery in the workspace.
 export const PrivacyConflictCode = {
   codeInUse: "privacy_code_in_use",
-  retentionPolicyRetired: "privacy_retention_policy_retired",
   noticeRetired: "privacy_notice_retired",
   noticeDraftExists: "privacy_notice_draft_exists",
   noticeRevisionImmutable: "privacy_notice_revision_immutable",
@@ -20,8 +19,6 @@ export type PrivacyConflictCode = (typeof PrivacyConflictCode)[keyof typeof Priv
 
 const conflictCopy: Record<PrivacyConflictCode, string> = {
   [PrivacyConflictCode.codeInUse]: "This code is already in use. Use a different code.",
-  [PrivacyConflictCode.retentionPolicyRetired]:
-    "This Retention Policy is retired. Retired policies cannot be edited or newly assigned.",
   [PrivacyConflictCode.noticeRetired]:
     "This Privacy Notice is retired, so it and its revisions can no longer be changed.",
   [PrivacyConflictCode.noticeDraftExists]:
@@ -56,9 +53,6 @@ const baseFieldLabels: PrivacyFieldLabels = {
   title: "Title",
   summary: "Summary",
   effective_on: "Effective date",
-  review_due_on: "Review due",
-  record_categories: "COMPASS record categories",
-  policy_reference: "Policy reference",
   requires_acknowledgment: "Require acknowledgment",
 };
 

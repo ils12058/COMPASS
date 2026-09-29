@@ -1,4 +1,4 @@
-"""Transactional retention and notice governance; no retention execution or consent inference."""
+"""Transactional privacy notice governance without consent inference."""
 
 from __future__ import annotations
 
@@ -23,8 +23,6 @@ from .models import (
     PrivacyNoticeAcknowledgment,
     PrivacyNoticeRevision,
     PrivacyNoticeRevisionStatus,
-    RetentionPolicy,
-    RetentionRecordCategory,
 )
 from .services import (
     DEFAULT_PAGE_SIZE,
@@ -34,23 +32,12 @@ from .services import (
     PrivacyRecordNotFound,
     _changed_fields,
     _clean_code,
-    _clean_optional,
     _clean_required,
     _validate_model,
     _validate_page,
 )
 
 AUDIENCES = frozenset({"PUBLIC", "STUDENT", "STAFF"})
-MAX_SEARCH_LENGTH = 160
-RETENTION_RECORD_CATEGORY_CODES = frozenset(category.value for category in RetentionRecordCategory)
-RETENTION_FIELDS = {
-    "name": (160, True),
-    "scope_summary": (2000, True),
-    "retention_trigger_summary": (2000, True),
-    "retention_period_summary": (1000, True),
-    "disposition_summary": (2000, True),
-    "policy_reference": (255, False),
-}
 REVISION_FIELDS = {
     "title",
     "audiences",
@@ -172,172 +159,6 @@ def _audit(
         target_id=target_id,
         metadata=metadata,
     )
-
-
-def _record_categories(value: object) -> list[str]:
-    if not isinstance(value, list):
-        raise PrivacyInputError("record_categories must be a list")
-    if not value:
-        raise PrivacyInputError("record_categories must contain at least one category")
-    if len(value) > len(RETENTION_RECORD_CATEGORY_CODES):
-        raise PrivacyInputError(
-            f"record_categories may contain at most {len(RETENTION_RECORD_CATEGORY_CODES)} items"
-        )
-
-    cleaned: list[str] = []
-    seen: set[str] = set()
-    for item in value:
-        if not isinstance(item, str):
-            raise PrivacyInputError("record_categories must use supported category codes")
-        try:
-            code = RetentionRecordCategory(item).value
-        except ValueError as exc:
-            raise PrivacyInputError("record_categories must use supported category codes") from exc
-        if code in seen:
-            raise PrivacyInputError("record_categories must not contain duplicate items")
-        seen.add(code)
-        cleaned.append(code)
-    return cleaned
-
-
-def _retention_values(
-    values: dict[str, Any],
-    *,
-    require_record_categories: bool = False,
-) -> dict[str, Any]:
-    cleaned: dict[str, Any] = {}
-    for field, value in values.items():
-        if field in RETENTION_FIELDS:
-            maximum, required = RETENTION_FIELDS[field]
-            cleaner = _clean_required if required else _clean_optional
-            cleaned[field] = cleaner(value, label=field, maximum=maximum)
-        elif field == "record_categories":
-            cleaned[field] = _record_categories(value)
-        elif field in {"effective_on", "review_due_on"}:
-            if value is not None and not isinstance(value, date):
-                raise PrivacyInputError(f"{field} must be a date")
-            cleaned[field] = value
-        else:
-            raise PrivacyInputError("retention policy contains unsupported fields")
-    if require_record_categories and "record_categories" not in cleaned:
-        raise PrivacyInputError("record_categories must contain at least one category")
-    return cleaned
-
-
-def get_retention(policy_id: UUID):
-    item = RetentionPolicy.objects.filter(pk=policy_id).first()
-    if item is None:
-        raise PrivacyRecordNotFound("retention policy was not found")
-    return item
-
-
-def list_retention(
-    *,
-    is_active: bool | None = None,
-    search: str | None = None,
-    record_category: RetentionRecordCategory | str | None = None,
-    page_number: int = 1,
-    page_size: int = DEFAULT_PAGE_SIZE,
-):
-    queryset = RetentionPolicy.objects.order_by("code", "id")
-    if is_active is not None:
-        queryset = queryset.filter(is_active=is_active)
-    if record_category is not None:
-        try:
-            category = RetentionRecordCategory(str(record_category)).value
-        except ValueError as exc:
-            raise PrivacyInputError("record_category must use a supported category code") from exc
-        queryset = queryset.filter(record_categories__contains=[category])
-    if search is not None:
-        if not isinstance(search, str):
-            raise PrivacyInputError("search must be text")
-        term = search.strip()
-        if len(term) > MAX_SEARCH_LENGTH:
-            raise PrivacyInputError(f"search must be at most {MAX_SEARCH_LENGTH} characters")
-        if term:
-            queryset = queryset.filter(Q(code__icontains=term) | Q(name__icontains=term))
-    return page(queryset, page=page_number, page_size=page_size)
-
-
-def create_retention(*, code: str, context: AuditContext, **values):
-    cleaned = _retention_values(values, require_record_categories=True)
-    normalized = _clean_code(code)
-    with transaction.atomic():
-        if RetentionPolicy.objects.filter(code=normalized).exists():
-            raise PrivacyConflict(
-                "retention policy code already exists", code=PrivacyConflictCode.CODE_IN_USE
-            )
-        item = RetentionPolicy(code=normalized, **cleaned)
-        try:
-            _validate_model(item)
-        except PrivacyInputError:
-            if RetentionPolicy.objects.filter(code=normalized).exists():
-                raise PrivacyConflict(
-                    "retention policy code already exists",
-                    code=PrivacyConflictCode.CODE_IN_USE,
-                ) from None
-            raise
-        try:
-            with transaction.atomic():
-                item.save()
-        except IntegrityError as exc:
-            raise PrivacyConflict(
-                "retention policy code already exists", code=PrivacyConflictCode.CODE_IN_USE
-            ) from exc
-        _audit(
-            context,
-            actions.PRIVACY_RETENTION_CREATED,
-            "privacy.retention",
-            item.pk,
-            {"code": item.code},
-        )
-    return item
-
-
-def update_retention(*, policy_id: UUID, context: AuditContext, changes: dict[str, Any]):
-    cleaned = _retention_values(changes)
-    with transaction.atomic():
-        item = RetentionPolicy.objects.select_for_update().filter(pk=policy_id).first()
-        if item is None:
-            raise PrivacyRecordNotFound("retention policy was not found")
-        if not cleaned:
-            return item
-        if not item.is_active:
-            raise PrivacyConflict(
-                "retired retention policy cannot be edited",
-                code=PrivacyConflictCode.RETENTION_POLICY_RETIRED,
-            )
-        for key, value in cleaned.items():
-            setattr(item, key, value)
-        _validate_model(item)
-        item.save(update_fields=[*cleaned, "updated_at"])
-        _audit(
-            context,
-            actions.PRIVACY_RETENTION_UPDATED,
-            "privacy.retention",
-            item.pk,
-            {"changed_fields": _changed_fields(cleaned)},
-        )
-    return item
-
-
-def retire_retention(*, policy_id: UUID, context: AuditContext):
-    with transaction.atomic():
-        item = RetentionPolicy.objects.select_for_update().filter(pk=policy_id).first()
-        if item is None:
-            raise PrivacyRecordNotFound("retention policy was not found")
-        if not item.is_active:
-            return item
-        item.is_active = False
-        item.save(update_fields=["is_active", "updated_at"])
-        _audit(
-            context,
-            actions.PRIVACY_RETENTION_RETIRED,
-            "privacy.retention",
-            item.pk,
-            {"from_active": True, "to_active": False},
-        )
-    return item
 
 
 def _audiences(value: Any):

@@ -15,7 +15,7 @@ from tests.test_privacy_governance import (
     post_json,
     sync_policy,
 )
-from tests.test_privacy_governance_expansion import notice_payload, retention_payload
+from tests.test_privacy_governance_expansion import notice_payload
 
 ROOT = "/api/v1/privacy"
 
@@ -34,18 +34,6 @@ def test_retained_privacy_conflicts_use_stable_codes_for_distinct_recoveries():
     sync_policy()
     dpo = auth_client(make_dpo(), recent_mfa=True)
     student = auth_client(make_user("conflict-student@example.edu", role="STUDENT"))
-
-    policy = post_json(dpo, f"{ROOT}/retention-policies", retention_payload())
-    assert policy.status_code == 201
-    policy_id = policy.json()["id"]
-    duplicate_policy = post_json(dpo, f"{ROOT}/retention-policies", retention_payload())
-    assert duplicate_policy.status_code == 409
-    assert error_code(duplicate_policy) == "privacy_code_in_use"
-
-    assert post_json(dpo, f"{ROOT}/retention-policies/{policy_id}/retire", {}).status_code == 200
-    retired_edit = patch_json(dpo, f"{ROOT}/retention-policies/{policy_id}", {"name": "Renamed"})
-    assert retired_edit.status_code == 409
-    assert error_code(retired_edit) == "privacy_retention_policy_retired"
 
     future = notice_payload("FUTURE", effective_on=timezone.localdate() + timedelta(days=3))
     notice = post_json(dpo, f"{ROOT}/notices", future)
@@ -166,37 +154,3 @@ def test_revision_publish_readiness_follows_server_date_and_state():
     post_json(dpo, f"{ROOT}/notices/{other.json()['id']}/retire", {})
     retired = dpo.get(f"{ROOT}/notice-revisions/{other_revision}").json()
     assert retired["publish_readiness"] == {"ready": False, "blocker": "NOTICE_RETIRED"}
-
-
-@pytest.mark.django_db
-def test_retention_search_is_bounded_trimmed_and_composes_with_category_and_active_filter():
-    sync_policy()
-    dpo = auth_client(make_dpo("search-dpo@example.edu"), recent_mfa=True)
-    for code, name, categories in (
-        ("COUNSELING-RECORDS", "Counseling records", ["COUNSELING"]),
-        ("REFERRAL-RECORDS", "Referral records", ["REFERRAL"]),
-        ("SHARED-RECORDS", "Shared records", ["COUNSELING", "REFERRAL"]),
-    ):
-        created = post_json(
-            dpo,
-            f"{ROOT}/retention-policies",
-            retention_payload(code, categories=categories) | {"name": name},
-        )
-        assert created.status_code == 201
-    shared = dpo.get(f"{ROOT}/retention-policies?search=shared").json()["items"][0]
-    post_json(dpo, f"{ROOT}/retention-policies/{shared['id']}/retire", {})
-
-    by_name = dpo.get(f"{ROOT}/retention-policies?search=%20%20counseling%20").json()["items"]
-    assert [item["code"] for item in by_name] == ["COUNSELING-RECORDS"]
-    category = dpo.get(f"{ROOT}/retention-policies?record_category=REFERRAL&is_active=true").json()[
-        "items"
-    ]
-    assert [item["code"] for item in category] == ["REFERRAL-RECORDS"]
-    retired_shared = dpo.get(
-        f"{ROOT}/retention-policies?record_category=COUNSELING&search=shared&is_active=false"
-    ).json()["items"]
-    assert [item["code"] for item in retired_shared] == ["SHARED-RECORDS"]
-
-    too_long = dpo.get(f"{ROOT}/retention-policies?search={'x' * 161}")
-    assert too_long.status_code == 422
-    assert error_code(too_long) == "invalid_privacy_governance_input"

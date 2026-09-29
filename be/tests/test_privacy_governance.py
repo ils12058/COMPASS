@@ -93,18 +93,6 @@ def patch_json(client: Client, path: str, payload: dict[str, object]):
     )
 
 
-def retention_payload(code: str = "COUNSELING-RETENTION") -> dict[str, object]:
-    return {
-        "code": code,
-        "name": "Synthetic retention guidance",
-        "record_categories": ["COUNSELING"],
-        "scope_summary": "Synthetic scope for test records",
-        "retention_trigger_summary": "Synthetic trigger",
-        "retention_period_summary": "Institution-approved duration placeholder",
-        "disposition_summary": "Human-reviewed disposition placeholder",
-    }
-
-
 @pytest.mark.django_db
 def test_dpo_privacy_authority_is_designation_derived_and_separate_from_roles():
     sync_policy()
@@ -172,25 +160,17 @@ def test_dpo_reads_without_step_up_but_retained_mutations_require_recent_mfa():
     dpo = make_dpo("mfa-dpo@example.edu")
     client = auth_client(dpo, recent_mfa=False)
 
-    listing = client.get("/api/v1/privacy/retention-policies")
-    assert listing.status_code == 200
+    assert client.get("/api/v1/privacy/notices").status_code == 200
     assert client.get("/api/v1/privacy/activity").status_code == 200
 
-    denied = post_json(
-        client,
-        "/api/v1/privacy/retention-policies",
-        retention_payload(),
-    )
+    from tests.test_privacy_governance_expansion import notice_payload
+
+    denied = post_json(client, "/api/v1/privacy/notices", notice_payload())
     assert denied.status_code == 403
     assert denied.json()["error"]["code"] == "recent_mfa_required"
 
     recent = auth_client(dpo, recent_mfa=True)
-    created = post_json(
-        recent,
-        "/api/v1/privacy/retention-policies",
-        retention_payload(),
-    )
-    assert created.status_code == 201
+    assert post_json(recent, "/api/v1/privacy/notices", notice_payload()).status_code == 201
 
 
 @pytest.mark.django_db
@@ -202,7 +182,6 @@ def test_non_dpo_baselines_are_denied_retained_routes_and_dpo_is_denied_operatio
 
     for actor in (admin, counselor):
         client = auth_client(actor)
-        assert client.get("/api/v1/privacy/retention-policies").status_code == 403
         assert client.get("/api/v1/privacy/notices").status_code == 403
         assert client.get("/api/v1/privacy/activity").status_code == 403
 
@@ -221,6 +200,7 @@ def test_removed_privacy_workflow_routes_are_not_addressable():
         "/api/v1/privacy/processing-activities",
         "/api/v1/privacy/reviews",
         "/api/v1/privacy/incidents",
+        "/api/v1/privacy/retention-policies",
     ):
         assert client.get(path).status_code == 404
         assert post_json(client, path, {}).status_code == 404

@@ -1,6 +1,5 @@
 import {
   AudienceValue,
-  RetentionRecordCategoryValue,
   type PrivacyActivityCategory,
   type RevisionStatusValue,
 } from "@/lib/api/generated/model";
@@ -42,33 +41,6 @@ export const activityCategoryLabels: Record<PrivacyActivityCategory, string> = {
   ACCOUNT_SECURITY: "Account security",
   PRIVACY_GOVERNANCE: "Privacy governance",
 };
-
-export const retentionRecordCategoryLabels: Record<
-  RetentionRecordCategoryValue,
-  string
-> = {
-  INDIVIDUAL_INVENTORY: "Individual Inventory",
-  COUNSELING: "Counseling records",
-  ROUTINE_INTERVIEW: "Routine Interview records",
-  REFERRAL: "Referral records",
-  CALL_SLIP: "Call Slip records",
-  GOOD_MORAL: "Good Moral requests and issuance records",
-  EXIT_INTERVIEW: "Exit Interview records",
-  GRADUATE_TRACER: "Graduate Tracer responses",
-  CUSTOMER_FEEDBACK: "Customer Feedback / CSM records",
-};
-
-export const retentionRecordCategoryOrder: RetentionRecordCategoryValue[] = [
-  RetentionRecordCategoryValue.INDIVIDUAL_INVENTORY,
-  RetentionRecordCategoryValue.COUNSELING,
-  RetentionRecordCategoryValue.ROUTINE_INTERVIEW,
-  RetentionRecordCategoryValue.REFERRAL,
-  RetentionRecordCategoryValue.CALL_SLIP,
-  RetentionRecordCategoryValue.GOOD_MORAL,
-  RetentionRecordCategoryValue.EXIT_INTERVIEW,
-  RetentionRecordCategoryValue.GRADUATE_TRACER,
-  RetentionRecordCategoryValue.CUSTOMER_FEEDBACK,
-];
 
 export function formatLongDate(value: string): string {
   const date = new Date(`${value}T12:00:00`);

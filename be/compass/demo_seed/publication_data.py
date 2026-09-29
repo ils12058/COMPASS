@@ -243,52 +243,6 @@ RESOURCES = (
 
 # --- Privacy Governance ----------------------------------------------------------------------
 
-DEMO_POLICY_REFERENCE = "Staging demonstration only - not an approved UCN retention schedule"
-
-RETENTION_POLICIES = (
-    {
-        "code": "DEMO-RET-COUNSELING",
-        "name": "Staging demo: counseling and interview records",
-        "record_categories": ["COUNSELING", "ROUTINE_INTERVIEW", "REFERRAL", "CALL_SLIP"],
-        "scope_summary": (
-            "Staging demonstration policy covering Counseling Encounters, Routine Interviews, "
-            "Referrals, and Call Slips recorded in COMPASS."
-        ),
-        "retention_trigger_summary": "The Student's last recorded Guidance interaction.",
-        "retention_period_summary": "Illustrative only: five years after the trigger.",
-        "disposition_summary": (
-            "Illustrative only: review by the Data Protection Officer before secure disposal. "
-            "COMPASS does not execute retention actions."
-        ),
-        "policy_reference": DEMO_POLICY_REFERENCE,
-        "effective_on": (2026, 8, 3),
-        "review_due_on": (2027, 8, 3),
-    },
-    {
-        "code": "DEMO-RET-PROFILING",
-        "name": "Staging demo: student profiling and outcome records",
-        "record_categories": [
-            "INDIVIDUAL_INVENTORY",
-            "EXIT_INTERVIEW",
-            "GRADUATE_TRACER",
-            "CUSTOMER_FEEDBACK",
-        ],
-        "scope_summary": (
-            "Staging demonstration policy covering Individual Inventories, Exit Interviews, "
-            "Graduate Tracer responses, and Customer Feedback/CSM responses."
-        ),
-        "retention_trigger_summary": "Graduation or separation from the University.",
-        "retention_period_summary": "Illustrative only: three years after the trigger.",
-        "disposition_summary": (
-            "Illustrative only: aggregate reports may be kept; identifiable responses are "
-            "reviewed for disposal. COMPASS does not execute retention actions."
-        ),
-        "policy_reference": DEMO_POLICY_REFERENCE,
-        "effective_on": (2026, 8, 3),
-        "review_due_on": (2027, 8, 3),
-    },
-)
-
 PRIVACY_NOTICE = {
     "code": "DEMO-GCO-STUDENT-SERVICES",
     "name": "Guidance Services Privacy Notice (staging demo)",
@@ -340,6 +294,5 @@ __all__ = [
     "PRIVACY_NOTICE_DRAFT",
     "PRIVACY_NOTICE_PUBLISHED",
     "RESOURCES",
-    "RETENTION_POLICIES",
     "ResourceSpec",
 ]

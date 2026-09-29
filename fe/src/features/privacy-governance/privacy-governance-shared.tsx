@@ -571,7 +571,6 @@ export function invalidatePrivacyRecords(queryClient: QueryClient, ...paths: str
 }
 
 export const privacyPaths = {
-  retentionPolicies: "/api/v1/privacy/retention-policies",
   notices: "/api/v1/privacy/notices",
   noticeRevisions: "/api/v1/privacy/notice-revisions",
   myNotices: "/api/v1/privacy/my-notices",

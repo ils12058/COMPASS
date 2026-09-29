@@ -1,7 +1,7 @@
 """Announcements, Resources, Privacy Governance, and Feedback seeded through their services.
 
 These records have no scenario owner, so each is matched by a stable natural key (author and
-title, policy or notice code, or respondent and response text) and created only when absent.
+title, notice code, or respondent and response text) and created only when absent.
 """
 
 from __future__ import annotations
@@ -33,14 +33,12 @@ from compass.good_moral.models import GoodMoralRequest, GoodMoralStatus, GoodMor
 from compass.privacy_governance.expansion import (
     acknowledge_revision,
     create_notice,
-    create_retention,
     create_revision,
     publish_revision,
 )
 from compass.privacy_governance.models import (
     PrivacyNotice,
     PrivacyNoticeRevisionStatus,
-    RetentionPolicy,
 )
 from compass.resources.models import Resource
 from compass.resources.services import archive_resource, create_resource, publish_resource
@@ -170,25 +168,6 @@ def seed_privacy_governance(session: SeedSession) -> None:
     dpo_context = session.as_user(DPO.key)
     t = session.timeline
     with transaction.atomic():
-        for policy in publication_data.RETENTION_POLICIES:
-            exists = RetentionPolicy.objects.filter(code=policy["code"]).exists()
-            if not exists:
-                values = {
-                    key: value
-                    for key, value in policy.items()
-                    if key not in {"code", "effective_on", "review_due_on"}
-                }
-                item = create_retention(
-                    code=policy["code"],
-                    context=dpo_context,
-                    effective_on=_date(policy["effective_on"]),
-                    review_due_on=_date(policy["review_due_on"]),
-                    **values,
-                )
-                adopted = t.on(2026, 7, 28, 15)
-                align_timestamps(item, created_at=adopted, updated_at=adopted)
-            session.record("Retention Policies", created=not exists)
-
         notice_spec = publication_data.PRIVACY_NOTICE
         notice = PrivacyNotice.objects.filter(code=notice_spec["code"]).first()
         if notice is None:

@@ -39,7 +39,6 @@ from compass.notifications.models import EmailDelivery, EmailDeliveryStatus, Not
 from compass.privacy_governance.models import (
     PrivacyNotice,
     PrivacyNoticeRevision,
-    RetentionPolicy,
 )
 from compass.referrals.models import Referral, ReferralAction
 from compass.resources.models import Resource
@@ -72,7 +71,6 @@ ALIGNABLE_TIMESTAMPS: dict[type[models.Model], frozenset[str]] = {
     Resource: frozenset({"created_at", "updated_at", "published_at"}),
     PrivacyNotice: frozenset({"created_at", "updated_at"}),
     PrivacyNoticeRevision: frozenset({"created_at", "updated_at", "published_at"}),
-    RetentionPolicy: frozenset({"created_at", "updated_at"}),
     Notification: frozenset({"created_at", "read_at"}),
 }
 
