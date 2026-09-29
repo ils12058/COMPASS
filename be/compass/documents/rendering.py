@@ -390,9 +390,9 @@ def render_document_pdf(
                                 "event": "inventory_pdf_values_truncated",
                                 "request_id": get_current_request_id(),
                                 "truncated_field_count": len(fit["truncatedFields"]),
-                                "field_classes": sorted({
-                                    item["classes"] for item in fit["truncatedFields"]
-                                }),
+                                "field_classes": sorted(
+                                    {item["classes"] for item in fit["truncatedFields"]}
+                                ),
                             },
                         )
 

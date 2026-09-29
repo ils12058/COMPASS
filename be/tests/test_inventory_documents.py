@@ -234,8 +234,8 @@ def test_individual_inventory_html_and_chromium_pdf_are_source_shaped_and_three_
     assert "Current Concerns" in long_answer_text
     assert "Current Fears" in long_answer_text
     assert long_answer_text.count("…") == 2
-    assert 0 < long_answer_text.count("A lengthy answer") < 2 * long_answer.count(
-        "A lengthy answer"
+    assert (
+        0 < long_answer_text.count("A lengthy answer") < 2 * long_answer.count("A lengthy answer")
     )
     assert "A lengthy answer" not in caplog.text
     item.refresh_from_db()

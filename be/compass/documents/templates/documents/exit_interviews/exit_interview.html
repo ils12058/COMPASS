@@ -1,0 +1,117 @@
+{% extends "documents/base.html" %}
+{% block title %}Exit Interview Form{% endblock %}
+{% block document %}
+<style>
+  .exit-interview-form { font-size: 8pt; line-height: 1.2; }
+  .exit-interview-form .office-heading { margin-bottom: 4mm; }
+  .exit-title { margin: 0 0 4mm; text-align: center; font-size: 12pt; letter-spacing: .15mm; }
+  .exit-source-fields { display: grid; grid-template-columns: 1.4fr .45fr 1fr; gap: 1.4mm 3mm; }
+  .exit-source-field { display: flex; align-items: baseline; min-width: 0; gap: 1mm; }
+  .exit-source-field.address { grid-column: span 2; }
+  .exit-source-field-label { flex: none; }
+  .exit-source-value { flex: 1; min-width: 0; min-height: 3.4mm; border-bottom: .2mm solid #555; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .exit-directions { margin: 4mm 0 2mm; }
+  .exit-section-title { margin: 3mm 0 2mm; font-size: 9pt; font-weight: 700; }
+  .exit-question { margin: 2mm 0 1mm; font-weight: 600; }
+  .exit-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .7mm 4mm; margin-left: 7mm; }
+  .exit-choice-line { display: flex; align-items: baseline; gap: 1mm; min-width: 0; }
+  .exit-choice-line .generated-value { overflow-wrap: anywhere; white-space: pre-wrap; }
+  .exit-check { display: inline-flex; flex: none; width: 3mm; height: 3mm; border: .2mm solid #333; align-items: center; justify-content: center; font-size: 8pt; line-height: 1; }
+  .exit-check.checked { color: #0000ff; font-weight: 700; }
+  .exit-indent { margin-left: 7mm; }
+  .exit-supplement { margin: 1mm 0 1mm 11mm; }
+  .exit-supplement .generated-value { overflow-wrap: anywhere; white-space: pre-wrap; }
+  .exit-career { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 5mm; margin-left: 7mm; }
+  .exit-career-group { min-width: 0; }
+  .exit-career-group .exit-choice-line { margin-bottom: .5mm; }
+  .exit-career-subchoices { margin-left: 5mm; }
+  .exit-scale { display: flex; flex-wrap: wrap; justify-content: center; gap: 1mm 5mm; margin: 1mm 0 2mm; font-size: 7pt; }
+  .exit-rating-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .exit-rating-table th, .exit-rating-table td { padding: .45mm .6mm; vertical-align: top; }
+  .exit-rating-table th { border-bottom: .2mm solid #777; text-align: left; }
+  .exit-rating-table .exit-score { width: 5.5mm; text-align: center; white-space: nowrap; }
+  .exit-rating-table td:first-child { overflow-wrap: anywhere; }
+  .exit-rating-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
+  .exit-selected { display: inline-flex; width: 3.5mm; height: 3.5mm; border: .25mm solid #0000ff; border-radius: 50%; align-items: center; justify-content: center; color: #0000ff; font-weight: 700; }
+  .exit-feedback-page { break-before: page; page-break-before: always; }
+  .exit-feedback-category { margin: 1.6mm 0 0; break-inside: avoid; page-break-inside: avoid; }
+  .exit-feedback-category h3 { margin: 0 0 .5mm; font-size: 8pt; }
+  .exit-comments { margin: .3mm 0 .5mm; min-height: 2.7mm; border-bottom: .2mm solid #777; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .exit-suggestions { margin-top: 2mm; }
+  .exit-suggestions .exit-comments { min-height: 7mm; }
+</style>
+<div class="exit-interview-form">
+  {% include "documents/partials/institution_masthead.html" %}
+  {% include "documents/partials/office_heading.html" %}
+  <main class="document-body">
+    <h1 class="exit-title">EXIT INTERVIEW FORM</h1>
+    <div class="exit-source-fields">
+      <div class="exit-source-field"><span class="exit-source-field-label">Name:</span><span class="exit-source-value generated-value">{{ exit_form.name }}</span></div>
+      <div class="exit-source-field"><span class="exit-source-field-label">Age:</span><span class="exit-source-value generated-value">{{ exit_form.age }}</span></div>
+      <div class="exit-source-field"><span class="exit-source-field-label">Civil Status:</span><span class="exit-source-value generated-value">{{ exit_form.civil_status }}</span></div>
+      <div class="exit-source-field"><span class="exit-source-field-label">Course:</span><span class="exit-source-value generated-value">{{ exit_form.course }}</span></div>
+      <div class="exit-source-field"><span class="exit-source-field-label">Major:</span><span class="exit-source-value generated-value">{{ exit_form.major }}</span></div>
+      <div class="exit-source-field"><span class="exit-source-field-label">Email Address:</span><span class="exit-source-value generated-value">{{ exit_form.email }}</span></div>
+      <div class="exit-source-field address"><span class="exit-source-field-label">Home Address:</span><span class="exit-source-value generated-value">{{ exit_form.address }}</span></div>
+      <div class="exit-source-field"><span class="exit-source-field-label">CP:</span><span class="exit-source-value generated-value">{{ exit_form.contact }}</span></div>
+    </div>
+
+    <p class="exit-directions"><strong>DIRECTIONS:</strong> Please answer all the following items as honestly and objectively as possible.</p>
+    <h2 class="exit-section-title">I — GENERAL INFORMATION</h2>
+    <p class="exit-question">A. I finished my academic program:</p>
+    <div class="exit-indent">
+      {% for choice in exit_form.completion %}<div class="exit-choice-line"><span class="exit-check{% if choice.selected %} checked{% endif %}">{% if choice.selected %}×{% endif %}</span>{{ choice.label }}{% if choice.code == "WITH_SOME_DELAY" and choice.selected and exit_form.extra_terms %} — <span class="generated-value">{{ exit_form.extra_terms }}</span> extra terms{% endif %}</div>{% endfor %}
+    </div>
+    {% if exit_form.delayed %}
+      <div class="exit-supplement">Reasons for delay:</div>
+      <div class="exit-choice-grid">
+        {% for choice in exit_form.delay_reasons %}<div class="exit-choice-line"><span class="exit-check{% if choice.selected %} checked{% endif %}">{% if choice.selected %}×{% endif %}</span>{{ choice.label }}{% if choice.code == "OTHER" and choice.selected %}<span class="generated-value">{{ exit_form.delay_other }}</span>{% endif %}</div>{% endfor %}
+      </div>
+    {% endif %}
+
+    <p class="exit-question">B. Most significant learning experiences (check those that apply to you)</p>
+    <div class="exit-choice-grid">
+      {% for choice in exit_form.learning %}<div class="exit-choice-line"><span class="exit-check{% if choice.selected %} checked{% endif %}">{% if choice.selected %}×{% endif %}</span>{{ choice.label }}{% if choice.code == "OTHER" and choice.selected %}<span class="generated-value">{{ exit_form.learning_other }}</span>{% endif %}</div>{% endfor %}
+    </div>
+
+    <p class="exit-question">C. Career plans (check those that apply to you)</p>
+    <div class="exit-career">
+      {% for mode in exit_form.career_modes %}
+        <div class="exit-career-group">
+          <div class="exit-choice-line"><span class="exit-check{% if mode.selected %} checked{% endif %}">{% if mode.selected %}×{% endif %}</span><strong>{{ mode.label }}</strong></div>
+          <div class="exit-career-subchoices">
+            {% if mode.code == "WORK" %}{% for choice in exit_form.work_choices %}<div class="exit-choice-line"><span class="exit-check{% if choice.selected %} checked{% endif %}">{% if choice.selected %}×{% endif %}</span>{{ choice.label }}</div>{% endfor %}{% endif %}
+            {% if mode.code == "STUDY" %}{% for choice in exit_form.study_choices %}<div class="exit-choice-line"><span class="exit-check{% if choice.selected %} checked{% endif %}">{% if choice.selected %}×{% endif %}</span>{{ choice.label }}</div>{% endfor %}{% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <h2 class="exit-section-title">II — SELF-ASSESSMENT</h2>
+    <p><strong>DIRECTIONS:</strong> Rate yourself according to the extent that the following areas have been enhanced by Camarines Norte State College during your stay here. Encircle the number that corresponds to your opinion using the scale below.</p>
+    <div class="exit-scale"><span>5 — Much enhanced</span><span>4 — Enhanced</span><span>3 — No Difference</span><span>2 — Became Worse</span><span>1 — I don't know</span></div>
+    <table class="exit-rating-table">
+      <thead><tr><th>Area</th>{% for number in self_scale %}<th class="exit-score">{{ number }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for row in exit_form.self_rows %}<tr><td>{{ forloop.counter }}. {{ row.label }}</td>{% for number in self_scale %}<td class="exit-score">{% if row.rating == number %}<span class="exit-selected">{{ number }}</span>{% else %}{{ number }}{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table>
+
+    <section class="exit-feedback-page">
+      <h2 class="exit-section-title">III — FEEDBACK TO THE COLLEGE</h2>
+      <p><strong>DIRECTIONS:</strong> Please rate the attributes of the following by encircling the number that corresponds to your opinion, using the scale below:</p>
+      <div class="exit-scale"><span>5 — Highly Satisfactory</span><span>4 — Satisfactory</span><span>3 — Average</span><span>2 — Unsatisfactory</span><span>1 — Very Unsatisfactory</span></div>
+      {% for category in exit_form.categories %}
+        <div class="exit-feedback-category">
+          <h3>{{ forloop.counter }}. {{ category.label }}</h3>
+          <table class="exit-rating-table">
+            <thead><tr><th>Attribute</th>{% for number in college_scale %}<th class="exit-score">{{ number }}</th>{% endfor %}</tr></thead>
+            <tbody>{% for row in category.rows %}<tr><td>{{ row.label }}</td>{% for number in college_scale %}<td class="exit-score">{% if row.rating == number %}<span class="exit-selected">{{ number }}</span>{% else %}{{ number }}{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+          </table>
+          <div>Other Comments:</div>
+          <div class="exit-comments generated-value">{{ category.comments }}</div>
+        </div>
+      {% endfor %}
+      <div class="exit-suggestions"><strong>SUGGESTIONS/RECOMMENDATIONS (if any):</strong><div class="exit-comments generated-value">{{ exit_form.suggestions }}</div></div>
+    </section>
+  </main>
+</div>
+{% endblock %}

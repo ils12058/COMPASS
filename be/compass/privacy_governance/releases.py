@@ -18,6 +18,7 @@ GOOD_MORAL_TARGET_TYPE = "goodmoral.request"
 REFERRAL_TARGET_TYPE = "referrals.referral"
 CALL_SLIP_TARGET_TYPE = "callslips.callslip"
 INDIVIDUAL_INVENTORY_TARGET_TYPE = "inventory.studentinventory"
+EXIT_INTERVIEW_TARGET_TYPE = "exitinterviews.exitinterview"
 
 
 class ReleaseAuditUnavailable(RuntimeError):
@@ -210,8 +211,24 @@ def record_individual_inventory_release(
     )
 
 
+def record_exit_interview_release(
+    *, context: AuditContext, exit_interview_id, access_mode: str
+) -> None:
+    normalized_access = str(access_mode).strip().upper()
+    if normalized_access not in {"SELF", "HEAD_GUIDANCE"}:
+        raise ValueError("unsupported Exit Interview release access mode")
+    _record_release(
+        context=context,
+        action=DOCUMENT_DOWNLOAD_RELEASED,
+        target_type=EXIT_INTERVIEW_TARGET_TYPE,
+        target_id=exit_interview_id,
+        metadata={"document_type": "exit_interview", "access_mode": normalized_access},
+    )
+
+
 __all__ = [
     "CALL_SLIP_TARGET_TYPE",
+    "EXIT_INTERVIEW_TARGET_TYPE",
     "GOOD_MORAL_TARGET_TYPE",
     "GRADUATE_TRACER_TARGET_TYPE",
     "INDIVIDUAL_INVENTORY_TARGET_TYPE",
@@ -219,6 +236,7 @@ __all__ = [
     "ReleaseAuditUnavailable",
     "STUDENT_PROFILING_TARGET_TYPE",
     "record_call_slip_release",
+    "record_exit_interview_release",
     "record_good_moral_release",
     "record_graduate_tracer_release",
     "record_individual_inventory_release",

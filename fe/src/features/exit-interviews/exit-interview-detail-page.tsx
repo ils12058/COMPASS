@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExitInterviewForm } from "@/features/exit-interviews/exit-interview-form";
+import { ExitInterviewPdfDownload } from "@/features/exit-interviews/exit-interview-pdf-download";
 import { ExitInterviewReopenAction } from "@/features/exit-interviews/exit-interview-reopen-dialog";
 import { ExitInterviewResponse } from "@/features/exit-interviews/exit-interview-response";
 import {
@@ -112,6 +113,7 @@ function StudentExitInterviewDetail({
         detail={record}
         studentFacing
         backHref="/portal/exit-interviews"
+        headerAction={record.status === "SUBMITTED" && !detail.isError ? <ExitInterviewPdfDownload exitInterviewId={record.id} studentFacing /> : undefined}
       />
     </section>
     </div>
@@ -203,7 +205,10 @@ function HeadExitInterviewDetail({
         detail={record}
         studentFacing={false}
         backHref="/portal/exit-interviews"
-        headerAction={canReopen && record.status === "SUBMITTED" && !detail.isError ? <ExitInterviewReopenAction exitInterviewId={record.id} /> : undefined}
+        headerAction={!detail.isError ? <>
+          <ExitInterviewPdfDownload exitInterviewId={record.id} studentFacing={false} />
+          {canReopen ? <ExitInterviewReopenAction exitInterviewId={record.id} /> : null}
+        </> : undefined}
       />
     </div>
   );
