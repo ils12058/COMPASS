@@ -5,11 +5,11 @@
   <h1>GOOD MORAL CHARACTER</h1>
   <p>
     THIS IS TO CERTIFY THAT
-    <span class="good-moral-field good-moral-field-wide">{{ certificate.applicant_name }}</span>,
+    <span class="good-moral-field good-moral-field-wide generated-value">{{ certificate.applicant_name }}</span>,
     graduated with the degree of
-    <span class="good-moral-field good-moral-field-wide">{{ certificate.degree }}</span>,
-    major in <span class="good-moral-field">{{ certificate.major }}</span> on
-    <span class="good-moral-field">{{ certificate.graduation_date|date:"F j, Y" }}</span>.
+    <span class="good-moral-field good-moral-field-wide generated-value">{{ certificate.degree }}</span>,
+    major in <span class="good-moral-field generated-value">{{ certificate.major }}</span> on
+    <span class="good-moral-field generated-value">{{ certificate.graduation_date|date:"F j, Y" }}</span>.
   </p>
   <p>
     During his/her stay in this College he/she had shown good moral character and never been
@@ -17,29 +17,29 @@
   </p>
   <p>
     Issued upon request of the party concerned this
-    <span class="good-moral-field">{{ certificate.issued_on|date:"j" }}</span> day of
-    <span class="good-moral-field">{{ certificate.issued_on|date:"F" }}</span>,
-    <span class="good-moral-field">{{ certificate.issued_on|date:"Y" }}</span> for whatever legal
+    <span class="good-moral-field generated-value">{{ certificate.issued_on|date:"j" }}</span> day of
+    <span class="good-moral-field generated-value">{{ certificate.issued_on|date:"F" }}</span>,
+    <span class="good-moral-field generated-value">{{ certificate.issued_on|date:"Y" }}</span> for whatever legal
     purpose it may serve.
   </p>
 
   <div class="good-moral-signature">
-    <div class="good-moral-signature-name">{{ certificate.issuer_name }}</div>
+    <div class="good-moral-signature-name"><span class="generated-value">{{ certificate.issuer_name }}</span></div>
     <div>Guidance Counselor</div>
   </div>
 
   <div class="good-moral-receipt">
-    <div>Official Receipt No.: {{ certificate.official_receipt_number }}</div>
+    <div>Official Receipt No.: <span class="generated-value">{{ certificate.official_receipt_number }}</span></div>
     <div>
       Date:
       {% if certificate.official_receipt_date %}
-        {{ certificate.official_receipt_date|date:"F j, Y" }}
+        <span class="generated-value">{{ certificate.official_receipt_date|date:"F j, Y" }}</span>
       {% endif %}
     </div>
     <div>
       Amount:
       {% if certificate.official_receipt_amount != None %}
-        {{ certificate.official_receipt_amount|floatformat:2 }}
+        <span class="generated-value">{{ certificate.official_receipt_amount|floatformat:2 }}</span>
       {% endif %}
     </div>
   </div>

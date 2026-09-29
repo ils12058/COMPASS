@@ -29,7 +29,11 @@ export function reportErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
   const backendMessage = readApiErrorMessage(error.body);
-  return backendMessage || (code && REPORT_ERROR_COPY[code]) || fallback;
+  const safeBackendMessage =
+    error.status >= 400 && error.status < 500 && backendMessage?.trim()
+      ? backendMessage.trim()
+      : undefined;
+  return (code && REPORT_ERROR_COPY[code]) || safeBackendMessage || fallback;
 }
 
 export function isReportScopeDenied(error: unknown): boolean {

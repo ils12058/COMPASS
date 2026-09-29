@@ -5,40 +5,40 @@
   {% if referral.is_voided %}<div class="document-state-banner">VOIDED</div>{% endif %}
   <h1 class="official-form-title">REFERRAL SLIP</h1>
   <div class="official-form-grid">
-    <div class="official-form-label">Name of Student</div><div class="official-form-value">{{ referral.student_name }}</div>
-    <div class="official-form-label">Course/Yr &amp; Blk</div><div class="official-form-value">{{ referral.course_year_block }}</div>
+    <div class="official-form-label">Name of Student</div><div class="official-form-value"><span class="generated-value">{{ referral.student_name }}</span></div>
+    <div class="official-form-label">Course/Yr &amp; Blk</div><div class="official-form-value"><span class="generated-value">{{ referral.course_year_block }}</span></div>
   </div>
   <div class="official-form-section">
     <div class="official-form-label">Reason/s for Referral</div>
-    <div class="official-form-long-text">{{ referral.reason|linebreaksbr }}</div>
+    <div class="official-form-long-text"><span class="generated-value">{{ referral.reason|linebreaksbr }}</span></div>
   </div>
   <div class="official-form-two-column">
     <div>
-      <div class="signature-line">{{ referral.referrer_name }}</div>
+      <div class="signature-line"><span class="generated-value">{{ referral.referrer_name }}</span></div>
       <div class="signature-caption">Referrer / Printed Name</div>
-      <div class="official-form-grid compact"><div class="official-form-label">Date</div><div class="official-form-value">{{ referral.referred_on|date:"M j, Y" }}</div></div>
+      <div class="official-form-grid compact"><div class="official-form-label">Date</div><div class="official-form-value"><span class="generated-value">{{ referral.referred_on|date:"M j, Y" }}</span></div></div>
     </div>
     <div class="official-form-grid compact">
-      <div class="official-form-label">Received</div><div class="official-form-value">{% if referral.received_date %}{{ referral.received_date|date:"M j, Y" }}{% else %}—{% endif %}</div>
-      <div class="official-form-label">Time</div><div class="official-form-value">{% if referral.received_time %}{{ referral.received_time|time:"g:i A" }}{% else %}—{% endif %}</div>
+      <div class="official-form-label">Received</div><div class="official-form-value">{% if referral.received_date %}<span class="generated-value">{{ referral.received_date|date:"M j, Y" }}</span>{% else %}—{% endif %}</div>
+      <div class="official-form-label">Time</div><div class="official-form-value">{% if referral.received_time %}<span class="generated-value">{{ referral.received_time|time:"g:i A" }}</span>{% else %}—{% endif %}</div>
     </div>
   </div>
   <div class="official-form-subheading">(To be filled up by Guidance/Coordinator)</div>
-  <div class="official-form-grid"><div class="official-form-label">Student Reference No.</div><div class="official-form-value">{{ referral.reference_code }}</div></div>
+  <div class="official-form-grid"><div class="official-form-label">Student Reference No.</div><div class="official-form-value"><span class="generated-value">{{ referral.reference_code }}</span></div></div>
   <table class="official-form-table">
     <thead><tr><th>Action Taken</th><th>Date</th><th>Time</th><th>Remarks</th></tr></thead>
     <tbody>
       {% for action in referral.actions %}
       <tr>
-        <td><span class="check-box">{% if action.recorded %}✓{% endif %}</span>{{ action.label }}</td>
-        <td>{% if action.date %}{{ action.date|date:"M j, Y" }}{% endif %}</td>
-        <td>{% if action.time %}{{ action.time|time:"g:i A" }}{% endif %}</td>
-        <td>{{ action.remarks }}</td>
+        <td><span class="check-box">{% if action.recorded %}<span class="generated-value">✓</span>{% endif %}</span>{{ action.label }}</td>
+        <td>{% if action.date %}<span class="generated-value">{{ action.date|date:"M j, Y" }}</span>{% endif %}</td>
+        <td>{% if action.time %}<span class="generated-value">{{ action.time|time:"g:i A" }}</span>{% endif %}</td>
+        <td><span class="generated-value">{{ action.remarks }}</span></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  <div class="official-form-grid status-row"><div class="official-form-label">STATUS</div><div class="official-form-value">{{ referral.status_note|default:"—" }}</div></div>
-  {% if referral.is_voided %}<div class="void-reason"><strong>Void reason:</strong> {{ referral.void_reason }}</div>{% endif %}
+  <div class="official-form-grid status-row"><div class="official-form-label">STATUS</div><div class="official-form-value">{% if referral.status_note %}<span class="generated-value">{{ referral.status_note }}</span>{% else %}—{% endif %}</div></div>
+  {% if referral.is_voided %}<div class="void-reason"><strong>Void reason:</strong> <span class="generated-value">{{ referral.void_reason }}</span></div>{% endif %}
 </section>
 {% endblock %}
