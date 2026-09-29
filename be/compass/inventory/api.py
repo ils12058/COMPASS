@@ -8,6 +8,7 @@ from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
+from django.http import HttpResponse
 from ninja import Router, Schema
 from pydantic import ConfigDict, Field
 
@@ -15,12 +16,17 @@ from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.privacy_governance.releases import (
+    ReleaseAuditUnavailable,
+    record_individual_inventory_release,
+)
 from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
     ParentLifeStatus,
 )
 
+from .documents import InventoryDocumentUnavailable, render_inventory_pdf
 from .models import (
     AnnualIncomeStatus,
     CivilStatusCategory,
@@ -71,6 +77,11 @@ from .services import (
 )
 
 router = Router(tags=["inventory"])
+PDF_SUCCESS_OPENAPI = {
+    "responses": {
+        200: {"content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}}}
+    }
+}
 
 
 class StrictSchema(Schema):
@@ -597,6 +608,8 @@ def _require_counselor(request, capability: str) -> None:
 
 
 def _raise(exc: InventoryError) -> NoReturn:
+    if isinstance(exc, InventoryDocumentUnavailable):
+        raise APIError(503, "inventory_document_unavailable", str(exc)) from exc
     if isinstance(exc, InventoryNotPermitted):
         raise APIError(403, "permission_denied", str(exc)) from exc
     if isinstance(exc, InventoryNotSubmitted):
@@ -622,6 +635,33 @@ def _raise(exc: InventoryError) -> NoReturn:
     raise APIError(
         500, "internal_error", "The Inventory operation could not be completed."
     ) from exc
+
+
+def _pdf_response(item, *, context: AuditContext, access_mode: str) -> HttpResponse:
+    try:
+        pdf_bytes = render_inventory_pdf(item)
+    except InventoryError as exc:
+        _raise(exc)
+    revision = item.form_revision
+    try:
+        record_individual_inventory_release(
+            context=context,
+            inventory_id=item.pk,
+            access_mode=access_mode,
+            form_revision_id=revision.pk,
+            official_code=revision.official_code,
+            official_revision=revision.official_revision,
+        )
+    except ReleaseAuditUnavailable as exc:
+        raise APIError(
+            503,
+            "release_audit_unavailable",
+            "The Individual Inventory could not be released because its required "
+            "privacy audit is unavailable.",
+        ) from exc
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="individual-inventory-{item.pk}.pdf"'
+    return response
 
 
 def _revision(item) -> dict[str, object]:
@@ -1069,6 +1109,28 @@ def inventory_get_my_history_item(request, inventory_id: UUID):
 
 
 @router.get(
+    "/me/{inventory_id}/pdf",
+    response=response_with_errors(None, 401, 403, 404, 409, 503),
+    auth=session_auth,
+    operation_id="inventoryDownloadMyPdf",
+    openapi_extra=PDF_SUCCESS_OPENAPI,
+)
+def inventory_download_my_pdf(request, inventory_id: UUID):
+    _require_student(request, "inventory.view_self")
+    try:
+        item = get_my_inventory_history_item(student=request.auth_user, inventory_id=inventory_id)
+    except InventoryError as exc:
+        _raise(exc)
+    if item.submitted_at is None:
+        _raise(
+            InventoryNotSubmitted(
+                "Only a currently submitted Individual Inventory has an official PDF."
+            )
+        )
+    return _pdf_response(item, context=_context(request), access_mode="SELF")
+
+
+@router.get(
     "/students",
     response=response_with_errors(CounselorInventoryRosterPage, 401, 403, 409, 422),
     auth=session_auth,
@@ -1139,6 +1201,22 @@ def inventory_get_record(request, inventory_id: UUID):
         )
     except InventoryError as exc:
         _raise(exc)
+
+
+@router.get(
+    "/records/{inventory_id}/pdf",
+    response=response_with_errors(None, 401, 403, 404, 409, 503),
+    auth=session_auth,
+    operation_id="inventoryDownloadRecordPdf",
+    openapi_extra=PDF_SUCCESS_OPENAPI,
+)
+def inventory_download_record_pdf(request, inventory_id: UUID):
+    _require_counselor(request, "inventory.view")
+    try:
+        item = get_inventory_for_counselor(actor=request.auth_user, inventory_id=inventory_id)
+    except InventoryError as exc:
+        _raise(exc)
+    return _pdf_response(item, context=_context(request), access_mode="COUNSELOR")
 
 
 @router.post(

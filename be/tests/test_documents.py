@@ -64,7 +64,7 @@ def test_accreditation_footer_stays_opt_in_for_real_documents():
         "good_moral_graduate",
         "referral_slip",
         "call_slip",
-        "student_profiling_report",
+        "individual_inventory",
     ):
         spec = get_template_spec(key, 1)
         html, _ = render_document_html(key, 1)
@@ -75,6 +75,11 @@ def test_accreditation_footer_stays_opt_in_for_real_documents():
     html, _ = render_document_html("foundation_test", 1)
     assert spec.include_accreditation_footer is True
     assert '<footer class="accreditation-footer">' in html
+
+    report_spec = get_template_spec("student_profiling_report", 1)
+    report_html, _ = render_document_html("student_profiling_report", 1)
+    assert report_spec.include_accreditation_footer is True
+    assert '<footer class="accreditation-footer">' in report_html
 
 
 @pytest.mark.parametrize(

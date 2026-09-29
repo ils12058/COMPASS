@@ -17,6 +17,7 @@ GRADUATE_TRACER_TARGET_TYPE = "reports.graduatetracer"
 GOOD_MORAL_TARGET_TYPE = "goodmoral.request"
 REFERRAL_TARGET_TYPE = "referrals.referral"
 CALL_SLIP_TARGET_TYPE = "callslips.callslip"
+INDIVIDUAL_INVENTORY_TARGET_TYPE = "inventory.studentinventory"
 
 
 class ReleaseAuditUnavailable(RuntimeError):
@@ -182,16 +183,45 @@ def record_call_slip_release(
     )
 
 
+def record_individual_inventory_release(
+    *,
+    context: AuditContext,
+    inventory_id,
+    access_mode: str,
+    form_revision_id,
+    official_code: str,
+    official_revision: str,
+) -> None:
+    normalized_access = str(access_mode).strip().upper()
+    if normalized_access not in {"SELF", "COUNSELOR"}:
+        raise ValueError("unsupported Individual Inventory release access mode")
+    _record_release(
+        context=context,
+        action=DOCUMENT_DOWNLOAD_RELEASED,
+        target_type=INDIVIDUAL_INVENTORY_TARGET_TYPE,
+        target_id=inventory_id,
+        metadata={
+            "document_type": "individual_inventory",
+            "access_mode": normalized_access,
+            "form_revision_id": str(form_revision_id),
+            "official_code": official_code,
+            "official_revision": official_revision,
+        },
+    )
+
+
 __all__ = [
     "CALL_SLIP_TARGET_TYPE",
     "GOOD_MORAL_TARGET_TYPE",
     "GRADUATE_TRACER_TARGET_TYPE",
+    "INDIVIDUAL_INVENTORY_TARGET_TYPE",
     "REFERRAL_TARGET_TYPE",
     "ReleaseAuditUnavailable",
     "STUDENT_PROFILING_TARGET_TYPE",
     "record_call_slip_release",
     "record_good_moral_release",
     "record_graduate_tracer_release",
+    "record_individual_inventory_release",
     "record_referral_release",
     "record_student_profiling_release",
 ]

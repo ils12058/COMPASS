@@ -5,10 +5,12 @@ import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
+import { InventoryPdfDownload } from "@/features/inventory/inventory-pdf-download";
 import { formatInventoryDate, InventoryHeading, InventoryNotice, InventoryQueryError, InventoryStatus } from "@/features/inventory/inventory-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { useInventoryGetMyHistoryItem } from "@/lib/api/generated/inventory/inventory";
+import { InventoryStatusValue } from "@/lib/api/generated/model";
 
 export function InventoryHistoryDetail({ inventoryId }: { inventoryId: string }) {
   const { user } = usePortalSession();
@@ -67,6 +69,9 @@ function StudentInventoryHistoryDetail({ inventoryId }: { inventoryId: string })
         <InventoryStatus status={inventory.status} correctionPending={inventory.correction_pending} />
         {inventory.submitted_at ? <span className="text-sm text-muted">Submitted {formatInventoryDate(inventory.submitted_at)}</span> : null}
       </div>
+      {inventory.status === InventoryStatusValue.SUBMITTED ? (
+        <div className="mt-4"><InventoryPdfDownload inventoryId={inventory.id} studentFacing /></div>
+      ) : null}
       {inventory.correction_pending && inventory.latest_correction ? (
         <div className="mt-5">
           <InventoryNotice title="Correction requested" tone="warning">

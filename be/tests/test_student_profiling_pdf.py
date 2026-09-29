@@ -364,7 +364,7 @@ def test_rendered_html_uses_canonical_branding_report_context_and_required_secti
     )
 
     assert spec.layout_family is LayoutFamily.REPORT
-    assert spec.include_accreditation_footer is False
+    assert spec.include_accreditation_footer is True
     assert spec.show_page_numbers is True
     assert "University of Camarines Norte" in html
     assert "Guidance and Counseling Office" in html
@@ -406,7 +406,7 @@ def test_template_is_portrait_local_and_registry_does_not_change_global_orientat
     assert "@page" in shared_css
     assert spec.layout_family is LayoutFamily.REPORT
     assert spec.show_page_numbers is True
-    assert spec.include_accreditation_footer is False
+    assert spec.include_accreditation_footer is True
     assert "CAMARINES NORTE STATE COLLEGE" not in source
     assert "CNSC" not in source
 
@@ -641,3 +641,12 @@ def test_real_chromium_renders_portrait_multi_chunk_student_profile_pdf(monkeypa
     assert result.pdf_bytes.startswith(b"%PDF-")
     assert len(result.pdf_bytes) > 10_000
     assert result.filename == "student-profile-2026-2027.pdf"
+    from io import BytesIO
+
+    from pypdf import PdfReader
+
+    pages = PdfReader(BytesIO(result.pdf_bytes)).pages
+    assert len(pages) > 1
+    assert all(round(float(page.mediabox.width)) == 595 for page in pages)
+    assert all(round(float(page.mediabox.height)) == 842 for page in pages)
+    assert all(page.images for page in pages)

@@ -1,0 +1,9 @@
+{% extends "documents/base.html" %}
+{% block title %}Individual Inventory{% endblock %}
+{% block document %}
+<div class="individual-inventory">
+  {% include "documents/inventory/page_one.html" %}
+  {% include "documents/inventory/page_two.html" %}
+  {% include "documents/inventory/page_three.html" %}
+</div>
+{% endblock %}

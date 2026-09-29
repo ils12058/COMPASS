@@ -148,6 +148,10 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
       return "Your Inventory is still saved as a draft. Official location verification is temporarily unavailable. Please try submitting again later.";
     case "inventory_not_submitted":
       return "This Individual Inventory is currently a draft and is not available for Counselor review.";
+    case "inventory_document_unavailable":
+      return "This official Individual Inventory PDF is temporarily unavailable. Please try again later.";
+    case "release_audit_unavailable":
+      return "The PDF cannot be released while its required privacy audit is unavailable. Please try again later.";
     case "inventory_not_found":
       return "This Individual Inventory could not be found or is not available to you.";
     case "permission_denied":

@@ -1,0 +1,76 @@
+<section class="individual-inventory-page inventory-page-one">
+  {% include "documents/partials/institution_masthead.html" %}
+  {% include "documents/partials/office_heading.html" %}
+  <main class="inventory-source-body">
+    <h1 class="inventory-title">INDIVIDUAL INVENTORY</h1>
+    <div class="inventory-instructions"><strong>TO THE STUDENTS:</strong><br>
+      <span>You are requested to provide us with essential information that will enable us to help you meet your specific needs and future plans. All information will be kept with utmost confidentiality. Please fill in the blanks accurately and sincerely to the best of your knowledge and belief.</span>
+    </div>
+    <div class="inventory-section-title"><strong>PERSONAL DATA</strong></div>
+    <div class="inventory-row inventory-personal-first">
+      <span>Name</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.name }}</span></span>
+      <span>Nickname</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.nickname }}</span></span>
+      <span>Student No.</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.student_number }}</span></span>
+    </div>
+    <div class="inventory-name-note">(Last Name, First Name, Middle Name) (Extension Name)</div>
+    <div class="inventory-row inventory-four-fields">
+      <span>Age</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.age }}</span></span>
+      <span>Date of Birth</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.date_of_birth }}</span></span>
+      <span>Place of Birth</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.place_of_birth }}</span></span>
+      <span>Nationality</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.nationality }}</span></span>
+    </div>
+    <div class="inventory-row inventory-personal-checks">
+      <span>Sex</span>
+      <span><span class="inventory-checkbox">{% if inventory_form.sex == "MALE" %}<span class="generated-value">X</span>{% endif %}</span> Male <span class="inventory-checkbox">{% if inventory_form.sex == "FEMALE" %}<span class="generated-value">X</span>{% endif %}</span> Female</span>
+      <span>Birth Order among Siblings</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.birth_order }}</span></span>
+      <span>Civil Status</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.civil_status }}</span></span>
+    </div>
+    <div class="inventory-stacked-field"><span>Current Address:</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.current_address }}</span></span></div>
+    <div class="inventory-stacked-field"><span>Permanent Address:</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.permanent_address }}</span></span></div>
+    <div class="inventory-row inventory-contact-row">
+      <span>Contact No:</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.contact_number }}</span></span>
+      <span>E-mail Address:</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.email_address }}</span></span>
+    </div>
+    <div class="inventory-row inventory-label-line"><span>Languages/Dialects Spoken at Home</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.languages_home }}</span></span></div>
+    <div class="inventory-row inventory-label-line"><span>Languages/Dialects Most Fluent In</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.languages_fluent }}</span></span></div>
+    <div class="inventory-row inventory-contact-row"><span>Religion from Birth</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.religion_birth }}</span></span><span>Current Religion</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.current_religion }}</span></span></div>
+
+    <div class="inventory-section-title inventory-family-title"><strong>FAMILY DATA</strong></div>
+    <table class="inventory-family-table">
+      <thead><tr><th></th><th>Father</th><th>Mother (Maiden Name)</th><th>Spouse(if Married)</th></tr></thead>
+      <tbody>
+        <tr><th>Name</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.name }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.name }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.name }}</span></td></tr>
+        <tr><th>Date of Birth</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.date_of_birth }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.date_of_birth }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.date_of_birth }}</span></td></tr>
+        <tr><th>Place of Birth</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.place_of_birth }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.place_of_birth }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.place_of_birth }}</span></td></tr>
+        <tr><th>Current Address</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.current_address }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.current_address }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.current_address }}</span></td></tr>
+        <tr><th>Permanent Address</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.permanent_address }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.permanent_address }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.permanent_address }}</span></td></tr>
+        <tr><th>Contact Number</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.contact_number }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.contact_number }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.contact_number }}</span></td></tr>
+        <tr><th>e-Mail Address</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.email_address }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.email_address }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.email_address }}</span></td></tr>
+        <tr><th>Educational Attainment</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.educational_attainment }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.educational_attainment }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.educational_attainment }}</span></td></tr>
+        <tr><th>Occupation</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.occupation }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.occupation }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.occupation }}</span></td></tr>
+        <tr><th>Business Address</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.business_address }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.business_address }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.business_address }}</span></td></tr>
+        <tr><th>Business Telephone</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.business_telephone }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.business_telephone }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.business_telephone }}</span></td></tr>
+        <tr><th>Annual Income<br>(previous year)</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.annual_income }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.annual_income }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.annual_income }}</span></td></tr>
+        <tr><th>Language/s spoken</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.languages_spoken }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.languages_spoken }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.languages_spoken }}</span></td></tr>
+        <tr><th>Religion Raised with</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.religion_raised_with }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.religion_raised_with }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.religion_raised_with }}</span></td></tr>
+        <tr><th>Current Religion</th><td><span class="inventory-fit generated-value">{{ inventory_form.father.current_religion }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.mother.current_religion }}</span></td><td><span class="inventory-fit generated-value">{{ inventory_form.spouse.current_religion }}</span></td></tr>
+      </tbody>
+    </table>
+    <div class="inventory-parent-status-label">Marital Status of Parents: Please check and underline the choices.</div>
+    <div class="inventory-parent-statuses">
+      <span><span class="inventory-checkbox">{% if "MARRIED_ANNULLED_LEGALLY_SEPARATED" in inventory_form.parent_statuses %}<span class="generated-value">X</span>{% endif %}</span> Married/Annulled /Legally Separated</span>
+      <span><span class="inventory-checkbox">{% if "TEMPORARILY_SEPARATED" in inventory_form.parent_statuses %}<span class="generated-value">X</span>{% endif %}</span> Temporarily Separated</span>
+      <span><span class="inventory-checkbox">{% if "MOTHER_WITH_OTHER_PARTNER" in inventory_form.parent_statuses %}<span class="generated-value">X</span>{% endif %}</span> Mother with other partner</span>
+      <span><span class="inventory-checkbox">{% if "FATHER_WITH_OTHER_PARTNER" in inventory_form.parent_statuses %}<span class="generated-value">X</span>{% endif %}</span> Father with other partner</span>
+      <span><span class="inventory-checkbox">{% if "WIDOW_WIDOWER_LIVING_TOGETHER" in inventory_form.parent_statuses %}<span class="generated-value">X</span>{% endif %}</span> Widow/Widower/ Living Together</span>
+      <span><span class="inventory-checkbox">{% if "PERMANENTLY_SEPARATED" in inventory_form.parent_statuses %}<span class="generated-value">X</span>{% endif %}</span> Permanently Separated</span>
+      <span><span class="inventory-checkbox">{% if "MOTHER_OFW" in inventory_form.parent_statuses %}<span class="generated-value">X</span>{% endif %}</span> Mother OFW</span>
+      <span><span class="inventory-checkbox">{% if "FATHER_OFW" in inventory_form.parent_statuses %}<span class="generated-value">X</span>{% endif %}</span> Father OFW</span>
+    </div>
+    <div class="inventory-row inventory-guardian-row"><span>Guardian</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.guardian_name }}</span></span><span>Relationship with Guardian</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.guardian_relationship }}</span></span></div>
+    <div class="inventory-row inventory-guardian-row"><span>Address</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.guardian_address }}</span></span><span>Contact No.</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.guardian_contact }}</span></span></div>
+    <div class="inventory-emergency-title"><strong>PERSON TO CONTACT IN CASE OF EMERGENCY:</strong></div>
+    <div class="inventory-row inventory-contact-row"><span>Name</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.emergency_name }}</span></span><span>Contact Number</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.emergency_contact }}</span></span></div>
+  </main>
+  {% include "documents/partials/controlled_form_metadata.html" with page_label="Page 1 of 3" %}
+</section>
