@@ -109,14 +109,13 @@ CAPABILITY_DEFINITIONS = (
         code="privacy_governance.view",
         name="View privacy governance",
         description=(
-            "View COMPASS Privacy Notices, Retention Policies, and curated privacy/security "
-            "oversight activity."
+            "View COMPASS Privacy Notices and curated privacy/security oversight activity."
         ),
     ),
     CapabilityDefinition(
         code="privacy_governance.manage",
         name="Manage privacy governance",
-        description="Manage COMPASS Privacy Notices and Retention Policies.",
+        description="Manage COMPASS Privacy Notices.",
     ),
     CapabilityDefinition(
         code="organization.structure.view",

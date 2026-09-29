@@ -4,6 +4,7 @@
 - Date: 2026-09-26
 - Scope: Privacy Governance expansion after ADR-045
 - Refined by: ADR-065 (Processing/Review/Incident workflows removed; Retention Policies mapped to closed COMPASS record categories)
+- Further refined by: ADR-069 (Retention Policy registry removed from the live product)
 
 ## Context
 

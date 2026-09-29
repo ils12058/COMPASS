@@ -1,4 +1,4 @@
-"""Retained Privacy Governance: notices, retention guidance, and acknowledgment."""
+"""Retained Privacy Governance: notices and acknowledgment."""
 
 from __future__ import annotations
 
@@ -15,8 +15,6 @@ from compass.privacy_governance.models import (
     PrivacyNotice,
     PrivacyNoticeAcknowledgment,
     PrivacyNoticeRevision,
-    RetentionPolicy,
-    RetentionRecordCategory,
 )
 from tests.test_privacy_governance import (
     auth_client,
@@ -41,136 +39,6 @@ def notice_payload(code="NOTICE-1", audiences=None, effective_on=None):
         "requires_acknowledgment": True,
         "effective_on": str(effective_on or timezone.localdate()),
     }
-
-
-def retention_payload(
-    code: str = "COUNSELING-RETENTION",
-    *,
-    categories: list[str] | None = None,
-):
-    return {
-        "code": code,
-        "name": "Synthetic retention guidance",
-        "record_categories": categories or ["COUNSELING"],
-        "scope_summary": "Synthetic scope for test records",
-        "retention_trigger_summary": "Synthetic trigger",
-        "retention_period_summary": "Institution-approved duration placeholder",
-        "disposition_summary": "Human-reviewed disposition placeholder",
-    }
-
-
-@pytest.mark.django_db
-def test_retention_categories_are_closed_required_and_governance_only():
-    sync_policy()
-    dpo = auth_client(make_dpo(), recent_mfa=True)
-
-    assert {item.value for item in RetentionRecordCategory} == {
-        "INDIVIDUAL_INVENTORY",
-        "COUNSELING",
-        "ROUTINE_INTERVIEW",
-        "REFERRAL",
-        "CALL_SLIP",
-        "GOOD_MORAL",
-        "EXIT_INTERVIEW",
-        "GRADUATE_TRACER",
-        "CUSTOMER_FEEDBACK",
-    }
-
-    missing = retention_payload()
-    missing.pop("record_categories")
-    assert post_json(dpo, f"{ROOT}/retention-policies", missing).status_code == 422
-
-    duplicate = retention_payload(categories=["COUNSELING", "COUNSELING"])
-    assert post_json(dpo, f"{ROOT}/retention-policies", duplicate).status_code == 422
-
-    unsupported = retention_payload(categories=["COUNSELING", "DATABASE_TABLE"])
-    assert post_json(dpo, f"{ROOT}/retention-policies", unsupported).status_code == 422
-
-    created = post_json(
-        dpo,
-        f"{ROOT}/retention-policies",
-        retention_payload(categories=["COUNSELING", "REFERRAL", "CALL_SLIP"]),
-    )
-    assert created.status_code == 201, created.content
-    body = created.json()
-    assert body["record_categories"] == ["COUNSELING", "REFERRAL", "CALL_SLIP"]
-    policy_id = body["id"]
-
-    updated = patch_json(
-        dpo,
-        f"{ROOT}/retention-policies/{policy_id}",
-        {"record_categories": ["COUNSELING", "ROUTINE_INTERVIEW"]},
-    )
-    assert updated.status_code == 200
-    assert updated.json()["record_categories"] == ["COUNSELING", "ROUTINE_INTERVIEW"]
-
-    retired = post_json(dpo, f"{ROOT}/retention-policies/{policy_id}/retire", {})
-    assert retired.status_code == 200
-    assert retired.json()["record_categories"] == ["COUNSELING", "ROUTINE_INTERVIEW"]
-    assert RetentionPolicy.objects.get(pk=policy_id).record_categories == [
-        "COUNSELING",
-        "ROUTINE_INTERVIEW",
-    ]
-    assert not hasattr(RetentionPolicy, "retention_days")
-
-
-@pytest.mark.django_db
-def test_retention_category_discovery_composes_with_search_active_state_and_legacy_rows():
-    sync_policy()
-    dpo = auth_client(make_dpo("retention-discovery@example.edu"), recent_mfa=True)
-
-    counseling = post_json(
-        dpo,
-        f"{ROOT}/retention-policies",
-        retention_payload("COUNSELING-A", categories=["COUNSELING"]),
-    )
-    combined = post_json(
-        dpo,
-        f"{ROOT}/retention-policies",
-        retention_payload("COUNSELING-B", categories=["COUNSELING", "REFERRAL"]),
-    )
-    referral = post_json(
-        dpo,
-        f"{ROOT}/retention-policies",
-        retention_payload("REFERRAL-A", categories=["REFERRAL"]),
-    )
-    assert counseling.status_code == combined.status_code == referral.status_code == 201
-    post_json(dpo, f"{ROOT}/retention-policies/{combined.json()['id']}/retire", {})
-
-    by_category = dpo.get(
-        f"{ROOT}/retention-policies?record_category=COUNSELING&is_active=true&page_size=50"
-    )
-    assert by_category.status_code == 200
-    assert [item["code"] for item in by_category.json()["items"]] == ["COUNSELING-A"]
-
-    composed = dpo.get(
-        f"{ROOT}/retention-policies?record_category=REFERRAL&search=COUNSELING&is_active=false"
-    )
-    assert [item["code"] for item in composed.json()["items"]] == ["COUNSELING-B"]
-
-    invalid = dpo.get(f"{ROOT}/retention-policies?record_category=NOT_A_CATEGORY")
-    assert invalid.status_code == 422
-
-    legacy = RetentionPolicy.objects.create(
-        code="LEGACY-UNCLASSIFIED",
-        name="Legacy synthetic guidance",
-        record_categories=[],
-        scope_summary="Legacy scope",
-        retention_trigger_summary="Legacy trigger",
-        retention_period_summary="Legacy period",
-        disposition_summary="Legacy disposition",
-    )
-    detail = dpo.get(f"{ROOT}/retention-policies/{legacy.pk}")
-    assert detail.status_code == 200
-    assert detail.json()["record_categories"] == []
-
-    classified = patch_json(
-        dpo,
-        f"{ROOT}/retention-policies/{legacy.pk}",
-        {"record_categories": ["GOOD_MORAL"]},
-    )
-    assert classified.status_code == 200
-    assert classified.json()["record_categories"] == ["GOOD_MORAL"]
 
 
 @pytest.mark.django_db
@@ -266,7 +134,6 @@ def test_management_boundary_and_self_route_rejects_impersonation():
     ordinary = auth_client(make_user("ordinary@example.edu"))
     student = auth_client(make_user("self-student@example.edu", role="STUDENT"))
     assert ordinary.get(f"{ROOT}/notices").status_code == 403
-    assert ordinary.get(f"{ROOT}/retention-policies").status_code == 403
     assert ordinary.get(f"{ROOT}/activity").status_code == 403
     assert post_json(ordinary, f"{ROOT}/notices", notice_payload()).status_code == 403
     assert student.get(f"{ROOT}/my-notices").status_code == 200
@@ -293,16 +160,9 @@ def test_audit_rollback_minimized_metadata_and_curated_activity():
         "compass.privacy_governance.expansion.record_event",
         side_effect=RuntimeError("audit unavailable"),
     ):
-        assert post_json(dpo, f"{ROOT}/retention-policies", retention_payload()).status_code == 500
-    assert RetentionPolicy.objects.count() == 0
-    with patch(
-        "compass.privacy_governance.expansion.record_event",
-        side_effect=RuntimeError("audit unavailable"),
-    ):
         assert post_json(dpo, f"{ROOT}/notices", notice_payload()).status_code == 500
     assert PrivacyNotice.objects.count() == 0
 
-    assert post_json(dpo, f"{ROOT}/retention-policies", retention_payload()).status_code == 201
     notice = post_json(dpo, f"{ROOT}/notices", notice_payload())
     assert notice.status_code == 201
     revision_id = dpo.get(f"{ROOT}/notices/{notice.json()['id']}/revisions").json()["items"][0][
@@ -321,7 +181,6 @@ def test_audit_rollback_minimized_metadata_and_curated_activity():
         item["type"]
         for item in dpo.get(f"{ROOT}/activity?category=PRIVACY_GOVERNANCE").json()["items"]
     }
-    assert "privacy.retention.created" in activity_types
     assert "privacy.notice.revision.published" in activity_types
     for event in AuditEvent.objects.filter(action__startswith="privacy."):
         metadata = str(event.metadata)

@@ -8,7 +8,7 @@ from django.db import IntegrityError
 
 from compass.privacy_governance import expansion
 from tests.test_privacy_governance import auth_client, make_dpo, post_json, sync_policy
-from tests.test_privacy_governance_expansion import retention_payload
+from tests.test_privacy_governance_expansion import notice_payload
 
 
 def _integrity_error(cause: Exception) -> IntegrityError:
@@ -23,8 +23,8 @@ def test_value_the_database_cannot_store_is_a_validation_error():
     dpo = auth_client(make_dpo(), recent_mfa=True)
     response = post_json(
         dpo,
-        "/api/v1/privacy/retention-policies",
-        retention_payload() | {"name": "Contains a NUL\u0000byte"},
+        "/api/v1/privacy/notices",
+        notice_payload() | {"name": "Contains a NUL\u0000byte"},
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_request_value"
@@ -49,8 +49,8 @@ def test_uncaught_integrity_errors_are_classified_by_sqlstate(monkeypatch, cause
     def reject(**kwargs):
         raise _integrity_error(cause)
 
-    monkeypatch.setattr(expansion, "list_retention", reject)
-    response = dpo.get("/api/v1/privacy/retention-policies")
+    monkeypatch.setattr(expansion, "list_notices", reject)
+    response = dpo.get("/api/v1/privacy/notices")
 
     assert response.status_code == status
     body = response.json()["error"]

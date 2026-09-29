@@ -34,7 +34,7 @@ from compass.organization.bootstrap import (
     sync_organization_catalog,
 )
 from compass.organization.models import AcademicYear
-from compass.privacy_governance.models import PrivacyNotice, RetentionPolicy
+from compass.privacy_governance.models import PrivacyNotice
 from compass.referrals.models import Referral
 from compass.resources.models import Resource
 from compass.routine_interviews.crypto import (
@@ -364,14 +364,6 @@ def _records(session: SeedSession) -> tuple[tuple[str, str], ...]:
         (
             "Privacy Notices",
             str(PrivacyNotice.objects.filter(code=publication_data.PRIVACY_NOTICE["code"]).count()),
-        ),
-        (
-            "Retention Policies",
-            str(
-                RetentionPolicy.objects.filter(
-                    code__in=[policy["code"] for policy in publication_data.RETENTION_POLICIES]
-                ).count()
-            ),
         ),
         (
             "Notifications",

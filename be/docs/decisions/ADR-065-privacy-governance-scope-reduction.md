@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-27
 - Scope: Retain only implemented COMPASS privacy governance controls and remove unsupported governance workflows
+- Further refined by: ADR-069 (Retention Policy registry removed from the live product)
 
 ## Context
 

@@ -28,7 +28,6 @@ class PrivacyConflictCode(StrEnum):
 
     GENERAL = "privacy_governance_conflict"
     CODE_IN_USE = "privacy_code_in_use"
-    RETENTION_POLICY_RETIRED = "privacy_retention_policy_retired"
     NOTICE_RETIRED = "privacy_notice_retired"
     NOTICE_DRAFT_EXISTS = "privacy_notice_draft_exists"
     NOTICE_REVISION_IMMUTABLE = "privacy_notice_revision_immutable"

@@ -18,6 +18,7 @@ from compass.audit.actions import (
     COUNSELING_ENCOUNTER_UPDATED,
     DOCUMENT_DOWNLOAD_RELEASED,
     PRIVACY_INCIDENT_CREATED,
+    PRIVACY_RETENTION_CREATED,
     PRIVACY_REVIEW_RESOLVED,
     REPORT_EXPORT_RELEASED,
 )
@@ -327,6 +328,28 @@ def test_historical_removed_workflow_audit_event_remains_safely_presentable():
     serialized = response.content.decode()
     assert "SENTINEL LEGACY REVIEW NARRATIVE" not in serialized
     assert "resolution_summary" not in serialized
+
+
+@pytest.mark.django_db
+def test_historical_retention_audit_event_remains_readable_without_live_policy():
+    sync_policy()
+    dpo = make_dpo("historical-retention-dpo@example.edu")
+    policy_id = uuid4()
+    event = record_event(
+        context=audited_context(dpo),
+        action=PRIVACY_RETENTION_CREATED,
+        outcome="SUCCESS",
+        target_type="privacy.retention",
+        target_id=policy_id,
+        metadata={"policy_body": "SENTINEL HISTORICAL POLICY PROSE"},
+    )
+
+    response = auth_client(dpo).get("/api/v1/privacy/activity?category=PRIVACY_GOVERNANCE")
+    assert response.status_code == 200
+    item = next(row for row in response.json()["items"] if row["id"] == str(event.pk))
+    assert item["title"] == "Retention policy created"
+    assert item["resource_reference"] == str(policy_id)
+    assert "SENTINEL HISTORICAL POLICY PROSE" not in response.content.decode()
 
 
 @pytest.mark.django_db

@@ -16,7 +16,7 @@ from compass.common.errors import APIError
 from . import expansion as service
 from .api import _context, _raise, _require
 from .expansion import NoticePublishBlocker
-from .models import PrivacyNoticeAcknowledgment, RetentionRecordCategory
+from .models import PrivacyNoticeAcknowledgment
 from .services import PrivacyGovernanceError
 
 router = Router(tags=["privacy-governance"])
@@ -43,73 +43,6 @@ class RevisionStatusValue(StrEnum):
     SUPERSEDED = "SUPERSEDED"
 
 
-class RetentionRecordCategoryValue(StrEnum):
-    INDIVIDUAL_INVENTORY = RetentionRecordCategory.INDIVIDUAL_INVENTORY
-    COUNSELING = RetentionRecordCategory.COUNSELING
-    ROUTINE_INTERVIEW = RetentionRecordCategory.ROUTINE_INTERVIEW
-    REFERRAL = RetentionRecordCategory.REFERRAL
-    CALL_SLIP = RetentionRecordCategory.CALL_SLIP
-    GOOD_MORAL = RetentionRecordCategory.GOOD_MORAL
-    EXIT_INTERVIEW = RetentionRecordCategory.EXIT_INTERVIEW
-    GRADUATE_TRACER = RetentionRecordCategory.GRADUATE_TRACER
-    CUSTOMER_FEEDBACK = RetentionRecordCategory.CUSTOMER_FEEDBACK
-
-
-class RetentionResponse(StrictSchema):
-    id: UUID
-    code: str
-    name: str
-    record_categories: list[RetentionRecordCategoryValue]
-    scope_summary: str
-    retention_trigger_summary: str
-    retention_period_summary: str
-    disposition_summary: str
-    policy_reference: str
-    effective_on: date | None
-    review_due_on: date | None
-    is_active: bool
-    created_at: datetime
-    updated_at: datetime
-
-
-class RetentionPage(StrictSchema):
-    items: list[RetentionResponse]
-    page: int
-    page_size: int
-    has_next: bool
-
-
-class RetentionCreate(StrictSchema):
-    code: str
-    name: str
-    record_categories: list[RetentionRecordCategoryValue]
-    scope_summary: str
-    retention_trigger_summary: str
-    retention_period_summary: str
-    disposition_summary: str
-    policy_reference: str = ""
-    effective_on: date | None = None
-    review_due_on: date | None = None
-
-
-class RetentionUpdate(StrictSchema):
-    name: str | None = None
-    record_categories: list[RetentionRecordCategoryValue] | None = None
-    scope_summary: str | None = None
-    retention_trigger_summary: str | None = None
-    retention_period_summary: str | None = None
-    disposition_summary: str | None = None
-    policy_reference: str | None = None
-    effective_on: date | None = None
-    review_due_on: date | None = None
-
-
-def _retention(item):
-    return {
-        field: getattr(item, field) for field in RetentionResponse.model_fields if field != "id"
-    } | {"id": item.pk}
-
-
 def _page(result, projector):
     return {
         "items": [projector(item) for item in result["items"]],
@@ -117,99 +50,6 @@ def _page(result, projector):
         "page_size": result["page_size"],
         "has_next": result["has_next"],
     }
-
-
-@router.get(
-    "/retention-policies",
-    response=response_with_errors(RetentionPage, 401, 403, 422),
-    auth=session_auth,
-    operation_id="privacyGovernanceListRetentionPolicies",
-)
-def retention_list(
-    request,
-    page: int = 1,
-    page_size: int = service.DEFAULT_PAGE_SIZE,
-    is_active: bool | None = None,
-    search: str | None = None,
-    record_category: RetentionRecordCategoryValue | None = None,
-):
-    _require(request, "privacy_governance.view")
-    try:
-        return _page(
-            service.list_retention(
-                is_active=is_active,
-                search=search,
-                record_category=record_category.value if record_category is not None else None,
-                page_number=page,
-                page_size=page_size,
-            ),
-            _retention,
-        )
-    except PrivacyGovernanceError as exc:
-        _raise(exc)
-
-
-@router.post(
-    "/retention-policies",
-    response=response_with_errors(RetentionResponse, 401, 403, 409, 422, success_status=201),
-    auth=session_auth,
-    operation_id="privacyGovernanceCreateRetentionPolicy",
-)
-def retention_create(request, payload: RetentionCreate):
-    _require(request, "privacy_governance.manage", recent_mfa=True)
-    try:
-        item = service.create_retention(context=_context(request), **payload.model_dump())
-        return Status(201, _retention(item))
-    except PrivacyGovernanceError as exc:
-        _raise(exc)
-
-
-@router.get(
-    "/retention-policies/{policy_id}",
-    response=response_with_errors(RetentionResponse, 401, 403, 404),
-    auth=session_auth,
-    operation_id="privacyGovernanceGetRetentionPolicy",
-)
-def retention_get(request, policy_id: UUID):
-    _require(request, "privacy_governance.view")
-    try:
-        return _retention(service.get_retention(policy_id))
-    except PrivacyGovernanceError as exc:
-        _raise(exc)
-
-
-@router.patch(
-    "/retention-policies/{policy_id}",
-    response=response_with_errors(RetentionResponse, 401, 403, 404, 409, 422),
-    auth=session_auth,
-    operation_id="privacyGovernanceUpdateRetentionPolicy",
-)
-def retention_update(request, policy_id: UUID, payload: RetentionUpdate):
-    _require(request, "privacy_governance.manage", recent_mfa=True)
-    try:
-        return _retention(
-            service.update_retention(
-                policy_id=policy_id,
-                context=_context(request),
-                changes=payload.model_dump(exclude_unset=True),
-            )
-        )
-    except PrivacyGovernanceError as exc:
-        _raise(exc)
-
-
-@router.post(
-    "/retention-policies/{policy_id}/retire",
-    response=response_with_errors(RetentionResponse, 401, 403, 404, 409),
-    auth=session_auth,
-    operation_id="privacyGovernanceRetireRetentionPolicy",
-)
-def retention_retire(request, policy_id: UUID):
-    _require(request, "privacy_governance.manage", recent_mfa=True)
-    try:
-        return _retention(service.retire_retention(policy_id=policy_id, context=_context(request)))
-    except PrivacyGovernanceError as exc:
-        _raise(exc)
 
 
 class NoticeRevisionSummary(StrictSchema):

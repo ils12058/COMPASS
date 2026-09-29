@@ -114,7 +114,6 @@ from compass.privacy_governance.activity import list_privacy_activity
 from compass.privacy_governance.models import (
     PrivacyNotice,
     PrivacyNoticeRevisionStatus,
-    RetentionPolicy,
 )
 from compass.referrals.models import Referral, ReferralAction
 from compass.referrals.services import build_referral_render_context
@@ -794,10 +793,6 @@ class SeededDemoDatasetTests(TestCase):
         assert link.external_url.startswith("https://www.who.int/")
         assert not resources.exclude(storage_key="").exists()
 
-        policies = RetentionPolicy.objects.filter(code__startswith="DEMO-RET-")
-        assert policies.count() == 2
-        assert all(policy.is_active for policy in policies)
-        assert all("Staging demonstration" in policy.policy_reference for policy in policies)
         notice = PrivacyNotice.objects.get(code="DEMO-GCO-STUDENT-SERVICES")
         published = notice.revisions.get(status=PrivacyNoticeRevisionStatus.PUBLISHED)
         assert "staging demonstration" in published.title.lower()
@@ -1037,7 +1032,6 @@ def _snapshot() -> dict[str, object]:
         "announcements": Announcement.objects.count(),
         "resources": Resource.objects.count(),
         "notices": PrivacyNotice.objects.count(),
-        "policies": RetentionPolicy.objects.count(),
         "notifications": Notification.objects.count(),
         "office_windows": OfficeAvailabilityWindow.objects.count(),
         "provider_windows": ProviderAvailabilityWindow.objects.count(),
