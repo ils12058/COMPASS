@@ -14,7 +14,6 @@ from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.documents.rendering import render_document_html, render_document_pdf
 from compass.inventory.documents import (
-    InventoryDocumentUnavailable,
     build_inventory_render_context,
     render_inventory_pdf,
 )
@@ -142,7 +141,7 @@ def make_submitted_inventory(*, student: User, actor: User, code: str) -> Studen
 
 
 @pytest.mark.django_db
-def test_individual_inventory_html_and_chromium_pdf_are_source_shaped_and_three_pages():
+def test_individual_inventory_html_and_chromium_pdf_are_source_shaped_and_three_pages(caplog):
     call_command("sync_identity_policy", verbosity=0)
     student = make_user("inventory-pdf-student@example.edu", "STUDENT")
     actor = make_user("inventory-pdf-admin@example.edu", "IT_ADMIN")
@@ -214,12 +213,50 @@ def test_individual_inventory_html_and_chromium_pdf_are_source_shaped_and_three_
     ).pdf_bytes
     assert len(PdfReader(BytesIO(blank_pdf)).pages) == 3
 
+    long_answer = "A lengthy answer that should wrap before truncation. " * 40
+    long_concern_context = {
+        **context_data,
+        "inventory_form": {
+            **context_data["inventory_form"],
+            "concerns": long_answer,
+            "fears": long_answer,
+        },
+    }
+    with caplog.at_level("WARNING", logger="compass.documents.rendering"):
+        long_concern_pdf = render_document_pdf(
+            "individual_inventory",
+            item.form_revision.internal_schema_version,
+            context=long_concern_context,
+        ).pdf_bytes
+    long_concern_pages = PdfReader(BytesIO(long_concern_pdf)).pages
+    assert len(long_concern_pages) == 3
+    long_answer_text = long_concern_pages[2].extract_text() or ""
+    assert "Current Concerns" in long_answer_text
+    assert "Current Fears" in long_answer_text
+    assert long_answer_text.count("…") == 2
+    assert 0 < long_answer_text.count("A lengthy answer") < 2 * long_answer.count(
+        "A lengthy answer"
+    )
+    assert "A lengthy answer" not in caplog.text
+    item.refresh_from_db()
+    assert item.current_concerns == context_data["inventory_form"]["concerns"]
+    assert item.current_fears == context_data["inventory_form"]["fears"]
+
     school = item.education_entries.get(level="SENIOR_HIGH")
     school.school_attended_address = "Very long school address " * 40
     school.save(update_fields=("school_attended_address",))
     item.refresh_from_db()
-    with pytest.raises(InventoryDocumentUnavailable, match="temporarily unavailable"):
-        render_inventory_pdf(item)
+    with caplog.at_level("WARNING", logger="compass.documents.rendering"):
+        long_school_pdf = render_inventory_pdf(item)
+    long_school_pages = PdfReader(BytesIO(long_school_pdf)).pages
+    assert len(long_school_pages) == 3
+    assert "…" in "\n".join(page.extract_text() or "" for page in long_school_pages)
+    assert "Very long school address" not in caplog.text
+    assert any(
+        getattr(record, "event", None) == "inventory_pdf_values_truncated"
+        for record in caplog.records
+    )
+    assert "Very long school address" in school.school_attended_address
 
 
 @pytest.mark.django_db
@@ -229,11 +266,17 @@ def test_student_inventory_pdf_is_owned_submitted_only_and_audited_safely(monkey
     other_student = make_user("inventory-pdf-other@example.edu", "STUDENT")
     actor = make_user("inventory-pdf-access-admin@example.edu", "IT_ADMIN")
     submitted = make_submitted_inventory(student=student, actor=actor, code="PDFACCESS")
+    school = submitted.education_entries.get(level="SENIOR_HIGH")
+    school.school_attended_address = "Very long school address " * 40
+    school.save(update_fields=("school_attended_address",))
     client = auth_client(student)
 
     own_response = client.get(f"/api/v1/inventory/me/{submitted.pk}/pdf")
     assert own_response.status_code == 200
     assert own_response["Content-Type"] == "application/pdf"
+    own_pages = PdfReader(BytesIO(own_response.content)).pages
+    assert len(own_pages) == 3
+    assert "…" in "\n".join(page.extract_text() or "" for page in own_pages)
     assert own_response["Content-Disposition"] == (
         f'attachment; filename="individual-inventory-{submitted.pk}.pdf"'
     )

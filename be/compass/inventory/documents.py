@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 from decimal import Decimal
 
+from compass.common.correlation import get_current_request_id
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 
 from .models import (
@@ -14,6 +16,8 @@ from .models import (
     TransportationMode,
 )
 from .services import InventoryError, InventoryNotSubmitted, derive_age_on
+
+logger = logging.getLogger(__name__)
 
 
 class InventoryDocumentUnavailable(InventoryError):
@@ -246,6 +250,15 @@ def render_inventory_pdf(item) -> bytes:
             "individual_inventory", item.form_revision.internal_schema_version, context=context
         )
     except DocumentRenderError as exc:
+        logger.warning(
+            "Individual Inventory PDF rendering failed.",
+            extra={
+                "event": "inventory_pdf_render_failed",
+                "request_id": get_current_request_id(),
+                "error_type": type(exc).__name__,
+                "error_reason": str(exc),
+            },
+        )
         raise InventoryDocumentUnavailable(
             "The Individual Inventory PDF is temporarily unavailable."
         ) from exc
