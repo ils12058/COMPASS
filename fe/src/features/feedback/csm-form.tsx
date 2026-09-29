@@ -185,6 +185,7 @@ export function CsmForm() {
   if (!opportunityData.can_submit_csm) {
     return <FeedbackAccessUnavailable title="Client Satisfaction Measurement unavailable" />;
   }
+  const submissionOpportunityId = opportunityData.id;
 
   function changeCc1(value: CSMCC1Value) {
     setDraft((current) => ({
@@ -205,7 +206,7 @@ export function CsmForm() {
     if (isUncertain) return;
     if (!event.currentTarget.reportValidity()) return;
     setPreparedBody(
-      makeCsmBody({ ...draft, service: serviceValue }, opportunityData.id),
+      makeCsmBody({ ...draft, service: serviceValue }, submissionOpportunityId),
     );
     setConfirmationOpen(true);
   }

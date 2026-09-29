@@ -176,6 +176,8 @@ export function CustomerFeedbackForm() {
   if (!opportunityData.can_submit_customer_feedback) {
     return <FeedbackAccessUnavailable title="Customer Feedback unavailable" />;
   }
+  const submissionOpportunityId = opportunityData.id;
+  const requiredServiceLabel = opportunityData.service_label;
 
   const profileData = profile.data?.data;
   const respondent = {
@@ -211,14 +213,14 @@ export function CustomerFeedbackForm() {
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
     if (requiredService && !selectedServices.includes(requiredService)) {
-      setServiceError(`Keep ${opportunityData.service_label} selected for this completed service.`);
+      setServiceError(`Keep ${requiredServiceLabel} selected for this completed service.`);
       document.getElementById("feedback-services")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     const body = makeBody(
       { ...draft, services: selectedServices },
       respondent,
-      opportunityData.id,
+      submissionOpportunityId,
     );
     setPreparedBody(body);
     setConfirmationOpen(true);
