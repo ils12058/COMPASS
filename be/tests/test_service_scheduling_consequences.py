@@ -1,12 +1,8 @@
 from __future__ import annotations
 
 import json
-from datetime import timedelta
-
 import pytest
 from django.test import override_settings
-from django.utils import timezone
-
 from compass.audit.models import AuditEvent
 from compass.service_catalog.bootstrap import sync_canonical_services
 from compass.service_catalog.models import ServiceDeliveryMode
