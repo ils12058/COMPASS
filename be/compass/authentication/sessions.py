@@ -147,6 +147,30 @@ def create_auth_session(
     return IssuedSession(token=token, session=session)
 
 
+def rotate_auth_session_credential(
+    *,
+    session_id,
+    user_id=None,
+    now: datetime | None = None,
+) -> IssuedSession:
+    """Replace one active AuthSession credential without extending its lifetime."""
+
+    current = now or timezone.now()
+    with transaction.atomic():
+        session = AuthSession.objects.select_for_update().filter(pk=session_id).first()
+        if (
+            session is None
+            or (user_id is not None and session.user_id != user_id)
+            or session.revoked_at is not None
+            or session.expires_at <= current
+        ):
+            raise ValueError("an active authentication session is required")
+        token = generate_opaque_token()
+        session.token_digest = digest_opaque_token(token)
+        session.save(update_fields=["token_digest"])
+    return IssuedSession(token=token, session=session)
+
+
 def create_trusted_session(
     user,
     *,
@@ -492,6 +516,7 @@ __all__ = [
     "resolve_auth_session",
     "resolve_login_challenge",
     "resolve_trusted_session",
+    "rotate_auth_session_credential",
     "revoke_all_auth_sessions",
     "revoke_all_trusted_sessions",
     "revoke_auth_session",
