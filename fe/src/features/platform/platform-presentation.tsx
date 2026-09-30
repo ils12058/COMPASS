@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DiagnosticStatus, EmailDeliveryStatusValue } from "@/lib/api/generated/model";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 const diagnosticLabels: Record<DiagnosticStatus, string> = {
   [DiagnosticStatus.HEALTHY]: "Healthy",
@@ -135,17 +136,10 @@ export function PlatformTimestamp({
   fallback?: string;
 }) {
   if (!value) return <span>{fallback}</span>;
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return <span>{fallback}</span>;
+  const formatted = formatInstitutionalDateTime(value);
+  if (formatted === value) return <span>{fallback}</span>;
 
-  return (
-    <time dateTime={value}>
-      {date.toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })}
-    </time>
-  );
+  return <time dateTime={value}>{formatted}</time>;
 }
 
 export function PlatformPagination({
