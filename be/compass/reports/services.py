@@ -36,6 +36,8 @@ from compass.organization.access_scope import resolve_organizational_access_scop
 from compass.organization.models import AcademicYear, Campus, College, Program
 from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
 
+from .policy import build_disclosure_warnings
+
 LEGACY_KEY = "NOT_RECORDED_LEGACY"
 LEGACY_LABEL = "Not recorded / legacy"
 LEGACY_PROGRAM_KEY = "legacy:not-recorded"
@@ -227,9 +229,11 @@ class ResolvedReportFilters:
     year_level: int | None
 
 
-def calculate_percentage(count: int, denominator: int) -> Decimal:
-    if denominator <= 0:
-        return Decimal("0.00")
+def calculate_percentage(count: int, denominator: int) -> Decimal | None:
+    if denominator < 0:
+        raise ReportConfigurationConflict("Report percentage denominator cannot be negative.")
+    if denominator == 0:
+        return None
     return (Decimal(count) * Decimal("100") / Decimal(denominator)).quantize(
         Decimal("0.01"),
         rounding=ROUND_HALF_UP,
@@ -915,20 +919,28 @@ def _coverage(
             academic_year_id=filters.academic_year.pk,
             student_id__in=eligible_ids,
         )
-        if college_ids is not None:
-            inventory_queryset = inventory_queryset.filter(program__college_id__in=college_ids)
-        inventory_counts = inventory_queryset.aggregate(
-            submitted=Count("id", filter=Q(submitted_at__isnull=False)),
-            draft=Count("id", filter=Q(submitted_at__isnull=True)),
+        submitted_student_ids = set(
+            inventory_queryset.filter(submitted_at__isnull=False)
+            .values_list("student_id", flat=True)
+            .distinct()
         )
-        submitted_count = int(inventory_counts["submitted"] or 0)
-        draft_count = int(inventory_counts["draft"] or 0)
+        draft_student_ids = (
+            set(
+                inventory_queryset.filter(submitted_at__isnull=True)
+                .values_list("student_id", flat=True)
+                .distinct()
+            )
+            - submitted_student_ids
+        )
+        submitted_count = len(submitted_student_ids)
+        draft_count = len(draft_student_ids)
+        covered_student_ids = submitted_student_ids | draft_student_ids
         return {
             "mode": "CURRENT",
             "eligible_student_count": eligible_count,
             "submitted_count": submitted_count,
             "draft_count": draft_count,
-            "missing_count": max(eligible_count - submitted_count - draft_count, 0),
+            "missing_count": len(set(eligible_ids) - covered_student_ids),
             "applied_filters": applied,
             "ignored_filters": ignored,
             "scope_note": f"{CURRENT_COVERAGE_NOTE} {scope_note}",
@@ -958,6 +970,42 @@ def _coverage(
         "ignored_filters": historical_ignored,
         "scope_note": f"{HISTORICAL_COVERAGE_NOTE} {scope_note}",
     }
+
+
+def _student_profiling_released_counts(
+    *,
+    sections: dict[str, object],
+    coverage: dict[str, object],
+):
+    for section in sections.values():
+        if not isinstance(section, dict):
+            continue
+        rows = section.get("rows")
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            total_count = row.get("total_count")
+            if isinstance(total_count, int):
+                yield total_count
+            program_counts = row.get("program_counts")
+            if isinstance(program_counts, list):
+                for program_count in program_counts:
+                    if isinstance(program_count, dict) and isinstance(
+                        program_count.get("count"), int
+                    ):
+                        yield int(program_count["count"])
+
+    for key in (
+        "eligible_student_count",
+        "submitted_count",
+        "draft_count",
+        "missing_count",
+    ):
+        value = coverage.get(key)
+        if isinstance(value, int):
+            yield value
 
 
 def build_student_profiling_report(
@@ -1102,6 +1150,14 @@ def build_student_profiling_report(
     }
 
     historical_note = None if filters.academic_year.is_current else HISTORICAL_COVERAGE_NOTE
+    coverage = _coverage(filters, access_scope=access_scope)
+    disclosure_warnings = build_disclosure_warnings(
+        population=denominator,
+        released_counts=_student_profiling_released_counts(
+            sections=sections,
+            coverage=coverage,
+        ),
+    )
     return {
         "report_context": {
             "academic_year": {
@@ -1126,8 +1182,9 @@ def build_student_profiling_report(
             "coverage_note": CURRENT_COVERAGE_NOTE,
             "historical_coverage_note": historical_note,
         },
+        "disclosure_warnings": disclosure_warnings,
         "program_columns": columns,
-        "inventory_coverage": _coverage(filters, access_scope=access_scope),
+        "inventory_coverage": coverage,
         "sections": sections,
     }
 

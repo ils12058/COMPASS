@@ -9,6 +9,8 @@ from uuid import UUID
 from ninja import Schema
 from pydantic import ConfigDict
 
+from .policy import ReportDisclosureWarningCode
+
 
 class StrictSchema(Schema):
     model_config = ConfigDict(extra="forbid")
@@ -58,11 +60,16 @@ class ProgramCount(StrictSchema):
     count: int
 
 
+class ReportDisclosureWarning(StrictSchema):
+    code: ReportDisclosureWarningCode
+    message: str
+
+
 class DistributionRow(StrictSchema):
     key: str
     label: str
     total_count: int
-    percentage: float
+    percentage: float | None
     program_counts: list[ProgramCount]
 
 
@@ -135,6 +142,7 @@ class StudentProfilingSections(StrictSchema):
 class StudentProfilingReportResponse(StrictSchema):
     report_context: ReportContext
     methodology: Methodology
+    disclosure_warnings: list[ReportDisclosureWarning]
     program_columns: list[ProgramColumn]
     inventory_coverage: InventoryCoverage
     sections: StudentProfilingSections

@@ -6876,8 +6876,15 @@
             "type": "string"
           },
           "percentage": {
-            "title": "Percentage",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentage"
           },
           "program_counts": {
             "items": {
@@ -8890,8 +8897,15 @@
             "type": "string"
           },
           "percentage": {
-            "title": "Percentage",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentage"
           },
           "program_counts": {
             "items": {
@@ -10273,8 +10287,15 @@
             "type": "string"
           },
           "percentage": {
-            "title": "Percentage",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentage"
           }
         },
         "required": [
@@ -10883,6 +10904,13 @@
       "GraduateTracerReportResponse": {
         "additionalProperties": false,
         "properties": {
+          "disclosure_warnings": {
+            "items": {
+              "$ref": "#/components/schemas/ReportDisclosureWarning"
+            },
+            "title": "Disclosure Warnings",
+            "type": "array"
+          },
           "methodology": {
             "$ref": "#/components/schemas/GraduateTracerMethodology"
           },
@@ -10896,6 +10924,7 @@
         "required": [
           "report_context",
           "methodology",
+          "disclosure_warnings",
           "sections"
         ],
         "title": "GraduateTracerReportResponse",
@@ -16227,6 +16256,32 @@
         "title": "ReportContext",
         "type": "object"
       },
+      "ReportDisclosureWarning": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ReportDisclosureWarningCode"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ReportDisclosureWarning",
+        "type": "object"
+      },
+      "ReportDisclosureWarningCode": {
+        "enum": [
+          "SMALL_POPULATION",
+          "SMALL_CELL"
+        ],
+        "title": "ReportDisclosureWarningCode",
+        "type": "string"
+      },
       "ReportScopeCollege": {
         "additionalProperties": false,
         "properties": {
@@ -18465,6 +18520,13 @@
       "StudentProfilingReportResponse": {
         "additionalProperties": false,
         "properties": {
+          "disclosure_warnings": {
+            "items": {
+              "$ref": "#/components/schemas/ReportDisclosureWarning"
+            },
+            "title": "Disclosure Warnings",
+            "type": "array"
+          },
           "inventory_coverage": {
             "$ref": "#/components/schemas/InventoryCoverage"
           },
@@ -18488,6 +18550,7 @@
         "required": [
           "report_context",
           "methodology",
+          "disclosure_warnings",
           "program_columns",
           "inventory_coverage",
           "sections"

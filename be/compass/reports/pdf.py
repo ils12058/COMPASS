@@ -132,6 +132,8 @@ def _program_display_columns(
 
 
 def _percentage_display(value: object) -> str:
+    if value is None:
+        return "N/A"
     if not isinstance(value, (Decimal, int, float)):
         raise StudentProfilingDocumentUnavailable(
             "The Student Profiling percentage value is invalid."
@@ -259,6 +261,7 @@ def build_student_profiling_print_context(report: dict[str, object]) -> dict[str
     coverage = report["inventory_coverage"]
     raw_program_columns = report["program_columns"]
     raw_sections = report["sections"]
+    raw_warnings = report.get("disclosure_warnings", [])
 
     if not isinstance(report_context, dict):
         raise StudentProfilingDocumentUnavailable(
@@ -268,7 +271,11 @@ def build_student_profiling_print_context(report: dict[str, object]) -> dict[str
         raise StudentProfilingDocumentUnavailable(
             "The Student Profiling methodology or coverage is invalid."
         )
-    if not isinstance(raw_program_columns, list) or not isinstance(raw_sections, dict):
+    if (
+        not isinstance(raw_program_columns, list)
+        or not isinstance(raw_sections, dict)
+        or not isinstance(raw_warnings, list)
+    ):
         raise StudentProfilingDocumentUnavailable(
             "The Student Profiling aggregate presentation data is invalid."
         )
@@ -302,6 +309,16 @@ def build_student_profiling_print_context(report: dict[str, object]) -> dict[str
                 }
             )
 
+    disclosure_warning_messages: list[str] = []
+    for warning in raw_warnings:
+        if not isinstance(warning, dict) or not isinstance(warning.get("message"), str):
+            raise StudentProfilingDocumentUnavailable(
+                "The Student Profiling disclosure warning metadata is invalid."
+            )
+        message = warning["message"].strip()
+        if message and message not in disclosure_warning_messages:
+            disclosure_warning_messages.append(message)
+
     campus = report_context.get("campus")
     college = report_context.get("college")
     program = report_context.get("program")
@@ -324,6 +341,7 @@ def build_student_profiling_print_context(report: dict[str, object]) -> dict[str
             "submitted_inventory_count": submitted_count,
             "coverage": _coverage_view(coverage),
             "profile_population_note": str(methodology["profile_population_note"]),
+            "disclosure_warning_messages": disclosure_warning_messages,
             "program_legend": programs,
             "sections": sections,
             "empty_message": (

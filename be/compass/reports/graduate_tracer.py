@@ -29,6 +29,8 @@ from compass.graduate_tracer.models import (
     GTSUsefulCompetency,
 )
 
+from .policy import build_disclosure_warnings
+
 NOT_RECORDED = "NOT_RECORDED"
 NOT_RECORDED_LABEL = "Not recorded"
 
@@ -61,9 +63,11 @@ class InvalidGraduateTracerReportFilter(GraduateTracerReportError):
     pass
 
 
-def calculate_percentage(count: int, denominator: int) -> Decimal:
-    if denominator <= 0:
-        return Decimal("0.00")
+def calculate_percentage(count: int, denominator: int) -> Decimal | None:
+    if denominator < 0:
+        raise GraduateTracerReportError("Report percentage denominator cannot be negative.")
+    if denominator == 0:
+        return None
     return (Decimal(count) * Decimal("100") / Decimal(denominator)).quantize(
         Decimal("0.01"),
         rounding=ROUND_HALF_UP,
@@ -264,6 +268,21 @@ def _multi_select_distribution(
     )
 
 
+def _graduate_tracer_released_counts(sections: dict[str, object]):
+    for section in sections.values():
+        if not isinstance(section, dict):
+            continue
+        denominator = section.get("denominator")
+        if isinstance(denominator, int):
+            yield denominator
+        rows = section.get("rows")
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if isinstance(row, dict) and isinstance(row.get("count"), int):
+                yield int(row["count"])
+
+
 def build_graduate_tracer_report(
     *,
     submitted_from: date | None = None,
@@ -451,6 +470,10 @@ def build_graduate_tracer_report(
             ),
         ),
     }
+    disclosure_warnings = build_disclosure_warnings(
+        population=len(population_ids),
+        released_counts=_graduate_tracer_released_counts(sections),
+    )
     return {
         "report_context": {
             "instrument_schema_version": GTS_SCHEMA_VERSION,
@@ -460,6 +483,7 @@ def build_graduate_tracer_report(
             "generated_at": timezone.now(),
         },
         "methodology": dict(METHODOLOGY),
+        "disclosure_warnings": disclosure_warnings,
         "sections": sections,
     }
 

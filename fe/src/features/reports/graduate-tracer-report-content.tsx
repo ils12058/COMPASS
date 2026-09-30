@@ -1,5 +1,6 @@
 import type { GraduateTracerReportResponse } from "@/lib/api/generated/model";
 import { GraduateTracerSection } from "@/features/reports/graduate-tracer-section";
+import { ReportDisclosureNotice } from "@/features/reports/reports-shared";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 type GraduateTracerSectionKey = keyof GraduateTracerReportResponse["sections"];
@@ -119,6 +120,7 @@ export function GraduateTracerReportContent({
           </div>
         </dl>
       </section>
+      <ReportDisclosureNotice warnings={report.disclosure_warnings} />
       {report.report_context.submitted_response_count === 0 ? (
         <p className="mt-5 border-l-2 border-border pl-3 text-sm leading-6 text-muted">
           No submitted Graduate Tracer responses matched the selected submission period.

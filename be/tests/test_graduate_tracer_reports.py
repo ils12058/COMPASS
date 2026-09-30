@@ -43,7 +43,11 @@ from compass.graduate_tracer.models import (
     GTSUsefulCompetency,
 )
 from compass.organization.models import Campus, College, CounselorResponsibility
-from compass.reports.graduate_tracer import NOT_RECORDED, build_graduate_tracer_report
+from compass.reports.graduate_tracer import (
+    NOT_RECORDED,
+    build_graduate_tracer_report,
+    calculate_percentage,
+)
 
 
 def sync_policy() -> None:
@@ -223,10 +227,11 @@ def test_empty_report_is_typed_and_zero_safe():
     report = build_graduate_tracer_report()
 
     assert report["report_context"]["submitted_response_count"] == 0
+    assert report["disclosure_warnings"] == []
     for section in report["sections"].values():
         assert section["denominator"] == 0
         assert all(item["count"] == 0 for item in section["rows"])
-        assert all(item["percentage"] == Decimal("0.00") for item in section["rows"])
+        assert all(item["percentage"] is None for item in section["rows"])
 
 
 @pytest.mark.django_db
@@ -515,3 +520,39 @@ def test_aggregate_response_excludes_identity_free_text_and_academic_inference()
     body = response.json()
     assert "submission dates, not graduation cohorts" in body["methodology"]["submission_period"]
     assert "No response rate is calculated" in body["methodology"]["response_rate"]
+
+
+def test_graduate_tracer_percentage_applicability_is_explicit():
+    assert calculate_percentage(0, 10) == Decimal("0.00")
+    assert calculate_percentage(1, 4) == Decimal("25.00")
+    assert calculate_percentage(0, 0) is None
+    assert calculate_percentage(5, 0) is None
+
+
+@pytest.mark.django_db
+def test_graduate_tracer_small_population_warns_without_suppression():
+    sync_policy()
+    make_response("gts-small-one@example.edu", sex=GTSSex.MALE)
+    make_response("gts-small-two@example.edu", sex=GTSSex.FEMALE)
+
+    report = build_graduate_tracer_report()
+
+    assert [warning["code"] for warning in report["disclosure_warnings"]] == ["SMALL_POPULATION"]
+    assert report["report_context"]["submitted_response_count"] == 2
+    assert row(report, "sex", GTSSex.MALE)["count"] == 1
+    assert row(report, "sex", GTSSex.FEMALE)["count"] == 1
+
+
+@pytest.mark.django_db
+def test_graduate_tracer_small_cell_warns_once_and_keeps_exact_count():
+    sync_policy()
+    sexes = [GTSSex.MALE, GTSSex.MALE, GTSSex.MALE, GTSSex.MALE, GTSSex.FEMALE]
+    for index, sex in enumerate(sexes, start=1):
+        make_response(f"gts-small-cell-{index}@example.edu", sex=sex)
+
+    report = build_graduate_tracer_report()
+
+    assert [warning["code"] for warning in report["disclosure_warnings"]] == ["SMALL_CELL"]
+    female = row(report, "sex", GTSSex.FEMALE)
+    assert female["count"] == 1
+    assert female["percentage"] == Decimal("20.00")

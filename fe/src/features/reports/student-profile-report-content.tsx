@@ -2,6 +2,7 @@ import type { StudentProfilingReportResponse } from "@/lib/api/generated/model";
 import { StudentProfileContext } from "@/features/reports/student-profile-context";
 import { StudentProfileCoverage } from "@/features/reports/student-profile-coverage";
 import { StudentProfileGeographySection } from "@/features/reports/student-profile-geography-section";
+import { ReportDisclosureNotice } from "@/features/reports/reports-shared";
 import {
   StudentProfileProgramLegend,
   StudentProfileSection,
@@ -68,6 +69,7 @@ export function StudentProfileReportContent({
   return (
     <div aria-busy={isFetching}>
       <StudentProfileContext report={report} isGlobal={isGlobal} />
+      <ReportDisclosureNotice warnings={report.disclosure_warnings} />
       {report.report_context.submitted_inventory_count === 0 ? (
         <p className="mt-5 border-l-2 border-border pl-3 text-sm leading-6 text-muted">
           No submitted Individual Inventories match the selected report context.

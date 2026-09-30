@@ -111,7 +111,9 @@ def _write_number(
     return cell
 
 
-def _as_decimal(value: object) -> Decimal:
+def _as_decimal(value: object) -> Decimal | None:
+    if value is None:
+        return None
     if isinstance(value, Decimal):
         return value
     if isinstance(value, int | float):
@@ -140,6 +142,7 @@ def _build_summary(
     *,
     report_context: dict[str, object],
     methodology: dict[str, object],
+    disclosure_warnings: list[object],
 ) -> None:
     worksheet.title = "Summary"
     worksheet.sheet_view.showGridLines = False
@@ -166,6 +169,23 @@ def _build_summary(
         row += 1
         _write_text(worksheet, row, 1, EMPTY_REPORT_MESSAGE, bold=True, wrap=True)
         row += 2
+
+    warning_messages: list[str] = []
+    for warning in disclosure_warnings:
+        if not isinstance(warning, dict):
+            raise GraduateTracerWorkbookUnavailable(
+                "Graduate Tracer disclosure warning metadata is invalid."
+            )
+        message = str(warning.get("message") or "").strip()
+        if message and message not in warning_messages:
+            warning_messages.append(message)
+    if warning_messages:
+        _write_text(worksheet, row, 1, "Small-population privacy notice", bold=True)
+        row += 1
+        for message in warning_messages:
+            _write_text(worksheet, row, 1, message, wrap=True)
+            row += 1
+        row += 1
 
     _write_text(worksheet, row, 1, "Methodology and Limitations", bold=True)
     row += 1
@@ -236,13 +256,23 @@ def _write_section(
         )
         count_cell.border = _TABLE_BORDER
 
-        percentage_cell = _write_number(
-            worksheet,
-            row_number,
-            3,
-            _as_decimal(raw.get("percentage")),
-            number_format="0.00",
-        )
+        percentage = _as_decimal(raw.get("percentage"))
+        if percentage is None:
+            percentage_cell = _write_text(
+                worksheet,
+                row_number,
+                3,
+                "N/A",
+            )
+            percentage_cell.alignment = _RIGHT
+        else:
+            percentage_cell = _write_number(
+                worksheet,
+                row_number,
+                3,
+                percentage,
+                number_format="0.00",
+            )
         percentage_cell.border = _TABLE_BORDER
         row_number += 1
     return row_number + 2
@@ -293,6 +323,7 @@ def render_graduate_tracer_xlsx(
     report_context = report.get("report_context")
     methodology = report.get("methodology")
     sections = report.get("sections")
+    disclosure_warnings = report.get("disclosure_warnings", [])
     if not isinstance(report_context, dict):
         raise GraduateTracerWorkbookUnavailable(
             "The Graduate Tracer report context is unavailable."
@@ -302,6 +333,10 @@ def render_graduate_tracer_xlsx(
     if not isinstance(sections, dict):
         raise GraduateTracerWorkbookUnavailable(
             "The Graduate Tracer report sections are unavailable."
+        )
+    if not isinstance(disclosure_warnings, list):
+        raise GraduateTracerWorkbookUnavailable(
+            "The Graduate Tracer disclosure warnings are unavailable."
         )
 
     try:
@@ -315,6 +350,7 @@ def render_graduate_tracer_xlsx(
             summary,
             report_context=report_context,
             methodology=methodology,
+            disclosure_warnings=disclosure_warnings,
         )
         summary.sheet_state = "visible"
         for title, keys in _SHEET_SECTIONS.items():

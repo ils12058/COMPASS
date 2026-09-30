@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
@@ -364,3 +365,74 @@ def test_parent_life_sections_have_independent_student_denominators():
     assert report_row(father, ParentLifeStatus.LIVING)["total_count"] == 1
     assert report_row(father, ParentLifeStatus.DECEASED)["total_count"] == 1
     assert report_row(father, ParentLifeStatus.NOT_SPECIFIED)["total_count"] == 1
+
+
+@pytest.mark.django_db
+def test_small_student_profile_population_warns_without_suppressing_rows():
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision("small-population")
+    _, _, program = make_organization("SMALL-POP")
+
+    for index, sex in enumerate((Sex.MALE, Sex.FEMALE), start=1):
+        make_inventory(
+            student=make_user(f"small-population-{index}@example.edu"),
+            academic_year=year,
+            revision=revision,
+            program=program,
+            sex=sex,
+        )
+
+    report = build_student_profiling_report()
+    sex_section = report["sections"]["sex"]
+
+    assert report["disclosure_warnings"] == [
+        {
+            "code": "SMALL_POPULATION",
+            "message": (
+                "This report includes results from a small population or category. "
+                "Use and share these results carefully because some aggregate results "
+                "may be easier to associate with individual respondents."
+            ),
+        }
+    ]
+    assert sex_section["denominator"] == 2
+    assert report_row(sex_section, Sex.MALE)["total_count"] == 1
+    assert report_row(sex_section, Sex.FEMALE)["total_count"] == 1
+
+
+@pytest.mark.django_db
+def test_student_profile_small_cell_warns_once_and_keeps_exact_count():
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision("small-cell")
+    _, _, program = make_organization("SMALL-CELL")
+
+    sexes = [Sex.MALE, Sex.MALE, Sex.MALE, Sex.MALE, Sex.FEMALE]
+    for index, sex in enumerate(sexes, start=1):
+        make_inventory(
+            student=make_user(f"small-cell-{index}@example.edu"),
+            academic_year=year,
+            revision=revision,
+            program=program,
+            sex=sex,
+        )
+
+    report = build_student_profiling_report()
+    female = report_row(report["sections"]["sex"], Sex.FEMALE)
+
+    assert [warning["code"] for warning in report["disclosure_warnings"]] == ["SMALL_CELL"]
+    assert female["total_count"] == 1
+    assert female["percentage"] == Decimal("20.00")
+
+
+@pytest.mark.django_db
+def test_empty_student_profile_has_no_disclosure_warning_and_null_percentages():
+    sync_policy()
+    AcademicYear.objects.create(label="2026-2027", is_current=True)
+
+    report = build_student_profiling_report()
+
+    assert report["report_context"]["submitted_inventory_count"] == 0
+    assert report["disclosure_warnings"] == []
+    assert report_row(report["sections"]["sex"], Sex.MALE)["percentage"] is None

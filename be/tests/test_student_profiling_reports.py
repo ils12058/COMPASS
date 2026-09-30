@@ -492,8 +492,11 @@ def test_year_level_labels_are_numeric_ordinals(value, label):
     assert all(term not in label for term in ("Freshman", "Sophomore", "Junior", "Senior"))
 
 
-def test_percentage_rounding_is_half_up_and_zero_safe():
+def test_percentage_rounding_and_applicability_are_explicit():
     assert calculate_percentage(71, 217) == Decimal("32.72")
     assert calculate_percentage(39, 217) == Decimal("17.97")
-    assert calculate_percentage(0, 0) == Decimal("0.00")
+    assert calculate_percentage(0, 10) == Decimal("0.00")
+    assert calculate_percentage(1, 4) == Decimal("25.00")
+    assert calculate_percentage(0, 0) is None
+    assert calculate_percentage(5, 0) is None
     assert calculate_percentage(7, 7) == Decimal("100.00")

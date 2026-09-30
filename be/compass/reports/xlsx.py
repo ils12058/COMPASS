@@ -260,7 +260,9 @@ def _generated_at_text(value: object) -> str:
     return value.isoformat(timespec="seconds")
 
 
-def _percentage_value(value: object) -> Decimal:
+def _percentage_value(value: object) -> Decimal | None:
+    if value is None:
+        return None
     if isinstance(value, Decimal):
         return value
     if isinstance(value, int | float):
@@ -318,6 +320,7 @@ def _build_summary_sheet(
     report_context: dict[str, object],
     methodology: dict[str, object],
     coverage: dict[str, object],
+    disclosure_warnings: list[object],
     program_columns: list[dict[str, object]],
 ) -> None:
     worksheet.title = "Summary"
@@ -359,6 +362,21 @@ def _build_summary_sheet(
         else:
             _write_text(worksheet, row, 2, value, wrap=True)
         row += 1
+
+    warning_messages: list[str] = []
+    for warning in disclosure_warnings:
+        item = _require_dict(warning, "disclosure warning")
+        message = str(item.get("message") or "").strip()
+        if message and message not in warning_messages:
+            warning_messages.append(message)
+    if warning_messages:
+        row += 1
+        _write_text(worksheet, row, 1, "Small-population privacy notice", bold=True)
+        worksheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        for message in warning_messages:
+            row += 1
+            _write_text(worksheet, row, 1, message, wrap=True)
+            worksheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
 
     row += 1
     _write_text(worksheet, row, 1, "Methodology / Coverage Scope", bold=True)
@@ -475,13 +493,22 @@ def _build_section_sheet(
                 int(row.get("total_count") or 0),
             )
             column_number += 1
-            _write_table_number(
-                worksheet,
-                row_number,
-                column_number,
-                _percentage_value(row.get("percentage")),
-                number_format="0.00",
-            )
+            percentage = _percentage_value(row.get("percentage"))
+            if percentage is None:
+                _write_table_text(
+                    worksheet,
+                    row_number,
+                    column_number,
+                    "N/A",
+                )
+            else:
+                _write_table_number(
+                    worksheet,
+                    row_number,
+                    column_number,
+                    percentage,
+                    number_format="0.00",
+                )
 
     worksheet.freeze_panes = "A2"
     last_column = get_column_letter(len(headers))
@@ -519,6 +546,10 @@ def build_student_profiling_workbook(report: dict[str, object]) -> Workbook:
     coverage = _require_dict(report.get("inventory_coverage"), "Inventory Coverage")
     sections = _require_dict(report.get("sections"), "sections")
     program_columns = _program_display_columns(report.get("program_columns"))
+    disclosure_warnings = _require_list(
+        report.get("disclosure_warnings", []),
+        "disclosure warnings",
+    )
     _validate_excel_column_limit(program_columns)
 
     workbook = Workbook()
@@ -527,6 +558,7 @@ def build_student_profiling_workbook(report: dict[str, object]) -> Workbook:
         report_context,
         methodology,
         coverage,
+        disclosure_warnings,
         program_columns,
     )
 

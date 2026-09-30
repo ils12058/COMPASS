@@ -153,6 +153,8 @@ def test_zero_result_xlsx_still_has_context_methodology_and_zero_sections():
     assert "Submitted Response Count" in values
     assert "0" in values
     assert any("No response rate is calculated" in value for value in values)
+    assert "Small-population privacy notice" not in values
+    assert "N/A" in values
     assert workbook.sheetnames == [
         "Summary",
         "Respondent Profile",
@@ -174,3 +176,20 @@ def test_filtered_xlsx_filename_is_deterministic_and_contains_only_safe_dates():
         "submitted_from": "2026-01-01",
         "submitted_to": "2026-12-31",
     }
+
+
+@pytest.mark.django_db
+def test_small_population_xlsx_includes_privacy_warning_and_keeps_exact_values():
+    sync_policy()
+    make_response("gts-xlsx-small@example.edu")
+
+    result = render_graduate_tracer_xlsx()
+    workbook = load_workbook(BytesIO(result.xlsx_bytes), data_only=False)
+    values = workbook_values(workbook)
+
+    assert "Small-population privacy notice" in values
+    assert any("Use and share these results carefully" in value for value in values)
+    profile = workbook["Respondent Profile"]
+    male_row = next(row for row in profile.iter_rows() if row[0].value == "Male")
+    assert male_row[1].value == 1
+    assert float(male_row[2].value) == 100.0

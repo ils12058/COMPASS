@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from .schemas import StrictSchema
+from .schemas import ReportDisclosureWarning, StrictSchema
 
 
 class GraduateTracerDistributionRow(StrictSchema):
     key: str
     label: str
     count: int
-    percentage: float
+    percentage: float | None
 
 
 class GraduateTracerDistributionSection(StrictSchema):
@@ -67,4 +67,5 @@ class GraduateTracerSections(StrictSchema):
 class GraduateTracerReportResponse(StrictSchema):
     report_context: GraduateTracerReportContext
     methodology: GraduateTracerMethodology
+    disclosure_warnings: list[ReportDisclosureWarning]
     sections: GraduateTracerSections

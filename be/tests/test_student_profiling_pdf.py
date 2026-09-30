@@ -650,3 +650,31 @@ def test_real_chromium_renders_portrait_multi_chunk_student_profile_pdf(monkeypa
     assert all(round(float(page.mediabox.width)) == 595 for page in pages)
     assert all(round(float(page.mediabox.height)) == 842 for page in pages)
     assert all(page.images for page in pages)
+
+
+def test_pdf_context_includes_privacy_warning_and_na_without_suppressing_data():
+    report = synthetic_report(program_count=1, submitted_count=1)
+    report["disclosure_warnings"] = [
+        {
+            "code": "SMALL_POPULATION",
+            "message": (
+                "This report includes results from a small population or category. "
+                "Use and share these results carefully because some aggregate results "
+                "may be easier to associate with individual respondents."
+            ),
+        }
+    ]
+    report["sections"]["sex"]["rows"][0]["percentage"] = None
+
+    context = build_student_profiling_print_context(report)
+    html, _ = render_document_html(
+        "student_profiling_report",
+        1,
+        context=context,
+    )
+
+    assert "Small-population privacy notice" in html
+    assert "Use and share these results carefully" in html
+    assert "Synthetic category" in html
+    assert ">1<" in html
+    assert "N/A" in html
