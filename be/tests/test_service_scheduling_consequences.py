@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+
 import pytest
 from django.test import override_settings
+
 from compass.audit.models import AuditEvent
 from compass.service_catalog.bootstrap import sync_canonical_services
 from compass.service_catalog.models import ServiceDeliveryMode
