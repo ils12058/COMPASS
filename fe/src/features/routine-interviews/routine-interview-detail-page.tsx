@@ -21,10 +21,30 @@ import {
   routineErrorMessage,
 } from "@/features/routine-interviews/routine-interviews-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { RoutineWorkflowState } from "@/lib/api/generated/model";
 import {
   useRoutineInterviewsGetAssigned,
   useRoutineInterviewsGetMine,
 } from "@/lib/api/generated/routine-interviews/routine-interviews";
+
+function routineWorkflowMessage(state: RoutineWorkflowState): string | null {
+  if (state === RoutineWorkflowState.CLOSED_APPOINTMENT_CANCELLED) {
+    return "This Routine Interview is no longer active because the Appointment was cancelled.";
+  }
+  if (state === RoutineWorkflowState.CLOSED_APPOINTMENT_NO_SHOW) {
+    return "This Routine Interview is no longer active because the Appointment was marked as no-show.";
+  }
+  return null;
+}
+
+function RoutineLifecycleNotice({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <p role="status" className="mb-6 border-y border-border py-4 text-sm leading-6 text-muted">
+      {message} The record remains available for history.
+    </p>
+  );
+}
 
 function RoutineBackLink() {
   return (
