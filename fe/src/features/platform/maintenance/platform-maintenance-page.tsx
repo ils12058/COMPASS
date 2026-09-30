@@ -121,17 +121,17 @@ export function PlatformMaintenancePage() {
       setScheduleFormError("Enter the message that will be shown to COMPASS users.");
       return;
     }
-    const startsAt = institutionalDateTimeInputToISO(scheduleDraft.startsAt);
-    const endsAt = institutionalDateTimeInputToISO(scheduleDraft.endsAt);
-    if (!startsAt || !endsAt) {
+    const startsAtIso = institutionalDateTimeInputToISO(scheduleDraft.startsAt);
+    const endsAtIso = institutionalDateTimeInputToISO(scheduleDraft.endsAt);
+    if (!startsAtIso || !endsAtIso) {
       setScheduleFormError("Enter both the start and end times.");
       return;
     }
-    if (new Date(startsAt).getTime() <= Date.now()) {
+    if (new Date(startsAtIso).getTime() <= Date.now()) {
       setScheduleFormError("The maintenance schedule must start in the future.");
       return;
     }
-    if (new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
+    if (new Date(endsAtIso).getTime() <= new Date(startsAtIso).getTime()) {
       setScheduleFormError("The end time must be after the start time.");
       return;
     }
@@ -186,13 +186,15 @@ export function PlatformMaintenancePage() {
     }
 
     if (confirmation === "schedule") {
-      const startsAt = institutionalDateTimeInputToISO(scheduleDraft.startsAt);
-      const endsAt = institutionalDateTimeInputToISO(scheduleDraft.endsAt);
+      const startsAtIso = institutionalDateTimeInputToISO(
+        scheduleDraft.startsAt,
+      );
+      const endsAtIso = institutionalDateTimeInputToISO(scheduleDraft.endsAt);
       if (
-        !startsAt ||
-        !endsAt ||
-        new Date(startsAt).getTime() <= Date.now() ||
-        new Date(endsAt).getTime() <= new Date(startsAt).getTime()
+        !startsAtIso ||
+        !endsAtIso ||
+        new Date(startsAtIso).getTime() <= Date.now() ||
+        new Date(endsAtIso).getTime() <= new Date(startsAtIso).getTime()
       ) {
         setScheduleFormError(
           "Review the schedule: start must be in the future and end must be after start.",
@@ -205,8 +207,8 @@ export function PlatformMaintenancePage() {
           schedule.mutateAsync({
             data: {
               message: scheduleDraft.message,
-              starts_at: startsAt,
-              ends_at: endsAt,
+              starts_at: startsAtIso,
+              ends_at: endsAtIso,
             },
           }),
         "The maintenance schedule could not be saved.",
