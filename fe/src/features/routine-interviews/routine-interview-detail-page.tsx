@@ -82,6 +82,8 @@ function StudentRoutineDetail({
     query: { retry: false },
   });
   const detail = query.data?.data;
+  const workflowMessage = detail ? routineWorkflowMessage(detail.workflow_state) : null;
+  const actionable = detail?.workflow_state === RoutineWorkflowState.ACTIVE;
 
   if (query.isPending) {
     return <div aria-busy="true"><Skeleton className="h-9 w-1/2" /><Skeleton className="mt-5 h-28 w-full" /><Skeleton className="mt-8 h-96 w-full" /><p className="sr-only">Loading Routine Interview…</p></div>;
@@ -115,7 +117,8 @@ function StudentRoutineDetail({
         createdAt={detail.created_at}
         formRevision={detail.form_revision}
       />
-      {canManage && detail.intake_status === "DRAFT" ? (
+      <RoutineLifecycleNotice message={workflowMessage} />
+      {canManage && actionable && detail.intake_status === "DRAFT" ? (
         <RoutineStudentIntakeEditor
           key={detail.id}
           routineInterviewId={detail.id}
@@ -128,7 +131,9 @@ function StudentRoutineDetail({
             <p className="mt-2 text-sm leading-6 text-muted">
               {detail.intake_status === "SUBMITTED"
                 ? "Submitted responses are read-only."
-                : "You can view your draft, but your current Student status does not allow Intake changes."}
+                : !actionable
+                  ? "This draft is preserved for history and is now read-only."
+                  : "You can view your draft, but your current Student status does not allow Intake changes."}
             </p>
           </header>
           <RoutineStudentIntakeReadOnly intake={detail.intake} />
