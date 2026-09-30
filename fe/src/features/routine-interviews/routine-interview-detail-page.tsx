@@ -154,6 +154,8 @@ function CounselorRoutineDetail({
     query: { retry: false },
   });
   const detail = query.data?.data;
+  const workflowMessage = detail ? routineWorkflowMessage(detail.workflow_state) : null;
+  const actionable = detail?.workflow_state === RoutineWorkflowState.ACTIVE;
 
   if (query.isPending) {
     return <div aria-busy="true"><Skeleton className="h-9 w-1/2" /><Skeleton className="mt-5 h-28 w-full" /><Skeleton className="mt-8 h-96 w-full" /><p className="sr-only">Loading Routine Interview…</p></div>;
@@ -168,7 +170,7 @@ function CounselorRoutineDetail({
   }
 
   // COMPASS decides whether the time-bounded Counseling Context is open to this Counselor.
-  const workspaceHref = detail.counseling_context_available
+  const workspaceHref = actionable && detail.counseling_context_available
     ? detail.appointment
       ? `/portal/counseling/workspace/appointment/${detail.appointment.id}`
       : `/portal/counseling/workspace/routine-interview/${detail.id}`
@@ -195,6 +197,7 @@ function CounselorRoutineDetail({
         createdAt={detail.created_at}
         formRevision={detail.form_revision}
       />
+      <RoutineLifecycleNotice message={workflowMessage} />
 
       <section aria-labelledby="routine-student-intake-heading">
         <header className="border-b border-border pb-4">
@@ -241,7 +244,11 @@ function CounselorRoutineDetail({
         <section aria-labelledby="routine-evaluation-heading" className="mt-10 border-t-2 border-brand pt-6">
           <header className="border-b border-border pb-4">
             <h2 id="routine-evaluation-heading" className="font-heading text-2xl font-semibold text-ink">Counselor Evaluation</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">Draft evaluation · Read-only in your current access.</p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+            {actionable
+              ? "Draft evaluation · Read-only in your current access."
+              : "Draft evaluation · Preserved for history and read-only because the Appointment is no longer active."}
+          </p>
           </header>
           <RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} />
         </section>
