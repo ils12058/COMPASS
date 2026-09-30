@@ -138,7 +138,7 @@ def valid_csm_payload() -> dict[str, object]:
     }
 
 
-def test_opportunity(
+def make_feedback_opportunity(
     student: User,
     *,
     service_kind: str = CustomerFeedbackService.COUNSELING,
@@ -186,7 +186,7 @@ def post_json(
                     and CustomerFeedbackService.REQUEST_FOR_CERTIFICATION in services
                 ):
                     service_kind = CustomerFeedbackService.REQUEST_FOR_CERTIFICATION
-            opportunity_id = test_opportunity(actor, service_kind=service_kind).pk
+            opportunity_id = make_feedback_opportunity(actor, service_kind=service_kind).pk
             client.feedback_opportunities[cache_key] = opportunity_id
         body["opportunity_id"] = str(opportunity_id)
 
@@ -1006,7 +1006,7 @@ def test_feedback_new_key_cannot_repeat_same_opportunity_instrument(monkeypatch,
     store = RedisIdempotencyStore(FakeRedis(), ttl_seconds=60)
     use_idempotency_store(monkeypatch, store)
 
-    opportunity = test_opportunity(student)
+    opportunity = make_feedback_opportunity(student)
     if instrument == "customer_feedback":
         path = "/api/v1/feedback/customer-feedback"
         payload = valid_f14_payload()
@@ -1396,8 +1396,8 @@ def test_student_opportunity_api_is_owned_and_reports_instrument_availability():
     sync_policy()
     student = make_user("opportunity-owner@example.edu")
     other = make_user("opportunity-other@example.edu")
-    opportunity = test_opportunity(student)
-    foreign = test_opportunity(other)
+    opportunity = make_feedback_opportunity(student)
+    foreign = make_feedback_opportunity(other)
     client = auth_client(student)
 
     listed = client.get("/api/v1/feedback/opportunities")
@@ -1430,7 +1430,7 @@ def test_student_opportunity_api_is_owned_and_reports_instrument_availability():
 def test_opportunity_list_uses_current_instrument_capabilities():
     sync_policy()
     student = make_user("opportunity-capabilities@example.edu")
-    opportunity = test_opportunity(student)
+    opportunity = make_feedback_opportunity(student)
     set_user_capability_override(
         user=student,
         capability="feedback.submit_csm",
@@ -1464,7 +1464,7 @@ def test_same_opportunity_supports_each_feedback_instrument_once_independently(m
     student = make_user("independent-instruments@example.edu")
     client = auth_client(student)
     use_idempotency_store(monkeypatch, RedisIdempotencyStore(FakeRedis(), ttl_seconds=60))
-    opportunity = test_opportunity(student)
+    opportunity = make_feedback_opportunity(student)
 
     f14 = valid_f14_payload()
     f14["opportunity_id"] = str(opportunity.pk)
@@ -1525,7 +1525,7 @@ def test_customer_feedback_requires_opportunity_service_but_keeps_multi_service_
     sync_policy()
     student = make_user("service-bound-feedback@example.edu")
     client = auth_client(student)
-    opportunity = test_opportunity(
+    opportunity = make_feedback_opportunity(
         student,
         service_kind=CustomerFeedbackService.REQUEST_FOR_CERTIFICATION,
     )
@@ -1565,7 +1565,7 @@ def test_feedback_submission_requires_explicit_owned_opportunity_id():
     )
     assert missing.status_code == 422
 
-    foreign = test_opportunity(other)
+    foreign = make_feedback_opportunity(other)
     payload = valid_csm_payload()
     payload["opportunity_id"] = str(foreign.pk)
     denied = post_json(
@@ -1585,8 +1585,8 @@ def test_different_opportunities_allow_new_submission_for_same_instrument(monkey
     student = make_user("different-opportunities@example.edu")
     client = auth_client(student)
     use_idempotency_store(monkeypatch, RedisIdempotencyStore(FakeRedis(), ttl_seconds=60))
-    first_opportunity = test_opportunity(student)
-    second_opportunity = test_opportunity(student)
+    first_opportunity = make_feedback_opportunity(student)
+    second_opportunity = make_feedback_opportunity(student)
 
     first_payload = valid_csm_payload()
     first_payload["opportunity_id"] = str(first_opportunity.pk)
