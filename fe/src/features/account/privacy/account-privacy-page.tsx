@@ -14,7 +14,7 @@ import {
 } from "@/features/privacy-governance/privacy-governance-errors";
 import { audienceSummary } from "@/features/privacy-governance/privacy-governance-presentation";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
-import { formatDateOnly, formatDateTime } from "@/lib/date-time";
+import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 import type { MyNoticeResponse } from "@/lib/api/generated/model";
 import {
   getPrivacyGovernanceListMyNoticesQueryKey,
@@ -64,7 +64,7 @@ function NoticeArticle({
         <div className="mt-5 max-w-3xl border-t border-border pt-4">
           {notice.acknowledged && notice.acknowledged_at ? (
             <p className="text-sm font-medium text-success">
-              Acknowledged {formatDateTime(notice.acknowledged_at)}
+              Acknowledged {formatInstitutionalDateTime(notice.acknowledged_at)}
             </p>
           ) : (
             <>
