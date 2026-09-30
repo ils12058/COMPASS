@@ -570,3 +570,31 @@ def test_excel_column_limit_fails_safely_without_chunking_or_truncation():
         match="column limit",
     ):
         _validate_excel_column_limit(too_many_programs)
+
+
+def test_xlsx_includes_privacy_warning_and_na_without_suppressing_data(monkeypatch):
+    report = synthetic_report(program_count=1, submitted_count=1)
+    report["disclosure_warnings"] = [
+        {
+            "code": "SMALL_POPULATION",
+            "message": (
+                "This report includes results from a small population or category. "
+                "Use and share these results carefully because some aggregate results "
+                "may be easier to associate with individual respondents."
+            ),
+        }
+    ]
+    report["sections"]["sex"]["rows"][0]["percentage"] = None
+
+    workbook = workbook_from_report(monkeypatch, report)
+    values = workbook_values(workbook)
+    sex = workbook["Sex"]
+
+    assert "Small-population privacy notice" in values
+    assert any(
+        isinstance(value, str) and "Use and share these results carefully" in value
+        for value in values
+    )
+    assert sex.cell(row=2, column=1).value == "Synthetic category"
+    assert sex.cell(row=2, column=3).value == 1
+    assert sex.cell(row=2, column=4).value == "N/A"
