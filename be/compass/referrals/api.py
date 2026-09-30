@@ -26,6 +26,8 @@ from .services import (
     DEFAULT_PAGE_SIZE,
     InvalidReferralInput,
     ReferralActionConflict,
+    ReferralActiveCallSlipConflict,
+    ReferralCompletedCallSlipConflict,
     ReferralConfigurationConflict,
     ReferralCreationConflict,
     ReferralDocumentUnavailable,
@@ -184,6 +186,10 @@ def _raise(exc: ReferralError) -> NoReturn:
         raise APIError(503, "referral_document_unavailable", str(exc)) from exc
     if isinstance(exc, InvalidReferralInput):
         raise APIError(422, "invalid_referral_request", str(exc)) from exc
+    if isinstance(exc, ReferralActiveCallSlipConflict):
+        raise APIError(409, "referral_active_call_slip_conflict", str(exc)) from exc
+    if isinstance(exc, ReferralCompletedCallSlipConflict):
+        raise APIError(409, "referral_completed_call_slip_conflict", str(exc)) from exc
     if isinstance(
         exc,
         (
