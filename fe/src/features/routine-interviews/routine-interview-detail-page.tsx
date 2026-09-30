@@ -41,7 +41,7 @@ function RoutineLifecycleNotice({ message }: { message: string | null }) {
   if (!message) return null;
   return (
     <p role="status" className="mb-6 border-y border-border py-4 text-sm leading-6 text-muted">
-      {message} The record remains available for history.
+      {message} The record remains available as historical context.
     </p>
   );
 }
