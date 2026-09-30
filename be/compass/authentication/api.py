@@ -43,7 +43,7 @@ from compass.authentication.mfa import (
     TOTPEnrollmentAuthorizationFailed,
     TOTPEnrollmentMissing,
     TOTPNotConfigured,
-    confirm_totp_enrollment,
+    confirm_authenticated_totp_enrollment,
     disable_totp,
     has_active_totp_factor,
     regenerate_recovery_codes,
@@ -136,6 +136,11 @@ class MFARequest(StrictSchema):
 
 
 class TOTPSetupRequest(StrictSchema):
+    current_password: str
+
+
+class TOTPConfirmationRequest(StrictSchema):
+    code: str
     current_password: str
 
 
@@ -1107,21 +1112,29 @@ def totp_setup(request, payload: TOTPSetupRequest):
     operation_id="authConfirmTotpSetup",
     summary="Confirm TOTP enrollment",
 )
-def totp_confirm(request, payload: MFARequest):
+def totp_confirm(request, payload: TOTPConfirmationRequest):
     user = request.auth_user
     try:
         from compass.authentication.abuse import check_auth_rate_limit
 
         check_auth_rate_limit("totp", ip_address=client_ip(request), user_id=user.pk)
-        result = confirm_totp_enrollment(
+        result = confirm_authenticated_totp_enrollment(
             user=user,
+            current_password=payload.current_password,
             code=payload.code,
             context=AuditContext.from_request(request, actor=user),
+            request=request,
         )
     except AuthenticationRateLimited as exc:
         _raise_rate_limited(exc)
     except AuthenticationAbuseUnavailable as exc:
         _raise_security_unavailable(exc)
+    except TOTPEnrollmentAuthorizationFailed as exc:
+        raise APIError(
+            403,
+            "mfa_enrollment_authorization_failed",
+            "The current authentication proof could not be verified.",
+        ) from exc
     except TOTPEnrollmentMissing as exc:
         raise APIError(400, "mfa_failed", "The MFA response could not be verified.") from exc
     except Exception as exc:
