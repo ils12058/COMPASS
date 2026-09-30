@@ -192,12 +192,15 @@ export function isFutureInstitutionalDateTimeInput(
   return instant !== null && new Date(instant).getTime() > now.getTime();
 }
 
-export function formatDateOnly(value: string | null | undefined): string {
+export function formatDateOnly(
+  value: string | null | undefined,
+  options?: { dateStyle?: "medium" | "long" },
+): string {
   if (!value) return "Not recorded";
   const parts = parseDateOnly(value);
   if (!parts) return value;
   return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
+    dateStyle: options?.dateStyle ?? "medium",
     timeZone: "UTC",
   }).format(new Date(utcMillis(parts)));
 }
