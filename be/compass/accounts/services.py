@@ -63,14 +63,10 @@ def _candidate_capabilities(
                 effects[code] = effect
 
     granted = {
-        code
-        for code, effect in effects.items()
-        if effect == UserCapabilityOverride.Effect.GRANT
+        code for code, effect in effects.items() if effect == UserCapabilityOverride.Effect.GRANT
     }
     revoked = {
-        code
-        for code, effect in effects.items()
-        if effect == UserCapabilityOverride.Effect.REVOKE
+        code for code, effect in effects.items() if effect == UserCapabilityOverride.Effect.REVOKE
     }
     return frozenset(((capability_codes | granted) & CAPABILITY_CODES) - revoked)
 
