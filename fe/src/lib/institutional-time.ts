@@ -142,10 +142,14 @@ function civilDateTimeToInstant(
   return result;
 }
 
-function formatDateTimeInputParts(parts: CivilDateTimeParts): string {
+function formatDateTimeInputParts(
+  parts: CivilDateTimeParts,
+  includeSeconds = false,
+): string {
   return (
     `${pad(parts.year, 4)}-${pad(parts.month)}-${pad(parts.day)}T` +
-    `${pad(parts.hour)}:${pad(parts.minute)}`
+    `${pad(parts.hour)}:${pad(parts.minute)}` +
+    (includeSeconds ? `:${pad(parts.second)}` : "")
   );
 }
 
@@ -161,10 +165,13 @@ export function institutionalDateTimeInputToISO(value: string): string | null {
 
 export function isoToInstitutionalDateTimeInput(
   value: string | null | undefined,
+  options?: { includeSeconds?: boolean },
 ): string {
   if (!value) return "";
   const parts = partsInZone(new Date(value), INSTITUTION_TIME_ZONE);
-  return parts ? formatDateTimeInputParts(parts) : "";
+  return parts
+    ? formatDateTimeInputParts(parts, options?.includeSeconds)
+    : "";
 }
 
 export function institutionalDateInputValue(date = new Date()): string {
