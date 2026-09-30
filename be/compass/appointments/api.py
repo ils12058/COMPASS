@@ -31,12 +31,16 @@ from compass.service_catalog.api import AppointmentPolicy, DeliveryMode
 from .services import (
     DEFAULT_PAGE_SIZE,
     AppointmentActionBlocker,
+    AppointmentActionConsequenceCode,
     AppointmentCancellationConflict,
     AppointmentCancellationCutoffPassed,
     AppointmentCurrentAcademicYearNotConfigured,
     AppointmentCurrentInventoryRequired,
     AppointmentCurrentStudentRequired,
     AppointmentDefaultProviderUnresolved,
+    AppointmentECounselingAccessOpen,
+    AppointmentECounselingAccessStarted,
+    AppointmentECounselingRoomLinked,
     AppointmentError,
     AppointmentLifecycleConflict,
     AppointmentListOrdering,
@@ -159,9 +163,15 @@ class AppointmentResponse(StrictSchema):
     created_at: datetime
 
 
+class AppointmentActionConsequenceResponse(StrictSchema):
+    code: AppointmentActionConsequenceCode
+    routine_interview_id: UUID
+
+
 class AppointmentActionStateResponse(StrictSchema):
     allowed: bool
     blocker: AppointmentActionBlocker | None
+    consequences: list[AppointmentActionConsequenceResponse]
 
 
 class AppointmentActionsResponse(StrictSchema):
@@ -276,6 +286,12 @@ def _raise(exc: AppointmentError) -> NoReturn:
         raise APIError(409, "appointment_time_unavailable", str(exc)) from exc
     if isinstance(exc, AppointmentTimeConflict):
         raise APIError(409, "appointment_time_conflict", str(exc)) from exc
+    if isinstance(exc, AppointmentECounselingAccessStarted):
+        raise APIError(409, "ecounseling_access_started", str(exc)) from exc
+    if isinstance(exc, AppointmentECounselingAccessOpen):
+        raise APIError(409, "ecounseling_access_open", str(exc)) from exc
+    if isinstance(exc, AppointmentECounselingRoomLinked):
+        raise APIError(409, "ecounseling_room_linked", str(exc)) from exc
     if isinstance(exc, AppointmentLifecycleConflict):
         raise APIError(409, "appointment_lifecycle_conflict", str(exc)) from exc
     if isinstance(exc, AppointmentCancellationCutoffPassed):
@@ -663,7 +679,17 @@ def appointments_list_managed(
 
 
 def _action_state(state) -> dict[str, object]:
-    return {"allowed": state.allowed, "blocker": state.blocker}
+    return {
+        "allowed": state.allowed,
+        "blocker": state.blocker,
+        "consequences": [
+            {
+                "code": consequence.code,
+                "routine_interview_id": consequence.routine_interview_id,
+            }
+            for consequence in state.consequences
+        ],
+    }
 
 
 @router.get(
