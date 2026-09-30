@@ -243,7 +243,9 @@ def test_submitted_feedback_survives_valid_completion_reconciliation_without_new
     assert opportunity.service_completed_at == corrected_end
     assert opportunity.customer_feedback_submitted_at == customer_marker
     assert opportunity.csm_submitted_at == csm_marker
-    assert CustomerFeedbackResponse.objects.get(pk=customer.pk).additional_feedback == "Helpful visit."
+    assert (
+        CustomerFeedbackResponse.objects.get(pk=customer.pk).additional_feedback == "Helpful visit."
+    )
     assert csm.pk is not None
     assert (
         Notification.objects.filter(
