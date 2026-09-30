@@ -227,7 +227,8 @@ def _require_actionable_parent(
         )
     if status == AppointmentStatus.NO_SHOW:
         raise RoutineInterviewParentClosed(
-            "This Routine Interview is no longer active because the Appointment was marked as no-show."
+            "This Routine Interview is no longer active because the Appointment "
+            "was marked as no-show."
         )
 
 
