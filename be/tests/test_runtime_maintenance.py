@@ -145,6 +145,12 @@ def test_manage_authorization_uses_effective_capability_not_role_name():
     counselor = make_user("delegated-runtime-manager@example.edu", "COUNSELOR")
     set_user_capability_override(
         user=counselor,
+        capability="platform_operations.view",
+        effect="GRANT",
+        reason="Temporary runtime operations visibility",
+    )
+    set_user_capability_override(
+        user=counselor,
         capability="platform_operations.manage",
         effect="GRANT",
         reason="Temporary runtime operations delegation",
