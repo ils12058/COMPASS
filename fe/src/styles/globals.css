@@ -4,6 +4,7 @@
 @theme inline {
   --font-sans: var(--font-plus-jakarta);
   --font-heading: var(--font-outfit);
+  --font-script: var(--font-caveat);
 
   --color-ink: var(--compass-ink);
   --color-muted: var(--compass-muted);
