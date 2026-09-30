@@ -112,16 +112,14 @@ def test_normal_role_and_designation_baselines_remain_dependency_coherent():
         designation=Designation.objects.get(code="DPO"),
     )
     expected_dpo = (
-        ROLE_CAPABILITY_GRANTS["INSTITUTIONAL_OFFICER"]
-        | DESIGNATION_CAPABILITY_GRANTS["DPO"]
+        ROLE_CAPABILITY_GRANTS["INSTITUTIONAL_OFFICER"] | DESIGNATION_CAPABILITY_GRANTS["DPO"]
     )
     assert effective_capabilities(dpo) == expected_dpo
 
     for designation_code, compatible_roles in DESIGNATION_ROLE_COMPATIBILITY.items():
         for role_code in compatible_roles:
             combined = (
-                ROLE_CAPABILITY_GRANTS[role_code]
-                | DESIGNATION_CAPABILITY_GRANTS[designation_code]
+                ROLE_CAPABILITY_GRANTS[role_code] | DESIGNATION_CAPABILITY_GRANTS[designation_code]
             )
             assert resolve_capability_dependencies(combined) == combined
 
@@ -132,9 +130,7 @@ def test_dependency_resolver_runs_until_fixed_point(monkeypatch):
         "referrals.view",
         frozenset({"accounts.view"}),
     )
-    assert resolve_capability_dependencies(
-        {"referrals.manage", "referrals.view"}
-    ) == frozenset()
+    assert resolve_capability_dependencies({"referrals.manage", "referrals.view"}) == frozenset()
 
 
 def test_dependency_policy_validation_rejects_cycles(monkeypatch):
@@ -391,22 +387,28 @@ def test_inactive_account_override_validation_uses_projected_policy_composition(
     )
     assert blocked.status_code == 409
 
-    assert put_json(
-        client,
-        f"/api/v1/accounts/{target.pk}/capability-overrides/call_slips.view",
-        {
-            "effect": "GRANT",
-            "reason": "Future scoped visibility",
-        },
-    ).status_code == 200
-    assert put_json(
-        client,
-        f"/api/v1/accounts/{target.pk}/capability-overrides/call_slips.manage",
-        {
-            "effect": "GRANT",
-            "reason": "Future scoped management",
-        },
-    ).status_code == 200
+    assert (
+        put_json(
+            client,
+            f"/api/v1/accounts/{target.pk}/capability-overrides/call_slips.view",
+            {
+                "effect": "GRANT",
+                "reason": "Future scoped visibility",
+            },
+        ).status_code
+        == 200
+    )
+    assert (
+        put_json(
+            client,
+            f"/api/v1/accounts/{target.pk}/capability-overrides/call_slips.manage",
+            {
+                "effect": "GRANT",
+                "reason": "Future scoped management",
+            },
+        ).status_code
+        == 200
+    )
 
     assert effective_capabilities(target) == frozenset()
     assert {
