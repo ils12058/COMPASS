@@ -802,10 +802,13 @@ def test_resource_api_returns_structured_publication_consequence_review_required
     )
     assert created.status_code == 201
     resource_id = created.json()["id"]
-    assert client.post(
-        f"/api/v1/resources/management/{resource_id}/publish",
-        **csrf(client),
-    ).status_code == 200
+    assert (
+        client.post(
+            f"/api/v1/resources/management/{resource_id}/publish",
+            **csrf(client),
+        ).status_code
+        == 200
+    )
 
     rejected = client.patch(
         f"/api/v1/resources/management/{resource_id}",
@@ -821,9 +824,7 @@ def test_resource_api_returns_structured_publication_consequence_review_required
     )
     assert rejected.status_code == 409
     assert rejected.json()["error"]["code"] == "publication_consequence_review_required"
-    assert rejected.json()["error"]["details"] == {
-        "fields": ["audience", "external_url"]
-    }
+    assert rejected.json()["error"]["details"] == {"fields": ["audience", "external_url"]}
 
     unchanged = client.get(f"/api/v1/resources/management/{resource_id}")
     assert unchanged.status_code == 200
