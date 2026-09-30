@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import type { CounselingEntryMode, DeliveryMode } from "@/lib/api/generated/model";
 
 export function counselingErrorCode(error: unknown): string | undefined {
@@ -36,12 +37,7 @@ export function counselingErrorMessage(error: unknown, fallback: string): string
 
 export function formatCounselingDateTime(value: string | null | undefined): string {
   if (!value) return "Not available";
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return new Intl.DateTimeFormat("en-PH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+  return formatInstitutionalDateTime(value);
 }
 
 export function counselingEntryModeLabel(mode: CounselingEntryMode | string): string {
