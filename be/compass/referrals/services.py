@@ -87,6 +87,14 @@ class ReferralVoidConflict(ReferralError):
     pass
 
 
+class ReferralActiveCallSlipConflict(ReferralVoidConflict):
+    pass
+
+
+class ReferralCompletedCallSlipConflict(ReferralVoidConflict):
+    pass
+
+
 class ReferralDocumentUnavailable(ReferralError):
     pass
 
@@ -793,16 +801,21 @@ def void_referral(
         if item.voided_at is not None:
             return _detail_queryset().get(pk=item.pk)
 
-        from compass.call_slips.models import CallSlip
+        from compass.call_slips.lifecycle import (
+            ReferralCallSlipDependency,
+            referral_call_slip_dependency,
+        )
 
-        linked = CallSlip.objects.filter(referral_id=item.pk, voided_at__isnull=True).first()
-        if linked is not None:
-            if linked.interview_ended_at is not None:
-                raise ReferralVoidConflict(
-                    "A Referral with a completed linked Call Slip is historical and cannot be "
-                    "voided."
-                )
-            raise ReferralVoidConflict(
+        dependency = referral_call_slip_dependency(
+            referral_id=item.pk,
+            for_update=True,
+        )
+        if dependency == ReferralCallSlipDependency.COMPLETED:
+            raise ReferralCompletedCallSlipConflict(
+                "A Referral with a completed linked Call Slip is historical and cannot be voided."
+            )
+        if dependency == ReferralCallSlipDependency.ACTIVE:
+            raise ReferralActiveCallSlipConflict(
                 "Void the active linked Call Slip before voiding this Referral."
             )
 
