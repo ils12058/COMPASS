@@ -395,9 +395,7 @@ def update_service(
     if not set(changes) <= allowed:
         raise InvalidServiceCatalogInput("The Service update contains unsupported fields.")
     if type(acknowledge_scheduling_consequences) is not bool:
-        raise InvalidServiceCatalogInput(
-            "acknowledge_scheduling_consequences must be a boolean."
-        )
+        raise InvalidServiceCatalogInput("acknowledge_scheduling_consequences must be a boolean.")
     current_time = now or timezone.now()
     if timezone.is_naive(current_time):
         raise InvalidServiceCatalogInput("The Service update time must be timezone-aware.")
