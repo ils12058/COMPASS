@@ -20,6 +20,7 @@ from compass.resources.services import (
     InvalidResourceInput,
     ResourceConflict,
     ResourceNotFound,
+    ResourcePublicationConsequenceReviewRequired,
     archive_resource,
     attach_resource_file,
     create_public_resource_download,
@@ -30,6 +31,7 @@ from compass.resources.services import (
     list_public_resources,
     list_visible_resources,
     publish_resource,
+    update_resource,
 )
 
 
@@ -654,3 +656,195 @@ def test_public_file_resource_download_uses_private_short_lived_url_without_leak
         anonymous.get(f"/api/v1/public/resources/{archived_public_file.pk}/download").status_code
         == 404
     )
+
+
+@pytest.mark.django_db
+def test_published_resource_consequences_require_acknowledgement_and_are_atomic():
+    sync_policy()
+    actor = make_user("resource-consequence@example.edu", "COUNSELOR")
+    item = create_draft(
+        actor=actor,
+        kind=ResourceKind.EXTERNAL_LINK,
+        audience=PublicationAudience.STUDENTS,
+        title="Original resource",
+        external_url="https://example.edu/old-guide",
+    )
+    item = publish_resource(actor=actor, resource_id=item.pk, context=context(actor))
+
+    same_destination = update_resource(
+        actor=actor,
+        resource_id=item.pk,
+        values={
+            "title": "Typo corrected",
+            "external_url": "  https://example.edu/old-guide  ",
+        },
+        context=context(actor),
+    )
+    assert same_destination.title == "Typo corrected"
+    assert same_destination.external_url == "https://example.edu/old-guide"
+
+    with pytest.raises(ResourcePublicationConsequenceReviewRequired) as caught:
+        update_resource(
+            actor=actor,
+            resource_id=item.pk,
+            values={
+                "title": "Reviewed resource",
+                "external_url": "https://example.edu/new-guide",
+            },
+            context=context(actor),
+        )
+    assert caught.value.fields == ("external_url",)
+
+    item.refresh_from_db()
+    assert item.title == "Typo corrected"
+    assert item.external_url == "https://example.edu/old-guide"
+
+    item = update_resource(
+        actor=actor,
+        resource_id=item.pk,
+        values={
+            "title": "Reviewed resource",
+            "external_url": "https://example.edu/new-guide",
+        },
+        context=context(actor),
+        acknowledge_publication_consequences=True,
+    )
+    assert item.title == "Reviewed resource"
+    assert item.external_url == "https://example.edu/new-guide"
+
+    event = AuditEvent.objects.filter(
+        target_type="resources.resource",
+        target_id=str(item.pk),
+        action="resource.updated",
+    ).latest("occurred_at")
+    assert event.metadata["publication_consequences"]["external_url"] == {
+        "before": "https://example.edu/old-guide",
+        "after": "https://example.edu/new-guide",
+    }
+
+
+@pytest.mark.django_db
+def test_published_resource_audience_and_publish_validity_remain_protected():
+    sync_policy()
+    actor = make_user("resource-audience@example.edu", "COUNSELOR")
+    item = create_draft(
+        actor=actor,
+        kind=ResourceKind.EXTERNAL_LINK,
+        audience=PublicationAudience.ALL_AUTHENTICATED,
+        external_url="https://example.edu/resource",
+    )
+    item = publish_resource(actor=actor, resource_id=item.pk, context=context(actor))
+
+    with pytest.raises(ResourcePublicationConsequenceReviewRequired):
+        update_resource(
+            actor=actor,
+            resource_id=item.pk,
+            values={"audience": PublicationAudience.PUBLIC},
+            context=context(actor),
+        )
+    item.refresh_from_db()
+    assert item.audience == PublicationAudience.ALL_AUTHENTICATED
+
+    item = update_resource(
+        actor=actor,
+        resource_id=item.pk,
+        values={"audience": PublicationAudience.PUBLIC},
+        context=context(actor),
+        acknowledge_publication_consequences=True,
+    )
+    assert item.audience == PublicationAudience.PUBLIC
+
+    with pytest.raises(InvalidResourceInput, match="body_markdown is required"):
+        update_resource(
+            actor=actor,
+            resource_id=item.pk,
+            values={"body_markdown": "   "},
+            context=context(actor),
+        )
+    with pytest.raises(InvalidResourceInput, match="external_url must use http or https"):
+        update_resource(
+            actor=actor,
+            resource_id=item.pk,
+            values={"external_url": "javascript:alert(1)"},
+            context=context(actor),
+            acknowledge_publication_consequences=True,
+        )
+    with pytest.raises(ResourceConflict, match="kind cannot be changed"):
+        update_resource(
+            actor=actor,
+            resource_id=item.pk,
+            values={"kind": ResourceKind.ARTICLE},
+            context=context(actor),
+            acknowledge_publication_consequences=True,
+        )
+
+
+@pytest.mark.django_db
+def test_resource_api_returns_structured_publication_consequence_review_required():
+    sync_policy()
+    actor = make_user("resource-review-api@example.edu", "COUNSELOR")
+    client = auth_client(actor)
+    created = client.post(
+        "/api/v1/resources/management",
+        data=json.dumps(
+            {
+                "title": "Published link",
+                "body_markdown": "Published body.",
+                "category": "GENERAL",
+                "kind": "EXTERNAL_LINK",
+                "audience": "GCO_PERSONNEL",
+                "external_url": "https://example.edu/old",
+                "display_order": 0,
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert created.status_code == 201
+    resource_id = created.json()["id"]
+    assert client.post(
+        f"/api/v1/resources/management/{resource_id}/publish",
+        **csrf(client),
+    ).status_code == 200
+
+    rejected = client.patch(
+        f"/api/v1/resources/management/{resource_id}",
+        data=json.dumps(
+            {
+                "title": "Atomic resource",
+                "audience": "PUBLIC",
+                "external_url": "https://example.edu/new",
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert rejected.status_code == 409
+    assert rejected.json()["error"]["code"] == "publication_consequence_review_required"
+    assert rejected.json()["error"]["details"] == {
+        "fields": ["audience", "external_url"]
+    }
+
+    unchanged = client.get(f"/api/v1/resources/management/{resource_id}")
+    assert unchanged.status_code == 200
+    assert unchanged.json()["title"] == "Published link"
+    assert unchanged.json()["audience"] == "GCO_PERSONNEL"
+    assert unchanged.json()["external_url"] == "https://example.edu/old"
+
+    accepted = client.patch(
+        f"/api/v1/resources/management/{resource_id}",
+        data=json.dumps(
+            {
+                "title": "Atomic resource",
+                "audience": "PUBLIC",
+                "external_url": "https://example.edu/new",
+                "acknowledge_publication_consequences": True,
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["title"] == "Atomic resource"
+    assert accepted.json()["audience"] == "PUBLIC"
+    assert accepted.json()["external_url"] == "https://example.edu/new"
