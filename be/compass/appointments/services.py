@@ -930,7 +930,9 @@ def create_student_appointment(
 
 
 def _uses_ecounseling_lifecycle(item: Appointment) -> bool:
-    """Identify an existing ONLINE Counseling Appointment without consulting live Service readiness."""
+    """Identify an existing ONLINE Counseling Appointment without consulting
+    live Service readiness.
+    """
 
     return (
         item.service.code == COUNSELING_SERVICE_CODE and item.delivery_mode == DeliveryMode.ONLINE
@@ -990,7 +992,8 @@ def cancel_appointment(
         access_window = _ecounseling_access_window(item, now=current)
         if access_window is not None and access_window.state != ECounselingJoinState.TOO_EARLY:
             raise AppointmentECounselingAccessStarted(
-                "This Appointment can no longer be cancelled because its online counseling access period has begun."
+                "This Appointment can no longer be cancelled because its online "
+                "counseling access period has begun."
             )
         if ECounselingRoom.objects.filter(appointment_id=item.pk).exists():
             raise AppointmentECounselingRoomLinked(
@@ -1463,7 +1466,8 @@ def complete_appointment(
         access_window = _ecounseling_access_window(item, now=current)
         if access_window is not None and access_window.state == ECounselingJoinState.OPEN:
             raise AppointmentECounselingAccessOpen(
-                "This Appointment cannot be completed while the online counseling access period is still open."
+                "This Appointment cannot be completed while the online counseling "
+                "access period is still open."
             )
         item.status = AppointmentStatus.COMPLETED
         item.completed_at = current
@@ -1519,7 +1523,8 @@ def mark_appointment_no_show(
         access_window = _ecounseling_access_window(item, now=current)
         if access_window is not None and access_window.state == ECounselingJoinState.OPEN:
             raise AppointmentECounselingAccessOpen(
-                "This Appointment cannot be marked NO_SHOW while the online counseling rejoin period is still open."
+                "This Appointment cannot be marked NO_SHOW while the online counseling "
+                "rejoin period is still open."
             )
 
         from compass.counseling.models import CounselingEncounter
