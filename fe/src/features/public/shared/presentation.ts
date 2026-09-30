@@ -4,11 +4,12 @@ import {
   type ResourceCategoryValue as ResourceCategory,
   type ResourceKindValue as ResourceKind,
 } from "@/lib/api/generated/model";
+import { INSTITUTION_TIME_ZONE } from "@/lib/institutional-time";
 
 const publicDateFormatter = new Intl.DateTimeFormat("en-PH", {
   day: "numeric",
   month: "long",
-  timeZone: "Asia/Manila",
+  timeZone: INSTITUTION_TIME_ZONE,
   year: "numeric",
 });
 
