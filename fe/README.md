@@ -34,6 +34,15 @@ pnpm api:generate
 Generated code is ignored by Git and must not be edited manually. Change the
 OpenAPI contract, Orval configuration, or shared transport as appropriate.
 
+## Institutional time
+
+Frontend institutional chronology is owned by `src/lib/institutional-time.ts`. UCN wall-clock
+inputs are interpreted as `Asia/Manila` (`Philippine Time`) regardless of the browser/device
+timezone, institutional timestamp displays set an explicit timezone, and date-only contracts are
+formatted without converting through browser-local midnight. `src/lib/date-time.ts` currently
+keeps compatibility aliases for unmigrated feature callers; new code should use the explicit
+institutional helper names directly.
+
 ## Commands
 
 ```bash
