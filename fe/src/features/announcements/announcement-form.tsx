@@ -353,13 +353,13 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
       title="Review published Announcement changes?"
       description={
         <>
-          {reviewedAudience !== undefined && saved.audience ? (
+          {reviewedAudience != null && saved.audience ? (
             <p>
               The audience will change from {publicationAudienceLabels[saved.audience]} to{" "}
               {publicationAudienceLabels[reviewedAudience]}.
             </p>
           ) : null}
-          {reviewedAudience !== undefined ? (
+          {reviewedAudience != null ? (
             reviewedAudience === AnnouncementAudienceValue.PUBLIC ? (
               <p>
                 Anyone who can access the public COMPASS site will be able to read this
