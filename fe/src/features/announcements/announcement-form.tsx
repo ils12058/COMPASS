@@ -10,11 +10,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { refreshAnnouncementQueries, storeManagedAnnouncement } from "@/features/announcements/announcement-cache";
 import {
+  announcementErrorCode,
   announcementErrorMessage,
   isUncertainAnnouncementMutation,
 } from "@/features/announcements/announcement-errors";
-import type { PublicationAudience } from "@/features/content/content-presentation";
-import { AudienceField, contentSecondaryLinkClass } from "@/features/content/content-shared";
+import {
+  publicationAudienceLabels,
+  type PublicationAudience,
+} from "@/features/content/content-presentation";
+import {
+  AudienceField,
+  ContentConfirmDialog,
+  contentSecondaryLinkClass,
+} from "@/features/content/content-shared";
 import { MarkdownEditor } from "@/features/content/markdown-editor/markdown-editor";
 import { useMarkdownValue } from "@/features/content/markdown-editor/use-markdown-value";
 import { useUnsavedChangesGuard } from "@/features/content/use-unsaved-changes-guard";
@@ -24,13 +32,16 @@ import {
   useAnnouncementsUpdate,
 } from "@/lib/api/generated/announcements/announcements";
 import {
+  AnnouncementAudienceValue,
   AnnouncementStatusValue,
   type AnnouncementManagementResponse,
   type AnnouncementUpdateRequest,
 } from "@/lib/api/generated/model";
 import {
+  formatInstitutionalDateTime,
   INSTITUTION_TIME_ZONE_LABEL,
   institutionalDateTimeInputToISO,
+  isFutureInstitutionalDateTimeInput,
   isoToInstitutionalDateTimeInput,
 } from "@/lib/institutional-time";
 
@@ -73,6 +84,9 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewPayload, setReviewPayload] = useState<AnnouncementUpdateRequest | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const isPublished = announcement?.status === AnnouncementStatusValue.PUBLISHED;
   const saving = create.isPending || update.isPending;
@@ -95,14 +109,58 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
     const next: Partial<Record<FieldName, string>> = {};
     if (!values.title.trim()) next.title = "Enter a title.";
     if (!values.audience) next.audience = "Choose who can see this Announcement.";
-    if (
-      values.expiresAt &&
-      !institutionalDateTimeInputToISO(values.expiresAt)
-    ) {
+    if (values.expiresAt && !institutionalDateTimeInputToISO(values.expiresAt)) {
       next.expiresAt = "Enter a valid date and time, or remove the expiry.";
+    } else if (
+      isPublished &&
+      values.expiresAt &&
+      !isFutureInstitutionalDateTimeInput(values.expiresAt)
+    ) {
+      next.expiresAt =
+        "Choose a future expiry. Use Archive Announcement if it should disappear immediately.";
     }
     if (isPublished && !currentBody.trim()) next.body = "A published Announcement needs body text.";
     return next;
+  }
+
+  async function saveExisting(
+    payload: AnnouncementUpdateRequest,
+    acknowledgePublicationConsequences = false,
+  ) {
+    if (!announcement) return;
+    try {
+      const data: AnnouncementUpdateRequest = acknowledgePublicationConsequences
+        ? { ...payload, acknowledge_publication_consequences: true }
+        : payload;
+      const response = await update.mutateAsync({
+        announcementId: announcement.id,
+        data,
+      });
+      const published = response.data.status === AnnouncementStatusValue.PUBLISHED;
+      storeManagedAnnouncement(queryClient, response);
+      void refreshAnnouncementQueries(queryClient, announcement.id, { readers: published });
+      setSaved(fieldsFrom(response.data));
+      if (payload.body_markdown !== undefined) body.markSaved(response.data.body_markdown);
+      setReviewOpen(false);
+      setReviewPayload(null);
+      setReviewError(null);
+      setNotice(published ? "Changes saved. Readers now see the updated Announcement." : "Draft saved.");
+    } catch (caught) {
+      if (
+        !acknowledgePublicationConsequences &&
+        announcementErrorCode(caught) === "publication_consequence_review_required"
+      ) {
+        setReviewPayload(payload);
+        setReviewError(null);
+        setReviewOpen(true);
+        return;
+      }
+      const message = isUncertainAnnouncementMutation(caught)
+        ? "The changes could not be confirmed as saved. Save again to make sure they are kept."
+        : announcementErrorMessage(caught, "The changes could not be saved.");
+      if (acknowledgePublicationConsequences) setReviewError(message);
+      else setFormError(message);
+    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -155,27 +213,29 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
     if (values.expiresAt !== saved.expiresAt) payload.expires_at = expiresAt;
     if (Object.keys(payload).length === 0) return;
 
-    try {
-      const response = await update.mutateAsync({ announcementId: announcement.id, data: payload });
-      const published = response.data.status === AnnouncementStatusValue.PUBLISHED;
-      storeManagedAnnouncement(queryClient, response);
-      void refreshAnnouncementQueries(queryClient, announcement.id, { readers: published });
-      setSaved(fieldsFrom(response.data));
-      if (payload.body_markdown !== undefined) body.markSaved(response.data.body_markdown);
-      setNotice(published ? "Changes saved. Readers now see the updated Announcement." : "Draft saved.");
-    } catch (caught) {
-      setFormError(
-        isUncertainAnnouncementMutation(caught)
-          ? "The changes could not be confirmed as saved. Save again to make sure they are kept."
-          : announcementErrorMessage(caught, "The changes could not be saved."),
-      );
+    const consequenceReviewNeeded =
+      isPublished &&
+      (payload.audience !== undefined ||
+        Object.prototype.hasOwnProperty.call(payload, "expires_at"));
+    if (consequenceReviewNeeded) {
+      setReviewPayload(payload);
+      setReviewError(null);
+      setReviewOpen(true);
+      return;
     }
+    await saveExisting(payload);
   }
 
   const submitLabel = isPublished ? "Save changes" : "Save draft";
   const pendingLabel = isPublished ? "Saving changes…" : "Saving draft…";
 
+  const reviewedAudience = reviewPayload?.audience;
+  const reviewedExpiryChanged =
+    reviewPayload !== null &&
+    Object.prototype.hasOwnProperty.call(reviewPayload, "expires_at");
+
   return (
+    <>
     <form className="mt-8 space-y-8" onSubmit={(event) => void submit(event)} noValidate>
       <div className="grid gap-2">
         <Label htmlFor="announcement-title">Title</Label>
@@ -287,5 +347,54 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
         </div>
       </div>
     </form>
+    <ContentConfirmDialog
+      open={reviewOpen}
+      title="Review published Announcement changes?"
+      description={
+        <>
+          {reviewedAudience !== undefined && saved.audience ? (
+            <p>
+              The audience will change from {publicationAudienceLabels[saved.audience]} to{" "}
+              {publicationAudienceLabels[reviewedAudience]}.
+            </p>
+          ) : null}
+          {reviewedAudience === AnnouncementAudienceValue.PUBLIC ? (
+            <p>
+              Anyone who can access the public COMPASS site will be able to read this
+              Announcement without signing in.
+            </p>
+          ) : null}
+          {reviewedExpiryChanged ? (
+            reviewPayload?.expires_at ? (
+              <p>
+                This Announcement will stop being shown after{" "}
+                {formatInstitutionalDateTime(reviewPayload.expires_at)}{" "}
+                {INSTITUTION_TIME_ZONE_LABEL}.
+              </p>
+            ) : (
+              <p>
+                This Announcement will no longer expire automatically and will remain
+                visible until it is archived.
+              </p>
+            )
+          ) : null}
+        </>
+      }
+      confirmLabel="Save reviewed changes"
+      pendingLabel="Saving changes…"
+      pending={update.isPending}
+      error={reviewError}
+      onOpenChange={(open) => {
+        setReviewOpen(open);
+        if (!open) {
+          setReviewPayload(null);
+          setReviewError(null);
+        }
+      }}
+      onConfirm={() => {
+        if (reviewPayload) void saveExisting(reviewPayload, true);
+      }}
+    />
+    </>
   );
 }
