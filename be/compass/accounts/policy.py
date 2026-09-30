@@ -609,11 +609,7 @@ def resolve_capability_dependencies(candidate_codes) -> frozenset[str]:
 
     effective = set(candidate_codes) & CAPABILITY_CODES
     while True:
-        blocked = {
-            code
-            for code in effective
-            if not required_capabilities(code) <= effective
-        }
+        blocked = {code for code in effective if not required_capabilities(code) <= effective}
         if not blocked:
             return frozenset(effective)
         effective.difference_update(blocked)
@@ -650,9 +646,7 @@ def _validate_dependency_graph() -> None:
         if capability_code in visited:
             return
         if capability_code in visiting:
-            raise RuntimeError(
-                f"capability dependency graph contains a cycle at {capability_code}"
-            )
+            raise RuntimeError(f"capability dependency graph contains a cycle at {capability_code}")
         visiting.add(capability_code)
         for requirement in required_capabilities(capability_code):
             visit(requirement)
