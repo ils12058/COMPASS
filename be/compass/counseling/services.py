@@ -768,9 +768,7 @@ def update_encounter(
             "appointment_id": proposed_appointment_id,
         }
         changed_fields = [
-            field
-            for field, value in scalar_changes.items()
-            if getattr(item, field) != value
+            field for field, value in scalar_changes.items() if getattr(item, field) != value
         ]
         if not changed_fields:
             return _encounter_queryset().get(pk=item.pk)
