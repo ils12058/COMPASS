@@ -42,6 +42,12 @@ class AnnouncementConflict(AnnouncementError):
     pass
 
 
+class AnnouncementPublicationConsequenceReviewRequired(AnnouncementConflict):
+    def __init__(self, fields: tuple[str, ...]) -> None:
+        super().__init__("Review the publication consequences before saving these changes.")
+        self.fields = fields
+
+
 class InvalidAnnouncementInput(AnnouncementError):
     pass
 
@@ -88,6 +94,21 @@ def _clean_expiry(value: datetime | None) -> datetime | None:
     if not isinstance(value, datetime) or timezone.is_naive(value):
         raise InvalidAnnouncementInput("expires_at must be a timezone-aware datetime or null")
     return value
+
+
+def _validate_published_announcement_state(
+    item: Announcement,
+    *,
+    now: datetime,
+) -> None:
+    item.title = _clean_title(item.title, require_nonblank=True)
+    item.body_markdown = _clean_body(item.body_markdown, require_nonblank=True)
+    item.audience = _clean_audience(item.audience)
+    item.expires_at = _clean_expiry(item.expires_at)
+    if item.expires_at is not None and item.expires_at <= now:
+        raise InvalidAnnouncementInput(
+            "expires_at must be in the future while the Announcement is published"
+        )
 
 
 def _clean_page(page: int, page_size: int) -> tuple[int, int]:
@@ -262,12 +283,17 @@ def update_announcement(
     announcement_id: UUID,
     values: dict[str, object],
     context: AuditContext,
+    acknowledge_publication_consequences: bool = False,
+    now: datetime | None = None,
 ) -> Announcement:
     item = Announcement.objects.select_for_update().filter(pk=announcement_id).first()
     if item is None:
         raise AnnouncementNotFound("The requested Announcement was not found.")
     if item.status == PublicationStatus.ARCHIVED:
         raise AnnouncementConflict("Archived Announcements cannot be edited.")
+
+    before_audience = item.audience
+    before_expiry = item.expires_at
 
     allowed = {"title", "body_markdown", "audience", "is_pinned", "expires_at"}
     unknown = set(values) - allowed
@@ -287,19 +313,41 @@ def update_announcement(
     if "expires_at" in values:
         item.expires_at = _clean_expiry(values["expires_at"])  # type: ignore[arg-type]
 
+    publication_consequences: dict[str, object] = {}
+    if item.status == PublicationStatus.PUBLISHED:
+        consequential_fields: list[str] = []
+        if item.audience != before_audience:
+            consequential_fields.append("audience")
+            publication_consequences["audience"] = {
+                "before": before_audience,
+                "after": item.audience,
+            }
+        if item.expires_at != before_expiry:
+            consequential_fields.append("expires_at")
+            publication_consequences["expires_at"] = {
+                "before": before_expiry.isoformat() if before_expiry is not None else None,
+                "after": item.expires_at.isoformat() if item.expires_at is not None else None,
+            }
+        if consequential_fields and acknowledge_publication_consequences is not True:
+            raise AnnouncementPublicationConsequenceReviewRequired(tuple(consequential_fields))
+        _validate_published_announcement_state(item, now=now or timezone.now())
+
     item.updated_by = actor
     item.save()
+    metadata: dict[str, object] = {
+        "status": item.status,
+        "audience": item.audience,
+        "is_pinned": item.is_pinned,
+    }
+    if publication_consequences:
+        metadata["publication_consequences"] = publication_consequences
     record_event(
         context=context,
         action=ANNOUNCEMENT_UPDATED,
         outcome=AuditOutcome.SUCCESS,
         target_type="announcements.announcement",
         target_id=item.pk,
-        metadata={
-            "status": item.status,
-            "audience": item.audience,
-            "is_pinned": item.is_pinned,
-        },
+        metadata=metadata,
     )
     return item
 
@@ -319,11 +367,7 @@ def publish_announcement(
         raise AnnouncementConflict("Only a draft Announcement can be published.")
 
     current = now or timezone.now()
-    item.title = _clean_title(item.title, require_nonblank=True)
-    item.body_markdown = _clean_body(item.body_markdown, require_nonblank=True)
-    item.audience = _clean_audience(item.audience)
-    if item.expires_at is not None and item.expires_at <= current:
-        raise InvalidAnnouncementInput("expires_at must be in the future at publication")
+    _validate_published_announcement_state(item, now=current)
 
     item.status = PublicationStatus.PUBLISHED
     item.published_at = current
@@ -384,6 +428,7 @@ __all__ = [
     "AnnouncementError",
     "AnnouncementNotFound",
     "AnnouncementPage",
+    "AnnouncementPublicationConsequenceReviewRequired",
     "DEFAULT_PAGE_SIZE",
     "InvalidAnnouncementInput",
     "MAX_PAGE_SIZE",

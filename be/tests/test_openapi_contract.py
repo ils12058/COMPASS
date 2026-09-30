@@ -337,6 +337,29 @@ def _response_statuses(operation: dict) -> set[int]:
     return {int(status) for status in operation["responses"]}
 
 
+def test_publication_update_contract_exposes_consequence_acknowledgement() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    for schema_name in ("AnnouncementUpdateRequest", "ResourceUpdateRequest"):
+        acknowledgement = schemas[schema_name]["properties"]["acknowledge_publication_consequences"]
+        assert acknowledgement["type"] == "boolean"
+        assert acknowledgement["default"] is False
+
+    announcement_update = _operation(
+        schema,
+        "/api/v1/announcements/management/{announcement_id}",
+        "patch",
+    )
+    resource_update = _operation(
+        schema,
+        "/api/v1/resources/management/{resource_id}",
+        "patch",
+    )
+    assert 409 in _response_statuses(announcement_update)
+    assert 409 in _response_statuses(resource_update)
+
+
 def test_institutional_forms_contract_is_read_only_and_projects_support() -> None:
     schema = _generated_schema()
     paths = schema["paths"]

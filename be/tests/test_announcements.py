@@ -19,6 +19,8 @@ from compass.accounts.services import set_user_capability_override
 from compass.announcements.services import (
     AnnouncementConflict,
     AnnouncementNotFound,
+    AnnouncementPublicationConsequenceReviewRequired,
+    InvalidAnnouncementInput,
     archive_announcement,
     create_announcement,
     get_public_announcement,
@@ -537,3 +539,224 @@ def test_public_announcement_api_is_anonymous_and_does_not_leak_other_audiences(
 
     hidden = anonymous.get(f"/api/v1/public/announcements/{private_id}")
     assert hidden.status_code == 404
+
+
+@pytest.mark.django_db
+def test_published_announcement_consequences_require_acknowledgement_and_are_atomic():
+    sync_policy()
+    actor = make_user("announcement-consequence@example.edu", "COUNSELOR")
+    now = timezone.now()
+    item = create_announcement(
+        actor=actor,
+        title="Original title",
+        body_markdown="Published body.",
+        audience=PublicationAudience.STUDENTS,
+        is_pinned=False,
+        expires_at=None,
+        context=context(actor),
+    )
+    item = publish_announcement(
+        actor=actor,
+        announcement_id=item.pk,
+        context=context(actor),
+        now=now,
+    )
+
+    with pytest.raises(AnnouncementPublicationConsequenceReviewRequired) as caught:
+        update_announcement(
+            actor=actor,
+            announcement_id=item.pk,
+            values={"title": "Reviewed title", "audience": PublicationAudience.PUBLIC},
+            context=context(actor),
+            now=now + timedelta(minutes=1),
+        )
+    assert caught.value.fields == ("audience",)
+
+    item.refresh_from_db()
+    assert item.title == "Original title"
+    assert item.audience == PublicationAudience.STUDENTS
+
+    item = update_announcement(
+        actor=actor,
+        announcement_id=item.pk,
+        values={"title": "Reviewed title", "audience": PublicationAudience.PUBLIC},
+        context=context(actor),
+        acknowledge_publication_consequences=True,
+        now=now + timedelta(minutes=1),
+    )
+    assert item.title == "Reviewed title"
+    assert item.audience == PublicationAudience.PUBLIC
+
+    event = AuditEvent.objects.filter(
+        target_type="announcements.announcement",
+        target_id=str(item.pk),
+        action="announcement.updated",
+    ).latest("occurred_at")
+    assert event.metadata["publication_consequences"]["audience"] == {
+        "before": PublicationAudience.STUDENTS,
+        "after": PublicationAudience.PUBLIC,
+    }
+
+    same_audience = update_announcement(
+        actor=actor,
+        announcement_id=item.pk,
+        values={"title": "Typo corrected", "audience": PublicationAudience.PUBLIC},
+        context=context(actor),
+        now=now + timedelta(minutes=2),
+    )
+    assert same_audience.title == "Typo corrected"
+
+
+@pytest.mark.django_db
+def test_published_announcement_expiry_review_and_validity_invariants():
+    sync_policy()
+    actor = make_user("announcement-expiry@example.edu", "COUNSELOR")
+    now = timezone.now()
+    item = create_announcement(
+        actor=actor,
+        title="Expiry notice",
+        body_markdown="Published body.",
+        audience=PublicationAudience.ALL_AUTHENTICATED,
+        is_pinned=False,
+        expires_at=None,
+        context=context(actor),
+    )
+    item = publish_announcement(
+        actor=actor,
+        announcement_id=item.pk,
+        context=context(actor),
+        now=now,
+    )
+    future = now + timedelta(days=2)
+
+    with pytest.raises(AnnouncementPublicationConsequenceReviewRequired):
+        update_announcement(
+            actor=actor,
+            announcement_id=item.pk,
+            values={"expires_at": future},
+            context=context(actor),
+            now=now + timedelta(minutes=1),
+        )
+    item.refresh_from_db()
+    assert item.expires_at is None
+
+    item = update_announcement(
+        actor=actor,
+        announcement_id=item.pk,
+        values={"expires_at": future},
+        context=context(actor),
+        acknowledge_publication_consequences=True,
+        now=now + timedelta(minutes=1),
+    )
+    assert item.expires_at == future
+
+    with pytest.raises(AnnouncementPublicationConsequenceReviewRequired):
+        update_announcement(
+            actor=actor,
+            announcement_id=item.pk,
+            values={"expires_at": None},
+            context=context(actor),
+            now=now + timedelta(minutes=2),
+        )
+    item = update_announcement(
+        actor=actor,
+        announcement_id=item.pk,
+        values={"expires_at": None},
+        context=context(actor),
+        acknowledge_publication_consequences=True,
+        now=now + timedelta(minutes=2),
+    )
+    assert item.expires_at is None
+
+    with pytest.raises(
+        InvalidAnnouncementInput, match="future while the Announcement is published"
+    ):
+        update_announcement(
+            actor=actor,
+            announcement_id=item.pk,
+            values={"expires_at": now - timedelta(minutes=1)},
+            context=context(actor),
+            acknowledge_publication_consequences=True,
+            now=now + timedelta(minutes=3),
+        )
+    item.refresh_from_db()
+    assert item.expires_at is None
+
+    with pytest.raises(InvalidAnnouncementInput, match="body_markdown is required"):
+        update_announcement(
+            actor=actor,
+            announcement_id=item.pk,
+            values={"body_markdown": "   "},
+            context=context(actor),
+            now=now + timedelta(minutes=4),
+        )
+    item.refresh_from_db()
+    assert item.body_markdown == "Published body."
+
+    archive_announcement(actor=actor, announcement_id=item.pk, context=context(actor))
+    with pytest.raises(AnnouncementConflict, match="Archived Announcements cannot be edited"):
+        update_announcement(
+            actor=actor,
+            announcement_id=item.pk,
+            values={"title": "No longer editable"},
+            context=context(actor),
+        )
+
+
+@pytest.mark.django_db
+def test_announcement_api_returns_structured_publication_consequence_review_required():
+    sync_policy()
+    actor = make_user("announcement-review-api@example.edu", "COUNSELOR")
+    client = auth_client(actor)
+    created = client.post(
+        "/api/v1/announcements/management",
+        data=json.dumps(
+            {
+                "title": "Review boundary",
+                "body_markdown": "Published body.",
+                "audience": "GCO_PERSONNEL",
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert created.status_code == 201
+    announcement_id = created.json()["id"]
+    assert (
+        client.post(
+            f"/api/v1/announcements/management/{announcement_id}/publish",
+            **csrf(client),
+        ).status_code
+        == 200
+    )
+
+    rejected = client.patch(
+        f"/api/v1/announcements/management/{announcement_id}",
+        data=json.dumps({"title": "Atomic title", "audience": "PUBLIC"}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert rejected.status_code == 409
+    assert rejected.json()["error"]["code"] == "publication_consequence_review_required"
+    assert rejected.json()["error"]["details"] == {"fields": ["audience"]}
+
+    unchanged = client.get(f"/api/v1/announcements/management/{announcement_id}")
+    assert unchanged.status_code == 200
+    assert unchanged.json()["title"] == "Review boundary"
+    assert unchanged.json()["audience"] == "GCO_PERSONNEL"
+
+    accepted = client.patch(
+        f"/api/v1/announcements/management/{announcement_id}",
+        data=json.dumps(
+            {
+                "title": "Atomic title",
+                "audience": "PUBLIC",
+                "acknowledge_publication_consequences": True,
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["title"] == "Atomic title"
+    assert accepted.json()["audience"] == "PUBLIC"

@@ -8,14 +8,27 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { PublicationAudience } from "@/features/content/content-presentation";
-import { AudienceField, contentSecondaryLinkClass, contentSelectClass } from "@/features/content/content-shared";
+import {
+  publicationAudienceLabels,
+  publicationAudienceReaders,
+  type PublicationAudience,
+} from "@/features/content/content-presentation";
+import {
+  AudienceField,
+  ContentConfirmDialog,
+  contentSecondaryLinkClass,
+  contentSelectClass,
+} from "@/features/content/content-shared";
 import { MarkdownEditor } from "@/features/content/markdown-editor/markdown-editor";
 import { useMarkdownValue } from "@/features/content/markdown-editor/use-markdown-value";
 import { useUnsavedChangesGuard } from "@/features/content/use-unsaved-changes-guard";
 import { resourceCategoryLabels, resourceKindLabels } from "@/features/public/shared/presentation";
 import { refreshResourceQueries, storeManagedResource } from "@/features/resources/resource-cache";
-import { isUncertainResourceMutation, resourceErrorMessage } from "@/features/resources/resource-errors";
+import {
+  isUncertainResourceMutation,
+  resourceErrorCode,
+  resourceErrorMessage,
+} from "@/features/resources/resource-errors";
 import { isHttpUrl, resourceBodyHints, resourceKindDescriptions } from "@/features/resources/resource-presentation";
 import {
   getResourcesListManagedQueryKey,
@@ -23,6 +36,7 @@ import {
   useResourcesUpdate,
 } from "@/lib/api/generated/resources/resources";
 import {
+  ResourceAudienceValue,
   ResourceCategoryValue,
   ResourceKindValue,
   ResourceStatusValue,
@@ -79,6 +93,12 @@ function effectiveUrl(fields: ResourceFields): string {
   return fields.kind === ResourceKindValue.EXTERNAL_LINK ? fields.externalUrl.trim() : "";
 }
 
+function reviewUrl(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim();
+  if (normalized.length <= 96) return normalized || "No destination";
+  return `${normalized.slice(0, 58)}…${normalized.slice(-28)}`;
+}
+
 export function ResourceForm({ resource }: { resource: ResourceManagementResponse | null }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -90,6 +110,9 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewPayload, setReviewPayload] = useState<ResourceUpdateRequest | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const isPublished = resource?.status === ResourceStatusValue.PUBLISHED;
   const kindLockedReason = isPublished
@@ -129,6 +152,46 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
     if (parseDisplayOrder(values.displayOrder) === null) next.displayOrder = "Enter a whole number, such as 0 or 10.";
     if (isPublished && !currentBody.trim()) next.body = "A published Resource needs body text.";
     return next;
+  }
+
+  async function saveExisting(
+    payload: ResourceUpdateRequest,
+    acknowledgePublicationConsequences = false,
+  ) {
+    if (!resource) return;
+    try {
+      const data: ResourceUpdateRequest = acknowledgePublicationConsequences
+        ? { ...payload, acknowledge_publication_consequences: true }
+        : payload;
+      const response = await update.mutateAsync({
+        resourceId: resource.id,
+        data,
+      });
+      const published = response.data.status === ResourceStatusValue.PUBLISHED;
+      storeManagedResource(queryClient, response);
+      void refreshResourceQueries(queryClient, resource.id, { readers: published });
+      setSaved(fieldsFrom(response.data));
+      if (payload.body_markdown !== undefined) body.markSaved(response.data.body_markdown);
+      setReviewOpen(false);
+      setReviewPayload(null);
+      setReviewError(null);
+      setNotice(published ? "Changes saved. Readers now see the updated Resource." : "Draft saved.");
+    } catch (caught) {
+      if (
+        !acknowledgePublicationConsequences &&
+        resourceErrorCode(caught) === "publication_consequence_review_required"
+      ) {
+        setReviewPayload(payload);
+        setReviewError(null);
+        setReviewOpen(true);
+        return;
+      }
+      const message = isUncertainResourceMutation(caught)
+        ? "The changes could not be confirmed as saved. Save again to make sure they are kept."
+        : resourceErrorMessage(caught, "The changes could not be saved.");
+      if (acknowledgePublicationConsequences) setReviewError(message);
+      else setFormError(message);
+    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -185,28 +248,31 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
     if (displayOrder !== parseDisplayOrder(saved.displayOrder)) payload.display_order = displayOrder;
     if (Object.keys(payload).length === 0) return;
 
-    try {
-      const response = await update.mutateAsync({ resourceId: resource.id, data: payload });
-      const published = response.data.status === ResourceStatusValue.PUBLISHED;
-      storeManagedResource(queryClient, response);
-      void refreshResourceQueries(queryClient, resource.id, { readers: published });
-      setSaved(fieldsFrom(response.data));
-      if (payload.body_markdown !== undefined) body.markSaved(response.data.body_markdown);
-      setNotice(published ? "Changes saved. Readers now see the updated Resource." : "Draft saved.");
-    } catch (caught) {
-      setFormError(
-        isUncertainResourceMutation(caught)
-          ? "The changes could not be confirmed as saved. Save again to make sure they are kept."
-          : resourceErrorMessage(caught, "The changes could not be saved."),
-      );
+    const consequenceReviewNeeded =
+      isPublished &&
+      (payload.audience !== undefined ||
+        (resource.kind === ResourceKindValue.EXTERNAL_LINK &&
+          payload.external_url !== undefined));
+    if (consequenceReviewNeeded) {
+      setReviewPayload(payload);
+      setReviewError(null);
+      setReviewOpen(true);
+      return;
     }
+    await saveExisting(payload);
   }
 
   const submitLabel = isPublished ? "Save changes" : "Save draft";
   const pendingLabel = isPublished ? "Saving changes…" : "Saving draft…";
   const kindHintId = kindLockedReason ? "resource-kind-locked" : undefined;
 
+  const reviewedAudience = reviewPayload?.audience;
+  const reviewedDestinationChanged =
+    resource?.kind === ResourceKindValue.EXTERNAL_LINK &&
+    reviewPayload?.external_url !== undefined;
+
   return (
+    <>
     <form className="mt-8 space-y-8" onSubmit={(event) => void submit(event)} noValidate>
       <div className="grid gap-2">
         <Label htmlFor="resource-title">Title</Label>
@@ -374,5 +440,65 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
         </div>
       </div>
     </form>
+    <ContentConfirmDialog
+      open={reviewOpen}
+      title="Review published Resource changes?"
+      description={
+        <>
+          {reviewedAudience != null && saved.audience ? (
+            <p>
+              The audience will change from {publicationAudienceLabels[saved.audience]} to{" "}
+              {publicationAudienceLabels[reviewedAudience]}.
+            </p>
+          ) : null}
+          {reviewedAudience != null ? (
+            reviewedAudience === ResourceAudienceValue.PUBLIC ? (
+              <p>
+                Anyone who can access the public COMPASS site will be able to open this
+                Resource without signing in.
+              </p>
+            ) : (
+              <p>
+                After this change, it will be available to{" "}
+                {publicationAudienceReaders[reviewedAudience]}.
+              </p>
+            )
+          ) : null}
+          {reviewedDestinationChanged ? (
+            <>
+              <p>
+                Readers of this published Resource will be sent to a different external
+                destination.
+              </p>
+              <dl className="grid gap-2">
+                <div>
+                  <dt className="font-semibold text-ink">Current destination</dt>
+                  <dd className="break-all">{reviewUrl(resource?.external_url)}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-ink">New destination</dt>
+                  <dd className="break-all">{reviewUrl(reviewPayload?.external_url)}</dd>
+                </div>
+              </dl>
+            </>
+          ) : null}
+        </>
+      }
+      confirmLabel="Save reviewed changes"
+      pendingLabel="Saving changes…"
+      pending={update.isPending}
+      error={reviewError}
+      onOpenChange={(open) => {
+        setReviewOpen(open);
+        if (!open) {
+          setReviewPayload(null);
+          setReviewError(null);
+        }
+      }}
+      onConfirm={() => {
+        if (reviewPayload) void saveExisting(reviewPayload, true);
+      }}
+    />
+    </>
   );
 }

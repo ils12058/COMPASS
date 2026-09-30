@@ -9,8 +9,8 @@ const inputMessages: Record<string, string> = {
   "body_markdown is too large": "The body is larger than the 50 KB limit. Shorten it and try again.",
   "audience is invalid": "Choose an audience.",
   "expires_at must be a timezone-aware datetime or null": "Enter a valid expiry date and time.",
-  "expires_at must be in the future at publication":
-    "The expiry date and time has already passed. Change or remove it, then publish again.",
+  "expires_at must be in the future while the Announcement is published":
+    "A published Announcement cannot have an expiry that has already passed. Choose a future time or use Archive Announcement for immediate removal.",
 };
 
 export function announcementErrorCode(error: unknown): string | undefined {
@@ -35,6 +35,8 @@ export function announcementErrorMessage(error: unknown, fallback: string): stri
       return "Your current access does not include Announcement management.";
     case "announcement_not_found":
       return "This Announcement no longer exists.";
+    case "publication_consequence_review_required":
+      return "Review how these changes affect the published Announcement before saving.";
     case "announcement_not_editable":
       return message
         ? `${message} Its current status is shown on the Announcement page.`

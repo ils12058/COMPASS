@@ -21,6 +21,7 @@ from .services import (
     AnnouncementConflict,
     AnnouncementError,
     AnnouncementNotFound,
+    AnnouncementPublicationConsequenceReviewRequired,
     InvalidAnnouncementInput,
     archive_announcement,
     create_announcement,
@@ -113,6 +114,7 @@ class AnnouncementUpdateRequest(StrictSchema):
     audience: AnnouncementAudienceValue | None = None
     is_pinned: bool | None = None
     expires_at: datetime | None = None
+    acknowledge_publication_consequences: bool = False
 
 
 def _context(request) -> AuditContext:
@@ -128,6 +130,13 @@ def _require_manager(request) -> None:
 def _raise(exc: AnnouncementError) -> NoReturn:
     if isinstance(exc, AnnouncementNotFound):
         raise APIError(404, "announcement_not_found", str(exc)) from exc
+    if isinstance(exc, AnnouncementPublicationConsequenceReviewRequired):
+        raise APIError(
+            409,
+            "publication_consequence_review_required",
+            str(exc),
+            details={"fields": list(exc.fields)},
+        ) from exc
     if isinstance(exc, AnnouncementConflict):
         raise APIError(409, "announcement_not_editable", str(exc)) from exc
     if isinstance(exc, InvalidAnnouncementInput):
@@ -261,6 +270,9 @@ def announcements_update(
 ):
     _require_manager(request)
     values = payload.model_dump(exclude_unset=True)
+    acknowledge_publication_consequences = bool(
+        values.pop("acknowledge_publication_consequences", False)
+    )
     if "audience" in values and values["audience"] is not None:
         values["audience"] = values["audience"].value
     try:
@@ -269,6 +281,7 @@ def announcements_update(
             announcement_id=announcement_id,
             values=values,
             context=_context(request),
+            acknowledge_publication_consequences=acknowledge_publication_consequences,
         )
     except AnnouncementError as exc:
         _raise(exc)
