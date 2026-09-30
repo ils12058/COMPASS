@@ -39,7 +39,14 @@ def _appointment_snapshot(item) -> tuple[object, ...]:
     )
 
 
-def _future_appointment(*, service, provider, student, mode: str = "ONLINE", status: str = "SCHEDULED"):
+def _future_appointment(
+    *,
+    service,
+    provider,
+    student,
+    mode: str = "ONLINE",
+    status: str = "SCHEDULED",
+):
     return create_list_appointment(
         reference_code=f"APT-{service.code}-{mode}-{status}",
         student=student,
