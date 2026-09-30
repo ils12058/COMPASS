@@ -40,13 +40,14 @@ from compass.authentication.email_change import (
 from compass.authentication.email_otp import EmailOTPInvalid, EmailOTPSecurityUnavailable
 from compass.authentication.mfa import (
     TOTPAlreadyConfigured,
+    TOTPEnrollmentAuthorizationFailed,
     TOTPEnrollmentMissing,
     TOTPNotConfigured,
     confirm_totp_enrollment,
     disable_totp,
     has_active_totp_factor,
     regenerate_recovery_codes,
-    start_totp_enrollment,
+    start_authenticated_totp_enrollment,
     verify_totp_for_session,
 )
 from compass.authentication.models import AuthSession, TrustedSession
@@ -132,6 +133,10 @@ class LoginResponse(Schema):
 
 class MFARequest(StrictSchema):
     code: str
+
+
+class TOTPSetupRequest(StrictSchema):
+    current_password: str
 
 
 class LoginMFARequest(StrictSchema):
@@ -733,7 +738,7 @@ def login(request, payload: LoginRequest, response: HttpResponse):
         "required, or the current password for accounts that do not require MFA."
     ),
 )
-def password_change(request, payload: PasswordChangeRequest):
+def password_change(request, payload: PasswordChangeRequest, response: HttpResponse):
     try:
         result = change_password(
             user=request.auth_user,
@@ -751,6 +756,19 @@ def password_change(request, payload: PasswordChangeRequest):
         _raise_password_policy(exc)
     except Exception as exc:
         _raise_password_change_error(exc)
+
+    remaining_seconds = max(
+        int((result.replacement_session.session.expires_at - timezone.now()).total_seconds()),
+        1,
+    )
+    _set_credential_cookie(
+        response,
+        name=settings.AUTH_SESSION_COOKIE_NAME,
+        value=result.replacement_session.token,
+        max_age=remaining_seconds,
+        path=settings.AUTH_SESSION_COOKIE_PATH,
+        httponly=True,
+    )
     return {"changed": result.changed}
 
 
@@ -1051,18 +1069,30 @@ def totp_bootstrap_confirm(request, payload: MFARequest, response: HttpResponse)
 
 @router.post(
     "/mfa/totp/setup",
-    response=response_with_errors(TOTPSetupResponse, 401, 403, 409, 503),
+    response=response_with_errors(TOTPSetupResponse, 401, 403, 409, 422, 429, 503),
     auth=session_auth,
     operation_id="authStartTotpSetup",
     summary="Start TOTP enrollment",
 )
-def totp_setup(request):
+def totp_setup(request, payload: TOTPSetupRequest):
     user = request.auth_user
     try:
-        result = start_totp_enrollment(
+        result = start_authenticated_totp_enrollment(
             user=user,
+            current_password=payload.current_password,
             context=AuditContext.from_request(request, actor=user),
+            request=request,
         )
+    except AuthenticationRateLimited as exc:
+        _raise_rate_limited(exc)
+    except AuthenticationAbuseUnavailable as exc:
+        _raise_security_unavailable(exc)
+    except TOTPEnrollmentAuthorizationFailed as exc:
+        raise APIError(
+            403,
+            "mfa_enrollment_authorization_failed",
+            "The current authentication proof could not be verified.",
+        ) from exc
     except TOTPAlreadyConfigured as exc:
         raise APIError(409, "mfa_already_enabled", "TOTP is already enabled.") from exc
     except Exception as exc:
