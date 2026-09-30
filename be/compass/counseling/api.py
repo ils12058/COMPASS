@@ -23,6 +23,9 @@ from .services import (
     CounselingAppointmentInvalid,
     CounselingConfigurationConflict,
     CounselingError,
+    CounselingFeedbackChronologyConflict,
+    CounselingFeedbackProvenanceConflict,
+    CounselingFinalizedRoutineConflict,
     CounselingInvalidTime,
     CounselingNotFound,
     CounselingNotPermitted,
@@ -238,6 +241,12 @@ def _raise(exc: CounselingError) -> NoReturn:
         raise APIError(409, "counseling_appointment_already_used", str(exc)) from exc
     if isinstance(exc, CounselingAppointmentInvalid):
         raise APIError(409, "counseling_appointment_invalid", str(exc)) from exc
+    if isinstance(exc, CounselingFinalizedRoutineConflict):
+        raise APIError(409, "counseling_finalized_routine_conflict", str(exc)) from exc
+    if isinstance(exc, CounselingFeedbackChronologyConflict):
+        raise APIError(409, "counseling_feedback_chronology_conflict", str(exc)) from exc
+    if isinstance(exc, CounselingFeedbackProvenanceConflict):
+        raise APIError(409, "counseling_feedback_provenance_conflict", str(exc)) from exc
     if isinstance(exc, CounselingConfigurationConflict):
         raise APIError(409, "counseling_service_not_configured", str(exc)) from exc
     if isinstance(exc, CounselingNotPermitted):
