@@ -31,7 +31,13 @@ import {
 import { CallSlipLifecycleStateValue } from "@/lib/api/generated/model";
 import type { CallSlipOperationalResponse, CallSlipStudentResponse } from "@/lib/api/generated/model";
 import { downloadBinaryResponse } from "@/lib/browser-download";
-import { dateTimeInputToISO, formatDateTime, isFutureDateTimeInput, localDateInputValue } from "@/lib/date-time";
+import {
+  formatInstitutionalDateTime,
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateInputValue,
+  institutionalDateTimeInputToISO,
+  isFutureInstitutionalDateTimeInput,
+} from "@/lib/institutional-time";
 
 export function CallSlipDetailPage({ callSlipId }: { callSlipId: string }) {
   const { user } = usePortalSession();
@@ -58,7 +64,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <Field label="Name on source Call Slip" value={item.student_name_snapshot} />
         <Field label="Course / Year" value={item.course_year_snapshot} />
         <Field label="Please report to" value={callSlipDestinationLabel(item.destination_type, item.other_destination)} />
-        <Field label="Date and time to report" value={formatDateTime(item.report_at)} />
+        <Field label="Date and time to report" value={formatInstitutionalDateTime(item.report_at)} />
       </RecordSection>
       <section aria-labelledby="student-call-slip-instruction" className="border-t border-border py-6">
         <h2 id="student-call-slip-instruction" className="font-heading text-xl font-semibold text-ink">Instruction</h2>
@@ -68,8 +74,8 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <Field label="Guidance Counselor issuer (source snapshot)" value={item.issued_by_name_snapshot} />
         <Field label="State" value={callSlipStateLabel(item.state, true)} />
         <Field label="Current issuer account" value={item.issued_by.display_name} />
-        <Field label="Interview ended" value={formatDateTime(item.interview_ended_at)} />
-        <Field label="Recorded in COMPASS" value={formatDateTime(item.created_at)} />
+        <Field label="Interview ended" value={formatInstitutionalDateTime(item.interview_ended_at)} />
+        <Field label="Recorded in COMPASS" value={formatInstitutionalDateTime(item.created_at)} />
       </RecordSection>
       <FormRevisionSection revision={item.form_revision} />
     </div>
@@ -92,7 +98,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <div role="status" className="border-y border-warning/30 py-4">
           <p className="font-semibold text-warning">Voided</p>
           <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{item.void_reason}</p>
-          {item.voided_at ? <p className="mt-1 text-sm text-muted">Voided {formatDateTime(item.voided_at)}</p> : null}
+          {item.voided_at ? <p className="mt-1 text-sm text-muted">Voided {formatInstitutionalDateTime(item.voided_at)}</p> : null}
         </div>
       ) : null}
       <RecordSection title="Permit details">
@@ -100,7 +106,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <Field label="Current Student identity" value={item.student.display_name} />
         <Field label="Course / Year" value={item.course_year_snapshot} />
         <Field label="Please report to" value={callSlipDestinationLabel(item.destination_type, item.other_destination)} />
-        <Field label="Date and time to report" value={formatDateTime(item.report_at)} />
+        <Field label="Date and time to report" value={formatInstitutionalDateTime(item.report_at)} />
       </RecordSection>
       <section aria-labelledby="operational-call-slip-instruction" className="border-t border-border py-6">
         <h2 id="operational-call-slip-instruction" className="font-heading text-xl font-semibold text-ink">Source instruction</h2>
@@ -112,9 +118,9 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <Field label="Recorded by" value={item.recorded_by?.display_name ?? "Not separately recorded"} />
         <Field label="Issuance mode" value={callSlipIssuanceModeLabels[item.issuance_mode]} />
         <Field label="State" value={callSlipStateLabel(item.state)} />
-        <Field label="Interview ended" value={formatDateTime(item.interview_ended_at)} />
-        <Field label="Created in COMPASS" value={formatDateTime(item.created_at)} />
-        <Field label="Last updated" value={formatDateTime(item.updated_at)} />
+        <Field label="Interview ended" value={formatInstitutionalDateTime(item.interview_ended_at)} />
+        <Field label="Created in COMPASS" value={formatInstitutionalDateTime(item.created_at)} />
+        <Field label="Last updated" value={formatInstitutionalDateTime(item.updated_at)} />
       </RecordSection>
       <FormRevisionSection revision={item.form_revision} />
       {item.referral ? (
@@ -183,7 +189,7 @@ function CallSlipLifecycleActions({ slip, onRefresh }: { slip: CallSlipOperation
   return (
     <section aria-labelledby="call-slip-actions-heading" className="border-t border-border py-6">
       <h2 id="call-slip-actions-heading" className="font-heading text-xl font-semibold text-ink">Operational actions</h2>
-      {!slip.interview_ended_at ? <RecordInterviewEnd slip={slip} onRefresh={onRefresh} /> : <p className="mt-3 text-sm text-muted">Interview end is recorded at {formatDateTime(slip.interview_ended_at)} and cannot be edited.</p>}
+      {!slip.interview_ended_at ? <RecordInterviewEnd slip={slip} onRefresh={onRefresh} /> : <p className="mt-3 text-sm text-muted">Interview end is recorded at {formatInstitutionalDateTime(slip.interview_ended_at)} and cannot be edited.</p>}
       <VoidCallSlip slip={slip} onRefresh={onRefresh} />
     </section>
   );
@@ -198,7 +204,7 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
   const [notice, setNotice] = useState<string | null>(null);
   const [reconcileRequired, setReconcileRequired] = useState(false);
   const mutation = useMutation({
-    mutationFn: () => callSlipsRecordInterviewEnded(slip.id, { interview_ended_at: dateTimeInputToISO(value)! }),
+    mutationFn: () => callSlipsRecordInterviewEnded(slip.id, { interview_ended_at: institutionalDateTimeInputToISO(value)! }),
     retry: false,
   });
 
@@ -215,9 +221,9 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
     event.preventDefault();
     setError(null);
     setNotice(null);
-    const iso = dateTimeInputToISO(value);
+    const iso = institutionalDateTimeInputToISO(value);
     if (!iso) return setError("Enter a valid interview end date and time.");
-    if (isFutureDateTimeInput(value)) return setError("Interview end date and time cannot be in the future.");
+    if (isFutureInstitutionalDateTimeInput(value)) return setError("Interview end date and time cannot be in the future.");
     setConfirmOpen(true);
   }
 
@@ -228,7 +234,7 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
       setReconcileRequired(false);
       if (refreshed.interview_ended_at) {
         setConfirmOpen(false);
-        setNotice(`Interview end is recorded at ${formatDateTime(refreshed.interview_ended_at)}.`);
+        setNotice(`Interview end is recorded at ${formatInstitutionalDateTime(refreshed.interview_ended_at)}.`);
         await invalidate();
       } else {
         setError("No interview end is recorded after refresh. Review the same timestamp and explicitly submit again if it remains correct.");
@@ -251,7 +257,7 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
         const refreshed = await onRefresh();
         if (refreshed?.interview_ended_at) {
           setConfirmOpen(false);
-          setNotice(`Interview end is recorded at ${formatDateTime(refreshed.interview_ended_at)}.`);
+          setNotice(`Interview end is recorded at ${formatInstitutionalDateTime(refreshed.interview_ended_at)}.`);
           await invalidate();
         } else if (refreshed) {
           setConfirmOpen(false);
@@ -270,11 +276,11 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
   return (
     <div className="mt-4 max-w-2xl border-b border-border pb-6">
       <h3 className="font-semibold text-ink">Record interview end</h3>
-      <p className="mt-1 text-sm leading-6 text-muted">This records only the source Call Slip&apos;s interview-end time. It does not complete an Appointment or Counseling record.</p>
+      <p className="mt-1 text-sm leading-6 text-muted">This records only the source Call Slip&apos;s interview-end time. Times use {INSTITUTION_TIME_ZONE_LABEL}. It does not complete an Appointment or Counseling record.</p>
       <form className="mt-4 space-y-3" onSubmit={prepare} aria-busy={mutation.isPending}>
         <div className="grid gap-2 sm:max-w-sm">
           <Label htmlFor="call-slip-interview-ended">Interview ended</Label>
-          <Input id="call-slip-interview-ended" type="datetime-local" step="60" required max={`${localDateInputValue()}T23:59`} value={value} disabled={mutation.isPending || reconcileRequired} onChange={(event) => setValue(event.target.value)} />
+          <Input id="call-slip-interview-ended" type="datetime-local" step="60" required max={`${institutionalDateInputValue()}T23:59`} value={value} disabled={mutation.isPending || reconcileRequired} onChange={(event) => setValue(event.target.value)} />
         </div>
         {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
         {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
@@ -285,7 +291,12 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
         <AlertDialogContent onEscapeKeyDown={(event) => { if (mutation.isPending) event.preventDefault(); }}>
           <AlertDialogTitle>Record interview end?</AlertDialogTitle>
           <AlertDialogDescription>This source timestamp becomes immutable after it is recorded.</AlertDialogDescription>
-          <p className="mt-4 text-sm text-ink">{value}</p>
+          <p className="mt-4 text-sm text-ink">
+            {formatInstitutionalDateTime(
+              institutionalDateTimeInputToISO(value),
+            )}{" "}
+            {INSTITUTION_TIME_ZONE_LABEL}
+          </p>
           {error ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
           <div className="mt-6 flex flex-wrap justify-end gap-2"><AlertDialogCancel asChild><Button variant="secondary" disabled={mutation.isPending}>Review details</Button></AlertDialogCancel><Button disabled={mutation.isPending} onClick={() => void record()}>{mutation.isPending ? "Recording…" : "Record interview end"}</Button></div>
         </AlertDialogContent>
