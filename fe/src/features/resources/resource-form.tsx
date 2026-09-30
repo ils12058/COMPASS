@@ -445,13 +445,13 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
       title="Review published Resource changes?"
       description={
         <>
-          {reviewedAudience !== undefined && saved.audience ? (
+          {reviewedAudience != null && saved.audience ? (
             <p>
               The audience will change from {publicationAudienceLabels[saved.audience]} to{" "}
               {publicationAudienceLabels[reviewedAudience]}.
             </p>
           ) : null}
-          {reviewedAudience !== undefined ? (
+          {reviewedAudience != null ? (
             reviewedAudience === ResourceAudienceValue.PUBLIC ? (
               <p>
                 Anyone who can access the public COMPASS site will be able to open this
