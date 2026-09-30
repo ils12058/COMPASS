@@ -10,6 +10,7 @@ import {
   readApiErrorCode,
   readApiErrorMessage,
 } from "@/lib/api/errors";
+import type { ReportDisclosureWarning } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 const REPORT_ERROR_COPY: Record<string, string> = {
@@ -160,7 +161,37 @@ export function ReportStaleNotice({
   );
 }
 
-export function formatReportPercentage(value: number): string {
+export function ReportDisclosureNotice({
+  warnings,
+}: {
+  warnings: ReportDisclosureWarning[];
+}) {
+  if (warnings.length === 0) return null;
+  const messages = [...new Set(warnings.map((warning) => warning.message.trim()))].filter(Boolean);
+  if (messages.length === 0) return null;
+
+  return (
+    <section
+      aria-labelledby="report-disclosure-warning-heading"
+      className="mt-5 border-l-2 border-warning pl-3"
+    >
+      <h2
+        id="report-disclosure-warning-heading"
+        className="text-sm font-semibold text-ink"
+      >
+        Small-population privacy notice
+      </h2>
+      {messages.map((message) => (
+        <p key={message} className="mt-1 max-w-4xl text-sm leading-6 text-muted">
+          {message}
+        </p>
+      ))}
+    </section>
+  );
+}
+
+export function formatReportPercentage(value: number | null): string {
+  if (value === null) return "N/A";
   return Number.isFinite(value) ? value.toFixed(2) + "%" : "Unavailable";
 }
 
