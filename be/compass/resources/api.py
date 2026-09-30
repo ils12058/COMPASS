@@ -23,6 +23,7 @@ from .services import (
     ResourceConflict,
     ResourceError,
     ResourceNotFound,
+    ResourcePublicationConsequenceReviewRequired,
     ResourceStorageError,
     archive_resource,
     attach_resource_file,
@@ -153,6 +154,7 @@ class ResourceUpdateRequest(StrictSchema):
     audience: ResourceAudienceValue | None = None
     external_url: str | None = None
     display_order: int | None = None
+    acknowledge_publication_consequences: bool = False
 
 
 def _context(request) -> AuditContext:
@@ -168,6 +170,13 @@ def _require_manager(request) -> None:
 def _raise(exc: ResourceError) -> NoReturn:
     if isinstance(exc, ResourceNotFound):
         raise APIError(404, "resource_not_found", str(exc)) from exc
+    if isinstance(exc, ResourcePublicationConsequenceReviewRequired):
+        raise APIError(
+            409,
+            "publication_consequence_review_required",
+            str(exc),
+            details={"fields": list(exc.fields)},
+        ) from exc
     if isinstance(exc, ResourceConflict):
         raise APIError(409, "resource_conflict", str(exc)) from exc
     if isinstance(exc, InvalidResourceInput):
@@ -310,6 +319,9 @@ def resources_get_managed(request, resource_id: UUID):
 def resources_update(request, resource_id: UUID, payload: ResourceUpdateRequest):
     _require_manager(request)
     values = payload.model_dump(exclude_unset=True)
+    acknowledge_publication_consequences = bool(
+        values.pop("acknowledge_publication_consequences", False)
+    )
     for field in ("category", "kind", "audience"):
         if field in values and values[field] is not None:
             values[field] = values[field].value
@@ -319,6 +331,7 @@ def resources_update(request, resource_id: UUID, payload: ResourceUpdateRequest)
             resource_id=resource_id,
             values=values,
             context=_context(request),
+            acknowledge_publication_consequences=acknowledge_publication_consequences,
         )
     except ResourceError as exc:
         _raise(exc)
