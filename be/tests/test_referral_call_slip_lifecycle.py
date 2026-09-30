@@ -226,9 +226,10 @@ def test_referral_void_allows_none_or_only_voided_history_and_preserves_provenan
     old.refresh_from_db()
     assert old.voided_at is not None
     assert old.void_reason == "Incorrect Call Slip"
-    assert set(
-        ReferralAction.objects.filter(referral=with_history).values_list("id", flat=True)
-    ) == action_ids
+    assert (
+        set(ReferralAction.objects.filter(referral=with_history).values_list("id", flat=True))
+        == action_ids
+    )
     assert CallSlip.objects.filter(referral=with_history).count() == 1
 
 
@@ -357,10 +358,7 @@ def test_referral_void_api_uses_stable_call_slip_lifecycle_conflict_codes():
         **headers,
     )
     assert completed_response.status_code == 409
-    assert (
-        completed_response.json()["error"]["code"]
-        == "referral_completed_call_slip_conflict"
-    )
+    assert completed_response.json()["error"]["code"] == "referral_completed_call_slip_conflict"
 
 
 @pytest.mark.django_db
@@ -403,8 +401,7 @@ def test_void_reissue_reconciliation_uses_replacement_as_authoritative_dependenc
         context=audit_context(head),
     )
     assert (
-        referral_call_slip_dependency(referral_id=referral.pk)
-        == ReferralCallSlipDependency.ACTIVE
+        referral_call_slip_dependency(referral_id=referral.pk) == ReferralCallSlipDependency.ACTIVE
     )
     with pytest.raises(ReferralActiveCallSlipConflict):
         void_referral(
