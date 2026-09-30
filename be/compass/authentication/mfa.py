@@ -235,9 +235,7 @@ def _replace_recovery_codes_locked(user_id, *, now: datetime) -> tuple[str, ...]
 
 def _locked_user_with_current_password(*, user, current_password: str):
     locked_user = (
-        User.objects.select_for_update(of=("self",))
-        .filter(pk=getattr(user, "pk", None))
-        .first()
+        User.objects.select_for_update(of=("self",)).filter(pk=getattr(user, "pk", None)).first()
     )
     if (
         locked_user is None
