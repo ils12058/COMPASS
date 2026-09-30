@@ -4,6 +4,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { useState, type FormEvent, type ReactNode } from "react";
 
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +18,11 @@ import {
   ServicesDetailSkeleton,
   ServicesPageHeading,
   ServicesQueryError,
+  serviceSchedulingConsequenceDetails,
+  servicesErrorMessage,
   servicesSelectClass,
   useServicesAction,
+  type ServiceSchedulingConsequenceDetails,
 } from "@/features/services/services-shared";
 import {
   AppointmentPolicy,
@@ -239,6 +249,12 @@ function ServiceForm({
           <p className="mt-2 text-xs leading-5 text-muted">
             An active Service requires at least one delivery mode.
           </p>
+          {systemRequired && values.online ? (
+            <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">
+              Online Counseling may be schedulable where Availability permits it.
+              E-Counseling provider readiness is managed separately.
+            </p>
+          ) : null}
         </fieldset>
       </section>
 
@@ -494,10 +510,77 @@ export function CreateServicePage() {
         messages={action.messages}
         onSubmit={submit}
       />
+      <AlertDialog
+        open={review !== null}
+        onOpenChange={(open) => {
+          if (!open && !update.isPending) {
+            setReview(null);
+            setReviewError(null);
+          }
+        }}
+      >
+        <AlertDialogContent
+          onEscapeKeyDown={(event) => {
+            if (update.isPending) event.preventDefault();
+          }}
+        >
+          <AlertDialogTitle>Review Service scheduling consequences</AlertDialogTitle>
+          <AlertDialogDescription>
+            Review what this Service change means before saving it.
+          </AlertDialogDescription>
+          <div className="mt-4 space-y-3 text-sm leading-6 text-ink">
+            {review?.details?.existingAppointmentDependencyDetected ? (
+              <p>
+                Existing Appointments will remain scheduled. This change may
+                prevent affected Appointments from being rescheduled or
+                reassigned while the Service no longer supports their saved
+                configuration.
+              </p>
+            ) : null}
+            {review?.details?.counselingOnlineEnabled ? (
+              <p>
+                Online Counseling may become bookable where Availability permits
+                it. This does not verify that the E-Counseling provider
+                integration is ready.
+              </p>
+            ) : null}
+            {review && !review.details ? (
+              <p>
+                One or more scheduling consequences require review. Existing
+                Appointments are not changed automatically by this Service
+                update.
+              </p>
+            ) : null}
+          </div>
+          {reviewError ? (
+            <p role="alert" className="mt-4 text-sm text-danger">
+              {reviewError}
+            </p>
+          ) : null}
+          <div className="mt-6 flex flex-wrap justify-end gap-2">
+            <AlertDialogCancel asChild>
+              <Button variant="secondary" disabled={update.isPending}>
+                Cancel
+              </Button>
+            </AlertDialogCancel>
+            <Button
+              disabled={update.isPending}
+              onClick={() => void confirmConsequenceReview()}
+            >
+              {update.isPending ? "Saving…" : "Save Service changes"}
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
       {action.stepUpDialog}
     </section>
   );
 }
+
+type PendingServiceConsequenceReview = {
+  changes: ServiceUpdateRequest;
+  details: ServiceSchedulingConsequenceDetails | null;
+};
 
 export function EditServicePage() {
   const params = useParams<{ serviceId: string }>();
@@ -509,6 +592,9 @@ export function EditServicePage() {
   });
   const update = useServicesUpdate();
   const action = useServicesAction();
+  const [review, setReview] =
+    useState<PendingServiceConsequenceReview | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   if (detail.isPending) return <ServicesDetailSkeleton />;
 
@@ -573,9 +659,25 @@ export function EditServicePage() {
     const response = await action.run(
       () => update.mutateAsync({ serviceId, data: changes }),
       "The Service could not be updated.",
+      {
+        onError: (caught, code) => {
+          if (code !== "service_scheduling_consequence_review_required") {
+            return false;
+          }
+          setReview({
+            changes,
+            details: serviceSchedulingConsequenceDetails(caught),
+          });
+          setReviewError(null);
+          return true;
+        },
+      },
     );
     if (!response) return;
+    await finishUpdate();
+  }
 
+  async function finishUpdate() {
     await Promise.all([
       queryClient.invalidateQueries({
         queryKey: getServicesGetQueryKey(serviceId),
@@ -585,6 +687,44 @@ export function EditServicePage() {
       }),
     ]);
     router.push("/portal/services/" + serviceId + "?updated=true");
+  }
+
+  async function confirmConsequenceReview() {
+    if (!review) return;
+    setReviewError(null);
+    const pendingReview = review;
+    const response = await action.run(
+      () =>
+        update.mutateAsync({
+          serviceId,
+          data: {
+            ...pendingReview.changes,
+            acknowledge_scheduling_consequences: true,
+          },
+        }),
+      "The Service could not be updated.",
+      {
+        onStepUpRequired: () => setReview(null),
+        onStepUpVerified: () => setReview(pendingReview),
+        onError: (caught, code) => {
+          if (code === "service_scheduling_consequence_review_required") {
+            setReview({
+              changes: pendingReview.changes,
+              details: serviceSchedulingConsequenceDetails(caught),
+            });
+            setReviewError(null);
+            return true;
+          }
+          setReviewError(
+            servicesErrorMessage(caught, "The Service could not be updated."),
+          );
+          return true;
+        },
+      },
+    );
+    if (!response) return;
+    setReview(null);
+    await finishUpdate();
   }
 
   return (

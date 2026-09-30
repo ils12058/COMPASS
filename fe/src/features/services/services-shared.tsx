@@ -34,8 +34,55 @@ const knownErrors: Record<string, string> = {
     "The COUNSELING code is reserved for the Counseling Service that COMPASS provides. Use a different Service code.",
   canonical_service_required:
     "Counseling is required by COMPASS. It must stay active and allow Counselors.",
+  service_scheduling_consequence_review_required:
+    "Review the scheduling consequences before saving this Service change.",
   recent_mfa_required: "Recent authenticator verification is required.",
 };
+
+export type ServiceSchedulingConsequenceDetails = {
+  existingAppointmentDependencyDetected: boolean;
+  counselingOnlineEnabled: boolean;
+};
+
+export function servicesErrorCode(error: unknown): string | undefined {
+  return error instanceof CompassApiError
+    ? readApiErrorCode(error.body)
+    : undefined;
+}
+
+export function serviceSchedulingConsequenceDetails(
+  error: unknown,
+): ServiceSchedulingConsequenceDetails | null {
+  if (!(error instanceof CompassApiError)) return null;
+  if (
+    readApiErrorCode(error.body) !==
+    "service_scheduling_consequence_review_required"
+  ) {
+    return null;
+  }
+  if (!error.body || typeof error.body !== "object" || !("error" in error.body)) {
+    return null;
+  }
+  const envelopeError = error.body.error;
+  if (!envelopeError || typeof envelopeError !== "object") return null;
+  const details = "details" in envelopeError ? envelopeError.details : null;
+  if (!details || typeof details !== "object") return null;
+  const existing =
+    "existing_appointment_dependency_detected" in details
+      ? details.existing_appointment_dependency_detected
+      : undefined;
+  const counselingOnline =
+    "counseling_online_enabled" in details
+      ? details.counseling_online_enabled
+      : undefined;
+  if (typeof existing !== "boolean" || typeof counselingOnline !== "boolean") {
+    return null;
+  }
+  return {
+    existingAppointmentDependencyDetected: existing,
+    counselingOnlineEnabled: counselingOnline,
+  };
+}
 
 export function servicesErrorMessage(
   error: unknown,
@@ -77,6 +124,7 @@ export function useServicesAction() {
     options?: {
       onStepUpRequired?: () => void;
       onStepUpVerified?: () => void;
+      onError?: (error: unknown, code: string | undefined) => boolean;
     },
   ): Promise<T | undefined> {
     setError(null);
@@ -93,7 +141,7 @@ export function useServicesAction() {
         setAfterStepUp(() => options?.onStepUpVerified ?? null);
         setNotice("Verify your authenticator, then submit the action again.");
         setStepUpOpen(true);
-      } else {
+      } else if (!options?.onError?.(caught, code)) {
         setError(servicesErrorMessage(caught, fallback));
       }
       return undefined;
