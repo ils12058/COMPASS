@@ -402,7 +402,10 @@ def test_void_reissue_reconciliation_uses_replacement_as_authoritative_dependenc
         request_fingerprint="a2" * 32,
         context=audit_context(head),
     )
-    assert referral_call_slip_dependency(referral_id=referral.pk) == ReferralCallSlipDependency.ACTIVE
+    assert (
+        referral_call_slip_dependency(referral_id=referral.pk)
+        == ReferralCallSlipDependency.ACTIVE
+    )
     with pytest.raises(ReferralActiveCallSlipConflict):
         void_referral(
             actor=head,
