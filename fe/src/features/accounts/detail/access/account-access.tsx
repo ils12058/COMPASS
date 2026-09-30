@@ -121,10 +121,29 @@ export function AccountAccess() {
   const eligibleDesignation = compatibleDesignation(account.role);
   const currentDesignations =
     assigned.data?.data.designations ?? account.designations;
+  const capabilities = effective.data?.data.capabilities ?? [];
+  const selectedOverrideCapability = overrideCapability
+    ? capabilities.find((capability) => capability.code === overrideCapability)
+    : undefined;
+  const missingGrantRequirements =
+    overrideEffect === Effect.GRANT
+      ? (selectedOverrideCapability?.missing_required_capabilities ?? [])
+      : [];
+  const grantDependencyBlocked = missingGrantRequirements.length > 0;
+
+  function capabilityName(code: CapabilityCode): string {
+    return capabilities.find((capability) => capability.code === code)?.name ?? code;
+  }
 
   function reviewOverride(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!overrideCapability || !overrideReason.trim()) return;
+    if (grantDependencyBlocked) {
+      action.setError(
+        `Grant ${missingGrantRequirements.map(capabilityName).join(", ")} first.`,
+      );
+      return;
+    }
     const expiresAt = overrideExpiry
       ? institutionalDateTimeInputToISO(overrideExpiry)
       : null;
@@ -260,16 +279,34 @@ export function AccountAccess() {
         "Remove designation",
         "Removing…",
       ];
-    if (item.kind === "setOverride")
+    if (item.kind === "setOverride") {
+      const affectedDependents =
+        item.effect === Effect.REVOKE
+          ? capabilities.filter(
+              (capability) =>
+                capability.effective &&
+                capability.required_capabilities.includes(item.capability),
+            )
+          : [];
+      const dependencyConsequence = affectedDependents.length
+        ? ` This will also make ${affectedDependents
+            .map((capability) => capability.name)
+            .join(", ")} ineffective while this capability remains unavailable. Their underlying grants or overrides remain recorded.`
+        : "";
       return [
-        `${item.effect === Effect.GRANT ? "Grant" : "Revoke"} ${effective.data?.data.capabilities.find((capability) => capability.code === item.capability)?.name ?? item.capability} for ${name}?`,
-        `Reason: ${item.reason}${item.expires_at ? `. Expires: ${formatInstitutionalDateTime(item.expires_at)} ${INSTITUTION_TIME_ZONE_LABEL}` : ". No expiry set."}`,
+        `${item.effect === Effect.GRANT ? "Grant" : "Revoke"} ${capabilityName(item.capability)} for ${name}?`,
+        `Reason: ${item.reason}${
+          item.expires_at
+            ? `. Expires: ${formatInstitutionalDateTime(item.expires_at)} ${INSTITUTION_TIME_ZONE_LABEL}.`
+            : ". No expiry set."
+        }${dependencyConsequence}`,
         "Set override",
         "Setting override…",
       ];
+    }
     return [
-      `Remove ${name}'s ${effective.data?.data.capabilities.find((capability) => capability.code === item.capability)?.name ?? item.capability} override?`,
-      "Effective access will return to the role and designation baseline for this capability.",
+      `Remove ${name}'s ${capabilityName(item.capability)} override?`,
+      "Effective access will be recalculated from the account's role, designations, remaining overrides, and capability requirements.",
       "Remove override",
       "Removing override…",
     ];
@@ -472,6 +509,26 @@ export function AccountAccess() {
                       <span className="mt-1 block font-normal text-muted">
                         {capability.description}
                       </span>
+                      {capability.required_capabilities.length ? (
+                        <span className="mt-2 block font-normal text-muted">
+                          Requires:{" "}
+                          {capability.required_capabilities
+                            .map(capabilityName)
+                            .join(", ")}
+                        </span>
+                      ) : null}
+                      {capability.missing_required_capabilities.length ? (
+                        <span className="mt-1 block font-normal text-warning">
+                          Unavailable because:{" "}
+                          {capability.missing_required_capabilities
+                            .map(capabilityName)
+                            .join(", ")}{" "}
+                          {capability.missing_required_capabilities.length === 1
+                            ? "is"
+                            : "are"}{" "}
+                          not currently effective.
+                        </span>
+                      ) : null}
                     </th>
                     <td className="px-3 py-3">
                       {capability.effective ? "Yes" : "No"}
@@ -634,6 +691,7 @@ export function AccountAccess() {
                   const code = effective.data?.data.capabilities.find(
                     (item) => item.code === event.target.value,
                   )?.code;
+                  action.setError(null);
                   setOverrideCapability(code ?? "");
                 }}
               >
@@ -651,18 +709,34 @@ export function AccountAccess() {
                 id="override-effect"
                 className={selectClass}
                 value={overrideEffect}
-                onChange={(event) =>
+                onChange={(event) => {
+                  action.setError(null);
                   setOverrideEffect(
                     event.target.value === Effect.REVOKE
                       ? Effect.REVOKE
                       : Effect.GRANT,
-                  )
-                }
+                  );
+                }}
               >
                 <option value={Effect.GRANT}>Grant</option>
                 <option value={Effect.REVOKE}>Revoke</option>
               </select>
             </div>
+            {selectedOverrideCapability?.required_capabilities.length ? (
+              <div className="border-l-2 border-border pl-3 text-sm leading-6 text-muted">
+                <p>
+                  This capability requires:{" "}
+                  {selectedOverrideCapability.required_capabilities
+                    .map(capabilityName)
+                    .join(", ")}.
+                </p>
+                {grantDependencyBlocked ? (
+                  <p className="mt-1 text-warning">
+                    Grant the required capability first.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="grid gap-2">
               <Label htmlFor="override-reason">Reason</Label>
               <Textarea
@@ -706,7 +780,9 @@ export function AccountAccess() {
               >
                 Cancel
               </Button>
-              <Button type="submit">Review override</Button>
+              <Button type="submit" disabled={grantDependencyBlocked}>
+                Review override
+              </Button>
             </div>
           </form>
         </DialogContent>
