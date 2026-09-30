@@ -14,12 +14,12 @@ import {
 import { CompassApiError } from "@/lib/api/errors";
 
 export type ServerReaderResolution =
-  | { kind: "available"; title: string }
+  | { kind: "available"; title: string; indexable: boolean }
   | { kind: "not-found" }
   | { kind: "unresolved" };
 
 const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function isReaderUuid(value: string): boolean {
   return UUID_PATTERN.test(value);
@@ -56,7 +56,15 @@ async function resolveReader(
   if (cookieHeader) {
     try {
       const response = await readVisible(cookieOptions(cookieHeader));
-      return { kind: "available", title: response.data.title };
+      let indexable = false;
+      try {
+        await readPublic(publicOptions);
+        indexable = true;
+      } catch {
+        // A record readable to this account but not through the anonymous
+        // reader must not become indexable merely because the request is signed in.
+      }
+      return { kind: "available", title: response.data.title, indexable };
     } catch (error) {
       const state = resultFromError(error);
       if (state === "not-found") return { kind: "not-found" };
@@ -66,7 +74,7 @@ async function resolveReader(
 
   try {
     const response = await readPublic(publicOptions);
-    return { kind: "available", title: response.data.title };
+    return { kind: "available", title: response.data.title, indexable: true };
   } catch {
     // A public 404 is deliberately ambiguous: the record may be restricted
     // content that becomes readable after sign-in. Preserve the client reader
