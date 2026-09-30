@@ -34,6 +34,7 @@ from compass.inventory.services import (
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.services import resolve_default_counselor_for_student
+from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import AppointmentPolicy, DeliveryMode, Service
 from compass.service_catalog.services import (
     ELIGIBLE_PROVIDER_ROLE_CODES,
@@ -76,14 +77,29 @@ class AppointmentActionBlocker(StrEnum):
     CUTOFF_PASSED = "CUTOFF_PASSED"
     CURRENT_STUDENT_REQUIRED = "CURRENT_STUDENT_REQUIRED"
     ECOUNSELING_ROOM_LINKED = "ECOUNSELING_ROOM_LINKED"
+    ECOUNSELING_ACCESS_STARTED = "ECOUNSELING_ACCESS_STARTED"
+    ECOUNSELING_ACCESS_OPEN = "ECOUNSELING_ACCESS_OPEN"
     ROUTINE_INTERVIEW_LINKED = "ROUTINE_INTERVIEW_LINKED"
     COUNSELING_ENCOUNTER_LINKED = "COUNSELING_ENCOUNTER_LINKED"
+
+
+class AppointmentActionConsequenceCode(StrEnum):
+    """A downstream workflow change caused by an otherwise-allowed Appointment action."""
+
+    ROUTINE_INTERVIEW_WILL_CLOSE = "ROUTINE_INTERVIEW_WILL_CLOSE"
+
+
+@dataclass(frozen=True, slots=True)
+class AppointmentActionConsequence:
+    code: AppointmentActionConsequenceCode
+    routine_interview_id: UUID
 
 
 @dataclass(frozen=True, slots=True)
 class AppointmentActionState:
     allowed: bool
     blocker: AppointmentActionBlocker | None
+    consequences: tuple[AppointmentActionConsequence, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,6 +148,18 @@ class AppointmentCancellationCutoffPassed(AppointmentCancellationConflict):
 
 
 class AppointmentLifecycleConflict(AppointmentError):
+    pass
+
+
+class AppointmentECounselingAccessStarted(AppointmentLifecycleConflict):
+    pass
+
+
+class AppointmentECounselingAccessOpen(AppointmentLifecycleConflict):
+    pass
+
+
+class AppointmentECounselingRoomLinked(AppointmentLifecycleConflict):
     pass
 
 
@@ -901,6 +929,33 @@ def create_student_appointment(
     return _appointment_queryset().get(pk=appointment.pk)
 
 
+def _uses_ecounseling_lifecycle(item: Appointment) -> bool:
+    """Identify an existing ONLINE Counseling Appointment without consulting live Service readiness."""
+
+    return (
+        item.service.code == COUNSELING_SERVICE_CODE
+        and item.delivery_mode == DeliveryMode.ONLINE
+    )
+
+
+def _ecounseling_access_window(item: Appointment, *, now: datetime):
+    if not _uses_ecounseling_lifecycle(item):
+        return None
+    from compass.ecounseling.services import ecounseling_access_window
+
+    return ecounseling_access_window(item, now=now)
+
+
+def _routine_interview_id(appointment_id: UUID) -> UUID | None:
+    from compass.routine_interviews.models import RoutineInterview
+
+    return (
+        RoutineInterview.objects.filter(appointment_id=appointment_id)
+        .values_list("pk", flat=True)
+        .first()
+    )
+
+
 def cancel_appointment(
     *,
     appointment_id: UUID,
@@ -911,7 +966,7 @@ def cancel_appointment(
 ) -> Appointment:
     current = now or timezone.now()
     with transaction.atomic():
-        item = Appointment.objects.select_for_update().filter(pk=appointment_id).first()
+        item = Appointment.objects.select_for_update().select_related("service").filter(pk=appointment_id).first()
         if item is None:
             raise AppointmentNotFound("The requested Appointment was not found.")
         if administrative:
@@ -924,6 +979,22 @@ def cancel_appointment(
             return _appointment_queryset().get(pk=item.pk)
         if item.status != AppointmentStatus.SCHEDULED:
             raise AppointmentCancellationConflict("Only a SCHEDULED Appointment may be cancelled.")
+
+        from compass.ecounseling.models import ECounselingRoom
+        from compass.ecounseling.services import ECounselingJoinState
+
+        access_window = _ecounseling_access_window(item, now=current)
+        if (
+            access_window is not None
+            and access_window.state != ECounselingJoinState.TOO_EARLY
+        ):
+            raise AppointmentECounselingAccessStarted(
+                "This Appointment can no longer be cancelled because its online counseling access period has begun."
+            )
+        if ECounselingRoom.objects.filter(appointment_id=item.pk).exists():
+            raise AppointmentECounselingRoomLinked(
+                "This Appointment already has an E-Counseling room binding and cannot be cancelled."
+            )
         if current >= item.starts_at:
             raise AppointmentCancellationConflict(
                 "An Appointment cannot be cancelled after it has started."
@@ -935,6 +1006,7 @@ def cancel_appointment(
                     "The Appointment cancellation cutoff has passed."
                 )
 
+        routine_interview_id = _routine_interview_id(item.pk)
         item.status = AppointmentStatus.CANCELLED
         item.cancelled_at = current
         item.cancelled_by = actor
@@ -948,6 +1020,10 @@ def cancel_appointment(
             metadata={
                 "reference_code": item.reference_code,
                 "administrative": administrative,
+                "routine_interview_id": (
+                    str(routine_interview_id) if routine_interview_id else None
+                ),
+                "routine_interview_closed_by_parent_outcome": bool(routine_interview_id),
             },
         )
         for recipient in (item.student, item.provider):
@@ -1363,7 +1439,7 @@ def complete_appointment(
     if timezone.is_naive(current):
         raise InvalidAppointmentInput("The server time must be timezone-aware.")
     with transaction.atomic():
-        item = Appointment.objects.select_for_update().filter(pk=appointment_id).first()
+        item = Appointment.objects.select_for_update().select_related("service").filter(pk=appointment_id).first()
         if item is None:
             raise AppointmentNotFound("The requested Appointment was not found.")
         _require_management_access(actor=actor, item=item)
@@ -1374,6 +1450,14 @@ def complete_appointment(
         if current < item.starts_at:
             raise AppointmentLifecycleConflict(
                 "An Appointment cannot be completed before it starts."
+            )
+
+        from compass.ecounseling.services import ECounselingJoinState
+
+        access_window = _ecounseling_access_window(item, now=current)
+        if access_window is not None and access_window.state == ECounselingJoinState.OPEN:
+            raise AppointmentECounselingAccessOpen(
+                "This Appointment cannot be completed while the online counseling access period is still open."
             )
         item.status = AppointmentStatus.COMPLETED
         item.completed_at = current
@@ -1404,7 +1488,7 @@ def mark_appointment_no_show(
     if timezone.is_naive(current):
         raise InvalidAppointmentInput("The server time must be timezone-aware.")
     with transaction.atomic():
-        item = Appointment.objects.select_for_update().filter(pk=appointment_id).first()
+        item = Appointment.objects.select_for_update().select_related("service").filter(pk=appointment_id).first()
         if item is None:
             raise AppointmentNotFound("The requested Appointment was not found.")
         _require_management_access(actor=actor, item=item)
@@ -1419,12 +1503,21 @@ def mark_appointment_no_show(
                 "An Appointment cannot be marked NO_SHOW before it ends."
             )
 
+        from compass.ecounseling.services import ECounselingJoinState
+
+        access_window = _ecounseling_access_window(item, now=current)
+        if access_window is not None and access_window.state == ECounselingJoinState.OPEN:
+            raise AppointmentECounselingAccessOpen(
+                "This Appointment cannot be marked NO_SHOW while the online counseling rejoin period is still open."
+            )
+
         from compass.counseling.models import CounselingEncounter
 
         if CounselingEncounter.objects.filter(appointment_id=item.pk).exists():
             raise AppointmentLifecycleConflict(
                 "An Appointment with a Counseling Encounter cannot be marked NO_SHOW."
             )
+        routine_interview_id = _routine_interview_id(item.pk)
         item.status = AppointmentStatus.NO_SHOW
         item.no_show_at = current
         item.no_show_by = actor
@@ -1438,6 +1531,10 @@ def mark_appointment_no_show(
             metadata={
                 "reference_code": item.reference_code,
                 "transition": "SCHEDULED -> NO_SHOW",
+                "routine_interview_id": (
+                    str(routine_interview_id) if routine_interview_id else None
+                ),
+                "routine_interview_closed_by_parent_outcome": bool(routine_interview_id),
             },
         )
         return _appointment_queryset().get(pk=item.pk)
@@ -1545,10 +1642,19 @@ def _blocked(blocker: AppointmentActionBlocker) -> AppointmentActionState:
     return AppointmentActionState(allowed=False, blocker=blocker)
 
 
-def _first_blocker(*checks: AppointmentActionBlocker | None) -> AppointmentActionState:
+def _first_blocker(
+    *checks: AppointmentActionBlocker | None,
+    consequences: tuple[AppointmentActionConsequence, ...] = (),
+) -> AppointmentActionState:
     for blocker in checks:
         if blocker is not None:
             return _blocked(blocker)
+    if consequences:
+        return AppointmentActionState(
+            allowed=True,
+            blocker=None,
+            consequences=consequences,
+        )
     return _ALLOWED
 
 
@@ -1596,15 +1702,48 @@ def appointment_actions_for(
             cutoff = AppointmentActionBlocker.CUTOFF_PASSED
 
     room_linked = encounter_linked = routine_linked = None
+    routine_id: UUID | None = None
+    ecounseling_cancel_blocker = ecounseling_open_blocker = None
     if scheduled:
         if ECounselingRoom.objects.filter(appointment_id=item.pk).exists():
             room_linked = AppointmentActionBlocker.ECOUNSELING_ROOM_LINKED
         if manager and CounselingEncounter.objects.filter(appointment_id=item.pk).exists():
             encounter_linked = AppointmentActionBlocker.COUNSELING_ENCOUNTER_LINKED
-        if manager and RoutineInterview.objects.filter(appointment_id=item.pk).exists():
+        routine_id = (
+            RoutineInterview.objects.filter(appointment_id=item.pk)
+            .values_list("pk", flat=True)
+            .first()
+        )
+        if manager and routine_id is not None:
             routine_linked = AppointmentActionBlocker.ROUTINE_INTERVIEW_LINKED
 
-    cancel = _first_blocker(not_scheduled, started, cutoff)
+        access_window = _ecounseling_access_window(item, now=current)
+        if access_window is not None:
+            from compass.ecounseling.services import ECounselingJoinState
+
+            if access_window.state != ECounselingJoinState.TOO_EARLY:
+                ecounseling_cancel_blocker = AppointmentActionBlocker.ECOUNSELING_ACCESS_STARTED
+            if access_window.state == ECounselingJoinState.OPEN:
+                ecounseling_open_blocker = AppointmentActionBlocker.ECOUNSELING_ACCESS_OPEN
+
+    routine_close_consequence = (
+        (
+            AppointmentActionConsequence(
+                code=AppointmentActionConsequenceCode.ROUTINE_INTERVIEW_WILL_CLOSE,
+                routine_interview_id=routine_id,
+            ),
+        )
+        if routine_id is not None
+        else ()
+    )
+    cancel = _first_blocker(
+        not_scheduled,
+        ecounseling_cancel_blocker,
+        room_linked,
+        started,
+        cutoff,
+        consequences=routine_close_consequence,
+    )
     if self_mode:
         lifecycle = (
             None if is_current_student(actor) else AppointmentActionBlocker.CURRENT_STUDENT_REQUIRED
@@ -1625,11 +1764,14 @@ def appointment_actions_for(
         complete=_first_blocker(
             not_scheduled,
             AppointmentActionBlocker.NOT_STARTED if current < item.starts_at else None,
+            ecounseling_open_blocker,
         ),
         mark_no_show=_first_blocker(
             not_scheduled,
             AppointmentActionBlocker.NOT_ENDED if current < item.ends_at else None,
+            ecounseling_open_blocker,
             encounter_linked,
+            consequences=routine_close_consequence,
         ),
     )
 
