@@ -14,7 +14,11 @@ from compass.inventory.models import (
     InventoryGeographicLocation,
 )
 from compass.organization.models import AcademicYear, StudentAffiliation
-from compass.reports.services import LEGACY_KEY, build_student_profiling_report
+from compass.reports.services import (
+    LEGACY_KEY,
+    ReportAccessScope,
+    build_student_profiling_report,
+)
 from tests.test_student_profiling_reports import (
     auth_client,
     make_head,
@@ -163,6 +167,40 @@ def test_current_coverage_distinguishes_submitted_draft_missing_and_ignores_prog
     assert coverage["missing_count"] == 1
     assert set(coverage["ignored_filters"]) == {"program_id", "year_level"}
     assert "Program" in coverage["scope_note"]
+
+
+
+
+@pytest.mark.django_db
+def test_current_coverage_inventory_existence_is_not_lost_to_profile_scope_filtering():
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision("coverage-existence")
+    _, authorized_college, _ = make_organization("COV-AUTH")
+    _, _, outside_program = make_organization("COV-PROFILE")
+    student = make_user("coverage-existing-outside-profile@example.edu")
+    StudentAffiliation.objects.create(student=student, college=authorized_college)
+    make_inventory(
+        student=student,
+        academic_year=year,
+        revision=revision,
+        program=outside_program,
+    )
+
+    report = build_student_profiling_report(
+        access_scope=ReportAccessScope(
+            is_global=False,
+            college_ids=(authorized_college.pk,),
+        )
+    )
+    coverage = report["inventory_coverage"]
+
+    assert report["report_context"]["submitted_inventory_count"] == 0
+    assert report["disclosure_warnings"] == []
+    assert coverage["eligible_student_count"] == 1
+    assert coverage["submitted_count"] == 1
+    assert coverage["draft_count"] == 0
+    assert coverage["missing_count"] == 0
 
 
 @pytest.mark.django_db
