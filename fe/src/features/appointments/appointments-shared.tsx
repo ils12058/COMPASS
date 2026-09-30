@@ -10,6 +10,7 @@ import { WorkspaceUnavailable } from "@/features/portal/components/workspace-una
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { AppointmentStatus, DeliveryMode } from "@/lib/api/generated/model";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { INSTITUTION_TIME_ZONE } from "@/lib/institutional-time";
 
 const statusLabels: Record<string, string> = {
   [AppointmentStatus.SCHEDULED]: "Scheduled",
@@ -97,36 +98,40 @@ export function formatAppointmentDateTime(
 ): string {
   const start = new Date(startsAt);
   const end = new Date(endsAt);
-  const zoneOptions = timeZone ? { timeZone } : {};
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return `${startsAt}–${endsAt}`;
+  }
+  const zone = timeZone ?? INSTITUTION_TIME_ZONE;
   try {
     const day = new Intl.DateTimeFormat("en-PH", {
-      ...zoneOptions,
+      timeZone: zone,
       weekday: "short",
       month: "short",
       day: "numeric",
       year: "numeric",
     }).format(start);
     const times = new Intl.DateTimeFormat("en-PH", {
-      ...zoneOptions,
+      timeZone: zone,
       hour: "numeric",
       minute: "2-digit",
     });
     return `${day} · ${times.format(start)}–${times.format(end)}`;
   } catch {
-    return `${start.toLocaleString()}–${end.toLocaleTimeString()}`;
+    return `${startsAt}–${endsAt}`;
   }
 }
 
 export function formatAppointmentTime(value: string, timeZone?: string): string {
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
   try {
     return new Intl.DateTimeFormat("en-PH", {
-      ...(timeZone ? { timeZone } : {}),
+      timeZone: timeZone ?? INSTITUTION_TIME_ZONE,
       hour: "numeric",
       minute: "2-digit",
     }).format(date);
   } catch {
-    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return value;
   }
 }
 
