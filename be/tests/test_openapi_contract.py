@@ -1207,6 +1207,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert set(student_profile) == {
         "report_context",
         "methodology",
+        "disclosure_warnings",
         "program_columns",
         "inventory_coverage",
         "sections",
