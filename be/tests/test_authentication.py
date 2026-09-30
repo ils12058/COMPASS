@@ -952,7 +952,7 @@ def test_failed_step_up_totp_does_not_create_notification_or_email():
         post_json(
             client,
             "/api/v1/auth/mfa/totp/confirm",
-            {"code": parsed.now()},
+            {"code": parsed.now(), "current_password": "correct-password"},
             headers=csrf_headers(client),
         ).status_code
         == 200
