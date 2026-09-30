@@ -1,5 +1,4 @@
 import {
-  formatDateOnly,
   formatInstitutionalDateTime,
   institutionalDateInputValue,
   institutionalDateTimeInputToISO,
