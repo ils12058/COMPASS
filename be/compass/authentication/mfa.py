@@ -233,6 +233,25 @@ def _replace_recovery_codes_locked(user_id, *, now: datetime) -> tuple[str, ...]
     return tuple(plaintext)
 
 
+def _locked_user_with_current_password(*, user, current_password: str):
+    locked_user = (
+        User.objects.select_for_update(of=("self",))
+        .filter(pk=getattr(user, "pk", None))
+        .first()
+    )
+    if (
+        locked_user is None
+        or not locked_user.is_active
+        or not isinstance(current_password, str)
+        or not current_password
+        or not locked_user.check_password(current_password)
+    ):
+        raise TOTPEnrollmentAuthorizationFailed(
+            "the current authentication proof could not be verified"
+        )
+    return locked_user
+
+
 def start_authenticated_totp_enrollment(
     *,
     user,
@@ -252,21 +271,10 @@ def start_authenticated_totp_enrollment(
         limiter=limiter,
     )
     with transaction.atomic():
-        locked_user = (
-            User.objects.select_for_update(of=("self",))
-            .filter(pk=getattr(user, "pk", None))
-            .first()
+        locked_user = _locked_user_with_current_password(
+            user=user,
+            current_password=current_password,
         )
-        if (
-            locked_user is None
-            or not locked_user.is_active
-            or not isinstance(current_password, str)
-            or not current_password
-            or not locked_user.check_password(current_password)
-        ):
-            raise TOTPEnrollmentAuthorizationFailed(
-                "the current authentication proof could not be verified"
-            )
         return start_totp_enrollment(
             user=locked_user,
             context=context,
@@ -323,6 +331,38 @@ def start_totp_enrollment(
             issuer_name=settings.AUTH_TOTP_ISSUER_NAME,
         )
     return TOTPSetupResult(factor_id=pending.pk, provisioning_uri=uri)
+
+
+def confirm_authenticated_totp_enrollment(
+    *,
+    user,
+    current_password: str,
+    code: str,
+    context: AuditContext,
+    request=None,
+    limiter=None,
+    now: datetime | None = None,
+) -> TOTPConfirmationResult | None:
+    """Confirm optional enrollment only after revalidating independent primary proof."""
+
+    current = now or timezone.now()
+    check_auth_rate_limit(
+        "password_change",
+        ip_address=request_ip(request),
+        user_id=getattr(user, "pk", None),
+        limiter=limiter,
+    )
+    with transaction.atomic():
+        locked_user = _locked_user_with_current_password(
+            user=user,
+            current_password=current_password,
+        )
+        return confirm_totp_enrollment(
+            user=locked_user,
+            code=code,
+            context=context,
+            now=current,
+        )
 
 
 def confirm_totp_enrollment(
@@ -605,6 +645,7 @@ __all__ = [
     "TOTPSetupResult",
     "TOTPVerification",
     "active_totp_factor",
+    "confirm_authenticated_totp_enrollment",
     "confirm_totp_enrollment",
     "consume_recovery_code",
     "disable_totp",
