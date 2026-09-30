@@ -129,7 +129,8 @@ GET  /api/v1/me/security-activity?page=1&page_size=20
 ```
 
 Authenticated optional TOTP setup is a two-step operation, but `setup` first requires the
-account's current password before returning a provisioning URI. The candidate TOTP code cannot
+account's current password before returning a provisioning URI. The same independent proof is
+revalidated when the optional pending factor is confirmed, so a candidate TOTP code cannot
 authorize its own enrollment. Mandatory role-required enrollment remains separate: successful
 password authentication creates a purpose-restricted `LoginChallenge`, and that challenge may
 bootstrap TOTP without asking for the password a second time. `confirm` returns recovery codes
