@@ -17,7 +17,7 @@ import {
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useReferralsList } from "@/lib/api/generated/referrals/referrals";
-import { formatDateOnly, formatDateTime } from "@/lib/date-time";
+import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export type ReferralListFilters = {
   search: string;
@@ -163,7 +163,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                     </Link>
                     <p className="text-sm font-medium text-ink">{referral.student_name_snapshot}</p>
                     <p className="text-sm text-muted">{referral.course_year_block_snapshot}</p>
-                    <p className="text-sm text-muted">Referred {formatDateOnly(referral.referred_on)}{referral.received_at ? ` · Received ${formatDateTime(referral.received_at)}` : ""}</p>
+                    <p className="text-sm text-muted">Referred {formatDateOnly(referral.referred_on)}{referral.received_at ? ` · Received ${formatInstitutionalDateTime(referral.received_at)}` : ""}</p>
                     {referral.status_note ? <p className="whitespace-pre-wrap break-words text-sm text-ink"><span className="font-semibold">Status note:</span> {referral.status_note}</p> : <p className="text-sm text-muted">No status note</p>}
                     {referral.voided_at ? <p className="text-sm font-semibold text-warning">Voided</p> : null}
                   </li>
@@ -191,7 +191,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                         </th>
                         <td className="px-3 py-4 text-ink">{referral.course_year_block_snapshot}</td>
                         <td className="px-3 py-4 text-ink">{formatDateOnly(referral.referred_on)}</td>
-                        <td className="px-3 py-4 text-ink">{formatDateTime(referral.received_at)}</td>
+                        <td className="px-3 py-4 text-ink">{formatInstitutionalDateTime(referral.received_at)}</td>
                         <td className="max-w-64 px-3 py-4 text-ink">
                           {referral.status_note ? <p className="line-clamp-2 whitespace-pre-wrap">{referral.status_note}</p> : <span className="text-muted">—</span>}
                         </td>
