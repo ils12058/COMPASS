@@ -27,6 +27,15 @@ configuration is synchronized explicitly after migrations; ordinary requests do 
 - Capability-authorized administrative Account Management with recent-MFA step-up
 - Self-service initial password setup and password recovery through email OTP
 
+## Institutional time
+
+Django and Celery runtime time remain controlled by `TIME_ZONE` (normally `UTC`) with
+`USE_TZ=true`. UCN civil/business time is a separate product invariant configured by
+`INSTITUTION_TIME_ZONE`, currently `Asia/Manila`. Scheduling code must use the bounded helpers
+in `compass.common.institutional_time` instead of treating `settings.TIME_ZONE` as the
+institutional timezone. API/storage datetimes remain timezone-aware instants; date-only values
+remain calendar dates rather than midnight timestamps.
+
 The dependency lockfile is committed with the backend. The chosen Python version is 3.13
 because the current Celery 5.6 support matrix lists CPython 3.9 through 3.13; host Python 3.14
 can still be used to install `uv`, but the project runtime remains pinned to 3.13.
