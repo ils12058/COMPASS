@@ -28,7 +28,11 @@ import {
   type AnnouncementManagementResponse,
   type AnnouncementUpdateRequest,
 } from "@/lib/api/generated/model";
-import { dateTimeInputToISO, isoToDateTimeInput } from "@/lib/date-time";
+import {
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateTimeInputToISO,
+  isoToInstitutionalDateTimeInput,
+} from "@/lib/institutional-time";
 
 type AnnouncementFields = {
   title: string;
@@ -53,7 +57,7 @@ function fieldsFrom(item: AnnouncementManagementResponse | null): AnnouncementFi
         title: item.title,
         audience: item.audience,
         isPinned: item.is_pinned,
-        expiresAt: isoToDateTimeInput(item.expires_at),
+        expiresAt: isoToInstitutionalDateTimeInput(item.expires_at),
       }
     : { title: "", audience: null, isPinned: false, expiresAt: "" };
 }
@@ -91,7 +95,10 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
     const next: Partial<Record<FieldName, string>> = {};
     if (!values.title.trim()) next.title = "Enter a title.";
     if (!values.audience) next.audience = "Choose who can see this Announcement.";
-    if (values.expiresAt && !dateTimeInputToISO(values.expiresAt)) {
+    if (
+      values.expiresAt &&
+      !institutionalDateTimeInputToISO(values.expiresAt)
+    ) {
       next.expiresAt = "Enter a valid date and time, or remove the expiry.";
     }
     if (isPublished && !currentBody.trim()) next.body = "A published Announcement needs body text.";
@@ -111,7 +118,9 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
       if (firstInvalid) document.getElementById(fieldTargets[firstInvalid])?.focus();
       return;
     }
-    const expiresAt = values.expiresAt ? dateTimeInputToISO(values.expiresAt) : null;
+    const expiresAt = values.expiresAt
+      ? institutionalDateTimeInputToISO(values.expiresAt)
+      : null;
 
     if (!announcement) {
       try {
@@ -227,7 +236,8 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
             ) : null}
           </div>
           <p id="announcement-expires-hint" className="text-xs leading-5 text-muted">
-            Optional, in your local time. Without an expiry, the Announcement stays visible until it is archived.
+            Optional. Times use {INSTITUTION_TIME_ZONE_LABEL}. Without an
+            expiry, the Announcement stays visible until it is archived.
           </p>
           {errors.expiresAt ? (
             <p id="announcement-expires-error" className="text-sm text-danger">{errors.expiresAt}</p>
