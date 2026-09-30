@@ -60,6 +60,19 @@ class ServiceCatalogConflict(ServiceCatalogError):
 class ServiceSchedulingConsequenceReviewRequired(ServiceCatalogConflict):
     """A legal Service update needs explicit review of scheduling consequences."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        existing_appointment_dependency_detected: bool,
+        counseling_online_enabled: bool,
+    ) -> None:
+        super().__init__(message)
+        self.existing_appointment_dependency_detected = (
+            existing_appointment_dependency_detected
+        )
+        self.counseling_online_enabled = counseling_online_enabled
+
 
 class CanonicalServiceRequired(ServiceCatalogConflict):
     """A normal catalog mutation would break required Counseling configuration."""
@@ -486,7 +499,11 @@ def update_service(
         )
         if consequences.requires_review and not acknowledge_scheduling_consequences:
             raise ServiceSchedulingConsequenceReviewRequired(
-                "Review the scheduling consequences before saving this Service change."
+                "Review the scheduling consequences before saving this Service change.",
+                existing_appointment_dependency_detected=(
+                    consequences.existing_appointment_dependency_detected
+                ),
+                counseling_online_enabled=consequences.counseling_online_enabled,
             )
 
         role_records = _provider_role_records(next_roles) if current_roles != next_roles else {}

@@ -137,6 +137,12 @@ def _raise(exc: ServiceCatalogError) -> NoReturn:
             409,
             "service_scheduling_consequence_review_required",
             str(exc),
+            details={
+                "existing_appointment_dependency_detected": (
+                    exc.existing_appointment_dependency_detected
+                ),
+                "counseling_online_enabled": exc.counseling_online_enabled,
+            },
         ) from exc
     if isinstance(exc, ServiceCatalogConflict):
         raise APIError(409, "service_catalog_conflict", str(exc)) from exc

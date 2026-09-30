@@ -299,6 +299,10 @@ def test_service_update_api_exposes_stable_review_required_code_and_acknowledgem
     )
     assert blocked.status_code == 409
     assert blocked.json()["error"]["code"] == "service_scheduling_consequence_review_required"
+    assert blocked.json()["error"]["details"] == {
+        "existing_appointment_dependency_detected": True,
+        "counseling_online_enabled": False,
+    }
 
     acknowledged = client.patch(
         f"/api/v1/services/{service.pk}",
