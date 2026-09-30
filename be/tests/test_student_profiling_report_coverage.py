@@ -169,8 +169,6 @@ def test_current_coverage_distinguishes_submitted_draft_missing_and_ignores_prog
     assert "Program" in coverage["scope_note"]
 
 
-
-
 @pytest.mark.django_db
 def test_current_coverage_inventory_existence_is_not_lost_to_profile_scope_filtering():
     sync_policy()
