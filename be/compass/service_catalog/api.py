@@ -24,6 +24,7 @@ from compass.service_catalog.services import (
     ServiceCatalogConflict,
     ServiceCatalogError,
     ServiceCatalogNotFound,
+    ServiceSchedulingConsequenceReviewRequired,
     create_service,
     get_service,
     list_services,
@@ -83,6 +84,7 @@ class ServiceUpdateRequest(StrictSchema):
     requires_current_inventory: bool = False
     delivery_modes: list[DeliveryMode] = Field(default_factory=list)
     provider_roles: list[ConfigurableProviderRoleCode] = Field(default_factory=list)
+    acknowledge_scheduling_consequences: bool = False
 
 
 class ServiceResponse(StrictSchema):
@@ -130,6 +132,12 @@ def _raise(exc: ServiceCatalogError) -> NoReturn:
         raise APIError(409, "canonical_service_required", str(exc)) from exc
     if isinstance(exc, CanonicalServiceReserved):
         raise APIError(409, "canonical_service_reserved", str(exc)) from exc
+    if isinstance(exc, ServiceSchedulingConsequenceReviewRequired):
+        raise APIError(
+            409,
+            "service_scheduling_consequence_review_required",
+            str(exc),
+        ) from exc
     if isinstance(exc, ServiceCatalogConflict):
         raise APIError(409, "service_catalog_conflict", str(exc)) from exc
     if isinstance(exc, InvalidServiceCatalogInput):
@@ -242,6 +250,9 @@ def services_get(request, service_id: UUID):
 def services_update(request, service_id: UUID, payload: ServiceUpdateRequest):
     _require(request, "services.manage", recent_mfa=True)
     changes = payload.model_dump(exclude_unset=True)
+    acknowledge_scheduling_consequences = bool(
+        changes.pop("acknowledge_scheduling_consequences", False)
+    )
     if "appointment_policy" in changes:
         changes["appointment_policy"] = payload.appointment_policy.value
     if "delivery_modes" in changes:
@@ -250,7 +261,12 @@ def services_update(request, service_id: UUID, payload: ServiceUpdateRequest):
         changes["provider_roles"] = [value.value for value in payload.provider_roles]
     try:
         return _service(
-            update_service(service_id=service_id, changes=changes, context=_context(request))
+            update_service(
+                service_id=service_id,
+                changes=changes,
+                context=_context(request),
+                acknowledge_scheduling_consequences=acknowledge_scheduling_consequences,
+            )
         )
     except ServiceCatalogError as exc:
         _raise(exc)
