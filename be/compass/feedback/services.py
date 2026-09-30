@@ -71,6 +71,14 @@ class FeedbackConfigurationConflict(FeedbackError):
     pass
 
 
+class FeedbackProvenanceConflict(FeedbackConfigurationConflict):
+    pass
+
+
+class FeedbackChronologyConflict(FeedbackConfigurationConflict):
+    pass
+
+
 class InvalidFeedbackInput(FeedbackError):
     pass
 
@@ -236,6 +244,60 @@ def ensure_feedback_opportunity(
             "The existing Feedback opportunity does not match the completed service provenance."
         )
     return opportunity
+
+
+def reconcile_counseling_feedback_opportunity(
+    *,
+    encounter_id: UUID,
+    student_id: UUID,
+    service_completed_at: datetime,
+) -> bool:
+    """Reconcile the existing Counseling-source opportunity after a factual correction.
+
+    The opportunity identity and submitted responses remain immutable. Only the
+    completion timestamp derived from the Counseling Encounter may change.
+    """
+
+    if not isinstance(service_completed_at, datetime) or timezone.is_naive(service_completed_at):
+        raise InvalidFeedbackInput("service_completed_at must be a timezone-aware datetime.")
+
+    with transaction.atomic():
+        opportunity = (
+            FeedbackOpportunity.objects.select_for_update(of=("self",))
+            .filter(
+                source_type=FeedbackOpportunitySourceType.COUNSELING_ENCOUNTER,
+                source_id=encounter_id,
+            )
+            .first()
+        )
+        if opportunity is None:
+            raise FeedbackProvenanceConflict(
+                "The Counseling Encounter is missing its Feedback opportunity."
+            )
+        if (
+            opportunity.student_id != student_id
+            or opportunity.service_kind != CustomerFeedbackService.COUNSELING
+            or opportunity.service_label_snapshot != "Counseling"
+        ):
+            raise FeedbackProvenanceConflict(
+                "The existing Feedback opportunity does not match Counseling provenance."
+            )
+
+        chronology_boundaries = [opportunity.created_at]
+        if opportunity.customer_feedback_submitted_at is not None:
+            chronology_boundaries.append(opportunity.customer_feedback_submitted_at)
+        if opportunity.csm_submitted_at is not None:
+            chronology_boundaries.append(opportunity.csm_submitted_at)
+        if any(service_completed_at > boundary for boundary in chronology_boundaries):
+            raise FeedbackChronologyConflict(
+                "Counseling completion cannot be recorded after Feedback was made available."
+            )
+
+        if opportunity.service_completed_at == service_completed_at:
+            return False
+        opportunity.service_completed_at = service_completed_at
+        opportunity.save(update_fields=["service_completed_at", "updated_at"])
+        return True
 
 
 def _opportunity_capabilities(actor: User) -> tuple[bool, bool]:
