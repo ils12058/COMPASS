@@ -68,9 +68,7 @@ class ServiceSchedulingConsequenceReviewRequired(ServiceCatalogConflict):
         counseling_online_enabled: bool,
     ) -> None:
         super().__init__(message)
-        self.existing_appointment_dependency_detected = (
-            existing_appointment_dependency_detected
-        )
+        self.existing_appointment_dependency_detected = existing_appointment_dependency_detected
         self.counseling_online_enabled = counseling_online_enabled
 
 
