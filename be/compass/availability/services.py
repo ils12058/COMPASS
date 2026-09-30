@@ -8,7 +8,6 @@ from datetime import date, datetime, time, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from django.conf import settings
 from django.db import connection, transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -25,6 +24,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.institutional_time import institution_timezone_name, institution_zone
 from compass.service_catalog.models import DeliveryMode, Service
 from compass.service_catalog.services import (
     ELIGIBLE_PROVIDER_ROLE_CODES,
@@ -576,13 +576,6 @@ def subtract_intervals(
     return tuple(current)
 
 
-def _institution_zone() -> ZoneInfo:
-    try:
-        return ZoneInfo(settings.TIME_ZONE)
-    except ZoneInfoNotFoundError as exc:
-        raise AvailabilityConflict("The configured institutional timezone is unavailable.") from exc
-
-
 def expand_weekly_windows(
     windows: Sequence[NormalizedWeeklyWindow],
     *,
@@ -590,10 +583,15 @@ def expand_weekly_windows(
     end_date: date,
     timezone_name: str | None = None,
 ) -> tuple[Interval, ...]:
-    try:
-        zone = ZoneInfo(timezone_name or settings.TIME_ZONE)
-    except ZoneInfoNotFoundError as exc:
-        raise AvailabilityConflict("The configured institutional timezone is unavailable.") from exc
+    if timezone_name is None:
+        zone = institution_zone()
+    else:
+        try:
+            zone = ZoneInfo(timezone_name)
+        except ZoneInfoNotFoundError as exc:
+            raise AvailabilityConflict(
+                "The requested availability timezone is unavailable."
+            ) from exc
     result: list[Interval] = []
     day = start_date
     by_weekday: dict[str, list[NormalizedWeeklyWindow]] = {}
@@ -662,7 +660,7 @@ def compute_base_availability(
     if not provider_role_eligible(service, provider):
         raise AvailabilityNotApplicable("The provider role is not eligible for this Service.")
 
-    zone = _institution_zone()
+    zone = institution_zone()
     range_start = datetime.combine(start_date, time.min, tzinfo=zone)
     range_end = datetime.combine(end_date, time.min, tzinfo=zone)
 
@@ -672,13 +670,11 @@ def compute_base_availability(
         _mode_windows(provider_rows, requested_mode),
         start_date=start_date,
         end_date=end_date,
-        timezone_name=settings.TIME_ZONE,
     )
     office_intervals = expand_weekly_windows(
         _mode_windows(office_rows, requested_mode),
         start_date=start_date,
         end_date=end_date,
-        timezone_name=settings.TIME_ZONE,
     )
     available = intersect_intervals(provider_intervals, office_intervals)
 
@@ -724,7 +720,7 @@ def compute_base_availability(
         provider_id=provider.pk,
         service_id=service.pk,
         delivery_mode=requested_mode,
-        timezone_name=settings.TIME_ZONE,
+        timezone_name=institution_timezone_name(),
         start_date=start_date,
         end_date=end_date,
         windows=tuple(available),
