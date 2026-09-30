@@ -933,8 +933,7 @@ def _uses_ecounseling_lifecycle(item: Appointment) -> bool:
     """Identify an existing ONLINE Counseling Appointment without consulting live Service readiness."""
 
     return (
-        item.service.code == COUNSELING_SERVICE_CODE
-        and item.delivery_mode == DeliveryMode.ONLINE
+        item.service.code == COUNSELING_SERVICE_CODE and item.delivery_mode == DeliveryMode.ONLINE
     )
 
 
@@ -966,7 +965,12 @@ def cancel_appointment(
 ) -> Appointment:
     current = now or timezone.now()
     with transaction.atomic():
-        item = Appointment.objects.select_for_update().select_related("service").filter(pk=appointment_id).first()
+        item = (
+            Appointment.objects.select_for_update()
+            .select_related("service")
+            .filter(pk=appointment_id)
+            .first()
+        )
         if item is None:
             raise AppointmentNotFound("The requested Appointment was not found.")
         if administrative:
@@ -984,10 +988,7 @@ def cancel_appointment(
         from compass.ecounseling.services import ECounselingJoinState
 
         access_window = _ecounseling_access_window(item, now=current)
-        if (
-            access_window is not None
-            and access_window.state != ECounselingJoinState.TOO_EARLY
-        ):
+        if access_window is not None and access_window.state != ECounselingJoinState.TOO_EARLY:
             raise AppointmentECounselingAccessStarted(
                 "This Appointment can no longer be cancelled because its online counseling access period has begun."
             )
@@ -1439,7 +1440,12 @@ def complete_appointment(
     if timezone.is_naive(current):
         raise InvalidAppointmentInput("The server time must be timezone-aware.")
     with transaction.atomic():
-        item = Appointment.objects.select_for_update().select_related("service").filter(pk=appointment_id).first()
+        item = (
+            Appointment.objects.select_for_update()
+            .select_related("service")
+            .filter(pk=appointment_id)
+            .first()
+        )
         if item is None:
             raise AppointmentNotFound("The requested Appointment was not found.")
         _require_management_access(actor=actor, item=item)
@@ -1488,7 +1494,12 @@ def mark_appointment_no_show(
     if timezone.is_naive(current):
         raise InvalidAppointmentInput("The server time must be timezone-aware.")
     with transaction.atomic():
-        item = Appointment.objects.select_for_update().select_related("service").filter(pk=appointment_id).first()
+        item = (
+            Appointment.objects.select_for_update()
+            .select_related("service")
+            .filter(pk=appointment_id)
+            .first()
+        )
         if item is None:
             raise AppointmentNotFound("The requested Appointment was not found.")
         _require_management_access(actor=actor, item=item)
