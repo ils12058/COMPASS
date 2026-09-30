@@ -35,7 +35,7 @@ import {
   hasPrivacyConflictCode,
   PrivacyConflictCode,
 } from "@/features/privacy-governance/privacy-governance-errors";
-import { formatDateOnly, formatDateTime } from "@/lib/date-time";
+import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 import {
   NoticePublishBlocker,
   RevisionStatusValue,
@@ -218,7 +218,7 @@ export function NoticeRevisionPage() {
         meta={
           <>
             <RevisionStatusBadge status={revision.status} />
-            <span>Updated {formatDateTime(revision.updated_at)}</span>
+            <span>Updated {formatInstitutionalDateTime(revision.updated_at)}</span>
           </>
         }
         action={
@@ -323,7 +323,7 @@ export function NoticeRevisionPage() {
                 <dt className="text-xs font-semibold text-muted">Published</dt>
                 <dd className="mt-1 text-sm text-ink">
                   {revision.published_at ? (
-                    formatDateTime(revision.published_at)
+                    formatInstitutionalDateTime(revision.published_at)
                   ) : (
                     <span className="text-muted">Not published</span>
                   )}
@@ -332,7 +332,7 @@ export function NoticeRevisionPage() {
               <div>
                 <dt className="text-xs font-semibold text-muted">Created</dt>
                 <dd className="mt-1 text-sm text-ink">
-                  {formatDateTime(revision.created_at)}
+                  {formatInstitutionalDateTime(revision.created_at)}
                 </dd>
               </div>
             </dl>
