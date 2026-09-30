@@ -51,6 +51,7 @@ from .services import (
     AccountNotFound,
     AppointmentRelationshipConflict,
     AvailabilityRelationshipConflict,
+    CapabilityDependencyConflict,
     DesignationManagementNotAuthorized,
     DesignationRoleConflict,
     DuplicateEmail,
@@ -221,6 +222,8 @@ class AccessCapabilityResponse(StrictSchema):
     effective: bool
     baseline_sources: list[AccessBaselineSourceResponse]
     override: AccessOverrideResponse | None
+    required_capabilities: list[CapabilityCode]
+    missing_required_capabilities: list[CapabilityCode]
 
 
 class AccountEffectiveAccessResponse(StrictSchema):
@@ -340,6 +343,8 @@ def _raise_management_error(exc: AccountManagementError) -> NoReturn:
         ) from exc
     if isinstance(exc, StudentLifecycleConflict):
         raise APIError(409, "student_lifecycle_conflict", str(exc)) from exc
+    if isinstance(exc, CapabilityDependencyConflict):
+        raise APIError(409, "capability_dependency_conflict", str(exc)) from exc
     if isinstance(exc, SelfTargetForbidden):
         raise APIError(
             403,

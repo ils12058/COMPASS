@@ -29,9 +29,12 @@ from compass.accounts.policy import (
     ROLE_CAPABILITY_GRANTS,
     ROLE_CODES,
     designation_role_compatible,
+    missing_required_capabilities,
+    required_capabilities,
 )
 from compass.accounts.services import (
     effective_capabilities,
+    projected_capabilities,
     set_user_capability_override,
     user_has_capability,
 )
@@ -123,6 +126,10 @@ class StudentLifecycleConflict(AccountManagementError):
 
 class ManagementConfigurationError(AccountManagementError):
     """Canonical identity policy has not been synchronized into the database."""
+
+
+class CapabilityDependencyConflict(AccountManagementError):
+    """A proposed GRANT lacks one or more required capabilities."""
 
 
 class LastAccountManagerError(AccountManagementError):
@@ -545,6 +552,7 @@ def inspect_account_access(
     user = get_account(user_id=user_id)
     now = at if at is not None else timezone.now()
     effective = effective_capabilities(user, at=now)
+    policy_effective = projected_capabilities(user, at=now)
     designation_codes = sorted(
         code for code in _account_designation_codes(user) if code in DESIGNATION_CODES
     )
@@ -588,6 +596,10 @@ def inspect_account_access(
                 "effective": definition.code in effective,
                 "baseline_sources": sources,
                 "override": override_payload,
+                "required_capabilities": sorted(required_capabilities(definition.code)),
+                "missing_required_capabilities": sorted(
+                    missing_required_capabilities(definition.code, policy_effective)
+                ),
             }
         )
 
@@ -1114,6 +1126,26 @@ def set_capability_override(
             and existing.created_by_id == locked_actor.pk
         ):
             return OverrideMutationResult(override=existing, changed=False)
+
+        if effect_value == UserCapabilityOverride.Effect.GRANT:
+            projected = projected_capabilities(
+                target,
+                at=timezone.now(),
+                override_effects={
+                    capability_code: UserCapabilityOverride.Effect.GRANT,
+                },
+            )
+            missing = missing_required_capabilities(capability_code, projected)
+            if missing:
+                names_by_code = {
+                    definition.code: definition.name for definition in CAPABILITY_DEFINITIONS
+                }
+                missing_names = ", ".join(names_by_code.get(code, code) for code in sorted(missing))
+                raise CapabilityDependencyConflict(
+                    f"{names_by_code.get(capability_code, capability_code)} requires "
+                    f"{missing_names}. Grant the required capability first."
+                )
+
         override = set_user_capability_override(
             user=target,
             capability=capability_record,

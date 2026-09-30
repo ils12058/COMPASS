@@ -578,6 +578,84 @@ ROLE_CODES = frozenset(definition.code for definition in ROLE_DEFINITIONS)
 DESIGNATION_CODES = frozenset(definition.code for definition in DESIGNATION_DEFINITIONS)
 CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINITIONS)
 
+# Dependencies constrain whether already-granted authority is effective. They never
+# create prerequisite authority or rewrite persisted grants/overrides.
+CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
+    "routine_interviews.manage_self": frozenset({"routine_interviews.view_self"}),
+    "routine_interviews.manage_assigned": frozenset({"routine_interviews.view_assigned"}),
+    "exit_interviews.manage_self": frozenset({"exit_interviews.view_self"}),
+    "exit_interviews.reopen": frozenset({"exit_interviews.view"}),
+    "graduate_tracer.manage_self": frozenset({"graduate_tracer.view_self"}),
+    "good_moral.request_self": frozenset({"good_moral.view_self"}),
+    "good_moral.manage": frozenset({"good_moral.view"}),
+    "good_moral.issue": frozenset({"good_moral.view"}),
+    "counseling.manage_assigned": frozenset({"counseling.view_assigned"}),
+    "referrals.manage": frozenset({"referrals.view"}),
+    "call_slips.manage": frozenset({"call_slips.view"}),
+    "availability.manage_self": frozenset({"availability.view"}),
+    "privacy_governance.manage": frozenset({"privacy_governance.view"}),
+    "platform_operations.manage": frozenset({"platform_operations.view"}),
+}
+
+
+def required_capabilities(capability_code: str) -> frozenset[str]:
+    """Return direct canonical prerequisites for one capability."""
+
+    return CAPABILITY_DEPENDENCIES.get(capability_code, frozenset())
+
+
+def resolve_capability_dependencies(candidate_codes) -> frozenset[str]:
+    """Return the largest dependency-coherent canonical subset."""
+
+    effective = set(candidate_codes) & CAPABILITY_CODES
+    while True:
+        blocked = {code for code in effective if not required_capabilities(code) <= effective}
+        if not blocked:
+            return frozenset(effective)
+        effective.difference_update(blocked)
+
+
+def missing_required_capabilities(
+    capability_code: str,
+    resolved_effective,
+) -> frozenset[str]:
+    """Return direct prerequisites unavailable in one resolved authority set."""
+
+    return required_capabilities(capability_code) - set(resolved_effective)
+
+
+def _validate_dependency_graph() -> None:
+    for capability_code, requirements in CAPABILITY_DEPENDENCIES.items():
+        if capability_code not in CAPABILITY_CODES:
+            raise RuntimeError(
+                f"capability dependency references unknown capability: {capability_code}"
+            )
+        if capability_code in requirements:
+            raise RuntimeError(f"capability cannot require itself: {capability_code}")
+        unknown = requirements - CAPABILITY_CODES
+        if unknown:
+            raise RuntimeError(
+                f"capability dependency for {capability_code} references unknown requirements: "
+                f"{sorted(unknown)}"
+            )
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(capability_code: str) -> None:
+        if capability_code in visited:
+            return
+        if capability_code in visiting:
+            raise RuntimeError(f"capability dependency graph contains a cycle at {capability_code}")
+        visiting.add(capability_code)
+        for requirement in required_capabilities(capability_code):
+            visit(requirement)
+        visiting.remove(capability_code)
+        visited.add(capability_code)
+
+    for capability_code in CAPABILITY_DEPENDENCIES:
+        visit(capability_code)
+
 
 def _validate_policy() -> None:
     if set(ROLE_CAPABILITY_GRANTS) != ROLE_CODES:
@@ -603,6 +681,21 @@ def _validate_policy() -> None:
             raise RuntimeError(
                 f"designation compatibility references unknown role for {designation_code}"
             )
+
+    _validate_dependency_graph()
+
+    for role_code, grants in ROLE_CAPABILITY_GRANTS.items():
+        if resolve_capability_dependencies(grants) != grants:
+            raise RuntimeError(f"role baseline violates capability dependencies for {role_code}")
+
+    for designation_code, designation_grants in DESIGNATION_CAPABILITY_GRANTS.items():
+        for role_code in DESIGNATION_ROLE_COMPATIBILITY[designation_code]:
+            combined = ROLE_CAPABILITY_GRANTS[role_code] | designation_grants
+            if resolve_capability_dependencies(combined) != combined:
+                raise RuntimeError(
+                    "designation baseline violates capability dependencies for "
+                    f"{designation_code} with {role_code}"
+                )
 
 
 def designation_role_compatible(*, designation_code: str, role_code: str) -> bool:
