@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
 from django.db.models import Q
+from django.utils import timezone
 
 from compass.accounts.models import Role, User
 from compass.audit.actions import (
@@ -55,6 +57,21 @@ class ServiceCatalogConflict(ServiceCatalogError):
     pass
 
 
+class ServiceSchedulingConsequenceReviewRequired(ServiceCatalogConflict):
+    """A legal Service update needs explicit review of scheduling consequences."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        existing_appointment_dependency_detected: bool,
+        counseling_online_enabled: bool,
+    ) -> None:
+        super().__init__(message)
+        self.existing_appointment_dependency_detected = existing_appointment_dependency_detected
+        self.counseling_online_enabled = counseling_online_enabled
+
+
 class CanonicalServiceRequired(ServiceCatalogConflict):
     """A normal catalog mutation would break required Counseling configuration."""
 
@@ -69,6 +86,16 @@ class ServicePage:
     page: int
     page_size: int
     has_next: bool
+
+
+@dataclass(frozen=True, slots=True)
+class _ServiceSchedulingConsequences:
+    existing_appointment_dependency_detected: bool
+    counseling_online_enabled: bool
+
+    @property
+    def requires_review(self) -> bool:
+        return self.existing_appointment_dependency_detected or self.counseling_online_enabled
 
 
 def normalize_service_code(value: str) -> str:
@@ -216,6 +243,47 @@ def _configured_provider_roles(service_id: UUID) -> frozenset[str]:
     )
 
 
+def _scheduling_consequences(
+    *,
+    service: Service,
+    current_modes: frozenset[str],
+    next_policy: str,
+    next_modes: frozenset[str],
+    now: datetime,
+) -> _ServiceSchedulingConsequences:
+    if not service.is_active:
+        return _ServiceSchedulingConsequences(False, False)
+
+    existing_dependency = False
+    current_scheduling_enabled = service.appointment_policy != AppointmentPolicy.NONE
+    if current_scheduling_enabled:
+        from compass.appointments.models import Appointment, AppointmentStatus
+
+        future_scheduled = Appointment.objects.filter(
+            service_id=service.pk,
+            status=AppointmentStatus.SCHEDULED,
+            starts_at__gt=now,
+        )
+        if next_policy == AppointmentPolicy.NONE:
+            existing_dependency = future_scheduled.exists()
+        else:
+            removed_modes = current_modes - next_modes
+            if removed_modes:
+                existing_dependency = future_scheduled.filter(
+                    delivery_mode__in=removed_modes
+                ).exists()
+
+    counseling_online_enabled = (
+        service.code == COUNSELING_SERVICE_CODE
+        and DeliveryMode.ONLINE not in current_modes
+        and DeliveryMode.ONLINE in next_modes
+    )
+    return _ServiceSchedulingConsequences(
+        existing_appointment_dependency_detected=existing_dependency,
+        counseling_online_enabled=counseling_online_enabled,
+    )
+
+
 def _service_queryset():
     return Service.objects.prefetch_related(
         "delivery_mode_assignments",
@@ -322,6 +390,8 @@ def update_service(
     service_id: UUID,
     changes: dict[str, object],
     context: AuditContext,
+    acknowledge_scheduling_consequences: bool = False,
+    now: datetime | None = None,
 ) -> Service:
     allowed = {
         "name",
@@ -335,6 +405,11 @@ def update_service(
     }
     if not set(changes) <= allowed:
         raise InvalidServiceCatalogInput("The Service update contains unsupported fields.")
+    if type(acknowledge_scheduling_consequences) is not bool:
+        raise InvalidServiceCatalogInput("acknowledge_scheduling_consequences must be a boolean.")
+    current_time = now or timezone.now()
+    if timezone.is_naive(current_time):
+        raise InvalidServiceCatalogInput("The Service update time must be timezone-aware.")
 
     with transaction.atomic():
         service = Service.objects.select_for_update().filter(pk=service_id).first()
@@ -395,7 +470,6 @@ def update_service(
                 provider_roles=next_roles,
             )
 
-        changed_fields: list[str] = []
         scalar_values = {
             "name": next_name,
             "description": next_description,
@@ -404,10 +478,9 @@ def update_service(
             "cancellation_cutoff_minutes": next_cutoff,
             "requires_current_inventory": next_requirement,
         }
-        for field, value in scalar_values.items():
-            if getattr(service, field) != value:
-                setattr(service, field, value)
-                changed_fields.append(field)
+        changed_fields = [
+            field for field, value in scalar_values.items() if getattr(service, field) != value
+        ]
         if current_modes != next_modes:
             changed_fields.append("delivery_modes")
         if current_roles != next_roles:
@@ -415,8 +488,26 @@ def update_service(
         if not changed_fields:
             return get_service(service.pk)
 
+        consequences = _scheduling_consequences(
+            service=service,
+            current_modes=current_modes,
+            next_policy=next_policy,
+            next_modes=next_modes,
+            now=current_time,
+        )
+        if consequences.requires_review and not acknowledge_scheduling_consequences:
+            raise ServiceSchedulingConsequenceReviewRequired(
+                "Review the scheduling consequences before saving this Service change.",
+                existing_appointment_dependency_detected=(
+                    consequences.existing_appointment_dependency_detected
+                ),
+                counseling_online_enabled=consequences.counseling_online_enabled,
+            )
+
         role_records = _provider_role_records(next_roles) if current_roles != next_roles else {}
         scalar_changed = [field for field in changed_fields if field in scalar_values]
+        for field in scalar_changed:
+            setattr(service, field, scalar_values[field])
         if scalar_changed:
             service.save(update_fields=[*scalar_changed, "updated_at"])
         if current_modes != next_modes:
@@ -432,13 +523,24 @@ def update_service(
                     for role_code in sorted(next_roles)
                 ]
             )
+        audit_metadata: dict[str, object] = {"changed_fields": changed_fields}
+        if consequences.requires_review:
+            audit_metadata.update(
+                {
+                    "scheduling_consequence_acknowledged": True,
+                    "existing_appointment_dependency_detected": (
+                        consequences.existing_appointment_dependency_detected
+                    ),
+                    "counseling_online_enabled": consequences.counseling_online_enabled,
+                }
+            )
         record_event(
             context=context,
             action=SERVICE_UPDATED,
             outcome=AuditOutcome.SUCCESS,
             target_type="service.catalog.service",
             target_id=service.pk,
-            metadata={"changed_fields": changed_fields},
+            metadata=audit_metadata,
         )
     return get_service(service.pk)
 

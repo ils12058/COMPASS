@@ -233,7 +233,8 @@ export function WeeklyScheduleEditor({
               Weekly schedule
             </h2>
             <p className="mt-2 text-sm text-muted">
-              Existing recurring Availability may be reviewed or removed.
+              Existing recurring Availability may be reviewed or removed. Changes
+              affect future bookable times; existing Appointments remain unchanged.
             </p>
           </div>
           {canMutate && windows.length > 0 ? (
@@ -283,7 +284,8 @@ export function WeeklyScheduleEditor({
             <AlertDialogTitle>Clear the complete weekly schedule?</AlertDialogTitle>
             <AlertDialogDescription>
               This removes every recurring Availability window for this provider.
-              Historical unavailability records are not removed.
+              Existing Appointments remain scheduled. Historical unavailability
+              records are not removed.
             </AlertDialogDescription>
             <ActionFeedback error={error} notice={notice} />
             <div className="mt-6 flex justify-end gap-2">
@@ -317,7 +319,9 @@ export function WeeklyScheduleEditor({
             Weekly schedule
           </h2>
           <p className="mt-2 text-sm text-muted">
-            Saving replaces the complete recurring weekly configuration.
+            Saving replaces the complete recurring weekly configuration. The new
+            schedule controls future bookable times; existing Appointments remain
+            unchanged and must be reviewed separately if needed.
           </p>
         </div>
         {canMutate ? (

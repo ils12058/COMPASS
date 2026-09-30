@@ -209,6 +209,13 @@ export function ServiceDetailPage() {
                   .filter(Boolean)
                   .join(", ")}
           </p>
+          {systemRequired &&
+          service.delivery_modes.includes(DeliveryMode.ONLINE) ? (
+            <p className="mt-2 max-w-4xl text-xs leading-5 text-muted">
+              Online Counseling can be scheduled where Availability permits it.
+              E-Counseling provider readiness is managed separately.
+            </p>
+          ) : null}
         </section>
 
         <section className="py-7" aria-labelledby="service-appointment-heading">
