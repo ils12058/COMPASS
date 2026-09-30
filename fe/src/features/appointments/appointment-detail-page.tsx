@@ -34,6 +34,7 @@ import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import { isCounselingService } from "@/features/counseling/canonical-counseling-service";
 import {
   AppointmentActionBlocker,
+  AppointmentActionConsequenceCode,
   AppointmentStatus,
   DeliveryMode,
   type AppointmentActionsResponse,
@@ -56,6 +57,16 @@ import {
   useAppointmentsReassign,
   useAppointmentsReschedule,
 } from "@/lib/api/generated/appointments/appointments";
+import {
+  getECounselingGetAssignedWorkspaceQueryKey,
+  getECounselingGetMyWorkspaceQueryKey,
+} from "@/lib/api/generated/e-counseling/e-counseling";
+import {
+  getRoutineInterviewsGetAssignedQueryKey,
+  getRoutineInterviewsGetMineQueryKey,
+  getRoutineInterviewsListAssignedQueryKey,
+  getRoutineInterviewsListMineQueryKey,
+} from "@/lib/api/generated/routine-interviews/routine-interviews";
 
 type ConfirmAction = "cancel" | "complete" | "no-show";
 type StepUpAction = "cancel" | "reschedule" | "reassign";
@@ -126,6 +137,8 @@ const blockerExplanations: Partial<Record<AppointmentActionBlocker, string>> = {
   [AppointmentActionBlocker.CUTOFF_PASSED]: "The self-service cutoff saved with this Appointment has passed.",
   [AppointmentActionBlocker.CURRENT_STUDENT_REQUIRED]: "Only a current Student can reschedule an Appointment.",
   [AppointmentActionBlocker.ECOUNSELING_ROOM_LINKED]: "An E-Counseling room is already linked to this Appointment.",
+  [AppointmentActionBlocker.ECOUNSELING_ACCESS_STARTED]: "This Appointment can no longer be cancelled because its online counseling access period has begun.",
+  [AppointmentActionBlocker.ECOUNSELING_ACCESS_OPEN]: "Wait until the online counseling access or rejoin period has ended.",
   [AppointmentActionBlocker.ROUTINE_INTERVIEW_LINKED]: "A Routine Interview is already linked to this Appointment.",
   [AppointmentActionBlocker.COUNSELING_ENCOUNTER_LINKED]: "A Counseling encounter is already linked to this Appointment.",
 };
@@ -144,6 +157,7 @@ function ActionConfirmation({
   selfCancellation,
   referenceCode,
   error,
+  routineInterviewWillClose,
   onClose,
   onConfirm,
 }: {
@@ -152,6 +166,7 @@ function ActionConfirmation({
   selfCancellation: boolean;
   referenceCode: string;
   error: string | null;
+  routineInterviewWillClose: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -196,6 +211,11 @@ function ActionConfirmation({
         >
           <DialogTitle>{selected.title}</DialogTitle>
           <DialogDescription>{selected.description}</DialogDescription>
+          {routineInterviewWillClose ? (
+            <p className="mt-3 text-sm leading-6 text-muted">
+              The linked Routine Interview will remain in COMPASS for record history, but no further intake or evaluation changes can be made.
+            </p>
+          ) : null}
           {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
           <div className="mt-6 flex flex-wrap justify-end gap-2">
             <Button variant="secondary" disabled={busy} onClick={onClose}>Keep Appointment</Button>
@@ -300,6 +320,34 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
     await Promise.all(invalidations);
   }
 
+  async function refreshDependentWorkflowQueries(routineInterviewId?: string) {
+    const invalidations = [
+      queryClient.invalidateQueries({
+        queryKey: getECounselingGetMyWorkspaceQueryKey(appointmentId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: getECounselingGetAssignedWorkspaceQueryKey(appointmentId),
+      }),
+    ];
+    if (routineInterviewId) {
+      invalidations.push(
+        queryClient.invalidateQueries({
+          queryKey: getRoutineInterviewsGetMineQueryKey(routineInterviewId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getRoutineInterviewsGetAssignedQueryKey(routineInterviewId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getRoutineInterviewsListMineQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getRoutineInterviewsListAssignedQueryKey(),
+        }),
+      );
+    }
+    await Promise.all(invalidations);
+  }
+
   function handleMutationError(
     caught: unknown,
     fallback: string,
@@ -326,20 +374,39 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
 
   async function confirmMutation() {
     if (!appointment || !confirmAction) return;
+    const routineConsequence =
+      confirmAction === "cancel"
+        ? actions?.cancel.consequences.find(
+            (item) => item.code === AppointmentActionConsequenceCode.ROUTINE_INTERVIEW_WILL_CLOSE,
+          )
+        : confirmAction === "no-show"
+          ? actions?.mark_no_show.consequences.find(
+              (item) => item.code === AppointmentActionConsequenceCode.ROUTINE_INTERVIEW_WILL_CLOSE,
+            )
+          : undefined;
     setError(null);
     setNotice(null);
     try {
       if (confirmAction === "cancel") {
         await cancel.mutateAsync({ appointmentId });
-        await refreshAppointmentQueries(true);
+        await Promise.all([
+          refreshAppointmentQueries(true),
+          refreshDependentWorkflowQueries(routineConsequence?.routine_interview_id),
+        ]);
         setNotice("Appointment cancelled.");
       } else if (confirmAction === "complete") {
         await complete.mutateAsync({ appointmentId });
-        await refreshAppointmentQueries();
+        await Promise.all([
+          refreshAppointmentQueries(),
+          refreshDependentWorkflowQueries(),
+        ]);
         setNotice("Appointment completed.");
       } else {
         await noShow.mutateAsync({ appointmentId });
-        await refreshAppointmentQueries();
+        await Promise.all([
+          refreshAppointmentQueries(),
+          refreshDependentWorkflowQueries(routineConsequence?.routine_interview_id),
+        ]);
         setNotice("Appointment marked no-show.");
       }
       setConfirmAction(null);
@@ -464,6 +531,16 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   }
 
   const historyItems = historyQuery.data?.data.items ?? [];
+  const confirmationRoutineConsequence =
+    confirmAction === "cancel"
+      ? actions?.cancel.consequences.find(
+          (item) => item.code === AppointmentActionConsequenceCode.ROUTINE_INTERVIEW_WILL_CLOSE,
+        )
+      : confirmAction === "no-show"
+        ? actions?.mark_no_show.consequences.find(
+            (item) => item.code === AppointmentActionConsequenceCode.ROUTINE_INTERVIEW_WILL_CLOSE,
+          )
+        : undefined;
 
   return (
     <section aria-labelledby="appointment-detail-heading">
@@ -692,6 +769,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         selfCancellation={access.isStudent}
         referenceCode={appointment.reference_code}
         error={error?.scope === "confirm" ? error.message : null}
+        routineInterviewWillClose={Boolean(confirmationRoutineConsequence)}
         onClose={() => setConfirmAction(null)}
         onConfirm={() => void confirmMutation()}
       />
