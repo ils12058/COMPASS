@@ -1,6 +1,7 @@
 """Environment-driven Django settings for local-staging and live-staging."""
 
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from compass.common.build_metadata import read_project_version, validate_runtime_build_identity
 from compass.common.config import env, env_bool, env_csv, env_float, env_int, required_env
@@ -422,6 +423,11 @@ if not 60 <= RESOURCE_DOWNLOAD_URL_TTL_SECONDS <= 900:
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = env("TIME_ZONE", "UTC")
+INSTITUTION_TIME_ZONE = env("INSTITUTION_TIME_ZONE", "Asia/Manila")
+try:
+    ZoneInfo(INSTITUTION_TIME_ZONE)
+except ZoneInfoNotFoundError as exc:
+    raise ValueError("INSTITUTION_TIME_ZONE must be a valid IANA timezone") from exc
 USE_I18N = True
 USE_TZ = True
 
