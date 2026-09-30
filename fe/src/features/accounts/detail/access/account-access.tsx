@@ -54,6 +54,11 @@ import {
   type DesignationCode,
   type RoleCode,
 } from "@/lib/api/generated/model";
+import {
+  formatInstitutionalDateTime,
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateTimeInputToISO,
+} from "@/lib/institutional-time";
 
 type Confirmation =
   | { kind: "role"; role: RoleCode }
@@ -103,6 +108,9 @@ export function AccountAccess() {
   const [overrideEffect, setOverrideEffect] = useState<Effect>(Effect.GRANT);
   const [overrideReason, setOverrideReason] = useState("");
   const [overrideExpiry, setOverrideExpiry] = useState("");
+  const [overrideExpiryError, setOverrideExpiryError] = useState<string | null>(
+    null,
+  );
   const [confirm, setConfirm] = useState<Confirmation>(null);
   const busy =
     changeRole.isPending ||
@@ -117,19 +125,23 @@ export function AccountAccess() {
   function reviewOverride(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!overrideCapability || !overrideReason.trim()) return;
-    const expiry = overrideExpiry ? new Date(overrideExpiry) : null;
-    if (expiry && Number.isNaN(expiry.getTime())) {
-      action.setError("Enter a valid expiry date and time.");
+    const expiresAt = overrideExpiry
+      ? institutionalDateTimeInputToISO(overrideExpiry)
+      : null;
+    if (overrideExpiry && !expiresAt) {
+      action.setError(null);
+      setOverrideExpiryError("Enter a valid expiry date and time.");
       return;
     }
     action.setError(null);
+    setOverrideExpiryError(null);
     setOverrideOpen(false);
     setConfirm({
       kind: "setOverride",
       capability: overrideCapability,
       effect: overrideEffect,
       reason: overrideReason.trim(),
-      expires_at: expiry?.toISOString() ?? null,
+      expires_at: expiresAt,
     });
   }
 
@@ -213,6 +225,7 @@ export function AccountAccess() {
       setOverrideCapability("");
       setOverrideReason("");
       setOverrideExpiry("");
+      setOverrideExpiryError(null);
     }
     await invalidate();
     action.setNotice(
@@ -250,7 +263,7 @@ export function AccountAccess() {
     if (item.kind === "setOverride")
       return [
         `${item.effect === Effect.GRANT ? "Grant" : "Revoke"} ${effective.data?.data.capabilities.find((capability) => capability.code === item.capability)?.name ?? item.capability} for ${name}?`,
-        `Reason: ${item.reason}${item.expires_at ? `. Expires: ${formatAccountDate(item.expires_at)}` : ". No expiry set."}`,
+        `Reason: ${item.reason}${item.expires_at ? `. Expires: ${formatInstitutionalDateTime(item.expires_at)} ${INSTITUTION_TIME_ZONE_LABEL}` : ". No expiry set."}`,
         "Set override",
         "Setting override…",
       ];
@@ -503,6 +516,7 @@ export function AccountAccess() {
               variant="secondary"
               onClick={() => {
                 action.setError(null);
+                setOverrideExpiryError(null);
                 setOverrideOpen(true);
               }}
             >
@@ -568,7 +582,9 @@ export function AccountAccess() {
                         "Unknown"}
                       . Expiry:{" "}
                       {override.expires_at
-                        ? formatAccountDate(override.expires_at)
+                        ? `${formatInstitutionalDateTime(
+                            override.expires_at,
+                          )} ${INSTITUTION_TIME_ZONE_LABEL}`
                         : "None"}
                       .
                     </p>
@@ -662,8 +678,21 @@ export function AccountAccess() {
                 id="override-expiry"
                 type="datetime-local"
                 value={overrideExpiry}
-                onChange={(event) => setOverrideExpiry(event.target.value)}
+                aria-invalid={overrideExpiryError ? true : undefined}
+                aria-describedby={`override-expiry-hint${overrideExpiryError ? " override-expiry-error" : ""}`}
+                onChange={(event) => {
+                  setOverrideExpiry(event.target.value);
+                  setOverrideExpiryError(null);
+                }}
               />
+              <p id="override-expiry-hint" className="text-xs leading-5 text-muted">
+                Times use {INSTITUTION_TIME_ZONE_LABEL}.
+              </p>
+              {overrideExpiryError ? (
+                <p id="override-expiry-error" className="text-sm text-danger">
+                  {overrideExpiryError}
+                </p>
+              ) : null}
             </div>
             {action.error ? (
               <p role="alert" className="text-sm text-danger">

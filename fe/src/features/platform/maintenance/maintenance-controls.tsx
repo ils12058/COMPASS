@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { MaintenanceResponse } from "@/lib/api/generated/model";
 import {
-  currentLocalDateTimeValue,
-  toLocalDateTimeValue,
-} from "@/features/platform/maintenance/maintenance-time";
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateTimeInputValue,
+  isoToInstitutionalDateTimeInput,
+} from "@/lib/institutional-time";
 
 export type MaintenanceDraft = {
   message: string;
@@ -67,16 +68,19 @@ export function ManualMaintenanceForm({
           <Input
             id="manual-maintenance-expected-end"
             type="datetime-local"
-            min={currentLocalDateTimeValue()}
+            min={institutionalDateTimeInputValue()}
             value={draft.expectedEnd}
+            aria-describedby="manual-maintenance-timezone-help"
             onChange={(event) =>
               onChange({ ...draft, expectedEnd: event.target.value })
             }
           />
-          <p className="text-xs leading-5 text-muted">
-            Times use this browser&apos;s local time zone and are submitted as an
-            absolute timestamp. Expected end is informational; it does not
-            automatically disable Maintenance Mode.
+          <p
+            id="manual-maintenance-timezone-help"
+            className="text-xs leading-5 text-muted"
+          >
+            Times use {INSTITUTION_TIME_ZONE_LABEL}. Expected end is
+            informational; it does not automatically disable Maintenance Mode.
           </p>
         </div>
         {error ? (
@@ -118,8 +122,8 @@ export function MaintenanceScheduleForm({
           Upcoming maintenance
         </h2>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Change the configured window or cancel it. The schedule takes effect
-          according to server time.
+          Change the configured window or cancel it. The schedule uses
+          {INSTITUTION_TIME_ZONE_LABEL}.
         </p>
         <Button className="mt-4" variant="secondary" onClick={onOpen}>
           Change schedule
@@ -135,8 +139,8 @@ export function MaintenanceScheduleForm({
       </h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
         The message may be shown publicly. Maintenance becomes effective during
-        the configured server-side time window; no browser or Celery action is
-        required.
+        the configured window in {INSTITUTION_TIME_ZONE_LABEL}; no browser action
+        is required.
         {existing ? " Saving replaces the upcoming schedule." : ""}
       </p>
       <form className="mt-5 max-w-2xl space-y-5" onSubmit={onSubmit}>
@@ -162,9 +166,10 @@ export function MaintenanceScheduleForm({
             <Input
               id="scheduled-maintenance-start"
               type="datetime-local"
-              min={currentLocalDateTimeValue()}
+              min={institutionalDateTimeInputValue()}
               required
               value={draft.startsAt}
+              aria-describedby="scheduled-maintenance-timezone-help"
               onChange={(event) =>
                 onChange({ ...draft, startsAt: event.target.value })
               }
@@ -175,18 +180,21 @@ export function MaintenanceScheduleForm({
             <Input
               id="scheduled-maintenance-end"
               type="datetime-local"
-              min={draft.startsAt || currentLocalDateTimeValue()}
+              min={draft.startsAt || institutionalDateTimeInputValue()}
               required
               value={draft.endsAt}
+              aria-describedby="scheduled-maintenance-timezone-help"
               onChange={(event) =>
                 onChange({ ...draft, endsAt: event.target.value })
               }
             />
           </div>
         </div>
-        <p className="text-xs leading-5 text-muted">
-          Times use this browser&apos;s local time zone and are submitted as
-          absolute timestamps.
+        <p
+          id="scheduled-maintenance-timezone-help"
+          className="text-xs leading-5 text-muted"
+        >
+          Times use {INSTITUTION_TIME_ZONE_LABEL}.
         </p>
         {error ? (
           <p role="alert" className="text-sm text-danger">{error}</p>
@@ -216,7 +224,7 @@ export function initialScheduleDraft(
 ): ScheduleDraft {
   return {
     message: maintenance.message,
-    startsAt: toLocalDateTimeValue(maintenance.scheduled_start_at),
-    endsAt: toLocalDateTimeValue(maintenance.scheduled_end_at),
+    startsAt: isoToInstitutionalDateTimeInput(maintenance.scheduled_start_at),
+    endsAt: isoToInstitutionalDateTimeInput(maintenance.scheduled_end_at),
   };
 }

@@ -29,21 +29,11 @@ import {
   type ExceptionCreateRequest,
   type ExceptionResponse,
 } from "@/lib/api/generated/model";
-
-function formatDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Date unavailable";
-  return new Intl.DateTimeFormat("en-PH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
-function toAwareIso(value: string): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
+import {
+  formatInstitutionalDateTime,
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateTimeInputToISO,
+} from "@/lib/institutional-time";
 
 function ExceptionList({
   items,
@@ -67,7 +57,8 @@ function ExceptionList({
         >
           <div className="min-w-0">
             <p className="font-medium text-ink">
-              {formatDateTime(item.starts_at)} – {formatDateTime(item.ends_at)}
+              {formatInstitutionalDateTime(item.starts_at)} –{" "}
+              {formatInstitutionalDateTime(item.ends_at)}
             </p>
             <p className="mt-1 text-sm text-muted">
               {modeScopeLabel(item.mode_scope)}
@@ -162,8 +153,8 @@ export function UnavailabilitySection({
     event.preventDefault();
     setLocalError(null);
 
-    const startsIso = toAwareIso(startsAt);
-    const endsIso = toAwareIso(endsAt);
+    const startsIso = institutionalDateTimeInputToISO(startsAt);
+    const endsIso = institutionalDateTimeInputToISO(endsAt);
     if (!startsIso || !endsIso) {
       setLocalError("Enter a valid start and end date/time.");
       return;
@@ -226,6 +217,7 @@ export function UnavailabilitySection({
           </h2>
           <p className="mt-2 text-sm text-muted">
             Dated unavailability removes time from recurring Availability.
+            Times use {INSTITUTION_TIME_ZONE_LABEL}.
           </p>
         </div>
         {canCreate ? (
@@ -305,6 +297,7 @@ export function UnavailabilitySection({
                 type="datetime-local"
                 required
                 value={startsAt}
+                aria-describedby="unavailability-timezone-help"
                 onChange={(event) => setStartsAt(event.target.value)}
               />
             </div>
@@ -315,9 +308,16 @@ export function UnavailabilitySection({
                 type="datetime-local"
                 required
                 value={endsAt}
+                aria-describedby="unavailability-timezone-help"
                 onChange={(event) => setEndsAt(event.target.value)}
               />
             </div>
+            <p
+              id="unavailability-timezone-help"
+              className="text-xs leading-5 text-muted"
+            >
+              From and Until use {INSTITUTION_TIME_ZONE_LABEL}.
+            </p>
             <div className="grid gap-2">
               <Label htmlFor="unavailability-mode">Applies to</Label>
               <select
@@ -384,9 +384,9 @@ export function UnavailabilitySection({
           <AlertDialogTitle>Remove this unavailability?</AlertDialogTitle>
           <AlertDialogDescription>
             {removal
-              ? formatDateTime(removal.starts_at) +
+              ? formatInstitutionalDateTime(removal.starts_at) +
                 " – " +
-                formatDateTime(removal.ends_at) +
+                formatInstitutionalDateTime(removal.ends_at) +
                 " will no longer subtract time from Availability."
               : "This unavailability will be removed."}
           </AlertDialogDescription>
