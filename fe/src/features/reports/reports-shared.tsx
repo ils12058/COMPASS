@@ -167,7 +167,9 @@ export function ReportDisclosureNotice({
   warnings: ReportDisclosureWarning[];
 }) {
   if (warnings.length === 0) return null;
-  const messages = [...new Set(warnings.map((warning) => warning.message.trim()))].filter(Boolean);
+  const messages = [
+    ...new Set(warnings.map((warning) => warning.message.trim())),
+  ].filter(Boolean);
   if (messages.length === 0) return null;
 
   return (
