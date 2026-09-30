@@ -312,7 +312,7 @@ def test_exception_validation_requires_aware_ordered_ranges_and_bounded_reason()
 
 
 @pytest.mark.django_db
-@override_settings(TIME_ZONE="Asia/Manila")
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
 def test_effective_availability_intersects_office_provider_and_subtracts_provider_exception():
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")

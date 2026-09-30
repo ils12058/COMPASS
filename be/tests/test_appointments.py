@@ -232,7 +232,7 @@ def test_appointment_capability_policy_preserves_business_authority_boundaries()
 
 
 @pytest.mark.django_db
-@override_settings(TIME_ZONE="Asia/Manila")
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
 def test_booking_creates_scheduled_reservation_with_snapshot_reference_and_audit():
     sync_policy()
     actor = make_user("catalog-admin@example.edu", "IT_ADMIN")
