@@ -1,4 +1,4 @@
-from datetime import datetime, timezone as datetime_timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -23,7 +23,7 @@ def test_institution_timezone_is_independent_from_runtime_timezone():
 
 @override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
 def test_aware_instant_converts_to_institution_time():
-    instant = datetime(2026, 10, 2, 14, 0, tzinfo=datetime_timezone.utc)
+    instant = datetime(2026, 10, 2, 14, 0, tzinfo=UTC)
 
     converted = to_institution_time(instant)
 
@@ -32,7 +32,7 @@ def test_aware_instant_converts_to_institution_time():
 
 @override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
 def test_institution_today_uses_institutional_calendar_boundary():
-    instant = datetime(2026, 9, 30, 17, 0, tzinfo=datetime_timezone.utc)
+    instant = datetime(2026, 9, 30, 17, 0, tzinfo=UTC)
 
     assert institution_today(instant).isoformat() == "2026-10-01"
 
