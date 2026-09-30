@@ -22,6 +22,16 @@ function normalizeApiUrl(url: string): string {
   throw new Error(`API request is outside the COMPASS boundary: ${url}`);
 }
 
+function resolveRequestUrl(requestUrl: string): string {
+  if (typeof window !== "undefined") return requestUrl;
+
+  const apiBaseUrl = process.env.COMPASS_API_BASE_URL?.replace(/\/$/, "");
+  if (!apiBaseUrl) {
+    throw new Error("COMPASS_API_BASE_URL is required for server-side API reads.");
+  }
+  return `${apiBaseUrl}${requestUrl}`;
+}
+
 function serializeHeaders(headers: Headers): Record<string, string> {
   const values: Record<string, string> = {};
   headers.forEach((value, key) => {
@@ -44,7 +54,7 @@ export async function compassFetch<T>(
     headers.set("X-CSRFToken", await getCsrfToken());
   }
 
-  const response = await fetch(requestUrl, {
+  const response = await fetch(resolveRequestUrl(requestUrl), {
     ...options,
     method,
     headers,

@@ -8,6 +8,10 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: shouldPreventIndexing
       ? { userAgent: "*", disallow: "/" }
-      : { userAgent: "*", allow: "/" },
+      : {
+          userAgent: "*",
+          allow: "/",
+          disallow: ["/portal", "/login", "/password"],
+        },
   };
 }

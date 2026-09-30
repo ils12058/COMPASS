@@ -8,6 +8,7 @@ import { PortalBoundary } from "@/features/portal/components/portal-boundary";
 // suffix for every portal page, so the portal restates it.
 export const metadata: Metadata = {
   title: { absolute: "COMPASS", template: "%s | COMPASS" },
+  robots: { index: false, follow: false },
 };
 
 function PortalLoading() {

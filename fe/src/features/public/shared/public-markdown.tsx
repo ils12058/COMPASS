@@ -8,6 +8,17 @@ export function PublicMarkdown({ children }: { children: string }) {
     <div className="public-markdown">
       <ReactMarkdown
         components={{
+          img({ alt }) {
+            const imageAlt = alt?.trim();
+            if (!imageAlt) return null;
+
+            return (
+              <span className="text-muted">
+                <span className="text-ink">{imageAlt}</span>{" "}
+                <span>[image not displayed]</span>
+              </span>
+            );
+          },
           a({ children: linkChildren, href }) {
             if (!href) return <span>{linkChildren}</span>;
 
