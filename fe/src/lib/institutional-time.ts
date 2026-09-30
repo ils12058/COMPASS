@@ -87,7 +87,7 @@ function partsInZone(date: Date, timeZone: string): CivilDateTimeParts | null {
       formatter
         .formatToParts(date)
         .filter((part) => part.type !== "literal")
-        .map((part) => [part.type, part.value]),
+        .map((part): [string, string] => [part.type, part.value]),
     );
     const parts: CivilDateTimeParts = {
       year: Number(values.get("year")),
