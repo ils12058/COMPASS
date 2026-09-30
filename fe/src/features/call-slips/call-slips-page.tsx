@@ -16,7 +16,7 @@ import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { useCallSlipsList, useCallSlipsListMy } from "@/lib/api/generated/call-slips/call-slips";
 import { CallSlipDestinationTypeValue, CallSlipLifecycleStateValue } from "@/lib/api/generated/model";
 import type { CallSlipDestinationTypeValue as CallSlipDestinationType } from "@/lib/api/generated/model";
-import { formatDateTime } from "@/lib/date-time";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export type CallSlipListFilters = {
   search: string;
@@ -149,7 +149,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
             {items.map((slip) => (
               <li key={slip.id} className="grid gap-x-8 gap-y-2 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                 <div>
-                  <Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Call Slip for {formatDateTime(slip.report_at)}</Link>
+                  <Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Call Slip for {formatInstitutionalDateTime(slip.report_at)}</Link>
                 </div>
                 <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                   <div><dt className="text-xs font-semibold text-muted">Destination</dt><dd className="mt-1 text-ink">{callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</dd></div>
@@ -275,7 +275,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
               <li key={slip.id} className="space-y-2 py-4">
                 <Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.student_name_snapshot}</Link>
                 <p className="text-sm text-ink">{slip.course_year_snapshot}</p>
-                <p className="text-sm text-muted">Report {formatDateTime(slip.report_at)} · {callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</p>
+                <p className="text-sm text-muted">Report {formatInstitutionalDateTime(slip.report_at)} · {callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</p>
                 <p className="text-sm text-muted">Issued by {slip.issued_by_name_snapshot} · {callSlipStateLabel(slip.state)}</p>
                 {slip.referral ? <p className="text-sm text-muted">Referral {referralAccess.canView ? <Link href={`/portal/referrals/${slip.referral.id}`} className="font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.referral.reference_code}</Link> : slip.referral.reference_code}</p> : null}
               </li>
@@ -290,7 +290,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
               <tbody className="divide-y divide-border">{items.map((slip) => (
                 <tr key={slip.id} className="align-top">
                   <th scope="row" className="px-3 py-4 font-normal"><Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.student_name_snapshot}</Link></th>
-                  <td className="px-3 py-4 text-ink">{slip.course_year_snapshot}</td><td className="px-3 py-4 text-ink">{formatDateTime(slip.report_at)}</td><td className="px-3 py-4 text-ink">{callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</td><td className="px-3 py-4 text-ink">{slip.issued_by_name_snapshot}</td><td className="px-3 py-4 text-ink">{callSlipStateLabel(slip.state)}</td>
+                  <td className="px-3 py-4 text-ink">{slip.course_year_snapshot}</td><td className="px-3 py-4 text-ink">{formatInstitutionalDateTime(slip.report_at)}</td><td className="px-3 py-4 text-ink">{callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</td><td className="px-3 py-4 text-ink">{slip.issued_by_name_snapshot}</td><td className="px-3 py-4 text-ink">{callSlipStateLabel(slip.state)}</td>
                   <td className="px-3 py-4 text-ink">{slip.referral ? referralAccess.canView ? <Link href={`/portal/referrals/${slip.referral.id}`} className="font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.referral.reference_code}</Link> : slip.referral.reference_code : <span className="text-muted">—</span>}</td>
                 </tr>
               ))}</tbody>

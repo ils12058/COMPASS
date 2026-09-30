@@ -32,7 +32,7 @@ import {
 import { resourceErrorMessage } from "@/features/resources/resource-errors";
 import { useResourcesListManaged } from "@/lib/api/generated/resources/resources";
 import { ResourceCategoryValue, ResourceKindValue } from "@/lib/api/generated/model";
-import { formatDateTime } from "@/lib/date-time";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 const clearLinkClass =
   "inline-flex min-h-10 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
@@ -203,7 +203,7 @@ export function ResourcesListPage() {
                     <td className={`${bodyCell} text-ink`}>{publicationAudienceLabels[item.audience]}</td>
                     <td className={bodyCell}><PublicationStatusBadge status={item.status} /></td>
                     <td className={`${bodyCell} text-right tabular-nums text-ink`}>{item.display_order}</td>
-                    <td className={`${bodyCell} whitespace-nowrap text-ink`}>{formatDateTime(item.updated_at)}</td>
+                    <td className={`${bodyCell} whitespace-nowrap text-ink`}>{formatInstitutionalDateTime(item.updated_at)}</td>
                   </tr>
                 ))}
               </tbody>

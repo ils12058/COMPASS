@@ -19,7 +19,13 @@ import {
   type ReferralActionResponse,
   type ReferralDetailResponse,
 } from "@/lib/api/generated/model";
-import { formatDateTime, isFutureDateTimeInput, localDateInputValue } from "@/lib/date-time";
+import {
+  formatInstitutionalDateTime,
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateInputValue,
+  institutionalDateTimeInputToISO,
+  isFutureInstitutionalDateTimeInput,
+} from "@/lib/institutional-time";
 
 const actionRows: { type: ReferralActionTypeValue; label: string }[] = [
   { type: ReferralActionTypeValue.CALL_PARENT_GUARDIAN, label: "Call Parent/Guardian" },
@@ -79,7 +85,7 @@ export function ReferralActionsSection({
 function RecordedAction({ action }: { action: ReferralActionResponse }) {
   return (
     <div className="mt-2 space-y-1 text-sm text-muted">
-      <p><span className="font-semibold text-ink">Occurred:</span> {formatDateTime(action.occurred_at)}</p>
+      <p><span className="font-semibold text-ink">Occurred:</span> {formatInstitutionalDateTime(action.occurred_at)}</p>
       {action.remarks ? <p className="whitespace-pre-wrap break-words"><span className="font-semibold text-ink">Remarks:</span> {action.remarks}</p> : null}
     </div>
   );
@@ -109,7 +115,7 @@ export function ReferralActionEntry({
   const record = useMutation({
     mutationFn: () => referralsRecordAction(referral.id, {
       action_type: actionType,
-      occurred_at: new Date(occurredAt).toISOString(),
+      occurred_at: institutionalDateTimeInputToISO(occurredAt)!,
       remarks: remarks.trim(),
     }),
     retry: false,
@@ -141,11 +147,11 @@ export function ReferralActionEntry({
       return;
     }
     if (!occurredAt) return setError("Action occurred date and time is required.");
-    const occurredInstant = new Date(occurredAt);
-    if (Number.isNaN(occurredInstant.getTime())) return setError("Enter a valid action occurred date and time.");
-    if (isFutureDateTimeInput(occurredAt)) return setError("Action occurred date and time cannot be in the future.");
+    const occurredAtIso = institutionalDateTimeInputToISO(occurredAt);
+    if (!occurredAtIso) return setError("Enter a valid action occurred date and time.");
+    if (isFutureInstitutionalDateTimeInput(occurredAt)) return setError("Action occurred date and time cannot be in the future.");
     if (referral.received_at) {
-      if (occurredInstant.getTime() < new Date(referral.received_at).getTime()) {
+      if (new Date(occurredAtIso).getTime() < new Date(referral.received_at).getTime()) {
         return setError("Action occurred date and time cannot be earlier than Guidance receipt.");
       }
     } else if (occurredAt.slice(0, 10) < referral.referred_on) {
@@ -196,11 +202,18 @@ export function ReferralActionEntry({
               type="datetime-local"
               step="60"
               required
-              max={localDateInputValue() + "T23:59"}
+              max={institutionalDateInputValue() + "T23:59"}
               value={occurredAt}
               disabled={record.isPending || reconcileRequired}
+              aria-describedby={`action-occurred-timezone-${actionType}`}
               onChange={(event) => setOccurredAt(event.target.value)}
             />
+            <p
+              id={`action-occurred-timezone-${actionType}`}
+              className="text-xs leading-5 text-muted"
+            >
+              Times use {INSTITUTION_TIME_ZONE_LABEL}.
+            </p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor={`action-remarks-${actionType}`}>Remarks (optional)</Label>

@@ -25,7 +25,7 @@ import { ResourceLifecycleActions } from "@/features/resources/resource-lifecycl
 import { joinList, missingForPublication } from "@/features/resources/resource-presentation";
 import { useResourcesGetManaged } from "@/lib/api/generated/resources/resources";
 import { ResourceAudienceValue, ResourceKindValue, ResourceStatusValue } from "@/lib/api/generated/model";
-import { formatDateTime } from "@/lib/date-time";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -143,14 +143,14 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
         ) : null}
         <Detail label="Published">
           {item.published_at
-            ? `${formatDateTime(item.published_at)}${item.published_by ? ` by ${item.published_by.display_name}` : ""}`
+            ? `${formatInstitutionalDateTime(item.published_at)}${item.published_by ? ` by ${item.published_by.display_name}` : ""}`
             : "Not published"}
         </Detail>
         <Detail label="Created">
-          {formatDateTime(item.created_at)} by {item.created_by.display_name}
+          {formatInstitutionalDateTime(item.created_at)} by {item.created_by.display_name}
         </Detail>
         <Detail label="Last updated">
-          {formatDateTime(item.updated_at)} by {item.updated_by.display_name}
+          {formatInstitutionalDateTime(item.updated_at)} by {item.updated_by.display_name}
         </Detail>
       </dl>
 

@@ -22,7 +22,12 @@ import { EligibleStudentPicker, type EligibleStudentOption } from "@/features/po
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getReferralsListQueryKey, referralsCreate, useReferralsListEligibleStudents } from "@/lib/api/generated/referrals/referrals";
 import type { ReferralCreateRequest } from "@/lib/api/generated/model";
-import { dateTimeInputToISO, isFutureDateInput, isFutureDateTimeInput } from "@/lib/date-time";
+import {
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateTimeInputToISO,
+  isFutureInstitutionalDateInput,
+  isFutureInstitutionalDateTimeInput,
+} from "@/lib/institutional-time";
 
 type CreationIntent = { fingerprint: string; key: string };
 
@@ -73,13 +78,13 @@ export function ReferralCreatePage() {
     if (!reason.trim()) return setError("Reason for referral is required.");
     if (!referrerName.trim()) return setError("Referrer name is required.");
     if (!referredOn) return setError("Date referred is required.");
-    if (isFutureDateInput(referredOn)) return setError("Date referred cannot be in the future.");
+    if (isFutureInstitutionalDateInput(referredOn)) return setError("Date referred cannot be in the future.");
 
     let receivedAtIso: string | null = null;
     if (receivedAt) {
-      receivedAtIso = dateTimeInputToISO(receivedAt);
+      receivedAtIso = institutionalDateTimeInputToISO(receivedAt);
       if (!receivedAtIso) return setError("Enter a valid Guidance received date and time.");
-      if (isFutureDateTimeInput(receivedAt)) return setError("Guidance received date and time cannot be in the future.");
+      if (isFutureInstitutionalDateTimeInput(receivedAt)) return setError("Guidance received date and time cannot be in the future.");
       if (receivedAt.slice(0, 10) < referredOn) {
         return setError("Guidance received date cannot be earlier than Date referred.");
       }
@@ -186,7 +191,7 @@ export function ReferralCreatePage() {
             <div className="grid gap-2">
               <Label htmlFor="referral-received-at">Received by Guidance/GCO (optional)</Label>
               <Input id="referral-received-at" type="datetime-local" step="60" value={receivedAt} onChange={(event) => setReceivedAt(event.target.value)} />
-              <p className="text-xs leading-5 text-muted">Enter only when the actual Guidance/GCO receipt date and time are known.</p>
+              <p className="text-xs leading-5 text-muted">Enter only when the actual Guidance/GCO receipt date and time are known. Times use {INSTITUTION_TIME_ZONE_LABEL}.</p>
             </div>
           </div>
         </section>

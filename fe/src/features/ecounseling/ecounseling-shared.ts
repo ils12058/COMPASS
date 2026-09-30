@@ -1,4 +1,5 @@
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import {
   ECounselingCaptureStatus,
   ECounselingConsentDecision,
@@ -84,7 +85,5 @@ export function hasLiveOrTransitionalMedia(media: MediaWorkspaceState | undefine
 
 export function formatECounselingDateTime(value: string | null | undefined): string {
   if (!value) return "Not available";
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return formatInstitutionalDateTime(value);
 }

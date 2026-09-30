@@ -7,6 +7,7 @@ import type {
   AccountDetailResponse,
   AccountSummaryResponse,
 } from "@/lib/api/generated/model";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export const roleLabels: Record<RoleCode, string> = {
   [RoleCode.IT_ADMIN]: "IT Administrator",
@@ -47,12 +48,8 @@ export function accountName(
 
 export function formatAccountDate(value: string | null): string {
   if (!value) return "Not available";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not available";
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+  const formatted = formatInstitutionalDateTime(value);
+  return formatted === value ? "Not available" : formatted;
 }
 
 export function compatibleDesignation(role: RoleCode): DesignationCode | null {

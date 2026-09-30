@@ -1,7 +1,9 @@
+import { INSTITUTION_TIME_ZONE } from "@/lib/institutional-time";
+
 const formatter = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "medium",
   timeStyle: "short",
-  timeZone: "Asia/Manila",
+  timeZone: INSTITUTION_TIME_ZONE,
 });
 
 export function notificationTime(value: string): string {

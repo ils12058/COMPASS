@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useMeListActivity, useMeListSecurityActivity } from "@/lib/api/generated/activity/activity";
 import type { ActivityItemResponse, ActivityPageResponse } from "@/lib/api/generated/model";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 const PAGE_SIZE = 20;
 
@@ -27,7 +28,7 @@ function ActivityList({
           {items.map((item) => (
             <li key={item.id} className="py-5">
               <time dateTime={item.occurred_at} className="text-xs font-medium text-muted">
-                {new Date(item.occurred_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                {formatInstitutionalDateTime(item.occurred_at)}
               </time>
               <p className="mt-2 font-heading text-lg font-semibold text-ink">{item.title}</p>
               <p className="mt-1 text-sm leading-6 text-muted">{item.description}</p>

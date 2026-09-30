@@ -15,7 +15,7 @@ import {
   RefreshingNotice,
   useListSearchParams,
 } from "@/features/privacy-governance/privacy-governance-shared";
-import { formatDateTime } from "@/lib/date-time";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import {
   PrivacyActivityCategory,
   type PrivacyActivityItemResponse,
@@ -47,7 +47,7 @@ function ActivityItem({ item }: { item: PrivacyActivityItemResponse }) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="font-semibold text-ink">{item.title}</p>
         <time dateTime={item.occurred_at} className="text-xs text-muted">
-          {formatDateTime(item.occurred_at)}
+          {formatInstitutionalDateTime(item.occurred_at)}
         </time>
       </div>
       <p className="mt-1 max-w-3xl break-words text-sm text-ink">{item.description}</p>

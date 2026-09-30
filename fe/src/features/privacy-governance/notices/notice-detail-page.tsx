@@ -41,7 +41,7 @@ import {
   usePrivacyAccess,
   usePrivacyAction,
 } from "@/features/privacy-governance/privacy-governance-shared";
-import { formatDateOnly, formatDateTime } from "@/lib/date-time";
+import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 import type { NoticeResponse, RevisionResponse } from "@/lib/api/generated/model";
 import {
   usePrivacyGovernanceCreateNoticeRevision,
@@ -199,7 +199,7 @@ function CreateRevisionForm({
 function RevisionRow({ revision }: { revision: RevisionResponse }) {
   const details = [
     revision.effective_on ? `Effective ${formatDateOnly(revision.effective_on)}` : "No effective date",
-    revision.published_at ? `Published ${formatDateTime(revision.published_at)}` : null,
+    revision.published_at ? `Published ${formatInstitutionalDateTime(revision.published_at)}` : null,
     audienceSummary(revision.audiences),
     revision.requires_acknowledgment ? "Acknowledgment requested" : "No acknowledgment requested",
   ].filter((value): value is string => Boolean(value));
@@ -293,7 +293,7 @@ export function NoticeDetailPage() {
           <>
             <span className="break-all font-mono text-ink">{family.code}</span>
             <ActiveBadge active={family.is_active} />
-            <span>Updated {formatDateTime(family.updated_at)}</span>
+            <span>Updated {formatInstitutionalDateTime(family.updated_at)}</span>
           </>
         }
         action={

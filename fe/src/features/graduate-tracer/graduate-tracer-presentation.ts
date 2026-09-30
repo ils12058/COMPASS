@@ -43,6 +43,11 @@ import {
   GTSUnemploymentReasonValue as UnemploymentReason,
   GTSUsefulCompetencyValue as UsefulCompetency,
 } from "@/lib/api/generated/model";
+import {
+  formatDateOnly,
+  formatInstitutionalDateTime,
+  institutionalDateInputValue,
+} from "@/lib/institutional-time";
 
 export type GraduateTracerFormDraft = Omit<
   GraduateTracerDraftPayload,
@@ -398,16 +403,13 @@ export function yesNoLabel(value: boolean | null | undefined): string {
 
 export function formatGraduateTracerDate(value: string | null | undefined): string {
   if (!value) return "Not provided";
-  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return "Not provided";
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(date);
+  return formatDateOnly(value.slice(0, 10));
 }
 
 export function formatGraduateTracerDateTime(value: string | null | undefined): string {
   if (!value) return "Not provided";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not provided";
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  const formatted = formatInstitutionalDateTime(value);
+  return formatted === value ? "Not provided" : formatted;
 }
 
 export function getGraduateTracerDraftRowIssues(draft: GraduateTracerFormDraft): string[] {
@@ -418,13 +420,20 @@ export function getGraduateTracerDraftRowIssues(draft: GraduateTracerFormDraft):
       return;
     }
     const year = Number(row.year_graduated);
-    if (!Number.isInteger(year) || year < 1900 || year > new Date().getFullYear()) {
+    const currentInstitutionalYear = Number(
+      institutionalDateInputValue().slice(0, 4),
+    );
+    if (
+      !Number.isInteger(year) ||
+      year < 1900 ||
+      year > currentInstitutionalYear
+    ) {
       issues.push(`Degree ${index + 1} needs a valid graduation year from 1900 through the current year.`);
     }
   });
   draft.professional_exams.forEach((row, index) => {
     if (!row.examination_name.trim()) issues.push(`Examination ${index + 1} needs a name before saving.`);
-    if (row.date_taken && row.date_taken > new Date().toISOString().slice(0, 10)) {
+    if (row.date_taken && row.date_taken > institutionalDateInputValue()) {
       issues.push(`Examination ${index + 1} date cannot be in the future.`);
     }
   });
@@ -443,7 +452,7 @@ export function getGraduateTracerSubmissionIssues(draft: GraduateTracerFormDraft
   if (!draft.civil_status) add("graduate-tracer-general", "Select your civil status.");
   if (!draft.sex) add("graduate-tracer-general", "Select your sex.");
   if (!draft.birth_date) add("graduate-tracer-general", "Enter your birthday.");
-  else if (draft.birth_date > new Date().toISOString().slice(0, 10)) add("graduate-tracer-general", "Birthday cannot be in the future.");
+  else if (draft.birth_date > institutionalDateInputValue()) add("graduate-tracer-general", "Birthday cannot be in the future.");
   if (!draft.region_of_origin) add("graduate-tracer-general", "Select your region of origin.");
   if (!draft.province?.trim()) add("graduate-tracer-general", "Enter your province.");
   if (!draft.residence_location) add("graduate-tracer-general", "Select City or Municipality.");

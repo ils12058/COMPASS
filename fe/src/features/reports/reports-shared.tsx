@@ -10,7 +10,7 @@ import {
   readApiErrorCode,
   readApiErrorMessage,
 } from "@/lib/api/errors";
-import { formatDateTime } from "@/lib/date-time";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 const REPORT_ERROR_COPY: Record<string, string> = {
   permission_denied: "This report request is outside your current Reports scope.",
@@ -165,5 +165,5 @@ export function formatReportPercentage(value: number): string {
 }
 
 export function reportGeneratedAt(value: string): string {
-  return formatDateTime(value);
+  return formatInstitutionalDateTime(value);
 }

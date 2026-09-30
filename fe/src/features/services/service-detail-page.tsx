@@ -34,6 +34,7 @@ import {
   useServicesEnable,
   useServicesGet,
 } from "@/lib/api/generated/services/services";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 function policyLabel(policy: AppointmentPolicy): string {
   if (policy === AppointmentPolicy.NONE) return "No appointment";
@@ -49,10 +50,7 @@ function policyDescription(policy: AppointmentPolicy): string {
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("en-PH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatInstitutionalDateTime(value);
 }
 
 export function ServiceDetailPage() {

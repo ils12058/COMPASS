@@ -21,9 +21,19 @@ import { callSlipsCreateFromReferral, getCallSlipsListQueryKey, useCallSlipsList
 import { getReferralsGetQueryKey, useReferralsGet } from "@/lib/api/generated/referrals/referrals";
 import { CallSlipLifecycleStateValue, ReferralActionTypeValue } from "@/lib/api/generated/model";
 import type { CallSlipCreateFromReferralRequest, CallSlipOperationalResponse, ReferralDetailResponse } from "@/lib/api/generated/model";
-import { dateTimeInputToISO, formatDateTime, isFutureDateTimeInput, localDateInputValue } from "@/lib/date-time";
+import {
+  formatInstitutionalDateTime,
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateInputValue,
+  institutionalDateTimeInputToISO,
+  isFutureInstitutionalDateTimeInput,
+} from "@/lib/institutional-time";
 
 type LinkedCreateIntent = { fingerprint: string; key: string; payload: CallSlipCreateFromReferralRequest };
+
+function fieldsFromDraft(draft: CallSlipDraft): string | null {
+  return institutionalDateTimeInputToISO(draft.reportAt);
+}
 
 export function CallSlipFromReferralPage({ referralId }: { referralId: string }) {
   const { user } = usePortalSession();
@@ -57,7 +67,7 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
         <CallSlipHeading title={`Issue linked Call Slip · ${item.reference_code}`} description="This Referral already has a non-voided linked Call Slip." backHref={`/portal/referrals/${item.id}`} backLabel="Back to Referral" />
         <section className="border-y border-border py-5">
           <p className="font-semibold text-ink">{callSlipStateLabel(currentSlip.state)} linked permit</p>
-          <p className="mt-2 text-sm text-muted">{formatDateTime(currentSlip.report_at)} · {callSlipDestinationLabel(currentSlip.destination_type, currentSlip.other_destination)}</p>
+          <p className="mt-2 text-sm text-muted">{formatInstitutionalDateTime(currentSlip.report_at)} · {callSlipDestinationLabel(currentSlip.destination_type, currentSlip.other_destination)}</p>
           <Link href={`/portal/call-slips/${currentSlip.id}`} className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open linked Call Slip</Link>
         </section>
       </div>
@@ -92,7 +102,7 @@ function LinkedCallSlipHistory({
       <ul className="mt-3 divide-y divide-border">
         {items.map((slip) => (
           <li key={slip.id} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-sm text-ink">{callSlipStateLabel(slip.state)} · {formatDateTime(slip.report_at)} · {callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</span>
+            <span className="text-sm text-ink">{callSlipStateLabel(slip.state)} · {formatInstitutionalDateTime(slip.report_at)} · {callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</span>
             <Link href={`/portal/call-slips/${slip.id}`} className="min-h-9 self-start text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:self-auto">Open Call Slip</Link>
           </li>
         ))}
@@ -132,13 +142,13 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
     setNotice(null);
     const fields = toCallSlipRequestFields(draft);
     if (!fields) return setError("Complete Course / Year, destination, and report date and time.");
-    const reportAt = dateTimeInputToISO(draft.reportAt);
-    if (!reportAt) return setError("Enter a valid report date and time.");
+    const reportAt = fields.report_at;
     if (!action) {
       if (!occurredAt) return setError("Action occurred date and time is required for the first linked issuance.");
-      if (!dateTimeInputToISO(occurredAt)) return setError("Enter a valid action occurred date and time.");
-      if (isFutureDateTimeInput(occurredAt)) return setError("Action occurred date and time cannot be in the future.");
-      const occurredInstant = new Date(occurredAt).getTime();
+      if (!institutionalDateTimeInputToISO(occurredAt)) return setError("Enter a valid action occurred date and time.");
+      if (isFutureInstitutionalDateTimeInput(occurredAt)) return setError("Action occurred date and time cannot be in the future.");
+      const occurredAtIso = institutionalDateTimeInputToISO(occurredAt)!;
+      const occurredInstant = new Date(occurredAtIso).getTime();
       if (referral.received_at) {
         if (occurredInstant < new Date(referral.received_at).getTime()) return setError("Action occurred date and time cannot be earlier than Guidance receipt.");
       } else if (occurredAt.slice(0, 10) < referral.referred_on) {
@@ -150,7 +160,7 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
     const payload: CallSlipCreateFromReferralRequest = {
       ...fields,
       report_at: reportAt,
-      action: action ? null : { occurred_at: dateTimeInputToISO(occurredAt)!, remarks: remarks.trim() },
+      action: action ? null : { occurred_at: institutionalDateTimeInputToISO(occurredAt)!, remarks: remarks.trim() },
     };
     const fingerprint = JSON.stringify({ referralId: referral.id, payload });
     const key = intent.current?.fingerprint === fingerprint ? intent.current.key : globalThis.crypto.randomUUID();
@@ -222,7 +232,7 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
           {action ? (
             <div className="mt-3 border-l-2 border-border pl-4 text-sm text-muted">
               <p>The source action is already recorded and will not be duplicated.</p>
-              <p className="mt-2"><span className="font-semibold text-ink">Occurred:</span> {formatDateTime(action.occurred_at)}</p>
+              <p className="mt-2"><span className="font-semibold text-ink">Occurred:</span> {formatInstitutionalDateTime(action.occurred_at)}</p>
               {action.remarks ? <p className="mt-1 whitespace-pre-wrap"><span className="font-semibold text-ink">Remarks:</span> {action.remarks}</p> : null}
             </div>
           ) : (
@@ -231,7 +241,8 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
               <div className="mt-4 grid gap-5 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="linked-action-occurred">Action occurred</Label>
-                  <Input id="linked-action-occurred" type="datetime-local" step="60" required max={`${localDateInputValue()}T23:59`} value={occurredAt} onChange={(event) => setOccurredAt(event.target.value)} />
+                  <Input id="linked-action-occurred" type="datetime-local" step="60" required max={`${institutionalDateInputValue()}T23:59`} value={occurredAt} aria-describedby="linked-action-occurred-timezone" onChange={(event) => setOccurredAt(event.target.value)} />
+                  <p id="linked-action-occurred-timezone" className="text-xs leading-5 text-muted">Times use {INSTITUTION_TIME_ZONE_LABEL}.</p>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="linked-action-remarks">Remarks (optional)</Label>
@@ -260,9 +271,9 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
             <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 text-ink">{referral.student_name_snapshot}</dd></div>
             <div><dt className="text-xs font-semibold text-muted">Course / Year</dt><dd className="mt-1 text-ink">{draft.courseYear}</dd></div>
             <div><dt className="text-xs font-semibold text-muted">Destination</dt><dd className="mt-1 text-ink">{callSlipDestinationLabel(draft.destinationType, draft.otherDestination)}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Report date and time</dt><dd className="mt-1 text-ink">{draft.reportAt}</dd></div>
+            <div><dt className="text-xs font-semibold text-muted">Report date and time</dt><dd className="mt-1 text-ink">{formatInstitutionalDateTime(fieldsFromDraft(draft))} {INSTITUTION_TIME_ZONE_LABEL}</dd></div>
             <div><dt className="text-xs font-semibold text-muted">Issuance mode</dt><dd className="mt-1 text-ink">{draft.notifyStudent ? "Live issuance" : "Historical / back-entry"}</dd></div>
-            <div className="sm:col-span-2"><dt className="text-xs font-semibold text-muted">Referral action</dt><dd className="mt-1 text-ink">{action ? "Reuse existing action; no new timestamp" : `Record at ${occurredAt}`}</dd></div>
+            <div className="sm:col-span-2"><dt className="text-xs font-semibold text-muted">Referral action</dt><dd className="mt-1 text-ink">{action ? "Reuse existing action; no new timestamp" : `Record at ${formatInstitutionalDateTime(institutionalDateTimeInputToISO(occurredAt))} ${INSTITUTION_TIME_ZONE_LABEL}`}</dd></div>
           </dl>
           {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
           <div className="mt-6 flex flex-wrap justify-end gap-2">

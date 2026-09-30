@@ -19,7 +19,7 @@ import {
 import { PublicMarkdown } from "@/features/public/shared/public-markdown";
 import { useAnnouncementsGetManaged } from "@/lib/api/generated/announcements/announcements";
 import { AnnouncementAudienceValue, AnnouncementStatusValue } from "@/lib/api/generated/model";
-import { formatDateTime } from "@/lib/date-time";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -112,12 +112,12 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
         ) : null}
         {isDraft && expired && item.expires_at ? (
           <ContentNotice tone="warning">
-            The expiry, {formatDateTime(item.expires_at)}, has already passed. Change or remove it before publishing.
+            The expiry, {formatInstitutionalDateTime(item.expires_at)}, has already passed. Change or remove it before publishing.
           </ContentNotice>
         ) : null}
         {isPublished && expired && item.expires_at ? (
           <ContentNotice tone="info">
-            This Announcement stopped being shown on {formatDateTime(item.expires_at)}. Readers no longer see it.
+            This Announcement stopped being shown on {formatInstitutionalDateTime(item.expires_at)}. Readers no longer see it.
           </ContentNotice>
         ) : null}
         {detail.isError ? (
@@ -134,18 +134,18 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
         <Detail label="Audience">{publicationAudienceLabels[item.audience]}</Detail>
         <Detail label="Pinned">{item.is_pinned ? "Yes" : "No"}</Detail>
         <Detail label="Stop showing after">
-          {item.expires_at ? formatDateTime(item.expires_at) : "No expiry"}
+          {item.expires_at ? formatInstitutionalDateTime(item.expires_at) : "No expiry"}
         </Detail>
         <Detail label="Published">
           {item.published_at
-            ? `${formatDateTime(item.published_at)}${item.published_by ? ` by ${item.published_by.display_name}` : ""}`
+            ? `${formatInstitutionalDateTime(item.published_at)}${item.published_by ? ` by ${item.published_by.display_name}` : ""}`
             : "Not published"}
         </Detail>
         <Detail label="Created">
-          {formatDateTime(item.created_at)} by {item.created_by.display_name}
+          {formatInstitutionalDateTime(item.created_at)} by {item.created_by.display_name}
         </Detail>
         <Detail label="Last updated">
-          {formatDateTime(item.updated_at)} by {item.updated_by.display_name}
+          {formatInstitutionalDateTime(item.updated_at)} by {item.updated_by.display_name}
         </Detail>
       </dl>
 

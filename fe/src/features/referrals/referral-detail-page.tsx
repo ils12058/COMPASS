@@ -43,7 +43,7 @@ import {
 } from "@/lib/api/generated/referrals/referrals";
 import { getCallSlipsListQueryKey, useCallSlipsList } from "@/lib/api/generated/call-slips/call-slips";
 import type { ReferralDetailResponse } from "@/lib/api/generated/model";
-import { formatDateOnly, formatDateTime } from "@/lib/date-time";
+import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export function ReferralDetailPage({ referralId }: { referralId: string }) {
   const { user } = usePortalSession();
@@ -102,7 +102,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         <div role="status" className="border-y border-warning/30 py-4">
           <p className="font-semibold text-warning">Voided</p>
           <p className="mt-1 text-sm text-ink">{item.void_reason}</p>
-          <p className="mt-1 text-sm text-muted">Voided {formatDateTime(item.voided_at)}</p>
+          <p className="mt-1 text-sm text-muted">Voided {formatInstitutionalDateTime(item.voided_at)}</p>
         </div>
       ) : null}
 
@@ -138,11 +138,11 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         </div>
         <div>
           <dt className="text-xs font-semibold text-muted">Received by Guidance/GCO</dt>
-          <dd className="mt-1 text-sm text-ink">{formatDateTime(item.received_at)}</dd>
+          <dd className="mt-1 text-sm text-ink">{formatInstitutionalDateTime(item.received_at)}</dd>
         </div>
         <div>
           <dt className="text-xs font-semibold text-muted">Recorded in COMPASS</dt>
-          <dd className="mt-1 text-sm text-ink">{formatDateTime(item.created_at)}</dd>
+          <dd className="mt-1 text-sm text-ink">{formatInstitutionalDateTime(item.created_at)}</dd>
         </div>
       </RecordSection>
 

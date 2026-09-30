@@ -14,6 +14,7 @@ import {
   StudyCareerChoiceValue,
   WorkCareerChoiceValue,
 } from "@/lib/api/generated/model";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export const SELF_ASSESSMENT_ITEMS: readonly {
   code: SelfAssessmentCode;
@@ -355,8 +356,5 @@ export function answeredCount(items: readonly { code: string }[], values: Record
 
 export function formatExitInterviewDateTime(value: string | null | undefined): string {
   if (!value) return "Not recorded";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return formatInstitutionalDateTime(value);
 }

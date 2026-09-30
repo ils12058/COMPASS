@@ -12,6 +12,7 @@ import {
 import { DeliveryMode } from "@/lib/api/generated/model";
 import { useAvailabilityGetProviderEffective } from "@/lib/api/generated/availability/availability";
 import { useServicesList } from "@/lib/api/generated/services/services";
+import { institutionalDateInputValue } from "@/lib/institutional-time";
 
 type PreviewRequest = {
   service_id: string;
@@ -19,13 +20,6 @@ type PreviewRequest = {
   start_date: string;
   end_date: string;
 };
-
-function inputDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return year + "-" + month + "-" + day;
-}
 
 function addCalendarDays(value: string, days: number): string {
   const parts = value.split("-").map(Number);
@@ -104,16 +98,14 @@ export function EffectiveAvailabilityPreview({
   providerId: string;
   refreshToken: number;
 }) {
-  const initialToday = useMemo(() => new Date(), []);
+  const initialToday = useMemo(() => institutionalDateInputValue(), []);
   const [servicePage, setServicePage] = useState(1);
   const [serviceId, setServiceId] = useState("");
   const [mode, setMode] = useState<DeliveryMode | "">("");
-  const [startDate, setStartDate] = useState(() => inputDate(initialToday));
-  const [throughDate, setThroughDate] = useState(() => {
-    const end = new Date(initialToday);
-    end.setDate(end.getDate() + 6);
-    return inputDate(end);
-  });
+  const [startDate, setStartDate] = useState(initialToday);
+  const [throughDate, setThroughDate] = useState(() =>
+    addCalendarDays(initialToday, 6),
+  );
   const [request, setRequest] = useState<PreviewRequest | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const previousRefreshToken = useRef(refreshToken);

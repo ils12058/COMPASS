@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 import type { GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
 
 export function goodMoralVariantLabel(variant: GoodMoralVariantValue): string {
@@ -35,26 +36,11 @@ export function GoodMoralStatus({ status }: { status: GoodMoralStatusValue }) {
 }
 
 export function formatGoodMoralDate(value: string | null | undefined): string {
-  if (!value) return "Not recorded";
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (match) {
-    const [, year, month, day] = match;
-    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
-      new Date(Number(year), Number(month) - 1, Number(day)),
-    );
-  }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+  return formatDateOnly(value);
 }
 
 export function formatGoodMoralDateTime(value: string | null | undefined): string {
-  if (!value) return "Not recorded";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return formatInstitutionalDateTime(value);
 }
 
 export function goodMoralErrorCode(error: unknown): string | undefined {

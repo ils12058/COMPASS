@@ -15,6 +15,7 @@ import {
   counselingErrorCode,
   counselingErrorMessage,
   CounselingPagination,
+  formatCounselingDateTime,
 } from "@/features/counseling/counseling-shared";
 import type {
   CounselingAppointmentCandidate,
@@ -32,6 +33,10 @@ import {
   useCounselingListStudents,
 } from "@/lib/api/generated/counseling/counseling";
 import { CompassApiError } from "@/lib/api/errors";
+import {
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateTimeInputToISO,
+} from "@/lib/institutional-time";
 
 type Source = "appointment" | "direct";
 
@@ -54,11 +59,6 @@ type RecordEncounterFormProps = {
 
 function statusLabel(value: string): string {
   return value.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function isoFromLocalDateTime(value: string): string | null {
-  const date = new Date(value);
-  return Number.isNaN(date.valueOf()) ? null : date.toISOString();
 }
 
 export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }: RecordEncounterFormProps) {
@@ -129,8 +129,18 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
         : undefined
   );
   const hasSelectedRecord = Boolean(preset || (source === "appointment" ? selectedAppointment : selectedStudent));
-  const endTimestamp = endedAt ? new Date(endedAt).getTime() : Number.NaN;
-  const startTimestamp = startedAt ? new Date(startedAt).getTime() : Number.NaN;
+  const startedAtIso = startedAt
+    ? institutionalDateTimeInputToISO(startedAt)
+    : null;
+  const endedAtIso = endedAt
+    ? institutionalDateTimeInputToISO(endedAt)
+    : null;
+  const endTimestamp = endedAtIso
+    ? new Date(endedAtIso).getTime()
+    : Number.NaN;
+  const startTimestamp = startedAtIso
+    ? new Date(startedAtIso).getTime()
+    : Number.NaN;
   const timeError = startedAt && endedAt && (
     Number.isNaN(startTimestamp) ||
     Number.isNaN(endTimestamp) ||
@@ -163,8 +173,8 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
       setError("The actual start must be before the end, and the end cannot be in the future.");
       return;
     }
-    const started = isoFromLocalDateTime(startedAt);
-    const ended = isoFromLocalDateTime(endedAt);
+    const started = institutionalDateTimeInputToISO(startedAt);
+    const ended = institutionalDateTimeInputToISO(endedAt);
     if (!started || !ended) {
       setError("Enter valid actual start and end times.");
       return;
@@ -263,7 +273,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
                     <button type="button" aria-pressed={selectedAppointmentId === candidate.id} onClick={() => { setSelectedAppointmentId(candidate.id); setSelectedAppointmentRecord(candidate); setStartedAt(""); setEndedAt(""); setError(null); }} className={`flex w-full flex-wrap items-start justify-between gap-3 px-3 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${selectedAppointmentId === candidate.id ? "bg-surface-muted" : "hover:bg-surface-muted/60"}`}>
                       <span>
                         <span className="block font-semibold text-ink">{candidate.reference_code} · {candidate.student.display_name}</span>
-                        <span className="mt-1 block text-sm text-muted">{candidate.student.institutional_id ? `Institutional ID ${candidate.student.institutional_id} · ` : ""}{new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(candidate.starts_at))} – {new Intl.DateTimeFormat("en-PH", { timeStyle: "short" }).format(new Date(candidate.ends_at))}</span>
+                        <span className="mt-1 block text-sm text-muted">{candidate.student.institutional_id ? `Institutional ID ${candidate.student.institutional_id} · ` : ""}{formatCounselingDateTime(candidate.starts_at)} – {formatCounselingDateTime(candidate.ends_at)}</span>
                       </span>
                       <span className="text-sm text-muted">{counselingDeliveryModeLabel(candidate.delivery_mode)} · {statusLabel(candidate.status)}</span>
                     </button>

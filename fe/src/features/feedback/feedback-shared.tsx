@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export const feedbackSelectClass =
   "min-h-11 w-full rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
@@ -118,9 +119,7 @@ export function FeedbackQueryError({
 }
 
 export function FeedbackDate({ value }: { value: string }) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return <time>{value}</time>;
-  return <time dateTime={value}>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date)}</time>;
+  return <time dateTime={value}>{formatInstitutionalDateTime(value)}</time>;
 }
 
 export type RadioChoice = { value: string | number; label: string };
