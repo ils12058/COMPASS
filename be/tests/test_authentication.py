@@ -468,6 +468,7 @@ def test_optional_totp_enrollment_requires_current_password_before_pending_facto
     )
     assert allowed.status_code == 200
     assert allowed.json()["provisioning_uri"].startswith("otpauth://totp/")
+    parsed = pyotp.parse_uri(allowed.json()["provisioning_uri"])
     factor = TOTPFactor.objects.get(user=user)
     assert factor.confirmed_at is None
     pending_secret = factor.encrypted_secret
@@ -481,6 +482,27 @@ def test_optional_totp_enrollment_requires_current_password_before_pending_facto
     assert rejected_replacement.status_code == 403
     factor.refresh_from_db()
     assert factor.encrypted_secret == pending_secret
+
+    rejected_confirmation = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/confirm",
+        {"code": parsed.now(), "current_password": "wrong-password"},
+        headers=csrf_headers(client),
+    )
+    assert rejected_confirmation.status_code == 403
+    assert rejected_confirmation.json()["error"]["code"] == "mfa_enrollment_authorization_failed"
+    factor.refresh_from_db()
+    assert factor.confirmed_at is None
+
+    confirmed = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/confirm",
+        {"code": parsed.now(), "current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
+    assert confirmed.status_code == 200
+    factor.refresh_from_db()
+    assert factor.confirmed_at is not None
 
 
 @pytest.mark.django_db
@@ -501,7 +523,7 @@ def test_totp_enrollment_is_pending_then_returns_one_time_recovery_codes():
     confirmation = post_json(
         client,
         "/api/v1/auth/mfa/totp/confirm",
-        {"code": parsed.now()},
+        {"code": parsed.now(), "current_password": "correct-password"},
         headers=csrf_headers(client),
     )
     assert confirmation.status_code == 200
@@ -537,7 +559,7 @@ def test_mfa_status_reports_enabled_and_recent_state():
     confirmed = post_json(
         client,
         "/api/v1/auth/mfa/totp/confirm",
-        {"code": parsed.now()},
+        {"code": parsed.now(), "current_password": "correct-password"},
         headers=csrf_headers(client),
     )
     assert confirmed.status_code == 200
@@ -687,7 +709,7 @@ def test_mfa_recovery_regeneration_and_disable_create_mandatory_security_notific
     confirmed = post_json(
         client,
         "/api/v1/auth/mfa/totp/confirm",
-        {"code": parsed.now()},
+        {"code": parsed.now(), "current_password": "correct-password"},
         headers=csrf_headers(client),
     )
     assert confirmed.status_code == 200
@@ -751,7 +773,7 @@ def test_mfa_login_requires_challenge_and_consumes_recovery_code_once():
     confirmed = post_json(
         client,
         "/api/v1/auth/mfa/totp/confirm",
-        {"code": parsed.now()},
+        {"code": parsed.now(), "current_password": "correct-password"},
         headers=csrf_headers(client),
     )
     code = confirmed.json()["recovery_codes"][0]
@@ -815,7 +837,7 @@ def test_trusted_browser_satisfies_mfa_only_after_password_and_can_be_used_then_
     confirmed = post_json(
         client,
         "/api/v1/auth/mfa/totp/confirm",
-        {"code": parsed.now()},
+        {"code": parsed.now(), "current_password": "correct-password"},
         headers=csrf_headers(client),
     )
     recovery_code = confirmed.json()["recovery_codes"][0]
