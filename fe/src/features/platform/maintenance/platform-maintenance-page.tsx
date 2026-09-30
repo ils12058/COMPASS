@@ -12,7 +12,6 @@ import {
   PlatformPageHeader,
   PlatformQueryError,
   PlatformRowsSkeleton,
-  PlatformTimestamp,
 } from "@/features/platform/platform-presentation";
 import { hasPlatformManage } from "@/features/platform/platform-gate";
 import {
@@ -22,10 +21,6 @@ import {
   type MaintenanceDraft,
   type ScheduleDraft,
 } from "@/features/platform/maintenance/maintenance-controls";
-import {
-  formatLocalDateTime,
-  localDateTimeToIso,
-} from "@/features/platform/maintenance/maintenance-time";
 import { refreshMaintenanceQueries } from "@/features/platform/maintenance/maintenance-queries";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
@@ -33,6 +28,11 @@ import {
   MaintenanceState,
   type MaintenanceResponse,
 } from "@/lib/api/generated/model";
+import {
+  formatInstitutionalDateTime,
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateTimeInputToISO,
+} from "@/lib/institutional-time";
 import {
   usePlatformOperationsCancelMaintenanceSchedule,
   usePlatformOperationsDisableMaintenance,
@@ -103,7 +103,9 @@ export function PlatformMaintenancePage() {
       return;
     }
     if (manualDraft.expectedEnd) {
-      const expectedEnd = localDateTimeToIso(manualDraft.expectedEnd);
+      const expectedEnd = institutionalDateTimeInputToISO(
+        manualDraft.expectedEnd,
+      );
       if (!expectedEnd || new Date(expectedEnd).getTime() <= Date.now()) {
         setManualFormError("Choose a future expected end time or clear the field.");
         return;
@@ -119,8 +121,8 @@ export function PlatformMaintenancePage() {
       setScheduleFormError("Enter the message that will be shown to COMPASS users.");
       return;
     }
-    const startsAt = localDateTimeToIso(scheduleDraft.startsAt);
-    const endsAt = localDateTimeToIso(scheduleDraft.endsAt);
+    const startsAt = institutionalDateTimeInputToISO(scheduleDraft.startsAt);
+    const endsAt = institutionalDateTimeInputToISO(scheduleDraft.endsAt);
     if (!startsAt || !endsAt) {
       setScheduleFormError("Enter both the start and end times.");
       return;
@@ -141,7 +143,7 @@ export function PlatformMaintenancePage() {
 
     if (confirmation === "enable") {
       const expectedEnd = manualDraft.expectedEnd
-        ? localDateTimeToIso(manualDraft.expectedEnd)
+        ? institutionalDateTimeInputToISO(manualDraft.expectedEnd)
         : undefined;
       if (
         manualDraft.expectedEnd &&
@@ -184,8 +186,8 @@ export function PlatformMaintenancePage() {
     }
 
     if (confirmation === "schedule") {
-      const startsAt = localDateTimeToIso(scheduleDraft.startsAt);
-      const endsAt = localDateTimeToIso(scheduleDraft.endsAt);
+      const startsAt = institutionalDateTimeInputToISO(scheduleDraft.startsAt);
+      const endsAt = institutionalDateTimeInputToISO(scheduleDraft.endsAt);
       if (
         !startsAt ||
         !endsAt ||
@@ -244,8 +246,11 @@ export function PlatformMaintenancePage() {
           <p className="whitespace-pre-wrap break-words">{manualDraft.message}</p>
           {manualDraft.expectedEnd ? (
             <p>
-              Expected end: {formatLocalDateTime(manualDraft.expectedEnd)}
-              {" "}(informational only)
+              Expected end:{" "}
+              {formatInstitutionalDateTime(
+                institutionalDateTimeInputToISO(manualDraft.expectedEnd),
+              )}{" "}
+              {INSTITUTION_TIME_ZONE_LABEL} (informational only)
             </p>
           ) : null}
         </>
@@ -271,9 +276,16 @@ export function PlatformMaintenancePage() {
           <p className="font-medium text-ink">Public message</p>
           <p className="whitespace-pre-wrap break-words">{scheduleDraft.message}</p>
           <p>
-            Starts: {formatLocalDateTime(scheduleDraft.startsAt)}
+            Starts:{" "}
+            {formatInstitutionalDateTime(
+              institutionalDateTimeInputToISO(scheduleDraft.startsAt),
+            )}
             <br />
-            Ends: {formatLocalDateTime(scheduleDraft.endsAt)}
+            Ends:{" "}
+            {formatInstitutionalDateTime(
+              institutionalDateTimeInputToISO(scheduleDraft.endsAt),
+            )}{" "}
+            {INSTITUTION_TIME_ZONE_LABEL}
           </p>
         </>
       );
@@ -303,7 +315,7 @@ export function PlatformMaintenancePage() {
     <section>
       <PlatformPageHeader
         title="Maintenance"
-        description="Review public status and administer manual or scheduled Maintenance Mode."
+        description={`Review public status and administer manual or scheduled Maintenance Mode. Times use ${INSTITUTION_TIME_ZONE_LABEL}.`}
       />
 
       {maintenanceQuery.isPending ? <PlatformRowsSkeleton rows={3} /> : null}
@@ -348,13 +360,17 @@ export function PlatformMaintenancePage() {
                 <>
                   <dt className="text-sm font-semibold text-muted">Starts</dt>
                   <dd className="text-sm text-ink">
-                    <PlatformTimestamp value={result.scheduled_start_at} />
+                    <time dateTime={result.scheduled_start_at ?? undefined}>
+                      {formatInstitutionalDateTime(result.scheduled_start_at)}
+                    </time>
                   </dd>
                   <dt className="text-sm font-semibold text-muted">
                     {result.schedule_active ? "Scheduled end" : "Ends"}
                   </dt>
                   <dd className="text-sm text-ink">
-                    <PlatformTimestamp value={result.scheduled_end_at} />
+                    <time dateTime={result.scheduled_end_at ?? undefined}>
+                      {formatInstitutionalDateTime(result.scheduled_end_at)}
+                    </time>
                   </dd>
                 </>
               ) : null}
@@ -364,7 +380,9 @@ export function PlatformMaintenancePage() {
                 <>
                   <dt className="text-sm font-semibold text-muted">Expected end</dt>
                   <dd className="text-sm text-ink">
-                    <PlatformTimestamp value={result.manual_expected_end_at} />
+                    <time dateTime={result.manual_expected_end_at ?? undefined}>
+                      {formatInstitutionalDateTime(result.manual_expected_end_at)}
+                    </time>
                     <p className="mt-1 text-xs text-muted">
                       Informational only; Maintenance Mode remains active until
                       explicitly disabled.
