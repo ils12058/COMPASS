@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from compass.audit.context import AuditContext
 from compass.audit.services import record_event
+from compass.authentication.abuse import check_auth_rate_limit, request_ip
 from compass.authentication.actions import (
     AUTH_MFA_RECOVERY_CODE_FAILED,
     AUTH_MFA_RECOVERY_CODE_USED,
@@ -41,6 +42,10 @@ RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 class TOTPAlreadyConfigured(RuntimeError):
     """Raised when an active TOTP factor already exists."""
+
+
+class TOTPEnrollmentAuthorizationFailed(RuntimeError):
+    """Raised when optional enrollment lacks fresh independent primary proof."""
 
 
 class TOTPEnrollmentMissing(RuntimeError):
@@ -226,6 +231,47 @@ def _replace_recovery_codes_locked(user_id, *, now: datetime) -> tuple[str, ...]
         )
     RecoveryCode.objects.bulk_create(records)
     return tuple(plaintext)
+
+
+def start_authenticated_totp_enrollment(
+    *,
+    user,
+    current_password: str,
+    context: AuditContext,
+    request=None,
+    limiter=None,
+    now: datetime | None = None,
+) -> TOTPSetupResult:
+    """Authorize optional TOTP enrollment with the account's current password."""
+
+    current = now or timezone.now()
+    check_auth_rate_limit(
+        "password_change",
+        ip_address=request_ip(request),
+        user_id=getattr(user, "pk", None),
+        limiter=limiter,
+    )
+    with transaction.atomic():
+        locked_user = (
+            User.objects.select_for_update(of=("self",))
+            .filter(pk=getattr(user, "pk", None))
+            .first()
+        )
+        if (
+            locked_user is None
+            or not locked_user.is_active
+            or not isinstance(current_password, str)
+            or not current_password
+            or not locked_user.check_password(current_password)
+        ):
+            raise TOTPEnrollmentAuthorizationFailed(
+                "the current authentication proof could not be verified"
+            )
+        return start_totp_enrollment(
+            user=locked_user,
+            context=context,
+            now=current,
+        )
 
 
 def start_totp_enrollment(
@@ -552,6 +598,7 @@ def disable_totp(
 __all__ = [
     "TOTPAlreadyConfigured",
     "TOTPConfirmationResult",
+    "TOTPEnrollmentAuthorizationFailed",
     "TOTPEnrollmentMissing",
     "MFAResetResult",
     "TOTPNotConfigured",
@@ -568,6 +615,7 @@ __all__ = [
     "normalize_recovery_code",
     "regenerate_recovery_codes",
     "reset_totp_state",
+    "start_authenticated_totp_enrollment",
     "start_totp_enrollment",
     "verify_totp_for_login",
     "verify_totp_for_session",
