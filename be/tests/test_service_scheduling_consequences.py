@@ -40,12 +40,7 @@ def _appointment_snapshot(item) -> tuple[object, ...]:
 
 
 def _future_appointment(
-    *,
-    service,
-    provider,
-    student,
-    mode: str = "ONLINE",
-    status: str = "SCHEDULED",
+    *, service, provider, student, mode: str = "ONLINE", status: str = "SCHEDULED"
 ):
     return create_list_appointment(
         reference_code=f"APT-{service.code}-{mode}-{status}",
@@ -125,9 +120,7 @@ def test_delivery_mode_removal_requires_review_only_when_future_scheduled_depend
         acknowledge_scheduling_consequences=True,
     )
 
-    assert {
-        row.mode for row in updated.delivery_mode_assignments.all()
-    } == {"IN_PERSON"}
+    assert {row.mode for row in updated.delivery_mode_assignments.all()} == {"IN_PERSON"}
     assert _appointment_snapshot(appointment) == before
     event = AuditEvent.objects.filter(action="service.updated", target_id=str(service.pk)).latest(
         "created_at"
@@ -309,10 +302,7 @@ def test_service_update_api_exposes_stable_review_required_code_and_acknowledgem
         **headers,
     )
     assert blocked.status_code == 409
-    assert (
-        blocked.json()["error"]["code"]
-        == "service_scheduling_consequence_review_required"
-    )
+    assert blocked.json()["error"]["code"] == "service_scheduling_consequence_review_required"
 
     acknowledged = client.patch(
         f"/api/v1/services/{service.pk}",
