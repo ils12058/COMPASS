@@ -1039,6 +1039,11 @@
       "AnnouncementUpdateRequest": {
         "additionalProperties": false,
         "properties": {
+          "acknowledge_publication_consequences": {
+            "default": false,
+            "title": "Acknowledge Publication Consequences",
+            "type": "boolean"
+          },
           "audience": {
             "anyOf": [
               {
@@ -16695,6 +16700,11 @@
       "ResourceUpdateRequest": {
         "additionalProperties": false,
         "properties": {
+          "acknowledge_publication_consequences": {
+            "default": false,
+            "title": "Acknowledge Publication Consequences",
+            "type": "boolean"
+          },
           "audience": {
             "anyOf": [
               {
