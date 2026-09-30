@@ -18,7 +18,7 @@ import {
   useAnnouncementsPublish,
 } from "@/lib/api/generated/announcements/announcements";
 import { AnnouncementStatusValue, type AnnouncementManagementResponse } from "@/lib/api/generated/model";
-import { formatDateTime } from "@/lib/date-time";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 type LifecycleAction = "publish" | "archive";
 
@@ -97,7 +97,7 @@ export function AnnouncementLifecycleActions({
               {announcement.is_pinned ? " It is pinned, so it will be listed before other Announcements." : null}
             </p>
             {announcement.expires_at ? (
-              <p>It will stop being shown after {formatDateTime(announcement.expires_at)}.</p>
+              <p>It will stop being shown after {formatInstitutionalDateTime(announcement.expires_at)}.</p>
             ) : null}
           </>
         }
