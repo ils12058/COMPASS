@@ -6,6 +6,10 @@ import {
   CallSlipDestinationTypeValue,
   type CallSlipCreateRequest,
 } from "@/lib/api/generated/model";
+import {
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateTimeInputToISO,
+} from "@/lib/institutional-time";
 
 export type CallSlipDraft = {
   courseYear: string;
@@ -79,7 +83,7 @@ export function CallSlipFormFields({
           onChange={(event) => onChange({ ...draft, reportAt: event.target.value })}
         />
         <p className="text-xs leading-5 text-muted">
-          Enter the date and time the Student was instructed to report. Past, present, and future source dates are allowed.
+          Enter the date and time the Student was instructed to report. Times use {INSTITUTION_TIME_ZONE_LABEL}. Past, present, and future source dates are allowed.
         </p>
       </div>
       <fieldset className="min-w-0">
@@ -121,11 +125,10 @@ export function toCallSlipRequestFields(draft: CallSlipDraft): Pick<
   CallSlipCreateRequest,
   "course_year" | "destination_type" | "other_destination" | "report_at" | "notify_student"
 > | null {
-  const reportAt = new Date(draft.reportAt);
+  const reportAt = institutionalDateTimeInputToISO(draft.reportAt);
   if (
     !draft.courseYear.trim() ||
-    !draft.reportAt ||
-    Number.isNaN(reportAt.getTime()) ||
+    !reportAt ||
     (draft.destinationType === CallSlipDestinationTypeValue.OTHER && !draft.otherDestination.trim())
   ) {
     return null;
@@ -138,7 +141,7 @@ export function toCallSlipRequestFields(draft: CallSlipDraft): Pick<
       draft.destinationType === CallSlipDestinationTypeValue.OTHER
         ? draft.otherDestination.trim()
         : "",
-    report_at: reportAt.toISOString(),
+    report_at: reportAt,
     notify_student: draft.notifyStudent,
   };
 }
