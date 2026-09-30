@@ -537,9 +537,7 @@ def test_graduate_tracer_small_population_warns_without_suppression():
 
     report = build_graduate_tracer_report()
 
-    assert [warning["code"] for warning in report["disclosure_warnings"]] == [
-        "SMALL_POPULATION"
-    ]
+    assert [warning["code"] for warning in report["disclosure_warnings"]] == ["SMALL_POPULATION"]
     assert report["report_context"]["submitted_response_count"] == 2
     assert row(report, "sex", GTSSex.MALE)["count"] == 1
     assert row(report, "sex", GTSSex.FEMALE)["count"] == 1
