@@ -44,6 +44,12 @@ const knownErrors: Record<string, string> = {
     "The self-service cancellation or rescheduling cutoff has passed.",
   appointment_cancellation_conflict:
     "This Appointment cannot be cancelled in its current state.",
+  ecounseling_access_started:
+    "This Appointment can no longer be cancelled because its online counseling access period has begun.",
+  ecounseling_access_open:
+    "Wait until the online counseling access or rejoin period has ended before completing this Appointment or marking it as no-show.",
+  ecounseling_room_linked:
+    "This Appointment cannot be cancelled because an E-Counseling room is already linked.",
   appointment_not_schedulable:
     "This Service cannot currently be scheduled. Refresh the Service selection and try again.",
   idempotency_unavailable:

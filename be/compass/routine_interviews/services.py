@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import uuid
 from dataclasses import dataclass
+from enum import StrEnum
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
@@ -95,6 +96,10 @@ class RoutineInterviewAppointmentInvalid(RoutineInterviewError):
     pass
 
 
+class RoutineInterviewParentClosed(RoutineInterviewError):
+    pass
+
+
 class RoutineInterviewInventoryRequired(RoutineInterviewError):
     pass
 
@@ -129,6 +134,12 @@ class RoutineInterviewCreationConflict(RoutineInterviewError):
 
 class RoutineInterviewFormRevisionUnsupported(RoutineInterviewError):
     pass
+
+
+class RoutineWorkflowState(StrEnum):
+    ACTIVE = "ACTIVE"
+    CLOSED_APPOINTMENT_CANCELLED = "CLOSED_APPOINTMENT_CANCELLED"
+    CLOSED_APPOINTMENT_NO_SHOW = "CLOSED_APPOINTMENT_NO_SHOW"
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,6 +194,42 @@ def _queryset():
         "form_revision__family",
         "created_by",
     )
+
+
+def routine_workflow_state(item: RoutineInterview) -> RoutineWorkflowState:
+    """Derive Routine actionability from its authoritative parent Appointment outcome."""
+
+    if item.appointment_id is None:
+        return RoutineWorkflowState.ACTIVE
+    if item.appointment.status == AppointmentStatus.CANCELLED:
+        return RoutineWorkflowState.CLOSED_APPOINTMENT_CANCELLED
+    if item.appointment.status == AppointmentStatus.NO_SHOW:
+        return RoutineWorkflowState.CLOSED_APPOINTMENT_NO_SHOW
+    return RoutineWorkflowState.ACTIVE
+
+
+def _require_actionable_parent(
+    item: RoutineInterview,
+    *,
+    lock_parent: bool = False,
+) -> None:
+    """Reject mutations when an Appointment-backed Routine has a terminal invalid parent."""
+
+    if item.appointment_id is None:
+        return
+    queryset = Appointment.objects.only("status")
+    if lock_parent:
+        queryset = queryset.select_for_update(of=("self",))
+    status = queryset.values_list("status", flat=True).get(pk=item.appointment_id)
+    if status == AppointmentStatus.CANCELLED:
+        raise RoutineInterviewParentClosed(
+            "This Routine Interview is no longer active because the Appointment was cancelled."
+        )
+    if status == AppointmentStatus.NO_SHOW:
+        raise RoutineInterviewParentClosed(
+            "This Routine Interview is no longer active because the Appointment "
+            "was marked as no-show."
+        )
 
 
 def _lock_users(*user_ids: UUID) -> dict[UUID, User]:
@@ -869,6 +916,7 @@ def replace_my_intake(
         )
         if item is None:
             raise RoutineInterviewNotFound("The requested Routine Interview was not found.")
+        _require_actionable_parent(item, lock_parent=True)
         if item.intake_submitted_at is not None:
             raise RoutineInterviewIntakeSubmitted("A submitted Student Intake is locked.")
 
@@ -910,6 +958,7 @@ def submit_my_intake(
         )
         if item is None:
             raise RoutineInterviewNotFound("The requested Routine Interview was not found.")
+        _require_actionable_parent(item, lock_parent=True)
         if item.intake_submitted_at is not None:
             return _queryset().get(pk=item.pk)
         if item.inventory.student_id != student.pk or item.inventory.submitted_at is None:
@@ -962,6 +1011,7 @@ def replace_assigned_evaluation(
         )
         if item is None:
             raise RoutineInterviewNotFound("The requested Routine Interview was not found.")
+        _require_actionable_parent(item, lock_parent=True)
         if item.intake_submitted_at is None:
             raise RoutineInterviewIntakeRequired(
                 "Student Intake must be submitted before Counselor Evaluation can be saved."
@@ -1039,6 +1089,7 @@ def finalize_assigned_evaluation(
         )
         if item is None:
             raise RoutineInterviewNotFound("The requested Routine Interview was not found.")
+        _require_actionable_parent(item, lock_parent=True)
         if item.intake_submitted_at is None:
             raise RoutineInterviewIntakeRequired(
                 "Student Intake must be submitted before Counselor Evaluation can be finalized."

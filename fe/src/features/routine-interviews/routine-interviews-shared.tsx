@@ -94,6 +94,8 @@ const routineErrors: Record<string, string> = {
     "A submitted Individual Inventory for the current Academic Year is required before starting an Appointment-backed Routine Interview.",
   routine_interview_appointment_invalid:
     "This Appointment is no longer eligible for a Routine Interview. Refresh the candidates and try again.",
+  routine_interview_closed_by_appointment:
+    "This Routine Interview is historical and no longer accepts Intake or Evaluation changes because its Appointment ended without a completed interaction.",
   routine_interview_intake_already_submitted:
     "The Student Intake has already been submitted and is now read-only.",
   routine_interview_intake_required:

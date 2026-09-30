@@ -190,12 +190,20 @@ def _join_window_bounds(appointment: Appointment) -> tuple[datetime, datetime]:
     )
 
 
-def _join_window(appointment: Appointment, *, now: datetime | None = None) -> JoinWindow:
+def ecounseling_access_window(
+    appointment: Appointment,
+    *,
+    now: datetime | None = None,
+) -> JoinWindow:
+    """Return the deterministic E-Counseling access boundary for an existing Appointment.
+
+    This intentionally ignores current Daily/provider readiness. Appointment lifecycle safety
+    must remain stable even if provider configuration changes after the Appointment was created.
+    """
+
     current = now or timezone.now()
     available_from, available_until = _join_window_bounds(appointment)
-    if not settings.DAILY_ENABLED:
-        state = ECounselingJoinState.PROVIDER_DISABLED
-    elif current < available_from:
+    if current < available_from:
         state = ECounselingJoinState.TOO_EARLY
     elif current <= available_until:
         state = ECounselingJoinState.OPEN
@@ -208,10 +216,19 @@ def _join_window(appointment: Appointment, *, now: datetime | None = None) -> Jo
     )
 
 
+def _join_window(appointment: Appointment, *, now: datetime | None = None) -> JoinWindow:
+    access_window = ecounseling_access_window(appointment, now=now)
+    if settings.DAILY_ENABLED:
+        return access_window
+    return JoinWindow(
+        available_from=access_window.available_from,
+        available_until=access_window.available_until,
+        state=ECounselingJoinState.PROVIDER_DISABLED,
+    )
+
+
 def _join_window_open(appointment: Appointment, *, now: datetime | None = None) -> bool:
-    current = now or timezone.now()
-    available_from, available_until = _join_window_bounds(appointment)
-    return available_from <= current <= available_until
+    return ecounseling_access_window(appointment, now=now).state == ECounselingJoinState.OPEN
 
 
 def _routine_for_appointment(appointment: Appointment) -> RoutineInterview | None:

@@ -1123,11 +1123,40 @@
           "CUTOFF_PASSED",
           "CURRENT_STUDENT_REQUIRED",
           "ECOUNSELING_ROOM_LINKED",
+          "ECOUNSELING_ACCESS_STARTED",
+          "ECOUNSELING_ACCESS_OPEN",
           "ROUTINE_INTERVIEW_LINKED",
           "COUNSELING_ENCOUNTER_LINKED"
         ],
         "title": "AppointmentActionBlocker",
         "type": "string"
+      },
+      "AppointmentActionConsequenceCode": {
+        "description": "A downstream workflow change caused by an otherwise-allowed Appointment action.",
+        "enum": [
+          "ROUTINE_INTERVIEW_WILL_CLOSE"
+        ],
+        "title": "AppointmentActionConsequenceCode",
+        "type": "string"
+      },
+      "AppointmentActionConsequenceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/AppointmentActionConsequenceCode"
+          },
+          "routine_interview_id": {
+            "format": "uuid",
+            "title": "Routine Interview Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "routine_interview_id"
+        ],
+        "title": "AppointmentActionConsequenceResponse",
+        "type": "object"
       },
       "AppointmentActionStateResponse": {
         "additionalProperties": false,
@@ -1145,11 +1174,19 @@
                 "type": "null"
               }
             ]
+          },
+          "consequences": {
+            "items": {
+              "$ref": "#/components/schemas/AppointmentActionConsequenceResponse"
+            },
+            "title": "Consequences",
+            "type": "array"
           }
         },
         "required": [
           "allowed",
-          "blocker"
+          "blocker",
+          "consequences"
         ],
         "title": "AppointmentActionStateResponse",
         "type": "object"
@@ -5932,10 +5969,14 @@
           },
           "student": {
             "$ref": "#/components/schemas/RoutinePersonSummary"
+          },
+          "workflow_state": {
+            "$ref": "#/components/schemas/RoutineWorkflowState"
           }
         },
         "required": [
           "id",
+          "workflow_state",
           "student",
           "inventory_context",
           "entry_mode",
@@ -6071,10 +6112,14 @@
           },
           "student": {
             "$ref": "#/components/schemas/RoutinePersonSummary"
+          },
+          "workflow_state": {
+            "$ref": "#/components/schemas/RoutineWorkflowState"
           }
         },
         "required": [
           "id",
+          "workflow_state",
           "student",
           "inventory_context",
           "entry_mode",
@@ -17835,6 +17880,15 @@
         "title": "RoutineServiceSummary",
         "type": "object"
       },
+      "RoutineWorkflowState": {
+        "enum": [
+          "ACTIVE",
+          "CLOSED_APPOINTMENT_CANCELLED",
+          "CLOSED_APPOINTMENT_NO_SHOW"
+        ],
+        "title": "RoutineWorkflowState",
+        "type": "string"
+      },
       "SelfAssessmentItemValue": {
         "enum": [
           "PRIDE_CONFIDENCE_CNSC",
@@ -18732,10 +18786,14 @@
           },
           "inventory_context": {
             "$ref": "#/components/schemas/RoutineInventoryContext"
+          },
+          "workflow_state": {
+            "$ref": "#/components/schemas/RoutineWorkflowState"
           }
         },
         "required": [
           "id",
+          "workflow_state",
           "counselor",
           "inventory_context",
           "entry_mode",
@@ -18837,10 +18895,14 @@
           },
           "inventory_context": {
             "$ref": "#/components/schemas/RoutineInventoryContext"
+          },
+          "workflow_state": {
+            "$ref": "#/components/schemas/RoutineWorkflowState"
           }
         },
         "required": [
           "id",
+          "workflow_state",
           "counselor",
           "inventory_context",
           "entry_mode",
