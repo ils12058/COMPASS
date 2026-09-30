@@ -16,6 +16,7 @@ import {
 } from "@/features/announcements/announcement-errors";
 import {
   publicationAudienceLabels,
+  publicationAudienceReaders,
   type PublicationAudience,
 } from "@/features/content/content-presentation";
 import {
@@ -358,11 +359,18 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
               {publicationAudienceLabels[reviewedAudience]}.
             </p>
           ) : null}
-          {reviewedAudience === AnnouncementAudienceValue.PUBLIC ? (
-            <p>
-              Anyone who can access the public COMPASS site will be able to read this
-              Announcement without signing in.
-            </p>
+          {reviewedAudience !== undefined ? (
+            reviewedAudience === AnnouncementAudienceValue.PUBLIC ? (
+              <p>
+                Anyone who can access the public COMPASS site will be able to read this
+                Announcement without signing in.
+              </p>
+            ) : (
+              <p>
+                After this change, it will be available to{" "}
+                {publicationAudienceReaders[reviewedAudience]}.
+              </p>
+            )
           ) : null}
           {reviewedExpiryChanged ? (
             reviewPayload?.expires_at ? (
