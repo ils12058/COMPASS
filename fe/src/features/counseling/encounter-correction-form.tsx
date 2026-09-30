@@ -18,17 +18,14 @@ import {
   useCounselingListEncounterAppointmentCandidates,
   useCounselingUpdateEncounter,
 } from "@/lib/api/generated/counseling/counseling";
+import {
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateTimeInputToISO,
+  isoToInstitutionalDateTimeInput,
+} from "@/lib/institutional-time";
 
-function localDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return "";
-  const pad = (number: number) => String(number).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-}
-
-function isoDateTime(value: string): string | null {
-  const date = new Date(value);
-  return Number.isNaN(date.valueOf()) ? null : date.toISOString();
+function institutionalInput(value: string): string {
+  return isoToInstitutionalDateTimeInput(value, { includeSeconds: true });
 }
 
 export function EncounterCorrectionForm({
@@ -43,8 +40,8 @@ export function EncounterCorrectionForm({
   const [appointmentId, setAppointmentId] = useState(encounter.appointment?.id ?? "");
   const [entryMode, setEntryMode] = useState<CounselingEntryMode>(encounter.entry_mode);
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>(encounter.delivery_mode);
-  const [startedAt, setStartedAt] = useState(localDateTime(encounter.started_at));
-  const [endedAt, setEndedAt] = useState(localDateTime(encounter.ended_at));
+  const [startedAt, setStartedAt] = useState(institutionalInput(encounter.started_at));
+  const [endedAt, setEndedAt] = useState(institutionalInput(encounter.ended_at));
   const [observedNow, setObservedNow] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const update = useCounselingUpdateEncounter({ mutation: { retry: false } });
@@ -62,10 +59,20 @@ export function EncounterCorrectionForm({
   const unchanged = appointmentId === (encounter.appointment?.id ?? "") &&
     entryMode === encounter.entry_mode &&
     deliveryMode === encounter.delivery_mode &&
-    startedAt === localDateTime(encounter.started_at) &&
-    endedAt === localDateTime(encounter.ended_at);
-  const startMillis = startedAt ? new Date(startedAt).getTime() : Number.NaN;
-  const endMillis = endedAt ? new Date(endedAt).getTime() : Number.NaN;
+    startedAt === institutionalInput(encounter.started_at) &&
+    endedAt === institutionalInput(encounter.ended_at);
+  const startedAtIso = startedAt
+    ? institutionalDateTimeInputToISO(startedAt)
+    : null;
+  const endedAtIso = endedAt
+    ? institutionalDateTimeInputToISO(endedAt)
+    : null;
+  const startMillis = startedAtIso
+    ? new Date(startedAtIso).getTime()
+    : Number.NaN;
+  const endMillis = endedAtIso
+    ? new Date(endedAtIso).getTime()
+    : Number.NaN;
   const timeInvalid = !Number.isFinite(startMillis) || !Number.isFinite(endMillis) || startMillis >= endMillis || (observedNow !== null && endMillis > observedNow);
   const missingAppointment = entryMode === "APPOINTMENT" && !appointmentId;
   const timeMessage = !startedAt || !endedAt
@@ -88,8 +95,8 @@ export function EncounterCorrectionForm({
       setError("Select an Appointment or choose a direct origin before saving.");
       return;
     }
-    const started = isoDateTime(startedAt);
-    const ended = isoDateTime(endedAt);
+    const started = institutionalDateTimeInputToISO(startedAt);
+    const ended = institutionalDateTimeInputToISO(endedAt);
     if (!started || !ended) {
       setError("Enter valid actual start and end times.");
       return;
@@ -99,8 +106,8 @@ export function EncounterCorrectionForm({
       ...(appointmentId !== (encounter.appointment?.id ?? "") ? { appointment_id: appointmentId || null } : {}),
       ...(entryMode !== encounter.entry_mode ? { entry_mode: entryMode } : {}),
       ...(deliveryMode !== encounter.delivery_mode ? { delivery_mode: deliveryMode } : {}),
-      ...(startedAt !== localDateTime(encounter.started_at) ? { started_at: started } : {}),
-      ...(endedAt !== localDateTime(encounter.ended_at) ? { ended_at: ended } : {}),
+      ...(startedAt !== institutionalInput(encounter.started_at) ? { started_at: started } : {}),
+      ...(endedAt !== institutionalInput(encounter.ended_at) ? { ended_at: ended } : {}),
     };
 
     try {
@@ -120,7 +127,7 @@ export function EncounterCorrectionForm({
   return (
     <form onSubmit={submit} className="mt-5 border-y border-border py-5" aria-labelledby="correct-encounter-heading">
       <h3 id="correct-encounter-heading" className="font-heading text-lg font-semibold text-ink">Correct encounter details</h3>
-      <p className="mt-1 text-sm text-muted">Use this to correct how the completed interaction was recorded. Student, Counselor, Service, creator, and creation time cannot be changed.</p>
+      <p className="mt-1 text-sm text-muted">Use this to correct how the completed interaction was recorded. Actual times use {INSTITUTION_TIME_ZONE_LABEL}. Student, Counselor, Service, creator, and creation time cannot be changed.</p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2"><Label htmlFor="correction-entry-mode">Interaction origin</Label><select id="correction-entry-mode" value={entryMode} disabled={update.isPending} onChange={(event) => { setEntryMode(event.target.value as CounselingEntryMode); setError(null); }} className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></select></div>
