@@ -1140,9 +1140,7 @@ def set_capability_override(
                 names_by_code = {
                     definition.code: definition.name for definition in CAPABILITY_DEFINITIONS
                 }
-                missing_names = ", ".join(
-                    names_by_code.get(code, code) for code in sorted(missing)
-                )
+                missing_names = ", ".join(names_by_code.get(code, code) for code in sorted(missing))
                 raise CapabilityDependencyConflict(
                     f"{names_by_code.get(capability_code, capability_code)} requires "
                     f"{missing_names}. Grant the required capability first."
