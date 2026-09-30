@@ -924,11 +924,14 @@ def _coverage(
             .values_list("student_id", flat=True)
             .distinct()
         )
-        draft_student_ids = set(
-            inventory_queryset.filter(submitted_at__isnull=True)
-            .values_list("student_id", flat=True)
-            .distinct()
-        ) - submitted_student_ids
+        draft_student_ids = (
+            set(
+                inventory_queryset.filter(submitted_at__isnull=True)
+                .values_list("student_id", flat=True)
+                .distinct()
+            )
+            - submitted_student_ids
+        )
         submitted_count = len(submitted_student_ids)
         draft_count = len(draft_student_ids)
         covered_student_ids = submitted_student_ids | draft_student_ids
