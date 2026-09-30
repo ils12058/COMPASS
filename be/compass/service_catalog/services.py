@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
@@ -237,7 +238,7 @@ def _scheduling_consequences(
     current_modes: frozenset[str],
     next_policy: str,
     next_modes: frozenset[str],
-    now,
+    now: datetime,
 ) -> _ServiceSchedulingConsequences:
     if not service.is_active:
         return _ServiceSchedulingConsequences(False, False)
@@ -379,7 +380,7 @@ def update_service(
     changes: dict[str, object],
     context: AuditContext,
     acknowledge_scheduling_consequences: bool = False,
-    now=None,
+    now: datetime | None = None,
 ) -> Service:
     allowed = {
         "name",
