@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/features/auth/components/password-input";
 import { accountErrorCode, accountErrorMessage } from "@/features/account/components/account-errors";
 import { SecurityBackLink, StepUpDialog } from "@/features/account/security/security-shared";
 import {
@@ -79,6 +80,7 @@ export function AuthenticatorPage() {
   const regenerate = useAuthRegenerateRecoveryCodes();
   const disable = useAuthDisableTotp();
   const [setup, setSetup] = useState<TOTPSetupResponse | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [code, setCode] = useState("");
   const [codes, setCodes] = useState<string[] | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
@@ -100,10 +102,12 @@ export function AuthenticatorPage() {
     setConfirmAction(action);
   }
 
-  async function startSetup() {
+  async function startSetup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError(null);
     try {
-      const response = await start.mutateAsync();
+      const response = await start.mutateAsync({ data: { current_password: currentPassword } });
+      setCurrentPassword("");
       setSetup(response.data);
     } catch (caught) {
       setError(accountErrorMessage(caught, "Authenticator setup could not be started. Please try again."));
@@ -170,7 +174,20 @@ export function AuthenticatorPage() {
         <div className="mt-7 border-t border-border pt-6">
           <p className="font-semibold text-ink">Not enabled</p>
           <p className="mt-2 text-sm leading-6 text-muted">Use an authenticator app to add another verification step when signing in.</p>
-          <Button className="mt-5" disabled={start.isPending} onClick={() => void startSetup()}>{start.isPending ? "Starting setup…" : "Set up authenticator"}</Button>
+          <form className="mt-5 space-y-4" onSubmit={startSetup}>
+            <div className="grid gap-2">
+              <Label htmlFor="authenticator-current-password">Current password</Label>
+              <PasswordInput
+                id="authenticator-current-password"
+                name="current-password"
+                autoComplete="current-password"
+                required
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+              />
+            </div>
+            <Button type="submit" disabled={start.isPending}>{start.isPending ? "Starting setup…" : "Set up authenticator"}</Button>
+          </form>
         </div>
       ) : null}
       {mfa.isSuccess && !codes && !mfa.data.data.enabled && setup ? (
