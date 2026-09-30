@@ -58,43 +58,37 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
     query: { enabled: audience === "public" || signedOut },
   });
   const query = readsAccount ? account : publicQuery;
-  const [expiryReached, setExpiryReached] = useState(false);
+  const [reachedExpiry, setReachedExpiry] = useState<string | null>(null);
   const expiresAt = query.data?.data.expires_at ?? null;
   const refetchCurrent = readsAccount ? account.refetch : publicQuery.refetch;
+  const expiryReached = expiresAt !== null && reachedExpiry === expiresAt;
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let active = true;
 
     if (!expiresAt) {
-      setExpiryReached(false);
       return () => {
         active = false;
       };
     }
 
     const expiryMs = Date.parse(expiresAt);
-    if (!Number.isFinite(expiryMs)) {
-      setExpiryReached(true);
-      void refetchCurrent();
-      return () => {
-        active = false;
-      };
-    }
-
     const reconcileAtBoundary = () => {
       if (!active) return;
       const remaining = expiryMs - Date.now();
-      if (remaining <= 0) {
-        setExpiryReached(true);
+      if (!Number.isFinite(expiryMs) || remaining <= 0) {
+        setReachedExpiry(expiresAt);
         void refetchCurrent();
         return;
       }
       timer = setTimeout(reconcileAtBoundary, Math.min(remaining, MAX_TIMEOUT_MS));
     };
 
-    setExpiryReached(false);
-    reconcileAtBoundary();
+    const initialDelay = Number.isFinite(expiryMs)
+      ? Math.min(Math.max(expiryMs - Date.now(), 0), MAX_TIMEOUT_MS)
+      : 0;
+    timer = setTimeout(reconcileAtBoundary, initialDelay);
 
     return () => {
       active = false;
