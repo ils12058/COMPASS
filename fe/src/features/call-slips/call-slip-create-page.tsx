@@ -21,7 +21,6 @@ import { EligibleStudentPicker, type EligibleStudentOption } from "@/features/po
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { callSlipsCreate, getCallSlipsListQueryKey, useCallSlipsListEligibleStudents } from "@/lib/api/generated/call-slips/call-slips";
 import type { CallSlipCreateRequest } from "@/lib/api/generated/model";
-import { dateTimeInputToISO } from "@/lib/date-time";
 
 type CreateIntent = { fingerprint: string; key: string; payload: CallSlipCreateRequest };
 
@@ -70,8 +69,7 @@ export function DirectCallSlipCreatePage() {
     if (!student) return setError("Choose an eligible Student before issuing the Call Slip.");
     const fields = toCallSlipRequestFields(draft);
     if (!fields) return setError("Complete Course / Year, destination, and report date and time.");
-    const reportAt = dateTimeInputToISO(draft.reportAt);
-    if (!reportAt) return setError("Enter a valid report date and time.");
+    const reportAt = fields.report_at;
     if (draft.destinationType === "OTHER" && !draft.otherDestination.trim()) return setError("Enter the other destination.");
     if (!globalThis.crypto?.randomUUID) return setError("This browser cannot create a secure issuance request. Update the browser and try again.");
 
