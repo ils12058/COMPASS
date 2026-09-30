@@ -2,6 +2,7 @@
 
 import { Pin } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { PublicMarkdown } from "@/features/public/shared/public-markdown";
 import { formatPublicDate } from "@/features/public/shared/presentation";
@@ -17,6 +18,34 @@ import {
   useAnnouncementsGetVisible,
 } from "@/lib/api/generated/announcements/announcements";
 
+const MAX_TIMEOUT_MS = 2_147_000_000;
+
+function AnnouncementUnavailable({ readsAccount }: { readsAccount: boolean }) {
+  return (
+    <div className="border-y border-border py-8">
+      <h1 className="font-heading text-3xl font-bold text-ink">Announcement not found</h1>
+      {readsAccount ? (
+        <p className="mt-3 leading-7 text-muted">
+          This announcement does not exist or is not available to your account.
+        </p>
+      ) : (
+        <>
+          <p className="mt-3 leading-7 text-muted">
+            This announcement does not exist or is no longer publicly available.
+          </p>
+          <p className="mt-2 leading-7 text-muted">
+            If it was shared with COMPASS account holders,{" "}
+            <Link href="/login" className="font-semibold text-brand underline">
+              sign in
+            </Link>{" "}
+            and open it again.
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function AnnouncementDetail({ announcementId }: { announcementId: string }) {
   const audience = useReaderAudience();
   const account = useAnnouncementsGetVisible(announcementId, {
@@ -29,36 +58,78 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
     query: { enabled: audience === "public" || signedOut },
   });
   const query = readsAccount ? account : publicQuery;
+  const [expiryReached, setExpiryReached] = useState(false);
+  const expiresAt = query.data?.data.expires_at ?? null;
+  const refetchCurrent = readsAccount ? account.refetch : publicQuery.refetch;
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let active = true;
+
+    if (!expiresAt) {
+      setExpiryReached(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    const expiryMs = Date.parse(expiresAt);
+    if (!Number.isFinite(expiryMs)) {
+      setExpiryReached(true);
+      void refetchCurrent();
+      return () => {
+        active = false;
+      };
+    }
+
+    const reconcileAtBoundary = () => {
+      if (!active) return;
+      const remaining = expiryMs - Date.now();
+      if (remaining <= 0) {
+        setExpiryReached(true);
+        void refetchCurrent();
+        return;
+      }
+      timer = setTimeout(reconcileAtBoundary, Math.min(remaining, MAX_TIMEOUT_MS));
+    };
+
+    setExpiryReached(false);
+    reconcileAtBoundary();
+
+    return () => {
+      active = false;
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [expiresAt, refetchCurrent]);
 
   if (audience === "pending" || query.isPending) {
     return <PublicListSkeleton rows={4} />;
   }
 
-  if (query.isError) {
-    if (query.error instanceof CompassApiError && query.error.status === 404) {
+  if (expiryReached) {
+    if (query.isFetching) {
       return (
-        <div className="border-y border-border py-8">
-          <h1 className="font-heading text-3xl font-bold text-ink">Announcement not found</h1>
-          {readsAccount ? (
-            <p className="mt-3 leading-7 text-muted">
-              This announcement does not exist or is not available to your account.
-            </p>
-          ) : (
-            <>
-              <p className="mt-3 leading-7 text-muted">
-                This announcement does not exist or is no longer publicly available.
-              </p>
-              <p className="mt-2 leading-7 text-muted">
-                If it was shared with COMPASS account holders,{" "}
-                <Link href="/login" className="font-semibold text-brand underline">
-                  sign in
-                </Link>{" "}
-                and open it again.
-              </p>
-            </>
-          )}
+        <div role="status" className="border-y border-border py-8 text-sm leading-6 text-muted">
+          This announcement has reached its expiry time. Checking availability…
         </div>
       );
+    }
+
+    if (query.error instanceof CompassApiError && query.error.status === 404) {
+      return <AnnouncementUnavailable readsAccount={readsAccount} />;
+    }
+
+    return (
+      <PublicSectionError
+        message="This announcement has reached its expiry time and its availability could not be confirmed."
+        onRetry={() => void refetchCurrent()}
+      />
+    );
+  }
+
+  if (query.isError) {
+    if (query.error instanceof CompassApiError && query.error.status === 404) {
+      return <AnnouncementUnavailable readsAccount={readsAccount} />;
     }
 
     return (
