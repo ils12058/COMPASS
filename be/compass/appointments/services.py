@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from enum import StrEnum
 from uuid import UUID
+
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
