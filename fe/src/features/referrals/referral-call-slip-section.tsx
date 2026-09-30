@@ -9,7 +9,7 @@ import { CanonicalPagination } from "@/features/portal/components/canonical-pagi
 import { ReferralActionEntry } from "@/features/referrals/referral-action-section";
 import { CallSlipLifecycleStateValue, ReferralActionTypeValue, type CallSlipOperationalResponse, type ReferralDetailResponse } from "@/lib/api/generated/model";
 import { useCallSlipsList } from "@/lib/api/generated/call-slips/call-slips";
-import { formatDateTime } from "@/lib/date-time";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export function ReferralCallSlipSection({
   referral,
@@ -120,7 +120,7 @@ function LinkedCallSlipSummary({
     <div className="mt-4 border-l-2 border-brand pl-4">
       <p className="font-semibold text-ink">{callSlipStateLabel(callSlip.state)}</p>
       <p className="mt-1 text-sm text-muted">{callSlip.student_name_snapshot} · {callSlip.course_year_snapshot}</p>
-      <p className="mt-1 text-sm text-muted">Report {formatDateTime(callSlip.report_at)} · {callSlip.destination_type === "GUIDANCE_OFFICE" ? "Guidance Office" : callSlip.other_destination}</p>
+      <p className="mt-1 text-sm text-muted">Report {formatInstitutionalDateTime(callSlip.report_at)} · {callSlip.destination_type === "GUIDANCE_OFFICE" ? "Guidance Office" : callSlip.other_destination}</p>
       <Link href={`/portal/call-slips/${callSlip.id}`} className="mt-2 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
         Open Call Slip
       </Link>
@@ -155,7 +155,7 @@ function LinkedCallSlipHistory({
             <li key={item.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-medium text-ink">{callSlipStateLabel(item.state)}</p>
-                <p className="mt-1 text-sm text-muted">{formatDateTime(item.report_at)} · {item.destination_type === "GUIDANCE_OFFICE" ? "Guidance Office" : item.other_destination}</p>
+                <p className="mt-1 text-sm text-muted">{formatInstitutionalDateTime(item.report_at)} · {item.destination_type === "GUIDANCE_OFFICE" ? "Guidance Office" : item.other_destination}</p>
               </div>
               <Link href={`/portal/call-slips/${item.id}`} className="min-h-9 self-start text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:self-auto">Open Call Slip</Link>
             </li>
