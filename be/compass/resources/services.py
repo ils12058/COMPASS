@@ -53,6 +53,12 @@ class ResourceConflict(ResourceError):
     pass
 
 
+class ResourcePublicationConsequenceReviewRequired(ResourceConflict):
+    def __init__(self, fields: tuple[str, ...]) -> None:
+        super().__init__("Review the publication consequences before saving these changes.")
+        self.fields = fields
+
+
 class ResourceStorageError(ResourceError):
     pass
 
@@ -282,6 +288,10 @@ def _validate_channel_state(item: Resource, *, for_publish: bool) -> None:
         raise InvalidResourceInput("kind is invalid")
 
 
+def _validate_published_resource_state(item: Resource) -> None:
+    _validate_published_resource_state(item)
+
+
 @transaction.atomic
 def create_resource(
     *,
@@ -318,12 +328,7 @@ def create_resource(
         outcome=AuditOutcome.SUCCESS,
         target_type="resources.resource",
         target_id=item.pk,
-        metadata={
-            "status": item.status,
-            "audience": item.audience,
-            "kind": item.kind,
-            "category": item.category,
-        },
+        metadata=metadata,
     )
     return item
 
@@ -335,12 +340,16 @@ def update_resource(
     resource_id: UUID,
     values: dict[str, object],
     context: AuditContext,
+    acknowledge_publication_consequences: bool = False,
 ) -> Resource:
     item = Resource.objects.select_for_update().filter(pk=resource_id).first()
     if item is None:
         raise ResourceNotFound("The requested Resource was not found.")
     if item.status == PublicationStatus.ARCHIVED:
         raise ResourceConflict("Archived Resources cannot be edited.")
+
+    before_audience = item.audience
+    before_external_url = item.external_url
 
     allowed = {
         "title",
@@ -380,10 +389,41 @@ def update_resource(
 
     if item.kind != ResourceKind.EXTERNAL_LINK and item.external_url:
         raise InvalidResourceInput("external_url is only valid for EXTERNAL_LINK Resources")
-    _validate_channel_state(item, for_publish=item.status == PublicationStatus.PUBLISHED)
+
+    publication_consequences: dict[str, object] = {}
+    if item.status == PublicationStatus.PUBLISHED:
+        consequential_fields: list[str] = []
+        if item.audience != before_audience:
+            consequential_fields.append("audience")
+            publication_consequences["audience"] = {
+                "before": before_audience,
+                "after": item.audience,
+            }
+        if (
+            item.kind == ResourceKind.EXTERNAL_LINK
+            and item.external_url != before_external_url
+        ):
+            consequential_fields.append("external_url")
+            publication_consequences["external_url"] = {
+                "before": before_external_url or None,
+                "after": item.external_url or None,
+            }
+        if consequential_fields and acknowledge_publication_consequences is not True:
+            raise ResourcePublicationConsequenceReviewRequired(tuple(consequential_fields))
+        _validate_published_resource_state(item)
+    else:
+        _validate_channel_state(item, for_publish=False)
 
     item.updated_by = actor
     item.save()
+    metadata: dict[str, object] = {
+        "status": item.status,
+        "audience": item.audience,
+        "kind": item.kind,
+        "category": item.category,
+    }
+    if publication_consequences:
+        metadata["publication_consequences"] = publication_consequences
     record_event(
         context=context,
         action=RESOURCE_UPDATED,
@@ -714,6 +754,7 @@ __all__ = [
     "ResourceError",
     "ResourceNotFound",
     "ResourcePage",
+    "ResourcePublicationConsequenceReviewRequired",
     "ResourceStorageError",
     "archive_resource",
     "attach_resource_file",
