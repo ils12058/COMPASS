@@ -272,7 +272,7 @@ def authenticate_login(
                         request=request,
                         context=context,
                         method="trusted_browser",
-                        mfa_verified_at=current,
+                        mfa_verified_at=None,
                         now=current,
                     )
                     return LoginResult(

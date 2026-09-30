@@ -22,6 +22,8 @@ from compass.authentication.sessions import (
     create_auth_session,
     create_login_challenge,
     create_trusted_session,
+    digest_opaque_token,
+    resolve_auth_session,
 )
 from compass.notifications.models import Notification
 
@@ -112,6 +114,7 @@ def test_non_totp_password_change_requires_current_password_and_preserves_only_c
     sync_policy()
     user = make_user("password-change@example.edu")
     client, current_session = auth_client(user)
+    original_credential = client.cookies["compass_session"].value
     other_session = create_auth_session(user).session
     trusted = create_trusted_session(user).session
     login_challenge = create_login_challenge(
@@ -179,6 +182,12 @@ def test_non_totp_password_change_requires_current_password_and_preserves_only_c
     )
     assert changed.status_code == 200
     assert changed.json() == {"changed": True}
+    replacement_credential = client.cookies["compass_session"].value
+    assert replacement_credential != original_credential
+    assert resolve_auth_session(original_credential) is None
+    replacement_session = resolve_auth_session(replacement_credential)
+    assert replacement_session is not None
+    assert replacement_session.pk == current_session.pk
 
     user.refresh_from_db()
     assert not user.check_password("old-test-password")
@@ -192,6 +201,8 @@ def test_non_totp_password_change_requires_current_password_and_preserves_only_c
     recovery_otp.refresh_from_db()
     verification_otp.refresh_from_db()
     assert current_session.revoked_at is None
+    assert current_session.token_digest == digest_opaque_token(replacement_credential)
+    assert current_session.token_digest != replacement_credential
     assert other_session.revoked_at is not None
     assert trusted.revoked_at is not None
     assert login_challenge.consumed_at is not None
@@ -203,6 +214,10 @@ def test_non_totp_password_change_requires_current_password_and_preserves_only_c
     serialized = str(event.metadata)
     assert "old-test-password" not in serialized
     assert "A-new-password-2026!" not in serialized
+    assert original_credential not in serialized
+    assert replacement_credential not in serialized
+    assert original_credential not in json.dumps(changed.json())
+    assert replacement_credential not in json.dumps(changed.json())
     notification = Notification.objects.get(
         recipient=user,
         event_code="security.password.changed",

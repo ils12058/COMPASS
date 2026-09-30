@@ -92,7 +92,7 @@ export function PasswordChangePage() {
           {error ? <p id="password-change-error" role="alert" className="text-sm text-danger">{error}</p> : null}
           {policyIssues.length ? <ul className="list-disc space-y-1 pl-5 text-sm text-danger">{policyIssues.map((issue) => <li key={issue}>{issue}</li>)}</ul> : null}
           {setupRequired ? <Link href="/portal/account/security/authenticator" className="inline-flex min-h-10 items-center font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Set up authenticator</Link> : null}
-          {changed ? <p role="status" className="text-sm text-success">Password changed. Your current session remains signed in.</p> : null}
+          {changed ? <p role="status" className="text-sm text-success">Password changed. Other sessions and trusted-browser access were revoked.</p> : null}
           <Button type="submit" disabled={change.isPending}>{change.isPending ? "Changing password…" : usesMfa && !recent ? "Verify to continue" : "Change password"}</Button>
         </form>
       ) : null}

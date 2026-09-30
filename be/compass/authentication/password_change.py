@@ -17,7 +17,11 @@ from compass.authentication.mfa import has_active_totp_factor, mfa_required_for_
 from compass.authentication.models import EmailOTPPurpose
 from compass.authentication.password_access import validate_new_password
 from compass.authentication.security import AuthStateInvalidation, invalidate_reusable_auth_state
-from compass.authentication.sessions import require_recent_mfa
+from compass.authentication.sessions import (
+    IssuedSession,
+    require_recent_mfa,
+    rotate_auth_session_credential,
+)
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 
@@ -41,6 +45,7 @@ class PasswordChangeResult:
     changed: bool
     method: str
     invalidation: AuthStateInvalidation
+    replacement_session: IssuedSession
 
 
 def change_password(
@@ -114,6 +119,11 @@ def change_password(
             email_challenge_email=locked_user.email,
             exclude_auth_session_id=session.pk,
         )
+        replacement_session = rotate_auth_session_credential(
+            session_id=session.pk,
+            user_id=locked_user.pk,
+            now=current,
+        )
         audit_event = record_event(
             context=context,
             action=AUTH_PASSWORD_CHANGED,
@@ -135,6 +145,7 @@ def change_password(
         changed=True,
         method=method,
         invalidation=invalidation,
+        replacement_session=replacement_session,
     )
 
 

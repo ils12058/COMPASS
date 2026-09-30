@@ -128,11 +128,16 @@ GET  /api/v1/me/activity?page=1&page_size=20
 GET  /api/v1/me/security-activity?page=1&page_size=20
 ```
 
-TOTP setup is a two-step operation: call `setup`, scan the returned provisioning URI, then call
-`confirm`. Confirmation returns recovery codes once; PostgreSQL stores only the encrypted TOTP
-secret and one-way recovery-code hashes. The current default does not require MFA for every role,
-but an enrolled factor causes MFA at the next password login. Role-specific mandatory MFA can be
-configured with `AUTH_MFA_REQUIRED_ROLE_CODES`; the setting remains separate from capabilities.
+Authenticated optional TOTP setup is a two-step operation, but `setup` first requires the
+account's current password before returning a provisioning URI. The same independent proof is
+revalidated when the optional pending factor is confirmed, so a candidate TOTP code cannot
+authorize its own enrollment. Mandatory role-required enrollment remains separate: successful
+password authentication creates a purpose-restricted `LoginChallenge`, and that challenge may
+bootstrap TOTP without asking for the password a second time. `confirm` returns recovery codes
+once; PostgreSQL stores only the encrypted TOTP secret and one-way recovery-code hashes. The
+current default does not require MFA for every role, but an enrolled factor causes MFA at the next
+password login. Role-specific mandatory MFA can be configured with
+`AUTH_MFA_REQUIRED_ROLE_CODES`; the setting remains separate from capabilities.
 
 Email OTP challenge rows store only a hash, and delivery is queued through the existing Celery +
 SMTP adapter. `POST /api/v1/auth/password/request` returns the same `202` response shape for
@@ -143,9 +148,14 @@ challenge and sets the user-selected password atomically, without creating a ses
 setup/reset revokes reusable sessions, trusted sessions, login challenges, and other recovery
 challenges, while preserving TOTP and MFA recovery codes. Users must then sign in through the
 normal password + MFA flow. Passwords use Django's built-in validators and are never placed in
-responses, logs, or audit metadata. Trusted sessions are listed and revoked through the
-authenticated `/api/v1/auth/trusted-sessions` routes. MFA disable and recovery-code regeneration
-require recent MFA; `AUTH_RECENT_MFA_WINDOW_SECONDS` controls the window.
+responses, logs, or audit metadata. An authenticated password change revokes other reusable
+authentication state and rotates the current browser's opaque AuthSession credential in place, so
+the credential valid before the password change cannot authenticate afterward. Trusted sessions
+are listed and revoked through the authenticated `/api/v1/auth/trusted-sessions` routes. A valid
+trusted-browser credential may satisfy the login MFA prompt after correct password authentication,
+but it does not establish fresh recent-MFA state. Sensitive operations still require an
+interactive TOTP step-up. MFA disable and recovery-code regeneration require recent MFA;
+`AUTH_RECENT_MFA_WINDOW_SECONDS` controls the window.
 
 The `minio-init` service creates the configured bucket and explicitly keeps it private. Re-run
 it after the MinIO service is available if the bucket needs to be bootstrapped again:

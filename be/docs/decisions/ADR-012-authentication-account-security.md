@@ -32,12 +32,25 @@ SMTP adapter.
 
 MFA policy is separate from capabilities. An enrolled TOTP factor requires MFA at the next login;
 role-specific mandatory MFA can be enabled through configuration without hardcoding institutional
-policy. Trusted browser credentials can satisfy that MFA prompt only after correct password
-verification, have configurable expiry, and are explicitly revocable. `require_recent_mfa()` is
-the shared step-up boundary for sensitive future operations such as disabling TOTP or regenerating
-recovery codes. Authentication abuse controls reuse the existing Redis limiter across IP,
-identifier, user, and combination dimensions. Turnstile is an additional configurable,
-server-side check for relevant anonymous/high-abuse flows, never a replacement for rate limiting.
+policy. Optional TOTP enrollment from an existing AuthSession requires fresh current-password proof
+before the provisioning URI is returned; the candidate factor cannot authorize its own
+enrollment. Mandatory login-time enrollment remains a separate boundary because a
+purpose-restricted LoginChallenge records the successful primary-password authentication event.
+
+Trusted browser credentials can satisfy the login MFA prompt only after correct password
+verification, have configurable expiry, and are explicitly revocable. They do not establish fresh
+recent-MFA state: a session created through trusted-browser login has no new `mfa_verified_at`
+assertion, so `require_recent_mfa()` still requires an interactive TOTP step-up for sensitive
+operations such as disabling TOTP or regenerating recovery codes. Authentication abuse controls
+reuse the existing Redis limiter across IP, identifier, user, and combination dimensions.
+Turnstile is an additional configurable, server-side check for relevant anonymous/high-abuse
+flows, never a replacement for rate limiting.
+
+Authenticated password change may preserve the current browser only by rotating its opaque
+AuthSession credential in place. The pre-change credential becomes invalid when the transaction
+commits, the replacement is issued only through the existing HttpOnly cookie path, and the
+session's existing expiry is preserved. Other reusable sessions, trusted sessions, login
+challenges, and applicable recovery/email-security challenges are still invalidated.
 
 Critical authentication state changes and meaningful failures are audited synchronously through the
 existing `record_event()` service without passwords, hashes, tokens, MFA codes, OTP values, or
