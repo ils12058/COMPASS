@@ -409,10 +409,7 @@ def update_resource(
                 "before": before_audience,
                 "after": item.audience,
             }
-        if (
-            item.kind == ResourceKind.EXTERNAL_LINK
-            and item.external_url != before_external_url
-        ):
+        if item.kind == ResourceKind.EXTERNAL_LINK and item.external_url != before_external_url:
             consequential_fields.append("external_url")
             publication_consequences["external_url"] = {
                 "before": before_external_url or None,
