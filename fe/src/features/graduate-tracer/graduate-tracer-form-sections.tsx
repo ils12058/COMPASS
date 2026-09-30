@@ -17,6 +17,7 @@ import {
   TextField,
 } from "@/features/graduate-tracer/graduate-tracer-form-fields";
 import { GraduateTracerSection } from "@/features/graduate-tracer/graduate-tracer-shared";
+import { institutionalDateInputValue } from "@/lib/institutional-time";
 
 export type GraduateTracerDraftChange = <K extends keyof GraduateTracerFormDraft>(
   field: K,
@@ -43,7 +44,7 @@ export function GraduateTracerGeneralSection({
       <div className="grid gap-5 sm:grid-cols-2">
         <TextField id="gts-name" label="Name" value={draft.name} onChange={(value) => onChange("name", value)} />
         <TextField id="gts-email" label="E-mail Address" type="email" inputMode="email" value={draft.email} onChange={(value) => onChange("email", value)} />
-        <TextField id="gts-birth-date" label="Birthday" type="date" max={new Date().toISOString().slice(0, 10)} value={draft.birth_date ?? undefined} onChange={(value) => onChange("birth_date", value || null)} />
+        <TextField id="gts-birth-date" label="Birthday" type="date" max={institutionalDateInputValue()} value={draft.birth_date ?? undefined} onChange={(value) => onChange("birth_date", value || null)} />
         <TextField id="gts-province" label="Province" value={draft.province} onChange={(value) => onChange("province", value)} />
       </div>
       <TextAreaField id="gts-permanent-address" label="Permanent Address" value={draft.permanent_address} onChange={(value) => onChange("permanent_address", value)} />
@@ -81,7 +82,7 @@ export function GraduateTracerEducationSection({
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextField id={`degree-${index}-name`} label="Degree(s) & Specialization(s)" value={row.degree_and_specialization} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, degree_and_specialization: value } : item))} />
                   <TextField id={`degree-${index}-institution`} label="College or University" value={row.college_or_university} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, college_or_university: value } : item))} />
-                  <TextField id={`degree-${index}-year`} label="Year Graduated" type="number" inputMode="numeric" min={1900} max={new Date().getFullYear()} step={1} value={row.year_graduated} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, year_graduated: value } : item))} />
+                  <TextField id={`degree-${index}-year`} label="Year Graduated" type="number" inputMode="numeric" min={1900} max={Number(institutionalDateInputValue().slice(0, 4))} step={1} value={row.year_graduated} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, year_graduated: value } : item))} />
                   <TextField id={`degree-${index}-honors`} label="Honor(s) or Award(s) Received" value={row.honors_or_awards} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, honors_or_awards: value } : item))} />
                 </div>
                 <Button type="button" variant="secondary" onClick={() => onChange("education", draft.education.filter((_, itemIndex) => itemIndex !== index))}>Remove degree {index + 1}</Button>
@@ -102,7 +103,7 @@ export function GraduateTracerEducationSection({
                 <legend className="font-semibold text-ink">Examination {index + 1}</legend>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <TextField id={`exam-${index}-name`} label="Name of Examination" value={row.examination_name} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, examination_name: value } : item))} />
-                  <TextField id={`exam-${index}-date`} label="Date Taken" type="date" max={new Date().toISOString().slice(0, 10)} value={row.date_taken ?? ""} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, date_taken: value || null } : item))} />
+                  <TextField id={`exam-${index}-date`} label="Date Taken" type="date" max={institutionalDateInputValue()} value={row.date_taken ?? ""} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, date_taken: value || null } : item))} />
                   <TextField id={`exam-${index}-rating`} label="Rating" value={row.rating} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, rating: value } : item))} />
                 </div>
                 <Button type="button" variant="secondary" onClick={() => onChange("professional_exams", draft.professional_exams.filter((_, itemIndex) => itemIndex !== index))}>Remove examination {index + 1}</Button>
