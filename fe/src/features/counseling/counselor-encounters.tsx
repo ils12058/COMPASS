@@ -16,6 +16,7 @@ import {
   CounselingPageHeading,
   CounselingPagination,
   CounselingQueryError,
+  formatCounselingDateTime,
 } from "@/features/counseling/counseling-shared";
 import { RecordEncounterForm } from "@/features/counseling/record-encounter-form";
 import {
@@ -33,11 +34,6 @@ function positivePage(value: string | null): number {
 
 function enumParam<T extends string>(value: string | null, allowed: Record<string, T>): T | undefined {
   return value && Object.values(allowed).includes(value as T) ? value as T : undefined;
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.valueOf()) ? value : new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
 
 function updateQuery(pathname: string, current: URLSearchParams, name: string, value: string) {
@@ -118,8 +114,8 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
                         <th scope="row" className={`${tableCell} sticky left-0 z-10 min-w-48 bg-surface-raised font-normal group-hover:bg-surface-muted`}><Link href={`/portal/counseling/encounters/${encounter.id}`} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.student.display_name}</Link><span className="mt-1 block text-xs text-muted">View encounter</span></th>
                         <td className={tableCell}>{counselingEntryModeLabel(encounter.entry_mode)}</td>
                         <td className={tableCell}>{counselingDeliveryModeLabel(encounter.delivery_mode)}</td>
-                        <td className={tableCell}>{formatDate(encounter.started_at)}</td>
-                        <td className={tableCell}>{formatDate(encounter.ended_at)}</td>
+                        <td className={tableCell}>{formatCounselingDateTime(encounter.started_at)}</td>
+                        <td className={tableCell}>{formatCounselingDateTime(encounter.ended_at)}</td>
                         <td className={tableCell}>{encounter.appointment?.reference_code ?? "—"}</td>
                       </tr>
                     ))}
