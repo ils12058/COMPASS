@@ -342,9 +342,7 @@ def test_publication_update_contract_exposes_consequence_acknowledgement() -> No
     schemas = schema["components"]["schemas"]
 
     for schema_name in ("AnnouncementUpdateRequest", "ResourceUpdateRequest"):
-        acknowledgement = schemas[schema_name]["properties"][
-            "acknowledge_publication_consequences"
-        ]
+        acknowledgement = schemas[schema_name]["properties"]["acknowledge_publication_consequences"]
         assert acknowledgement["type"] == "boolean"
         assert acknowledgement["default"] is False
 
