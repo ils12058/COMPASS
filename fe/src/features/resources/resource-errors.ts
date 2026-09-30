@@ -58,6 +58,8 @@ export function resourceErrorMessage(error: unknown, fallback: string): string {
       return "Your current access does not include Resource management.";
     case "resource_not_found":
       return "This Resource no longer exists.";
+    case "publication_consequence_review_required":
+      return "Review how these changes affect the published Resource before saving.";
     case "resource_conflict":
       return known ?? `${message ?? "This Resource changed since you opened it."} Its current status is shown on the Resource page.`;
     case "invalid_resource_input":
