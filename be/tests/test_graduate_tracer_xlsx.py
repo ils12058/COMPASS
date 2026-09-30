@@ -188,14 +188,8 @@ def test_small_population_xlsx_includes_privacy_warning_and_keeps_exact_values()
     values = workbook_values(workbook)
 
     assert "Small-population privacy notice" in values
-    assert any(
-        "Use and share these results carefully" in value
-        for value in values
-    )
+    assert any("Use and share these results carefully" in value for value in values)
     profile = workbook["Respondent Profile"]
-    male_row = next(
-        row for row in profile.iter_rows()
-        if row[0].value == "Male"
-    )
+    male_row = next(row for row in profile.iter_rows() if row[0].value == "Male")
     assert male_row[1].value == 1
     assert float(male_row[2].value) == 100.0
