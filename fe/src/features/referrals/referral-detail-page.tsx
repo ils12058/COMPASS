@@ -42,7 +42,7 @@ import {
   useReferralsGet,
 } from "@/lib/api/generated/referrals/referrals";
 import { getCallSlipsListQueryKey, useCallSlipsList } from "@/lib/api/generated/call-slips/call-slips";
-import type { ReferralDetailResponse } from "@/lib/api/generated/model";
+import { CallSlipLifecycleStateValue, type ReferralDetailResponse } from "@/lib/api/generated/model";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export function ReferralDetailPage({ referralId }: { referralId: string }) {
@@ -196,7 +196,11 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
               <Button className="mt-3" variant="secondary" onClick={() => void linkedCurrent.refetch()}>Refresh linked Call Slip state</Button>
             </div>
           ) : currentCallSlip ? (
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">This Referral cannot be voided while it has a non-voided linked Call Slip.</p>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
+              {currentCallSlip.state === CallSlipLifecycleStateValue.COMPLETED
+                ? "This Referral cannot be voided because the linked Call Slip records a completed interview."
+                : "This Referral cannot be voided while its linked Call Slip is active. Void the Call Slip first."}
+            </p>
           ) : (
             <VoidReferralButton
               referral={item}
@@ -352,12 +356,21 @@ function VoidReferralButton({
         setOpen(false);
         setNotice("Verify your authenticator, then review and confirm the void again.");
         setStepUpOpen(true);
-      } else if (code === "referral_conflict" || uncertainReferralMutation(caught)) {
+      } else if (
+        code === "referral_conflict" ||
+        code === "referral_active_call_slip_conflict" ||
+        code === "referral_completed_call_slip_conflict" ||
+        uncertainReferralMutation(caught)
+      ) {
         const refreshed = await onRefresh();
         if (refreshed?.voided_at) {
           setOpen(false);
           setNotice("The Referral is already voided.");
-        } else if (code === "referral_conflict") {
+        } else if (
+          code === "referral_conflict" ||
+          code === "referral_active_call_slip_conflict" ||
+          code === "referral_completed_call_slip_conflict"
+        ) {
           setError(referralErrorMessage(caught, "The Referral could not be voided."));
         } else if (refreshed) {
           setError("The Referral is not shown as voided after refreshing. Review the current record before confirming again.");
