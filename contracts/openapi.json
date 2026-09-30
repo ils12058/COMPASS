@@ -232,6 +232,13 @@
             "title": "Effective",
             "type": "boolean"
           },
+          "missing_required_capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/CapabilityCode"
+            },
+            "title": "Missing Required Capabilities",
+            "type": "array"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -245,6 +252,13 @@
                 "type": "null"
               }
             ]
+          },
+          "required_capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/CapabilityCode"
+            },
+            "title": "Required Capabilities",
+            "type": "array"
           }
         },
         "required": [
@@ -253,7 +267,9 @@
           "description",
           "effective",
           "baseline_sources",
-          "override"
+          "override",
+          "required_capabilities",
+          "missing_required_capabilities"
         ],
         "title": "AccessCapabilityResponse",
         "type": "object"
