@@ -289,7 +289,12 @@ def _validate_channel_state(item: Resource, *, for_publish: bool) -> None:
 
 
 def _validate_published_resource_state(item: Resource) -> None:
-    _validate_published_resource_state(item)
+    item.title = _clean_title(item.title, require_nonblank=True)
+    item.body_markdown = _clean_body(item.body_markdown, require_nonblank=True)
+    item.category = _choice(item.category, ResourceCategory, "category")
+    item.kind = _choice(item.kind, ResourceKind, "kind")
+    item.audience = _choice(item.audience, PublicationAudience, "audience")
+    _validate_channel_state(item, for_publish=True)
 
 
 @transaction.atomic
@@ -328,7 +333,12 @@ def create_resource(
         outcome=AuditOutcome.SUCCESS,
         target_type="resources.resource",
         target_id=item.pk,
-        metadata=metadata,
+        metadata={
+            "status": item.status,
+            "audience": item.audience,
+            "kind": item.kind,
+            "category": item.category,
+        },
     )
     return item
 
@@ -645,12 +655,7 @@ def publish_resource(
     if item.status != PublicationStatus.DRAFT:
         raise ResourceConflict("Only a draft Resource can be published.")
 
-    item.title = _clean_title(item.title, require_nonblank=True)
-    item.body_markdown = _clean_body(item.body_markdown, require_nonblank=True)
-    item.category = _choice(item.category, ResourceCategory, "category")
-    item.kind = _choice(item.kind, ResourceKind, "kind")
-    item.audience = _choice(item.audience, PublicationAudience, "audience")
-    _validate_channel_state(item, for_publish=True)
+    _validate_published_resource_state(item)
 
     item.status = PublicationStatus.PUBLISHED
     item.published_at = timezone.now()
