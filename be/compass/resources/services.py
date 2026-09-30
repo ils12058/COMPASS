@@ -440,12 +440,7 @@ def update_resource(
         outcome=AuditOutcome.SUCCESS,
         target_type="resources.resource",
         target_id=item.pk,
-        metadata={
-            "status": item.status,
-            "audience": item.audience,
-            "kind": item.kind,
-            "category": item.category,
-        },
+        metadata=metadata,
     )
     return item
 
