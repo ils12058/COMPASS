@@ -216,8 +216,9 @@ export function UnavailabilitySection({
             Unavailability
           </h2>
           <p className="mt-2 text-sm text-muted">
-            Dated unavailability removes time from recurring Availability.
-            Times use {INSTITUTION_TIME_ZONE_LABEL}.
+            Dated unavailability removes future bookable time from recurring
+            Availability. Existing Appointments remain scheduled. Times use{" "}
+            {INSTITUTION_TIME_ZONE_LABEL}.
           </p>
         </div>
         {canCreate ? (
@@ -288,6 +289,8 @@ export function UnavailabilitySection({
           <DialogTitle>Add unavailability</DialogTitle>
           <DialogDescription>
             Add a dated period that should be removed from recurring Availability.
+            This changes future bookable time only; existing Appointments in this
+            period remain scheduled.
           </DialogDescription>
           <form className="mt-6 space-y-5" onSubmit={submitCreate}>
             <div className="grid gap-2">
