@@ -6,9 +6,6 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from enum import StrEnum
 from uuid import UUID
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-
-from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -26,6 +23,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.institutional_time import institution_zone
 from compass.availability.services import AvailabilityError, compute_base_availability
 from compass.inventory.services import (
     CurrentAcademicYearNotConfigured,
@@ -211,15 +209,6 @@ class AppointmentHistoryEntry:
     new_provider: User | None = None
 
 
-def _institution_zone() -> ZoneInfo:
-    try:
-        return ZoneInfo(settings.TIME_ZONE)
-    except ZoneInfoNotFoundError as exc:
-        raise AppointmentNotSchedulable(
-            "The configured institutional timezone is unavailable."
-        ) from exc
-
-
 def _normalized_delivery_mode(value: str | DeliveryMode) -> str:
     normalized = value.value if isinstance(value, DeliveryMode) else value
     if normalized not in DeliveryMode.values:
@@ -263,7 +252,7 @@ def _pagination(page: int, page_size: int) -> tuple[int, int]:
 def _aware_start(value: datetime) -> datetime:
     if not isinstance(value, datetime) or timezone.is_naive(value):
         raise InvalidAppointmentInput("starts_at must be a timezone-aware datetime")
-    return value.astimezone(_institution_zone())
+    return value.astimezone(institution_zone())
 
 
 def _appointment_queryset():
@@ -289,7 +278,7 @@ def _date_bounds(
         raise InvalidAppointmentInput("to_date must be a date")
     if from_date is not None and to_date is not None and from_date > to_date:
         raise InvalidAppointmentInput("from_date must not be after to_date")
-    zone = _institution_zone()
+    zone = institution_zone()
     start = datetime.combine(from_date, time.min, tzinfo=zone) if from_date else None
     end = datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=zone) if to_date else None
     return start, end
@@ -634,7 +623,7 @@ def _candidate_slots(
         reservations = reservations.exclude(pk=exclude_appointment_id)
     busy_intervals = tuple(reservations.values_list("starts_at", "ends_at"))
     items: list[BookableSlot] = []
-    local_now = now.astimezone(_institution_zone())
+    local_now = now.astimezone(institution_zone())
     for window in windows:
         starts_at = window.starts_at
         while starts_at + duration <= window.ends_at:
@@ -778,7 +767,7 @@ def _validate_existing_service(
 
 
 def _reference_year(at: datetime) -> int:
-    return at.astimezone(_institution_zone()).year
+    return at.astimezone(institution_zone()).year
 
 
 def _allocate_reference(*, at: datetime) -> str:
@@ -826,7 +815,7 @@ def create_student_appointment(
     normalized_mode = _normalized_delivery_mode(delivery_mode)
     normalized_start = _aware_start(starts_at)
     current = now or timezone.now()
-    if normalized_start <= current.astimezone(_institution_zone()):
+    if normalized_start <= current.astimezone(institution_zone()):
         raise AppointmentNotSchedulable("Appointments must start in the future.")
 
     initially_resolved_provider = _resolve_booking_provider(student, provider_id)
@@ -1059,7 +1048,7 @@ def reschedule_appointment(
     if timezone.is_naive(current):
         raise InvalidAppointmentInput("The server time must be timezone-aware.")
     normalized_start = _aware_start(starts_at)
-    if normalized_start <= current.astimezone(_institution_zone()):
+    if normalized_start <= current.astimezone(institution_zone()):
         raise AppointmentNotSchedulable("Appointments must start in the future.")
     cleaned_reason = _clean_change_reason(reason, required=False)
 
