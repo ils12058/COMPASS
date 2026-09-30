@@ -1,6 +1,6 @@
 import type { GraduateTracerReportResponse } from "@/lib/api/generated/model";
 import { GraduateTracerSection } from "@/features/reports/graduate-tracer-section";
-import { formatDateOnly, formatDateTime } from "@/lib/date-time";
+import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 type GraduateTracerSectionKey = keyof GraduateTracerReportResponse["sections"];
 
@@ -114,7 +114,7 @@ export function GraduateTracerReportContent({
               Generated At
             </dt>
             <dd className="mt-1 text-sm font-medium text-ink">
-              {formatDateTime(report.report_context.generated_at)}
+              {formatInstitutionalDateTime(report.report_context.generated_at)}
             </dd>
           </div>
         </dl>
