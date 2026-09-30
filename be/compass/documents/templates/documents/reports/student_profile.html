@@ -49,6 +49,23 @@
     page-break-after: avoid;
   }
 
+  .student-profile-disclosure-warning {
+    margin: 0 0 5mm;
+    padding: 2.5mm 3mm;
+    border: 0.35mm solid #9a7622;
+    line-height: 1.35;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .student-profile-disclosure-warning h2 {
+    margin-top: 0;
+  }
+
+  .student-profile-disclosure-warning p {
+    margin: 0;
+  }
+
   .student-profile-methodology {
     margin: 0 0 5mm;
     padding: 2.5mm 3mm;
@@ -188,6 +205,15 @@
       </tbody>
     </table>
   </section>
+
+  {% if student_profile.disclosure_warning_messages %}
+    <section class="student-profile-disclosure-warning">
+      <h2>Small-population privacy notice</h2>
+      {% for message in student_profile.disclosure_warning_messages %}
+        <p>{{ message }}</p>
+      {% endfor %}
+    </section>
+  {% endif %}
 
   <section class="student-profile-methodology">
     <h2>Methodology / Coverage Note</h2>
