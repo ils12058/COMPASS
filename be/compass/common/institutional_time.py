@@ -23,9 +23,7 @@ def institution_zone() -> ZoneInfo:
     try:
         return ZoneInfo(name)
     except ZoneInfoNotFoundError as exc:
-        raise ImproperlyConfigured(
-            "INSTITUTION_TIME_ZONE must be a valid IANA timezone"
-        ) from exc
+        raise ImproperlyConfigured("INSTITUTION_TIME_ZONE must be a valid IANA timezone") from exc
 
 
 def to_institution_time(value: datetime) -> datetime:
