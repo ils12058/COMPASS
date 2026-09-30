@@ -37,8 +37,11 @@ def build_disclosure_warnings(
     if population < 0:
         raise ValueError("Report population cannot be negative.")
 
+    if population == 0:
+        return []
+
     threshold = REPORT_SMALL_POPULATION_WARNING_THRESHOLD
-    if 0 < population < threshold:
+    if population < threshold:
         return [_warning(ReportDisclosureWarningCode.SMALL_POPULATION)]
 
     for count in released_counts:
