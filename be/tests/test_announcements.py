@@ -668,7 +668,9 @@ def test_published_announcement_expiry_review_and_validity_invariants():
     )
     assert item.expires_at is None
 
-    with pytest.raises(InvalidAnnouncementInput, match="future while the Announcement is published"):
+    with pytest.raises(
+        InvalidAnnouncementInput, match="future while the Announcement is published"
+    ):
         update_announcement(
             actor=actor,
             announcement_id=item.pk,
@@ -720,10 +722,13 @@ def test_announcement_api_returns_structured_publication_consequence_review_requ
     )
     assert created.status_code == 201
     announcement_id = created.json()["id"]
-    assert client.post(
-        f"/api/v1/announcements/management/{announcement_id}/publish",
-        **csrf(client),
-    ).status_code == 200
+    assert (
+        client.post(
+            f"/api/v1/announcements/management/{announcement_id}/publish",
+            **csrf(client),
+        ).status_code
+        == 200
+    )
 
     rejected = client.patch(
         f"/api/v1/announcements/management/{announcement_id}",
