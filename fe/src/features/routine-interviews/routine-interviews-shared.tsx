@@ -14,21 +14,29 @@ import type {
   RoutinePersonSummary,
 } from "@/lib/api/generated/model";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import {
+  formatInstitutionalDateTime,
+  INSTITUTION_TIME_ZONE,
+} from "@/lib/institutional-time";
 
 export function formatRoutineDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return new Intl.DateTimeFormat("en-PH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+  return formatInstitutionalDateTime(value);
 }
 
 export function formatRoutineDateTimeRange(start: string, end: string): string {
-  return formatRoutineDateTime(start) + " – " + new Intl.DateTimeFormat("en-PH", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(end));
+  const endDate = new Date(end);
+  if (Number.isNaN(endDate.getTime())) {
+    return formatRoutineDateTime(start) + " – " + end;
+  }
+  return (
+    formatRoutineDateTime(start) +
+    " – " +
+    new Intl.DateTimeFormat("en-PH", {
+      timeZone: INSTITUTION_TIME_ZONE,
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(endDate)
+  );
 }
 
 export function routineEntryModeLabel(mode: RoutineEntryMode): string {
