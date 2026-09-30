@@ -30,6 +30,7 @@ import { getAppointmentAccess } from "@/features/appointments/appointments-acces
 import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CompassApiError } from "@/lib/api/errors";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import { isCounselingService } from "@/features/counseling/canonical-counseling-service";
 import {
   AppointmentActionBlocker,
@@ -63,10 +64,7 @@ type ActionError = { scope: "confirm" | "reschedule" | "reassign"; message: stri
 const controlClass = "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 function occurredAt(value: string): string {
-  return new Date(value).toLocaleString("en-PH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return formatInstitutionalDateTime(value);
 }
 
 function eventLabel(eventType: string): string {
