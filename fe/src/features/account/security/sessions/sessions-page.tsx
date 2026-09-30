@@ -24,6 +24,7 @@ import {
   useAuthRevokeTrustedSession,
 } from "@/lib/api/generated/auth/auth";
 import type { SessionSummary, TrustedSessionSummary } from "@/lib/api/generated/model";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 type PendingAction =
   | { kind: "session"; id: string }
@@ -32,8 +33,8 @@ type PendingAction =
   | { kind: "other-trusted"; currentExists: boolean };
 
 function formatDate(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Date unavailable" : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
+  const formatted = formatInstitutionalDateTime(value);
+  return formatted === value ? "Date unavailable" : formatted;
 }
 
 function SessionRow({ session, onRevoke }: { session: SessionSummary; onRevoke: (id: string) => void }) {
