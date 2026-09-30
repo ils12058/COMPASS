@@ -23,8 +23,8 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
-from compass.common.institutional_time import institution_zone
 from compass.availability.services import AvailabilityError, compute_base_availability
+from compass.common.institutional_time import institution_zone
 from compass.inventory.services import (
     CurrentAcademicYearNotConfigured,
     InventoryStatus,
