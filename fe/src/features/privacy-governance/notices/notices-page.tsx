@@ -21,7 +21,7 @@ import {
   useListSearchParams,
   usePrivacyAccess,
 } from "@/features/privacy-governance/privacy-governance-shared";
-import { formatDateTime } from "@/lib/date-time";
+import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import { usePrivacyGovernanceListNotices } from "@/lib/api/generated/privacy-governance/privacy-governance";
 
 // Notice families do not carry their current revision, so this index stays
@@ -105,7 +105,7 @@ export function NoticesPage() {
                       <ActiveBadge active={notice.is_active} />
                     </td>
                     <td className={tableCellClass + " text-ink"}>
-                      {formatDateTime(notice.updated_at)}
+                      {formatInstitutionalDateTime(notice.updated_at)}
                     </td>
                   </tr>
                 ))}
