@@ -18183,6 +18183,11 @@
       "ServiceUpdateRequest": {
         "additionalProperties": false,
         "properties": {
+          "acknowledge_scheduling_consequences": {
+            "default": false,
+            "title": "Acknowledge Scheduling Consequences",
+            "type": "boolean"
+          },
           "appointment_policy": {
             "allOf": [
               {
