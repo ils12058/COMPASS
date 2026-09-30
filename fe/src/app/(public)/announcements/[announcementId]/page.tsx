@@ -17,13 +17,21 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { announcementId } = await params;
   if (!isReaderUuid(announcementId)) {
-    return { title: "Announcement", description };
+    return {
+      title: "Announcement",
+      description,
+      robots: { index: false, follow: false },
+    };
   }
 
   const resolution = await resolveAnnouncementReader(announcementId);
   return {
     title: resolution.kind === "available" ? resolution.title : "Announcement",
     description,
+    robots:
+      resolution.kind === "available" && resolution.indexable
+        ? undefined
+        : { index: false, follow: false },
   };
 }
 
