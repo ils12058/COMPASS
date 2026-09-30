@@ -511,7 +511,12 @@ def test_totp_enrollment_is_pending_then_returns_one_time_recovery_codes():
     client = Client()
     assert login(client, email=user.email, password="correct-password").status_code == 200
 
-    setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {"current_password": "correct-password"}, headers=csrf_headers(client))
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
     assert setup.status_code == 200
     uri = setup.json()["provisioning_uri"]
     parsed = pyotp.parse_uri(uri)
@@ -553,7 +558,12 @@ def test_mfa_status_reports_enabled_and_recent_state():
     assert initial.status_code == 200
     assert initial.json() == {"enabled": False, "recent": False}
 
-    setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {"current_password": "correct-password"}, headers=csrf_headers(client))
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
     assert setup.status_code == 200
     parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
     confirmed = post_json(
@@ -704,7 +714,12 @@ def test_mfa_recovery_regeneration_and_disable_create_mandatory_security_notific
     client = Client()
     assert login(client, email=user.email, password="correct-password").status_code == 200
 
-    setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {"current_password": "correct-password"}, headers=csrf_headers(client))
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
     parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
     confirmed = post_json(
         client,
@@ -768,7 +783,12 @@ def test_mfa_login_requires_challenge_and_consumes_recovery_code_once():
     user = make_user(email="challenge@example.edu")
     client = Client()
     assert login(client, email=user.email, password="correct-password").status_code == 200
-    setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {"current_password": "correct-password"}, headers=csrf_headers(client))
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
     parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
     confirmed = post_json(
         client,
@@ -832,7 +852,12 @@ def test_trusted_browser_satisfies_mfa_only_after_password_and_can_be_used_then_
     user = make_user(email="trusted@example.edu")
     client = Client()
     login(client, email=user.email, password="correct-password")
-    setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {"current_password": "correct-password"}, headers=csrf_headers(client))
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
     parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
     confirmed = post_json(
         client,
@@ -916,7 +941,12 @@ def test_failed_step_up_totp_does_not_create_notification_or_email():
     user = make_user(email="failed-step-up@example.edu")
     client = Client()
     assert login(client, email=user.email, password="correct-password").status_code == 200
-    setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {"current_password": "correct-password"}, headers=csrf_headers(client))
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
     parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
     assert (
         post_json(
