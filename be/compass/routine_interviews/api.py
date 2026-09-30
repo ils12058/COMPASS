@@ -38,6 +38,8 @@ from .services import (
     RoutineInterviewInventoryRequired,
     RoutineInterviewNotFound,
     RoutineInterviewNotPermitted,
+    RoutineInterviewParentClosed,
+    RoutineWorkflowState,
     create_direct,
     ensure_for_appointment,
     finalize_assigned_evaluation,
@@ -51,6 +53,7 @@ from .services import (
     list_my_appointment_candidates,
     replace_assigned_evaluation,
     replace_my_intake,
+    routine_workflow_state,
     submit_my_intake,
 )
 
@@ -242,6 +245,7 @@ class RoutineEncounterCandidatePage(StrictSchema):
 
 class StudentRoutineSummaryResponse(StrictSchema):
     id: UUID
+    workflow_state: RoutineWorkflowState
     counselor: RoutinePersonSummary
     inventory_context: RoutineInventoryContext
     entry_mode: RoutineEntryMode
@@ -264,6 +268,7 @@ class StudentRoutineDetailResponse(StudentRoutineSummaryResponse):
 
 class CounselorRoutineSummaryResponse(StrictSchema):
     id: UUID
+    workflow_state: RoutineWorkflowState
     student: RoutinePersonSummary
     inventory_context: RoutineInventoryContext
     entry_mode: RoutineEntryMode
@@ -287,6 +292,7 @@ class CounselorRoutinePageResponse(StrictSchema):
 
 class CounselorRoutineDetailResponse(StrictSchema):
     id: UUID
+    workflow_state: RoutineWorkflowState
     student: RoutinePersonSummary
     inventory_context: RoutineInventoryContext
     entry_mode: RoutineEntryMode
@@ -343,6 +349,8 @@ def _raise(exc: Exception) -> NoReturn:
         raise APIError(409, "routine_interview_inventory_required", str(exc)) from exc
     if isinstance(exc, RoutineInterviewAppointmentInvalid):
         raise APIError(409, "routine_interview_appointment_invalid", str(exc)) from exc
+    if isinstance(exc, RoutineInterviewParentClosed):
+        raise APIError(409, "routine_interview_closed_by_appointment", str(exc)) from exc
     if isinstance(exc, RoutineInterviewIntakeSubmitted):
         raise APIError(409, "routine_interview_intake_already_submitted", str(exc)) from exc
     if isinstance(exc, RoutineInterviewIntakeRequired):
@@ -500,6 +508,7 @@ def _content(read, item) -> dict[str, object]:
 def _student_summary(item) -> dict[str, object]:
     return {
         "id": item.pk,
+        "workflow_state": routine_workflow_state(item),
         "counselor": _person(item.counselor),
         "inventory_context": _inventory_context(item),
         "entry_mode": item.entry_mode,
@@ -521,6 +530,7 @@ def _student_detail(item) -> dict[str, object]:
 def _counselor_summary(item) -> dict[str, object]:
     return {
         "id": item.pk,
+        "workflow_state": routine_workflow_state(item),
         "student": _person(item.student),
         "inventory_context": _inventory_context(item),
         "entry_mode": item.entry_mode,
@@ -558,6 +568,7 @@ def _counseling_context_available(actor, item) -> bool:
 def _counselor_detail(item, *, actor) -> dict[str, object]:
     return {
         "id": item.pk,
+        "workflow_state": routine_workflow_state(item),
         "student": _person(item.student),
         "inventory_context": _inventory_context(item),
         "entry_mode": item.entry_mode,
