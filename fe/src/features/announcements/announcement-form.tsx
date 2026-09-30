@@ -350,7 +350,7 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
     </form>
     <ContentConfirmDialog
       open={reviewOpen}
-      title="Review published Announcement changes?"
+      title="Review changes to this published Announcement?"
       description={
         <>
           {reviewedAudience != null && saved.audience ? (
