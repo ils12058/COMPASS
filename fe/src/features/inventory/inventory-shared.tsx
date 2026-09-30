@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export const inventoryInputClass =
   "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink outline-none placeholder:text-muted focus:border-focus focus:ring-2 focus:ring-focus/25 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-70";
@@ -163,19 +164,13 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
 
 export function formatInventoryDate(value: string | null | undefined): string {
   if (!value) return "Not submitted";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Date unavailable";
-  return new Intl.DateTimeFormat("en-PH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+  const formatted = formatInstitutionalDateTime(value);
+  return formatted === value ? "Date unavailable" : formatted;
 }
 
 export function formatInventoryDateOnly(value: string | null | undefined): string {
   if (!value) return "Not provided";
-  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-PH", { dateStyle: "long" }).format(date);
+  return formatDateOnly(value.slice(0, 10), { dateStyle: "long" });
 }
 
 export function FieldGroup({
