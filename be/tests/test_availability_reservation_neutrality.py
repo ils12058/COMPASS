@@ -72,8 +72,7 @@ def _interval_remains_bookable(*, provider, service, appointment) -> bool:
         end_date=appointment.starts_at.date() + timedelta(days=1),
     )
     return any(
-        window.starts_at <= appointment.starts_at
-        and window.ends_at >= appointment.ends_at
+        window.starts_at <= appointment.starts_at and window.ends_at >= appointment.ends_at
         for window in result.windows
     )
 
