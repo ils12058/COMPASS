@@ -510,69 +510,8 @@ export function CreateServicePage() {
         messages={action.messages}
         onSubmit={submit}
       />
-      <AlertDialog
-        open={review !== null}
-        onOpenChange={(open) => {
-          if (!open && !update.isPending) {
-            setReview(null);
-            setReviewError(null);
-          }
-        }}
-      >
-        <AlertDialogContent
-          onEscapeKeyDown={(event) => {
-            if (update.isPending) event.preventDefault();
-          }}
-        >
-          <AlertDialogTitle>Review Service scheduling consequences</AlertDialogTitle>
-          <AlertDialogDescription>
-            Review what this Service change means before saving it.
-          </AlertDialogDescription>
-          <div className="mt-4 space-y-3 text-sm leading-6 text-ink">
-            {review?.details?.existingAppointmentDependencyDetected ? (
-              <p>
-                Existing Appointments will remain scheduled. This change may
-                prevent affected Appointments from being rescheduled or
-                reassigned while the Service no longer supports their saved
-                configuration.
-              </p>
-            ) : null}
-            {review?.details?.counselingOnlineEnabled ? (
-              <p>
-                Online Counseling may become bookable where Availability permits
-                it. This does not verify that the E-Counseling provider
-                integration is ready.
-              </p>
-            ) : null}
-            {review && !review.details ? (
-              <p>
-                One or more scheduling consequences require review. Existing
-                Appointments are not changed automatically by this Service
-                update.
-              </p>
-            ) : null}
-          </div>
-          {reviewError ? (
-            <p role="alert" className="mt-4 text-sm text-danger">
-              {reviewError}
-            </p>
-          ) : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={update.isPending}>
-                Cancel
-              </Button>
-            </AlertDialogCancel>
-            <Button
-              disabled={update.isPending}
-              onClick={() => void confirmConsequenceReview()}
-            >
-              {update.isPending ? "Saving…" : "Save Service changes"}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
       {action.stepUpDialog}
+
     </section>
   );
 }
@@ -747,6 +686,68 @@ export function EditServicePage() {
         codeReadOnly
         onSubmit={submit}
       />
+      <AlertDialog
+        open={review !== null}
+        onOpenChange={(open) => {
+          if (!open && !update.isPending) {
+            setReview(null);
+            setReviewError(null);
+          }
+        }}
+      >
+        <AlertDialogContent
+          onEscapeKeyDown={(event) => {
+            if (update.isPending) event.preventDefault();
+          }}
+        >
+          <AlertDialogTitle>Review Service scheduling consequences</AlertDialogTitle>
+          <AlertDialogDescription>
+            Review what this Service change means before saving it.
+          </AlertDialogDescription>
+          <div className="mt-4 space-y-3 text-sm leading-6 text-ink">
+            {review?.details?.existingAppointmentDependencyDetected ? (
+              <p>
+                Existing Appointments will remain scheduled. This change may
+                prevent affected Appointments from being rescheduled or
+                reassigned while the Service no longer supports their saved
+                configuration.
+              </p>
+            ) : null}
+            {review?.details?.counselingOnlineEnabled ? (
+              <p>
+                Online Counseling may become bookable where Availability permits
+                it. This does not verify that the E-Counseling provider
+                integration is ready.
+              </p>
+            ) : null}
+            {review && !review.details ? (
+              <p>
+                One or more scheduling consequences require review. Existing
+                Appointments are not changed automatically by this Service
+                update.
+              </p>
+            ) : null}
+          </div>
+          {reviewError ? (
+            <p role="alert" className="mt-4 text-sm text-danger">
+              {reviewError}
+            </p>
+          ) : null}
+          <div className="mt-6 flex flex-wrap justify-end gap-2">
+            <AlertDialogCancel asChild>
+              <Button variant="secondary" disabled={update.isPending}>
+                Cancel
+              </Button>
+            </AlertDialogCancel>
+            <Button
+              disabled={update.isPending}
+              onClick={() => void confirmConsequenceReview()}
+            >
+              {update.isPending ? "Saving…" : "Save Service changes"}
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
       {action.stepUpDialog}
     </section>
   );
