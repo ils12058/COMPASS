@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   publicationAudienceLabels,
+  publicationAudienceReaders,
   type PublicationAudience,
 } from "@/features/content/content-presentation";
 import {
@@ -450,11 +451,18 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
               {publicationAudienceLabels[reviewedAudience]}.
             </p>
           ) : null}
-          {reviewedAudience === ResourceAudienceValue.PUBLIC ? (
-            <p>
-              Anyone who can access the public COMPASS site will be able to open this
-              Resource without signing in.
-            </p>
+          {reviewedAudience !== undefined ? (
+            reviewedAudience === ResourceAudienceValue.PUBLIC ? (
+              <p>
+                Anyone who can access the public COMPASS site will be able to open this
+                Resource without signing in.
+              </p>
+            ) : (
+              <p>
+                After this change, it will be available to{" "}
+                {publicationAudienceReaders[reviewedAudience]}.
+              </p>
+            )
           ) : null}
           {reviewedDestinationChanged ? (
             <>
