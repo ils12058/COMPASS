@@ -260,9 +260,12 @@ def test_cancelled_appointment_preserves_routine_content_and_blocks_every_mutati
 
     preserved = RoutineInterview.objects.get(pk=routine.pk)
     assert read_intake(preserved)["college_experience"] == "Preserve this draft."
-    assert routine_workflow_state(
-        RoutineInterview.objects.select_related("appointment").get(pk=routine.pk)
-    ) == RoutineWorkflowState.CLOSED_APPOINTMENT_CANCELLED
+    assert (
+        routine_workflow_state(
+            RoutineInterview.objects.select_related("appointment").get(pk=routine.pk)
+        )
+        == RoutineWorkflowState.CLOSED_APPOINTMENT_CANCELLED
+    )
 
     with pytest.raises(RoutineInterviewParentClosed):
         replace_my_intake(
@@ -312,7 +315,9 @@ def test_cancelled_appointment_preserves_routine_content_and_blocks_every_mutati
     ECOUNSELING_REJOIN_GRACE_SECONDS=900,
 )
 def test_no_show_closes_appointment_routine_but_completed_and_direct_routines_remain_active():
-    _, student, counselor, service, no_show_appointment = setup_online_appointment("terminal-routine")
+    _, student, counselor, service, no_show_appointment = setup_online_appointment(
+        "terminal-routine"
+    )
     past_start = timezone.now() - timedelta(hours=3)
     set_window(no_show_appointment, starts_at=past_start)
     no_show_routine = ensure_for_appointment(
@@ -335,9 +340,12 @@ def test_no_show_closes_appointment_routine_but_completed_and_direct_routines_re
     assert marked.status == AppointmentStatus.NO_SHOW
     no_show_routine.refresh_from_db()
     assert read_intake(no_show_routine)["academic_goals"] == "Keep this historical answer."
-    assert routine_workflow_state(
-        RoutineInterview.objects.select_related("appointment").get(pk=no_show_routine.pk)
-    ) == RoutineWorkflowState.CLOSED_APPOINTMENT_NO_SHOW
+    assert (
+        routine_workflow_state(
+            RoutineInterview.objects.select_related("appointment").get(pk=no_show_routine.pk)
+        )
+        == RoutineWorkflowState.CLOSED_APPOINTMENT_NO_SHOW
+    )
 
     completed_appointment = make_appointment(
         student=student,
@@ -358,9 +366,12 @@ def test_no_show_closes_appointment_routine_but_completed_and_direct_routines_re
         now=completed_appointment.ends_at + timedelta(minutes=15, seconds=1),
     )
     assert completed.status == AppointmentStatus.COMPLETED
-    assert routine_workflow_state(
-        RoutineInterview.objects.select_related("appointment").get(pk=completed_routine.pk)
-    ) == RoutineWorkflowState.ACTIVE
+    assert (
+        routine_workflow_state(
+            RoutineInterview.objects.select_related("appointment").get(pk=completed_routine.pk)
+        )
+        == RoutineWorkflowState.ACTIVE
+    )
     updated = replace_my_intake(
         student=student,
         routine_interview_id=completed_routine.pk,
