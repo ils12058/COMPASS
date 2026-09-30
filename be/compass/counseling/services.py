@@ -19,7 +19,12 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.feedback.models import CustomerFeedbackService, FeedbackOpportunitySourceType
-from compass.feedback.services import ensure_feedback_opportunity
+from compass.feedback.services import (
+    FeedbackChronologyConflict,
+    FeedbackProvenanceConflict,
+    ensure_feedback_opportunity,
+    reconcile_counseling_feedback_opportunity,
+)
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
@@ -65,6 +70,18 @@ class CounselingAppointmentAlreadyUsed(CounselingError):
 
 
 class CounselingInvalidTime(CounselingError):
+    pass
+
+
+class CounselingFinalizedRoutineConflict(CounselingError):
+    pass
+
+
+class CounselingFeedbackProvenanceConflict(CounselingError):
+    pass
+
+
+class CounselingFeedbackChronologyConflict(CounselingError):
     pass
 
 
@@ -623,6 +640,30 @@ def list_students(
     return StudentPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
 
 
+def _lock_finalized_routine_dependency(encounter_id: UUID):
+    """Lock an already-finalized Routine before its Encounter to preserve lock ordering."""
+
+    from compass.routine_interviews.models import RoutineInterview
+
+    return (
+        RoutineInterview.objects.select_for_update(of=("self",))
+        .filter(
+            counseling_encounter_id=encounter_id,
+            evaluation_finalized_at__isnull=False,
+        )
+        .first()
+    )
+
+
+def _finalized_routine_dependency(encounter_id: UUID):
+    from compass.routine_interviews.models import RoutineInterview
+
+    return RoutineInterview.objects.filter(
+        counseling_encounter_id=encounter_id,
+        evaluation_finalized_at__isnull=False,
+    ).first()
+
+
 def update_encounter(
     *,
     encounter_id: UUID,
@@ -639,6 +680,7 @@ def update_encounter(
         )
 
     with transaction.atomic():
+        finalized_routine = _lock_finalized_routine_dependency(encounter_id)
         item = CounselingEncounter.objects.select_for_update().filter(pk=encounter_id).first()
         if item is None or item.counselor_id != counselor.pk:
             raise CounselingNotFound("The requested Counseling Encounter was not found.")
@@ -718,7 +760,6 @@ def update_encounter(
                 require_unused_by=item.pk,
             )
 
-        changed_fields: list[str] = []
         scalar_changes = {
             "entry_mode": next_entry,
             "delivery_mode": next_mode,
@@ -726,14 +767,56 @@ def update_encounter(
             "ended_at": normalized_end,
             "appointment_id": proposed_appointment_id,
         }
-        for field, value in scalar_changes.items():
-            if getattr(item, field) != value:
-                setattr(item, field, value)
-                changed_fields.append(field)
-
+        changed_fields = [
+            field for field, value in scalar_changes.items() if getattr(item, field) != value
+        ]
         if not changed_fields:
             return _encounter_queryset().get(pk=item.pk)
 
+        # If finalization committed before this transaction acquired the Encounter lock,
+        # observe it now. If finalization is still waiting on this Encounter, it will
+        # validate the corrected facts after this transaction commits.
+        if finalized_routine is None:
+            finalized_routine = _finalized_routine_dependency(item.pk)
+        finalized_routine_checked = finalized_routine is not None
+        if finalized_routine is not None:
+            from compass.routine_interviews.matching import (
+                RoutineEncounterFacts,
+                routine_interview_encounter_match_issue_for_facts,
+            )
+
+            issue = routine_interview_encounter_match_issue_for_facts(
+                item=finalized_routine,
+                facts=RoutineEncounterFacts(
+                    student_id=item.student_id,
+                    counselor_id=item.counselor_id,
+                    service_code=service.code,
+                    delivery_mode=next_mode,
+                    ended_at=normalized_end,
+                    entry_mode=next_entry,
+                    appointment_id=proposed_appointment_id,
+                ),
+                now=now,
+            )
+            if issue is not None:
+                raise CounselingFinalizedRoutineConflict(
+                    "The corrected Encounter would no longer match its finalized Routine Interview."
+                )
+
+        try:
+            feedback_reconciled = reconcile_counseling_feedback_opportunity(
+                encounter_id=item.pk,
+                student_id=item.student_id,
+                service_completed_at=normalized_end,
+            )
+        except FeedbackChronologyConflict as exc:
+            raise CounselingFeedbackChronologyConflict(str(exc)) from exc
+        except FeedbackProvenanceConflict as exc:
+            raise CounselingFeedbackProvenanceConflict(str(exc)) from exc
+
+        for field, value in scalar_changes.items():
+            if field in changed_fields:
+                setattr(item, field, value)
         item.save(update_fields=[*changed_fields, "updated_at"])
         record_event(
             context=context,
@@ -741,6 +824,10 @@ def update_encounter(
             outcome=AuditOutcome.SUCCESS,
             target_type="counseling.encounter",
             target_id=item.pk,
-            metadata={"changed_fields": sorted(changed_fields)},
+            metadata={
+                "changed_fields": sorted(changed_fields),
+                "feedback_opportunity_reconciled": feedback_reconciled,
+                "finalized_routine_dependency_checked": finalized_routine_checked,
+            },
         )
     return _encounter_queryset().get(pk=item.pk)
