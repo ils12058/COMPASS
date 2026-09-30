@@ -19024,6 +19024,25 @@
         "title": "SystemMetadataResponse",
         "type": "object"
       },
+      "TOTPConfirmationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "current_password": {
+            "title": "Current Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "current_password"
+        ],
+        "title": "TOTPConfirmationRequest",
+        "type": "object"
+      },
       "TOTPConfirmationResponse": {
         "properties": {
           "enabled": {
@@ -19043,6 +19062,20 @@
           "recovery_codes"
         ],
         "title": "TOTPConfirmationResponse",
+        "type": "object"
+      },
+      "TOTPSetupRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "current_password": {
+            "title": "Current Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password"
+        ],
+        "title": "TOTPSetupRequest",
         "type": "object"
       },
       "TOTPSetupResponse": {
@@ -24757,7 +24790,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/MFARequest"
+                "$ref": "#/components/schemas/TOTPConfirmationRequest"
               }
             }
           },
@@ -24917,6 +24950,16 @@
       "post": {
         "operationId": "authStartTotpSetup",
         "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TOTPSetupRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -24957,6 +25000,26 @@
               }
             },
             "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
           },
           "503": {
             "content": {
