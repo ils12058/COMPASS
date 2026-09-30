@@ -107,7 +107,6 @@ export function AuthenticatorPage() {
     setError(null);
     try {
       const response = await start.mutateAsync({ data: { current_password: currentPassword } });
-      setCurrentPassword("");
       setSetup(response.data);
     } catch (caught) {
       setError(accountErrorMessage(caught, "Authenticator setup could not be started. Please try again."));
@@ -118,16 +117,24 @@ export function AuthenticatorPage() {
     event.preventDefault();
     setError(null);
     try {
-      const response = await confirm.mutateAsync({ data: { code } });
+      const response = await confirm.mutateAsync({ data: { code, current_password: currentPassword } });
       if (!response.data.enabled) {
         setError("Authenticator setup could not be confirmed. Please try again.");
         return;
       }
+      setCurrentPassword("");
       setCode("");
       setCodes(response.data.recovery_codes);
       setSetup(null);
       void queryClient.invalidateQueries({ queryKey: getAuthGetMfaStatusQueryKey() });
     } catch (caught) {
+      if (accountErrorCode(caught) === "mfa_enrollment_authorization_failed") {
+        setCurrentPassword("");
+        setSetup(null);
+        setCode("");
+        setError("Your current password could not be verified. Start authenticator setup again.");
+        return;
+      }
       setError(accountErrorMessage(caught, "The authenticator code could not be verified."));
     }
   }
