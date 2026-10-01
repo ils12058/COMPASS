@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
 import {
   ManagedActionFeedback,
@@ -87,12 +88,17 @@ export function ImportAccounts() {
   const [report, setReport] = useState<CsvImportResponse | null>(null);
   const [conflict, setConflict] = useState(false);
   const [issues, setIssues] = useState<CsvIssue[]>([]);
+  const [commitReview, setCommitReview] = useState<{
+    file: File;
+    report: CsvImportResponse;
+  } | null>(null);
   const readyToCommit = Boolean(
     file &&
       reviewedFile === file &&
       report?.valid &&
       !report.committed &&
-      !conflict,
+      !conflict &&
+      report.create_count > 0,
   );
 
   async function validate() {
@@ -113,19 +119,32 @@ export function ImportAccounts() {
     setReport(response.data);
   }
 
+  function openCommitReview() {
+    if (!file || !report || !readyToCommit) return;
+    action.setError(null);
+    action.setNotice(null);
+    setCommitReview({ file, report });
+  }
+
   async function commit() {
-    if (!file || !readyToCommit) return;
+    if (!commitReview) return;
+    const reviewed = commitReview;
     const response = await action.run(
       () =>
-        importCsv.mutateAsync({ data: { file }, params: { dry_run: false } }),
+        importCsv.mutateAsync({
+          data: { file: reviewed.file },
+          params: { dry_run: false },
+        }),
       "The CSV import could not be completed.",
-      undefined,
+      () => setCommitReview(null),
       (error) => {
         setConflict(true);
         setIssues(csvIssues(error));
       },
+      () => setCommitReview(reviewed),
     );
     if (!response) return;
+    setCommitReview(null);
     setReport(response.data);
     await invalidate();
     action.setNotice(
@@ -178,6 +197,7 @@ export function ImportAccounts() {
               setReviewedFile(null);
               setConflict(false);
               setIssues([]);
+              setCommitReview(null);
               action.setError(null);
               action.setNotice(null);
             }}
@@ -190,7 +210,7 @@ export function ImportAccounts() {
         >
           {importCsv.isPending && !report ? "Validating CSV…" : "Validate CSV"}
         </Button>
-        <ManagedActionFeedback action={action} />
+        <ManagedActionFeedback action={action} showMessages={!commitReview} />
         {conflict ? (
           <p role="status" className="mt-3 text-sm text-muted">
             Review the current CSV again before attempting another import.
@@ -313,16 +333,58 @@ export function ImportAccounts() {
             <div className="mt-6">
               <Button
                 disabled={importCsv.isPending}
-                onClick={() => void commit()}
+                onClick={openCommitReview}
               >
-                {importCsv.isPending
-                  ? "Importing accounts…"
-                  : "Import accounts"}
+                Import accounts
               </Button>
             </div>
           ) : null}
         </section>
       ) : null}
+      <ConsequentialActionDialog
+        open={commitReview !== null}
+        title={
+          commitReview
+            ? `Import ${commitReview.report.create_count} ${commitReview.report.create_count === 1 ? "account" : "accounts"}?`
+            : "Import accounts?"
+        }
+        confirmLabel={
+          commitReview
+            ? `Import ${commitReview.report.create_count} ${commitReview.report.create_count === 1 ? "account" : "accounts"}`
+            : "Import accounts"
+        }
+        pendingLabel="Importing accounts…"
+        pending={importCsv.isPending}
+        error={action.error}
+        onOpenChange={(open) => {
+          if (!open) setCommitReview(null);
+        }}
+        onConfirm={() => void commit()}
+      >
+        {commitReview ? (
+          <>
+            <p>
+              {commitReview.report.create_count} new active {commitReview.report.create_count === 1 ? "account" : "accounts"} will be created.
+              {" "}
+              {commitReview.report.skip_count} exact existing {commitReview.report.skip_count === 1 ? "account" : "accounts"} will be skipped.
+            </p>
+            <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+              {[
+                ["Create", commitReview.report.create_count],
+                ["Skip", commitReview.report.skip_count],
+                ["Conflict", commitReview.report.conflict_count],
+                ["Invalid", commitReview.report.invalid_count],
+              ].map(([label, value]) => (
+                <div key={String(label)}>
+                  <dt className="text-muted">{label}</dt>
+                  <dd className="font-semibold text-ink">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <p>The import will use the CSV that produced this validation report. Server checks remain authoritative at commit time.</p>
+          </>
+        ) : null}
+      </ConsequentialActionDialog>
     </section>
   );
 }
