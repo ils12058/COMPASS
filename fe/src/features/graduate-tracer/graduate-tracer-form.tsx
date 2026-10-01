@@ -245,7 +245,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
                 pendingLabel="Submitting…"
                 pending={submit.isPending}
                 confirmDisabled={needsSubmissionCheck}
-                error={submitError}
+                error={submitError ?? null}
                 onOpenChange={setConfirmSubmit}
                 onConfirm={() => void submitDraft()}
               >
