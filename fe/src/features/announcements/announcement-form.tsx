@@ -1,11 +1,11 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { refreshAnnouncementQueries, storeManagedAnnouncement } from "@/features/announcements/announcement-cache";
@@ -26,7 +26,7 @@ import {
 } from "@/features/content/content-shared";
 import { MarkdownEditor } from "@/features/content/markdown-editor/markdown-editor";
 import { useMarkdownValue } from "@/features/content/markdown-editor/use-markdown-value";
-import { useUnsavedChangesGuard } from "@/features/content/use-unsaved-changes-guard";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import {
   getAnnouncementsListManagedQueryKey,
   useAnnouncementsCreateDraft,
@@ -98,7 +98,10 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
     values.expiresAt !== saved.expiresAt ||
     body.changed;
 
-  useUnsavedChangesGuard(dirty, "Discard your unsaved Announcement changes?");
+  useUnsavedChangesGuard({
+    dirty,
+    message: "Discard your unsaved Announcement changes?",
+  });
 
   function setField<K extends keyof AnnouncementFields>(key: K, value: AnnouncementFields[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -338,9 +341,9 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
         ) : null}
         <div className="flex flex-wrap items-center justify-end gap-3">
           {!announcement ? (
-            <Link href="/portal/announcements" className={contentSecondaryLinkClass}>
+            <GuardedPortalLink href="/portal/announcements" className={contentSecondaryLinkClass}>
               Cancel
-            </Link>
+            </GuardedPortalLink>
           ) : null}
           <Button type="submit" disabled={saving || !dirty}>
             {saving ? pendingLabel : submitLabel}
