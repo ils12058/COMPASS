@@ -3,14 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import {
   ManagedActionFeedback,
   useInvalidateManagedAccount,
@@ -56,6 +50,10 @@ export function AccountSecurity() {
         () => reset.mutateAsync({ userId: account.id }),
         "Multi-factor authentication could not be reset.",
         () => setConfirm(null),
+      undefined,
+      () => setConfirm(kind),
+        undefined,
+        () => setConfirm(kind),
       );
       if (!result) return;
       setConfirm(null);
@@ -70,6 +68,8 @@ export function AccountSecurity() {
         () => revokeSessions.mutateAsync({ userId: account.id }),
         "Sessions could not be signed out.",
         () => setConfirm(null),
+        undefined,
+        () => setConfirm(kind),
       );
       if (!result) return;
       setConfirm(null);
@@ -99,7 +99,7 @@ export function AccountSecurity() {
         : `Remove all of ${name}'s trusted browsers?`;
   const description =
     confirm === "reset"
-      ? "This removes the account's current authenticator setup and recovery codes. Existing sessions and trusted-browser access will be revoked. The account may need to configure MFA again at the next sign-in."
+      ? "This removes the account's current authenticator setup and recovery codes, revokes active COMPASS sessions, and removes saved trusted-browser authorization. The account will need to authenticate again and configure MFA again when required by current policy."
       : confirm === "sessions"
         ? "This signs the account out of all active COMPASS sessions. Trusted-browser authorizations are separate."
         : "This removes trusted-browser authorization for this account. Future sign-ins may require multi-factor verification again. Authentication sessions are separate.";
@@ -150,9 +150,11 @@ export function AccountSecurity() {
                 revokes sessions and trusted browsers.
               </p>
             </div>
-            <Button variant="danger" onClick={() => setConfirm("reset")}>
-              Reset MFA
-            </Button>
+            {account.mfa_enabled ? (
+              <Button variant="danger" onClick={() => setConfirm("reset")}>
+                Reset MFA
+              </Button>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-start justify-between gap-4 py-5">
             <div>
@@ -181,37 +183,22 @@ export function AccountSecurity() {
           </div>
         </div>
       )}
-      <ManagedActionFeedback action={action} />
-      <AlertDialog
+      <ManagedActionFeedback action={action} showMessages={confirm === null} />
+      <ConsequentialActionDialog
         open={confirm !== null}
+        title={title}
+        confirmLabel={submitLabel}
+        pendingLabel={pendingLabel}
+        pending={busy}
+        error={action.error}
+        variant="danger"
         onOpenChange={(open) => {
-          if (!open && !busy) setConfirm(null);
+          if (!open) setConfirm(null);
         }}
+        onConfirm={() => void confirmAction()}
       >
-        <AlertDialogContent>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-          {action.error ? (
-            <p role="alert" className="mt-3 text-sm text-danger">
-              {action.error}
-            </p>
-          ) : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={busy}>
-                Cancel
-              </Button>
-            </AlertDialogCancel>
-            <Button
-              variant={confirm === "reset" ? "danger" : "primary"}
-              disabled={busy}
-              onClick={() => void confirmAction()}
-            >
-              {busy ? pendingLabel : submitLabel}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p>{description}</p>
+      </ConsequentialActionDialog>
     </section>
   );
 }
