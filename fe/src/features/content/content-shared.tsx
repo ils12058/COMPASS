@@ -3,14 +3,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   publicationAudienceDescriptions,
@@ -177,35 +171,19 @@ export function ContentConfirmDialog({
   onConfirm: () => void;
 }) {
   return (
-    <AlertDialog
+    <ConsequentialActionDialog
       open={open}
-      onOpenChange={(next) => {
-        if (pending) return;
-        onOpenChange(next);
-      }}
+      title={title}
+      confirmLabel={confirmLabel}
+      pendingLabel={pendingLabel}
+      pending={pending}
+      error={error}
+      variant={destructive ? "danger" : "primary"}
+      onOpenChange={onOpenChange}
+      onConfirm={onConfirm}
     >
-      <AlertDialogContent aria-busy={pending}>
-        <AlertDialogTitle className="break-words">{title}</AlertDialogTitle>
-        <AlertDialogDescription asChild>
-          <div className="mt-2 space-y-2 text-sm leading-6 text-muted">{description}</div>
-        </AlertDialogDescription>
-        {error ? (
-          <p role="alert" className="mt-4 text-sm leading-6 text-danger">
-            {error}
-          </p>
-        ) : null}
-        <div className="mt-6 flex flex-wrap justify-end gap-2">
-          <AlertDialogCancel asChild>
-            <Button variant="secondary" disabled={pending}>
-              Cancel
-            </Button>
-          </AlertDialogCancel>
-          <Button variant={destructive ? "danger" : "primary"} disabled={pending} onClick={onConfirm}>
-            {pending ? pendingLabel : confirmLabel}
-          </Button>
-        </div>
-      </AlertDialogContent>
-    </AlertDialog>
+      {description}
+    </ConsequentialActionDialog>
   );
 }
 
