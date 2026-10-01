@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { Providers } from "@/app/providers";
+import { ACCESSIBILITY_BOOTSTRAP_SCRIPT } from "@/features/accessibility/accessibility-preferences";
 import { fontVariables } from "@/styles/fonts";
 import "@/styles/globals.css";
 
@@ -42,7 +43,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" className={fontVariables}>
+    // The bootstrap script applies saved accessibility settings to <html> before the first paint;
+    // suppressHydrationWarning lets React accept those attributes.
+    <html lang="en" className={fontVariables} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: ACCESSIBILITY_BOOTSTRAP_SCRIPT }} />
+      </head>
       <body>
         <Providers>{children}</Providers>
       </body>

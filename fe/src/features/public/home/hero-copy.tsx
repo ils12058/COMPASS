@@ -4,17 +4,11 @@ import { ArrowRight, Pause, Play } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
+import { useReducedMotion } from "@/features/accessibility/use-accessibility-preferences";
 import { cn } from "@/lib/utils/cn";
 
 // Long enough to read either headline before the other one fades in.
 const HEADLINE_INTERVAL_MS = 7000;
-const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
-
-function subscribeToReducedMotion(onChange: () => void) {
-  const query = window.matchMedia(REDUCED_MOTION_QUERY);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-}
 
 function subscribeToVisibility(onChange: () => void) {
   document.addEventListener("visibilitychange", onChange);
@@ -29,11 +23,8 @@ const hiddenLayer = "opacity-0 duration-300";
 type Playback = "auto" | "playing" | "paused";
 
 export function HeroCopy() {
-  const prefersReducedMotion = useSyncExternalStore(
-    subscribeToReducedMotion,
-    () => window.matchMedia(REDUCED_MOTION_QUERY).matches,
-    () => false,
-  );
+  // Covers both the operating-system setting and the COMPASS "Reduce motion" setting.
+  const prefersReducedMotion = useReducedMotion();
   const pageVisible = useSyncExternalStore(
     subscribeToVisibility,
     () => document.visibilityState === "visible",

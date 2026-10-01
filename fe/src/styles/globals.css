@@ -215,3 +215,35 @@ h6 {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Reader accessibility settings (features/accessibility). These rules sit outside the Tailwind
+   layers on purpose, so a reader's choice wins over component utilities. */
+html[data-a11y-text-size="large"] {
+  font-size: 112.5%;
+}
+
+html[data-a11y-text-size="extra-large"] {
+  font-size: 125%;
+}
+
+html[data-a11y-spacing="relaxed"] :where(p, li, dd, dt, blockquote, label) {
+  line-height: 1.8;
+  letter-spacing: 0.03em;
+  word-spacing: 0.08em;
+}
+
+html[data-a11y-links="underline"] a {
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+html[data-a11y-motion="reduce"] *,
+html[data-a11y-motion="reduce"] *::before,
+html[data-a11y-motion="reduce"] *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}

@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
 import { PublicMaintenanceNotice } from "@/features/platform/platform-public-maintenance-notice";
 
 export function AuthShell({ children }: { children: ReactNode }) {
@@ -45,6 +46,8 @@ export function AuthShell({ children }: { children: ReactNode }) {
           <p className="mt-2 leading-7 text-on-brand/80">Guidance and Counseling Office</p>
         </div>
       </aside>
+
+      <AccessibilityControl placement="floating" />
     </div>
   );
 }

@@ -1096,6 +1096,10 @@ Do not make clickable `<div>` elements imitate controls.
 
 Do not hide focus indicators.
 
+Readers can enlarge text, add spacing, underline links, and reduce motion from the Accessibility
+control (`src/features/accessibility/`). Keep text and layout sizes in `rem` so the Text size
+setting scales them.
+
 ---
 
 # 43. Responsive behavior
@@ -1133,6 +1137,10 @@ Respect:
 ```text
 prefers-reduced-motion
 ```
+
+JavaScript-driven motion must use `useReducedMotion()` from
+`src/features/accessibility/use-accessibility-preferences.ts`, which combines the operating-system
+setting with the reader's COMPASS "Reduce motion" setting. CSS transitions are covered globally.
 
 Do not add bounce, spring, hover-lift, or continuous animation merely to make the interface feel modern.
 
