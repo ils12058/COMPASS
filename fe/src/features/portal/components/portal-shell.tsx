@@ -15,8 +15,12 @@ export function PortalShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-body lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <aside className="hidden min-h-dvh lg:block">
-        <PortalNavigation />
+      <aside className="hidden bg-brand-strong lg:block">
+        {/* The menu stays in view while long pages scroll, and scrolls on its own when it is
+            taller than the screen. */}
+        <div className="sticky top-0 h-dvh">
+          <PortalNavigation />
+        </div>
       </aside>
 
       <div className="min-w-0">
@@ -32,7 +36,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
               </button>
             </DialogTrigger>
             <DialogContent
-              className="left-0 top-0 h-dvh max-h-dvh w-[18rem] max-w-[85vw] translate-x-0 translate-y-0 rounded-none border-y-0 border-l-0 p-0"
+              className="left-0 top-0 h-dvh max-h-dvh w-[18rem] max-w-[85vw] translate-x-0 translate-y-0 rounded-none border-y-0 border-l-0 p-0 data-[state=closed]:animate-[portal-drawer-out_150ms_ease-in] data-[state=open]:animate-[portal-drawer-in_200ms_ease-out]"
               closeClassName="top-5 text-on-brand/80 hover:text-on-brand focus-visible:ring-on-brand"
             >
               <DialogTitle className="sr-only">Portal navigation</DialogTitle>

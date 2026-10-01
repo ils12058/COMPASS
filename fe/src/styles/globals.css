@@ -216,6 +216,20 @@ h6 {
   }
 }
 
+/* Portal navigation drawer on small screens. Radix keeps the drawer mounted until the closing
+   animation ends; reduced-motion settings shorten both to an instant change. */
+@keyframes portal-drawer-in {
+  from {
+    translate: -100% 0;
+  }
+}
+
+@keyframes portal-drawer-out {
+  to {
+    translate: -100% 0;
+  }
+}
+
 /* Reader accessibility settings (features/accessibility). These rules sit outside the Tailwind
    layers on purpose, so a reader's choice wins over component utilities. */
 html[data-a11y-text-size="large"] {

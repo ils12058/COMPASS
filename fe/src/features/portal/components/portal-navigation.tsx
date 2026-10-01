@@ -1,8 +1,32 @@
 "use client";
 
+import {
+  Award,
+  BookOpen,
+  Building2,
+  CalendarClock,
+  CalendarRange,
+  ChartColumn,
+  ClipboardList,
+  Clock3,
+  DoorOpen,
+  FileText,
+  Forward,
+  GraduationCap,
+  HeartHandshake,
+  LayoutDashboard,
+  Megaphone,
+  MessageCircleHeart,
+  MessageSquareText,
+  MessagesSquare,
+  ScrollText,
+  ServerCog,
+  ShieldCheck,
+  UsersRound,
+  type LucideIcon,
+} from "lucide-react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
 
 import { canManageAnnouncements } from "@/features/announcements/announcements-access";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
@@ -28,43 +52,45 @@ import {
   hasInstitutionWorkspace,
 } from "@/features/institution-configuration/institution-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { cn } from "@/lib/utils/cn";
+
+type NavLink = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  visible: boolean;
+  // Platform Operations opens on its Health page but owns everything under /portal/platform.
+  section?: string;
+};
+
+type NavGroup = { label: string; links: NavLink[] };
 
 function NavItem({
-  href,
+  link,
   current,
   onNavigate,
-  children,
 }: {
-  href: string;
+  link: NavLink;
   current: boolean;
   onNavigate?: () => void;
-  children: ReactNode;
 }) {
+  const Icon = link.icon;
+
   return (
     <GuardedPortalLink
-      href={href}
+      href={link.href}
       onNavigate={onNavigate}
       aria-current={current ? "page" : undefined}
-      className={
-        "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand first:mt-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
-        (current ? "bg-on-brand/12" : "hover:bg-on-brand/10")
-      }
+      className={cn(
+        "relative flex min-h-10 items-center gap-3 rounded-md px-3 text-sm text-on-brand/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand",
+        current
+          ? "bg-on-brand/15 font-semibold text-on-brand before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-on-brand"
+          : "font-medium hover:bg-on-brand/10 hover:text-on-brand",
+      )}
     >
-      {children}
+      <Icon size={18} aria-hidden="true" className="shrink-0" />
+      <span className="min-w-0">{link.label}</span>
     </GuardedPortalLink>
-  );
-}
-
-function NavSection({ label, children }: { label?: string; children: ReactNode }) {
-  return (
-    <div className="mt-7 border-t border-on-brand/15 pt-5">
-      {label ? (
-        <p className="px-3 text-xs font-semibold uppercase tracking-wider text-on-brand/70">
-          {label}
-        </p>
-      ) : null}
-      {children}
-    </div>
   );
 }
 
@@ -90,19 +116,6 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const hasGoodMoral = getGoodMoralAccess(user).hasWorkspace;
   const hasExitInterviews = getExitInterviewAccess(user).hasWorkspace;
   const hasGraduateTracer = getGraduateTracerAccess(user).hasWorkspace;
-  const hasGuidanceServices =
-    hasServices ||
-    hasAvailability ||
-    hasAppointments ||
-    hasInventory ||
-    hasRoutineInterviews ||
-    hasExitInterviews ||
-    hasGraduateTracer ||
-    hasCounseling ||
-    hasReferrals ||
-    hasCallSlips ||
-    hasGoodMoral ||
-    hasFeedback;
   const hasPlatformOperations = user.capabilities.includes(
     "platform_operations.view",
   );
@@ -111,27 +124,88 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const hasResources = canManageResources(user);
   const hasPrivacyGovernance = hasPrivacyGovernanceWorkspace(user);
 
-  const guidanceLinks: { href: string; label: string; visible: boolean }[] = [
-    { href: "/portal/services", label: "Services", visible: hasServices },
-    { href: "/portal/appointments", label: "Appointments", visible: hasAppointments },
-    { href: "/portal/availability", label: "Availability", visible: hasAvailability },
-    { href: "/portal/inventory", label: "Individual Inventory", visible: hasInventory },
-    { href: "/portal/routine-interviews", label: "Routine Interviews", visible: hasRoutineInterviews },
-    { href: "/portal/exit-interviews", label: "Exit Interviews", visible: hasExitInterviews },
-    { href: "/portal/graduate-tracer", label: "Graduate Tracer", visible: hasGraduateTracer },
-    { href: "/portal/counseling", label: "Counseling", visible: hasCounseling },
-    { href: "/portal/referrals", label: "Referrals", visible: hasReferrals },
-    { href: "/portal/call-slips", label: "Call Slips", visible: hasCallSlips },
-    { href: "/portal/good-moral", label: "Good Moral", visible: hasGoodMoral },
-    { href: "/portal/feedback", label: "Feedback", visible: hasFeedback },
+  const groups: NavGroup[] = [
+    {
+      label: "Identity & Access",
+      links: [
+        { href: "/portal/accounts", label: "Accounts", icon: UsersRound, visible: canManageAccounts },
+      ],
+    },
+    {
+      label: "Institution",
+      links: [
+        { href: "/portal/organization", label: "Organization", icon: Building2, visible: hasInstitution && hasOrganization },
+        { href: "/portal/academic-years", label: "Academic Years", icon: CalendarRange, visible: hasInstitution && hasAcademicYears },
+        { href: "/portal/institutional-forms", label: "Institutional Forms", icon: FileText, visible: hasInstitution && hasInstitutionalForms },
+      ],
+    },
+    {
+      label: "Scheduling",
+      links: [
+        { href: "/portal/services", label: "Services", icon: HeartHandshake, visible: hasServices },
+        { href: "/portal/appointments", label: "Appointments", icon: CalendarClock, visible: hasAppointments },
+        { href: "/portal/availability", label: "Availability", icon: Clock3, visible: hasAvailability },
+      ],
+    },
+    {
+      label: "Records",
+      links: [
+        { href: "/portal/inventory", label: "Individual Inventory", icon: ClipboardList, visible: hasInventory },
+        { href: "/portal/routine-interviews", label: "Routine Interviews", icon: MessagesSquare, visible: hasRoutineInterviews },
+        { href: "/portal/counseling", label: "Counseling", icon: MessageCircleHeart, visible: hasCounseling },
+        { href: "/portal/referrals", label: "Referrals", icon: Forward, visible: hasReferrals },
+        { href: "/portal/call-slips", label: "Call Slips", icon: ScrollText, visible: hasCallSlips },
+      ],
+    },
+    {
+      label: "Requests and surveys",
+      links: [
+        { href: "/portal/good-moral", label: "Good Moral", icon: Award, visible: hasGoodMoral },
+        { href: "/portal/exit-interviews", label: "Exit Interviews", icon: DoorOpen, visible: hasExitInterviews },
+        { href: "/portal/graduate-tracer", label: "Graduate Tracer", icon: GraduationCap, visible: hasGraduateTracer },
+        { href: "/portal/feedback", label: "Feedback", icon: MessageSquareText, visible: hasFeedback },
+      ],
+    },
+    {
+      label: "Content",
+      links: [
+        { href: "/portal/announcements", label: "Announcements", icon: Megaphone, visible: hasAnnouncements },
+        { href: "/portal/resources", label: "Resources", icon: BookOpen, visible: hasResources },
+      ],
+    },
+    {
+      label: "Reports",
+      links: [{ href: "/portal/reports", label: "Reports", icon: ChartColumn, visible: hasReports }],
+    },
+    {
+      label: "Privacy",
+      links: [
+        { href: "/portal/privacy", label: "Privacy Governance", icon: ShieldCheck, visible: hasPrivacyGovernance },
+      ],
+    },
+    {
+      label: "Platform",
+      links: [
+        {
+          href: "/portal/platform/health",
+          label: "Platform Operations",
+          icon: ServerCog,
+          visible: hasPlatformOperations,
+          section: "/portal/platform",
+        },
+      ],
+    },
   ];
+  const visibleGroups = groups
+    .map((group) => ({ ...group, links: group.links.filter((link) => link.visible) }))
+    .filter((group) => group.links.length > 0);
 
   return (
-    <div className="flex min-h-full flex-col bg-brand-strong text-on-brand">
+    <div className="flex h-full min-h-full flex-col overflow-y-auto bg-brand-strong text-on-brand">
       <GuardedPortalLink
         href="/portal"
         onNavigate={onNavigate}
-        className="flex min-h-18 items-center gap-3 border-b border-on-brand/15 px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand"
+        className="flex min-h-18 shrink-0 items-center gap-3 border-b border-on-brand/15 px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand"
         aria-label="COMPASS Portal Overview"
       >
         <Image
@@ -146,81 +220,31 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
         </span>
       </GuardedPortalLink>
       <nav aria-label="Portal navigation" className="p-3">
-        <NavItem href="/portal" current={pathname === "/portal"} onNavigate={onNavigate}>
-          Overview
-        </NavItem>
-        {canManageAccounts ? (
-          <NavSection label="Identity & Access">
-            <NavItem href="/portal/accounts" current={isWithin("/portal/accounts")} onNavigate={onNavigate}>
-              Accounts
-            </NavItem>
-          </NavSection>
-        ) : null}
-        {hasInstitution ? (
-          <NavSection label="Institution">
-            {hasOrganization ? (
-              <NavItem href="/portal/organization" current={isWithin("/portal/organization")} onNavigate={onNavigate}>
-                Organization
-              </NavItem>
+        <NavItem
+          link={{ href: "/portal", label: "Overview", icon: LayoutDashboard, visible: true }}
+          current={pathname === "/portal"}
+          onNavigate={onNavigate}
+        />
+        {visibleGroups.map((group) => (
+          <div key={group.label} className="mt-3 border-t border-on-brand/10 pt-3">
+            {/* A label only earns its place when it groups more than one destination. */}
+            {group.links.length > 1 ? (
+              <p className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-on-brand/60">
+                {group.label}
+              </p>
             ) : null}
-            {hasAcademicYears ? (
-              <NavItem href="/portal/academic-years" current={isWithin("/portal/academic-years")} onNavigate={onNavigate}>
-                Academic Years
-              </NavItem>
-            ) : null}
-            {hasInstitutionalForms ? (
-              <NavItem href="/portal/institutional-forms" current={isWithin("/portal/institutional-forms")} onNavigate={onNavigate}>
-                Institutional Forms
-              </NavItem>
-            ) : null}
-          </NavSection>
-        ) : null}
-        {hasGuidanceServices ? (
-          <NavSection label="Guidance Services">
-            {guidanceLinks
-              .filter((link) => link.visible)
-              .map((link) => (
-                <NavItem key={link.href} href={link.href} current={isWithin(link.href)} onNavigate={onNavigate}>
-                  {link.label}
-                </NavItem>
+            <div className="space-y-0.5">
+              {group.links.map((link) => (
+                <NavItem
+                  key={link.href}
+                  link={link}
+                  current={isWithin(link.section ?? link.href)}
+                  onNavigate={onNavigate}
+                />
               ))}
-          </NavSection>
-        ) : null}
-        {hasAnnouncements || hasResources ? (
-          <NavSection label="Content">
-            {hasAnnouncements ? (
-              <NavItem href="/portal/announcements" current={isWithin("/portal/announcements")} onNavigate={onNavigate}>
-                Announcements
-              </NavItem>
-            ) : null}
-            {hasResources ? (
-              <NavItem href="/portal/resources" current={isWithin("/portal/resources")} onNavigate={onNavigate}>
-                Resources
-              </NavItem>
-            ) : null}
-          </NavSection>
-        ) : null}
-        {hasReports ? (
-          <NavSection>
-            <NavItem href="/portal/reports" current={isWithin("/portal/reports")} onNavigate={onNavigate}>
-              Reports
-            </NavItem>
-          </NavSection>
-        ) : null}
-        {hasPrivacyGovernance ? (
-          <NavSection label="Privacy">
-            <NavItem href="/portal/privacy" current={isWithin("/portal/privacy")} onNavigate={onNavigate}>
-              Privacy Governance
-            </NavItem>
-          </NavSection>
-        ) : null}
-        {hasPlatformOperations ? (
-          <NavSection label="Platform">
-            <NavItem href="/portal/platform/health" current={isWithin("/portal/platform")} onNavigate={onNavigate}>
-              Platform Operations
-            </NavItem>
-          </NavSection>
-        ) : null}
+            </div>
+          </div>
+        ))}
       </nav>
     </div>
   );

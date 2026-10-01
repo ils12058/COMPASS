@@ -2,22 +2,54 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { OverviewMetric } from "@/features/portal/home/overview-presentation";
+import type {
+  EmailDeliveryStatus,
+  OverviewMetric,
+} from "@/features/portal/home/overview-presentation";
+
+function EmailDeliveryLine({ status }: { status: EmailDeliveryStatus }) {
+  return (
+    <div className="mt-4 border-y border-border py-4">
+      <p className="text-sm font-semibold text-ink">Email delivery</p>
+      <p className="mt-1 text-sm leading-6 text-muted">
+        <span className={status.failed > 0 ? "font-semibold text-danger" : undefined}>
+          {status.failed} failed
+        </span>
+        <span aria-hidden="true"> · </span>
+        {status.pending} pending
+        {status.duePending > 0 ? ` (${status.duePending} due now)` : null}
+        <span aria-hidden="true"> · </span>
+        {status.sentToday} sent today
+      </p>
+      {status.href ? (
+        <Link
+          href={status.href}
+          className="mt-1 inline-flex min-h-10 items-center rounded-sm text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          Open Email Delivery <span aria-hidden="true" className="ml-1">→</span>
+        </Link>
+      ) : null}
+    </div>
+  );
+}
 
 export function OverviewSummary({
   metrics,
+  emailStatus,
   isPending,
   isError,
   errorMessage,
   onRetry,
 }: {
   metrics: OverviewMetric[];
+  emailStatus: EmailDeliveryStatus | null;
   isPending: boolean;
   isError: boolean;
   errorMessage: string;
   onRetry: () => void;
 }) {
-  if (!isPending && !isError && metrics.length === 0) return null;
+  const hasContent = metrics.length > 0 || emailStatus !== null;
+  if (!isPending && !isError && !hasContent) return null;
 
   return (
     <section className="mt-8 border-t border-border pt-6" aria-labelledby="overview-summary-heading">
@@ -26,9 +58,9 @@ export function OverviewSummary({
       </h2>
 
       {isPending ? (
-        <div className="mt-4 grid grid-cols-1 gap-x-6 sm:grid-cols-2 xl:grid-cols-4" aria-busy="true">
+        <div className="mt-4 grid grid-cols-2 border-l border-t border-border" aria-busy="true">
           {[0, 1, 2, 3].map((item) => (
-            <div key={item} className="border-b border-border py-4">
+            <div key={item} className="border-b border-r border-border px-4 py-4">
               <Skeleton className="h-4 w-2/3" />
               <Skeleton className="mt-3 h-8 w-12" />
             </div>
@@ -37,7 +69,7 @@ export function OverviewSummary({
         </div>
       ) : null}
 
-      {isError && metrics.length === 0 ? (
+      {isError && !hasContent ? (
         <div role="alert" className="mt-4 border-y border-danger/30 py-5">
           <p className="text-sm leading-6 text-danger">{errorMessage}</p>
           <Button className="mt-3" variant="secondary" onClick={onRetry}>
@@ -46,24 +78,25 @@ export function OverviewSummary({
         </div>
       ) : null}
 
-      {isError && metrics.length > 0 ? (
+      {isError && hasContent ? (
         <p role="status" className="mt-3 text-sm text-muted">
           The summary could not be refreshed. Showing the last confirmed counts.
         </p>
       ) : null}
 
       {!isPending && metrics.length > 0 ? (
-        <dl className="mt-4 grid grid-cols-1 border-y border-border sm:grid-cols-2 xl:grid-cols-4">
+        <dl className="mt-4 grid grid-cols-2 border-l border-t border-border">
           {metrics.map((metric, index) => (
+            // The label link stretches over the whole tile, so the count is clickable too.
             <div
               key={metric.label + "-" + index}
-              className="min-w-0 border-b border-border px-3 py-4 last:border-b-0 sm:px-5 xl:border-r xl:last:border-r-0"
+              className="relative min-w-0 border-b border-r border-border px-4 py-4 transition-colors last:odd:col-span-2 has-[a:hover]:bg-surface-muted"
             >
               <dt className="text-sm font-medium leading-5 text-muted">
                 {metric.href ? (
                   <Link
                     href={metric.href}
-                    className="rounded-sm hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                    className="after:absolute after:inset-0 hover:text-brand focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-focus"
                   >
                     {metric.label}
                   </Link>
@@ -78,6 +111,8 @@ export function OverviewSummary({
           ))}
         </dl>
       ) : null}
+
+      {!isPending && emailStatus ? <EmailDeliveryLine status={emailStatus} /> : null}
     </section>
   );
 }
