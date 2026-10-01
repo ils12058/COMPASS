@@ -4,14 +4,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -389,28 +383,37 @@ function VoidReferralButton({
         Void Referral
       </Button>
       {notice ? <p role="status" className="mt-3 text-sm text-muted">{notice}</p> : null}
-      <AlertDialog open={open} onOpenChange={(next) => { if (!voidMutation.isPending) setOpen(next); }}>
-        <AlertDialogContent onEscapeKeyDown={(event) => { if (voidMutation.isPending) event.preventDefault(); }}>
-          <AlertDialogTitle>Void Referral {referral.reference_code}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Voiding keeps the source record for review but prevents status-note updates, new actions, and linked Call Slip issuance. This does not delete the Referral.
-          </AlertDialogDescription>
-          <div className="mt-4 grid gap-2">
-            <Label htmlFor="referral-void-reason">Void reason</Label>
-            <Textarea id="referral-void-reason" rows={3} maxLength={1_000} required value={reason} disabled={voidMutation.isPending} onChange={(event) => setReason(event.target.value)} />
-            <p className="text-xs text-muted">{reason.length} / 1,000 characters</p>
-          </div>
-          {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={voidMutation.isPending}>Cancel</Button>
-            </AlertDialogCancel>
-            <Button variant="danger" disabled={voidMutation.isPending || !reason.trim()} onClick={() => void confirmVoid()}>
-              {voidMutation.isPending ? "Voiding…" : "Void Referral"}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConsequentialActionDialog
+        open={open}
+        title={`Void Referral ${referral.reference_code}?`}
+        confirmLabel="Void Referral"
+        pendingLabel="Voiding…"
+        pending={voidMutation.isPending}
+        confirmDisabled={!reason.trim()}
+        error={error}
+        variant="danger"
+        onOpenChange={setOpen}
+        onConfirm={() => void confirmVoid()}
+      >
+        <p>
+          Voiding keeps the source record for review but prevents status-note
+          updates, new actions, and linked Call Slip issuance. This does not
+          delete the Referral.
+        </p>
+        <div className="grid gap-2">
+          <Label htmlFor="referral-void-reason">Void reason</Label>
+          <Textarea
+            id="referral-void-reason"
+            rows={3}
+            maxLength={1_000}
+            required
+            value={reason}
+            disabled={voidMutation.isPending}
+            onChange={(event) => setReason(event.target.value)}
+          />
+          <p className="text-xs text-muted">{reason.length} / 1,000 characters</p>
+        </div>
+      </ConsequentialActionDialog>
       <StepUpDialog
         open={stepUpOpen}
         onOpenChange={setStepUpOpen}
