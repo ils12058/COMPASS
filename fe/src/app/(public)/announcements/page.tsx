@@ -22,8 +22,11 @@ export default async function AnnouncementsPage({
       <PublicPageHeader>
         <h1 className="font-heading text-4xl font-bold tracking-tight text-ink">Announcements</h1>
       </PublicPageHeader>
-      <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-14">
-        <AnnouncementList mode="index" page={readPage(page)} />
+      {/* Same left edge as the page title; the list keeps a readable width. */}
+      <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
+        <div className="max-w-4xl">
+          <AnnouncementList mode="index" page={readPage(page)} />
+        </div>
       </div>
     </main>
   );

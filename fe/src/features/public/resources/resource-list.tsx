@@ -7,11 +7,12 @@ import { ResourceFilters } from "@/features/public/resources/resource-filters";
 import { ResourceIcon } from "@/features/public/resources/resource-icon";
 import {
   formatPublicDate,
+  markdownPreview,
   resourceCategoryLabels,
   resourceKindLabels,
 } from "@/features/public/shared/presentation";
 import { PublicPagination } from "@/features/public/shared/public-pagination";
-import { PublicListSkeleton, PublicSectionError } from "@/features/public/shared/public-state";
+import { PublicSectionError, PublicTileSkeleton } from "@/features/public/shared/public-state";
 import {
   isSignedOutError,
   useReaderAudience,
@@ -34,7 +35,7 @@ export function ResourceList(props: ResourceListProps) {
   const category = isPreview ? undefined : props.category;
   const kind = isPreview ? undefined : props.kind;
   const page = isPreview ? 1 : props.page;
-  const params = { category, kind, page, page_size: isPreview ? 4 : 8 };
+  const params = { category, kind, page, page_size: isPreview ? 3 : 9 };
   const audience = useReaderAudience();
   const account = useResourcesListVisible(params, {
     query: { enabled: audience === "account", placeholderData: keepPreviousData, retry: false },
@@ -60,7 +61,7 @@ export function ResourceList(props: ResourceListProps) {
     <div>
       {!isPreview ? <ResourceFilters category={category} kind={kind} /> : null}
 
-      {loading ? <PublicListSkeleton rows={isPreview ? 4 : 6} /> : null}
+      {loading ? <PublicTileSkeleton tiles={isPreview ? 3 : 6} /> : null}
 
       {!loading && query.isError ? (
         <PublicSectionError
@@ -90,31 +91,35 @@ export function ResourceList(props: ResourceListProps) {
 
       {!loading && query.isSuccess && query.data.data.items.length > 0 ? (
         <div aria-busy={query.isFetching}>
-          <ul className={isPreview ? "grid gap-x-10 md:grid-cols-2" : "divide-y divide-border border-y border-border"}>
-            {query.data.data.items.map((resource) => (
-              <li key={resource.id} className={isPreview ? "border-t border-border first:border-t-0 md:[&:nth-child(2)]:border-t-0" : undefined}>
-                <Link
-                  href={`/resources/${resource.id}`}
-                  className="group grid grid-cols-[1.5rem_1fr] gap-4 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                >
-                  <span className="pt-1 text-support-strong">
-                    <ResourceIcon kind={resource.kind} />
-                  </span>
-                  <span>
-                    <span className="font-heading text-lg font-semibold leading-6 text-ink transition-colors group-hover:text-brand">
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {query.data.data.items.map((resource) => {
+              const preview = markdownPreview(resource.body_markdown);
+
+              return (
+                <li key={resource.id} className="flex">
+                  <Link
+                    href={`/resources/${resource.id}`}
+                    className="group flex w-full flex-col rounded-md border border-border bg-surface-raised p-5 transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  >
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-support-strong">
+                      <ResourceIcon kind={resource.kind} size={16} />
+                      <span>{resourceKindLabels[resource.kind]}</span>
+                      <span aria-hidden="true" className="text-border-strong">·</span>
+                      <span>{resourceCategoryLabels[resource.category]}</span>
+                    </span>
+                    <span className="mt-3 font-heading text-lg font-semibold leading-6 text-ink transition-colors group-hover:text-brand">
                       {resource.title}
                     </span>
-                    <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
-                      <span>{resourceCategoryLabels[resource.category]}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>{resourceKindLabels[resource.kind]}</span>
-                      <span aria-hidden="true">·</span>
-                      <time dateTime={resource.published_at}>{formatPublicDate(resource.published_at)}</time>
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
+                    {preview ? (
+                      <span className="mt-2 line-clamp-3 text-sm leading-6 text-muted">{preview}</span>
+                    ) : null}
+                    <time dateTime={resource.published_at} className="mt-auto pt-4 text-xs text-muted">
+                      {formatPublicDate(resource.published_at)}
+                    </time>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
 
           {query.isFetching && !query.isPending ? (
