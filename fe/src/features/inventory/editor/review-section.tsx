@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import type { InventorySubmissionIssue } from "@/features/inventory/inventory-payload";
-import { inventorySections, type InventorySectionId } from "@/features/inventory/inventory-presentation";
+import { inventorySections } from "@/features/inventory/inventory-presentation";
 import { FieldGroup, InventoryNotice } from "@/features/inventory/inventory-shared";
 import type { InventoryPayload } from "@/lib/api/generated/model";
 
