@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
   const [saved, setSaved] = useState(() => toInventoryPayload(inventory));
   const [section, setSection] = useState<InventorySectionId>("personal");
   const [validationVisible, setValidationVisible] = useState(false);
-  const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
+  const pendingTargetRef = useRef<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -69,7 +69,9 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
   const currentCorrection = inventory.correction_pending ? inventory.latest_correction : null;
 
   useEffect(() => {
+    const pendingTargetId = pendingTargetRef.current;
     if (!pendingTargetId) return;
+    pendingTargetRef.current = null;
     const target = document.getElementById(pendingTargetId);
     if (!target) return;
     target.scrollIntoView({ block: "center" });
@@ -77,8 +79,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
       ? target
       : target.querySelector<HTMLElement>("input, select, textarea, button");
     (focusTarget as HTMLElement | null)?.focus({ preventScroll: true });
-    setPendingTargetId(null);
-  }, [pendingTargetId, section]);
+  }, [section]);
 
   function navigateToSection(next: InventorySectionId) {
     if (next === "review") setValidationVisible(true);
@@ -87,7 +88,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
 
   function selectIssue(issue: InventorySubmissionIssue) {
     setValidationVisible(true);
-    setPendingTargetId(issue.targetId);
+    pendingTargetRef.current = issue.targetId;
     setSection(issue.section);
   }
 
