@@ -33,6 +33,12 @@ import {
 } from "@/lib/api/generated/organization/organization";
 import type { OrganizationPersonSummary } from "@/lib/api/generated/model";
 
+function supervisionScopeConsequence(supervisor: OrganizationPersonSummary): string {
+  return supervisor.responsibility_scope === "INSTITUTION_WIDE"
+    ? "The Staff member will inherit institution-wide organizational responsibility scope used by COMPASS routing workflows."
+    : "The Staff member will inherit this Counselor's configured organizational responsibility scope used by COMPASS routing workflows.";
+}
+
 export function ResponsibilitiesPage() {
   const { user } = usePortalSession();
   const canViewStructure = user.capabilities.includes("organization.structure.view");
@@ -228,7 +234,7 @@ export function ResponsibilitiesPage() {
     if (!staffRemoval) return;
     const target = staffRemoval;
     const response = await action.run(
-      () => removeSupervisor.mutateAsync({ staffId: target.staffId }),
+      () => removeSupervisor.mutateAsync({ staffId: target.staff.id }),
       "The Staff supervisor could not be removed.",
       {
         onStepUpRequired: () => setStaffRemoval(null),
@@ -364,7 +370,7 @@ export function ResponsibilitiesPage() {
                             openCollege(
                               college.id,
                               college.name,
-                              assignment?.counselor.id,
+                              assignment?.counselor ?? null,
                             )
                           }
                         >
@@ -377,6 +383,7 @@ export function ResponsibilitiesPage() {
                               setCollegeRemoval({
                                 collegeId: college.id,
                                 label: college.name,
+                                currentCounselor: assignment.counselor,
                               })
                             }
                           >
@@ -478,11 +485,7 @@ export function ResponsibilitiesPage() {
                         <Button
                           variant="quiet"
                           onClick={() =>
-                            openStaff(
-                              item.staff.id,
-                              item.staff.full_name,
-                              item.supervisor.id,
-                            )
+                            openStaff(item.staff, item.supervisor)
                           }
                         >
                           Change supervisor
@@ -491,8 +494,8 @@ export function ResponsibilitiesPage() {
                           variant="quiet"
                           onClick={() =>
                             setStaffRemoval({
-                              staffId: item.staff.id,
-                              label: item.staff.full_name,
+                              staff: item.staff,
+                              supervisor: item.supervisor,
                             })
                           }
                         >
