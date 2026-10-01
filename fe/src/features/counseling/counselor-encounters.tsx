@@ -85,8 +85,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
 
       {recordOpen ? <RecordEncounterForm onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} /> : null}
 
-      {access.canViewAssigned ? (
-        <section id="encounters" aria-labelledby="my-counseling-encounters-heading" className="mt-7">
+      <section id="encounters" aria-labelledby="my-counseling-encounters-heading" className="mt-7">
           <h2 id="my-counseling-encounters-heading" className="font-heading text-xl font-semibold text-ink">My counseling encounters</h2>
           <div className="mb-5 mt-4 grid gap-4 border-y border-border py-5 sm:grid-cols-2 lg:grid-cols-4">
             <div className="grid gap-2"><Label htmlFor="counseling-entry-filter">Origin</Label><select id="counseling-entry-filter" value={entryMode ?? "ALL"} onChange={(event) => setFilter("entry_mode", event.target.value === "ALL" ? "" : event.target.value)} className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><option value="ALL">All origins</option><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></select></div>
@@ -125,10 +124,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
               <CounselingPagination page={encounters.data?.data.page ?? page} hasNext={encounters.data?.data.has_next ?? false} onPageChange={(nextPage) => router.push(updateQuery(pathname, new URLSearchParams(searchParams.toString()), "page", String(nextPage)), { scroll: false })} />
             </>
           )}
-        </section>
-      ) : access.canManageAssigned ? (
-        <p className="mt-5 text-sm text-muted">Your current access allows recording completed Counseling Encounters but does not include viewing the assigned encounter list.</p>
-      ) : null}
+      </section>
     </div>
   );
 }
