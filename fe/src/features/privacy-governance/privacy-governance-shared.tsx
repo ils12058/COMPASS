@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   canManagePrivacyGovernance,
@@ -149,12 +150,12 @@ export function PrivacyPageHeader({
   return (
     <header className="mb-7">
       {backHref ? (
-        <Link
+        <GuardedPortalLink
           href={backHref}
           className="mb-4 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           ← {backLabel}
-        </Link>
+        </GuardedPortalLink>
       ) : null}
       {context ? <p className="text-sm font-medium text-muted">{context}</p> : null}
       <div className="flex flex-wrap items-start justify-between gap-4">

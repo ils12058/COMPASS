@@ -1,11 +1,11 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,7 +21,7 @@ import {
 } from "@/features/content/content-shared";
 import { MarkdownEditor } from "@/features/content/markdown-editor/markdown-editor";
 import { useMarkdownValue } from "@/features/content/markdown-editor/use-markdown-value";
-import { useUnsavedChangesGuard } from "@/features/content/use-unsaved-changes-guard";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { resourceCategoryLabels, resourceKindLabels } from "@/features/public/shared/presentation";
 import { refreshResourceQueries, storeManagedResource } from "@/features/resources/resource-cache";
 import {
@@ -130,7 +130,10 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
     values.displayOrder.trim() !== saved.displayOrder.trim() ||
     body.changed;
 
-  useUnsavedChangesGuard(dirty, "Discard your unsaved Resource changes?");
+  useUnsavedChangesGuard({
+    dirty,
+    message: "Discard your unsaved Resource changes?",
+  });
 
   function setField<K extends keyof ResourceFields>(key: K, value: ResourceFields[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -430,9 +433,9 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
         {notice ? <p role="status" className="mb-4 text-sm text-success">{notice}</p> : null}
         <div className="flex flex-wrap items-center justify-end gap-3">
           {!resource ? (
-            <Link href="/portal/resources" className={contentSecondaryLinkClass}>
+            <GuardedPortalLink href="/portal/resources" className={contentSecondaryLinkClass}>
               Cancel
-            </Link>
+            </GuardedPortalLink>
           ) : null}
           <Button type="submit" disabled={saving || !dirty}>
             {saving ? pendingLabel : submitLabel}

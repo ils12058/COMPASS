@@ -5,6 +5,8 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useUnsavedNavigation } from "@/features/form-safety/unsaved-changes-provider";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import {
   ACKNOWLEDGMENT_EXPLANATION,
   noticeFieldLabels,
@@ -61,6 +63,17 @@ function DraftEditor({
   const [baseline] = useState(() => noticeRevisionValues(revision));
   const [values, setValues] = useState<NoticeRevisionValues>(baseline);
   const [audienceError, setAudienceError] = useState<string | null>(null);
+  const dirty = Object.keys(noticeRevisionChanges(baseline, values)).length > 0;
+  const { confirmDiscard } = useUnsavedNavigation();
+
+  useUnsavedChangesGuard({
+    dirty,
+    message: "Discard your unsaved Privacy Notice revision changes?",
+  });
+
+  function cancel() {
+    if (!dirty || confirmDiscard()) onDone(false);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -102,7 +115,7 @@ function DraftEditor({
         />
         <ActionMessages error={action.error} notice={action.notice} className="" />
         <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-6">
-          <Button variant="secondary" disabled={update.isPending} onClick={() => onDone(false)}>
+          <Button variant="secondary" disabled={update.isPending} onClick={cancel}>
             Cancel
           </Button>
           <Button type="submit" disabled={update.isPending}>

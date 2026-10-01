@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GraduateTracerEducationSection, GraduateTracerGeneralSection, GraduateTracerTrainingSection } from "@/features/graduate-tracer/graduate-tracer-form-sections";
 import { GraduateTracerCurriculumSection, GraduateTracerEmploymentSection } from "@/features/graduate-tracer/graduate-tracer-employment-section";
@@ -45,29 +46,11 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
   const pending = save.isPending || submit.isPending;
   const draftRowIssues = getGraduateTracerDraftRowIssues(draft);
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warnBeforeLeave = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    const confirmLinkNavigation = (event: globalThis.MouseEvent) => {
-      if (!(event.target instanceof Element)) return;
-      const anchor = event.target.closest("a[href]");
-      if (!(anchor instanceof HTMLAnchorElement)) return;
-      if (anchor.origin === window.location.origin && anchor.pathname === window.location.pathname) return;
-      if (!window.confirm("Discard your unsaved Graduate Tracer changes?")) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    };
-    window.addEventListener("beforeunload", warnBeforeLeave);
-    document.addEventListener("click", confirmLinkNavigation, true);
-    return () => {
-      window.removeEventListener("beforeunload", warnBeforeLeave);
-      document.removeEventListener("click", confirmLinkNavigation, true);
-    };
-  }, [dirty]);
+  useUnsavedChangesGuard({
+    dirty,
+    message: "Discard your unsaved Graduate Tracer changes?",
+  });
+
 
   function updateDraft<K extends keyof GraduateTracerFormDraft>(
     field: K,

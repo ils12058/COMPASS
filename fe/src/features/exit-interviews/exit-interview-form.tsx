@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState, type FormEvent, type MouseEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +69,11 @@ export function ExitInterviewForm({
   const [refreshError, setRefreshError] = useState(false);
   const isDirty = JSON.stringify(form) !== JSON.stringify(savedForm);
 
+  useUnsavedChangesGuard({
+    dirty: isDirty,
+    message: "Leave this Exit Interview? Your unsaved changes will be discarded.",
+  });
+
   const save = useMutation({
     mutationFn: (payload: ReturnType<typeof exitInterviewDraftPayload>) =>
       exitInterviewsUpdateMine(detail.id, payload),
@@ -78,15 +84,6 @@ export function ExitInterviewForm({
     retry: false,
   });
 
-  useEffect(() => {
-    if (!isDirty) return;
-    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warnBeforeUnload);
-    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
-  }, [isDirty]);
 
   function updateText(field: ExitInterviewTextFieldKey, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -234,21 +231,15 @@ export function ExitInterviewForm({
     collegeAnswered === collegeItems.length;
   const pending = save.isPending || submit.isPending;
 
-  function handleBackNavigation(event: MouseEvent<HTMLAnchorElement>) {
-    if (isDirty && !window.confirm("Leave this Exit Interview? Your unsaved changes will be discarded.")) {
-      event.preventDefault();
-    }
-  }
 
   return (
     <section className="space-y-2" aria-labelledby="exit-interview-form-heading">
-      <Link
+      <GuardedPortalLink
         href="/portal/exit-interviews"
-        onClick={handleBackNavigation}
         className="inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         Back to Exit Interviews
-      </Link>
+      </GuardedPortalLink>
       <ExitInterviewHeading
         id="exit-interview-form-heading"
         title="Exit Interview"

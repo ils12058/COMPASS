@@ -1,12 +1,13 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AccountAvatar, accountDisplayName } from "@/features/account/components/account-avatar";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { accountErrorMessage } from "@/features/account/components/account-errors";
 import { userRoleLabel } from "@/features/portal/components/portal-presentation";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -113,26 +114,11 @@ function ProfileEditor({ profile }: { profile: MyProfileResponse }) {
   const [success, setSuccess] = useState(false);
   const dirty = JSON.stringify(values) !== JSON.stringify(saved);
 
-  useEffect(() => {
-    if (!dirty) return;
-    const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
-    const guardLink = (event: MouseEvent) => {
-      if (!(event.target instanceof Element)) return;
-      const anchor = event.target.closest("a[href]");
-      if (!anchor || !(anchor instanceof HTMLAnchorElement)) return;
-      if (anchor.origin === window.location.origin && anchor.pathname === window.location.pathname) return;
-      if (!window.confirm("Discard your unsaved profile changes?")) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    };
-    window.addEventListener("beforeunload", beforeUnload);
-    document.addEventListener("click", guardLink, true);
-    return () => {
-      window.removeEventListener("beforeunload", beforeUnload);
-      document.removeEventListener("click", guardLink, true);
-    };
-  }, [dirty]);
+  useUnsavedChangesGuard({
+    dirty,
+    message: "Discard your unsaved profile changes?",
+  });
+
 
   function setField<K extends keyof Required<MyProfileUpdateRequest>>(field: K, value: Required<MyProfileUpdateRequest>[K]) {
     setValues((current) => ({ ...current, [field]: value }));

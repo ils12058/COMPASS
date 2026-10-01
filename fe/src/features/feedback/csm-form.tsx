@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -133,6 +134,18 @@ export function CsmForm() {
   const serviceValue = serviceEdited
     ? draft.service
     : draft.service || opportunityData?.service_label || "";
+  const initialEffectiveDraft = {
+    ...emptyCsmDraft,
+    service: opportunityData?.service_label ?? "",
+  };
+  const effectiveDraft = { ...draft, service: serviceValue };
+  const meaningfulDirty =
+    JSON.stringify(effectiveDraft) !== JSON.stringify(initialEffectiveDraft);
+
+  useUnsavedChangesGuard({
+    dirty: !success && meaningfulDirty,
+    message: "Discard your unfinished Client Satisfaction Measurement response?",
+  });
 
   if (!access.canSubmitCsm) return <FeedbackAccessUnavailable title="Client Satisfaction Measurement unavailable" />;
   if (!opportunityId) {
@@ -249,7 +262,7 @@ export function CsmForm() {
         <div role="status" className="border-y border-success/30 py-8">
           <h1 id="csm-success-heading" className="font-heading text-3xl font-bold text-ink">Client Satisfaction Measurement submitted</h1>
           <p className="mt-3 text-sm leading-6 text-muted">Your response was received{success.submittedAt ? <> on <FeedbackDate value={success.submittedAt} /></> : null}.</p>
-          <Link href="/portal/feedback" className="mt-6 inline-flex min-h-10 items-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Feedback</Link>
+          <GuardedPortalLink href="/portal/feedback" className="mt-6 inline-flex min-h-10 items-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Feedback</GuardedPortalLink>
         </div>
       </section>
     );
@@ -304,7 +317,7 @@ export function CsmForm() {
         {create.isPending ? <p role="status" aria-live="polite" className="mb-4 text-sm text-muted">Submitting Client Satisfaction Measurement…</p> : null}
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
           <Button type="submit" disabled={create.isPending || isUncertain}>{create.isPending ? "Submitting…" : "Review and submit"}</Button>
-          <Link href="/portal/feedback" className="inline-flex min-h-10 items-center rounded-md px-3 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Feedback</Link>
+          <GuardedPortalLink href="/portal/feedback" className="inline-flex min-h-10 items-center rounded-md px-3 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Feedback</GuardedPortalLink>
         </div>
       </form>
       <AlertDialog open={confirmationOpen} onOpenChange={setConfirmationOpen}>
