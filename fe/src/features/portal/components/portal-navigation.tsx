@@ -1,11 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { canManageAnnouncements } from "@/features/announcements/announcements-access";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { hasAvailabilityWorkspace } from "@/features/availability/availability-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
@@ -41,9 +41,9 @@ function NavItem({
   children: ReactNode;
 }) {
   return (
-    <Link
+    <GuardedPortalLink
       href={href}
-      onClick={onNavigate}
+      onNavigate={onNavigate}
       aria-current={current ? "page" : undefined}
       className={
         "mt-2 flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-on-brand first:mt-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand " +
@@ -51,7 +51,7 @@ function NavItem({
       }
     >
       {children}
-    </Link>
+    </GuardedPortalLink>
   );
 }
 
@@ -128,9 +128,9 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex min-h-full flex-col bg-brand-strong text-on-brand">
-      <Link
+      <GuardedPortalLink
         href="/portal"
-        onClick={onNavigate}
+        onNavigate={onNavigate}
         className="flex min-h-18 items-center gap-3 border-b border-on-brand/15 px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand"
         aria-label="COMPASS Portal Overview"
       >
@@ -144,7 +144,7 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
         <span className="font-heading text-lg font-bold tracking-[0.08em]">
           COMPASS
         </span>
-      </Link>
+      </GuardedPortalLink>
       <nav aria-label="Portal navigation" className="p-3">
         <NavItem href="/portal" current={pathname === "/portal"} onNavigate={onNavigate}>
           Overview
