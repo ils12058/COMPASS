@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import { OrganizationsSection } from "@/features/inventory/editor/organizations-
 import { PersonalSection } from "@/features/inventory/editor/personal-section";
 import { PlansSection } from "@/features/inventory/editor/plans-section";
 import { ReviewSection } from "@/features/inventory/editor/review-section";
-import { getInventorySubmissionIssues, normalizeInventoryPayload, toInventoryPayload } from "@/features/inventory/inventory-payload";
+import { getInventorySubmissionIssues, normalizeInventoryPayload, toInventoryPayload, type InventorySubmissionIssue } from "@/features/inventory/inventory-payload";
 import { inventorySections, type InventorySectionId } from "@/features/inventory/inventory-presentation";
 import { formatInventoryDate, InventoryHeading, InventoryNotice, inventoryErrorMessage } from "@/features/inventory/inventory-shared";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
@@ -49,6 +49,8 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
   const [draft, setDraft] = useState(() => toInventoryPayload(inventory));
   const [saved, setSaved] = useState(() => toInventoryPayload(inventory));
   const [section, setSection] = useState<InventorySectionId>("personal");
+  const [validationVisible, setValidationVisible] = useState(false);
+  const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -65,6 +67,29 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
   const issues = getInventorySubmissionIssues(draft, activeProgramIds);
   const currentSectionIndex = inventorySections.findIndex((item) => item.id === section);
   const currentCorrection = inventory.correction_pending ? inventory.latest_correction : null;
+
+  useEffect(() => {
+    if (!pendingTargetId) return;
+    const target = document.getElementById(pendingTargetId);
+    if (!target) return;
+    target.scrollIntoView({ block: "center" });
+    const focusTarget = target.matches("input, select, textarea, button")
+      ? target
+      : target.querySelector<HTMLElement>("input, select, textarea, button");
+    (focusTarget as HTMLElement | null)?.focus({ preventScroll: true });
+    setPendingTargetId(null);
+  }, [pendingTargetId, section]);
+
+  function navigateToSection(next: InventorySectionId) {
+    if (next === "review") setValidationVisible(true);
+    setSection(next);
+  }
+
+  function selectIssue(issue: InventorySubmissionIssue) {
+    setValidationVisible(true);
+    setPendingTargetId(issue.targetId);
+    setSection(issue.section);
+  }
 
   function updateDraft(patch: Partial<InventoryPayload>) {
     setDraft((current) => ({ ...current, ...patch }));
@@ -92,7 +117,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
     if (pending) return false;
     if (!dirty) {
       if (continueToNext && currentSectionIndex < inventorySections.length - 1) {
-        setSection(inventorySections[currentSectionIndex + 1].id);
+        navigateToSection(inventorySections[currentSectionIndex + 1].id);
       }
       return true;
     }
@@ -107,7 +132,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
       await queryClient.invalidateQueries({ queryKey: getInventoryGetMyStatusQueryKey() });
       setNotice("Progress saved.");
       if (continueToNext && currentSectionIndex < inventorySections.length - 1) {
-        setSection(inventorySections[currentSectionIndex + 1].id);
+        navigateToSection(inventorySections[currentSectionIndex + 1].id);
       }
       return true;
     } catch (error) {
@@ -162,6 +187,9 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
     programLookupPending: programQuery.isPending && canDiscoverPrograms,
     programLookupError: programQuery.isError,
     programDiscoveryAllowed: canDiscoverPrograms,
+    validationIssues: validationVisible
+      ? issues.filter((issue) => issue.section === section)
+      : [],
   };
 
   return (
@@ -197,7 +225,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
             value={section}
             onChange={(event) => {
               const next = inventorySections.find((item) => item.id === event.target.value);
-              if (next) setSection(next.id);
+              if (next) navigateToSection(next.id);
             }}
           >
             {inventorySections.map((item) => (
@@ -217,7 +245,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
                       type="button"
                       aria-current={active ? "step" : undefined}
                       className={`flex min-h-12 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${active ? "border-l-4 border-brand bg-brand-subtle font-semibold text-brand" : "text-ink hover:bg-surface-muted"}`}
-                      onClick={() => setSection(item.id)}
+                      onClick={() => navigateToSection(item.id)}
                     >
                       <span><span className="mr-2 text-xs text-muted">{index + 1}.</span>{item.label}</span>
                       {count ? <span className="shrink-0 text-xs font-semibold text-warning">{count}</span> : null}
@@ -259,7 +287,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
                 formRevision={`${inventory.form_revision.official_code} · Revision ${inventory.form_revision.official_revision}`}
                 issues={issues}
                 programLookupReady={Boolean(programQuery.data) || !canDiscoverPrograms}
-                onSelectSection={setSection}
+                onSelectIssue={selectIssue}
               />
             ) : null}
           </fieldset>
@@ -300,7 +328,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
                 <Button
                   variant="quiet"
                   disabled={pending || currentSectionIndex <= 0}
-                  onClick={() => setSection(inventorySections[currentSectionIndex - 1].id)}
+                  onClick={() => navigateToSection(inventorySections[currentSectionIndex - 1].id)}
                 >
                   Previous section
                 </Button>
@@ -308,7 +336,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
                   <Button
                     variant="quiet"
                     disabled={pending}
-                    onClick={() => setSection(inventorySections[currentSectionIndex + 1].id)}
+                    onClick={() => navigateToSection(inventorySections[currentSectionIndex + 1].id)}
                   >
                     Next section
                   </Button>
