@@ -17,6 +17,6 @@ export function getReferralAccess(user: UserSummary): ReferralAccess {
     isOperational,
     canView,
     canManage,
-    hasWorkspace: canView || canManage,
+    hasWorkspace: canView,
   };
 }
