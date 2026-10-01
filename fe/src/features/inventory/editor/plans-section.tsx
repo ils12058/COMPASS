@@ -6,7 +6,9 @@ import { allowanceOptions, workFieldOptions } from "@/features/inventory/invento
 import { FieldGroup, InventoryNotice } from "@/features/inventory/inventory-shared";
 import { PostGraduationFieldValue } from "@/lib/api/generated/model";
 
-export function PlansSection({ draft, onChange }: InventorySectionProps) {
+export function PlansSection({ draft, onChange, validationIssues = [] }: InventorySectionProps) {
+  const errorFor = (targetId: string) =>
+    validationIssues.find((issue) => issue.targetId === targetId)?.message;
   return (
     <div className="space-y-7">
       <FieldGroup legend="Plans after graduation">
@@ -31,6 +33,7 @@ export function PlansSection({ draft, onChange }: InventorySectionProps) {
           {draft.intended_work_field === PostGraduationFieldValue.OTHER ? (
             <TextField
               id="inventory-intended-work-other"
+              error={errorFor("inventory-intended-work-other")}
               label="Other intended work field"
               value={draft.intended_work_other}
               onChange={(value) => onChange({ intended_work_other: value })}
