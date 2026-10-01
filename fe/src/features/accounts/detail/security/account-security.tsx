@@ -50,8 +50,6 @@ export function AccountSecurity() {
         () => reset.mutateAsync({ userId: account.id }),
         "Multi-factor authentication could not be reset.",
         () => setConfirm(null),
-      undefined,
-      () => setConfirm(kind),
         undefined,
         () => setConfirm(kind),
       );
@@ -82,6 +80,8 @@ export function AccountSecurity() {
       () => revokeTrusted.mutateAsync({ userId: account.id }),
       "Trusted-browser authorizations could not be removed.",
       () => setConfirm(null),
+      undefined,
+      () => setConfirm(kind),
     );
     if (!result) return;
     setConfirm(null);
