@@ -4,8 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { BackgroundSection } from "@/features/inventory/editor/background-section";
@@ -348,26 +348,23 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
         </div>
       </div>
 
-      <AlertDialog open={confirmSubmit} onOpenChange={(open) => {
-        if (submit.isPending) return;
-        setConfirmSubmit(open);
-      }}>
-        <AlertDialogContent>
-          <AlertDialogTitle>Submit your Individual Inventory for Academic Year {inventory.academic_year.label}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            After submission, this Inventory becomes read-only. An authorized Counselor may reopen the current-year record if corrections are needed.
-          </AlertDialogDescription>
-          {submitError ? <div className="mt-4"><InventoryNotice tone="danger" role="alert">{submitError}</InventoryNotice></div> : null}
-          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={submit.isPending}>Cancel</Button>
-            </AlertDialogCancel>
-            <Button disabled={submit.isPending || dirty || issues.length > 0} onClick={() => void submitInventory()}>
-              {submit.isPending ? "Submitting…" : "Submit Individual Inventory"}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConsequentialActionDialog
+        open={confirmSubmit}
+        title={`Submit your Individual Inventory for Academic Year ${inventory.academic_year.label}?`}
+        confirmLabel="Submit Individual Inventory"
+        pendingLabel="Submitting…"
+        pending={submit.isPending}
+        confirmDisabled={dirty || issues.length > 0}
+        error={submitError}
+        onOpenChange={setConfirmSubmit}
+        onConfirm={() => void submitInventory()}
+      >
+        <p>
+          After submission, this Inventory becomes read-only. An authorized
+          Counselor may reopen the current-year record if corrections are
+          needed.
+        </p>
+      </ConsequentialActionDialog>
     </section>
   );
 }
