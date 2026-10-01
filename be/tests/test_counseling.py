@@ -235,6 +235,7 @@ def test_direct_encounter_records_actual_completed_time_without_fake_appointment
     assert item.student_id == student.pk
     assert item.counselor_id == counselor.pk
     assert item.service.code == "COUNSELING"
+    assert item.service_name_snapshot == "Counseling"
     assert item.appointment_id is None
     assert item.entry_mode == entry_mode
     assert item.ended_at - item.started_at == timedelta(minutes=75)
@@ -257,6 +258,25 @@ def test_direct_encounter_records_actual_completed_time_without_fake_appointment
     assert invitation.target_type == "FEEDBACK"
     assert invitation.target_id == opportunity.pk
     assert EmailDelivery.objects.filter(notification=invitation).exists()
+    service = item.service
+    service.name = "Student Counseling"
+    service.save(update_fields=["name", "updated_at"])
+    old_detail = auth_client(counselor).get(f"/api/v1/counseling/encounters/{item.pk}")
+    assert old_detail.status_code == 200
+    assert old_detail.json()["service"]["name"] == "Counseling"
+    newer = create_encounter(
+        counselor=counselor,
+        student_id=student.pk,
+        entry_mode=entry_mode,
+        delivery_mode="IN_PERSON",
+        appointment_id=None,
+        started_at=started_at - timedelta(hours=3),
+        ended_at=ended_at - timedelta(hours=3),
+        context=context(counselor),
+    )
+    assert newer.service_name_snapshot == "Student Counseling"
+    newer_detail = auth_client(counselor).get(f"/api/v1/counseling/encounters/{newer.pk}")
+    assert newer_detail.json()["service"]["name"] == "Student Counseling"
 
 
 @pytest.mark.django_db

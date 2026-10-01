@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   useInstitutionalFormsList,
   useInstitutionalFormsRevisionsList,
 } from "@/lib/api/generated/institutional-forms/institutional-forms";
+import { FormFamilyConfigurationState } from "@/lib/api/generated/model";
 
 export function InstitutionalFormsPage({
   requestedFamily,
@@ -37,11 +38,16 @@ function InstitutionalFormsWorkspace({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const families = useInstitutionalFormsList();
   const familyItems = families.data?.data.items ?? [];
-  const selectedFamily =
-    familyItems.find((family) => family.key === requestedFamily) ??
-    familyItems[0];
+  const selectedFamily = requestedFamily
+    ? familyItems.find((family) => family.key === requestedFamily)
+    : familyItems[0];
+  const invalidFamilyNotice = Boolean(
+    families.isSuccess &&
+      ((requestedFamily && !selectedFamily) || searchParams.get("family_unavailable") === "1"),
+  );
   const revisions = useInstitutionalFormsRevisionsList(
     selectedFamily?.key ?? "",
     { query: { enabled: Boolean(selectedFamily) } },
@@ -50,16 +56,20 @@ function InstitutionalFormsWorkspace({
 
   useEffect(() => {
     if (!families.isSuccess) return;
+    if (requestedFamily && !selectedFamily) {
+      router.replace(`${pathname}?family_unavailable=1`, { scroll: false });
+      return;
+    }
+    if (requestedFamily && selectedFamily) return;
     if (selectedFamily) {
-      if (requestedFamily === selectedFamily.key) return;
+      if (invalidFamilyNotice) return;
       router.replace(
         `${pathname}?family=${encodeURIComponent(selectedFamily.key)}`,
         { scroll: false },
       );
       return;
     }
-    if (requestedFamily) router.replace(pathname, { scroll: false });
-  }, [families.isSuccess, pathname, requestedFamily, router, selectedFamily]);
+  }, [families.isSuccess, invalidFamilyNotice, pathname, requestedFamily, router, selectedFamily]);
 
   return (
     <>
@@ -67,10 +77,12 @@ function InstitutionalFormsWorkspace({
         Institutional Forms
       </h1>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-        Supported controlled-form identities used by this COMPASS deployment. Form
-        compatibility is maintained with the application, while existing records retain
-        the revision they were created with.
+        Read-only reference of controlled-form identities recognized by COMPASS. This is not
+        an inventory of every questionnaire, workflow, report, or downloadable PDF.
       </p>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Official code and revision identify an institutional controlled document. Current means the revision selected for new records. COMPASS support means this deployed software understands that exact revision; it does not grant institutional approval. Supported revisions are synchronized with the deployed version after confirmed form changes.</p>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Some confirmed source revisions retain former CNSC/GTA codes. Current UCN branding does not rewrite their controlled-document identities.</p>
+      {invalidFamilyNotice ? <p role="status" className="mt-4 border-y border-warning/30 py-3 text-sm text-warning">The requested Form Family is unavailable. Choose an available family below.</p> : null}
 
       {families.isError && !families.data ? (
         <div role="alert" className="mt-8 border-y border-danger/30 py-4">
@@ -103,9 +115,9 @@ function InstitutionalFormsWorkspace({
         </div>
       ) : familyItems.length === 0 ? (
         <p className="mt-8 border-y border-border py-5 text-sm text-muted">
-          No synchronized Institutional Form Families are available.
+          Institutional Form references are unavailable for this deployment. Supported Form Families have not been synchronized.
         </p>
-      ) : selectedFamily ? (
+      ) : (
         <div className="mt-8 grid min-w-0 gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
           <nav aria-label="Form families" className="min-w-0">
             <h2 className="font-heading text-lg font-semibold text-ink">
@@ -113,7 +125,7 @@ function InstitutionalFormsWorkspace({
             </h2>
             <ul className="mt-3 divide-y divide-border border-y border-border">
               {familyItems.map((family) => {
-                const selected = family.id === selectedFamily.id;
+                const selected = family.id === selectedFamily?.id;
                 return (
                   <li key={family.id}>
                     <Link
@@ -134,7 +146,7 @@ function InstitutionalFormsWorkspace({
             </ul>
           </nav>
 
-          <section aria-labelledby="selected-form-family-heading" className="min-w-0">
+          {selectedFamily ? <section aria-labelledby="selected-form-family-heading" className="min-w-0">
             <div className="min-w-0 border-b border-border pb-5">
               <h2
                 id="selected-form-family-heading"
@@ -142,9 +154,14 @@ function InstitutionalFormsWorkspace({
               >
                 {selectedFamily.title}
               </h2>
-              <p className="mt-2 break-all text-sm text-muted">
-                Family key: <code className="font-mono">{selectedFamily.key}</code>
+              <p className="mt-2 text-sm font-semibold text-ink">
+                {selectedFamily.configuration_state === FormFamilyConfigurationState.READY ? "Current supported revision ready" :
+                  selectedFamily.configuration_state === FormFamilyConfigurationState.REVISION_NOT_REQUIRED ? "Controlled revision not required" :
+                  selectedFamily.configuration_state === FormFamilyConfigurationState.ACTIVE_UNSUPPORTED ? "Configuration mismatch" :
+                  "Required revision missing"}
               </p>
+              {selectedFamily.configuration_state === FormFamilyConfigurationState.ACTIVE_UNSUPPORTED ? <p role="alert" className="mt-2 max-w-2xl text-sm leading-6 text-danger">A revision is marked Current for new records, but this COMPASS version does not support its exact controlled-form identity.</p> : null}
+              {selectedFamily.configuration_state === FormFamilyConfigurationState.MISSING_REQUIRED_REVISION ? <p role="alert" className="mt-2 max-w-2xl text-sm leading-6 text-danger">This Form Family requires a current supported revision, but none is configured.</p> : null}
             </div>
 
             <h3 className="mt-6 font-heading text-lg font-semibold text-ink">
@@ -175,8 +192,9 @@ function InstitutionalFormsWorkspace({
             ) : revisionItems.length === 0 ? (
               <div className="mt-4 border-y border-border py-5">
                 <p className="text-sm leading-6 text-muted">
-                  No confirmed official Form Revision is currently recorded for this
-                  supported Form Family.
+                  {selectedFamily.configuration_state === FormFamilyConfigurationState.REVISION_NOT_REQUIRED
+                    ? "No confirmed controlled-document revision is required for this Form Family. COMPASS supports its current schema without inventing an official code or revision."
+                    : "No Form Revision is recorded for this family."}
                 </p>
               </div>
             ) : (
@@ -195,9 +213,9 @@ function InstitutionalFormsWorkspace({
                 </div>
               </>
             )}
-          </section>
+          </section> : <p className="text-sm text-muted">Choose a Form Family to view its revisions.</p>}
         </div>
-      ) : null}
+      )}
 
       {families.isError && families.data ? (
         <p role="alert" className="mt-4 text-sm leading-6 text-danger">

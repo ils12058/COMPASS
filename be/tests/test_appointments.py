@@ -257,6 +257,7 @@ def test_booking_creates_scheduled_reservation_with_snapshot_reference_and_audit
     assert item.student_id == student.pk
     assert item.provider_id == provider.pk
     assert item.service_id == service.pk
+    assert item.service_name_snapshot == service.name
     assert item.starts_at.astimezone(ZoneInfo("Asia/Manila")) == start
     assert item.ends_at - item.starts_at == timedelta(minutes=60)
     assert item.cancellation_cutoff_minutes == 30
@@ -279,6 +280,24 @@ def test_booking_creates_scheduled_reservation_with_snapshot_reference_and_audit
         "provider_id": str(provider.pk),
         "delivery_mode": "IN_PERSON",
     }
+    old_name = service.name
+    service.name = "Renamed Counseling Service"
+    service.save(update_fields=["name", "updated_at"])
+    old_detail = auth_client(student).get(f"/api/v1/appointments/{item.pk}")
+    assert old_detail.status_code == 200
+    assert old_detail.json()["service"]["name"] == old_name
+    newer = create_student_appointment(
+        student=student,
+        service_id=service.pk,
+        provider_id=provider.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=start + timedelta(hours=2),
+        context=context(student),
+        now=start - timedelta(days=1),
+    )
+    assert newer.service_name_snapshot == "Renamed Counseling Service"
+    newer_detail = auth_client(student).get(f"/api/v1/appointments/{newer.pk}")
+    assert newer_detail.json()["service"]["name"] == "Renamed Counseling Service"
 
 
 @pytest.mark.django_db

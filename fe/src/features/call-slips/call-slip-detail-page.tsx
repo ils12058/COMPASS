@@ -107,11 +107,13 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
           <p className="font-semibold text-warning">Voided</p>
           <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{item.void_reason}</p>
           {item.voided_at ? <p className="mt-1 text-sm text-muted">Voided {formatInstitutionalDateTime(item.voided_at)}</p> : null}
+          {item.voided_by ? <p className="mt-1 text-sm text-muted">Voided by {item.voided_by.display_name}</p> : null}
         </div>
       ) : null}
       <RecordSection title="Permit details">
         <Field label="Student on source Call Slip" value={item.student_name_snapshot} />
         <Field label="Current Student identity" value={item.student.display_name} />
+        {item.student_institutional_id ? <Field label="Institutional ID" value={item.student_institutional_id} /> : null}
         <Field label="Course / Year" value={item.course_year_snapshot} />
         <Field label="Please report to" value={callSlipDestinationLabel(item.destination_type, item.other_destination)} />
         <Field label="Date and time to report" value={formatInstitutionalDateTime(item.report_at)} />
@@ -121,8 +123,8 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <p className="mt-3 max-w-3xl text-sm leading-6 text-ink">Please show this permit to the Student&apos;s instructor/professor and proceed according to the permit.</p>
       </section>
       <RecordSection title="Issuance and recordkeeping">
-        <Field label="Guidance Counselor issuer" value={item.issued_by_name_snapshot} />
-        <Field label="Issuer account" value={item.issued_by.display_name} />
+        <Field label="Issuer name on source Call Slip" value={item.issued_by_name_snapshot} />
+        <Field label="Current issuer account" value={item.issued_by.display_name} />
         <Field label="Recorded by" value={item.recorded_by?.display_name ?? "Not separately recorded"} />
         <Field label="Issuance mode" value={callSlipIssuanceModeLabels[item.issuance_mode]} />
         <Field label="State" value={callSlipStateLabel(item.state)} />
@@ -166,7 +168,6 @@ function FormRevisionSection({ revision }: { revision: CallSlipStudentResponse["
       <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
         <Field label="Official form code" value={revision.official_code ?? "Official code not recorded"} />
         <Field label="Official revision" value={revision.official_revision ? `Revision ${revision.official_revision}` : "Official revision not recorded"} />
-        <Field label="Internal schema version" value={String(revision.internal_schema_version)} />
       </dl>
     </section>
   );

@@ -88,6 +88,7 @@ function RecordedAction({ action }: { action: ReferralActionResponse }) {
     <div className="mt-2 space-y-1 text-sm text-muted">
       <p><span className="font-semibold text-ink">Occurred:</span> {formatInstitutionalDateTime(action.occurred_at)}</p>
       {action.remarks ? <p className="whitespace-pre-wrap break-words"><span className="font-semibold text-ink">Remarks:</span> {action.remarks}</p> : null}
+      {action.recorded_by ? <p><span className="font-semibold text-ink">Recorded by:</span> {action.recorded_by.display_name}</p> : null}
     </div>
   );
 }

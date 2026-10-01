@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from django.db.models import Case, IntegerField, Value, When
+
 from compass.institutional_forms.canonical import (
     CANONICAL_FORM_FAMILY_KEYS,
     get_canonical_form_family,
@@ -27,7 +29,11 @@ class UnsupportedInstitutionalFormRevision(InstitutionalFormConflict):
 
 
 def list_form_families() -> tuple[FormFamily, ...]:
-    return tuple(FormFamily.objects.filter(key__in=CANONICAL_FORM_FAMILY_KEYS).order_by("key"))
+    return tuple(
+        FormFamily.objects.filter(key__in=CANONICAL_FORM_FAMILY_KEYS)
+        .prefetch_related("revisions")
+        .order_by("key")
+    )
 
 
 def get_form_family_by_key(family_key: str) -> FormFamily:
@@ -44,7 +50,15 @@ def list_form_revisions(family_key: str) -> tuple[FormRevision, ...]:
     return tuple(
         FormRevision.objects.filter(family=family)
         .select_related("family")
-        .order_by("internal_schema_version", "id")
+        .order_by(
+            Case(
+                When(status=FormRevisionStatus.ACTIVE, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            ),
+            "-created_at",
+            "id",
+        )
     )
 
 

@@ -2770,6 +2770,17 @@
           "student": {
             "$ref": "#/components/schemas/CallSlipPersonSummary"
           },
+          "student_institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Institutional Id"
+          },
           "student_name_snapshot": {
             "title": "Student Name Snapshot",
             "type": "string"
@@ -2798,6 +2809,16 @@
               }
             ],
             "title": "Voided At"
+          },
+          "voided_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallSlipPersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -2815,8 +2836,10 @@
           "state",
           "voided_at",
           "created_at",
+          "student_institutional_id",
           "referral",
           "recorded_by",
+          "voided_by",
           "issuance_mode",
           "void_notifies_student",
           "void_reason",
@@ -8542,6 +8565,16 @@
         "title": "FeedbackSubmissionResponse",
         "type": "object"
       },
+      "FormFamilyConfigurationState": {
+        "enum": [
+          "READY",
+          "REVISION_NOT_REQUIRED",
+          "MISSING_REQUIRED_REVISION",
+          "ACTIVE_UNSUPPORTED"
+        ],
+        "title": "FormFamilyConfigurationState",
+        "type": "string"
+      },
       "FormFamilyListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -8562,6 +8595,9 @@
       "FormFamilyResponse": {
         "additionalProperties": false,
         "properties": {
+          "configuration_state": {
+            "$ref": "#/components/schemas/FormFamilyConfigurationState"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -8571,6 +8607,10 @@
             "title": "Key",
             "type": "string"
           },
+          "revision_required": {
+            "title": "Revision Required",
+            "type": "boolean"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -8579,7 +8619,9 @@
         "required": [
           "id",
           "key",
-          "title"
+          "title",
+          "revision_required",
+          "configuration_state"
         ],
         "title": "FormFamilyResponse",
         "type": "object"
@@ -9736,6 +9778,17 @@
           "student": {
             "$ref": "#/components/schemas/PersonSummary"
           },
+          "student_institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Institutional Id"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -9776,9 +9829,88 @@
           "document_template_version",
           "issued_by",
           "issued_by_name_snapshot",
+          "student_institutional_id",
           "cancellation"
         ],
         "title": "GoodMoralOperationalDetailResponse",
+        "type": "object"
+      },
+      "GoodMoralOperationalSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "applicant_name": {
+            "title": "Applicant Name",
+            "type": "string"
+          },
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issued_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GoodMoralStatusValue"
+          },
+          "student_institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Institutional Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "variant": {
+            "$ref": "#/components/schemas/GoodMoralVariantValue"
+          }
+        },
+        "required": [
+          "id",
+          "variant",
+          "status",
+          "applicant_name",
+          "issued_at",
+          "cancelled_at",
+          "created_at",
+          "updated_at",
+          "student_institutional_id"
+        ],
+        "title": "GoodMoralOperationalSummaryResponse",
         "type": "object"
       },
       "GoodMoralPageResponse": {
@@ -9790,7 +9922,7 @@
           },
           "items": {
             "items": {
-              "$ref": "#/components/schemas/GoodMoralSummaryResponse"
+              "$ref": "#/components/schemas/GoodMoralOperationalSummaryResponse"
             },
             "title": "Items",
             "type": "array"
@@ -15705,6 +15837,16 @@
             "title": "Occurred At",
             "type": "string"
           },
+          "recorded_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralActorSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "remarks": {
             "title": "Remarks",
             "type": "string"
@@ -15715,7 +15857,8 @@
           "action_type",
           "occurred_at",
           "remarks",
-          "created_at"
+          "created_at",
+          "recorded_by"
         ],
         "title": "ReferralActionResponse",
         "type": "object"
@@ -15728,6 +15871,26 @@
         ],
         "title": "ReferralActionTypeValue",
         "type": "string"
+      },
+      "ReferralActorSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "ReferralActorSummary",
+        "type": "object"
       },
       "ReferralCreateRequest": {
         "additionalProperties": false,
@@ -15820,6 +15983,16 @@
             ],
             "title": "Received At"
           },
+          "recorded_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralActorSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "reference_code": {
             "title": "Reference Code",
             "type": "string"
@@ -15864,6 +16037,16 @@
               }
             ],
             "title": "Voided At"
+          },
+          "voided_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralActorSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -15882,7 +16065,9 @@
           "form_revision",
           "actions",
           "void_reason",
-          "updated_at"
+          "updated_at",
+          "recorded_by",
+          "voided_by"
         ],
         "title": "ReferralDetailResponse",
         "type": "object"
@@ -15974,11 +16159,23 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
           }
         },
         "required": [
           "id",
-          "display_name"
+          "display_name",
+          "institutional_id"
         ],
         "title": "ReferralPersonSummary",
         "type": "object"

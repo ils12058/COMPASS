@@ -308,9 +308,9 @@ def _raise(exc: AppointmentError) -> NoReturn:
 def _institutional(value: datetime | None) -> datetime | None:
     if value is None:
         return None
-    from compass.appointments.services import _institution_zone
+    from compass.common.institutional_time import institution_zone
 
-    return value.astimezone(_institution_zone())
+    return value.astimezone(institution_zone())
 
 
 def _appointment(item) -> dict[str, object]:
@@ -326,7 +326,7 @@ def _appointment(item) -> dict[str, object]:
         "service": {
             "id": item.service_id,
             "code": item.service.code,
-            "name": item.service.name,
+            "name": item.service_name_snapshot,
         },
         "provider": {
             "id": item.provider_id,

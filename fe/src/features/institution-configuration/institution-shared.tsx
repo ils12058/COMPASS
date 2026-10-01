@@ -28,7 +28,7 @@ export function FormRevisionStatusBadge({
           : "border-border bg-surface-muted text-muted")
       }
     >
-      {active ? "Active" : "Inactive"}
+      {active ? "Current" : "Historical"}
     </span>
   );
 }

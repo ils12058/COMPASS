@@ -111,6 +111,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
                       <Link href={`/portal/good-moral/${item.id}`} className="text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
                         {item.applicant_name || "Applicant name not provided"}
                       </Link>
+                      {item.student_institutional_id ? <span className="mt-1 block text-xs font-normal text-muted">{item.student_institutional_id}</span> : null}
                     </th>
                     <td className="px-4 py-4 text-muted">{goodMoralVariantLabel(item.variant)}</td>
                     <td className="px-4 py-4"><GoodMoralStatus status={item.status} /></td>

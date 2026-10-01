@@ -85,14 +85,6 @@ export function GraduateTracerReportContent({
         <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Instrument Schema Version
-            </dt>
-            <dd className="mt-1 text-sm font-medium text-ink">
-              {report.report_context.instrument_schema_version}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
               Submitted Response Count
             </dt>
             <dd className="mt-1 text-sm font-medium text-ink">

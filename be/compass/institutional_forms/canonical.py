@@ -20,6 +20,7 @@ class CanonicalFormFamily:
     key: str
     title: str
     supported_schema_versions: frozenset[int]
+    revision_required: bool = True
     revisions: tuple[CanonicalFormRevision, ...] = ()
 
 
@@ -41,6 +42,7 @@ CANONICAL_FORM_FAMILIES = (
         key="routine_interview",
         title="Routine Interview Form",
         supported_schema_versions=frozenset({1}),
+        revision_required=False,
     ),
     CanonicalFormFamily(
         key="referral_slip",

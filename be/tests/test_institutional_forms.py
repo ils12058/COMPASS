@@ -353,6 +353,11 @@ def test_institutional_forms_api_is_read_only_and_projects_exact_support():
         "referral_slip",
         "routine_interview",
     ]
+    by_key = {item["key"]: item for item in families.json()["items"]}
+    assert by_key["routine_interview"]["revision_required"] is False
+    assert by_key["routine_interview"]["configuration_state"] == "REVISION_NOT_REQUIRED"
+    assert by_key["individual_inventory"]["revision_required"] is True
+    assert by_key["individual_inventory"]["configuration_state"] == "READY"
 
     revisions = client.get("/api/v1/institutional-forms/individual_inventory/revisions")
     assert revisions.status_code == 200
@@ -364,6 +369,22 @@ def test_institutional_forms_api_is_read_only_and_projects_exact_support():
     )
     assert by_id[str(canonical.pk)]["supported"] is True
     assert by_id[str(historical.pk)]["supported"] is False
+    assert revisions.json()["items"][0]["id"] == str(canonical.pk)
+
+    canonical.status = "INACTIVE"
+    canonical.save(update_fields=["status", "updated_at"])
+    missing = client.get("/api/v1/institutional-forms")
+    missing_state = next(
+        row for row in missing.json()["items"] if row["key"] == "individual_inventory"
+    )["configuration_state"]
+    assert missing_state == "MISSING_REQUIRED_REVISION"
+    historical.status = "ACTIVE"
+    historical.save(update_fields=["status", "updated_at"])
+    drifted = client.get("/api/v1/institutional-forms")
+    drifted_state = next(
+        row for row in drifted.json()["items"] if row["key"] == "individual_inventory"
+    )["configuration_state"]
+    assert drifted_state == "ACTIVE_UNSUPPORTED"
 
     headers = csrf(client)
     removed_register = client.post(

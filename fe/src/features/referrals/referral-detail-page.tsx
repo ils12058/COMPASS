@@ -97,6 +97,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
           <p className="font-semibold text-warning">Voided</p>
           <p className="mt-1 text-sm text-ink">{item.void_reason}</p>
           <p className="mt-1 text-sm text-muted">Voided {formatInstitutionalDateTime(item.voided_at)}</p>
+          {item.voided_by ? <p className="mt-1 text-sm text-muted">Voided by {item.voided_by.display_name}</p> : null}
         </div>
       ) : null}
 
@@ -108,11 +109,10 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         <div>
           <dt className="text-xs font-semibold text-muted">Form revision</dt>
           <dd className="mt-1 text-sm text-ink">{item.form_revision.official_code ?? "Official code not recorded"}{item.form_revision.official_revision ? ` · Revision ${item.form_revision.official_revision}` : ""}</dd>
-          <dd className="mt-1 text-xs text-muted">Internal schema version {item.form_revision.internal_schema_version}</dd>
         </div>
       </RecordSection>
 
-      <RecordSection title="Student">
+      <RecordSection title="Student on source Referral">
         <div>
           <dt className="text-xs font-semibold text-muted">Name on source Referral</dt>
           <dd className="mt-1 text-sm text-ink">{item.student_name_snapshot}</dd>
@@ -121,6 +121,11 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
           <dt className="text-xs font-semibold text-muted">Course / Year / Block snapshot</dt>
           <dd className="mt-1 text-sm text-ink">{item.course_year_block_snapshot}</dd>
         </div>
+      </RecordSection>
+
+      <RecordSection title="Current Student account">
+        <div><dt className="text-xs font-semibold text-muted">Name</dt><dd className="mt-1 text-sm text-ink">{item.student.display_name}</dd></div>
+        <div><dt className="text-xs font-semibold text-muted">Institutional ID</dt><dd className="mt-1 text-sm text-ink">{item.student.institutional_id ?? "Not recorded"}</dd></div>
       </RecordSection>
 
       {canViewSupportContext ? <StudentSupportContextSection studentId={item.student.id} /> : null}
@@ -138,6 +143,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
           <dt className="text-xs font-semibold text-muted">Recorded in COMPASS</dt>
           <dd className="mt-1 text-sm text-ink">{formatInstitutionalDateTime(item.created_at)}</dd>
         </div>
+        <div><dt className="text-xs font-semibold text-muted">Encoded by</dt><dd className="mt-1 text-sm text-ink">{item.recorded_by?.display_name ?? "Not recorded"}</dd></div>
       </RecordSection>
 
       <RecordSection title="Referral">

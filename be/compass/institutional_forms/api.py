@@ -12,6 +12,7 @@ from pydantic import ConfigDict
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.institutional_forms.canonical import get_canonical_form_family
 from compass.institutional_forms.models import FormRevisionStatus
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
@@ -34,6 +35,13 @@ class FormRevisionStatusValue(StrEnum):
     INACTIVE = FormRevisionStatus.INACTIVE
 
 
+class FormFamilyConfigurationState(StrEnum):
+    READY = "READY"
+    REVISION_NOT_REQUIRED = "REVISION_NOT_REQUIRED"
+    MISSING_REQUIRED_REVISION = "MISSING_REQUIRED_REVISION"
+    ACTIVE_UNSUPPORTED = "ACTIVE_UNSUPPORTED"
+
+
 class FormRevisionResponse(StrictSchema):
     id: UUID
     family_key: str
@@ -48,6 +56,8 @@ class FormFamilyResponse(StrictSchema):
     id: UUID
     key: str
     title: str
+    revision_required: bool
+    configuration_state: FormFamilyConfigurationState
 
 
 class FormFamilyListResponse(StrictSchema):
@@ -76,7 +86,34 @@ def _raise(exc: InstitutionalFormError) -> NoReturn:
 
 
 def _family(item) -> dict[str, object]:
-    return {"id": item.pk, "key": item.key, "title": item.title}
+    canonical = get_canonical_form_family(item.key)
+    # list_form_families only returns code-owned families.
+    assert canonical is not None
+    active = next(
+        (
+            revision
+            for revision in item.revisions.all()
+            if revision.status == FormRevisionStatus.ACTIVE
+        ),
+        None,
+    )
+    if active is not None:
+        state = (
+            FormFamilyConfigurationState.READY
+            if is_supported_form_revision(active)
+            else FormFamilyConfigurationState.ACTIVE_UNSUPPORTED
+        )
+    elif canonical.revision_required:
+        state = FormFamilyConfigurationState.MISSING_REQUIRED_REVISION
+    else:
+        state = FormFamilyConfigurationState.REVISION_NOT_REQUIRED
+    return {
+        "id": item.pk,
+        "key": item.key,
+        "title": item.title,
+        "revision_required": canonical.revision_required,
+        "configuration_state": state,
+    }
 
 
 def _revision(item) -> dict[str, object]:
