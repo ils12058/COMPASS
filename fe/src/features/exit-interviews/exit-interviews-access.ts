@@ -23,8 +23,8 @@ export function getExitInterviewAccess(user: UserSummary): ExitInterviewAccess {
     user.capabilities.includes("exit_interviews.manage_self");
   const canViewOperational = user.capabilities.includes("exit_interviews.view");
   const canReopen = user.capabilities.includes("exit_interviews.reopen");
-  const hasStudentWorkspace = canViewSelf || canManageSelf;
-  const hasOperationalWorkspace = canViewOperational || canReopen;
+  const hasStudentWorkspace = canViewSelf;
+  const hasOperationalWorkspace = canViewOperational;
 
   return {
     isStudent,

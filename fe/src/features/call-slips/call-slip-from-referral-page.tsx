@@ -39,7 +39,7 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   const { user } = usePortalSession();
   const referralAccess = getReferralAccess(user);
   const callSlipAccess = getCallSlipAccess(user);
-  const canUse = referralAccess.canView && callSlipAccess.canViewOperational && callSlipAccess.canManageOperational;
+  const canUse = referralAccess.canView && callSlipAccess.canManageOperational;
   const referral = useReferralsGet(referralId, { query: { enabled: canUse, retry: false } });
   const current = useCallSlipsList(
     { referral_id: referralId, include_voided: false, page: 1, page_size: 1 },
@@ -51,7 +51,7 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   );
 
   if (!referralAccess.canView) return <ReferralAccessUnavailable title="Referral review unavailable" message="Review access is required to issue a linked Call Slip." />;
-  if (!callSlipAccess.canViewOperational || !callSlipAccess.canManageOperational) return <CallSlipAccessUnavailable title="Linked Call Slip issuance unavailable" message="Operational Call Slip review and management access are required." />;
+  if (!callSlipAccess.canManageOperational) return <CallSlipAccessUnavailable title="Linked Call Slip issuance unavailable" message="Call Slip management access is required." />;
   if (referral.isError) return <ReferralQueryError error={referral.error} fallback="The source Referral could not be loaded." onRetry={() => void referral.refetch()} />;
   if (referral.isPending || current.isPending || history.isPending) {
     return <div className="space-y-4" aria-busy="true"><p role="status" className="text-sm text-muted">Checking Referral and linked Call Slip state…</p></div>;

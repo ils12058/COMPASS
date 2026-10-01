@@ -81,12 +81,6 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
         ) : null}
       />
 
-      {!access.canView ? (
-        <p className="max-w-2xl border-y border-border py-5 text-sm leading-6 text-muted">
-          Your current access allows recording Referrals but not reviewing existing Referral records.
-        </p>
-      ) : (
-        <>
           <form onSubmit={submitFilters} className="grid gap-4 border-b border-border pb-6 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
             <div className="grid gap-2 md:col-span-2 xl:col-span-1">
               <Label htmlFor="referrals-search">Search</Label>
@@ -209,8 +203,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
               />
             </>
           )}
-        </>
-      )}
+
     </div>
   );
 }

@@ -26,6 +26,6 @@ export function getCallSlipAccess(user: UserSummary): CallSlipAccess {
     canViewSelf,
     canViewOperational,
     canManageOperational,
-    hasWorkspace: canViewSelf || canViewOperational || canManageOperational,
+    hasWorkspace: canViewSelf || canViewOperational,
   };
 }

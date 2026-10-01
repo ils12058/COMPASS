@@ -65,7 +65,7 @@ export function RoutineInterviewDetailPage({
   if (access.isStudent && access.canViewSelf) {
     return <StudentRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageSelf} />;
   }
-  if (access.isCounselor && (access.canViewAssigned || access.canManageAssigned)) {
+  if (access.isCounselor && access.canViewAssigned) {
     return <CounselorRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageAssigned} />;
   }
   return <RoutineUnavailable message="This Routine Interview is not available within your current access." />;

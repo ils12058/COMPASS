@@ -133,8 +133,7 @@ export function CounselorRoutineWorkspace({
 
       <RoutineDirectCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
 
-      {access.canViewAssigned ? (
-        <section aria-labelledby="assigned-routine-interviews">
+      <section aria-labelledby="assigned-routine-interviews">
           <h2 id="assigned-routine-interviews" className="sr-only">Assigned Routine Interviews</h2>
           <div className={`mb-5 grid gap-4 border-y border-border py-5 sm:grid-cols-2 ${canFilterYear ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
             <form
@@ -298,12 +297,7 @@ export function CounselorRoutineWorkspace({
               ) : null}
             </>
           )}
-        </section>
-      ) : (
-        <p className="border-y border-border py-5 text-sm text-muted">
-          Your current access allows direct creation, but does not include viewing the assigned queue.
-        </p>
-      )}
+      </section>
     </div>
   );
 }
