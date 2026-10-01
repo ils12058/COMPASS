@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatPublicDate } from "@/features/public/shared/presentation";
+import { AnnouncementDate } from "@/features/announcements/announcement-date";
 import { CompassApiError } from "@/lib/api/errors";
 import { useAnnouncementsListVisible } from "@/lib/api/generated/announcements/announcements";
 
@@ -25,10 +25,7 @@ export function OverviewAnnouncements() {
         <h2 id="overview-announcements-heading" className="font-heading text-xl font-semibold text-ink">
           Announcements
         </h2>
-        <div className="flex flex-wrap gap-x-5">
-          <Link href="/announcements" className={linkClass}>All announcements</Link>
-          <Link href="/resources" className={linkClass}>Resources</Link>
-        </div>
+        <Link href="/announcements" className={linkClass}>All announcements</Link>
       </div>
 
       {list.isPending ? (
@@ -58,20 +55,20 @@ export function OverviewAnnouncements() {
             <li key={announcement.id}>
               <Link
                 href={`/announcements/${announcement.id}`}
-                className="group grid gap-1 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:items-center sm:gap-4"
+                className="group grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-x-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
-                <time dateTime={announcement.published_at} className="text-sm text-muted">
-                  {formatPublicDate(announcement.published_at)}
-                </time>
-                <span className="break-words font-semibold text-ink group-hover:text-brand group-hover:underline">
-                  {announcement.title}
-                </span>
-                {announcement.is_pinned ? (
-                  <span className="inline-flex w-fit items-center gap-1 text-xs font-semibold text-brand">
-                    <Pin size={13} aria-hidden="true" />
-                    Pinned
+                <AnnouncementDate value={announcement.published_at} />
+                <span className="min-w-0">
+                  <span className="block break-words font-semibold leading-6 text-ink group-hover:text-brand group-hover:underline">
+                    {announcement.title}
                   </span>
-                ) : null}
+                  {announcement.is_pinned ? (
+                    <span className="mt-1 inline-flex w-fit items-center gap-1 text-xs font-semibold text-brand">
+                      <Pin size={13} aria-hidden="true" />
+                      Pinned
+                    </span>
+                  ) : null}
+                </span>
               </Link>
             </li>
           ))}

@@ -2,18 +2,8 @@ import {
   getAppointmentAccess,
 } from "@/features/appointments/appointments-access";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
-import { getCounselingAccess } from "@/features/counseling/counseling-access";
-import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
-import { getExitInterviewAccess } from "@/features/exit-interviews/exit-interviews-access";
-import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
-import { canManageOrganization, canViewAcademicYears, canViewInstitutionalForms } from "@/features/institution-configuration/institution-access";
-import { getInventoryAccess } from "@/features/inventory/inventory-access";
-import { hasPrivacyGovernanceWorkspace } from "@/features/privacy-governance/privacy-governance-access";
-import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
-import { canAttemptReports } from "@/features/reports/reports-access";
-import { hasServicesWorkspace } from "@/features/services/services-access";
 import { designationLabels, isDesignationCode } from "@/features/accounts/presentation";
 import { userRoleLabel } from "@/features/portal/components/portal-presentation";
 import { DesignationCode, type OverviewSummaryResponse, type UserSummary } from "@/lib/api/generated/model";
@@ -22,11 +12,6 @@ export type OverviewMetric = {
   label: string;
   value: number;
   href?: string;
-};
-
-export type OverviewQuickAccessLink = {
-  label: string;
-  href: string;
 };
 
 function addMetric(
@@ -62,7 +47,6 @@ export function getOverviewMetrics(
   const routineAccess = getRoutineInterviewAccess(user);
   const goodMoralAccess = getGoodMoralAccess(user);
   const callSlipAccess = getCallSlipAccess(user);
-  const canViewEmailDeliveries = user.capabilities.includes("platform_operations.view");
 
   if (summary.student) {
     addMetric(
@@ -124,100 +108,41 @@ export function getOverviewMetrics(
     );
   }
 
-  if (summary.platform) {
-    const emailHref = canViewEmailDeliveries
-      ? "/portal/platform/email-delivery"
-      : undefined;
-    addMetric(metrics, "Pending email deliveries", summary.platform.email_pending_count, emailHref);
-    addMetric(metrics, "Due pending deliveries", summary.platform.email_due_pending_count, emailHref);
-    addMetric(metrics, "Failed email deliveries", summary.platform.email_failed_count, emailHref);
-    addMetric(metrics, "Email deliveries sent today", summary.platform.email_sent_today_count, emailHref);
-  }
-
-
-
   return metrics;
 }
 
-export function getOverviewQuickAccess(user: UserSummary): OverviewQuickAccessLink[] {
-  const links = new Map<string, OverviewQuickAccessLink>();
-  const add = (key: string, label: string, href: string | null | undefined) => {
-    if (href) links.set(key, { label, href });
+export type EmailDeliveryStatus = {
+  failed: number;
+  pending: number;
+  duePending: number;
+  sentToday: number;
+  href?: string;
+};
+
+// Platform email counts read better as one status line than as four separate tiles.
+export function getEmailDeliveryStatus(
+  summary: OverviewSummaryResponse,
+  user: UserSummary,
+): EmailDeliveryStatus | null {
+  if (!summary.platform) return null;
+  return {
+    failed: summary.platform.email_failed_count ?? 0,
+    pending: summary.platform.email_pending_count ?? 0,
+    duePending: summary.platform.email_due_pending_count ?? 0,
+    sentToday: summary.platform.email_sent_today_count ?? 0,
+    href: user.capabilities.includes("platform_operations.view")
+      ? "/portal/platform/email-delivery"
+      : undefined,
   };
+}
 
-  const appointmentAccess = getAppointmentAccess(user);
-  if (appointmentAccess.canBook) {
-    add("appointments", "Book appointment", "/portal/appointments/book");
-  } else if (appointmentAccess.canViewSelf) {
-    add("appointments", "Appointments", "/portal/appointments/my");
-  } else if (appointmentAccess.canManage) {
-    add("appointments", "Appointments", "/portal/appointments/manage");
-  }
+export type OverviewPrimaryAction = { label: string; href: string };
 
-  const routineAccess = getRoutineInterviewAccess(user);
-  const inventoryAccess = getInventoryAccess(user);
-  const exitAccess = getExitInterviewAccess(user);
-  const graduateAccess = getGraduateTracerAccess(user);
-  const counselingAccess = getCounselingAccess(user);
-  const referralAccess = getReferralAccess(user);
-  const callSlipAccess = getCallSlipAccess(user);
-  const goodMoralAccess = getGoodMoralAccess(user);
-  const feedbackAccess = getFeedbackAccess(user);
-  const canViewPlatform = user.capabilities.includes("platform_operations.view");
-  const hasPrivacy = hasPrivacyGovernanceWorkspace(user);
-
-  add("privacy", "Privacy Governance", hasPrivacy ? "/portal/privacy" : undefined);
-  add("services", "Services", hasServicesWorkspace(user) ? "/portal/services" : undefined);
-  add("inventory", "Individual Inventory", inventoryAccess.hasWorkspace ? "/portal/inventory" : undefined);
-  add("routine", "Routine Interviews", routineAccess.hasWorkspace ? "/portal/routine-interviews" : undefined);
-  add("exit", "Exit Interviews", exitAccess.hasWorkspace ? "/portal/exit-interviews" : undefined);
-  add("graduate", "Graduate Tracer", graduateAccess.hasWorkspace ? "/portal/graduate-tracer" : undefined);
-  add("counseling", "Counseling", counselingAccess.hasWorkspace ? "/portal/counseling" : undefined);
-  add("referrals", "Referrals", referralAccess.hasWorkspace ? "/portal/referrals" : undefined);
-  add("call-slips", "Call Slips", callSlipAccess.hasWorkspace ? "/portal/call-slips" : undefined);
-  add("good-moral", "Good Moral", goodMoralAccess.hasWorkspace ? "/portal/good-moral" : undefined);
-  add(
-    "feedback",
-    "Feedback",
-    feedbackAccess.hasOperationalWorkspace ? "/portal/feedback" : undefined,
-  );
-  add("reports", "Reports", canAttemptReports(user) ? "/portal/reports" : undefined);
-  add("accounts", "Accounts", user.capabilities.includes("accounts.manage") ? "/portal/accounts" : undefined);
-  add(
-    "platform",
-    "Platform Operations",
-    canViewPlatform ? "/portal/platform" : undefined,
-  );
-
-  add("organization", "Organization", canManageOrganization(user) ? "/portal/organization" : undefined);
-  add("academic-years", "Academic Years", canViewAcademicYears(user) ? "/portal/academic-years" : undefined);
-  add("institutional-forms", "Institutional Forms", canViewInstitutionalForms(user) ? "/portal/institutional-forms" : undefined);
-
-  const isHeadGuidance =
-    user.role === "COUNSELOR" &&
-    user.designations.includes(DesignationCode.HEAD_GUIDANCE_COUNSELOR);
-  const priorities =
-    user.role === "STUDENT"
-      ? ["appointments", "good-moral", "feedback"]
-      : user.role === "GUIDANCE_SERVICES_STAFF"
-        ? ["appointments", "referrals", "call-slips"]
-        : user.role === "COUNSELOR" && isHeadGuidance
-          ? ["appointments", "routine", "reports", "call-slips", "exit", "graduate", "organization"]
-          : user.role === "COUNSELOR"
-            ? ["appointments", "routine", "counseling", "referrals", "call-slips", "reports"]
-            : canViewPlatform
-              ? ["accounts", "platform", "organization", "academic-years", "institutional-forms"]
-              : ["organization", "academic-years", "institutional-forms", "appointments", "platform"];
-
-  // Privacy Governance leads for anyone holding the capability, whatever
-  // their role; it is not tied to the DPO designation.
-  const selected = (hasPrivacy ? ["privacy", ...priorities] : priorities)
-    .map((key) => links.get(key))
-    .filter((link): link is OverviewQuickAccessLink => Boolean(link))
-    .slice(0, 6);
-
-  if (selected.length > 0) return selected;
-  return Array.from(links.values()).slice(0, 6);
+// The one task worth a button above the fold. Everything else is already in the sidebar.
+export function getOverviewPrimaryAction(user: UserSummary): OverviewPrimaryAction | null {
+  return getAppointmentAccess(user).canBook
+    ? { label: "Book appointment", href: "/portal/appointments/book" }
+    : null;
 }
 
 export function getOverviewGreeting(user: UserSummary): string | null {
