@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GraduateTracerEducationSection, GraduateTracerGeneralSection, GraduateTracerTrainingSection } from "@/features/graduate-tracer/graduate-tracer-form-sections";
@@ -238,28 +238,33 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
                 {save.isPending ? "Saving…" : "Save draft"}
               </Button>
               <Button type="button" disabled={pending || dirty} onClick={openSubmitConfirmation}>Submit Graduate Tracer Survey</Button>
-              <AlertDialog open={confirmSubmit} onOpenChange={(open) => { if (!submit.isPending) setConfirmSubmit(open); }}>
-                <AlertDialogContent>
-                  <AlertDialogTitle>Submit Graduate Tracer Survey?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Your response will be finalized and made available to authorized Guidance and Counseling Office reviewers. You will not be able to edit it after submission.
-                  </AlertDialogDescription>
-                  {submitError ? <p role="alert" className="mt-4 text-sm leading-6 text-danger">{submitError}</p> : null}
-                  {needsSubmissionCheck ? (
-                    <Button type="button" variant="secondary" className="mt-3" onClick={() => void checkCanonicalSubmission()} disabled={submit.isPending}>Check response status</Button>
-                  ) : null}
-                  <div className="mt-6 flex flex-wrap justify-end gap-3">
-                    <AlertDialogCancel asChild>
-                      <Button type="button" variant="secondary" disabled={submit.isPending}>Cancel</Button>
-                    </AlertDialogCancel>
-                    <AlertDialogAction asChild>
-                      <Button type="button" onClick={(event) => { event.preventDefault(); void submitDraft(); }} disabled={submit.isPending} aria-busy={submit.isPending}>
-                        {submit.isPending ? "Submitting…" : "Submit Graduate Tracer Survey"}
-                      </Button>
-                    </AlertDialogAction>
-                  </div>
-                </AlertDialogContent>
-              </AlertDialog>
+              <ConsequentialActionDialog
+                open={confirmSubmit}
+                title="Submit Graduate Tracer Survey?"
+                confirmLabel="Submit Graduate Tracer Survey"
+                pendingLabel="Submitting…"
+                pending={submit.isPending}
+                confirmDisabled={needsSubmissionCheck}
+                error={submitError}
+                onOpenChange={setConfirmSubmit}
+                onConfirm={() => void submitDraft()}
+              >
+                <p>
+                  Your response will be finalized and made available to
+                  authorized Guidance and Counseling Office reviewers. You will
+                  not be able to edit it after submission.
+                </p>
+                {needsSubmissionCheck ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void checkCanonicalSubmission()}
+                    disabled={submit.isPending}
+                  >
+                    Check response status
+                  </Button>
+                ) : null}
+              </ConsequentialActionDialog>
             </div>
           </div>
         </form>
