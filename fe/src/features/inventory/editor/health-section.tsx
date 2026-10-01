@@ -16,7 +16,9 @@ function nullableCount(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function HealthSection({ draft, onChange }: InventorySectionProps) {
+export function HealthSection({ draft, onChange, validationIssues = [] }: InventorySectionProps) {
+  const errorFor = (targetId: string) =>
+    validationIssues.find((issue) => issue.targetId === targetId)?.message;
   const boarding = draft.living_arrangement === LivingArrangementValue.BOARDING_HOUSE;
   const immunizations = draft.immunizations ?? [];
 
@@ -26,6 +28,7 @@ export function HealthSection({ draft, onChange }: InventorySectionProps) {
         <div className="grid gap-4 sm:grid-cols-2">
           <SelectField
             id="inventory-living-arrangement"
+            error={errorFor("inventory-living-arrangement")}
             label="Where do you live now?"
             value={draft.living_arrangement}
             options={livingArrangementOptions}
@@ -127,6 +130,7 @@ export function HealthSection({ draft, onChange }: InventorySectionProps) {
           {immunizations.includes(ImmunizationValue.OTHER) ? (
             <TextField
               id="inventory-immunization-other"
+            error={errorFor("inventory-immunization-other")}
               label="Other immunization"
               value={draft.immunization_other}
               onChange={(value) => onChange({ immunization_other: value })}
@@ -148,6 +152,7 @@ export function HealthSection({ draft, onChange }: InventorySectionProps) {
           />
           <SelectField
             id="inventory-pwd-status"
+            error={errorFor("inventory-pwd-status")}
             label="Disability status"
             value={draft.pwd_status}
             options={pwdOptions}
@@ -160,6 +165,7 @@ export function HealthSection({ draft, onChange }: InventorySectionProps) {
           {draft.pwd_status === PWDStatusValue.PWD ? (
             <TextAreaField
               id="inventory-physical-disadvantage"
+            error={errorFor("inventory-physical-disadvantage")}
               label="Physical disadvantage or support context"
               value={draft.physical_disadvantage}
               onChange={(value) => onChange({ physical_disadvantage: value })}

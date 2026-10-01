@@ -23,6 +23,7 @@ import {
   TextAreaField,
   TextField,
   RadioField,
+  type GraduateTracerErrorLookup,
 } from "@/features/graduate-tracer/graduate-tracer-form-fields";
 import { GraduateTracerSection } from "@/features/graduate-tracer/graduate-tracer-shared";
 import type { GraduateTracerDraftChange } from "@/features/graduate-tracer/graduate-tracer-form-sections";
@@ -30,9 +31,11 @@ import type { GraduateTracerDraftChange } from "@/features/graduate-tracer/gradu
 export function GraduateTracerEmploymentSection({
   draft,
   onChange,
+  errorFor,
 }: {
   draft: GraduateTracerFormDraft;
   onChange: GraduateTracerDraftChange;
+  errorFor: GraduateTracerErrorLookup;
 }) {
   const employed = draft.current_employment_state === "EMPLOYED";
   const unemployed = draft.current_employment_state === "NOT_EMPLOYED" || draft.current_employment_state === "NEVER_EMPLOYED";
@@ -45,6 +48,8 @@ export function GraduateTracerEmploymentSection({
         legend="Q16. Are you presently employed?"
         value={draft.current_employment_state}
         options={EMPLOYMENT_STATE_CHOICES}
+        required
+        error={errorFor("gts-employment-state")}
         onChange={(value) => onChange("current_employment_state", value)}
       />
 
@@ -55,11 +60,13 @@ export function GraduateTracerEmploymentSection({
             legend="Q17. Please state reason(s) why you are not yet employed."
             values={draft.unemployment_reasons}
             options={UNEMPLOYMENT_REASON_CHOICES}
+            required
+            error={errorFor("gts-unemployment-reasons")}
             onChange={(values) => onChange("unemployment_reasons", values)}
           />
           {draft.unemployment_reasons?.includes("OTHER") ? (
             <div className="mt-4 max-w-2xl">
-              <TextAreaField id="gts-unemployment-other" label="Please specify" value={draft.unemployment_other_reason} onChange={(value) => onChange("unemployment_other_reason", value)} />
+              <TextAreaField id="gts-unemployment-other" label="Please specify" value={draft.unemployment_other_reason} required error={errorFor("gts-unemployment-other")} onChange={(value) => onChange("unemployment_other_reason", value)} />
             </div>
           ) : null}
         </div>
@@ -73,6 +80,8 @@ export function GraduateTracerEmploymentSection({
               legend="Q18. Present Employment Status"
               value={draft.present_employment_status}
               options={PRESENT_EMPLOYMENT_STATUS_CHOICES}
+              required
+              error={errorFor("gts-present-employment-status")}
               onChange={(value) => onChange("present_employment_status", value)}
             />
             {draft.present_employment_status === "SELF_EMPLOYED" ? (
@@ -81,14 +90,16 @@ export function GraduateTracerEmploymentSection({
                   id="gts-self-employed-skills"
                   label="If self-employed, what skills acquired in college were you able to apply in your work?"
                   value={draft.self_employed_college_skills}
+                  required
+                  error={errorFor("gts-self-employed-skills")}
                   onChange={(value) => onChange("self_employed_college_skills", value)}
                 />
               </div>
             ) : null}
             <div className="mt-5 grid gap-5 sm:grid-cols-2">
-              <TextField id="gts-present-occupation" label="Q19. Present Occupation" value={draft.present_occupation} onChange={(value) => onChange("present_occupation", value)} />
-              <SelectField id="gts-business-line" label="Q20. Major Line of Business" value={draft.employer_business_line} options={BUSINESS_LINE_CHOICES} onChange={(value) => onChange("employer_business_line", value)} />
-              <SelectField id="gts-place-of-work" label="Q21. Place of Work" value={draft.place_of_work} options={PLACE_OF_WORK_CHOICES} onChange={(value) => onChange("place_of_work", value)} />
+              <TextField id="gts-present-occupation" label="Q19. Present Occupation" value={draft.present_occupation} required error={errorFor("gts-present-occupation")} onChange={(value) => onChange("present_occupation", value)} />
+              <SelectField id="gts-business-line" label="Q20. Major Line of Business" value={draft.employer_business_line} options={BUSINESS_LINE_CHOICES} required error={errorFor("gts-business-line")} onChange={(value) => onChange("employer_business_line", value)} />
+              <SelectField id="gts-place-of-work" label="Q21. Place of Work" value={draft.place_of_work} options={PLACE_OF_WORK_CHOICES} required error={errorFor("gts-place-of-work")} onChange={(value) => onChange("place_of_work", value)} />
             </div>
           </div>
 
@@ -97,6 +108,8 @@ export function GraduateTracerEmploymentSection({
               id="gts-first-job-after-college"
               legend="Q22. Is this your first job after college?"
               value={draft.first_job_after_college}
+              required
+              error={errorFor("gts-first-job-after-college")}
               onChange={(value) => onChange("first_job_after_college", value)}
             />
             {firstJob ? (
@@ -106,17 +119,21 @@ export function GraduateTracerEmploymentSection({
                   legend="What are your reason(s) for staying on the job?"
                   values={draft.reasons_for_staying_on_job}
                   options={STAYING_REASON_CHOICES}
+                  required
+                  error={errorFor("gts-staying-reasons")}
                   onChange={(values) => onChange("reasons_for_staying_on_job", values)}
                 />
                 {draft.reasons_for_staying_on_job?.includes("OTHER") ? (
                   <div className="max-w-2xl">
-                    <TextAreaField id="gts-staying-other" label="Please specify" value={draft.reasons_for_staying_other} onChange={(value) => onChange("reasons_for_staying_other", value)} />
+                    <TextAreaField id="gts-staying-other" label="Please specify" value={draft.reasons_for_staying_other} required error={errorFor("gts-staying-other")} onChange={(value) => onChange("reasons_for_staying_other", value)} />
                   </div>
                 ) : null}
                 <BooleanField
                   id="gts-first-job-related"
                   legend="Is your first job related to the course you took up in college?"
                   value={draft.first_job_related_to_course}
+                  required
+                  error={errorFor("gts-first-job-related")}
                   onChange={(value) => onChange("first_job_related_to_course", value)}
                 />
               </div>
@@ -137,7 +154,7 @@ export function GraduateTracerEmploymentSection({
                 />
                 {draft.reasons_for_accepting_first_job?.includes("OTHER") ? (
                   <div className="mt-4">
-                    <TextAreaField id="gts-accepting-other" label="Please specify" value={draft.reasons_for_accepting_other} onChange={(value) => onChange("reasons_for_accepting_other", value)} />
+                    <TextAreaField id="gts-accepting-other" label="Please specify" value={draft.reasons_for_accepting_other} required error={errorFor("gts-accepting-other")} onChange={(value) => onChange("reasons_for_accepting_other", value)} />
                   </div>
                 ) : null}
               </div>
@@ -152,7 +169,7 @@ export function GraduateTracerEmploymentSection({
               />
               {draft.reasons_for_changing_job?.includes("OTHER") ? (
                 <div className="mt-4">
-                  <TextAreaField id="gts-changing-other" label="Please specify" value={draft.reasons_for_changing_other} onChange={(value) => onChange("reasons_for_changing_other", value)} />
+                  <TextAreaField id="gts-changing-other" label="Please specify" value={draft.reasons_for_changing_other} required error={errorFor("gts-changing-other")} onChange={(value) => onChange("reasons_for_changing_other", value)} />
                 </div>
               ) : null}
             </div>
@@ -160,18 +177,18 @@ export function GraduateTracerEmploymentSection({
 
           <div className="border-t border-border pt-6">
             <div className="grid gap-5 sm:grid-cols-2">
-              <SelectField id="gts-first-job-duration" label="How long did you stay in your first job?" value={draft.first_job_duration} options={FIRST_JOB_DURATION_CHOICES} onChange={(value) => onChange("first_job_duration", value)} />
-              <SelectField id="gts-first-job-source" label="How did you find your first job?" value={draft.first_job_source} options={FIRST_JOB_SOURCE_CHOICES} onChange={(value) => onChange("first_job_source", value)} />
-              <SelectField id="gts-time-to-first-job" label="How long did it take you to land your first job?" value={draft.time_to_first_job} options={FIRST_JOB_DURATION_CHOICES} onChange={(value) => onChange("time_to_first_job", value)} />
+              <SelectField id="gts-first-job-duration" label="How long did you stay in your first job?" value={draft.first_job_duration} options={FIRST_JOB_DURATION_CHOICES} required error={errorFor("gts-first-job-duration")} onChange={(value) => onChange("first_job_duration", value)} />
+              <SelectField id="gts-first-job-source" label="How did you find your first job?" value={draft.first_job_source} options={FIRST_JOB_SOURCE_CHOICES} required error={errorFor("gts-first-job-source")} onChange={(value) => onChange("first_job_source", value)} />
+              <SelectField id="gts-time-to-first-job" label="How long did it take you to land your first job?" value={draft.time_to_first_job} options={FIRST_JOB_DURATION_CHOICES} required error={errorFor("gts-time-to-first-job")} onChange={(value) => onChange("time_to_first_job", value)} />
             </div>
             {draft.first_job_duration === GTSFirstJobDurationValue.OTHER ? (
-              <div className="mt-4 max-w-2xl"><TextField id="gts-first-job-duration-other" label="Please specify first-job duration" value={draft.first_job_duration_other} onChange={(value) => onChange("first_job_duration_other", value)} /></div>
+              <div className="mt-4 max-w-2xl"><TextField id="gts-first-job-duration-other" label="Please specify first-job duration" value={draft.first_job_duration_other} required error={errorFor("gts-first-job-duration-other")} onChange={(value) => onChange("first_job_duration_other", value)} /></div>
             ) : null}
             {draft.first_job_source === GTSFirstJobSourceValue.OTHER ? (
-              <div className="mt-4 max-w-2xl"><TextField id="gts-first-job-source-other" label="Please specify how you found your first job" value={draft.first_job_source_other} onChange={(value) => onChange("first_job_source_other", value)} /></div>
+              <div className="mt-4 max-w-2xl"><TextField id="gts-first-job-source-other" label="Please specify how you found your first job" value={draft.first_job_source_other} required error={errorFor("gts-first-job-source-other")} onChange={(value) => onChange("first_job_source_other", value)} /></div>
             ) : null}
             {draft.time_to_first_job === GTSFirstJobDurationValue.OTHER ? (
-              <div className="mt-4 max-w-2xl"><TextField id="gts-time-to-first-job-other" label="Please specify time to first job" value={draft.time_to_first_job_other} onChange={(value) => onChange("time_to_first_job_other", value)} /></div>
+              <div className="mt-4 max-w-2xl"><TextField id="gts-time-to-first-job-other" label="Please specify time to first job" value={draft.time_to_first_job_other} required error={errorFor("gts-time-to-first-job-other")} onChange={(value) => onChange("time_to_first_job_other", value)} /></div>
             ) : null}
           </div>
 
@@ -183,23 +200,25 @@ export function GraduateTracerEmploymentSection({
                 <thead className="bg-surface-muted text-left text-xs uppercase tracking-wide text-muted">
                   <tr>
                     <th scope="col" className="sticky left-0 z-10 min-w-[18rem] bg-surface-muted px-3 py-3 font-semibold">Job Level</th>
-                    <th scope="col" className="min-w-36 px-3 py-3 font-semibold">First Job</th>
-                    <th scope="col" className="min-w-36 px-3 py-3 font-semibold">Current or Present Job</th>
+                    <th scope="col" className="min-w-36 px-3 py-3 font-semibold">First Job <span aria-hidden="true" className="text-danger">*</span></th>
+                    <th scope="col" className="min-w-36 px-3 py-3 font-semibold">Current or Present Job <span aria-hidden="true" className="text-danger">*</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {JOB_LEVEL_CHOICES.map((choice) => (
+                  {JOB_LEVEL_CHOICES.map((choice, index) => (
                     <tr key={choice.value}>
                       <th scope="row" className="sticky left-0 z-10 bg-surface-raised px-3 py-3 text-left font-medium text-ink">{choice.label}</th>
-                      <td className="px-3 py-3"><input type="radio" name="gts-first-job-level" aria-label={`${choice.label} — First Job`} checked={draft.first_job_level === choice.value} onChange={() => onChange("first_job_level", choice.value)} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /></td>
-                      <td className="px-3 py-3"><input type="radio" name="gts-current-job-level" aria-label={`${choice.label} — Current or Present Job`} checked={draft.current_job_level === choice.value} onChange={() => onChange("current_job_level", choice.value)} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /></td>
+                      <td className="px-3 py-3"><input id={index === 0 ? "gts-first-job-level" : undefined} type="radio" name="gts-first-job-level" aria-label={`${choice.label} — First Job, required`} aria-describedby={errorFor("gts-first-job-level") ? "gts-first-job-level-error" : undefined} checked={draft.first_job_level === choice.value} onChange={() => onChange("first_job_level", choice.value)} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /></td>
+                      <td className="px-3 py-3"><input id={index === 0 ? "gts-current-job-level" : undefined} type="radio" name="gts-current-job-level" aria-label={`${choice.label} — Current or Present Job, required`} aria-describedby={errorFor("gts-current-job-level") ? "gts-current-job-level-error" : undefined} checked={draft.current_job_level === choice.value} onChange={() => onChange("current_job_level", choice.value)} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {errorFor("gts-first-job-level") ? <p id="gts-first-job-level-error" role="alert" className="mt-2 text-xs leading-5 text-danger">{errorFor("gts-first-job-level")}</p> : null}
+            {errorFor("gts-current-job-level") ? <p id="gts-current-job-level-error" role="alert" className="mt-1 text-xs leading-5 text-danger">{errorFor("gts-current-job-level")}</p> : null}
             <div className="mt-5 max-w-2xl">
-              <SelectField id="gts-initial-earning" label="Initial gross monthly earning in your first job after college" value={draft.initial_gross_monthly_earning} options={EARNING_BRACKET_CHOICES} onChange={(value) => onChange("initial_gross_monthly_earning", value)} />
+              <SelectField id="gts-initial-earning" label="Initial gross monthly earning in your first job after college" value={draft.initial_gross_monthly_earning} options={EARNING_BRACKET_CHOICES} required error={errorFor("gts-initial-earning")} onChange={(value) => onChange("initial_gross_monthly_earning", value)} />
             </div>
           </div>
 
@@ -208,6 +227,8 @@ export function GraduateTracerEmploymentSection({
               id="gts-curriculum-relevant"
               legend="Was the curriculum you had in college relevant to your first job?"
               value={draft.curriculum_relevant_to_first_job}
+              required
+              error={errorFor("gts-curriculum-relevant")}
               onChange={(value) => onChange("curriculum_relevant_to_first_job", value)}
             />
             {draft.curriculum_relevant_to_first_job === true ? (
@@ -217,11 +238,13 @@ export function GraduateTracerEmploymentSection({
                   legend="What competencies learned in college did you find very useful in your first job?"
                   values={draft.useful_competencies}
                   options={USEFUL_COMPETENCY_CHOICES}
+                  required
+                  error={errorFor("gts-useful-competencies")}
                   onChange={(values) => onChange("useful_competencies", values)}
                 />
                 {draft.useful_competencies?.includes("OTHER") ? (
                   <div className="mt-4">
-                    <TextAreaField id="gts-useful-competencies-other" label="Please specify other skills" value={draft.useful_competencies_other} onChange={(value) => onChange("useful_competencies_other", value)} />
+                    <TextAreaField id="gts-useful-competencies-other" label="Please specify other skills" value={draft.useful_competencies_other} required error={errorFor("gts-useful-competencies-other")} onChange={(value) => onChange("useful_competencies_other", value)} />
                   </div>
                 ) : null}
               </div>

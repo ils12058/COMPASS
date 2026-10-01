@@ -1,3 +1,4 @@
+import type { InventorySubmissionIssue } from "@/features/inventory/inventory-payload";
 import type { InventoryPayload, InventoryProgramSummary, ProgramSummary } from "@/lib/api/generated/model";
 
 export type InventorySectionProps = {
@@ -8,4 +9,5 @@ export type InventorySectionProps = {
   programLookupPending?: boolean;
   programLookupError?: boolean;
   programDiscoveryAllowed?: boolean;
+  validationIssues?: InventorySubmissionIssue[];
 };

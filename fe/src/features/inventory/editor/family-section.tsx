@@ -25,7 +25,9 @@ import {
 const requiredKinds = [FamilyMemberKindValue.FATHER, FamilyMemberKindValue.MOTHER] as const;
 const emptyFamilyMembers: FamilyMemberPayload[] = [];
 
-export function FamilySection({ draft, onChange }: InventorySectionProps) {
+export function FamilySection({ draft, onChange, validationIssues = [] }: InventorySectionProps) {
+  const errorFor = (targetId: string) =>
+    validationIssues.find((issue) => issue.targetId === targetId)?.message;
   const members = draft.family_members ?? emptyFamilyMembers;
   const hasSpouse = members.some((member) => member.kind === FamilyMemberKindValue.SPOUSE);
   const focusAfterUpdate = useRef<string | null>(null);
@@ -54,7 +56,7 @@ export function FamilySection({ draft, onChange }: InventorySectionProps) {
     <div className="space-y-7">
       <FieldGroup legend="Family data">
         <p className="mb-5 max-w-3xl text-sm leading-6 text-muted">
-          Father and Mother responses are required for submission. Spouse information is optional.
+          For each parent, complete the required occupation and annual-income fields. Other parent details are optional. Spouse information is optional.
         </p>
         <div className="space-y-8">
           {requiredKinds.map((kind) => (
@@ -63,6 +65,7 @@ export function FamilySection({ draft, onChange }: InventorySectionProps) {
               kind={kind}
               member={members.find((item) => item.kind === kind) ?? { kind }}
               onChange={(patch) => updateMember(kind, patch)}
+              errorFor={errorFor}
             />
           ))}
           {hasSpouse ? (
@@ -72,6 +75,7 @@ export function FamilySection({ draft, onChange }: InventorySectionProps) {
                 kind: FamilyMemberKindValue.SPOUSE,
               }}
               onChange={(patch) => updateMember(FamilyMemberKindValue.SPOUSE, patch)}
+              errorFor={errorFor}
               onRemove={() => {
                 focusAfterUpdate.current = "inventory-spouse-add";
                 removeSpouse();
@@ -96,6 +100,7 @@ export function FamilySection({ draft, onChange }: InventorySectionProps) {
         <div className="grid gap-5 lg:grid-cols-2">
           <SelectField
             id="inventory-parent-status-category"
+            error={errorFor("inventory-parent-status-category")}
             label="Current parent-status category"
             value={draft.parent_status_category}
             options={parentStatusCategoryOptions}
@@ -162,6 +167,7 @@ export function FamilySection({ draft, onChange }: InventorySectionProps) {
         <div className="grid gap-4 sm:grid-cols-2">
           <SelectField
             id="inventory-four-ps"
+            error={errorFor("inventory-four-ps")}
             label="4Ps status"
             value={draft.support_profile?.four_ps_status}
             options={fourPsOptions}
@@ -172,6 +178,7 @@ export function FamilySection({ draft, onChange }: InventorySectionProps) {
           />
           <SelectField
             id="inventory-indigenous-peoples"
+            error={errorFor("inventory-indigenous-peoples")}
             label="Indigenous Peoples status"
             value={draft.support_profile?.indigenous_peoples_status}
             options={indigenousOptions}
@@ -182,6 +189,7 @@ export function FamilySection({ draft, onChange }: InventorySectionProps) {
           />
           <SelectField
             id="inventory-mother-life-status"
+            error={errorFor("inventory-mother-life-status")}
             label="Mother's life status"
             value={draft.support_profile?.mother_life_status}
             options={parentLifeOptions}
@@ -192,6 +200,7 @@ export function FamilySection({ draft, onChange }: InventorySectionProps) {
           />
           <SelectField
             id="inventory-father-life-status"
+            error={errorFor("inventory-father-life-status")}
             label="Father's life status"
             value={draft.support_profile?.father_life_status}
             options={parentLifeOptions}
@@ -211,11 +220,13 @@ function FamilyMemberFields({
   member,
   onChange,
   onRemove,
+  errorFor,
 }: {
   kind: FamilyMemberKindValue;
   member: FamilyMemberPayload;
   onChange: (patch: Partial<FamilyMemberPayload>) => void;
   onRemove?: () => void;
+  errorFor: (targetId: string) => string | undefined;
 }) {
   const label =
     kind === FamilyMemberKindValue.FATHER
@@ -249,7 +260,6 @@ function FamilyMemberFields({
       <div className="flex items-center justify-between gap-3">
         <h3 id={`${prefix}-heading`} className="font-semibold text-ink">
           {label}
-          {required ? <span aria-hidden="true" className="ml-1 text-danger">*</span> : null}
         </h3>
         {onRemove ? (
           <Button variant="quiet" onClick={onRemove} aria-label="Remove optional Spouse information">
@@ -262,6 +272,7 @@ function FamilyMemberFields({
         <SelectField
           id={`${prefix}-occupation-category`}
           label="Occupation category"
+          error={errorFor(`${prefix}-occupation-category`)}
           value={member.occupation_category}
           options={occupationOptions}
           onChange={changeOccupationCategory}
@@ -281,6 +292,7 @@ function FamilyMemberFields({
         <SelectField
           id={`${prefix}-income-status`}
           label="Annual income from previous year"
+          error={errorFor(`${prefix}-income-status`)}
           value={member.annual_income_status}
           options={annualIncomeOptions}
           onChange={changeIncomeStatus}
@@ -290,6 +302,7 @@ function FamilyMemberFields({
           <TextField
             id={`${prefix}-income-amount`}
             label="Reported amount"
+            error={errorFor(`${prefix}-income-amount`)}
             type="number"
             min={0}
             step="any"

@@ -19,6 +19,7 @@ export function TextField({
   readOnly = false,
   disabled = false,
   hint,
+  error,
   min,
   max,
   step,
@@ -34,6 +35,7 @@ export function TextField({
   readOnly?: boolean;
   disabled?: boolean;
   hint?: string;
+  error?: string;
   min?: number;
   max?: number;
   step?: number | "any";
@@ -41,6 +43,8 @@ export function TextField({
   autoComplete?: string;
 }) {
   const hintId = hint ? `${id}-hint` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -59,11 +63,13 @@ export function TextField({
         maxLength={maxLength}
         autoComplete={autoComplete}
         aria-required={required || undefined}
-        aria-describedby={hintId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
         onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value)}
         className={readOnly ? "bg-surface-muted" : undefined}
       />
       {hint ? <p id={hintId} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
+      {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
   );
 }
@@ -76,6 +82,7 @@ export function TextAreaField({
   required = false,
   rows = 3,
   hint,
+  error,
   maxLength,
 }: {
   id: string;
@@ -85,9 +92,12 @@ export function TextAreaField({
   required?: boolean;
   rows?: number;
   hint?: string;
+  error?: string;
   maxLength?: number;
 }) {
   const hintId = hint ? `${id}-hint` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -100,10 +110,12 @@ export function TextAreaField({
         value={value ?? ""}
         maxLength={maxLength}
         aria-required={required || undefined}
-        aria-describedby={hintId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
         onChange={(event) => onChange(event.target.value)}
       />
       {hint ? <p id={hintId} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
+      {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
   );
 }
@@ -117,6 +129,7 @@ export function SelectField<T extends string>({
   placeholder = "Select an option",
   required = false,
   hint,
+  error,
 }: {
   id: string;
   label: string;
@@ -126,8 +139,11 @@ export function SelectField<T extends string>({
   placeholder?: string;
   required?: boolean;
   hint?: string;
+  error?: string;
 }) {
   const hintId = hint ? `${id}-hint` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -139,7 +155,8 @@ export function SelectField<T extends string>({
         className={`mt-2 ${inventorySelectClass}`}
         value={value ?? ""}
         aria-required={required || undefined}
-        aria-describedby={hintId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
         onChange={(event) => {
           const selected = options.find(([optionValue]) => optionValue === event.target.value);
           onChange(selected?.[0] ?? null);
@@ -151,31 +168,49 @@ export function SelectField<T extends string>({
         ))}
       </select>
       {hint ? <p id={hintId} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
+      {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
   );
 }
 
 export function CheckboxGroupField<T extends string>({
+  id,
   legend,
   value,
   options,
   onChange,
   columns = 2,
   hint,
+  required = false,
+  error,
 }: {
+  id?: string;
   legend: string;
   value: readonly T[] | undefined;
   options: readonly FieldOption<T>[];
   onChange: (values: T[]) => void;
   columns?: 1 | 2 | 3;
   hint?: string;
+  required?: boolean;
+  error?: string;
 }) {
   const values = value ?? [];
   const grid = columns === 1 ? "sm:grid-cols-1" : columns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
+  const hintId = id && hint ? `${id}-hint` : undefined;
+  const errorId = id && error ? `${id}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
   return (
-    <fieldset>
-      <legend className="text-sm font-semibold text-ink">{legend}</legend>
-      {hint ? <p className="mt-1 text-xs leading-5 text-muted">{hint}</p> : null}
+    <fieldset
+      id={id}
+      aria-required={required || undefined}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={describedBy}
+    >
+      <legend className="text-sm font-semibold text-ink">
+        {legend}
+        {required ? <span aria-hidden="true" className="ml-1 text-danger">*</span> : null}
+      </legend>
+      {hint ? <p id={hintId} className="mt-1 text-xs leading-5 text-muted">{hint}</p> : null}
       <div className={`mt-3 grid gap-x-5 gap-y-3 ${grid}`}>
         {options.map(([optionValue, labelText]) => {
           const checked = values.includes(optionValue);
@@ -198,29 +233,41 @@ export function CheckboxGroupField<T extends string>({
           );
         })}
       </div>
+      {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </fieldset>
   );
 }
 
 export function BooleanField({
+  id,
   legend,
   value,
   onChange,
   required = false,
+  error,
 }: {
+  id?: string;
   legend: string;
   value: boolean | null | undefined;
   onChange: (value: boolean | null) => void;
   required?: boolean;
+  error?: string;
 }) {
   const choices = [
     { id: "yes", label: "Yes", value: true },
     { id: "no", label: "No", value: false },
     { id: "unanswered", label: "No response", value: null },
   ] as const;
+  const errorId = id && error ? `${id}-error` : undefined;
 
   return (
-    <fieldset role="radiogroup" aria-required={required || undefined}>
+    <fieldset
+      id={id}
+      role="radiogroup"
+      aria-required={required || undefined}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={errorId}
+    >
       <legend className="text-sm font-semibold text-ink">
         {legend}
         {required ? <span aria-hidden="true" className="ml-1 text-danger">*</span> : null}
@@ -230,7 +277,7 @@ export function BooleanField({
           <label key={choice.id} className="flex min-h-9 items-center gap-2.5 text-sm text-ink">
             <input
               type="radio"
-              name={legend}
+              name={id ?? legend}
               className="h-4 w-4 accent-brand"
               checked={value === choice.value}
               onChange={() => onChange(choice.value)}
@@ -239,6 +286,7 @@ export function BooleanField({
           </label>
         ))}
       </div>
+      {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </fieldset>
   );
 }

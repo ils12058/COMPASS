@@ -19,7 +19,9 @@ const hours = [
   ["daily_hours_other", "Other"],
 ] as const;
 
-export function InterestsSection({ draft, onChange }: InventorySectionProps) {
+export function InterestsSection({ draft, onChange, validationIssues = [] }: InventorySectionProps) {
+  const errorFor = (targetId: string) =>
+    validationIssues.find((issue) => issue.targetId === targetId)?.message;
   return (
     <div className="space-y-7">
       <FieldGroup legend="Course choice and educational perception">
@@ -41,6 +43,7 @@ export function InterestsSection({ draft, onChange }: InventorySectionProps) {
           {(draft.course_choice_reasons ?? []).includes(CourseChoiceReasonValue.OTHER) ? (
             <TextField
               id="inventory-course-choice-other"
+              error={errorFor("inventory-course-choice-other")}
               label="Other course-choice reason"
               value={draft.course_choice_other}
               onChange={(value) => onChange({ course_choice_other: value })}
