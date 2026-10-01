@@ -60,6 +60,12 @@ export type ExitInterviewTextFieldKey =
 type RatingItem = { code: string; label: string };
 type RatingScale = readonly { value: number; label: string }[];
 
+export type ExitRatingMatrixId = "self" | "college";
+
+export function exitRatingRowId(matrixId: ExitRatingMatrixId, code: string): string {
+  return `exit-rating-${matrixId}-${code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+}
+
 function FormField({
   id,
   label,
@@ -70,6 +76,7 @@ function FormField({
   min,
   max,
   required = false,
+  error,
 }: {
   id: string;
   label: string;
@@ -80,10 +87,15 @@ function FormField({
   min?: number;
   max?: number;
   required?: boolean;
+  error?: string;
 }) {
+  const errorId = error ? `${id}-error` : undefined;
   return (
     <div className="min-w-0">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id}>
+        {label}
+        {required ? <span aria-hidden="true" className="ml-1 text-danger">*</span> : null}
+      </Label>
       <Input
         id={id}
         className="mt-2"
@@ -93,9 +105,12 @@ function FormField({
         max={max}
         step={type === "number" ? 1 : undefined}
         required={required}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={errorId}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
       />
+      {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
   );
 }
@@ -107,6 +122,7 @@ function FormTextArea({
   disabled,
   onChange,
   required = false,
+  error,
 }: {
   id: string;
   label: string;
@@ -114,18 +130,26 @@ function FormTextArea({
   disabled: boolean;
   onChange: (value: string) => void;
   required?: boolean;
+  error?: string;
 }) {
+  const errorId = error ? `${id}-error` : undefined;
   return (
     <div className="min-w-0">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id}>
+        {label}
+        {required ? <span aria-hidden="true" className="ml-1 text-danger">*</span> : null}
+      </Label>
       <Textarea
         id={id}
         className="mt-2 min-h-24"
         value={value}
         required={required}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={errorId}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
       />
+      {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
   );
 }
@@ -160,19 +184,23 @@ function ChoiceCheckbox({
 
 function RatingMatrix({
   title,
+  matrixId,
   items,
   values,
   scale,
   zeroChoice = false,
   disabled,
+  invalidTargetId,
   onChange,
 }: {
   title: string;
+  matrixId: ExitRatingMatrixId;
   items: readonly RatingItem[];
   values: Record<string, string>;
   scale: RatingScale;
   zeroChoice?: boolean;
   disabled: boolean;
+  invalidTargetId?: string;
   onChange: (code: string, value: string) => void;
 }) {
   const options = zeroChoice
@@ -197,10 +225,21 @@ function RatingMatrix({
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {items.map((item) => (
-            <tr key={item.code} className="align-middle">
-              <th scope="row" className="sticky left-0 z-10 bg-surface-raised px-3 py-3 text-left font-medium text-ink">
+          {items.map((item) => {
+            const rowId = exitRatingRowId(matrixId, item.code);
+            const invalid = invalidTargetId === rowId;
+            const errorId = invalid ? `${rowId}-error` : undefined;
+            return (
+            <tr
+              key={item.code}
+              id={rowId}
+              aria-invalid={invalid ? true : undefined}
+              aria-describedby={errorId}
+              className={`align-middle ${invalid ? "bg-danger/5" : ""}`}
+            >
+              <th scope="row" className={`sticky left-0 z-10 px-3 py-3 text-left font-medium text-ink ${invalid ? "bg-danger/5" : "bg-surface-raised"}`}>
                 {item.label}
+                {invalid ? <span id={errorId} className="mt-1 block text-xs font-normal text-danger">Choose a rating for this item.</span> : null}
               </th>
               {options.map((option) => {
                 const id = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${item.code}-${option.value}`;
@@ -226,7 +265,8 @@ function RatingMatrix({
                 );
               })}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -244,6 +284,8 @@ export function ExitInterviewFormSections({
   onToggleWorkChoice,
   onToggleStudyChoice,
   onRatingChange,
+  extraTermsError,
+  invalidRatingTargetId,
 }: {
   form: ExitInterviewFormState;
   disabled: boolean;
@@ -255,6 +297,8 @@ export function ExitInterviewFormSections({
   onToggleWorkChoice: (value: WorkCareerChoiceValue) => void;
   onToggleStudyChoice: (value: StudyCareerChoiceValue) => void;
   onRatingChange: (section: "selfRatings" | "collegeRatings", code: string, value: string) => void;
+  extraTermsError?: string;
+  invalidRatingTargetId?: string;
 }) {
   const delayed = form.programCompletion === ProgramCompletion.WITH_SOME_DELAY;
   const hasDelayOther = form.delayReasons.includes(DelayReason.OTHER);
@@ -304,7 +348,7 @@ export function ExitInterviewFormSections({
         </fieldset>
         {delayed ? (
           <div className="mt-4 max-w-2xl space-y-4 border-l-2 border-border pl-4">
-            <FormField id="exit-extra-terms" label="Number of extra terms" type="number" min={1} value={form.extraTermsCount} disabled={disabled} onChange={(value) => onTextChange("extraTermsCount", value)} />
+            <FormField id="exit-extra-terms" label="Number of extra terms" type="number" min={1} value={form.extraTermsCount} required error={extraTermsError} disabled={disabled} onChange={(value) => onTextChange("extraTermsCount", value)} />
             <fieldset>
               <legend className="text-sm font-semibold text-ink">Reason for delay</legend>
               <div className="mt-2 space-y-1">
@@ -400,10 +444,12 @@ export function ExitInterviewFormSections({
         </p>
         <RatingMatrix
           title="Self-Assessment"
+          matrixId="self"
           items={SELF_ASSESSMENT_ITEMS}
           values={form.selfRatings}
           scale={SELF_ASSESSMENT_SCALE}
           disabled={disabled}
+          invalidTargetId={invalidRatingTargetId}
           onChange={(code, value) => onRatingChange("selfRatings", code, value)}
         />
       </ExitInterviewSection>
@@ -420,11 +466,13 @@ export function ExitInterviewFormSections({
             <h3 id={`exit-feedback-${category.code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="font-semibold text-ink">{category.label}</h3>
             <RatingMatrix
               title={`College Feedback ${category.label}`}
+              matrixId="college"
               items={category.items}
               values={form.collegeRatings}
               scale={COLLEGE_FEEDBACK_SCALE}
               zeroChoice
               disabled={disabled}
+              invalidTargetId={invalidRatingTargetId}
               onChange={(code, value) => onRatingChange("collegeRatings", code, value)}
             />
             <div className="mt-4 max-w-3xl">
