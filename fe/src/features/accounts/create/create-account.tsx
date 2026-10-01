@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -39,6 +40,7 @@ export function CreateAccount() {
     role: RoleCode.STUDENT,
     is_active: true,
   });
+  const [review, setReview] = useState<AccountCreateRequest | null>(null);
 
   function change<K extends keyof AccountCreateRequest>(
     field: K,
@@ -47,16 +49,34 @@ export function CreateAccount() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    action.setError(null);
+    action.setNotice(null);
+    setReview({ ...form });
+  }
+
+  async function confirmCreate() {
+    if (!review) return;
+    const reviewed = review;
     const response = await action.run(
-      () => create.mutateAsync({ data: form }),
+      () => create.mutateAsync({ data: reviewed }),
       "The account could not be created.",
+      () => setReview(null),
+      undefined,
+      () => setReview(reviewed),
     );
     if (!response) return;
+    setReview(null);
     await invalidate();
     router.push(`/portal/accounts/${encodeURIComponent(response.data.id)}`);
   }
+
+  const reviewName = review
+    ? [review.first_name, review.middle_name, review.last_name, review.suffix]
+        .filter((part) => part?.trim())
+        .join(" ")
+    : "";
 
   return (
     <section aria-labelledby="create-account-heading" className="max-w-2xl">
@@ -161,10 +181,10 @@ export function CreateAccount() {
           />
           Active account
         </label>
-        <ManagedActionFeedback action={action} />
+        <ManagedActionFeedback action={action} showMessages={!review} />
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={create.isPending}>
-            {create.isPending ? "Creating account…" : "Create account"}
+            Review account
           </Button>
           <Link
             href="/portal/accounts"
@@ -174,6 +194,56 @@ export function CreateAccount() {
           </Link>
         </div>
       </form>
+      <ConsequentialActionDialog
+        open={review !== null}
+        title={review ? `Create account for ${reviewName}?` : "Create account?"}
+        confirmLabel="Create account"
+        pendingLabel="Creating account…"
+        pending={create.isPending}
+        error={action.error}
+        onOpenChange={(open) => {
+          if (!open) setReview(null);
+        }}
+        onConfirm={() => void confirmCreate()}
+      >
+        {review ? (
+          <>
+            <p>Review the account that will be created.</p>
+            <dl className="grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-muted">Name</dt>
+                <dd className="font-semibold text-ink">{reviewName}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Institutional ID</dt>
+                <dd className="font-semibold text-ink">{review.institutional_id}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Email</dt>
+                <dd className="break-words font-semibold text-ink">{review.email}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Role</dt>
+                <dd className="font-semibold text-ink">{roleLabels[review.role]}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Account status</dt>
+                <dd className="font-semibold text-ink">
+                  {review.is_active ? "Active" : "Disabled"}
+                </dd>
+              </div>
+            </dl>
+            <p>
+              {review.is_active
+                ? "This account will be active after creation."
+                : "This account will be created disabled and cannot sign in until enabled."}
+            </p>
+            {review.role === RoleCode.STUDENT ? (
+              <p>New Student accounts begin with Current Student lifecycle status.</p>
+            ) : null}
+          </>
+        ) : null}
+      </ConsequentialActionDialog>
     </section>
   );
 }
