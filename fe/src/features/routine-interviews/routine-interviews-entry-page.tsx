@@ -10,10 +10,10 @@ export function RoutineInterviewsEntryPage() {
   const { user } = usePortalSession();
   const access = getRoutineInterviewAccess(user);
 
-  if (access.canViewSelf || (access.isStudent && access.canManageSelf)) {
+  if (access.isStudent && access.canViewSelf) {
     return <StudentRoutineWorkspace access={access} />;
   }
-  if (access.isCounselor && (access.canViewAssigned || access.canManageAssigned)) {
+  if (access.isCounselor && access.canViewAssigned) {
     return <CounselorRoutineWorkspace access={access} />;
   }
   return <RoutineUnavailable />;
