@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -254,7 +254,7 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
           )}
         </section>
 
-        {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+        {error && !confirmOpen ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
         {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={create.isPending}>{create.isPending ? "Issuing…" : "Review linked issuance"}</Button>
@@ -262,26 +262,31 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
         </div>
       </form>
 
-      <AlertDialog open={confirmOpen} onOpenChange={(open) => { if (!create.isPending) setConfirmOpen(open); }}>
-        <AlertDialogContent onEscapeKeyDown={(event) => { if (create.isPending) event.preventDefault(); }}>
-          <AlertDialogTitle>Confirm linked Call Slip issuance</AlertDialogTitle>
-          <AlertDialogDescription>This issues the Call Slip and, when needed, records the action on the Referral in the same step. Review the details before issuing.</AlertDialogDescription>
-          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-            <div><dt className="text-xs font-semibold text-muted">Referral</dt><dd className="mt-1 text-ink">{referral.reference_code}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 text-ink">{referral.student_name_snapshot}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Course / Year</dt><dd className="mt-1 text-ink">{draft.courseYear}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Destination</dt><dd className="mt-1 text-ink">{callSlipDestinationLabel(draft.destinationType, draft.otherDestination)}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Report date and time</dt><dd className="mt-1 text-ink">{formatInstitutionalDateTime(fieldsFromDraft(draft))} {INSTITUTION_TIME_ZONE_LABEL}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Issuance mode</dt><dd className="mt-1 text-ink">{draft.notifyStudent ? "Live issuance" : "Historical / back-entry"}</dd></div>
-            <div className="sm:col-span-2"><dt className="text-xs font-semibold text-muted">Referral action</dt><dd className="mt-1 text-ink">{action ? "Reuse existing action; no new timestamp" : `Record at ${formatInstitutionalDateTime(institutionalDateTimeInputToISO(occurredAt))} ${INSTITUTION_TIME_ZONE_LABEL}`}</dd></div>
-          </dl>
-          {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialogCancel asChild><Button variant="secondary" disabled={create.isPending}>Review details</Button></AlertDialogCancel>
-            <Button disabled={create.isPending} onClick={() => void issueConfirmed()}>{create.isPending ? "Issuing…" : "Confirm and issue"}</Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConsequentialActionDialog
+        open={confirmOpen}
+        title="Confirm linked Call Slip issuance"
+        confirmLabel="Confirm and issue"
+        cancelLabel="Review details"
+        pendingLabel="Issuing…"
+        pending={create.isPending}
+        error={error}
+        onOpenChange={setConfirmOpen}
+        onConfirm={() => void issueConfirmed()}
+      >
+        <p>
+          This issues the Call Slip and, when needed, records the action on the
+          Referral in the same step. Review the details before issuing.
+        </p>
+        <dl className="grid gap-3 text-sm sm:grid-cols-2">
+          <div><dt className="text-xs font-semibold text-muted">Referral</dt><dd className="mt-1 text-ink">{referral.reference_code}</dd></div>
+          <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 text-ink">{referral.student_name_snapshot}</dd></div>
+          <div><dt className="text-xs font-semibold text-muted">Course / Year</dt><dd className="mt-1 text-ink">{draft.courseYear}</dd></div>
+          <div><dt className="text-xs font-semibold text-muted">Destination</dt><dd className="mt-1 text-ink">{callSlipDestinationLabel(draft.destinationType, draft.otherDestination)}</dd></div>
+          <div><dt className="text-xs font-semibold text-muted">Report date and time</dt><dd className="mt-1 text-ink">{formatInstitutionalDateTime(fieldsFromDraft(draft))} {INSTITUTION_TIME_ZONE_LABEL}</dd></div>
+          <div><dt className="text-xs font-semibold text-muted">Issuance mode</dt><dd className="mt-1 text-ink">{draft.notifyStudent ? "Live issuance" : "Historical / back-entry"}</dd></div>
+          <div className="sm:col-span-2"><dt className="text-xs font-semibold text-muted">Referral action</dt><dd className="mt-1 text-ink">{action ? "Reuse existing action; no new timestamp" : `Record at ${formatInstitutionalDateTime(institutionalDateTimeInputToISO(occurredAt))} ${INSTITUTION_TIME_ZONE_LABEL}`}</dd></div>
+        </dl>
+      </ConsequentialActionDialog>
       <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setNotice("Verification complete. Review and confirm the linked issuance again."); setConfirmOpen(true); }} />
     </>
   );
