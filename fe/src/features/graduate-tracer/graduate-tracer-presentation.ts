@@ -412,86 +412,140 @@ export function formatGraduateTracerDateTime(value: string | null | undefined): 
   return formatted === value ? "Not provided" : formatted;
 }
 
-export function getGraduateTracerDraftRowIssues(draft: GraduateTracerFormDraft): string[] {
-  const issues: string[] = [];
+export type SubmissionIssue = {
+  section: string;
+  targetId: string;
+  message: string;
+};
+
+export type DraftRowIssue = SubmissionIssue;
+
+export function getGraduateTracerDraftRowIssues(
+  draft: GraduateTracerFormDraft,
+): DraftRowIssue[] {
+  const issues: DraftRowIssue[] = [];
+  const add = (section: string, targetId: string, message: string) =>
+    issues.push({ section, targetId, message });
+  const currentInstitutionalYear = Number(institutionalDateInputValue().slice(0, 4));
+
   draft.education.forEach((row, index) => {
-    if (!row.degree_and_specialization.trim() || !row.college_or_university.trim() || !row.year_graduated.trim()) {
-      issues.push(`Degree ${index + 1} needs a degree, college or university, and graduation year. Complete it or remove the row before saving.`);
-      return;
+    if (!row.degree_and_specialization.trim()) {
+      add("graduate-tracer-education", `degree-${index}-name`, `Enter the degree or specialization for Degree ${index + 1}.`);
     }
-    const year = Number(row.year_graduated);
-    const currentInstitutionalYear = Number(
-      institutionalDateInputValue().slice(0, 4),
-    );
-    if (
-      !Number.isInteger(year) ||
-      year < 1900 ||
-      year > currentInstitutionalYear
-    ) {
-      issues.push(`Degree ${index + 1} needs a valid graduation year from 1900 through the current year.`);
+    if (!row.college_or_university.trim()) {
+      add("graduate-tracer-education", `degree-${index}-institution`, `Enter the college or university for Degree ${index + 1}.`);
+    }
+    if (!row.year_graduated.trim()) {
+      add("graduate-tracer-education", `degree-${index}-year`, `Enter the graduation year for Degree ${index + 1}.`);
+    } else {
+      const year = Number(row.year_graduated);
+      if (!Number.isInteger(year) || year < 1900 || year > currentInstitutionalYear) {
+        add(
+          "graduate-tracer-education",
+          `degree-${index}-year`,
+          `Enter a valid graduation year from 1900 through ${currentInstitutionalYear} for Degree ${index + 1}.`,
+        );
+      }
     }
   });
+
   draft.professional_exams.forEach((row, index) => {
-    if (!row.examination_name.trim()) issues.push(`Examination ${index + 1} needs a name before saving.`);
+    if (!row.examination_name.trim()) {
+      add("graduate-tracer-education", `exam-${index}-name`, `Enter a name for Examination ${index + 1} before saving.`);
+    }
     if (row.date_taken && row.date_taken > institutionalDateInputValue()) {
-      issues.push(`Examination ${index + 1} date cannot be in the future.`);
+      add("graduate-tracer-education", `exam-${index}-date`, `Examination ${index + 1} date cannot be in the future.`);
     }
   });
+
   draft.trainings.forEach((row, index) => {
-    if (!row.title.trim()) issues.push(`Training ${index + 1} needs a title before saving.`);
+    if (!row.title.trim()) {
+      add("graduate-tracer-training", `training-${index}-title`, `Enter a title for Training ${index + 1} before saving.`);
+    }
   });
+
   return issues;
 }
 
-export type SubmissionIssue = { section: string; message: string };
-
 export function getGraduateTracerSubmissionIssues(draft: GraduateTracerFormDraft): SubmissionIssue[] {
   const issues: SubmissionIssue[] = [];
-  const add = (section: string, message: string) => issues.push({ section, message });
-  if (!draft.name?.trim()) add("graduate-tracer-general", "Enter your name.");
-  if (!draft.civil_status) add("graduate-tracer-general", "Select your civil status.");
-  if (!draft.sex) add("graduate-tracer-general", "Select your sex.");
-  if (!draft.birth_date) add("graduate-tracer-general", "Enter your birthday.");
-  else if (draft.birth_date > institutionalDateInputValue()) add("graduate-tracer-general", "Birthday cannot be in the future.");
-  if (!draft.region_of_origin) add("graduate-tracer-general", "Select your region of origin.");
-  if (!draft.province?.trim()) add("graduate-tracer-general", "Enter your province.");
-  if (!draft.residence_location) add("graduate-tracer-general", "Select City or Municipality.");
-  if (draft.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim())) add("graduate-tracer-general", "Enter a valid email address or leave the field blank.");
+  const add = (section: string, targetId: string, message: string) =>
+    issues.push({ section, targetId, message });
 
-  if (draft.education.length === 0) add("graduate-tracer-education", "Add at least one baccalaureate degree.");
-  if (draft.advanced_study_reasons?.includes(AdvancedStudyReason.OTHER) && !draft.advanced_study_other_reason?.trim()) add("graduate-tracer-training", "Specify the other reason for attending advance study.");
+  if (!draft.name?.trim()) add("graduate-tracer-general", "gts-name", "Enter your name.");
+  if (!draft.civil_status) add("graduate-tracer-general", "gts-civil-status", "Select your civil status.");
+  if (!draft.sex) add("graduate-tracer-general", "gts-sex", "Select your sex.");
+  if (!draft.birth_date) add("graduate-tracer-general", "gts-birth-date", "Enter your birthday.");
+  else if (draft.birth_date > institutionalDateInputValue()) add("graduate-tracer-general", "gts-birth-date", "Birthday cannot be in the future.");
+  if (!draft.region_of_origin) add("graduate-tracer-general", "gts-region", "Select your region of origin.");
+  if (!draft.province?.trim()) add("graduate-tracer-general", "gts-province", "Enter your province.");
+  if (!draft.residence_location) add("graduate-tracer-general", "gts-residence-location", "Select City or Municipality.");
+  if (draft.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim())) {
+    add("graduate-tracer-general", "gts-email", "Enter a valid email address or leave the field blank.");
+  }
+
+  if (draft.education.length === 0) add("graduate-tracer-education", "gts-add-degree", "Add at least one baccalaureate degree.");
+  if (draft.advanced_study_reasons?.includes(AdvancedStudyReason.OTHER) && !draft.advanced_study_other_reason?.trim()) {
+    add("graduate-tracer-training", "gts-advanced-study-other", "Specify the other reason for attending advance study.");
+  }
+
   if (draft.current_employment_state === EmploymentState.NOT_EMPLOYED || draft.current_employment_state === EmploymentState.NEVER_EMPLOYED) {
-    if (!draft.unemployment_reasons?.length) add("graduate-tracer-employment", "Select at least one reason for not being employed.");
-    if (draft.unemployment_reasons?.includes(UnemploymentReason.OTHER) && !draft.unemployment_other_reason?.trim()) add("graduate-tracer-employment", "Specify the other reason for not being employed.");
-  } else if (draft.current_employment_state === EmploymentState.EMPLOYED) {
-    if (!draft.present_employment_status) add("graduate-tracer-employment", "Select your present employment status.");
-    if (draft.present_employment_status === PresentEmploymentStatus.SELF_EMPLOYED && !draft.self_employed_college_skills?.trim()) add("graduate-tracer-employment", "Describe the college skills you apply in your self-employed work.");
-    if (!draft.present_occupation?.trim()) add("graduate-tracer-employment", "Enter your present occupation.");
-    if (!draft.employer_business_line) add("graduate-tracer-employment", "Select the major line of business.");
-    if (!draft.place_of_work) add("graduate-tracer-employment", "Select where you work.");
-    if (draft.first_job_after_college === undefined || draft.first_job_after_college === null) add("graduate-tracer-employment", "Answer whether this is your first job after college.");
-    if (draft.first_job_after_college === true) {
-      if (!draft.reasons_for_staying_on_job?.length) add("graduate-tracer-employment", "Select at least one reason for staying on the job.");
-      if (draft.reasons_for_staying_on_job?.includes(StayingReason.OTHER) && !draft.reasons_for_staying_other?.trim()) add("graduate-tracer-employment", "Specify the other reason for staying on the job.");
-      if (draft.first_job_related_to_course === undefined || draft.first_job_related_to_course === null) add("graduate-tracer-employment", "Answer whether your first job was related to your college course.");
+    if (!draft.unemployment_reasons?.length) add("graduate-tracer-employment", "gts-unemployment-reasons", "Select at least one reason for not being employed.");
+    if (draft.unemployment_reasons?.includes(UnemploymentReason.OTHER) && !draft.unemployment_other_reason?.trim()) {
+      add("graduate-tracer-employment", "gts-unemployment-other", "Specify the other reason for not being employed.");
     }
-    if (draft.reasons_for_accepting_first_job?.includes(JobReason.OTHER) && !draft.reasons_for_accepting_other?.trim()) add("graduate-tracer-employment", "Specify the other reason for accepting the first job.");
-    if (draft.reasons_for_changing_job?.includes(JobReason.OTHER) && !draft.reasons_for_changing_other?.trim()) add("graduate-tracer-employment", "Specify the other reason for changing jobs.");
-    if (!draft.first_job_duration) add("graduate-tracer-employment", "Select how long you stayed in your first job.");
-    if (draft.first_job_duration === FirstJobDuration.OTHER && !draft.first_job_duration_other?.trim()) add("graduate-tracer-employment", "Specify the first-job duration.");
-    if (!draft.first_job_source) add("graduate-tracer-employment", "Select how you found your first job.");
-    if (draft.first_job_source === FirstJobSource.OTHER && !draft.first_job_source_other?.trim()) add("graduate-tracer-employment", "Specify how you found your first job.");
-    if (!draft.time_to_first_job) add("graduate-tracer-employment", "Select how long it took to land your first job.");
-    if (draft.time_to_first_job === FirstJobDuration.OTHER && !draft.time_to_first_job_other?.trim()) add("graduate-tracer-employment", "Specify how long it took to land your first job.");
-    if (!draft.first_job_level || !draft.current_job_level) add("graduate-tracer-employment", "Select both first-job and current-job levels.");
-    if (!draft.initial_gross_monthly_earning) add("graduate-tracer-employment", "Select the initial gross monthly earning bracket.");
-    if (draft.curriculum_relevant_to_first_job === undefined || draft.curriculum_relevant_to_first_job === null) add("graduate-tracer-employment", "Answer whether your college curriculum was relevant to your first job.");
+  } else if (draft.current_employment_state === EmploymentState.EMPLOYED) {
+    if (!draft.present_employment_status) add("graduate-tracer-employment", "gts-present-employment-status", "Select your present employment status.");
+    if (draft.present_employment_status === PresentEmploymentStatus.SELF_EMPLOYED && !draft.self_employed_college_skills?.trim()) {
+      add("graduate-tracer-employment", "gts-self-employed-skills", "Describe the college skills you apply in your self-employed work.");
+    }
+    if (!draft.present_occupation?.trim()) add("graduate-tracer-employment", "gts-present-occupation", "Enter your present occupation.");
+    if (!draft.employer_business_line) add("graduate-tracer-employment", "gts-business-line", "Select the major line of business.");
+    if (!draft.place_of_work) add("graduate-tracer-employment", "gts-place-of-work", "Select where you work.");
+    if (draft.first_job_after_college === undefined || draft.first_job_after_college === null) {
+      add("graduate-tracer-employment", "gts-first-job-after-college", "Answer whether this is your first job after college.");
+    }
+    if (draft.first_job_after_college === true) {
+      if (!draft.reasons_for_staying_on_job?.length) add("graduate-tracer-employment", "gts-staying-reasons", "Select at least one reason for staying on the job.");
+      if (draft.reasons_for_staying_on_job?.includes(StayingReason.OTHER) && !draft.reasons_for_staying_other?.trim()) {
+        add("graduate-tracer-employment", "gts-staying-other", "Specify the other reason for staying on the job.");
+      }
+      if (draft.first_job_related_to_course === undefined || draft.first_job_related_to_course === null) {
+        add("graduate-tracer-employment", "gts-first-job-related", "Answer whether your first job was related to your college course.");
+      }
+    }
+    if (draft.reasons_for_accepting_first_job?.includes(JobReason.OTHER) && !draft.reasons_for_accepting_other?.trim()) {
+      add("graduate-tracer-employment", "gts-accepting-other", "Specify the other reason for accepting the first job.");
+    }
+    if (draft.reasons_for_changing_job?.includes(JobReason.OTHER) && !draft.reasons_for_changing_other?.trim()) {
+      add("graduate-tracer-employment", "gts-changing-other", "Specify the other reason for changing jobs.");
+    }
+    if (!draft.first_job_duration) add("graduate-tracer-employment", "gts-first-job-duration", "Select how long you stayed in your first job.");
+    if (draft.first_job_duration === FirstJobDuration.OTHER && !draft.first_job_duration_other?.trim()) {
+      add("graduate-tracer-employment", "gts-first-job-duration-other", "Specify the first-job duration.");
+    }
+    if (!draft.first_job_source) add("graduate-tracer-employment", "gts-first-job-source", "Select how you found your first job.");
+    if (draft.first_job_source === FirstJobSource.OTHER && !draft.first_job_source_other?.trim()) {
+      add("graduate-tracer-employment", "gts-first-job-source-other", "Specify how you found your first job.");
+    }
+    if (!draft.time_to_first_job) add("graduate-tracer-employment", "gts-time-to-first-job", "Select how long it took to land your first job.");
+    if (draft.time_to_first_job === FirstJobDuration.OTHER && !draft.time_to_first_job_other?.trim()) {
+      add("graduate-tracer-employment", "gts-time-to-first-job-other", "Specify how long it took to land your first job.");
+    }
+    if (!draft.first_job_level) add("graduate-tracer-employment", "gts-first-job-level", "Select the first-job level.");
+    if (!draft.current_job_level) add("graduate-tracer-employment", "gts-current-job-level", "Select the current-job level.");
+    if (!draft.initial_gross_monthly_earning) add("graduate-tracer-employment", "gts-initial-earning", "Select the initial gross monthly earning bracket.");
+    if (draft.curriculum_relevant_to_first_job === undefined || draft.curriculum_relevant_to_first_job === null) {
+      add("graduate-tracer-employment", "gts-curriculum-relevant", "Answer whether your college curriculum was relevant to your first job.");
+    }
     if (draft.curriculum_relevant_to_first_job === true) {
-      if (!draft.useful_competencies?.length) add("graduate-tracer-employment", "Select at least one useful competency.");
-      if (draft.useful_competencies?.includes(UsefulCompetency.OTHER) && !draft.useful_competencies_other?.trim()) add("graduate-tracer-employment", "Specify the other useful competency.");
+      if (!draft.useful_competencies?.length) add("graduate-tracer-employment", "gts-useful-competencies", "Select at least one useful competency.");
+      if (draft.useful_competencies?.includes(UsefulCompetency.OTHER) && !draft.useful_competencies_other?.trim()) {
+        add("graduate-tracer-employment", "gts-useful-competencies-other", "Specify the other useful competency.");
+      }
     }
   } else {
-    add("graduate-tracer-employment", "Select your current employment state.");
+    add("graduate-tracer-employment", "gts-employment-state", "Select your current employment state.");
   }
   return issues;
 }
