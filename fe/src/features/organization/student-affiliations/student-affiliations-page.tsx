@@ -4,14 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +33,7 @@ import {
   useOrganizationRemoveStudentAffiliation,
   useOrganizationSetStudentAffiliation,
 } from "@/lib/api/generated/organization/organization";
+import type { CollegeSummary, OrganizationPersonSummary } from "@/lib/api/generated/model";
 
 function parsePage(value: string | null): number {
   const page = Number(value);
@@ -81,17 +76,24 @@ export function StudentAffiliationsPage() {
   const removeAffiliation = useOrganizationRemoveStudentAffiliation();
   const action = useOrganizationAction();
 
-  const [dialog, setDialog] = useState<{
-    studentId?: string;
-    studentLabel?: string;
-  } | null>(null);
+  const [dialog, setDialog] = useState<{ student: OrganizationPersonSummary | null } | null>(null);
   const [studentId, setStudentId] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState<OrganizationPersonSummary | null>(null);
   const [targetCollegeId, setTargetCollegeId] = useState("");
+  const [review, setReview] = useState<{
+    student: OrganizationPersonSummary;
+    currentCollege: CollegeSummary | null;
+    newCollege: CollegeSummary;
+  } | null>(null);
   const [removal, setRemoval] = useState<{
-    studentId: string;
-    label: string;
+    student: OrganizationPersonSummary;
+    college: CollegeSummary;
   } | null>(null);
 
+  const selectedAffiliation = useOrganizationListStudentAffiliations(
+    { student_id: studentId, page_size: 1 },
+    { query: { enabled: Boolean(dialog && studentId), retry: false } },
+  );
   const mutationPending =
     setAffiliation.isPending || removeAffiliation.isPending;
 
@@ -102,40 +104,49 @@ export function StudentAffiliationsPage() {
   }
 
   function openSet(
-    existingStudentId?: string,
-    studentLabel?: string,
+    student: OrganizationPersonSummary | null = null,
     currentCollegeId = "",
   ) {
     action.setError(null);
     action.setNotice(null);
-    setDialog({
-      studentId: existingStudentId,
-      studentLabel,
-    });
-    setStudentId(existingStudentId ?? "");
+    setDialog({ student });
+    setStudentId(student?.id ?? "");
+    setSelectedStudent(student);
     setTargetCollegeId(currentCollegeId);
   }
 
+  function reviewAffiliation() {
+    if (!selectedStudent || !targetCollegeId) return;
+    const newCollege = activeColleges.find((college) => college.id === targetCollegeId);
+    if (!newCollege) return;
+    const currentCollege =
+      selectedAffiliation.data?.data.items[0]?.college ??
+      list.data?.data.items.find((item) => item.student.id === selectedStudent.id)?.college ??
+      null;
+    if (currentCollege?.id === newCollege.id) return;
+    setReview({ student: selectedStudent, currentCollege, newCollege });
+    setDialog(null);
+    action.setError(null);
+  }
+
   async function saveAffiliation() {
-    if (!dialog || !studentId || !targetCollegeId) return;
-    const target = dialog;
+    if (!review) return;
+    const target = review;
     const response = await action.run(
       () =>
         setAffiliation.mutateAsync({
-          studentId,
-          data: { college_id: targetCollegeId },
+          studentId: target.student.id,
+          data: { college_id: target.newCollege.id },
         }),
       "The Student affiliation could not be saved.",
       {
-        onStepUpRequired: () => setDialog(null),
-        onStepUpVerified: () => setDialog(target),
+        onStepUpRequired: () => setReview(null),
+        onStepUpVerified: () => setReview(target),
       },
     );
     if (!response) return;
-    setDialog(null);
-    action.setNotice(
-      target.studentId ? "Student affiliation changed." : "Student affiliation set.",
-    );
+    setReview(null);
+    action.setNotice(target.currentCollege ? "Student affiliation changed." : "Student affiliation set.");
     await refresh();
   }
 
@@ -143,7 +154,7 @@ export function StudentAffiliationsPage() {
     if (!removal) return;
     const target = removal;
     const response = await action.run(
-      () => removeAffiliation.mutateAsync({ studentId: target.studentId }),
+      () => removeAffiliation.mutateAsync({ studentId: target.student.id }),
       "The Student affiliation could not be removed.",
       {
         onStepUpRequired: () => setRemoval(null),
@@ -334,11 +345,7 @@ export function StudentAffiliationsPage() {
                           <Button
                             variant="quiet"
                             onClick={() =>
-                              openSet(
-                                item.student.id,
-                                item.student.full_name,
-                                item.college.id,
-                              )
+                              openSet(item.student, item.college.id)
                             }
                           >
                             Change affiliation
@@ -348,8 +355,8 @@ export function StudentAffiliationsPage() {
                           variant="quiet"
                           onClick={() =>
                             setRemoval({
-                              studentId: item.student.id,
-                              label: item.student.full_name,
+                              student: item.student,
+                              college: item.college,
                             })
                           }
                         >
