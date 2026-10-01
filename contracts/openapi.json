@@ -14477,6 +14477,16 @@
             "title": "Is Active",
             "type": "boolean"
           },
+          "responsibility_scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrganizationResponsibilityScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "role": {
             "$ref": "#/components/schemas/RoleCode"
           }
@@ -14487,7 +14497,8 @@
           "full_name",
           "email",
           "role",
-          "is_active"
+          "is_active",
+          "responsibility_scope"
         ],
         "title": "OrganizationPersonSummary",
         "type": "object"
@@ -14516,6 +14527,14 @@
         ],
         "title": "OrganizationReference",
         "type": "object"
+      },
+      "OrganizationResponsibilityScope": {
+        "enum": [
+          "INSTITUTION_WIDE",
+          "ASSIGNED_COLLEGES"
+        ],
+        "title": "OrganizationResponsibilityScope",
+        "type": "string"
       },
       "OrganizationRole": {
         "enum": [
