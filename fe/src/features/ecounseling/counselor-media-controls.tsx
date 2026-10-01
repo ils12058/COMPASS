@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -136,12 +136,29 @@ export function CounselorMediaControls({
   async function confirmStartAction() {
     const selected = pendingStart;
     if (!selected) return;
-    setPendingStart(null);
-    if (selected === "recording") {
-      await runCommand(() => startRecording.mutateAsync({ appointmentId }));
-    } else {
-      await runCommand(() => startTranscription.mutateAsync({ appointmentId, data: { store_transcript: storeTranscript } }));
+    setError(null);
+    setNotice(null);
+    try {
+      if (selected === "recording") {
+        await startRecording.mutateAsync({ appointmentId });
+      } else {
+        await startTranscription.mutateAsync({
+          appointmentId,
+          data: { store_transcript: storeTranscript },
+        });
+      }
+      setPendingStart(null);
+    } catch (caught) {
+      setError(
+        ecounselingErrorMessage(
+          caught,
+          selected === "recording"
+            ? "Recording could not be started. The current session state has been refreshed."
+            : "Transcription could not be started. The current session state has been refreshed.",
+        ),
+      );
     }
+    await refreshCanonicalState();
   }
 
   return (
@@ -184,17 +201,38 @@ export function CounselorMediaControls({
           {transcriptionCanStart && storageApproved && transcriptionStatus === ECounselingCaptureStatus.NOT_STARTED ? <div className="mt-4 flex items-start gap-3 border-t border-border pt-4"><input id="e-counseling-store-transcript" type="checkbox" checked={storeTranscript} disabled={busy} onChange={(event) => setStoreTranscript(event.target.checked)} className="mt-1 size-4 rounded border border-border accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /><div><Label htmlFor="e-counseling-store-transcript">Store transcript for this session</Label><p className="mt-1 text-sm text-muted">Optional and off by default. This choice must be made before transcription starts.</p></div></div> : null}
         </section>
       </div> : null}
-      {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
+      {error && !pendingStart ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
       {notice ? <p role="status" className="mt-4 text-sm text-success">{notice}</p> : null}
       {!workspace.provider_readiness.daily_enabled ? <p className="mt-4 border-y border-border py-4 text-sm text-muted">Daily provider media controls are not enabled. Counseling access is unaffected.</p> : null}
       {workspace.provider_readiness.daily_enabled && (!workspace.provider_readiness.room_provisioned || !workspace.provider_readiness.join_allowed) ? <p className="mt-4 text-sm text-muted">Provider controls are unavailable until the session is ready.</p> : null}
-      <AlertDialog open={Boolean(pendingStart)} onOpenChange={(open) => { if (!open && !busy) setPendingStart(null); }}>
-        {pendingStart ? <AlertDialogContent>
-          <AlertDialogTitle>{pendingStart === "recording" ? "Start audio/video recording?" : "Start session transcription?"}</AlertDialogTitle>
-          <AlertDialogDescription>{pendingStart === "recording" ? "Recording will start only because the Student has currently approved this session’s recording consent." : storeTranscript ? "Speech will be processed as text while transcription is active. Transcript storage is enabled for this transcription because the Student has approved both transcription and transcript storage. COMPASS does not display or provide transcript text." : "Speech will be processed as text while transcription is active. COMPASS does not display or provide transcript text."}</AlertDialogDescription>
-          <div className="mt-6 flex justify-end gap-2"><AlertDialogCancel asChild><Button variant="secondary" disabled={busy}>Cancel</Button></AlertDialogCancel><AlertDialogAction asChild><Button disabled={busy} onClick={(event) => { event.preventDefault(); void confirmStartAction(); }}>{busy ? "Starting…" : pendingStart === "recording" ? "Start recording" : "Start transcription"}</Button></AlertDialogAction></div>
-        </AlertDialogContent> : null}
-      </AlertDialog>
+      <ConsequentialActionDialog
+        open={Boolean(pendingStart)}
+        title={
+          pendingStart === "recording"
+            ? "Start audio/video recording?"
+            : "Start session transcription?"
+        }
+        confirmLabel={
+          pendingStart === "recording"
+            ? "Start recording"
+            : "Start transcription"
+        }
+        pendingLabel="Starting…"
+        pending={busy}
+        error={error}
+        onOpenChange={(open) => {
+          if (!open) setPendingStart(null);
+        }}
+        onConfirm={() => void confirmStartAction()}
+      >
+        <p>
+          {pendingStart === "recording"
+            ? "Recording will start only because the Student has currently approved this session’s recording consent."
+            : storeTranscript
+              ? "Speech will be processed as text while transcription is active. Transcript storage is enabled for this transcription because the Student has approved both transcription and transcript storage. COMPASS does not display or provide transcript text."
+              : "Speech will be processed as text while transcription is active. COMPASS does not display or provide transcript text."}
+        </p>
+      </ConsequentialActionDialog>
     </section>
   );
 }
