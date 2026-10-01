@@ -523,10 +523,14 @@ export function ResponsibilitiesPage() {
         }}
       >
         <DialogContent>
-          <DialogTitle>Set responsible Counselor</DialogTitle>
+          <DialogTitle>
+            {collegeDialog?.currentCounselor
+              ? "Reassign responsible Counselor"
+              : "Assign responsible Counselor"}
+          </DialogTitle>
           <DialogDescription>
             {collegeDialog
-              ? `Choose the explicit responsible Counselor for ${collegeDialog.label}.`
+              ? `Choose the explicit responsible Counselor for ${collegeDialog.label}. You will review the current and new relationship before it is saved.`
               : "Choose a Counselor."}
           </DialogDescription>
           <div className="mt-6">
@@ -536,7 +540,11 @@ export function ResponsibilitiesPage() {
               role="COUNSELOR"
               enabled={Boolean(collegeDialog)}
               value={counselorId}
-              onChange={setCounselorId}
+              selectedPerson={selectedCounselor}
+              onChange={(id, person) => {
+                setCounselorId(id);
+                setSelectedCounselor(person);
+              }}
             />
           </div>
           {action.messages}
@@ -549,50 +557,90 @@ export function ResponsibilitiesPage() {
               Cancel
             </Button>
             <Button
-              disabled={collegePending || !counselorId}
-              onClick={() => void saveCollege()}
+              disabled={
+                collegePending ||
+                !selectedCounselor ||
+                collegeDialog?.currentCounselor?.id === selectedCounselor.id
+              }
+              onClick={reviewCollege}
             >
-              {setCollege.isPending ? "Assigning…" : "Assign Counselor"}
+              {collegeDialog?.currentCounselor
+                ? "Review reassignment"
+                : "Review assignment"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
-        open={Boolean(collegeRemoval)}
+      <ConsequentialActionDialog
+        open={collegeReview !== null}
+        title={
+          collegeReview
+            ? `${collegeReview.currentCounselor ? "Reassign" : "Assign"} responsible Counselor for ${collegeReview.collegeLabel}?`
+            : "Review responsible Counselor"
+        }
+        confirmLabel={
+          collegeReview?.currentCounselor
+            ? "Change responsible Counselor"
+            : "Assign responsible Counselor"
+        }
+        pendingLabel={collegeReview?.currentCounselor ? "Changing…" : "Assigning…"}
+        pending={collegePending}
+        error={action.error}
         onOpenChange={(open) => {
-          if (collegePending) return;
+          if (!open) setCollegeReview(null);
+        }}
+        onConfirm={() => void confirmCollege()}
+      >
+        {collegeReview ? (
+          <>
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-muted">College</dt>
+                <dd className="font-semibold text-ink">{collegeReview.collegeLabel}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Current responsible Counselor</dt>
+                <dd className="font-semibold text-ink">
+                  {collegeReview.currentCounselor?.full_name ?? "None"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted">New responsible Counselor</dt>
+                <dd className="font-semibold text-ink">{collegeReview.newCounselor.full_name}</dd>
+              </div>
+            </dl>
+            <p>This changes the College&apos;s explicit Counselor responsibility used by default institutional routing.</p>
+          </>
+        ) : null}
+      </ConsequentialActionDialog>
+
+      <ConsequentialActionDialog
+        open={collegeRemoval !== null}
+        title={
+          collegeRemoval
+            ? `Remove ${collegeRemoval.currentCounselor.full_name} as the responsible Counselor for ${collegeRemoval.label}?`
+            : "Remove responsible Counselor?"
+        }
+        confirmLabel="Remove responsible Counselor"
+        pendingLabel="Removing…"
+        pending={collegePending}
+        error={action.error}
+        variant="danger"
+        onOpenChange={(open) => {
           if (!open) {
             setCollegeRemoval(null);
             action.setError(null);
-            action.setNotice(null);
           }
         }}
+        onConfirm={() => void confirmRemoveCollege()}
       >
-        <AlertDialogContent>
-          <AlertDialogTitle>Remove responsible Counselor?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {collegeRemoval
-              ? `${collegeRemoval.label} will no longer have a responsible Counselor. Default routing will use the Head Guidance Counselor when one is designated.`
-              : "The explicit responsibility will be removed."}
-          </AlertDialogDescription>
-          {action.messages}
-          <div className="mt-6 flex justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={collegePending}>
-                Cancel
-              </Button>
-            </AlertDialogCancel>
-            <Button
-              variant="danger"
-              disabled={collegePending}
-              onClick={() => void confirmRemoveCollege()}
-            >
-              {removeCollege.isPending ? "Removing…" : "Remove Counselor"}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p>
+          {collegeRemoval
+            ? `${collegeRemoval.label} will no longer have this explicit Counselor responsibility. Default routing will use the Head Guidance Counselor when one is designated.`
+            : "The explicit responsibility will be removed."}
+        </p>
+      </ConsequentialActionDialog>
 
       <Dialog
         open={Boolean(staffDialog)}
@@ -606,20 +654,24 @@ export function ResponsibilitiesPage() {
         }}
       >
         <DialogContent className="max-w-xl">
-          <DialogTitle>Set Staff supervisor</DialogTitle>
+          <DialogTitle>
+            {staffDialog?.staff ? "Change Staff supervisor" : "Set Staff supervisor"}
+          </DialogTitle>
           <DialogDescription>
-            Assign one supervising Counselor. This does not create a direct
-            Staff-to-College relationship.
+            Choose one supervising Counselor. The final current → new relationship will be reviewed before it is saved.
           </DialogDescription>
           <div className="mt-6 space-y-6">
-            {staffDialog?.staffId ? (
+            {staffDialog?.staff ? (
               <div>
-                <p className="text-sm font-semibold text-ink">
-                  Guidance Services Staff
-                </p>
-                <p className="mt-2 rounded-md border border-border bg-surface-muted px-3 py-2 text-sm text-ink">
-                  {staffDialog.staffLabel}
-                </p>
+                <p className="text-sm font-semibold text-ink">Guidance Services Staff</p>
+                <div className="mt-2 border-l-2 border-support bg-support-soft/40 px-3 py-3 text-sm">
+                  <p className="font-semibold text-ink">{staffDialog.staff.full_name}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    {staffDialog.staff.institutional_id
+                      ? `${staffDialog.staff.institutional_id} · ${staffDialog.staff.email}`
+                      : staffDialog.staff.email}
+                  </p>
+                </div>
               </div>
             ) : (
               <PeoplePicker
@@ -628,7 +680,11 @@ export function ResponsibilitiesPage() {
                 role="GUIDANCE_SERVICES_STAFF"
                 enabled={Boolean(staffDialog)}
                 value={staffId}
-                onChange={setStaffId}
+                selectedPerson={selectedStaff}
+                onChange={(id, person) => {
+                  setStaffId(id);
+                  setSelectedStaff(person);
+                }}
               />
             )}
             <PeoplePicker
@@ -637,7 +693,11 @@ export function ResponsibilitiesPage() {
               role="COUNSELOR"
               enabled={Boolean(staffDialog)}
               value={supervisorId}
-              onChange={setSupervisorId}
+              selectedPerson={selectedSupervisor}
+              onChange={(id, person) => {
+                setSupervisorId(id);
+                setSelectedSupervisor(person);
+              }}
             />
           </div>
           {action.messages}
@@ -650,50 +710,90 @@ export function ResponsibilitiesPage() {
               Cancel
             </Button>
             <Button
-              disabled={staffPending || !staffId || !supervisorId}
-              onClick={() => void saveStaff()}
+              disabled={
+                staffPending ||
+                !selectedStaff ||
+                !selectedSupervisor ||
+                supervisions.data?.data.items.find(
+                  (item) => item.staff.id === selectedStaff.id,
+                )?.supervisor.id === selectedSupervisor.id
+              }
+              onClick={reviewStaff}
             >
-              {setSupervisor.isPending ? "Setting supervisor…" : "Set supervisor"}
+              Review supervisor
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
-        open={Boolean(staffRemoval)}
+      <ConsequentialActionDialog
+        open={staffReview !== null}
+        title={
+          staffReview
+            ? `${staffReview.currentSupervisor ? "Change" : "Assign"} supervisor for ${staffReview.staff.full_name}?`
+            : "Review Staff supervisor"
+        }
+        confirmLabel={staffReview?.currentSupervisor ? "Change supervisor" : "Assign supervisor"}
+        pendingLabel={staffReview?.currentSupervisor ? "Changing…" : "Assigning…"}
+        pending={staffPending}
+        error={action.error}
         onOpenChange={(open) => {
-          if (staffPending) return;
+          if (!open) setStaffReview(null);
+        }}
+        onConfirm={() => void confirmStaff()}
+      >
+        {staffReview ? (
+          <>
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-muted">Staff member</dt>
+                <dd className="font-semibold text-ink">{staffReview.staff.full_name}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Current supervisor</dt>
+                <dd className="font-semibold text-ink">
+                  {staffReview.currentSupervisor?.full_name ?? "Not assigned"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted">New supervisor</dt>
+                <dd className="font-semibold text-ink">{staffReview.newSupervisor.full_name}</dd>
+              </div>
+            </dl>
+            {staffReview.currentSupervisor ? (
+              <p>The current supervision relationship will be replaced.</p>
+            ) : null}
+            <p>{supervisionScopeConsequence(staffReview.newSupervisor)}</p>
+          </>
+        ) : null}
+      </ConsequentialActionDialog>
+
+      <ConsequentialActionDialog
+        open={staffRemoval !== null}
+        title={
+          staffRemoval
+            ? `Remove ${staffRemoval.staff.full_name}'s supervisor?`
+            : "Remove Staff supervisor?"
+        }
+        confirmLabel="Remove supervisor"
+        pendingLabel="Removing…"
+        pending={staffPending}
+        error={action.error}
+        variant="danger"
+        onOpenChange={(open) => {
           if (!open) {
             setStaffRemoval(null);
             action.setError(null);
-            action.setNotice(null);
           }
         }}
+        onConfirm={() => void confirmRemoveStaff()}
       >
-        <AlertDialogContent>
-          <AlertDialogTitle>Remove supervisor?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {staffRemoval
-              ? `${staffRemoval.label} will no longer inherit a Counselor's organizational responsibility scope.`
-              : "The Staff supervision relationship will be removed."}
-          </AlertDialogDescription>
-          {action.messages}
-          <div className="mt-6 flex justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={staffPending}>
-                Cancel
-              </Button>
-            </AlertDialogCancel>
-            <Button
-              variant="danger"
-              disabled={staffPending}
-              onClick={() => void confirmRemoveStaff()}
-            >
-              {removeSupervisor.isPending ? "Removing…" : "Remove supervisor"}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p>
+          {staffRemoval
+            ? `${staffRemoval.staff.full_name} will no longer inherit ${staffRemoval.supervisor.full_name}'s organizational responsibility scope.`
+            : "The Staff supervision relationship will be removed."}
+        </p>
+      </ConsequentialActionDialog>
 
       {action.stepUpDialog}
     </section>
