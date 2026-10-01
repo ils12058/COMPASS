@@ -340,10 +340,10 @@ def counselor_responsibilities(
     campus_id: UUID | None = None,
 ):
     _require(request, "organization.manage")
-    qs = CounselorResponsibility.objects.select_related(
-        "college__campus", "counselor__role"
-    ).prefetch_related("counselor__designations").order_by(
-        "college__campus__code", "college__code"
+    qs = (
+        CounselorResponsibility.objects.select_related("college__campus", "counselor__role")
+        .prefetch_related("counselor__designations")
+        .order_by("college__campus__code", "college__code")
     )
     if counselor_id is not None:
         qs = qs.filter(counselor_id=counselor_id)
