@@ -19,6 +19,7 @@ import type { InventorySectionId } from "@/features/inventory/inventory-presenta
 
 export type InventorySubmissionIssue = {
   section: InventorySectionId;
+  targetId: string;
   message: string;
 };
 
@@ -104,85 +105,86 @@ export function getInventorySubmissionIssues(
 ): InventorySubmissionIssue[] {
   const payload = normalizeInventoryPayload(input);
   const issues: InventorySubmissionIssue[] = [];
-  const add = (section: InventorySectionId, message: string) => issues.push({ section, message });
+  const add = (section: InventorySectionId, targetId: string, message: string) =>
+    issues.push({ section, targetId, message });
 
-  if (!payload.sex) add("personal", "Choose a sex response.");
-  if (!payload.date_of_birth) add("personal", "Enter a date of birth.");
-  if (!payload.civil_status_category) add("personal", "Choose a civil-status response.");
+  if (!payload.sex) add("personal", "inventory-sex", "Choose a sex response.");
+  if (!payload.date_of_birth) add("personal", "inventory-date-of-birth", "Enter a date of birth.");
+  if (!payload.civil_status_category) add("personal", "inventory-civil-status", "Choose a civil-status response.");
   if (
     payload.civil_status_category === CivilStatusCategoryValue.OTHER &&
     !payload.civil_status?.trim()
-  ) add("personal", "Describe the other civil-status response.");
-  if (!payload.current_religion_category) add("personal", "Choose a current-religion response.");
+  ) add("personal", "inventory-civil-status-other", "Describe the other civil-status response.");
+  if (!payload.current_religion_category) add("personal", "inventory-current-religion-category", "Choose a current-religion response.");
   if (
     payload.current_religion_category === CurrentReligionCategoryValue.OTHER &&
     !payload.current_religion?.trim()
-  ) add("personal", "Describe the current religion.");
+  ) add("personal", "inventory-current-religion-other", "Describe the current religion.");
 
   const currentLocation = (payload.geographic_locations ?? []).find(
     (location) => location.kind === GeographicLocationKindValue.CURRENT,
   );
   if (!currentLocation) {
-    add("personal", "Choose a response for your current structured location.");
-  } else if (
-    !currentLocation.not_specified &&
-    (!currentLocation.region_psgc_code || !currentLocation.city_municipality_psgc_code)
-  ) {
-    add("personal", "Select a region and city or municipality for your current location.");
+    add("personal", "inventory-current-location-choice", "Choose a response for your current structured location.");
+  } else if (!currentLocation.not_specified && !currentLocation.region_psgc_code) {
+    add("personal", "inventory-current-region", "Select a region for your current location.");
+  } else if (!currentLocation.not_specified && !currentLocation.city_municipality_psgc_code) {
+    add("personal", "inventory-current-city", "Select a city or municipality for your current location.");
   }
 
-  if (!payload.parent_status_category) add("family", "Choose a parent-status category.");
+  if (!payload.parent_status_category) add("family", "inventory-parent-status-category", "Choose a parent-status category.");
   const support = payload.support_profile;
-  if (!support?.four_ps_status) add("family", "Choose a 4Ps response.");
-  if (!support?.indigenous_peoples_status) add("family", "Choose an Indigenous Peoples response.");
-  if (!support?.mother_life_status) add("family", "Choose a response for your mother's life status.");
-  if (!support?.father_life_status) add("family", "Choose a response for your father's life status.");
+  if (!support?.four_ps_status) add("family", "inventory-four-ps", "Choose a 4Ps response.");
+  if (!support?.indigenous_peoples_status) add("family", "inventory-indigenous-peoples", "Choose an Indigenous Peoples response.");
+  if (!support?.mother_life_status) add("family", "inventory-mother-life-status", "Choose a response for your mother's life status.");
+  if (!support?.father_life_status) add("family", "inventory-father-life-status", "Choose a response for your father's life status.");
 
   for (const kind of [FamilyMemberKindValue.FATHER, FamilyMemberKindValue.MOTHER]) {
     const member = (payload.family_members ?? []).find((item) => item.kind === kind);
     const label = kind === FamilyMemberKindValue.FATHER ? "Father" : "Mother";
+    const prefix = `inventory-family-${kind.toLowerCase()}`;
     if (!member?.occupation_category) {
-      add("family", `Choose an occupation category for ${label.toLowerCase()}.`);
+      add("family", `${prefix}-occupation-category`, `Choose an occupation category for ${label.toLowerCase()}.`);
     }
     if (!member?.annual_income_status) {
-      add("family", `Choose an annual-income response for ${label.toLowerCase()}.`);
+      add("family", `${prefix}-income-status`, `Choose an annual-income response for ${label.toLowerCase()}.`);
     }
     if (
       member?.annual_income_status === AnnualIncomeStatusValue.REPORTED &&
       !member.annual_income_previous_year?.trim()
     ) {
-      add("family", `Enter the reported previous-year income for ${label.toLowerCase()}.`);
+      add("family", `${prefix}-income-amount`, `Enter the reported previous-year income for ${label.toLowerCase()}.`);
     }
   }
 
-  if (!payload.living_arrangement) add("health", "Choose a living arrangement.");
-  if (!payload.pwd_status) add("health", "Choose a disability-status response.");
+  if (!payload.living_arrangement) add("health", "inventory-living-arrangement", "Choose a living arrangement.");
+  if (!payload.pwd_status) add("health", "inventory-pwd-status", "Choose a disability-status response.");
   if (payload.pwd_status === PWDStatusValue.PWD && !payload.physical_disadvantage?.trim()) {
-    add("health", "Describe the physical disadvantage or accommodation context.");
+    add("health", "inventory-physical-disadvantage", "Describe the physical disadvantage or accommodation context.");
   }
   if (
     (payload.immunizations ?? []).includes(ImmunizationValue.OTHER) &&
     !payload.immunization_other?.trim()
-  ) add("health", "Describe the other immunization.");
+  ) add("health", "inventory-immunization-other", "Describe the other immunization.");
 
   if (
-    !payload.program_id ||
-    (activeProgramIds !== undefined && !activeProgramIds.has(payload.program_id))
+    activeProgramIds !== undefined &&
+    (!payload.program_id || !activeProgramIds.has(payload.program_id))
   ) {
-    add("education", "Choose a currently active Program.");
+    add("education", "inventory-program", "Choose a currently active Program.");
   }
   if (!payload.year_level || payload.year_level < 1 || payload.year_level > 10) {
-    add("education", "Choose a Year Level from 1 through 10.");
+    add("education", "inventory-year-level", "Choose a Year Level from 1 through 10.");
   }
 
   if (
     (payload.course_choice_reasons ?? []).includes(CourseChoiceReasonValue.OTHER) &&
     !payload.course_choice_other?.trim()
-  ) add("interests", "Describe the other reason for your course choice.");
+  ) add("interests", "inventory-course-choice-other", "Describe the other reason for your course choice.");
   if (
     payload.intended_work_field === PostGraduationFieldValue.OTHER &&
     !payload.intended_work_other?.trim()
-  ) add("plans", "Describe the other intended work field.");
+  ) add("plans", "inventory-intended-work-other", "Describe the other intended work field.");
 
   return issues;
 }
