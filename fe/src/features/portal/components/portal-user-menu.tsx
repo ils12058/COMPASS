@@ -2,7 +2,6 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, LogOut, UserRound } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -14,6 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
+import { useUnsavedNavigation } from "@/features/form-safety/unsaved-changes-provider";
 import { userRoleLabel } from "@/features/portal/components/portal-presentation";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { AccountAvatar, accountDisplayName } from "@/features/account/components/account-avatar";
@@ -26,6 +27,7 @@ export function PortalUserMenu() {
   const { user } = usePortalSession();
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { confirmDiscard } = useUnsavedNavigation();
   const [error, setError] = useState<string | null>(null);
   const logout = useAuthLogout();
   const profile = useProfileGetMyProfile({ query: { retry: false, staleTime: 60_000 } }).data?.data;
@@ -37,6 +39,7 @@ export function PortalUserMenu() {
   }
 
   async function signOut() {
+    if (!confirmDiscard()) return;
     setError(null);
     try {
       await logout.mutateAsync();
@@ -79,10 +82,10 @@ export function PortalUserMenu() {
             </span>
           </DropdownMenuLabel>
           <DropdownMenuItem asChild>
-            <Link href="/portal/account/profile">
+            <GuardedPortalLink href="/portal/account/profile">
               <UserRound size={17} className="mr-2" aria-hidden="true" />
               Account
-            </Link>
+            </GuardedPortalLink>
           </DropdownMenuItem>
           <DropdownMenuSeparator className="my-1 h-px bg-border" />
           <DropdownMenuItem disabled={logout.isPending} onSelect={() => void signOut()}>
