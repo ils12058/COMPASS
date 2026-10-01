@@ -3,15 +3,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -442,7 +435,7 @@ export function RoutineStudentIntakeEditor({
           {saveError}
         </p>
       ) : null}
-      {submitError ? (
+      {submitError && !confirmSubmit ? (
         <p role="alert" className="mt-4 border-l-4 border-danger px-3 py-2 text-sm text-danger">
           {submitError}
         </p>
@@ -672,43 +665,22 @@ export function RoutineStudentIntakeEditor({
         </div>
       </form>
 
-      <AlertDialog
+      <ConsequentialActionDialog
         open={confirmSubmit}
-        onOpenChange={(open) => {
-          if (!pending) setConfirmSubmit(open);
-        }}
+        title="Submit your Routine Interview responses?"
+        confirmLabel="Submit Intake"
+        pendingLabel="Submitting…"
+        pending={submit.isPending}
+        confirmDisabled={dirty}
+        error={submitError}
+        onOpenChange={setConfirmSubmit}
+        onConfirm={() => void submitIntake()}
       >
-        <AlertDialogContent>
-          <AlertDialogTitle>
-            Submit your Routine Interview responses?
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            After submission, your Intake becomes read-only and will be
-            available to your assigned Counselor.
-          </AlertDialogDescription>
-          {submitError ? (
-            <p role="alert" className="mt-3 text-sm text-danger">{submitError}</p>
-          ) : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={submit.isPending}>
-                Cancel
-              </Button>
-            </AlertDialogCancel>
-            <AlertDialogAction asChild>
-              <Button
-                onClick={(event) => {
-                  event.preventDefault();
-                  void submitIntake();
-                }}
-                disabled={pending}
-              >
-                {submit.isPending ? "Submitting…" : "Submit Intake"}
-              </Button>
-            </AlertDialogAction>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p>
+          After submission, your Intake becomes read-only and will be available
+          to your assigned Counselor.
+        </p>
+      </ConsequentialActionDialog>
     </section>
   );
 }
