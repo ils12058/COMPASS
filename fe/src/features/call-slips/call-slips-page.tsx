@@ -294,8 +294,6 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
           <CanonicalPagination page={data?.page ?? filters.page} hasNext={data?.has_next ?? false} onPageChange={(page) => router.push(operationalFiltersToUrl({ ...effectiveFilters, page }), { scroll: false })} label="Call Slip results" />
         </>
       )}
-      </>
-      )}
     </div>
   );
 }
