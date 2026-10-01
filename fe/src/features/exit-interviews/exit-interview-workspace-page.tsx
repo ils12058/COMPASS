@@ -17,22 +17,13 @@ export function ExitInterviewWorkspacePage({
   const { user } = usePortalSession();
   const access = getExitInterviewAccess(user);
 
-  if (access.isStudent) {
+  if (access.isStudent && access.hasStudentWorkspace) {
     return <ExitInterviewStudentHome access={access} />;
   }
 
-  if (access.canViewOperational) {
+  if (access.hasOperationalWorkspace) {
     return <ExitInterviewOperationalList filters={filters} notice={notice} />;
   }
 
-  return (
-    <ExitInterviewUnavailable
-      title="Exit Interview unavailable"
-      message={
-        access.canReopen
-          ? "Your current access allows correction reopening but does not include the Exit Interview review queue. Contact the administrator if you need review access."
-          : undefined
-      }
-    />
-  );
+  return <ExitInterviewUnavailable title="Exit Interview unavailable" />;
 }
