@@ -160,7 +160,8 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
             ))}
           </ul>
           <CanonicalPagination page={data?.page ?? filters.page} hasNext={data?.has_next ?? false} onPageChange={(page) => router.push(studentFiltersToUrl({ ...filters, page }), { scroll: false })} label="My Call Slip results" />
-  
+        </>
+      )}
     </div>
   );
 }
