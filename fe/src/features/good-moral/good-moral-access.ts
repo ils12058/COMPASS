@@ -26,9 +26,8 @@ export function getGoodMoralAccess(user: UserSummary): GoodMoralAccess {
     isCounselor && user.capabilities.includes("good_moral.manage");
   const canIssue =
     isCounselor && user.capabilities.includes("good_moral.issue");
-  const hasStudentWorkspace = canViewSelf || canRequestSelf;
-  const hasOperationalWorkspace =
-    canViewOperational || canManageOperational || canIssue;
+  const hasStudentWorkspace = canViewSelf;
+  const hasOperationalWorkspace = canViewOperational;
 
   return {
     isStudent,
