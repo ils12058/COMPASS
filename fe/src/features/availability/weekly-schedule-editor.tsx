@@ -2,14 +2,8 @@
 
 import { useState } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -273,37 +267,23 @@ export function WeeklyScheduleEditor({
 
         <ActionFeedback error={error} notice={notice} />
 
-        <AlertDialog
+        <ConsequentialActionDialog
           open={clearOpen}
-          onOpenChange={(open) => {
-            if (pending) return;
-            setClearOpen(open);
-          }}
+          title="Clear the complete weekly schedule?"
+          confirmLabel="Clear weekly schedule"
+          pendingLabel="Clearing…"
+          pending={pending}
+          error={error}
+          variant="danger"
+          onOpenChange={setClearOpen}
+          onConfirm={() => void clearSchedule()}
         >
-          <AlertDialogContent>
-            <AlertDialogTitle>Clear the complete weekly schedule?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This removes every recurring Availability window for this provider.
-              Existing Appointments remain scheduled. Historical unavailability
-              records are not removed.
-            </AlertDialogDescription>
-            <ActionFeedback error={error} notice={notice} />
-            <div className="mt-6 flex justify-end gap-2">
-              <AlertDialogCancel asChild>
-                <Button variant="secondary" disabled={pending}>
-                  Cancel
-                </Button>
-              </AlertDialogCancel>
-              <Button
-                variant="danger"
-                disabled={pending}
-                onClick={() => void clearSchedule()}
-              >
-                {pending ? "Clearing…" : "Clear weekly schedule"}
-              </Button>
-            </div>
-          </AlertDialogContent>
-        </AlertDialog>
+          <p>
+            This removes every recurring Availability window for this provider.
+            Existing Appointments remain scheduled. Historical unavailability
+            records are not removed.
+          </p>
+        </ConsequentialActionDialog>
       </section>
     );
   }
