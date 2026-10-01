@@ -18,6 +18,7 @@ export function ConsequentialActionDialog({
   confirmLabel,
   pendingLabel,
   pending,
+  confirmDisabled = false,
   error,
   variant = "primary",
   cancelLabel = "Cancel",
@@ -30,6 +31,7 @@ export function ConsequentialActionDialog({
   confirmLabel: string;
   pendingLabel: string;
   pending: boolean;
+  confirmDisabled?: boolean;
   error: string | null;
   variant?: "primary" | "danger";
   cancelLabel?: string;
@@ -70,7 +72,7 @@ export function ConsequentialActionDialog({
           <Button
             type="button"
             variant={variant}
-            disabled={pending}
+            disabled={pending || confirmDisabled}
             onClick={onConfirm}
           >
             {pending ? pendingLabel : confirmLabel}
