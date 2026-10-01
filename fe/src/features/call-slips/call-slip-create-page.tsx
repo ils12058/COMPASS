@@ -5,14 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { CallSlipFormFields, type CallSlipDraft, toCallSlipRequestFields } from "@/features/call-slips/call-slip-form-fields";
 import { CallSlipAccessUnavailable, CallSlipHeading, callSlipErrorCode, callSlipErrorMessage, callSlipDestinationLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
@@ -152,7 +146,7 @@ export function DirectCallSlipCreatePage() {
           <p className="mt-5 text-sm leading-6 text-muted">The entered Course / Year and report time are source text. Report date/time may be past, present, or future and does not determine whether this is a live or historical issuance.</p>
         </section>
 
-        {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+        {error && !confirmOpen ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
         {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={create.isPending || students.isPending}>{create.isPending ? "Issuing…" : "Review issuance"}</Button>
@@ -160,24 +154,29 @@ export function DirectCallSlipCreatePage() {
         </div>
       </form>
 
-      <AlertDialog open={confirmOpen} onOpenChange={(open) => { if (!create.isPending) setConfirmOpen(open); }}>
-        <AlertDialogContent onEscapeKeyDown={(event) => { if (create.isPending) event.preventDefault(); }}>
-          <AlertDialogTitle>Confirm Call Slip issuance</AlertDialogTitle>
-          <AlertDialogDescription>Review the source details and selected issuance mode. COMPASS records the issuer and any separate recorder.</AlertDialogDescription>
-          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-            <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 text-ink">{student?.display_name ?? "Not selected"}{student?.institutional_id ? ` · ${student.institutional_id}` : ""}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Course / Year</dt><dd className="mt-1 text-ink">{draft.courseYear || "Not entered"}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Destination</dt><dd className="mt-1 text-ink">{selectedDestination}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Report date and time</dt><dd className="mt-1 text-ink">{draft.reportAt || "Not entered"}</dd></div>
-            <div className="sm:col-span-2"><dt className="text-xs font-semibold text-muted">Issuance mode</dt><dd className="mt-1 text-ink">{draft.notifyStudent ? "Live issuance — creates an in-app notification and queues required operational email." : "Historical / back-entry — no new issuance notification."}</dd></div>
-          </dl>
-          {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialogCancel asChild><Button variant="secondary" disabled={create.isPending}>Review details</Button></AlertDialogCancel>
-            <Button disabled={create.isPending} onClick={() => void issueConfirmed()}>{create.isPending ? "Issuing…" : "Confirm and issue"}</Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConsequentialActionDialog
+        open={confirmOpen}
+        title="Confirm Call Slip issuance"
+        confirmLabel="Confirm and issue"
+        cancelLabel="Review details"
+        pendingLabel="Issuing…"
+        pending={create.isPending}
+        error={error}
+        onOpenChange={setConfirmOpen}
+        onConfirm={() => void issueConfirmed()}
+      >
+        <p>
+          Review the source details and selected issuance mode. COMPASS records
+          the issuer and any separate recorder.
+        </p>
+        <dl className="grid gap-3 text-sm sm:grid-cols-2">
+          <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 text-ink">{student?.display_name ?? "Not selected"}{student?.institutional_id ? ` · ${student.institutional_id}` : ""}</dd></div>
+          <div><dt className="text-xs font-semibold text-muted">Course / Year</dt><dd className="mt-1 text-ink">{draft.courseYear || "Not entered"}</dd></div>
+          <div><dt className="text-xs font-semibold text-muted">Destination</dt><dd className="mt-1 text-ink">{selectedDestination}</dd></div>
+          <div><dt className="text-xs font-semibold text-muted">Report date and time</dt><dd className="mt-1 text-ink">{draft.reportAt || "Not entered"}</dd></div>
+          <div className="sm:col-span-2"><dt className="text-xs font-semibold text-muted">Issuance mode</dt><dd className="mt-1 text-ink">{draft.notifyStudent ? "Live issuance — creates an in-app notification and queues required operational email." : "Historical / back-entry — no new issuance notification."}</dd></div>
+        </dl>
+      </ConsequentialActionDialog>
       <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setNotice("Verification complete. Review and confirm the issuance again."); setConfirmOpen(true); }} />
     </div>
   );
