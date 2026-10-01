@@ -9,6 +9,7 @@ import {
   PlatformConfirmation,
   usePlatformAction,
 } from "@/features/platform/platform-actions";
+import { hasPlatformManage } from "@/features/platform/platform-gate";
 import {
   emailDeliveryStatusLabels,
   PlatformPageHeader,
@@ -18,6 +19,7 @@ import {
   PlatformStatusBadge,
   PlatformTimestamp,
 } from "@/features/platform/platform-presentation";
+import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import {
   EmailDeliveryFailureCode,
@@ -84,6 +86,8 @@ function Timing({ delivery }: { delivery: EmailDeliveryItemResponse }) {
 }
 
 export function PlatformEmailDeliveryPage() {
+  const { user } = usePortalSession();
+  const canManage = hasPlatformManage(user);
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<StatusFilter>("ALL");
   const [page, setPage] = useState(1);
@@ -106,7 +110,7 @@ export function PlatformEmailDeliveryPage() {
   const deliveryPage = deliveries.data?.data;
 
   async function requestRetry() {
-    if (!selectedDelivery) return;
+    if (!canManage || !selectedDelivery) return;
 
     let staleEligibility = false;
     const success = await action.run(
@@ -277,7 +281,9 @@ export function PlatformEmailDeliveryPage() {
                       <th scope="col" className="px-3 py-3 font-semibold">Attempts</th>
                       <th scope="col" className="px-3 py-3 font-semibold">Created</th>
                       <th scope="col" className="px-3 py-3 font-semibold">Timing</th>
-                      <th scope="col" className="px-3 py-3 font-semibold">Action</th>
+                      {canManage ? (
+                        <th scope="col" className="px-3 py-3 font-semibold">Action</th>
+                      ) : null}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -308,28 +314,30 @@ export function PlatformEmailDeliveryPage() {
                         <td className="px-3 py-4 align-top">
                           <Timing delivery={delivery} />
                         </td>
-                        <td className="px-3 py-4 align-top">
-                          {delivery.manual_retry_allowed ? (
-                            <Button
-                              variant="secondary"
-                              aria-label={`Request retry for ${delivery.event_code}, delivery ${delivery.id}`}
-                              onClick={() => {
-                                action.setError(null);
-                                action.setNotice(null);
-                                setSelectedDelivery(delivery);
-                              }}
-                            >
-                              Request retry
-                            </Button>
-                          ) : delivery.manual_retry_blocker &&
-                            retryBlockerLabels[delivery.manual_retry_blocker] ? (
-                            <span className="text-xs text-muted">
-                              {retryBlockerLabels[delivery.manual_retry_blocker]}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted">—</span>
-                          )}
-                        </td>
+                        {canManage ? (
+                          <td className="px-3 py-4 align-top">
+                            {delivery.manual_retry_allowed ? (
+                              <Button
+                                variant="secondary"
+                                aria-label={`Request retry for ${delivery.event_code}, delivery ${delivery.id}`}
+                                onClick={() => {
+                                  action.setError(null);
+                                  action.setNotice(null);
+                                  setSelectedDelivery(delivery);
+                                }}
+                              >
+                                Request retry
+                              </Button>
+                            ) : delivery.manual_retry_blocker &&
+                              retryBlockerLabels[delivery.manual_retry_blocker] ? (
+                              <span className="text-xs text-muted">
+                                {retryBlockerLabels[delivery.manual_retry_blocker]}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted">—</span>
+                            )}
+                          </td>
+                        ) : null}
                       </tr>
                     ))}
                   </tbody>
@@ -369,33 +377,35 @@ export function PlatformEmailDeliveryPage() {
       </section>
 
       {action.stepUpDialog}
-      <PlatformConfirmation
-        open={selectedDelivery !== null}
-        title="Request an email delivery retry?"
-        confirmLabel="Request retry"
-        pendingLabel="Requesting…"
-        pending={retry.isPending}
-        error={action.error}
-        variant="primary"
-        onOpenChange={(open) => {
-          if (!open && !retry.isPending) {
-            setSelectedDelivery(null);
-            action.setError(null);
-          }
-        }}
-        onConfirm={() => void requestRetry()}
-      >
-        {selectedDelivery ? (
-          <>
-            <p>
-              Request another attempt for <strong>{selectedDelivery.event_code}</strong>.
-              This returns the delivery to pending and queues delivery work; it
-              does not guarantee an immediate successful email.
-            </p>
-            <p className="break-all font-mono text-xs">Delivery ID: {selectedDelivery.id}</p>
-          </>
-        ) : null}
-      </PlatformConfirmation>
+      {canManage ? (
+        <PlatformConfirmation
+          open={selectedDelivery !== null}
+          title="Request an email delivery retry?"
+          confirmLabel="Request retry"
+          pendingLabel="Requesting…"
+          pending={retry.isPending}
+          error={action.error}
+          variant="primary"
+          onOpenChange={(open) => {
+            if (!open && !retry.isPending) {
+              setSelectedDelivery(null);
+              action.setError(null);
+            }
+          }}
+          onConfirm={() => void requestRetry()}
+        >
+          {selectedDelivery ? (
+            <>
+              <p>
+                Request another attempt for <strong>{selectedDelivery.event_code}</strong>.
+                This returns the delivery to pending and queues delivery work; it
+                does not guarantee an immediate successful email.
+              </p>
+              <p className="break-all font-mono text-xs">Delivery ID: {selectedDelivery.id}</p>
+            </>
+          ) : null}
+        </PlatformConfirmation>
+      ) : null}
     </section>
   );
 }
