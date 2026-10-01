@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { displayTitle, publicationAudienceLabels } from "@/features/content/content-presentation";
+import { canShowLastKnownData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
   ContentDetailSkeleton,
   ContentNotice,
@@ -67,7 +69,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
   );
 
   if (detail.isPending) return <ContentDetailSkeleton label="Loading Resource…" />;
-  if (!detail.data || (detail.isError && shouldHideResourceData(detail.error))) {
+  if (!detail.data || (detail.isError && !canShowLastKnownData(detail))) {
     return <ResourceUnavailable error={detail.error} onRetry={() => void detail.refetch()} />;
   }
 
@@ -83,7 +85,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
         title={title}
         backHref="/portal/resources"
         backLabel="Resources"
-        action={
+        action={!detail.isError ?
           <>
             {item.status !== ResourceStatusValue.ARCHIVED ? (
               <Link href={`/portal/resources/${item.id}/edit`} className={contentSecondaryLinkClass}>
@@ -92,7 +94,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
             ) : null}
             <ResourceLifecycleActions resource={item} publishBlocked={missing.length > 0} onCompleted={setNotice} />
           </>
-        }
+        : null}
       >
         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted">
           <PublicationStatusBadge status={item.status} />
@@ -110,10 +112,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
           </ContentNotice>
         ) : null}
         {detail.isError ? (
-          <ContentQueryError
-            message={`${resourceErrorMessage(detail.error, "The latest Resource details could not be loaded.")} Showing the last loaded version.`}
-            onRetry={() => void detail.refetch()}
-          />
+          <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} />
         ) : detail.isFetching ? (
           <p role="status" className="text-xs text-muted">Refreshing Resource…</p>
         ) : null}

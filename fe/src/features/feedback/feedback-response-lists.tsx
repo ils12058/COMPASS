@@ -8,6 +8,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { FeedbackAccessUnavailable, FeedbackDate, FeedbackPageHeading, FeedbackQueryError, feedbackSelectClass } from "@/features/feedback/feedback-shared";
@@ -96,7 +98,7 @@ export function CustomerFeedbackResponseList() {
   }
 
   const hasFilters = Boolean(search || service || params.get("submitted_from") || params.get("submitted_to"));
-  const rows = list.data?.data;
+  const rows = safeQueryData(list)?.data;
 
   return (
     <section aria-labelledby="customer-feedback-responses-heading">
@@ -110,7 +112,8 @@ export function CustomerFeedbackResponseList() {
         {filterError ? <p role="alert" className="mt-3 text-sm text-danger">{filterError}</p> : null}
         <div className="mt-4 flex flex-wrap gap-3"><Button type="submit" variant="secondary">Apply filters</Button>{hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : null}</div>
       </form>
-      {list.isPending ? <p aria-busy="true" className="py-8 text-sm text-muted">Loading Customer Feedback responses…</p> : list.isError ? <div className="mt-5"><FeedbackQueryError error={list.error} fallback="Customer Feedback responses could not be loaded." onRetry={() => void list.refetch()} /></div> : rows?.items.length === 0 ? <p className="border-b border-border py-9 text-sm text-muted">{hasFilters ? "No Customer Feedback responses match the current search or filters." : "No Customer Feedback responses have been submitted."}</p> : rows ? (
+      {list.isError && rows ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
+      {list.isPending ? <p aria-busy="true" className="py-8 text-sm text-muted">Loading Customer Feedback responses…</p> : !rows ? <div className="mt-5"><FeedbackQueryError error={list.error} fallback="Customer Feedback responses could not be loaded." onRetry={() => void list.refetch()} /></div> : rows.items.length === 0 ? <p className="border-b border-border py-9 text-sm text-muted">{hasFilters ? "No Customer Feedback responses match the current search or filters." : "No Customer Feedback responses have been submitted."}</p> : rows ? (
         <>
           {list.isFetching ? <p role="status" className="mt-3 text-xs text-muted">Refreshing responses…</p> : null}
           <div className="mt-5 overflow-x-auto border-y border-border">
@@ -164,7 +167,7 @@ export function CsmResponseList() {
 
   function clearFilters() { setFilterError(null); router.push(pathname); }
   const hasFilters = Boolean(clientType || service || params.get("submitted_from") || params.get("submitted_to"));
-  const rows = list.data?.data;
+  const rows = safeQueryData(list)?.data;
 
   return (
     <section aria-labelledby="csm-responses-heading">
@@ -178,7 +181,8 @@ export function CsmResponseList() {
         {filterError ? <p role="alert" className="mt-3 text-sm text-danger">{filterError}</p> : null}
         <div className="mt-4 flex flex-wrap gap-3"><Button type="submit" variant="secondary">Apply filters</Button>{hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : null}</div>
       </form>
-      {list.isPending ? <p aria-busy="true" className="py-8 text-sm text-muted">Loading CSM responses…</p> : list.isError ? <div className="mt-5"><FeedbackQueryError error={list.error} fallback="CSM responses could not be loaded." onRetry={() => void list.refetch()} /></div> : rows?.items.length === 0 ? <p className="border-b border-border py-9 text-sm text-muted">{hasFilters ? "No CSM responses match the current filters." : "No CSM responses have been submitted."}</p> : rows ? (
+      {list.isError && rows ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
+      {list.isPending ? <p aria-busy="true" className="py-8 text-sm text-muted">Loading CSM responses…</p> : !rows ? <div className="mt-5"><FeedbackQueryError error={list.error} fallback="CSM responses could not be loaded." onRetry={() => void list.refetch()} /></div> : rows.items.length === 0 ? <p className="border-b border-border py-9 text-sm text-muted">{hasFilters ? "No CSM responses match the current filters." : "No CSM responses have been submitted."}</p> : rows ? (
         <>
           {list.isFetching ? <p role="status" className="mt-3 text-xs text-muted">Refreshing responses…</p> : null}
           <div className="mt-5 overflow-x-auto border-y border-border">

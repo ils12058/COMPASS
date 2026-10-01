@@ -6,6 +6,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { useUnsavedNavigation } from "@/features/form-safety/unsaved-changes-provider";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Input } from "@/components/ui/input";
@@ -245,8 +247,9 @@ export function NoticeDetailPage() {
   const [creatingRevision, setCreatingRevision] = useState(false);
   const [retireOpen, setRetireOpen] = useState(false);
   const notice = usePrivacyGovernanceGetNotice(noticeId, { query: { retry: false } });
+  const noticeData = safeQueryData(notice);
   // A new draft starts from the current published revision, loaded only when needed.
-  const currentRevisionId = notice.data?.data.current_revision?.id ?? "";
+  const currentRevisionId = noticeData?.data.current_revision?.id ?? "";
   const source = usePrivacyGovernanceGetNoticeRevision(currentRevisionId, {
     query: { enabled: creatingRevision && Boolean(currentRevisionId), retry: false },
   });
@@ -259,7 +262,7 @@ export function NoticeDetailPage() {
   const action = usePrivacyAction();
 
   if (notice.isPending) return <PrivacyDetailSkeleton label="Loading privacy notice…" />;
-  if (notice.isError) {
+  if (!noticeData) {
     return (
       <PrivacyRecordUnavailable
         title="Privacy notice unavailable"
@@ -272,12 +275,12 @@ export function NoticeDetailPage() {
     );
   }
 
-  const family = notice.data.data;
-  const manageable = canManage && family.is_active;
+  const family = noticeData.data;
+  const manageable = canManage && family.is_active && !notice.isError;
   const draft = family.draft_revision;
   const sourceRevision = source.data?.data;
   const sourcePending = Boolean(currentRevisionId) && source.isPending;
-  const result = revisions.data?.data;
+  const result = safeQueryData(revisions)?.data;
 
   async function confirmRetire() {
     const done = await action.run(
@@ -335,6 +338,7 @@ export function NoticeDetailPage() {
           ) : null
         }
       />
+      {notice.isError ? <RefreshFailureNotice onRetry={() => void notice.refetch()} retrying={notice.isFetching} /> : null}
 
       {searchParams.get("created") === "1" ? (
         <p role="status" className="mb-4 text-sm text-success">
@@ -416,6 +420,7 @@ export function NoticeDetailPage() {
         ) : null}
 
         <div className="mt-4">
+          {revisions.isError && result ? <RefreshFailureNotice onRetry={() => void revisions.refetch()} retrying={revisions.isFetching} /> : null}
           {revisions.isPending ? (
             <PrivacyListSkeleton rows={3} label="Loading revisions…" />
           ) : revisions.isError && !result ? (

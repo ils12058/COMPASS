@@ -1,5 +1,7 @@
 "use client";
 
+import { canShowLastKnownData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
   PlatformPageHeader,
   PlatformQueryError,
@@ -18,7 +20,7 @@ export function PlatformEnvironmentPage() {
   const environment = usePlatformOperationsEnvironment({
     query: { retry: false, staleTime: 60_000 },
   });
-  const result = environment.data?.data;
+  const result = environment.isError && !canShowLastKnownData(environment) ? undefined : environment.data?.data;
 
   return (
     <section>
@@ -34,6 +36,7 @@ export function PlatformEnvironmentPage() {
           onRetry={() => void environment.refetch()}
         />
       ) : null}
+      {environment.isError && result ? <RefreshFailureNotice onRetry={() => void environment.refetch()} retrying={environment.isFetching} /> : null}
 
       {result ? (
         <>

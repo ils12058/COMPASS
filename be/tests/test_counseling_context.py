@@ -625,6 +625,32 @@ def test_contextual_inventory_and_support_do_not_weaken_generic_authorization(wo
 
 
 @pytest.mark.django_db
+def test_appointment_overview_survives_missing_current_academic_year(world):
+    AcademicYear.objects.filter(is_current=True).update(is_current=False)
+    now = timezone.now().replace(microsecond=0)
+    appointment = make_appointment(
+        student=world["anna"],
+        counselor=world["b"],
+        service=world["service"],
+        starts_at=now + timedelta(hours=2),
+    )
+    client = auth_client(world["b"])
+    base = f"/api/v1/counseling/context/APPOINTMENT/{appointment.pk}"
+
+    overview = client.get(base)
+    assert overview.status_code == 200
+    data = overview.json()
+    assert data["student"]["id"] == str(world["anna"].pk)
+    assert data["source_id"] == str(appointment.pk)
+    assert data["student"]["program"] is None
+    assert data["student"]["year_level"] is None
+    assert data["matching_encounter"] is None
+    assert "HISTORY" in data["available_sections"]
+    assert client.get(f"{base}/inventory").status_code == 409
+    assert client.get(f"{base}/support-indicators").status_code == 409
+
+
+@pytest.mark.django_db
 def test_context_support_indicators_use_only_current_submitted_inventory(world):
     now = timezone.now().replace(microsecond=0)
 

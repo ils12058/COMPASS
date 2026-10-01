@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipQueryError, callSlipDestinationLabel, callSlipStateLabel } from "@/features/call-slips/call-slips-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -98,7 +100,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
     router.push(studentFiltersToUrl({ ...draft, page: 1 }), { scroll: false });
   }
 
-  const data = slips.data?.data;
+  const data = safeQueryData(slips)?.data;
   const items = data?.items ?? [];
   const hasFilters = Boolean(filters.fromDate || filters.toDate || filters.state || filters.page > 1);
 
@@ -131,8 +133,9 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
           {hasFilters ? <Link href="/portal/call-slips" className="inline-flex min-h-10 items-center px-3 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</Link> : null}
         </div>
       </form>
+      {slips.isError && data ? <RefreshFailureNotice onRetry={() => void slips.refetch()} retrying={slips.isFetching} /> : null}
 
-      {slips.isError ? (
+      {!data && slips.isError ? (
         <CallSlipQueryError error={slips.error} fallback="Your Call Slips could not be loaded." onRetry={() => void slips.refetch()} />
       ) : slips.isPending ? (
         <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading My Call Slips…</span><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
@@ -202,7 +205,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
     router.push(operationalFiltersToUrl({ ...normalizedDraft, page: 1 }), { scroll: false });
   }
 
-  const data = slips.data?.data;
+  const data = safeQueryData(slips)?.data;
   const items = data?.items ?? [];
   const effectiveFilters = access.canManageOperational
     ? filters
@@ -252,8 +255,9 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
           {hasFilters ? <Link href="/portal/call-slips" className="inline-flex min-h-10 items-center px-3 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</Link> : null}
         </div>
       </form>
+      {slips.isError && data ? <RefreshFailureNotice onRetry={() => void slips.refetch()} retrying={slips.isFetching} /> : null}
 
-      {slips.isError ? (
+      {!data && slips.isError ? (
         <CallSlipQueryError error={slips.error} fallback="Call Slips could not be loaded." onRetry={() => void slips.refetch()} />
       ) : slips.isPending ? (
         <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading Call Slips…</span><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>

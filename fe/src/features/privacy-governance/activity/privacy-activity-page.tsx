@@ -3,6 +3,8 @@
 import { keepPreviousData } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { canShowLastKnownData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { activityCategoryLabels } from "@/features/privacy-governance/privacy-governance-presentation";
 import {
@@ -95,7 +97,7 @@ export function PrivacyActivityPage() {
     { page, page_size: PRIVACY_PAGE_SIZE, ...(category ? { category } : {}) },
     { query: { retry: false, placeholderData: keepPreviousData } },
   );
-  const result = query.data?.data;
+  const result = query.isError && !canShowLastKnownData(query) ? undefined : query.data?.data;
 
   return (
     <section>
@@ -122,6 +124,7 @@ export function PrivacyActivityPage() {
           ))}
         </select>
       </div>
+      {query.isError && result ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
 
       {query.isPending ? (
         <div className="mt-5">

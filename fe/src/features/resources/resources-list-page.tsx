@@ -3,6 +3,8 @@
 import Link from "next/link";
 
 import { Label } from "@/components/ui/label";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
   displayTitle,
   isPublicationAudience,
@@ -64,7 +66,7 @@ export function ResourcesListPage() {
     },
     { query: { retry: false } },
   );
-  const result = list.isError ? undefined : list.data?.data;
+  const result = safeQueryData(list)?.data;
 
   return (
     <section aria-labelledby="resources-heading">
@@ -144,9 +146,10 @@ export function ResourcesListPage() {
         ) : null}
       </div>
 
+      {list.isError && result ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
       {list.isPending ? (
         <ContentListSkeleton label="Loading Resources…" />
-      ) : list.isError ? (
+      ) : !result ? (
         <div className="mt-5">
           <ContentQueryError
             message={resourceErrorMessage(list.error, "Resources could not be loaded.")}

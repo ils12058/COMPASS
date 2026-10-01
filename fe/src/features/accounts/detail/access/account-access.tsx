@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
   ManagedActionFeedback,
   managedAccountError,
@@ -95,6 +97,9 @@ export function AccountAccess() {
   const overrides = useAccountsListCapabilityOverrides(account.id, {
     query: { retry: false },
   });
+  const assignedData = safeQueryData(assigned)?.data;
+  const effectiveData = safeQueryData(effective)?.data;
+  const overridesData = safeQueryData(overrides)?.data;
   const changeRole = useAccountsChangeRole();
   const assignDesignation = useAccountsAssignDesignation();
   const removeDesignation = useAccountsRemoveDesignation();
@@ -120,8 +125,8 @@ export function AccountAccess() {
     removeOverride.isPending;
   const eligibleDesignation = compatibleDesignation(account.role);
   const currentDesignations =
-    assigned.data?.data.designations ?? account.designations;
-  const capabilities = effective.data?.data.capabilities ?? [];
+    assignedData?.designations ?? account.designations;
+  const capabilities = effectiveData?.capabilities ?? [];
   const selectedOverrideCapability = overrideCapability
     ? capabilities.find((capability) => capability.code === overrideCapability)
     : undefined;
@@ -367,13 +372,14 @@ export function AccountAccess() {
       </section>
 
       <section aria-labelledby="designations-heading">
+        {assigned.isError && assignedData ? <RefreshFailureNotice onRetry={() => void assigned.refetch()} retrying={assigned.isFetching} /> : null}
         <h2
           id="designations-heading"
           className="font-heading text-xl font-semibold text-ink"
         >
           Institutional designations
         </h2>
-        {assigned.isError ? (
+        {assigned.isError && !assignedData ? (
           <div role="alert" className="mt-3 text-sm text-danger">
             {managedAccountError(
               assigned.error,
@@ -402,7 +408,7 @@ export function AccountAccess() {
               <p className="mt-3 text-sm text-muted">
                 You cannot change your own institutional designations here.
               </p>
-            ) : mayManageDesignations ? (
+            ) : mayManageDesignations && !assigned.isError ? (
               <div className="mt-4 flex flex-wrap gap-2">
                 {eligibleDesignation &&
                 !currentDesignations.includes(eligibleDesignation) ? (
@@ -446,6 +452,7 @@ export function AccountAccess() {
       </section>
 
       <section aria-labelledby="effective-heading">
+        {effective.isError && effectiveData ? <RefreshFailureNotice onRetry={() => void effective.refetch()} retrying={effective.isFetching} /> : null}
         <h2
           id="effective-heading"
           className="font-heading text-xl font-semibold text-ink"
@@ -462,7 +469,7 @@ export function AccountAccess() {
               <Skeleton key={index} className="h-12 w-full" />
             ))}
           </div>
-        ) : effective.isError ? (
+        ) : !effectiveData ? (
           <div role="alert" className="mt-4 text-sm text-danger">
             {managedAccountError(
               effective.error,
@@ -496,7 +503,7 @@ export function AccountAccess() {
                 </tr>
               </thead>
               <tbody>
-                {effective.data.data.capabilities.map((capability) => (
+                {effectiveData.capabilities.map((capability) => (
                   <tr
                     key={capability.code}
                     className="border-t border-border align-top"
@@ -561,6 +568,7 @@ export function AccountAccess() {
       </section>
 
       <section aria-labelledby="overrides-heading">
+        {overrides.isError && overridesData ? <RefreshFailureNotice onRetry={() => void overrides.refetch()} retrying={overrides.isFetching} /> : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2
             id="overrides-heading"
@@ -568,7 +576,7 @@ export function AccountAccess() {
           >
             Capability overrides
           </h2>
-          {!self && effective.isSuccess ? (
+          {!self && effective.isSuccess && !overrides.isError ? (
             <Button
               variant="secondary"
               onClick={() => {
@@ -591,7 +599,7 @@ export function AccountAccess() {
         ) : null}
         {overrides.isPending ? (
           <Skeleton className="mt-5 h-20 w-full" />
-        ) : overrides.isError ? (
+        ) : !overridesData ? (
           <div role="alert" className="mt-4 text-sm text-danger">
             {managedAccountError(
               overrides.error,
@@ -605,14 +613,14 @@ export function AccountAccess() {
               Retry
             </button>
           </div>
-        ) : overrides.data.data.overrides.length === 0 ? (
+        ) : overridesData.overrides.length === 0 ? (
           <p className="mt-5 border-t border-border py-5 text-sm text-muted">
             No capability overrides are recorded.
           </p>
         ) : (
           <div className="mt-5 divide-y divide-border border-y border-border">
-            {overrides.data.data.overrides.map((override) => {
-              const capability = effective.data?.data.capabilities.find(
+            {overridesData.overrides.map((override) => {
+              const capability = effectiveData?.capabilities.find(
                 (item) => item.code === override.capability,
               );
               const active = capability?.override?.active;
@@ -646,7 +654,7 @@ export function AccountAccess() {
                       .
                     </p>
                   </div>
-                  {!self ? (
+                  {!self && !overrides.isError && !effective.isError ? (
                     <Button
                       variant="quiet"
                       onClick={() =>
@@ -688,7 +696,7 @@ export function AccountAccess() {
                 required
                 value={overrideCapability}
                 onChange={(event) => {
-                  const code = effective.data?.data.capabilities.find(
+                  const code = effectiveData?.capabilities.find(
                     (item) => item.code === event.target.value,
                   )?.code;
                   action.setError(null);
@@ -696,7 +704,7 @@ export function AccountAccess() {
                 }}
               >
                 <option value="">Select capability</option>
-                {effective.data?.data.capabilities.map((capability) => (
+                {effectiveData?.capabilities.map((capability) => (
                   <option key={capability.code} value={capability.code}>
                     {capability.name}
                   </option>

@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { safeQueryData, canShowLastKnownData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
   AvailabilityPageHeading,
   AvailabilityQueryError,
@@ -64,6 +66,8 @@ export function MyAvailabilityPage() {
   const weeklyAction = useAvailabilityAction();
   const exceptionAction = useAvailabilityAction();
   const [previewRefresh, setPreviewRefresh] = useState(0);
+  const weeklyData = safeQueryData(weekly);
+  const exceptionData = safeQueryData(exceptions);
 
   if (!allowed) return <AvailabilityRouteUnavailable />;
 
@@ -120,9 +124,10 @@ export function MyAvailabilityPage() {
       <AvailabilityPageHeading title="My availability" />
 
       <div className="mt-9">
+        {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
         {weekly.isPending ? (
           <AvailabilitySectionSkeleton label="Loading weekly Availability…" />
-        ) : weekly.isError ? (
+        ) : !weeklyData ? (
           <AvailabilityQueryError
             error={weekly.error}
             fallback="Your weekly Availability could not be loaded."
@@ -130,8 +135,8 @@ export function MyAvailabilityPage() {
           />
         ) : (
           <WeeklyScheduleEditor
-            key={weekly.data.data.windows.map((window) => window.id).join("|")}
-            windows={weekly.data.data.windows}
+            key={weeklyData.data.windows.map((window) => window.id).join("|")}
+            windows={weeklyData.data.windows}
             canMutate={canMutate}
             pending={replaceWeekly.isPending}
             error={weeklyAction.error}
@@ -142,9 +147,10 @@ export function MyAvailabilityPage() {
       </div>
 
       <div className="mt-12 border-t border-border pt-10">
+        {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
         {exceptions.isPending ? (
           <AvailabilitySectionSkeleton label="Loading unavailability…" />
-        ) : exceptions.isError ? (
+        ) : !exceptionData ? (
           <AvailabilityQueryError
             error={exceptions.error}
             fallback="Your unavailability could not be loaded."
@@ -152,7 +158,7 @@ export function MyAvailabilityPage() {
           />
         ) : (
           <UnavailabilitySection
-            items={exceptions.data.data.items}
+            items={exceptionData.data.items}
             canCreate={canMutate}
             canRemove={canMutate}
             administrative={false}
@@ -194,6 +200,8 @@ export function OfficeAvailabilityPage() {
   const removeException = useAvailabilityRemoveOfficeException();
   const weeklyAction = useAvailabilityAction();
   const exceptionAction = useAvailabilityAction();
+  const weeklyData = safeQueryData(weekly);
+  const exceptionData = safeQueryData(exceptions);
 
   if (!allowed) return <AvailabilityRouteUnavailable management />;
 
@@ -250,9 +258,10 @@ export function OfficeAvailabilityPage() {
       />
 
       <div className="mt-9">
+        {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
         {weekly.isPending ? (
           <AvailabilitySectionSkeleton label="Loading Office weekly Availability…" />
-        ) : weekly.isError ? (
+        ) : !weeklyData ? (
           <AvailabilityQueryError
             error={weekly.error}
             fallback="Office weekly Availability could not be loaded."
@@ -260,8 +269,8 @@ export function OfficeAvailabilityPage() {
           />
         ) : (
           <WeeklyScheduleEditor
-            key={weekly.data.data.windows.map((window) => window.id).join("|")}
-            windows={weekly.data.data.windows}
+            key={weeklyData.data.windows.map((window) => window.id).join("|")}
+            windows={weeklyData.data.windows}
             canMutate
             pending={replaceWeekly.isPending}
             error={weeklyAction.error}
@@ -272,9 +281,10 @@ export function OfficeAvailabilityPage() {
       </div>
 
       <div className="mt-12 border-t border-border pt-10">
+        {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
         {exceptions.isPending ? (
           <AvailabilitySectionSkeleton label="Loading Office unavailability…" />
-        ) : exceptions.isError ? (
+        ) : !exceptionData ? (
           <AvailabilityQueryError
             error={exceptions.error}
             fallback="Office unavailability could not be loaded."
@@ -282,7 +292,7 @@ export function OfficeAvailabilityPage() {
           />
         ) : (
           <UnavailabilitySection
-            items={exceptions.data.data.items}
+            items={exceptionData.data.items}
             canCreate
             canRemove
             administrative
@@ -328,6 +338,8 @@ function ProviderWorkspace({
   const weeklyAction = useAvailabilityAction();
   const exceptionAction = useAvailabilityAction();
   const [previewRefresh, setPreviewRefresh] = useState(0);
+  const weeklyData = safeQueryData(weekly);
+  const exceptionData = safeQueryData(exceptions);
 
   async function saveWeekly(
     windows: WeeklyWindowRequest[],
@@ -420,9 +432,10 @@ function ProviderWorkspace({
       ) : null}
 
       <div className="mt-9">
+        {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
         {weekly.isPending ? (
           <AvailabilitySectionSkeleton label="Loading provider weekly Availability…" />
-        ) : weekly.isError ? (
+        ) : !weeklyData ? (
           <AvailabilityQueryError
             error={weekly.error}
             fallback="Provider weekly Availability could not be loaded."
@@ -430,8 +443,8 @@ function ProviderWorkspace({
           />
         ) : (
           <WeeklyScheduleEditor
-            key={weekly.data.data.windows.map((window) => window.id).join("|")}
-            windows={weekly.data.data.windows}
+            key={weeklyData.data.windows.map((window) => window.id).join("|")}
+            windows={weeklyData.data.windows}
             canMutate
             cleanupOnly={!operational}
             pending={replaceWeekly.isPending}
@@ -443,9 +456,10 @@ function ProviderWorkspace({
       </div>
 
       <div className="mt-12 border-t border-border pt-10">
+        {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
         {exceptions.isPending ? (
           <AvailabilitySectionSkeleton label="Loading provider unavailability…" />
-        ) : exceptions.isError ? (
+        ) : !exceptionData ? (
           <AvailabilityQueryError
             error={exceptions.error}
             fallback="Provider unavailability could not be loaded."
@@ -453,7 +467,7 @@ function ProviderWorkspace({
           />
         ) : (
           <UnavailabilitySection
-            items={exceptions.data.data.items}
+            items={exceptionData.data.items}
             canCreate={operational}
             canRemove
             administrative
@@ -505,6 +519,7 @@ export function ProviderAvailabilityPage() {
     },
     { query: { enabled: allowed, retry: false } },
   );
+  const providersData = safeQueryData(providers);
 
   useEffect(() => {
     if (searchValue === search) return;
@@ -556,9 +571,10 @@ export function ProviderAvailabilityPage() {
         />
       </div>
 
+      {providers.isError && canShowLastKnownData(providers) ? <RefreshFailureNotice onRetry={() => void providers.refetch()} retrying={providers.isFetching} /> : null}
       {providers.isPending ? (
         <AvailabilitySectionSkeleton label="Loading Counselors…" />
-      ) : providers.isError ? (
+      ) : !providersData ? (
         <div className="mt-6">
           <AvailabilityQueryError
             error={providers.error}
@@ -566,7 +582,7 @@ export function ProviderAvailabilityPage() {
             onRetry={() => void providers.refetch()}
           />
         </div>
-      ) : providers.data.data.items.length === 0 ? (
+      ) : providersData.data.items.length === 0 ? (
         <p className="mt-5 border-y border-border py-8 text-sm text-muted">
           {search
             ? "No Counselors match the current search."
@@ -598,7 +614,7 @@ export function ProviderAvailabilityPage() {
                 </tr>
               </thead>
               <tbody>
-                {providers.data.data.items.map((provider) => {
+                {providersData.data.items.map((provider) => {
                   const legacy =
                     provider.role === "GUIDANCE_SERVICES_STAFF";
                   return (
@@ -633,7 +649,7 @@ export function ProviderAvailabilityPage() {
             </table>
           </div>
 
-          {page > 1 || providers.data.data.has_next ? (
+          {page > 1 || providersData.data.has_next ? (
             <nav
               aria-label="Counselor pagination"
               className="mt-5 flex items-center justify-between gap-4"
@@ -646,11 +662,11 @@ export function ProviderAvailabilityPage() {
                 Previous
               </Button>
               <span className="text-sm text-muted">
-                Page {providers.data.data.page}
+                Page {providersData.data.page}
               </span>
               <Button
                 variant="secondary"
-                disabled={!providers.data.data.has_next}
+                disabled={!providersData.data.has_next}
                 onClick={() => movePage(page + 1)}
               >
                 Next

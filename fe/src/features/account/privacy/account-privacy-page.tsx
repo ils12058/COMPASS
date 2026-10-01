@@ -4,6 +4,8 @@ import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { PlainTextBlock } from "@/features/privacy-governance/plain-text-block";
@@ -91,7 +93,7 @@ export function AccountPrivacyPage() {
   const [pendingRevision, setPendingRevision] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const result = notices.data?.data;
+  const result = safeQueryData(notices)?.data;
 
   // The acknowledged state shown comes from the refreshed notice list, never
   // from an optimistic update.
@@ -144,6 +146,7 @@ export function AccountPrivacyPage() {
         ) : null}
 
         <div className="mt-4">
+          {notices.isError && result ? <RefreshFailureNotice onRetry={() => void notices.refetch()} retrying={notices.isFetching} /> : null}
           {notices.isPending ? (
             <div aria-busy="true" className="space-y-4 border-y border-border py-6">
               <Skeleton className="h-6 w-72 max-w-full" />
@@ -179,7 +182,7 @@ export function AccountPrivacyPage() {
                     key={notice.revision_id}
                     notice={notice}
                     pending={pendingRevision === notice.revision_id}
-                    disabled={pendingRevision !== null}
+                    disabled={pendingRevision !== null || notices.isError}
                     onAcknowledge={() => void acknowledgeNotice(notice)}
                   />
                 ))}

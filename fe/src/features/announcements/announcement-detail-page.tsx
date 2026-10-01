@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { announcementErrorCode, announcementErrorMessage, shouldHideAnnouncementData } from "@/features/announcements/announcement-errors";
+import { canShowLastKnownData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { AnnouncementLifecycleActions } from "@/features/announcements/announcement-lifecycle-actions";
 import { isAnnouncementExpired } from "@/features/announcements/announcement-presentation";
 import { displayTitle, publicationAudienceLabels } from "@/features/content/content-presentation";
@@ -63,7 +65,7 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
   );
 
   if (detail.isPending) return <ContentDetailSkeleton label="Loading Announcement…" />;
-  if (!detail.data || (detail.isError && shouldHideAnnouncementData(detail.error))) {
+  if (!detail.data || (detail.isError && !canShowLastKnownData(detail))) {
     return <AnnouncementUnavailable error={detail.error} onRetry={() => void detail.refetch()} />;
   }
 
@@ -83,7 +85,7 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
         title={title}
         backHref="/portal/announcements"
         backLabel="Announcements"
-        action={
+        action={!detail.isError ?
           <>
             {item.status !== AnnouncementStatusValue.ARCHIVED ? (
               <Link href={`/portal/announcements/${item.id}/edit`} className={contentSecondaryLinkClass}>
@@ -96,7 +98,7 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
               onCompleted={setNotice}
             />
           </>
-        }
+        : null}
       >
         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted">
           <PublicationStatusBadge status={item.status} />
@@ -121,10 +123,7 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
           </ContentNotice>
         ) : null}
         {detail.isError ? (
-          <ContentQueryError
-            message={`${announcementErrorMessage(detail.error, "The latest Announcement details could not be loaded.")} Showing the last loaded version.`}
-            onRetry={() => void detail.refetch()}
-          />
+          <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} />
         ) : detail.isFetching ? (
           <p role="status" className="text-xs text-muted">Refreshing Announcement…</p>
         ) : null}
