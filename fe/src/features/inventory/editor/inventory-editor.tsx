@@ -1,12 +1,13 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { BackgroundSection } from "@/features/inventory/editor/background-section";
 import { EducationSection } from "@/features/inventory/editor/education-section";
 import { FamilySection } from "@/features/inventory/editor/family-section";
@@ -57,33 +58,13 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
   const submit = useInventorySubmitMyCurrent();
   const pending = save.isPending || submit.isPending;
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  useUnsavedChangesGuard({
+    dirty,
+    message: "Discard your unsaved Individual Inventory changes?",
+  });
   const issues = getInventorySubmissionIssues(draft, activeProgramIds);
   const currentSectionIndex = inventorySections.findIndex((item) => item.id === section);
   const currentCorrection = inventory.correction_pending ? inventory.latest_correction : null;
-
-  useEffect(() => {
-    if (!dirty) return;
-    const warnBeforeLeave = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    const confirmLinkNavigation = (event: MouseEvent) => {
-      if (!(event.target instanceof Element)) return;
-      const anchor = event.target.closest("a[href]");
-      if (!(anchor instanceof HTMLAnchorElement)) return;
-      if (anchor.origin === window.location.origin && anchor.pathname === window.location.pathname) return;
-      if (!window.confirm("Discard your unsaved Individual Inventory changes?")) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    };
-    window.addEventListener("beforeunload", warnBeforeLeave);
-    document.addEventListener("click", confirmLinkNavigation, true);
-    return () => {
-      window.removeEventListener("beforeunload", warnBeforeLeave);
-      document.removeEventListener("click", confirmLinkNavigation, true);
-    };
-  }, [dirty]);
 
   function updateDraft(patch: Partial<InventoryPayload>) {
     setDraft((current) => ({ ...current, ...patch }));
@@ -163,12 +144,12 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
         <InventoryNotice title="Editing is no longer available" tone="warning" role="alert">
           Your Student lifecycle is no longer current. This annual record remains saved and readable, but it cannot be edited or submitted.
         </InventoryNotice>
-        <Link
+        <GuardedPortalLink
           href="/portal/inventory"
           className="inline-flex min-h-10 items-center justify-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           Return to Individual Inventory
-        </Link>
+        </GuardedPortalLink>
       </div>
     );
   }
