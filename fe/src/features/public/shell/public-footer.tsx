@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export function PublicFooter() {
@@ -5,14 +6,28 @@ export function PublicFooter() {
     <footer className="bg-brand-strong text-on-brand">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.4fr_1fr_auto]">
         <div>
-          <p className="font-heading text-xl font-bold tracking-[0.08em]">COMPASS</p>
+          <div className="flex items-center gap-3">
+            <Image src="/brand/compass-mark.svg" width={36} height={36} alt="" />
+            <p className="font-heading text-xl font-bold tracking-[0.08em]">COMPASS</p>
+          </div>
           <p className="mt-3 max-w-sm text-sm leading-6 text-on-brand/80">
             Counseling Office Management Platform and Student Services
           </p>
         </div>
-        <div className="text-sm leading-6 text-on-brand/80">
-          <p className="font-semibold text-on-brand">University of Camarines Norte</p>
-          <p>Guidance and Counseling Office</p>
+        <div className="flex items-center gap-3 self-start text-sm leading-6 text-on-brand/80">
+          {/* The maroon mark disappears on this background; the user-approved exception in
+              fe/AGENTS.md allows the solid white version here. */}
+          <Image
+            src="/brand/ucn-logo.png"
+            width={89}
+            height={82}
+            alt=""
+            className="h-10 w-auto shrink-0 brightness-0 invert"
+          />
+          <div>
+            <p className="font-semibold text-on-brand">University of Camarines Norte</p>
+            <p>Guidance and Counseling Office</p>
+          </div>
         </div>
         <nav aria-label="Footer navigation" className="flex flex-col items-start gap-1 text-sm">
           <Link className="min-h-9 py-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand" href="/announcements">

@@ -25,8 +25,8 @@ export function ResourceFilters({ category, kind }: { category?: ResourceCategor
   }
 
   return (
-    <div className="mb-8 grid gap-4 border-y border-border bg-surface-raised py-5 sm:grid-cols-2 sm:px-5">
-      <label className="grid gap-2 text-sm font-semibold text-ink">
+    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end">
+      <label className="grid gap-1.5 text-xs font-semibold text-muted sm:w-60">
         Category
         <select
           value={category ?? ""}
@@ -39,7 +39,7 @@ export function ResourceFilters({ category, kind }: { category?: ResourceCategor
           ))}
         </select>
       </label>
-      <label className="grid gap-2 text-sm font-semibold text-ink">
+      <label className="grid gap-1.5 text-xs font-semibold text-muted sm:w-60">
         Resource type
         <select
           value={kind ?? ""}

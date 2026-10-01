@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { PublicMaintenanceNotice } from "@/features/platform/platform-public-maintenance-notice";
 import { PortalNavigation } from "@/features/portal/components/portal-navigation";
@@ -39,6 +40,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
             </DialogContent>
           </Dialog>
           <div className="flex shrink-0 items-center gap-2">
+            <AccessibilityControl placement="header" />
             <NotificationBell />
             <PortalUserMenu />
           </div>

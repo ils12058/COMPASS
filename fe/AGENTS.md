@@ -84,6 +84,10 @@ Do not:
 
 Preserve the aspect ratio and visual integrity of brand assets.
 
+User-approved exception: on the maroon public footer, `public/brand/ucn-logo.png` may be rendered
+in solid white with a CSS filter (`brightness-0 invert`), because the maroon mark is not visible on
+that background. This does not permit recoloring brand marks anywhere else.
+
 Character illustrations are appropriate primarily for public-facing, onboarding, empty-state, or friendly informational contexts where they genuinely support the message. They should normally not appear inside dense administrative workspaces.
 
 ---
@@ -406,6 +410,16 @@ Canonical variables:
 --font-plus-jakarta
 --font-outfit
 ```
+
+Public-site script accent (user-approved):
+
+```text
+Caveat (variable)
+--font-caveat
+```
+
+Caveat is loaded only by the public route layout and used only for the public landing hero quote
+(Tailwind `font-script`). Do not use it in authenticated screens or for body copy.
 
 Do not add additional display fonts merely to make a screen look distinctive.
 
@@ -1082,6 +1096,10 @@ Do not make clickable `<div>` elements imitate controls.
 
 Do not hide focus indicators.
 
+Readers can enlarge text, add spacing, underline links, and reduce motion from the Accessibility
+control (`src/features/accessibility/`). Keep text and layout sizes in `rem` so the Text size
+setting scales them.
+
 ---
 
 # 43. Responsive behavior
@@ -1119,6 +1137,10 @@ Respect:
 ```text
 prefers-reduced-motion
 ```
+
+JavaScript-driven motion must use `useReducedMotion()` from
+`src/features/accessibility/use-accessibility-preferences.ts`, which combines the operating-system
+setting with the reader's COMPASS "Reduce motion" setting. CSS transitions are covered globally.
 
 Do not add bounce, spring, hover-lift, or continuous animation merely to make the interface feel modern.
 

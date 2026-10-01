@@ -8,9 +8,17 @@ import {
   useAnnouncementsListPublic,
   useAnnouncementsListVisible,
 } from "@/lib/api/generated/announcements/announcements";
-import { formatPublicDate } from "@/features/public/shared/presentation";
+import { cn } from "@/lib/utils/cn";
+import {
+  formatPublicDate,
+  markdownPreview,
+  publicDateParts,
+} from "@/features/public/shared/presentation";
 import { PublicPagination } from "@/features/public/shared/public-pagination";
-import { PublicListSkeleton, PublicSectionError } from "@/features/public/shared/public-state";
+import {
+  PublicAnnouncementSkeleton,
+  PublicSectionError,
+} from "@/features/public/shared/public-state";
 import {
   isSignedOutError,
   useReaderAudience,
@@ -37,7 +45,9 @@ export function AnnouncementList(props: AnnouncementListProps) {
   });
   const query = readsAccount ? account : publicQuery;
 
-  if (audience === "pending" || query.isPending) return <PublicListSkeleton rows={isPreview ? 3 : 5} />;
+  if (audience === "pending" || query.isPending) {
+    return <PublicAnnouncementSkeleton rows={isPreview ? 3 : 5} />;
+  }
 
   if (query.isError) {
     return (
@@ -63,27 +73,32 @@ export function AnnouncementList(props: AnnouncementListProps) {
   return (
     <div aria-busy={query.isFetching}>
       <ol className="divide-y divide-border border-y border-border">
-        {result.items.map((announcement) => (
-          <li key={announcement.id}>
-            <Link
-              href={`/announcements/${announcement.id}`}
-              className="group grid gap-2 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:grid-cols-[9rem_1fr_auto] sm:items-center sm:gap-5"
-            >
-              <time dateTime={announcement.published_at} className="text-sm text-muted">
-                {formatPublicDate(announcement.published_at)}
-              </time>
-              <span className="font-heading text-lg font-semibold leading-6 text-ink transition-colors group-hover:text-brand">
-                {announcement.title}
-              </span>
-              {announcement.is_pinned ? (
-                <span className="inline-flex w-fit items-center gap-1 text-xs font-semibold text-brand">
-                  <Pin size={14} aria-hidden="true" />
-                  Pinned
+        {result.items.map((announcement) => {
+          const preview = markdownPreview(announcement.body_markdown);
+
+          return (
+            <li key={announcement.id}>
+              <Link
+                href={`/announcements/${announcement.id}`}
+                className="group grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-x-4 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:grid-cols-[4rem_minmax(0,1fr)_auto] sm:gap-x-6"
+              >
+                <AnnouncementDate value={announcement.published_at} />
+                <span className="min-w-0">
+                  <span className="block font-heading text-lg font-semibold leading-6 text-ink transition-colors group-hover:text-brand">
+                    {announcement.title}
+                  </span>
+                  {preview ? (
+                    <span className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted">{preview}</span>
+                  ) : null}
+                  {announcement.is_pinned ? (
+                    <PinnedLabel className="mt-2 sm:hidden" />
+                  ) : null}
                 </span>
-              ) : null}
-            </Link>
-          </li>
-        ))}
+                {announcement.is_pinned ? <PinnedLabel className="hidden sm:inline-flex" /> : null}
+              </Link>
+            </li>
+          );
+        })}
       </ol>
 
       {query.isFetching && !query.isPending ? (
@@ -98,5 +113,43 @@ export function AnnouncementList(props: AnnouncementListProps) {
         />
       ) : null}
     </div>
+  );
+}
+
+// A calendar-style date read at a glance; screen readers hear the full date once.
+function AnnouncementDate({ value }: { value: string }) {
+  const parts = publicDateParts(value);
+
+  return (
+    <time
+      dateTime={value}
+      className="flex flex-col items-center rounded-md border border-border bg-surface-subtle py-1.5 text-center"
+    >
+      {parts ? (
+        <>
+          <span className="sr-only">{formatPublicDate(value)}</span>
+          <span aria-hidden="true" className="text-xs font-bold uppercase leading-4 tracking-[0.12em] text-brand">
+            {parts.month}
+          </span>
+          <span aria-hidden="true" className="font-heading text-2xl font-bold leading-7 text-ink">
+            {parts.day}
+          </span>
+          <span aria-hidden="true" className="text-xs leading-4 text-muted">
+            {parts.year}
+          </span>
+        </>
+      ) : (
+        <span className="px-1 text-xs text-muted">{formatPublicDate(value)}</span>
+      )}
+    </time>
+  );
+}
+
+function PinnedLabel({ className }: { className?: string }) {
+  return (
+    <span className={cn("inline-flex w-fit items-center gap-1 text-xs font-semibold text-brand", className)}>
+      <Pin size={14} aria-hidden="true" />
+      Pinned
+    </span>
   );
 }
