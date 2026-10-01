@@ -3,14 +3,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +31,7 @@ import {
   useOrganizationSetCollegeCounselor,
   useOrganizationSetStaffSupervisor,
 } from "@/lib/api/generated/organization/organization";
+import type { OrganizationPersonSummary } from "@/lib/api/generated/model";
 
 export function ResponsibilitiesPage() {
   const { user } = usePortalSession();
@@ -63,22 +58,40 @@ export function ResponsibilitiesPage() {
   const [collegeDialog, setCollegeDialog] = useState<{
     collegeId: string;
     label: string;
+    currentCounselor: OrganizationPersonSummary | null;
   } | null>(null);
   const [counselorId, setCounselorId] = useState("");
+  const [selectedCounselor, setSelectedCounselor] =
+    useState<OrganizationPersonSummary | null>(null);
+  const [collegeReview, setCollegeReview] = useState<{
+    collegeId: string;
+    collegeLabel: string;
+    currentCounselor: OrganizationPersonSummary | null;
+    newCounselor: OrganizationPersonSummary;
+  } | null>(null);
   const [collegeRemoval, setCollegeRemoval] = useState<{
     collegeId: string;
     label: string;
+    currentCounselor: OrganizationPersonSummary;
   } | null>(null);
 
   const [staffDialog, setStaffDialog] = useState<{
-    staffId?: string;
-    staffLabel?: string;
+    staff: OrganizationPersonSummary | null;
   } | null>(null);
   const [staffId, setStaffId] = useState("");
+  const [selectedStaff, setSelectedStaff] =
+    useState<OrganizationPersonSummary | null>(null);
   const [supervisorId, setSupervisorId] = useState("");
+  const [selectedSupervisor, setSelectedSupervisor] =
+    useState<OrganizationPersonSummary | null>(null);
+  const [staffReview, setStaffReview] = useState<{
+    staff: OrganizationPersonSummary;
+    currentSupervisor: OrganizationPersonSummary | null;
+    newSupervisor: OrganizationPersonSummary;
+  } | null>(null);
   const [staffRemoval, setStaffRemoval] = useState<{
-    staffId: string;
-    label: string;
+    staff: OrganizationPersonSummary;
+    supervisor: OrganizationPersonSummary;
   } | null>(null);
 
   const collegePending = setCollege.isPending || removeCollege.isPending;
@@ -99,31 +112,45 @@ export function ResponsibilitiesPage() {
   function openCollege(
     collegeId: string,
     label: string,
-    currentCounselorId = "",
+    currentCounselor: OrganizationPersonSummary | null = null,
   ) {
     action.setError(null);
     action.setNotice(null);
-    setCollegeDialog({ collegeId, label });
-    setCounselorId(currentCounselorId);
+    setCollegeDialog({ collegeId, label, currentCounselor });
+    setCounselorId(currentCounselor?.id ?? "");
+    setSelectedCounselor(currentCounselor);
   }
 
-  async function saveCollege() {
-    if (!collegeDialog || !counselorId) return;
-    const target = collegeDialog;
+  function reviewCollege() {
+    if (!collegeDialog || !selectedCounselor) return;
+    if (collegeDialog.currentCounselor?.id === selectedCounselor.id) return;
+    setCollegeReview({
+      collegeId: collegeDialog.collegeId,
+      collegeLabel: collegeDialog.label,
+      currentCounselor: collegeDialog.currentCounselor,
+      newCounselor: selectedCounselor,
+    });
+    setCollegeDialog(null);
+    action.setError(null);
+  }
+
+  async function confirmCollege() {
+    if (!collegeReview) return;
+    const target = collegeReview;
     const response = await action.run(
       () =>
         setCollege.mutateAsync({
           collegeId: target.collegeId,
-          data: { counselor_id: counselorId },
+          data: { counselor_id: target.newCounselor.id },
         }),
       "The responsible Counselor could not be assigned.",
       {
-        onStepUpRequired: () => setCollegeDialog(null),
-        onStepUpVerified: () => setCollegeDialog(target),
+        onStepUpRequired: () => setCollegeReview(null),
+        onStepUpVerified: () => setCollegeReview(target),
       },
     );
     if (!response) return;
-    setCollegeDialog(null);
+    setCollegeReview(null);
     action.setNotice("Responsible Counselor updated.");
     await refreshCollege();
   }
@@ -146,35 +173,54 @@ export function ResponsibilitiesPage() {
   }
 
   function openStaff(
-    existingStaffId?: string,
-    staffLabel?: string,
-    currentSupervisorId = "",
+    staff: OrganizationPersonSummary | null = null,
+    currentSupervisor: OrganizationPersonSummary | null = null,
   ) {
     action.setError(null);
     action.setNotice(null);
-    setStaffDialog({ staffId: existingStaffId, staffLabel });
-    setStaffId(existingStaffId ?? "");
-    setSupervisorId(currentSupervisorId);
+    setStaffDialog({ staff });
+    setStaffId(staff?.id ?? "");
+    setSelectedStaff(staff);
+    setSupervisorId(currentSupervisor?.id ?? "");
+    setSelectedSupervisor(currentSupervisor);
   }
 
-  async function saveStaff() {
-    if (!staffDialog || !staffId || !supervisorId) return;
-    const target = staffDialog;
+  function reviewStaff() {
+    if (!staffDialog || !selectedStaff || !selectedSupervisor) return;
+    const currentSupervisor =
+      supervisions.data?.data.items.find(
+        (item) => item.staff.id === selectedStaff.id,
+      )?.supervisor ?? null;
+    if (currentSupervisor?.id === selectedSupervisor.id) return;
+    setStaffReview({
+      staff: selectedStaff,
+      currentSupervisor,
+      newSupervisor: selectedSupervisor,
+    });
+    setStaffDialog(null);
+    action.setError(null);
+  }
+
+  async function confirmStaff() {
+    if (!staffReview) return;
+    const target = staffReview;
     const response = await action.run(
       () =>
         setSupervisor.mutateAsync({
-          staffId,
-          data: { supervisor_id: supervisorId },
+          staffId: target.staff.id,
+          data: { supervisor_id: target.newSupervisor.id },
         }),
       "The Staff supervisor could not be assigned.",
       {
-        onStepUpRequired: () => setStaffDialog(null),
-        onStepUpVerified: () => setStaffDialog(target),
+        onStepUpRequired: () => setStaffReview(null),
+        onStepUpVerified: () => setStaffReview(target),
       },
     );
     if (!response) return;
-    setStaffDialog(null);
-    action.setNotice("Staff supervisor updated.");
+    setStaffReview(null);
+    action.setNotice(
+      target.currentSupervisor ? "Staff supervisor changed." : "Staff supervisor assigned.",
+    );
     await refreshStaff();
   }
 
@@ -219,8 +265,10 @@ export function ResponsibilitiesPage() {
       </p>
       {action.notice &&
       !collegeDialog &&
+      !collegeReview &&
       !collegeRemoval &&
       !staffDialog &&
+      !staffReview &&
       !staffRemoval
         ? action.messages
         : null}
