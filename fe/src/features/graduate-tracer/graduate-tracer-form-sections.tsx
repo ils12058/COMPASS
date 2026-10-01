@@ -15,6 +15,7 @@ import {
   SelectField,
   TextAreaField,
   TextField,
+  type GraduateTracerErrorLookup,
 } from "@/features/graduate-tracer/graduate-tracer-form-fields";
 import { GraduateTracerSection } from "@/features/graduate-tracer/graduate-tracer-shared";
 import { institutionalDateInputValue } from "@/lib/institutional-time";
@@ -32,9 +33,11 @@ function toggle<T extends string>(values: readonly T[] | undefined, value: T): T
 export function GraduateTracerGeneralSection({
   draft,
   onChange,
+  errorFor,
 }: {
   draft: GraduateTracerFormDraft;
   onChange: GraduateTracerDraftChange;
+  errorFor: GraduateTracerErrorLookup;
 }) {
   return (
     <GraduateTracerSection id="graduate-tracer-general" title="A. General Information">
@@ -42,10 +45,10 @@ export function GraduateTracerGeneralSection({
         Changes here apply only to this Graduate Tracer response and do not update your COMPASS account profile.
       </p>
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField id="gts-name" label="Name" value={draft.name} onChange={(value) => onChange("name", value)} />
-        <TextField id="gts-email" label="E-mail Address" type="email" inputMode="email" value={draft.email} onChange={(value) => onChange("email", value)} />
-        <TextField id="gts-birth-date" label="Birthday" type="date" max={institutionalDateInputValue()} value={draft.birth_date ?? undefined} onChange={(value) => onChange("birth_date", value || null)} />
-        <TextField id="gts-province" label="Province" value={draft.province} onChange={(value) => onChange("province", value)} />
+        <TextField id="gts-name" label="Name" value={draft.name} required error={errorFor("gts-name")} onChange={(value) => onChange("name", value)} />
+        <TextField id="gts-email" label="E-mail Address" type="email" inputMode="email" value={draft.email} error={errorFor("gts-email")} onChange={(value) => onChange("email", value)} />
+        <TextField id="gts-birth-date" label="Birthday" type="date" max={institutionalDateInputValue()} value={draft.birth_date ?? undefined} required error={errorFor("gts-birth-date")} onChange={(value) => onChange("birth_date", value || null)} />
+        <TextField id="gts-province" label="Province" value={draft.province} required error={errorFor("gts-province")} onChange={(value) => onChange("province", value)} />
       </div>
       <TextAreaField id="gts-permanent-address" label="Permanent Address" value={draft.permanent_address} onChange={(value) => onChange("permanent_address", value)} />
       <div className="grid gap-5 sm:grid-cols-2">
@@ -53,10 +56,10 @@ export function GraduateTracerGeneralSection({
         <TextField id="gts-mobile" label="Mobile Number" type="tel" inputMode="tel" value={draft.mobile_number} onChange={(value) => onChange("mobile_number", value)} />
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
-        <SelectField id="gts-civil-status" label="Civil Status" value={draft.civil_status} options={CIVIL_STATUS_CHOICES} onChange={(value) => onChange("civil_status", value)} />
-        <SelectField id="gts-sex" label="Sex" value={draft.sex} options={SEX_CHOICES} onChange={(value) => onChange("sex", value)} />
-        <SelectField id="gts-region" label="Region of Origin" value={draft.region_of_origin} options={REGION_CHOICES} onChange={(value) => onChange("region_of_origin", value)} />
-        <SelectField id="gts-residence-location" label="Location of Residence" value={draft.residence_location} options={RESIDENCE_LOCATION_CHOICES} onChange={(value) => onChange("residence_location", value)} />
+        <SelectField id="gts-civil-status" label="Civil Status" value={draft.civil_status} options={CIVIL_STATUS_CHOICES} required error={errorFor("gts-civil-status")} onChange={(value) => onChange("civil_status", value)} />
+        <SelectField id="gts-sex" label="Sex" value={draft.sex} options={SEX_CHOICES} required error={errorFor("gts-sex")} onChange={(value) => onChange("sex", value)} />
+        <SelectField id="gts-region" label="Region of Origin" value={draft.region_of_origin} options={REGION_CHOICES} required error={errorFor("gts-region")} onChange={(value) => onChange("region_of_origin", value)} />
+        <SelectField id="gts-residence-location" label="Location of Residence" value={draft.residence_location} options={RESIDENCE_LOCATION_CHOICES} required error={errorFor("gts-residence-location")} onChange={(value) => onChange("residence_location", value)} />
       </div>
     </GraduateTracerSection>
   );
@@ -65,14 +68,16 @@ export function GraduateTracerGeneralSection({
 export function GraduateTracerEducationSection({
   draft,
   onChange,
+  errorFor,
 }: {
   draft: GraduateTracerFormDraft;
   onChange: GraduateTracerDraftChange;
+  errorFor: GraduateTracerErrorLookup;
 }) {
   return (
     <GraduateTracerSection id="graduate-tracer-education" title="B. Educational Background">
       <div>
-        <h3 className="font-semibold text-ink">Q12. Educational Attainment (Baccalaureate Degree only)</h3>
+        <h3 className="font-semibold text-ink">Q12. Educational Attainment (Baccalaureate Degree only) <span aria-hidden="true" className="text-danger">*</span></h3>
         <p className="mt-1 text-sm leading-6 text-muted">Add each baccalaureate degree you completed. At least one is required before submission.</p>
         {draft.education.length ? (
           <div className="mt-4 divide-y divide-border border-y border-border">
@@ -80,9 +85,9 @@ export function GraduateTracerEducationSection({
               <fieldset key={row.formKey} className="space-y-4 py-5">
                 <legend className="font-semibold text-ink">Degree {index + 1}</legend>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <TextField id={`degree-${index}-name`} label="Degree(s) & Specialization(s)" value={row.degree_and_specialization} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, degree_and_specialization: value } : item))} />
-                  <TextField id={`degree-${index}-institution`} label="College or University" value={row.college_or_university} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, college_or_university: value } : item))} />
-                  <TextField id={`degree-${index}-year`} label="Year Graduated" type="number" inputMode="numeric" min={1900} max={Number(institutionalDateInputValue().slice(0, 4))} step={1} value={row.year_graduated} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, year_graduated: value } : item))} />
+                  <TextField id={`degree-${index}-name`} label="Degree(s) & Specialization(s)" value={row.degree_and_specialization} required error={errorFor(`degree-${index}-name`)} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, degree_and_specialization: value } : item))} />
+                  <TextField id={`degree-${index}-institution`} label="College or University" value={row.college_or_university} required error={errorFor(`degree-${index}-institution`)} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, college_or_university: value } : item))} />
+                  <TextField id={`degree-${index}-year`} label="Year Graduated" type="number" inputMode="numeric" min={1900} max={Number(institutionalDateInputValue().slice(0, 4))} step={1} value={row.year_graduated} required error={errorFor(`degree-${index}-year`)} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, year_graduated: value } : item))} />
                   <TextField id={`degree-${index}-honors`} label="Honor(s) or Award(s) Received" value={row.honors_or_awards} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, honors_or_awards: value } : item))} />
                 </div>
                 <Button type="button" variant="secondary" onClick={() => onChange("education", draft.education.filter((_, itemIndex) => itemIndex !== index))}>Remove degree {index + 1}</Button>
@@ -90,7 +95,20 @@ export function GraduateTracerEducationSection({
             ))}
           </div>
         ) : <p className="mt-3 text-sm text-muted">No baccalaureate degree has been added.</p>}
-        <Button type="button" variant="secondary" className="mt-4" onClick={() => onChange("education", [...draft.education, { degree_and_specialization: "", college_or_university: "", year_graduated: "", honors_or_awards: "", formKey: globalThis.crypto.randomUUID() }])}>Add another degree</Button>
+        <>
+          <Button
+            id="gts-add-degree"
+            type="button"
+            variant="secondary"
+            className="mt-4"
+            aria-invalid={errorFor("gts-add-degree") ? true : undefined}
+            aria-describedby={errorFor("gts-add-degree") ? "gts-add-degree-error" : undefined}
+            onClick={() => onChange("education", [...draft.education, { degree_and_specialization: "", college_or_university: "", year_graduated: "", honors_or_awards: "", formKey: globalThis.crypto.randomUUID() }])}
+          >
+            Add another degree
+          </Button>
+          {errorFor("gts-add-degree") ? <p id="gts-add-degree-error" role="alert" className="mt-2 text-xs leading-5 text-danger">{errorFor("gts-add-degree")}</p> : null}
+        </>
       </div>
 
       <div className="border-t border-border pt-6">
@@ -102,8 +120,8 @@ export function GraduateTracerEducationSection({
               <fieldset key={row.formKey} className="space-y-4 py-5">
                 <legend className="font-semibold text-ink">Examination {index + 1}</legend>
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <TextField id={`exam-${index}-name`} label="Name of Examination" value={row.examination_name} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, examination_name: value } : item))} />
-                  <TextField id={`exam-${index}-date`} label="Date Taken" type="date" max={institutionalDateInputValue()} value={row.date_taken ?? ""} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, date_taken: value || null } : item))} />
+                  <TextField id={`exam-${index}-name`} label="Name of Examination" value={row.examination_name} required error={errorFor(`exam-${index}-name`)} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, examination_name: value } : item))} />
+                  <TextField id={`exam-${index}-date`} label="Date Taken" type="date" max={institutionalDateInputValue()} value={row.date_taken ?? ""} error={errorFor(`exam-${index}-date`)} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, date_taken: value || null } : item))} />
                   <TextField id={`exam-${index}-rating`} label="Rating" value={row.rating} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, rating: value } : item))} />
                 </div>
                 <Button type="button" variant="secondary" onClick={() => onChange("professional_exams", draft.professional_exams.filter((_, itemIndex) => itemIndex !== index))}>Remove examination {index + 1}</Button>
@@ -153,9 +171,11 @@ export function GraduateTracerEducationSection({
 export function GraduateTracerTrainingSection({
   draft,
   onChange,
+  errorFor,
 }: {
   draft: GraduateTracerFormDraft;
   onChange: GraduateTracerDraftChange;
+  errorFor: GraduateTracerErrorLookup;
 }) {
   return (
     <GraduateTracerSection id="graduate-tracer-training" title="C. Training(s) / Advance Studies Attended After College">
@@ -168,7 +188,7 @@ export function GraduateTracerTrainingSection({
               <fieldset key={row.formKey} className="space-y-4 py-5">
                 <legend className="font-semibold text-ink">Training / advance study {index + 1}</legend>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <TextField id={`training-${index}-title`} label="Title of Training or Advance Study" value={row.title} onChange={(value) => onChange("trainings", draft.trainings.map((item, itemIndex) => itemIndex === index ? { ...item, title: value } : item))} />
+                  <TextField id={`training-${index}-title`} label="Title of Training or Advance Study" value={row.title} required error={errorFor(`training-${index}-title`)} onChange={(value) => onChange("trainings", draft.trainings.map((item, itemIndex) => itemIndex === index ? { ...item, title: value } : item))} />
                   <TextField id={`training-${index}-duration`} label="Duration and Credits Earned" value={row.duration_and_credits} onChange={(value) => onChange("trainings", draft.trainings.map((item, itemIndex) => itemIndex === index ? { ...item, duration_and_credits: value } : item))} />
                   <TextField id={`training-${index}-institution`} label="Name of Training Institution / College / University" value={row.institution} onChange={(value) => onChange("trainings", draft.trainings.map((item, itemIndex) => itemIndex === index ? { ...item, institution: value } : item))} />
                 </div>
@@ -189,7 +209,7 @@ export function GraduateTracerTrainingSection({
         />
         {draft.advanced_study_reasons?.includes("OTHER") ? (
           <div className="mt-4 max-w-2xl">
-            <TextAreaField id="gts-advanced-study-other" label="Please specify" value={draft.advanced_study_other_reason} onChange={(value) => onChange("advanced_study_other_reason", value)} />
+            <TextAreaField id="gts-advanced-study-other" label="Please specify" value={draft.advanced_study_other_reason} required error={errorFor("gts-advanced-study-other")} onChange={(value) => onChange("advanced_study_other_reason", value)} />
           </div>
         ) : null}
       </div>
