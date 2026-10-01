@@ -6,6 +6,7 @@ import { useEffect, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { loginPathForPortal, safePortalDestination } from "@/features/auth/utils/redirect";
+import { UnsavedChangesProvider } from "@/features/form-safety/unsaved-changes-provider";
 import { PortalSessionProvider } from "@/features/portal/components/portal-session";
 import { PortalShell } from "@/features/portal/components/portal-shell";
 import { CompassApiError } from "@/lib/api/errors";
@@ -56,7 +57,9 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
 
   return (
     <PortalSessionProvider value={session.data.data}>
-      <PortalShell>{children}</PortalShell>
+      <UnsavedChangesProvider>
+        <PortalShell>{children}</PortalShell>
+      </UnsavedChangesProvider>
     </PortalSessionProvider>
   );
 }

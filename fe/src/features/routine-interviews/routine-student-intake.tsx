@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import {
   AlertDialog,
@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
@@ -277,41 +278,12 @@ export function RoutineStudentIntakeEditor({
   });
   const pending = save.isPending || submit.isPending;
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  useUnsavedChangesGuard({
+    dirty,
+    message: "Discard your unsaved Routine Interview Intake changes?",
+  });
   const selectedOther =
     draft.concerns?.includes(RoutineConcernValue.OTHER) ?? false;
-
-  useEffect(() => {
-    if (!dirty) return;
-    const warnBeforeLeave = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    const confirmLinkNavigation = (event: MouseEvent) => {
-      if (!(event.target instanceof Element)) return;
-      const anchor = event.target.closest("a[href]");
-      if (!(anchor instanceof HTMLAnchorElement)) return;
-      if (
-        anchor.origin === window.location.origin &&
-        anchor.pathname === window.location.pathname
-      ) {
-        return;
-      }
-      if (
-        !window.confirm(
-          "Discard your unsaved Routine Interview Intake changes?",
-        )
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    };
-    window.addEventListener("beforeunload", warnBeforeLeave);
-    document.addEventListener("click", confirmLinkNavigation, true);
-    return () => {
-      window.removeEventListener("beforeunload", warnBeforeLeave);
-      document.removeEventListener("click", confirmLinkNavigation, true);
-    };
-  }, [dirty]);
 
   function updateText(key: RoutineIntakeTextKey, value: string) {
     setDraft((current) => ({ ...current, [key]: value }));

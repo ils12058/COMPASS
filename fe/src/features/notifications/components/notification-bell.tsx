@@ -2,10 +2,10 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { reconcileNotificationAuth } from "@/features/notifications/notification-auth";
 import { useNotificationsGetUnreadCount } from "@/lib/api/generated/notifications/notifications";
 
@@ -23,7 +23,7 @@ export function NotificationBell() {
   }, [queryClient, unread.error]);
 
   return (
-    <Link
+    <GuardedPortalLink
       href="/portal/notifications"
       aria-label={label}
       aria-current={pathname === "/portal/notifications" ? "page" : undefined}
@@ -35,6 +35,6 @@ export function NotificationBell() {
           {count > 99 ? "99+" : count}
         </span>
       ) : null}
-    </Link>
+    </GuardedPortalLink>
   );
 }

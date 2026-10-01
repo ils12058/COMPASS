@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-
 import { Skeleton } from "@/components/ui/skeleton";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import {
   RoutineStudentIntakeEditor,
   RoutineStudentIntakeReadOnly,
@@ -48,9 +47,9 @@ function RoutineLifecycleNotice({ message }: { message: string | null }) {
 
 function RoutineBackLink() {
   return (
-    <Link href="/portal/routine-interviews" className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+    <GuardedPortalLink href="/portal/routine-interviews" className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
       Back to Routine Interviews
-    </Link>
+    </GuardedPortalLink>
   );
 }
 
@@ -181,7 +180,7 @@ function CounselorRoutineDetail({
       <RoutinePageHeading
         title="Routine Interview"
         description="Review the Student-authored Intake separately from the Counselor Evaluation."
-        action={<div className="flex flex-wrap gap-2">{workspaceHref ? <Link href={workspaceHref} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open Counseling workspace</Link> : null}<RoutineBackLink /></div>}
+        action={<div className="flex flex-wrap gap-2">{workspaceHref ? <GuardedPortalLink href={workspaceHref} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open Counseling workspace</GuardedPortalLink> : null}<RoutineBackLink /></div>}
       />
       <RoutineContextSummary
         personName={detail.inventory_context.full_name}
