@@ -23,7 +23,7 @@ export function getGraduateTracerAccess(user: UserSummary): GraduateTracerAccess
     isGraduatedStudent &&
     user.capabilities.includes("graduate_tracer.manage_self");
   const canViewOperational = user.capabilities.includes("graduate_tracer.view");
-  const hasStudentWorkspace = canViewSelf || canManageSelf;
+  const hasStudentWorkspace = canViewSelf;
   const hasOperationalWorkspace = canViewOperational;
 
   return {
