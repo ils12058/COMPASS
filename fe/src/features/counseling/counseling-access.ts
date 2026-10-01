@@ -27,7 +27,7 @@ export function getCounselingAccess(user: UserSummary): CounselingAccess {
     isCounselor && capabilities.has("shared_summaries.manage_assigned");
   const canViewOwnSummaries =
     isStudent && capabilities.has("shared_summaries.view_self");
-  const hasCounselorWorkspace = canViewAssigned || canManageAssigned;
+  const hasCounselorWorkspace = canViewAssigned;
   const hasStudentWorkspace = canViewOwnSummaries;
 
   return {
