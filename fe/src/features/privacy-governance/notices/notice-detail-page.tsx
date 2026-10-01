@@ -6,6 +6,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useUnsavedNavigation } from "@/features/form-safety/unsaved-changes-provider";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -123,10 +125,22 @@ function CreateRevisionForm({
   const queryClient = useQueryClient();
   const create = usePrivacyGovernanceCreateNoticeRevision();
   const action = usePrivacyAction(noticeFieldLabels);
-  const [values, setValues] = useState<NoticeRevisionValues>(() =>
+  const [baseline] = useState<NoticeRevisionValues>(() =>
     source ? { ...noticeRevisionValues(source), effectiveOn: "" } : emptyNoticeRevisionValues,
   );
+  const [values, setValues] = useState<NoticeRevisionValues>(baseline);
   const [audienceError, setAudienceError] = useState<string | null>(null);
+  const dirty = JSON.stringify(values) !== JSON.stringify(baseline);
+  const { confirmDiscard } = useUnsavedNavigation();
+
+  useUnsavedChangesGuard({
+    dirty,
+    message: "Discard your unsaved Privacy Notice revision changes?",
+  });
+
+  function cancel() {
+    if (!dirty || confirmDiscard()) onCancel();
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -183,7 +197,7 @@ function CreateRevisionForm({
         />
         <ActionMessages error={action.error} notice={action.notice} className="" />
         <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="secondary" disabled={create.isPending} onClick={onCancel}>
+          <Button variant="secondary" disabled={create.isPending} onClick={cancel}>
             Cancel
           </Button>
           <Button type="submit" disabled={create.isPending}>
