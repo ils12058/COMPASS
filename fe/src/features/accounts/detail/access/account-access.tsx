@@ -2,14 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import {
   Dialog,
   DialogContent,
@@ -185,6 +179,8 @@ export function AccountAccess() {
                 }),
               "Role could not be changed.",
               () => setConfirm(null),
+              undefined,
+              () => setConfirm(item),
             ),
           );
         case "assign":
@@ -197,6 +193,8 @@ export function AccountAccess() {
                 }),
               "Designation could not be assigned.",
               () => setConfirm(null),
+              undefined,
+              () => setConfirm(item),
             ),
           );
         case "removeDesignation":
@@ -209,6 +207,8 @@ export function AccountAccess() {
                 }),
               "Designation could not be removed.",
               () => setConfirm(null),
+              undefined,
+              () => setConfirm(item),
             ),
           );
         case "setOverride":
@@ -226,6 +226,8 @@ export function AccountAccess() {
                 }),
               "Override could not be set.",
               () => setConfirm(null),
+              undefined,
+              () => setConfirm(item),
             ),
           );
         case "removeOverride":
@@ -238,6 +240,8 @@ export function AccountAccess() {
                 }),
               "Override could not be removed.",
               () => setConfirm(null),
+              undefined,
+              () => setConfirm(item),
             ),
           );
       }
@@ -266,21 +270,21 @@ export function AccountAccess() {
     if (item.kind === "role")
       return [
         `Change ${name}'s role from ${roleLabels[account.role]} to ${roleLabels[item.role]}?`,
-        "This changes baseline COMPASS access and may invalidate existing authenticated access.",
+        `This changes the account's baseline COMPASS access. If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.${item.role === "STUDENT" && !account.student_lifecycle_status ? " COMPASS will also initialize the account as a Current Student according to the backend Student-role transition rule." : ""}`,
         "Change role",
         "Changing role…",
       ];
     if (item.kind === "assign")
       return [
         `Assign ${designationLabels[item.designation]} to ${name}?`,
-        "This designation changes the account's institutional authority and may invalidate current access.",
+        `This designation changes the account's institutional authority. If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.`,
         "Assign designation",
         "Assigning…",
       ];
     if (item.kind === "removeDesignation")
       return [
         `Remove ${designationLabels[item.designation]} from ${name}?`,
-        "This removes designation-based access and may invalidate current authenticated access.",
+        `This removes designation-based access. If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.`,
         "Remove designation",
         "Removing…",
       ];
@@ -304,14 +308,14 @@ export function AccountAccess() {
           item.expires_at
             ? `. Expires: ${formatInstitutionalDateTime(item.expires_at)} ${INSTITUTION_TIME_ZONE_LABEL}.`
             : ". No expiry set."
-        }${dependencyConsequence}`,
+        }${dependencyConsequence} If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.`,
         "Set override",
         "Setting override…",
       ];
     }
     return [
       `Remove ${name}'s ${capabilityName(item.capability)} override?`,
-      "Effective access will be recalculated from the account's role, designations, remaining overrides, and capability requirements.",
+      `Effective access will be recalculated from the account's role, designations, remaining overrides, and capability requirements. If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.`,
       "Remove override",
       "Removing override…",
     ];
@@ -674,7 +678,7 @@ export function AccountAccess() {
         )}
       </section>
 
-      <ManagedActionFeedback action={action} />
+      <ManagedActionFeedback action={action} showMessages={confirm === null} />
       <Dialog
         open={overrideOpen}
         onOpenChange={(open) => {
@@ -795,36 +799,25 @@ export function AccountAccess() {
           </form>
         </DialogContent>
       </Dialog>
-      <AlertDialog
+      <ConsequentialActionDialog
         open={confirm !== null}
+        title={confirmation?.[0] ?? "Review access change"}
+        confirmLabel={confirmation?.[2] ?? "Apply access change"}
+        pendingLabel={confirmation?.[3] ?? "Applying change…"}
+        pending={busy}
+        error={action.error}
+        variant={
+          confirm?.kind === "removeDesignation" || confirm?.kind === "removeOverride"
+            ? "danger"
+            : "primary"
+        }
         onOpenChange={(open) => {
-          if (!open && !busy) setConfirm(null);
+          if (!open) setConfirm(null);
         }}
+        onConfirm={() => void confirmAction()}
       >
-        <AlertDialogContent>
-          <AlertDialogTitle>{confirmation?.[0]}</AlertDialogTitle>
-          <AlertDialogDescription>{confirmation?.[1]}</AlertDialogDescription>
-          {action.error ? (
-            <p role="alert" className="mt-3 text-sm text-danger">
-              {action.error}
-            </p>
-          ) : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={busy}>
-                Cancel
-              </Button>
-            </AlertDialogCancel>
-            <Button
-              variant={confirm?.kind === "removeDesignation" ? "danger" : "primary"}
-              disabled={busy}
-              onClick={() => void confirmAction()}
-            >
-              {busy ? confirmation?.[3] : confirmation?.[2]}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p>{confirmation?.[1]}</p>
+      </ConsequentialActionDialog>
     </div>
   );
 }
