@@ -51,6 +51,9 @@ export function ConsequentialActionDialog({
         onEscapeKeyDown={(event) => {
           if (pending) event.preventDefault();
         }}
+        onPointerDownOutside={(event) => {
+          if (pending) event.preventDefault();
+        }}
       >
         <AlertDialogTitle className="break-words">{title}</AlertDialogTitle>
         <AlertDialogDescription asChild>
