@@ -156,6 +156,9 @@ export function UnsavedChangesProvider({
     [confirmNavigation],
   );
 
+  // App Router exposes no public beforePopState hook. Keep only a COMPASS-owned
+  // monotonic index beside Next's existing history state so a cancelled traversal
+  // can reverse the exact delta without creating duplicate history entries.
   useEffect(() => {
     const browserHistory = window.history;
     const originalPushState = browserHistory.pushState;
