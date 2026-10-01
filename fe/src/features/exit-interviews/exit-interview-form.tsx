@@ -28,6 +28,7 @@ import {
 } from "@/features/exit-interviews/exit-interview-presentation";
 import {
   ExitInterviewFormSections,
+  exitRatingRowId,
   type ExitInterviewTextFieldKey,
 } from "@/features/exit-interviews/exit-interview-form-sections";
 import {
@@ -51,6 +52,12 @@ function toggle<T extends string>(values: readonly T[], value: T): T[] {
     : [...values, value];
 }
 
+function isValidExtraTerms(value: string): boolean {
+  if (!value.trim()) return false;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 1;
+}
+
 export function ExitInterviewForm({
   detail,
   onRefreshRecord,
@@ -67,6 +74,8 @@ export function ExitInterviewForm({
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [submissionUncertain, setSubmissionUncertain] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
+  const [extraTermsError, setExtraTermsError] = useState<string>();
+  const [invalidRatingTargetId, setInvalidRatingTargetId] = useState<string>();
   const isDirty = JSON.stringify(form) !== JSON.stringify(savedForm);
 
   useUnsavedChangesGuard({
@@ -87,6 +96,9 @@ export function ExitInterviewForm({
 
   function updateText(field: ExitInterviewTextFieldKey, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
+    if (field === "extraTermsCount" && isValidExtraTerms(value)) {
+      setExtraTermsError(undefined);
+    }
     setSaveMessage("");
   }
 
@@ -99,6 +111,8 @@ export function ExitInterviewForm({
       ...current,
       [section]: { ...current[section], [code]: value },
     }));
+    const targetId = exitRatingRowId(section === "selfRatings" ? "self" : "college", code);
+    if (invalidRatingTargetId === targetId) setInvalidRatingTargetId(undefined);
     setSaveMessage("");
   }
 
@@ -143,6 +157,7 @@ export function ExitInterviewForm({
         ? { extraTermsCount: "", delayReasons: [], delayOther: "" }
         : {}),
     }));
+    if (value !== ProgramCompletionValue.WITH_SOME_DELAY) setExtraTermsError(undefined);
     setSaveMessage("");
   }
 
@@ -166,6 +181,17 @@ export function ExitInterviewForm({
   async function saveDraft() {
     setSaveError(undefined);
     setSaveMessage("");
+    if (
+      form.programCompletion === ProgramCompletionValue.WITH_SOME_DELAY &&
+      !isValidExtraTerms(form.extraTermsCount)
+    ) {
+      setExtraTermsError("Enter the number of extra terms as a positive whole number.");
+      const target = document.getElementById("exit-extra-terms");
+      target?.scrollIntoView({ block: "center" });
+      target?.focus({ preventScroll: true });
+      return;
+    }
+    setExtraTermsError(undefined);
     try {
       const result = await save.mutateAsync(exitInterviewDraftPayload(form));
       queryClient.setQueryData(getExitInterviewsGetMineQueryKey(detail.id), result);
@@ -214,6 +240,8 @@ export function ExitInterviewForm({
     setSubmitError(undefined);
     setSaveError(undefined);
     setSaveMessage("");
+    setExtraTermsError(undefined);
+    setInvalidRatingTargetId(undefined);
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -226,9 +254,35 @@ export function ExitInterviewForm({
   const selfAnswered = answeredCount(SELF_ASSESSMENT_ITEMS, form.selfRatings);
   const collegeItems = COLLEGE_FEEDBACK_CATEGORIES.flatMap((category) => category.items);
   const collegeAnswered = answeredCount(collegeItems, form.collegeRatings);
+  const missingRatings = [
+    ...SELF_ASSESSMENT_ITEMS
+      .filter((item) => !form.selfRatings[item.code])
+      .map((item) => ({
+        sectionLabel: "Self-Assessment",
+        label: item.label,
+        targetId: exitRatingRowId("self", item.code),
+      })),
+    ...COLLEGE_FEEDBACK_CATEGORIES.flatMap((category) =>
+      category.items
+        .filter((item) => !form.collegeRatings[item.code])
+        .map((item) => ({
+          sectionLabel: `College Feedback — ${category.label}`,
+          label: item.label,
+          targetId: exitRatingRowId("college", item.code),
+        })),
+    ),
+  ];
   const allRatingsComplete =
     selfAnswered === SELF_ASSESSMENT_ITEMS.length &&
     collegeAnswered === collegeItems.length;
+
+  function recoverMissingRating(targetId: string) {
+    setInvalidRatingTargetId(targetId);
+    const row = document.getElementById(targetId);
+    row?.scrollIntoView({ block: "center" });
+    row?.querySelector<HTMLInputElement>('input[type="radio"]')?.focus({ preventScroll: true });
+  }
+
   const pending = save.isPending || submit.isPending;
 
 
@@ -266,6 +320,8 @@ export function ExitInterviewForm({
             setSaveMessage("");
           }}
           onRatingChange={updateRating}
+          extraTermsError={extraTermsError}
+          invalidRatingTargetId={invalidRatingTargetId}
         />
 
         <div className="border-t border-border py-6">
@@ -273,6 +329,27 @@ export function ExitInterviewForm({
             <p>Self-Assessment: {selfAnswered} of {SELF_ASSESSMENT_ITEMS.length} answered</p>
             <p>College Feedback: {collegeAnswered} of {collegeItems.length} answered</p>
           </div>
+          {missingRatings.length ? (
+            <details className="mt-3 max-w-3xl border-l-4 border-warning bg-warning/5 px-4 py-3">
+              <summary className="cursor-pointer text-sm font-semibold text-ink">
+                {missingRatings.length} required {missingRatings.length === 1 ? "rating still needs" : "ratings still need"} a response.
+              </summary>
+              <ul className="mt-2 space-y-1">
+                {missingRatings.map((item) => (
+                  <li key={item.targetId}>
+                    <Button
+                      type="button"
+                      variant="quiet"
+                      className="h-auto min-h-8 whitespace-normal px-1 py-1 text-left"
+                      onClick={() => recoverMissingRating(item.targetId)}
+                    >
+                      {item.sectionLabel} — {item.label}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
           {isDirty ? <p className="mt-3 text-sm text-warning">Unsaved changes. Save your draft before submitting.</p> : null}
           {saveMessage ? <p role="status" className="mt-3 text-sm text-success">{saveMessage}</p> : null}
           {saveError ? (
