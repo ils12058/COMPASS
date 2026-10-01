@@ -101,7 +101,6 @@ export function GraduateTracerEducationSection({
             type="button"
             variant="secondary"
             className="mt-4"
-            aria-invalid={errorFor("gts-add-degree") ? true : undefined}
             aria-describedby={errorFor("gts-add-degree") ? "gts-add-degree-error" : undefined}
             onClick={() => onChange("education", [...draft.education, { degree_and_specialization: "", college_or_university: "", year_graduated: "", honors_or_awards: "", formKey: globalThis.crypto.randomUUID() }])}
           >
