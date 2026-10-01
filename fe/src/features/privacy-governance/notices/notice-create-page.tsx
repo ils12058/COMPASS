@@ -1,11 +1,12 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
@@ -40,6 +41,15 @@ export function NoticeCreatePage() {
   const [name, setName] = useState("");
   const [revision, setRevision] = useState<NoticeRevisionValues>(emptyNoticeRevisionValues);
   const [audienceError, setAudienceError] = useState<string | null>(null);
+  const dirty =
+    code !== "" ||
+    name !== "" ||
+    JSON.stringify(revision) !== JSON.stringify(emptyNoticeRevisionValues);
+
+  useUnsavedChangesGuard({
+    dirty,
+    message: "Discard your unsaved Privacy Notice?",
+  });
 
   if (!canManage) {
     return (
@@ -130,9 +140,9 @@ export function NoticeCreatePage() {
         <ActionMessages error={action.error} notice={action.notice} />
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-6">
-          <Link href="/portal/privacy/notices" className={secondaryLinkClass}>
+          <GuardedPortalLink href="/portal/privacy/notices" className={secondaryLinkClass}>
             Cancel
-          </Link>
+          </GuardedPortalLink>
           <Button type="submit" disabled={create.isPending}>
             {create.isPending ? "Creating…" : "Create privacy notice"}
           </Button>

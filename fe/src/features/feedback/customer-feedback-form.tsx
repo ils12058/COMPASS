@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -126,6 +127,29 @@ export function CustomerFeedbackForm() {
     requiredService && !draft.services.includes(requiredService)
       ? [requiredService, ...draft.services]
       : draft.services;
+  const profileData = profile.data?.data;
+  const initialRespondent = {
+    name: profileData?.full_name ?? "",
+    address: profileData?.current_address.trim()
+      ? profileData.current_address
+      : profileData?.permanent_address ?? "",
+    mobile: profileData?.contact_number ?? "",
+  };
+  const respondent = {
+    name: respondentOverrides.name ?? initialRespondent.name,
+    address: respondentOverrides.address ?? initialRespondent.address,
+    mobile: respondentOverrides.mobile ?? initialRespondent.mobile,
+  };
+  const responseDirty = JSON.stringify(draft) !== JSON.stringify(emptyDraft);
+  const respondentDirty =
+    respondent.name !== initialRespondent.name ||
+    respondent.address !== initialRespondent.address ||
+    respondent.mobile !== initialRespondent.mobile;
+
+  useUnsavedChangesGuard({
+    dirty: !success && (responseDirty || respondentDirty),
+    message: "Discard your unfinished Customer Feedback response?",
+  });
 
   if (!access.canSubmitCustomerFeedback) {
     return <FeedbackAccessUnavailable title="Customer Feedback unavailable" />;
@@ -179,12 +203,6 @@ export function CustomerFeedbackForm() {
   const submissionOpportunityId = opportunityData.id;
   const requiredServiceLabel = opportunityData.service_label;
 
-  const profileData = profile.data?.data;
-  const respondent = {
-    name: respondentOverrides.name ?? profileData?.full_name ?? "",
-    address: respondentOverrides.address ?? (profileData?.current_address.trim() ? profileData.current_address : profileData?.permanent_address ?? ""),
-    mobile: respondentOverrides.mobile ?? profileData?.contact_number ?? "",
-  };
 
   function changeService(value: CustomerFeedbackServiceValue, checked: boolean) {
     setDraft((current) => {
@@ -264,7 +282,7 @@ export function CustomerFeedbackForm() {
         <div role="status" className="border-y border-success/30 py-8">
           <h1 id="customer-feedback-success" className="font-heading text-3xl font-bold text-ink">Customer Feedback submitted</h1>
           <p className="mt-3 text-sm leading-6 text-muted">Your response was received{success.submittedAt ? <> on <FeedbackDate value={success.submittedAt} /></> : null}.</p>
-          <Link href="/portal/feedback" className="mt-6 inline-flex min-h-10 items-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Feedback</Link>
+          <GuardedPortalLink href="/portal/feedback" className="mt-6 inline-flex min-h-10 items-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Feedback</GuardedPortalLink>
         </div>
       </section>
     );
@@ -364,7 +382,7 @@ export function CustomerFeedbackForm() {
         {create.isPending ? <p role="status" aria-live="polite" className="mb-4 text-sm text-muted">Submitting Customer Feedback…</p> : null}
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
           <Button type="submit" disabled={create.isPending || isUncertain}>{create.isPending ? "Submitting…" : "Review and submit"}</Button>
-          <Link href="/portal/feedback" className="inline-flex min-h-10 items-center rounded-md px-3 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Feedback</Link>
+          <GuardedPortalLink href="/portal/feedback" className="inline-flex min-h-10 items-center rounded-md px-3 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Feedback</GuardedPortalLink>
         </div>
       </form>
 
