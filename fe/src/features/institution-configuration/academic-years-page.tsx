@@ -3,8 +3,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -294,51 +294,30 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
         </>
       </Dialog>
 
-      <AlertDialog
+      <ConsequentialActionDialog
         open={confirmOpen}
+        title={`Set ${confirmYear?.label ?? "this Academic Year"} as the current Academic Year?`}
+        confirmLabel="Set as current"
+        pendingLabel="Setting as current…"
+        pending={setCurrentYear.isPending}
+        confirmDisabled={!confirmYear}
+        error={action.error}
         onOpenChange={(open) => {
-          if (setCurrentYear.isPending) return;
           setConfirmOpen(open);
           if (!open) {
             setConfirmYear(null);
             action.resetFeedback();
           }
         }}
+        onConfirm={() => void confirmSetCurrent()}
       >
-        <AlertDialogContent>
-          <AlertDialogTitle className="break-words">
-            Set {confirmYear?.label ?? "this Academic Year"} as the current Academic Year?
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            New annual workflows will resolve against this Academic Year. Existing records remain associated with the Academic Year in which they were created. Students may need to complete a new current-year Individual Inventory before workflows that require it can continue.
-          </AlertDialogDescription>
-          <InstitutionActionFeedback
-            error={action.error}
-            notice={action.notice}
-          />
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button
-                variant="secondary"
-                disabled={setCurrentYear.isPending}
-                onClick={() => {
-                  setConfirmOpen(false);
-                  setConfirmYear(null);
-                  action.resetFeedback();
-                }}
-              >
-                Cancel
-              </Button>
-            </AlertDialogCancel>
-            <Button
-              disabled={!confirmYear || setCurrentYear.isPending}
-              onClick={() => void confirmSetCurrent()}
-            >
-              {setCurrentYear.isPending ? "Setting as current…" : "Set as current"}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p>
+          New annual workflows will resolve against this Academic Year.
+          Existing records remain associated with the Academic Year in which
+          they were created. Students may need to complete a new current-year
+          Individual Inventory before workflows that require it can continue.
+        </p>
+      </ConsequentialActionDialog>
 
       {action.stepUpDialog}
     </>
