@@ -11,7 +11,7 @@ export function GoodMoralWorkspacePage({ filters }: { filters: GoodMoralOperatio
   const { user } = usePortalSession();
   const access: GoodMoralAccess = getGoodMoralAccess(user);
 
-  if (access.isStudent) {
+  if (access.isStudent && access.hasStudentWorkspace) {
     const requestHref = access.canRequestSelf && user.student_lifecycle_status === "CURRENT"
       ? "/portal/good-moral/request"
       : access.canRequestSelf && user.student_lifecycle_status === "GRADUATED"
@@ -32,10 +32,7 @@ export function GoodMoralWorkspacePage({ filters }: { filters: GoodMoralOperatio
     );
   }
 
-  if (access.isCounselor) {
-    if (!access.canViewOperational) {
-      return <GoodMoralUnavailable message="Your Counselor account does not have Good Moral request-view access." />;
-    }
+  if (access.isCounselor && access.hasOperationalWorkspace) {
     return <GoodMoralOperationalList filters={filters} />;
   }
 
