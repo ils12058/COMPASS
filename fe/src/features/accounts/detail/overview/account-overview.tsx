@@ -2,14 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import {
   Dialog,
   DialogContent,
@@ -147,6 +141,8 @@ export function AccountOverview() {
         ? "Student lifecycle could not be updated."
         : "Account status could not be changed.",
       () => setConfirm(null),
+      undefined,
+      () => setConfirm(kind),
     );
     if (!response) return;
     setConfirm(null);
@@ -345,7 +341,7 @@ export function AccountOverview() {
         </section>
       ) : null}
 
-      <ManagedActionFeedback action={action} />
+      <ManagedActionFeedback action={action} showMessages={confirm === null} />
       <Dialog
         open={identityOpen}
         onOpenChange={(open) => {
@@ -466,60 +462,47 @@ export function AccountOverview() {
           </form>
         </DialogContent>
       </Dialog>
-      <AlertDialog
+      <ConsequentialActionDialog
         open={confirm !== null}
+        title={
+          confirm === "disable"
+            ? `Disable ${accountName(account)}'s account?`
+            : confirm === "enable"
+              ? `Enable ${accountName(account)}'s account?`
+              : `Update ${accountName(account)}'s Student lifecycle?`
+        }
+        confirmLabel={
+          confirm === "disable"
+            ? "Disable account"
+            : confirm === "enable"
+              ? "Enable account"
+              : "Update lifecycle"
+        }
+        pendingLabel={
+          confirm === "disable"
+            ? "Disabling…"
+            : confirm === "enable"
+              ? "Enabling…"
+              : "Updating lifecycle…"
+        }
+        pending={busy}
+        error={action.error}
+        variant={confirm === "disable" ? "danger" : "primary"}
         onOpenChange={(open) => {
-          if (!open && !busy) setConfirm(null);
+          if (!open) setConfirm(null);
         }}
+        onConfirm={() => void confirmAction()}
       >
-        <AlertDialogContent>
-          <AlertDialogTitle>
-            {confirm === "disable"
-              ? `Disable ${accountName(account)}'s account?`
-              : confirm === "enable"
-                ? `Enable ${accountName(account)}'s account?`
-                : `Update ${accountName(account)}'s Student lifecycle?`}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {confirm === "disable"
-              ? "The account will no longer be able to sign in. Existing authentication state will be invalidated."
-              : confirm === "enable"
-                ? "This restores account access. Password, email verification, and MFA states remain separate."
-                : lifecycle === StudentLifecycleCode.CURRENT
-                  ? "Change the Student lifecycle to Current. Current-student workflows such as Individual Inventory, Appointment booking, and Routine Interviews become available again. Sign-in and existing records are not affected."
-                  : `Change the Student lifecycle to ${lifecycle ? lifecycleLabels[lifecycle] : "the selected status"}. The Student will no longer be able to start or update current-student workflows such as Individual Inventory, Appointment booking, Routine Interviews, and Exit Interviews. Sign-in and historical records remain available.`}
-          </AlertDialogDescription>
-          {action.error ? (
-            <p role="alert" className="mt-3 text-sm text-danger">
-              {action.error}
-            </p>
-          ) : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={busy}>
-                Cancel
-              </Button>
-            </AlertDialogCancel>
-            <Button
-              variant={confirm === "disable" ? "danger" : "primary"}
-              disabled={busy}
-              onClick={() => void confirmAction()}
-            >
-              {busy
-                ? confirm === "disable"
-                  ? "Disabling…"
-                  : confirm === "enable"
-                    ? "Enabling…"
-                    : "Updating lifecycle…"
-                : confirm === "disable"
-                  ? "Disable account"
-                  : confirm === "enable"
-                    ? "Enable account"
-                    : "Update lifecycle"}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p>
+          {confirm === "disable"
+            ? "The account will no longer be able to sign in. Existing authentication state will be invalidated."
+            : confirm === "enable"
+              ? "This restores account access. Password, email verification, and MFA states remain separate."
+              : lifecycle === StudentLifecycleCode.CURRENT
+                ? "Change the Student lifecycle to Current. Current-student workflows such as Individual Inventory, Appointment booking, and Routine Interviews become available again. Sign-in and existing records are not affected."
+                : `Change the Student lifecycle to ${lifecycle ? lifecycleLabels[lifecycle] : "the selected status"}. The Student will no longer be able to start or update current-student workflows such as Individual Inventory, Appointment booking, Routine Interviews, and Exit Interviews. Sign-in and historical records remain available.`}
+        </p>
+      </ConsequentialActionDialog>
     </div>
   );
 }
