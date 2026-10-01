@@ -38,10 +38,6 @@ export function getRoutineInterviewAccess(
     canManageSelf,
     canViewAssigned,
     canManageAssigned,
-    hasWorkspace:
-      canViewSelf ||
-      canManageSelf ||
-      canViewAssigned ||
-      canManageAssigned,
+    hasWorkspace: canViewSelf || canViewAssigned,
   };
 }
