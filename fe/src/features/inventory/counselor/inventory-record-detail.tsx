@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -188,49 +188,43 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
         />
       </div>
 
-      <AlertDialog open={reopenOpen} onOpenChange={(open) => {
-        if (reopen.isPending) return;
-        setReopenOpen(open);
-      }}>
-        <AlertDialogContent>
-          <AlertDialogTitle>Reopen {inventory.student.display_name}&apos;s Individual Inventory for correction?</AlertDialogTitle>
-          <AlertDialogDescription>
-            The Student will be able to edit and resubmit this current-year Inventory. While it is reopened, its contents will no longer be available for Counselor review until the Student resubmits it.
-          </AlertDialogDescription>
-          <div className="mt-5">
-            <Label htmlFor="inventory-reopen-instructions">
-              Correction instructions <span aria-hidden="true" className="text-danger">*</span>
-            </Label>
-            <p id="inventory-reopen-help" className="mt-1 text-xs leading-5 text-muted">
-              This message will be visible to the Student.
-            </p>
-            <Textarea
-              id="inventory-reopen-instructions"
-              value={reason}
-              maxLength={1000}
-              aria-required="true"
-              aria-describedby="inventory-reopen-help inventory-reopen-count"
-              rows={5}
-              onChange={(event) => setReason(event.target.value)}
-            />
-            <p id="inventory-reopen-count" className="mt-1 text-right text-xs text-muted">
-              {reason.length} / 1000 characters
-            </p>
-          </div>
-          {reopenError ? <div className="mt-4"><InventoryNotice tone="danger" role="alert">{reopenError}</InventoryNotice></div> : null}
-          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={reopen.isPending}>Cancel</Button>
-            </AlertDialogCancel>
-            <Button
-              disabled={!reason.trim() || reason.length > 1000 || reopen.isPending}
-              onClick={() => void confirmReopen()}
-            >
-              {reopen.isPending ? "Reopening…" : "Reopen for correction"}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConsequentialActionDialog
+        open={reopenOpen}
+        title={`Reopen ${inventory.student.display_name}'s Individual Inventory for correction?`}
+        confirmLabel="Reopen for correction"
+        pendingLabel="Reopening…"
+        pending={reopen.isPending}
+        confirmDisabled={!reason.trim() || reason.length > 1000}
+        error={reopenError}
+        onOpenChange={setReopenOpen}
+        onConfirm={() => void confirmReopen()}
+      >
+        <p>
+          The Student will be able to edit and resubmit this current-year
+          Inventory. While it is reopened, its contents will no longer be
+          available for Counselor review until the Student resubmits it.
+        </p>
+        <div>
+          <Label htmlFor="inventory-reopen-instructions">
+            Correction instructions <span aria-hidden="true" className="text-danger">*</span>
+          </Label>
+          <p id="inventory-reopen-help" className="mt-1 text-xs leading-5 text-muted">
+            This message will be visible to the Student.
+          </p>
+          <Textarea
+            id="inventory-reopen-instructions"
+            value={reason}
+            maxLength={1000}
+            aria-required="true"
+            aria-describedby="inventory-reopen-help inventory-reopen-count"
+            rows={5}
+            onChange={(event) => setReason(event.target.value)}
+          />
+          <p id="inventory-reopen-count" className="mt-1 text-right text-xs text-muted">
+            {reason.length} / 1000 characters
+          </p>
+        </div>
+      </ConsequentialActionDialog>
     </section>
   );
 }
