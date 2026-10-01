@@ -41,6 +41,7 @@ export function useManagedAction() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [afterStepUp, setAfterStepUp] = useState<(() => void) | null>(null);
 
   const run = useCallback(
     async <T,>(
@@ -48,6 +49,7 @@ export function useManagedAction() {
       fallback: string,
       onStepUpRequired?: () => void,
       onFailure?: (error: unknown) => void,
+      onStepUpVerified?: () => void,
     ): Promise<T | undefined> => {
       setError(null);
       setNotice(null);
@@ -56,6 +58,7 @@ export function useManagedAction() {
       } catch (caught) {
         if (accountErrorCode(caught) === "recent_mfa_required") {
           onStepUpRequired?.();
+          setAfterStepUp(() => onStepUpVerified ?? null);
           setStepUpOpen(true);
           setNotice("Verify your authenticator, then submit the action again.");
         } else {
@@ -68,22 +71,34 @@ export function useManagedAction() {
     [],
   );
 
-  return { error, notice, setError, setNotice, run, stepUpOpen, setStepUpOpen };
+  return {
+    error,
+    notice,
+    setError,
+    setNotice,
+    run,
+    stepUpOpen,
+    setStepUpOpen,
+    afterStepUp,
+    setAfterStepUp,
+  };
 }
 
 export function ManagedActionFeedback({
   action,
+  showMessages = true,
 }: {
   action: ReturnType<typeof useManagedAction>;
+  showMessages?: boolean;
 }) {
   return (
     <>
-      {action.error ? (
+      {showMessages && action.error ? (
         <p role="alert" className="mt-4 text-sm text-danger">
           {action.error}
         </p>
       ) : null}
-      {action.notice ? (
+      {showMessages && action.notice ? (
         <p role="status" className="mt-4 text-sm text-success">
           {action.notice}
         </p>
@@ -91,10 +106,13 @@ export function ManagedActionFeedback({
       <StepUpDialog
         open={action.stepUpOpen}
         onOpenChange={action.setStepUpOpen}
-        onVerified={() =>
+        onVerified={() => {
           action.setNotice(
-            "Verification complete. Submit the action again to continue.",
-          )
+            "Verification complete. Review and confirm the action again to continue.",
+          );
+          const resume = action.afterStepUp;
+          action.setAfterStepUp(null);
+          resume?.();
         }
       />
     </>
