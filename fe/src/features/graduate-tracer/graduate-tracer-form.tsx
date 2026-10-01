@@ -15,11 +15,21 @@ import { graduateTracerGetMyResponse, getGraduateTracerGetMyResponseQueryKey, gr
 import { CompassApiError } from "@/lib/api/errors";
 import type { GraduateTracerDetailResponse, GraduateTracerDraftPayload } from "@/lib/api/generated/model";
 
-function focusSection(issue: SubmissionIssue | undefined) {
+function focusIssue(issue: SubmissionIssue | undefined) {
   if (!issue) return;
+  const target = document.getElementById(issue.targetId);
+  if (target) {
+    target.scrollIntoView({ block: "center" });
+    const focusTarget = target.matches("input, select, textarea, button")
+      ? target
+      : target.querySelector<HTMLElement>("input, select, textarea, button");
+    (focusTarget as HTMLElement | null)?.focus({ preventScroll: true });
+    return;
+  }
+
   const section = document.getElementById(issue.section);
   section?.scrollIntoView({ block: "start" });
-  section?.focus({ preventScroll: true });
+  section?.querySelector<HTMLElement>("input, select, textarea, button")?.focus({ preventScroll: true });
 }
 
 function isValidOptionalEmail(value: string | undefined): boolean {
@@ -38,6 +48,8 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [needsSubmissionCheck, setNeedsSubmissionCheck] = useState(false);
   const [localIssue, setLocalIssue] = useState<string>();
+  const [draftValidationVisible, setDraftValidationVisible] = useState(false);
+  const [submissionValidationVisible, setSubmissionValidationVisible] = useState(false);
   const save = useMutation({
     mutationFn: ({ data }: { data: GraduateTracerDraftPayload }) => graduateTracerReplaceMyDraft(data),
     retry: false,
@@ -45,6 +57,21 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
   const submit = useMutation({ mutationFn: () => graduateTracerSubmitMyResponse(), retry: false });
   const pending = save.isPending || submit.isPending;
   const draftRowIssues = getGraduateTracerDraftRowIssues(draft);
+  const draftEmailIssue: SubmissionIssue | undefined = isValidOptionalEmail(draft.email)
+    ? undefined
+    : {
+        section: "graduate-tracer-general",
+        targetId: "gts-email",
+        message: "Enter a valid email address or leave the field blank.",
+      };
+  const draftIssues = draftEmailIssue ? [...draftRowIssues, draftEmailIssue] : draftRowIssues;
+  const submissionIssues = getGraduateTracerSubmissionIssues(draft);
+  const visibleIssues = [
+    ...(draftValidationVisible ? draftIssues : []),
+    ...(submissionValidationVisible ? submissionIssues : []),
+  ];
+  const errorFor = (targetId: string) =>
+    visibleIssues.find((issue) => issue.targetId === targetId)?.message;
 
   useUnsavedChangesGuard({
     dirty,
@@ -70,15 +97,11 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
     setSaveError(undefined);
     setSaveMessage(undefined);
     setSubmitError(undefined);
-    const rowIssue = draftRowIssues[0];
-    if (rowIssue) {
-      setLocalIssue(rowIssue);
-      focusSection({ section: rowIssue.startsWith("Degree") ? "graduate-tracer-education" : rowIssue.startsWith("Training") ? "graduate-tracer-training" : "graduate-tracer-education", message: rowIssue });
-      return;
-    }
-    if (!isValidOptionalEmail(draft.email)) {
-      setLocalIssue("Enter a valid email address or leave the field blank.");
-      focusSection({ section: "graduate-tracer-general", message: "Email format is invalid." });
+    setDraftValidationVisible(true);
+    const draftIssue = draftIssues[0];
+    if (draftIssue) {
+      setLocalIssue(draftIssue.message);
+      focusIssue(draftIssue);
       return;
     }
     try {
@@ -86,6 +109,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
       queryClient.setQueryData(getGraduateTracerGetMyResponseQueryKey(), result);
       setEditedDraft(null);
       setLocalIssue(undefined);
+      setDraftValidationVisible(false);
       setSaveMessage("Draft saved.");
     } catch (error) {
       setSaveError(graduateTracerErrorMessage(error, "The Graduate Tracer draft could not be saved."));
@@ -104,19 +128,16 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
     }
     const rowIssue = draftRowIssues[0];
     if (rowIssue) {
-      setLocalIssue(rowIssue);
-      focusSection({ section: rowIssue.startsWith("Degree") ? "graduate-tracer-education" : rowIssue.startsWith("Training") ? "graduate-tracer-training" : "graduate-tracer-education", message: rowIssue });
+      setDraftValidationVisible(true);
+      setLocalIssue(rowIssue.message);
+      focusIssue(rowIssue);
       return;
     }
-    const issue = getGraduateTracerSubmissionIssues(draft)[0];
+    const issue = submissionIssues[0];
     if (issue) {
+      setSubmissionValidationVisible(true);
       setLocalIssue(issue.message);
-      focusSection(issue);
-      return;
-    }
-    if (!isValidOptionalEmail(draft.email)) {
-      setLocalIssue("Enter a valid email address or leave the field blank.");
-      focusSection({ section: "graduate-tracer-general", message: "Email format is invalid." });
+      focusIssue(issue);
       return;
     }
     setLocalIssue(undefined);
@@ -202,21 +223,21 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
           {saveMessage ? <p role="status" className="mb-5 border-l-4 border-success bg-success/5 px-4 py-3 text-sm text-ink">{saveMessage}</p> : null}
 
           <fieldset disabled={pending} className="min-w-0">
-            <GraduateTracerGeneralSection draft={draft} onChange={updateDraft} />
-            <GraduateTracerEducationSection draft={draft} onChange={updateDraft} />
-            <GraduateTracerTrainingSection draft={draft} onChange={updateDraft} />
-            <GraduateTracerEmploymentSection draft={draft} onChange={updateDraft} />
+            <GraduateTracerGeneralSection draft={draft} onChange={updateDraft} errorFor={errorFor} />
+            <GraduateTracerEducationSection draft={draft} onChange={updateDraft} errorFor={errorFor} />
+            <GraduateTracerTrainingSection draft={draft} onChange={updateDraft} errorFor={errorFor} />
+            <GraduateTracerEmploymentSection draft={draft} onChange={updateDraft} errorFor={errorFor} />
             <GraduateTracerCurriculumSection draft={draft} onChange={updateDraft} />
           </fieldset>
 
           <div className="border-t border-border py-6">
             {dirty ? <p className="mb-3 text-sm text-warning">Unsaved changes. Save the draft before submitting.</p> : null}
-            {draftRowIssues.length ? <p className="mb-3 text-sm text-warning">{draftRowIssues[0]}</p> : null}
+            {draftRowIssues.length ? <p className="mb-3 text-sm text-warning">{draftRowIssues[0].message}</p> : null}
             <div className="flex flex-wrap gap-3">
-              <Button type="button" variant="secondary" disabled={!dirty || pending || draftRowIssues.length > 0} onClick={() => void saveDraft()}>
+              <Button type="button" variant="secondary" disabled={!dirty || pending} onClick={() => void saveDraft()}>
                 {save.isPending ? "Saving…" : "Save draft"}
               </Button>
-              <Button type="button" disabled={pending || dirty || draftRowIssues.length > 0} onClick={openSubmitConfirmation}>Submit Graduate Tracer Survey</Button>
+              <Button type="button" disabled={pending || dirty} onClick={openSubmitConfirmation}>Submit Graduate Tracer Survey</Button>
               <AlertDialog open={confirmSubmit} onOpenChange={(open) => { if (!submit.isPending) setConfirmSubmit(open); }}>
                 <AlertDialogContent>
                   <AlertDialogTitle>Submit Graduate Tracer Survey?</AlertDialogTitle>
