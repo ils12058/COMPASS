@@ -40,6 +40,7 @@ from compass.referrals.services import (
     list_referrals,
     record_action,
     update_status_note,
+    void_referral,
 )
 from compass.routine_interviews.models import RoutineInterview
 
@@ -186,6 +187,45 @@ def test_back_entered_referral_preserves_referred_received_and_created_chronolog
     Referral.objects.filter(pk=item.pk).update(created_at=item.created_at + timedelta(minutes=1))
     item.refresh_from_db()
     assert item.received_at == original_received
+
+
+@pytest.mark.django_db
+def test_operational_identity_and_actor_provenance_keep_source_snapshot_distinct():
+    sync_policy()
+    head = make_head()
+    student = make_user("student@example.edu", "STUDENT")
+    student.institutional_id = "REF-2026-001"
+    student.save(update_fields=["institutional_id", "updated_at"])
+    item = create_for(head, student, key="identity", fingerprint="a" * 64)
+    source_name = item.student_name_snapshot
+    action = record_action(
+        actor=head,
+        referral_id=item.pk,
+        action_type="CALL_PARENT_GUARDIAN",
+        occurred_at=timezone.now(),
+        remarks="Source action recorded",
+        context=context(head),
+    )
+    assert action.recorded_by_id == head.pk
+    student.first_name = "Renamed"
+    student.save(update_fields=["first_name", "updated_at"])
+    client = auth_client(head)
+    listed = client.get("/api/v1/referrals")
+    assert listed.status_code == 200
+    assert listed.json()["items"][0]["student_name_snapshot"] == source_name
+    assert listed.json()["items"][0]["student"]["institutional_id"] == "REF-2026-001"
+    detail = client.get(f"/api/v1/referrals/{item.pk}")
+    assert detail.status_code == 200
+    assert detail.json()["student_name_snapshot"] == source_name
+    assert detail.json()["student"]["display_name"] == student.get_full_name()
+    assert detail.json()["recorded_by"]["id"] == str(head.pk)
+    assert detail.json()["referrer_name"] == "Prof. Source Referrer"
+    assert detail.json()["actions"][0]["recorded_by"]["id"] == str(head.pk)
+    assert detail.json()["voided_by"] is None
+    void_referral(actor=head, referral_id=item.pk, reason="Withdrawn", context=context(head))
+    voided = client.get(f"/api/v1/referrals/{item.pk}")
+    assert voided.status_code == 200
+    assert voided.json()["voided_by"]["id"] == str(head.pk)
 
 
 @pytest.mark.django_db

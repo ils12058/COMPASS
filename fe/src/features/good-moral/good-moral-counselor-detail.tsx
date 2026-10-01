@@ -71,8 +71,9 @@ export function GoodMoralCounselorDetail({
 
       <GoodMoralSection title="Request details" labelledBy="good-moral-counselor-request-details">
         <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
-          <GoodMoralField label="Student" value={item.student.display_name} />
-          <GoodMoralField label="Applicant name" value={item.applicant_name} />
+          <GoodMoralField label="Applicant name on request" value={item.applicant_name} />
+          <GoodMoralField label="Current Student account" value={item.student.display_name} />
+          <GoodMoralField label="Institutional ID" value={item.student_institutional_id} />
           <GoodMoralField label="Requested" value={formatGoodMoralDateTime(item.created_at)} />
           {item.variant === "CURRENT_STUDENT" ? (
             <>
@@ -92,7 +93,7 @@ export function GoodMoralCounselorDetail({
           )}
           {item.issued_at ? <GoodMoralField label="Issued" value={formatGoodMoralDateTime(item.issued_at)} /> : null}
           {item.cancelled_at ? <GoodMoralField label="Cancelled" value={formatGoodMoralDateTime(item.cancelled_at)} /> : null}
-          {item.status === "ISSUED" ? <GoodMoralField label="Issued by" value={item.issued_by_name_snapshot} /> : null}
+          {item.status === "ISSUED" ? <GoodMoralField label="Issuer name on certificate" value={item.issued_by_name_snapshot} /> : null}
         </dl>
       </GoodMoralSection>
 
@@ -136,11 +137,10 @@ export function GoodMoralCounselorDetail({
           <GoodMoralSection title="Certificate issuance">
             <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
               <GoodMoralField label="Issued at" value={formatGoodMoralDateTime(item.issued_at)} />
-              <GoodMoralField label="Issued by" value={item.issued_by_name_snapshot} />
+              <GoodMoralField label="Issuer name on certificate" value={item.issued_by_name_snapshot} />
+              {item.issued_by ? <GoodMoralField label="Current issuer account" value={item.issued_by.display_name} /> : null}
               <GoodMoralField label="Official form code" value={item.form_revision?.official_code} />
               <GoodMoralField label="Official revision" value={item.form_revision?.official_revision ? `Revision ${item.form_revision.official_revision}` : null} />
-              <GoodMoralField label="Internal schema version" value={item.form_revision ? String(item.form_revision.internal_schema_version) : null} />
-              <GoodMoralField label="Document template version" value={item.document_template_version ? `Version ${item.document_template_version}` : null} />
             </dl>
           </GoodMoralSection>
           <GoodMoralPdfDownload requestId={item.id} studentFacing={false} />

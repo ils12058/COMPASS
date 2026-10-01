@@ -1003,6 +1003,19 @@ def test_good_moral_operational_list_supports_student_filter_and_safe_identity_s
     searched = client.get("/api/v1/good-moral/requests", {"search": "GM-ALPHA-001"})
     assert searched.status_code == 200
     assert [row["id"] for row in searched.json()["items"]] == [str(alpha_request.pk)]
+    assert searched.json()["items"][0]["student_institutional_id"] == "GM-ALPHA-001"
+
+    original_name = alpha_request.applicant_name_snapshot
+    alpha.first_name = "Renamed"
+    alpha.save(update_fields=["first_name", "updated_at"])
+    detail = client.get(f"/api/v1/good-moral/requests/{alpha_request.pk}")
+    assert detail.status_code == 200
+    assert detail.json()["applicant_name"] == original_name
+    assert detail.json()["student"]["display_name"] == alpha.get_full_name()
+    assert detail.json()["student_institutional_id"] == "GM-ALPHA-001"
+    mine = auth_client(alpha).get("/api/v1/good-moral/me")
+    assert mine.status_code == 200
+    assert "student_institutional_id" not in mine.json()["items"][0]
 
     filtered = client.get(
         "/api/v1/good-moral/requests",

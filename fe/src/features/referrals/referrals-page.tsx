@@ -156,6 +156,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                       {referral.reference_code}
                     </Link>
                     <p className="text-sm font-medium text-ink">{referral.student_name_snapshot}</p>
+                    {referral.student.institutional_id ? <p className="text-xs text-muted">{referral.student.institutional_id}</p> : null}
                     <p className="text-sm text-muted">{referral.course_year_block_snapshot}</p>
                     <p className="text-sm text-muted">Referred {formatDateOnly(referral.referred_on)}{referral.received_at ? ` · Received ${formatInstitutionalDateTime(referral.received_at)}` : ""}</p>
                     {referral.status_note ? <p className="whitespace-pre-wrap break-words text-sm text-ink"><span className="font-semibold">Status note:</span> {referral.status_note}</p> : <p className="text-sm text-muted">No status note</p>}
@@ -182,6 +183,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                         <th scope="row" className="px-3 py-4 font-normal">
                           <Link href={`/portal/referrals/${referral.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{referral.reference_code}</Link>
                           <span className="mt-1 block text-ink">{referral.student_name_snapshot}</span>
+                          {referral.student.institutional_id ? <span className="mt-1 block text-xs text-muted">{referral.student.institutional_id}</span> : null}
                         </th>
                         <td className="px-3 py-4 text-ink">{referral.course_year_block_snapshot}</td>
                         <td className="px-3 py-4 text-ink">{formatDateOnly(referral.referred_on)}</td>

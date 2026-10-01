@@ -97,6 +97,12 @@ class ReferralVoidRequest(StrictSchema):
 class ReferralPersonSummary(StrictSchema):
     id: UUID
     display_name: str
+    institutional_id: str | None
+
+
+class ReferralActorSummary(StrictSchema):
+    id: UUID
+    display_name: str
 
 
 class ReferralFormRevisionSummary(StrictSchema):
@@ -132,6 +138,7 @@ class ReferralActionResponse(StrictSchema):
     occurred_at: datetime
     remarks: str
     created_at: datetime
+    recorded_by: ReferralActorSummary | None
 
 
 class ReferralSummaryResponse(StrictSchema):
@@ -154,6 +161,8 @@ class ReferralDetailResponse(ReferralSummaryResponse):
     actions: list[ReferralActionResponse]
     void_reason: str
     updated_at: datetime
+    recorded_by: ReferralActorSummary | None
+    voided_by: ReferralActorSummary | None
 
 
 class ReferralPageResponse(StrictSchema):
@@ -205,6 +214,14 @@ def _raise(exc: ReferralError) -> NoReturn:
 
 
 def _person(user) -> dict[str, object]:
+    return {
+        "id": user.pk,
+        "display_name": user.get_full_name(),
+        "institutional_id": user.institutional_id,
+    }
+
+
+def _actor(user) -> dict[str, object]:
     return {"id": user.pk, "display_name": user.get_full_name()}
 
 
@@ -224,6 +241,7 @@ def _action(action) -> dict[str, object]:
         "occurred_at": action.occurred_at,
         "remarks": action.remarks,
         "created_at": action.created_at,
+        "recorded_by": _actor(action.recorded_by) if action.recorded_by_id else None,
     }
 
 
@@ -300,6 +318,8 @@ def _detail(item) -> dict[str, object]:
         "actions": [_action(action) for action in item.actions.all()],
         "void_reason": item.void_reason,
         "updated_at": item.updated_at,
+        "recorded_by": _actor(item.recorded_by) if item.recorded_by_id else None,
+        "voided_by": _actor(item.voided_by) if item.voided_by_id else None,
     }
 
 

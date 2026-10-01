@@ -239,6 +239,7 @@ def _queryset():
         "form_revision",
         "form_revision__family",
         "recorded_by",
+        "voided_by",
         "referral",
     )
 

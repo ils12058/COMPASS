@@ -274,7 +274,7 @@ def _encounter(item) -> dict[str, object]:
         "service": {
             "id": item.service_id,
             "code": item.service.code,
-            "name": item.service.name,
+            "name": item.service_name_snapshot,
         },
         "appointment": (
             {

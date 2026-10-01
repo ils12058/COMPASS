@@ -778,6 +778,8 @@ def test_student_self_api_is_safe_and_operational_api_keeps_referral_content_sep
     sync_policy()
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
+    student.institutional_id = "CS-2026-001"
+    student.save(update_fields=["institutional_id", "updated_at"])
     other_student = make_user("other@example.edu", "STUDENT")
     referral = create_referral_for(head, student, key="self-ref", fingerprint="a" * 64)
     record_action(
@@ -804,12 +806,16 @@ def test_student_self_api_is_safe_and_operational_api_keeps_referral_content_sep
     row = mine.json()["items"][0]
     assert "referral" not in row
     assert "recorded_by" not in row
+    assert "student_institutional_id" not in row
+    assert "voided_by" not in row
     assert "SENSITIVE-LINKED-REFERRAL-REASON" not in json.dumps(row)
 
     detail = student_client.get(f"/api/v1/call-slips/me/{item.pk}")
     assert detail.status_code == 200
     assert "referral" not in detail.json()
     assert "recorded_by" not in detail.json()
+    assert "student_institutional_id" not in detail.json()
+    assert "voided_by" not in detail.json()
 
     other_item = CallSlip.objects.exclude(student=student).first()
     denied_other = student_client.get(f"/api/v1/call-slips/me/{other_item.pk}")
@@ -830,6 +836,18 @@ def test_student_self_api_is_safe_and_operational_api_keeps_referral_content_sep
         "id": str(referral.pk),
         "reference_code": referral.reference_code,
     }
+    assert operational.json()["student_institutional_id"] == "CS-2026-001"
+    assert operational.json()["recorded_by"]["id"] == str(head.pk)
+    assert operational.json()["voided_by"] is None
+    void_call_slip(
+        actor=head,
+        call_slip_id=item.pk,
+        reason="Source record withdrawn",
+        context=audit_context(head),
+    )
+    voided = guidance_client.get(f"/api/v1/call-slips/{item.pk}")
+    assert voided.status_code == 200
+    assert voided.json()["voided_by"]["id"] == str(head.pk)
     assert "reason" not in operational.json()["referral"]
 
 

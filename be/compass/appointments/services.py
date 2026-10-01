@@ -897,6 +897,7 @@ def create_student_appointment(
             reference_code=reference_code,
             student=locked_student,
             service=service,
+            service_name_snapshot=service.name,
             provider=locked_provider,
             delivery_mode=normalized_mode,
             starts_at=normalized_start,

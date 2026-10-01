@@ -141,6 +141,10 @@ class GoodMoralSummaryResponse(StrictSchema):
     updated_at: datetime
 
 
+class GoodMoralOperationalSummaryResponse(GoodMoralSummaryResponse):
+    student_institutional_id: str | None
+
+
 class GoodMoralDetailResponse(GoodMoralSummaryResponse):
     student: PersonSummary
     inventory_id: UUID | None
@@ -168,6 +172,7 @@ class GoodMoralCancellationSummary(StrictSchema):
 
 
 class GoodMoralOperationalDetailResponse(GoodMoralDetailResponse):
+    student_institutional_id: str | None
     cancellation: GoodMoralCancellationSummary | None
 
 
@@ -176,7 +181,7 @@ class GoodMoralHistoryResponse(StrictSchema):
 
 
 class GoodMoralPageResponse(StrictSchema):
-    items: list[GoodMoralSummaryResponse]
+    items: list[GoodMoralOperationalSummaryResponse]
     page: int
     page_size: int
     has_next: bool
@@ -249,6 +254,10 @@ def _summary(item) -> dict[str, object]:
     }
 
 
+def _operational_summary(item) -> dict[str, object]:
+    return {**_summary(item), "student_institutional_id": item.student.institutional_id}
+
+
 def _operational_detail(item) -> dict[str, object]:
     cancellation = None
     if item.cancelled_at is not None:
@@ -256,7 +265,11 @@ def _operational_detail(item) -> dict[str, object]:
             "cancelled_by": _person(item.cancelled_by) if item.cancelled_by_id else None,
             "reason": item.cancellation_reason,
         }
-    return {**_detail(item), "cancellation": cancellation}
+    return {
+        **_detail(item),
+        "student_institutional_id": item.student.institutional_id,
+        "cancellation": cancellation,
+    }
 
 
 def _detail(item) -> dict[str, object]:
@@ -525,7 +538,7 @@ def good_moral_list_requests(
     except GoodMoralError as exc:
         _raise(exc)
     return {
-        "items": [_summary(item) for item in result.items],
+        "items": [_operational_summary(item) for item in result.items],
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,

@@ -105,7 +105,6 @@ export function CustomerFeedbackResponseDetail({ responseId }: { responseId: str
       </DetailSection>
       <DetailSection title="Form Revision provenance">
         <DetailField label="Official code">{item.form_revision.official_code}</DetailField><DetailField label="Official revision">{item.form_revision.official_revision}</DetailField>
-        <DetailField label="Internal schema version">{item.form_revision.internal_schema_version}</DetailField>
       </DetailSection>
     </section>
   );
@@ -168,7 +167,6 @@ export function CsmResponseDetail({ responseId }: { responseId: string }) {
       <DetailSection title="Additional information">
         <DetailField label="Suggestions on how we can further improve our services">{item.suggestions}</DetailField>
         <DetailField label="Email address">{item.email || "Not provided"}</DetailField>
-        <DetailField label="Instrument schema version">{item.instrument_schema_version}</DetailField>
       </DetailSection>
     </section>
   );

@@ -170,8 +170,10 @@ class CallSlipStudentResponse(StrictSchema):
 
 
 class CallSlipOperationalResponse(CallSlipStudentResponse):
+    student_institutional_id: str | None
     referral: CallSlipReferralSummary | None
     recorded_by: CallSlipPersonSummary | None
+    voided_by: CallSlipPersonSummary | None
     issuance_mode: CallSlipIssuanceModeValue
     void_notifies_student: bool
     void_reason: str
@@ -327,12 +329,14 @@ def _student_view(item) -> dict[str, object]:
 def _operational_view(item) -> dict[str, object]:
     return {
         **_student_view(item),
+        "student_institutional_id": item.student.institutional_id,
         "referral": (
             {"id": item.referral_id, "reference_code": item.referral.reference_code}
             if item.referral_id
             else None
         ),
         "recorded_by": _person(item.recorded_by) if item.recorded_by_id else None,
+        "voided_by": _person(item.voided_by) if item.voided_by_id else None,
         "issuance_mode": item.issuance_mode,
         "void_notifies_student": item.void_notifies_student,
         "void_reason": item.void_reason,

@@ -12,7 +12,7 @@ export function FormRevisionList({
 }) {
   return (
     <div className="min-w-0 overflow-x-auto rounded-sm border border-border">
-      <table className="w-full min-w-[48rem] text-left text-sm">
+      <table className="w-full min-w-[36rem] text-left text-sm">
         <caption className="sr-only">
           Form Revisions for {familyTitle}
         </caption>
@@ -20,7 +20,6 @@ export function FormRevisionList({
           <tr>
             <th scope="col" className="px-4 py-3">Official code</th>
             <th scope="col" className="px-4 py-3">Official revision</th>
-            <th scope="col" className="px-4 py-3">Internal schema version</th>
             <th scope="col" className="px-4 py-3">Status</th>
             <th scope="col" className="px-4 py-3">COMPASS support</th>
           </tr>
@@ -34,9 +33,6 @@ export function FormRevisionList({
               <td className="px-4 py-3 text-ink">
                 {revision.official_revision ?? "Not recorded"}
               </td>
-              <td className="px-4 py-3 text-ink">
-                {revision.internal_schema_version}
-              </td>
               <td className="px-4 py-3">
                 <FormRevisionStatusBadge status={revision.status} />
               </td>
@@ -44,7 +40,7 @@ export function FormRevisionList({
                 {revision.supported ? (
                   <span className="font-semibold text-success">Supported</span>
                 ) : (
-                  <span className="text-muted">Historical / unsupported</span>
+                  <span className="text-danger">Unsupported by this COMPASS version</span>
                 )}
               </td>
             </tr>

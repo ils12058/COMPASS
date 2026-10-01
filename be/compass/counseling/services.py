@@ -304,6 +304,7 @@ def _create_row(
                 student=student,
                 counselor=counselor,
                 service=service,
+                service_name_snapshot=service.name,
                 appointment=appointment,
                 entry_mode=entry_mode,
                 delivery_mode=delivery_mode,

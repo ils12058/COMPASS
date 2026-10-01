@@ -296,7 +296,7 @@ def list_context_history(
             id=item.pk,
             kind="APPOINTMENT",
             occurred_at=item.starts_at,
-            title=item.service.name,
+            title=item.service_name_snapshot,
             status=item.status,
             reference_code=item.reference_code,
             delivery_mode=item.delivery_mode,
