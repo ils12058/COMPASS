@@ -207,9 +207,10 @@ function DirectCreateForm({
           Direct Routine Interview creation is not configured for an available delivery mode.
         </p>
       ) : (
-        <form className="mt-5 grid gap-5" onSubmit={(event) => void submit(event)}>
+        <div className="mt-5 grid gap-5">
           <form
             className="grid gap-2"
+            aria-label="Find Student"
             onSubmit={(event) => {
               event.preventDefault();
               setCandidateSearch(studentSearch.trim());
@@ -228,7 +229,8 @@ function DirectCreateForm({
             <Button type="submit" variant="secondary" className="justify-self-start">Search Students</Button>
           </form>
 
-          <fieldset className="min-w-0">
+          <form className="grid gap-5" onSubmit={(event) => void submit(event)}>
+            <fieldset className="min-w-0">
             <legend className="mb-2 text-sm font-medium text-ink">Qualified Students</legend>
             {candidates.isPending ? (
               <div aria-busy="true" className="space-y-2">
@@ -238,7 +240,7 @@ function DirectCreateForm({
             ) : candidates.isError ? (
               <div role="alert" className="border-y border-danger/30 py-4">
                 <p className="text-sm text-danger">{routineErrorMessage(candidates.error, "Student candidates could not be loaded.")}</p>
-                <Button className="mt-3" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>
+                <Button type="button" className="mt-3" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>
               </div>
             ) : pageData?.items.length ? (
               <div className="divide-y divide-border rounded-md border border-border">
@@ -326,13 +328,14 @@ function DirectCreateForm({
           <p className="text-sm text-muted">
             {options.data?.data.service.name} · {options.data?.data.service.code}
           </p>
-          <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
-            <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={pending || !selectedStudent || !entryMode || !deliveryMode} aria-busy={pending}>
-              {pending ? "Creating…" : "Create Routine Interview"}
-            </Button>
-          </div>
-        </form>
+            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+              <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>Cancel</Button>
+              <Button type="submit" disabled={pending || !selectedStudent || !entryMode || !deliveryMode} aria-busy={pending}>
+                {pending ? "Creating…" : "Create Routine Interview"}
+              </Button>
+            </div>
+          </form>
+        </div>
       )}
     </DialogContent>
   );
