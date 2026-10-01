@@ -240,7 +240,7 @@ function DirectCreateForm({
             ) : candidates.isError ? (
               <div role="alert" className="border-y border-danger/30 py-4">
                 <p className="text-sm text-danger">{routineErrorMessage(candidates.error, "Student candidates could not be loaded.")}</p>
-                <Button className="mt-3" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>
+                <Button type="button" className="mt-3" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>
               </div>
             ) : pageData?.items.length ? (
               <div className="divide-y divide-border rounded-md border border-border">
