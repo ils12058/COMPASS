@@ -12,14 +12,14 @@ export function ReviewSection({
   formRevision,
   issues,
   programLookupReady,
-  onSelectSection,
+  onSelectIssue,
 }: {
   draft: InventoryPayload;
   academicYear: string;
   formRevision: string;
   issues: InventorySubmissionIssue[];
   programLookupReady: boolean;
-  onSelectSection: (section: InventorySectionId) => void;
+  onSelectIssue: (issue: InventorySubmissionIssue) => void;
 }) {
   const hasProgram = Boolean(draft.program_id);
   return (
@@ -54,14 +54,14 @@ export function ReviewSection({
           </InventoryNotice>
         ) : (
           <InventoryNotice title="Needs attention before submission" tone="warning">
-            <p>Complete the required details below. Selecting an item returns you to its section.</p>
+            <p>Complete the required details below. Selecting an item takes you to the field that needs attention.</p>
             <ul className="mt-3 space-y-2">
               {issues.map((issue, index) => (
                 <li key={`${issue.section}-${index}`}>
                   <Button
                     variant="quiet"
                     className="h-auto min-h-8 whitespace-normal px-1 py-1 text-left"
-                    onClick={() => onSelectSection(issue.section)}
+                    onClick={() => onSelectIssue(issue)}
                   >
                     {issue.message}
                   </Button>
