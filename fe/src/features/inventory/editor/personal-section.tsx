@@ -11,7 +11,9 @@ import {
 } from "@/lib/api/generated/model";
 import { FieldGroup } from "@/features/inventory/inventory-shared";
 
-export function PersonalSection({ draft, onChange }: InventorySectionProps) {
+export function PersonalSection({ draft, onChange, validationIssues = [] }: InventorySectionProps) {
+  const errorFor = (targetId: string) =>
+    validationIssues.find((issue) => issue.targetId === targetId)?.message;
   const currentLocation = draft.geographic_locations?.find(
     (location) => location.kind === GeographicLocationKindValue.CURRENT,
   );
@@ -57,6 +59,7 @@ export function PersonalSection({ draft, onChange }: InventorySectionProps) {
           />
           <TextField
             id="inventory-date-of-birth"
+            error={errorFor("inventory-date-of-birth")}
             label="Date of birth"
             type="date"
             value={draft.date_of_birth}
@@ -77,6 +80,7 @@ export function PersonalSection({ draft, onChange }: InventorySectionProps) {
           />
           <SelectField
             id="inventory-sex"
+            error={errorFor("inventory-sex")}
             label="Sex"
             value={draft.sex}
             options={sexOptions}
@@ -91,6 +95,7 @@ export function PersonalSection({ draft, onChange }: InventorySectionProps) {
           />
           <SelectField
             id="inventory-civil-status"
+            error={errorFor("inventory-civil-status")}
             label="Civil status"
             value={draft.civil_status_category}
             options={civilStatusOptions}
@@ -105,6 +110,7 @@ export function PersonalSection({ draft, onChange }: InventorySectionProps) {
           {draft.civil_status_category === CivilStatusCategoryValue.OTHER ? (
             <TextField
               id="inventory-civil-status-other"
+            error={errorFor("inventory-civil-status-other")}
               label="Other civil status"
               value={draft.civil_status}
               onChange={(value) => onChange({ civil_status: value })}
@@ -165,6 +171,7 @@ export function PersonalSection({ draft, onChange }: InventorySectionProps) {
           />
           <SelectField
             id="inventory-current-religion-category"
+            error={errorFor("inventory-current-religion-category")}
             label="Current religion"
             value={draft.current_religion_category}
             options={religionOptions}
@@ -181,6 +188,7 @@ export function PersonalSection({ draft, onChange }: InventorySectionProps) {
           {draft.current_religion_category === CurrentReligionCategoryValue.OTHER ? (
             <TextField
               id="inventory-current-religion-other"
+            error={errorFor("inventory-current-religion-other")}
               label="Other current religion"
               value={draft.current_religion}
               onChange={(value) => onChange({ current_religion: value })}
@@ -200,6 +208,7 @@ export function PersonalSection({ draft, onChange }: InventorySectionProps) {
             kind={GeographicLocationKindValue.CURRENT}
             location={currentLocation}
             onChange={(value) => updateLocation(GeographicLocationKindValue.CURRENT, value)}
+            validationIssues={validationIssues}
           />
           <div className="border-t border-border pt-6">
             <PSGCLocationSelector
