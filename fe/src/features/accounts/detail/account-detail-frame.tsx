@@ -6,6 +6,8 @@ import { createContext, useContext, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { managedAccountError } from "@/features/accounts/components/account-action";
 import { accountName, roleLabels } from "@/features/accounts/presentation";
 import { useAccountsGet } from "@/lib/api/generated/accounts/accounts";
@@ -31,6 +33,7 @@ export function AccountDetailFrame({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const account = useAccountsGet(userId, { query: { retry: false } });
+  const confirmed = safeQueryData(account);
   const returnQuery = searchParams.get("return") ?? "";
   const listHref = returnQuery
     ? `/portal/accounts?${returnQuery}`
@@ -50,7 +53,7 @@ export function AccountDetailFrame({
         <span className="sr-only">Loading account…</span>
       </div>
     );
-  if (account.isError) {
+  if (!confirmed) {
     const missing =
       account.error instanceof CompassApiError && account.error.status === 404;
     return (
@@ -83,7 +86,7 @@ export function AccountDetailFrame({
     );
   }
 
-  const data = account.data.data;
+  const data = confirmed.data;
   const tabs = [
     ["Overview", baseHref],
     ["Access", `${baseHref}/access`],
@@ -92,6 +95,7 @@ export function AccountDetailFrame({
   return (
     <AccountContext.Provider value={data}>
       <section aria-labelledby="account-detail-heading">
+        {account.isError ? <RefreshFailureNotice onRetry={() => void account.refetch()} retrying={account.isFetching} /> : null}
         <Link
           href={listHref}
           className="text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { canShowLastKnownData, shouldHideProtectedData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { platformErrorMessage } from "@/features/platform/platform-actions";
 import {
   PlatformPageHeader,
@@ -28,10 +30,12 @@ export function PlatformHealthPage() {
     },
   });
   const workerSmoke = usePlatformOperationsWorkerSmoke();
-  const result = health.data?.data;
+  const result = health.isError && !canShowLastKnownData(health) ? undefined : health.data?.data;
+  const visibleWorkerResult = shouldHideProtectedData(health.error) ? null : workerResult;
 
   async function checkWorker() {
     setWorkerError(null);
+    setWorkerResult(null);
     try {
       const response = await workerSmoke.mutateAsync();
       setWorkerResult(response.data);
@@ -69,6 +73,7 @@ export function PlatformHealthPage() {
           onRetry={() => void health.refetch()}
         />
       ) : null}
+      {health.isError && result ? <RefreshFailureNotice onRetry={() => void health.refetch()} retrying={health.isFetching} /> : null}
 
       {result ? (
         <>
@@ -117,6 +122,11 @@ export function PlatformHealthPage() {
             )}
           </section>
 
+          <section className="mt-8 border-t border-border pt-5" aria-labelledby="health-unchecked-heading">
+            <h2 id="health-unchecked-heading" className="font-heading text-lg font-semibold text-ink">Not checked by passive Health</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">The checks above cover only the dependencies listed. Worker, scheduler, Daily provider, and Turnstile runtime reachability are not established by this result.</p>
+          </section>
+
         </>
       ) : null}
 
@@ -138,12 +148,14 @@ export function PlatformHealthPage() {
         <div className="mt-4 border-y border-border py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              {workerResult ? (
+              {visibleWorkerResult ? (
                 <>
-                  <PlatformStatusBadge status={workerResult.status} />
+                  <p className="mb-2 text-xs font-semibold text-muted">Most recent worker check in this page session</p>
+                  <PlatformStatusBadge status={visibleWorkerResult.status} />
                   <p className="mt-2 text-sm leading-6 text-muted">
-                    {workerResult.summary}
+                    {visibleWorkerResult.summary}
                   </p>
+                  <p className="mt-2 text-xs text-muted">Run Check again for current evidence.</p>
                 </>
               ) : (
                 <>
@@ -167,7 +179,7 @@ export function PlatformHealthPage() {
             >
               {workerSmoke.isPending
                 ? "Checking…"
-                : workerResult
+                : visibleWorkerResult
                   ? "Check again"
                   : "Check worker"}
             </Button>

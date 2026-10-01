@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { canShowLastKnownData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
   PlatformPageHeader,
   PlatformPagination,
@@ -30,7 +32,7 @@ export function PlatformActivityPage() {
     { page, page_size: PAGE_SIZE },
     { query: { retry: false, staleTime: 30_000 } },
   );
-  const result = activity.data?.data;
+  const result = activity.isError && !canShowLastKnownData(activity) ? undefined : activity.data?.data;
 
   return (
     <section>
@@ -46,6 +48,7 @@ export function PlatformActivityPage() {
           onRetry={() => void activity.refetch()}
         />
       ) : null}
+      {activity.isError && result ? <RefreshFailureNotice onRetry={() => void activity.refetch()} retrying={activity.isFetching} /> : null}
 
       {result ? (
         result.items.length ? (

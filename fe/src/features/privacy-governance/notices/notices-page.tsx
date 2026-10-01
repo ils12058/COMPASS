@@ -3,6 +3,8 @@
 import { keepPreviousData } from "@tanstack/react-query";
 import Link from "next/link";
 
+import { canShowLastKnownData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   ActiveBadge,
@@ -33,7 +35,7 @@ export function NoticesPage() {
     { page, page_size: PRIVACY_PAGE_SIZE },
     { query: { retry: false, placeholderData: keepPreviousData } },
   );
-  const result = query.data?.data;
+  const result = query.isError && !canShowLastKnownData(query) ? undefined : query.data?.data;
   const createLink = canManage ? (
     <Link href="/portal/privacy/notices/new" className={primaryLinkClass}>
       Create privacy notice
@@ -47,6 +49,7 @@ export function NoticesPage() {
         description="Manage notices shown to people using COMPASS."
         action={createLink}
       />
+      {query.isError && result ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
 
       {query.isPending ? (
         <PrivacyListSkeleton label="Loading privacy notices…" />

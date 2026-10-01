@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { Label } from "@/components/ui/label";
 import {
   AvailabilityQueryError,
@@ -114,7 +116,8 @@ export function EffectiveAvailabilityPreview({
     { page: servicePage, page_size: 50 },
     { query: { retry: false } },
   );
-  const selectedService = services.data?.data.items.find(
+  const serviceData = safeQueryData(services)?.data;
+  const selectedService = serviceData?.items.find(
     (service) => service.id === serviceId,
   );
 
@@ -128,6 +131,7 @@ export function EffectiveAvailabilityPreview({
     },
     { query: { enabled: request !== null, retry: false } },
   );
+  const effectiveData = safeQueryData(effective)?.data;
 
   useEffect(() => {
     if (previousRefreshToken.current === refreshToken) return;
@@ -183,7 +187,7 @@ export function EffectiveAvailabilityPreview({
   }
 
   const grouped = useMemo(() => {
-    const response = effective.data?.data;
+    const response = effectiveData;
     if (!response) return [];
     const groups = new Map<
       string,
@@ -207,7 +211,7 @@ export function EffectiveAvailabilityPreview({
       key,
       ...value,
     }));
-  }, [effective.data]);
+  }, [effectiveData]);
 
   return (
     <section aria-labelledby="effective-availability-heading">
@@ -222,9 +226,10 @@ export function EffectiveAvailabilityPreview({
         and Service constraints. Final Appointment availability may differ.
       </p>
 
+      {services.isError && serviceData ? <RefreshFailureNotice onRetry={() => void services.refetch()} retrying={services.isFetching} /> : null}
       {services.isPending ? (
         <AvailabilitySectionSkeleton label="Loading Services…" />
-      ) : services.isError ? (
+      ) : !serviceData ? (
         <div className="mt-5">
           <AvailabilityQueryError
             error={services.error}
@@ -232,7 +237,7 @@ export function EffectiveAvailabilityPreview({
             onRetry={() => void services.refetch()}
           />
         </div>
-      ) : services.data.data.items.length === 0 ? (
+      ) : serviceData.items.length === 0 ? (
         <p className="mt-5 border-y border-border py-7 text-sm text-muted">
           No active Services are currently available for this preview.
         </p>
@@ -251,7 +256,7 @@ export function EffectiveAvailabilityPreview({
                 onChange={(event) => chooseService(event.target.value)}
               >
                 <option value="">Select a Service</option>
-                {services.data.data.items.map((service) => (
+                {serviceData.items.map((service) => (
                   <option key={service.id} value={service.id}>
                     {service.name}
                   </option>
@@ -309,7 +314,7 @@ export function EffectiveAvailabilityPreview({
             </div>
           </div>
 
-          {servicePage > 1 || services.data.data.has_next ? (
+          {servicePage > 1 || serviceData.has_next ? (
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <Button
                 variant="secondary"
@@ -319,11 +324,11 @@ export function EffectiveAvailabilityPreview({
                 Previous Services
               </Button>
               <span className="text-sm text-muted">
-                Service page {services.data.data.page}
+                Service page {serviceData.page}
               </span>
               <Button
                 variant="secondary"
-                disabled={!services.data.data.has_next}
+                disabled={!serviceData.has_next}
                 onClick={() => changeServicePage(servicePage + 1)}
               >
                 Next Services
@@ -344,9 +349,11 @@ export function EffectiveAvailabilityPreview({
       )}
 
       {request ? (
-        effective.isPending ? (
+        <>
+        {effective.isError && effectiveData ? <RefreshFailureNotice onRetry={() => void effective.refetch()} retrying={effective.isFetching} /> : null}
+        {effective.isPending ? (
           <AvailabilitySectionSkeleton label="Loading effective Availability…" />
-        ) : effective.isError ? (
+        ) : !effectiveData ? (
           <div className="mt-5">
             <AvailabilityQueryError
               error={effective.error}
@@ -354,7 +361,7 @@ export function EffectiveAvailabilityPreview({
               onRetry={() => void effective.refetch()}
             />
           </div>
-        ) : effective.data.data.windows.length === 0 ? (
+        ) : effectiveData.windows.length === 0 ? (
           <p className="mt-5 border-y border-border py-7 text-sm text-muted">
             No effective Availability exists for this Service, delivery mode,
             and date range.
@@ -362,7 +369,7 @@ export function EffectiveAvailabilityPreview({
         ) : (
           <div className="mt-6">
             <p className="text-xs text-muted">
-              Timezone: {effective.data.data.timezone}
+              Timezone: {effectiveData.timezone}
             </p>
             <div className="mt-3 divide-y divide-border border-y border-border">
               {grouped.map((group) => (
@@ -373,12 +380,12 @@ export function EffectiveAvailabilityPreview({
                       <li key={window.starts_at + window.ends_at}>
                         {timeLabel(
                           window.starts_at,
-                          effective.data.data.timezone,
+                          effectiveData.timezone,
                         )}{" "}
                         –{" "}
                         {timeLabel(
                           window.ends_at,
-                          effective.data.data.timezone,
+                          effectiveData.timezone,
                         )}
                       </li>
                     ))}
@@ -387,7 +394,8 @@ export function EffectiveAvailabilityPreview({
               ))}
             </div>
           </div>
-        )
+        )}
+        </>
       ) : null}
     </section>
   );

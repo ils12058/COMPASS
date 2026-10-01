@@ -3,6 +3,8 @@
 import Link from "next/link";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { GoodMoralCancelAction } from "@/features/good-moral/good-moral-cancellation-action";
 import { GoodMoralPdfDownload } from "@/features/good-moral/good-moral-pdf";
 import {
@@ -26,11 +28,12 @@ export function GoodMoralStudentDetail({
   canCancel: boolean;
 }) {
   const detail = useGoodMoralGetMyRequest(requestId, { query: { retry: false } });
+  const confirmed = safeQueryData(detail);
 
   if (detail.isPending) {
     return <div className="space-y-4" aria-busy="true"><span className="sr-only">Loading Good Moral request…</span><Skeleton className="h-10 w-1/2" /><Skeleton className="h-44 w-full" /><Skeleton className="h-32 w-full" /></div>;
   }
-  if (detail.isError) {
+  if (!confirmed) {
     const notFound = goodMoralErrorCode(detail.error) === "good_moral_not_found";
     return (
       <section className="max-w-2xl space-y-5">
@@ -40,7 +43,7 @@ export function GoodMoralStudentDetail({
     );
   }
 
-  const item = detail.data.data;
+  const item = confirmed.data;
   const refresh = async () => {
     const result = await detail.refetch();
     return result.isError ? undefined : result.data?.data;
@@ -48,6 +51,7 @@ export function GoodMoralStudentDetail({
 
   return (
     <section className="space-y-6" aria-labelledby="good-moral-student-detail-heading">
+      {detail.isError ? <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Link href="/portal/good-moral" className="mb-3 inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Good Moral</Link>
@@ -107,7 +111,7 @@ export function GoodMoralStudentDetail({
         </>
       ) : null}
 
-      {item.status === "REQUESTED" && canCancel ? (
+      {item.status === "REQUESTED" && canCancel && !detail.isError ? (
         <GoodMoralSection title="Request actions">
           <p className="mb-4 text-sm leading-6 text-muted">A requested certificate can be cancelled. It will remain in your request history.</p>
           <GoodMoralCancelAction requestId={item.id} studentFacing onRefresh={refresh} />

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { GoodMoralError, GoodMoralHeading, GoodMoralStatus, formatGoodMoralDateTime, goodMoralVariantLabel } from "@/features/good-moral/good-moral-shared";
 import { useGoodMoralListRequests } from "@/lib/api/generated/good-moral/good-moral";
 import { GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
@@ -38,7 +40,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
     ...(filters.pageSize ? { page_size: filters.pageSize } : {}),
   };
   const queue = useGoodMoralListRequests(params, { query: { retry: false } });
-  const page = queue.data?.data;
+  const page = safeQueryData(queue)?.data;
   const hasFilters = Boolean(filters.search || filters.variant || filters.status);
 
   return (
@@ -73,6 +75,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
           {hasFilters ? <Link href={pageHref({ ...filters, search: "", variant: "", status: "" }, 1)} className="inline-flex min-h-10 items-center px-2 text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</Link> : null}
         </div>
       </form>
+      {queue.isError && page ? <RefreshFailureNotice onRetry={() => void queue.refetch()} retrying={queue.isFetching} /> : null}
 
       {queue.isPending ? (
         <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading Good Moral requests…</span>
@@ -81,7 +84,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </div>
-      ) : queue.isError ? (
+      ) : !page ? (
         <GoodMoralError error={queue.error} fallback="Good Moral requests could not be loaded." onRetry={() => void queue.refetch()} />
       ) : !page ? null : page.items.length === 0 ? (
         <p className="border-y border-border py-6 text-sm text-muted">

@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { GoodMoralCancelAction } from "@/features/good-moral/good-moral-cancellation-action";
 import { GoodMoralCorrectionForm } from "@/features/good-moral/good-moral-correction-form";
 import { GoodMoralIssueSection } from "@/features/good-moral/good-moral-issue-section";
@@ -32,12 +34,13 @@ export function GoodMoralCounselorDetail({
   canIssue: boolean;
 }) {
   const detail = useGoodMoralGetRequest(requestId, { query: { retry: false } });
+  const confirmed = safeQueryData(detail);
   const [correctionOpen, setCorrectionOpen] = useState(false);
 
   if (detail.isPending) {
     return <div className="space-y-4" aria-busy="true"><span className="sr-only">Loading Good Moral request…</span><Skeleton className="h-10 w-1/2" /><Skeleton className="h-44 w-full" /><Skeleton className="h-32 w-full" /></div>;
   }
-  if (detail.isError) {
+  if (!confirmed) {
     const notFound = goodMoralErrorCode(detail.error) === "good_moral_not_found";
     return (
       <section className="max-w-2xl space-y-5">
@@ -47,7 +50,7 @@ export function GoodMoralCounselorDetail({
     );
   }
 
-  const item = detail.data.data;
+  const item = confirmed.data;
   const refresh = async () => {
     const result = await detail.refetch();
     return result.isError ? undefined : result.data?.data;
@@ -56,6 +59,7 @@ export function GoodMoralCounselorDetail({
 
   return (
     <section className="space-y-6" aria-labelledby="good-moral-counselor-detail-heading">
+      {detail.isError ? <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Link href="/portal/good-moral" className="mb-3 inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Good Moral queue</Link>
@@ -102,7 +106,7 @@ export function GoodMoralCounselorDetail({
         {!hasReceipt ? <p className="mt-4 text-xs text-muted">No Official Receipt details are recorded.</p> : null}
       </GoodMoralSection>
 
-      {item.status === "REQUESTED" && canManage ? (
+      {item.status === "REQUESTED" && canManage && !detail.isError ? (
         correctionOpen ? (
           <>
             <GoodMoralCorrectionForm
@@ -125,7 +129,7 @@ export function GoodMoralCounselorDetail({
         )
       ) : null}
 
-      {item.status === "REQUESTED" && canIssue ? <GoodMoralIssueSection item={item} onRefresh={refresh} /> : null}
+      {item.status === "REQUESTED" && canIssue && !detail.isError ? <GoodMoralIssueSection item={item} onRefresh={refresh} /> : null}
 
       {item.status === "ISSUED" ? (
         <>

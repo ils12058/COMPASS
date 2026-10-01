@@ -6,6 +6,9 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { canShowLastKnownData, shouldHideProtectedData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { boundaryDelay, useServerBoundary } from "@/features/freshness/use-server-boundary";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
 import { RoutineCounselorEvaluationReadOnly, RoutineCounselorEvaluationWorkspace } from "@/features/routine-interviews/routine-counselor-evaluation";
 import { RoutineStudentIntakeReadOnly } from "@/features/routine-interviews/routine-student-intake";
@@ -39,6 +42,9 @@ import type {
 import { CounselingContextAnchorType, CounselingContextInventoryStatus, CounselingEntryMode, DeliveryMode } from "@/lib/api/generated/model";
 import {
   getCounselingContextGetOverviewQueryKey,
+  getCounselingContextGetInventoryQueryKey,
+  getCounselingContextGetSupportIndicatorsQueryKey,
+  getCounselingContextListHistoryQueryKey,
   getCounselingContextListSharedSummariesQueryKey,
   useCounselingContextGetInventory,
   useCounselingContextGetOverview,
@@ -56,6 +62,8 @@ type QueryResultWithData<T> = {
   error: unknown;
   isPending: boolean;
   isError: boolean;
+  isFetching: boolean;
+  isPlaceholderData?: boolean;
   refetch: () => Promise<unknown>;
 };
 
@@ -104,15 +112,59 @@ export function CounselingWorkspace({
   anchorId: string;
 }) {
   const { user } = usePortalSession();
+  const queryClient = useQueryClient();
+  const [contextUnavailable, setContextUnavailable] = useState(false);
+  const [contextRevision, setContextRevision] = useState(0);
   const access = getCounselingAccess(user);
   const allowed = access.isCounselor && access.canViewAssigned;
   const overview = useCounselingContextGetOverview(anchorType, anchorId, {
     query: { enabled: allowed, retry: false },
   });
+  const validUntil = overview.data?.data.valid_until;
+  const serverDate = overview.data?.headers.date;
+  const invalidBoundary = Boolean(validUntil) && boundaryDelay(validUntil, serverDate, overview.dataUpdatedAt) === null;
+  const boundaryReached = Boolean(validUntil) && boundaryDelay(validUntil, serverDate, overview.dataUpdatedAt) === 0;
+
+  const clearContextReads = () => {
+    for (const queryKey of [
+      getCounselingContextGetInventoryQueryKey(anchorType, anchorId),
+      getCounselingContextGetSupportIndicatorsQueryKey(anchorType, anchorId),
+      getCounselingContextListHistoryQueryKey(anchorType, anchorId, { limit: 20 }),
+      getCounselingContextListSharedSummariesQueryKey(anchorType, anchorId, { limit: 20 }),
+    ]) queryClient.removeQueries({ queryKey, exact: true });
+  };
+
+  useServerBoundary({
+    boundary: validUntil,
+    serverDate,
+    receivedAt: overview.dataUpdatedAt,
+    onBoundary: () => {
+      setContextUnavailable(true);
+      clearContextReads();
+    },
+  });
+
+  const reauthorize = async () => {
+    const result = await overview.refetch();
+    const next = result.data;
+    if (result.isSuccess && next && (boundaryDelay(next.data.valid_until, next.headers.date, result.dataUpdatedAt) ?? 0) > 0) {
+      setContextUnavailable(false);
+      setContextRevision((revision) => revision + 1);
+    }
+  };
+
+  const invalidateContext = (invalid: boolean) => {
+    if (!invalid) return;
+    setContextUnavailable(true);
+    clearContextReads();
+  };
 
   if (!allowed) return <CounselingUnavailable title="Counseling context unavailable" />;
+  if (contextUnavailable || invalidBoundary || boundaryReached || shouldHideProtectedData(overview.error) || counselingErrorCode(overview.error) === "counseling_context_not_found") {
+    return <section role="alert" className="max-w-3xl border-y border-border py-7"><h1 className="font-heading text-2xl font-semibold text-ink">Counseling context unavailable</h1><p className="mt-3 text-sm leading-6 text-muted">This temporary context needs a new server access check before it can be shown.</p><Button className="mt-3" variant="secondary" onClick={() => void reauthorize()}>Check access again</Button></section>;
+  }
   if (overview.isPending) return <div aria-busy="true"><span className="sr-only">Loading Counseling context…</span><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-5 h-32 w-full" /><Skeleton className="mt-5 h-72 w-full" /></div>;
-  if (overview.isError || !overview.data?.data) {
+  if ((overview.isError && !canShowLastKnownData(overview)) || !overview.data?.data) {
     const expired = counselingErrorCode(overview.error) === "counseling_context_not_found";
     return (
       <section role="alert" className="max-w-3xl border-y border-border py-7">
@@ -124,7 +176,7 @@ export function CounselingWorkspace({
     );
   }
 
-  return <CounselingWorkspaceContent anchorType={anchorType} anchorId={anchorId} overview={overview.data.data} access={access} onRefreshOverview={() => overview.refetch()} />;
+  return <><CounselingWorkspaceContent key={contextRevision} anchorType={anchorType} anchorId={anchorId} overview={overview.data.data} access={access} onRefreshOverview={() => overview.refetch()} onContextInvalidated={invalidateContext} />{overview.isError ? <RefreshFailureNotice onRetry={() => void overview.refetch()} /> : null}</>;
 }
 
 function CounselingWorkspaceContent({
@@ -133,12 +185,14 @@ function CounselingWorkspaceContent({
   overview,
   access,
   onRefreshOverview,
+  onContextInvalidated,
 }: {
   anchorType: CounselingContextAnchorType;
   anchorId: string;
   overview: CounselingContextOverviewResponse;
   access: ReturnType<typeof getCounselingAccess>;
   onRefreshOverview: () => unknown;
+  onContextInvalidated: (invalid: boolean) => void;
 }) {
   const queryClient = useQueryClient();
   const [recordOpen, setRecordOpen] = useState(false);
@@ -181,6 +235,10 @@ function CounselingWorkspaceContent({
   async function handlePublished() {
     await queryClient.invalidateQueries({ queryKey: getCounselingContextListSharedSummariesQueryKey(anchorType, anchorId, { limit: 20 }) });
   }
+
+  useEffect(() => {
+    if (contextExpired) onContextInvalidated(true);
+  }, [contextExpired, onContextInvalidated]);
 
   return (
     <div>
@@ -253,7 +311,8 @@ export function CounselingContextPanel({
   const history = useCounselingContextListHistory(anchorType, anchorId, { limit: 20 }, { query: { enabled: tabIs("HISTORY") && available.has("HISTORY"), retry: false } });
   const previousSummaries = useCounselingContextListSharedSummaries(anchorType, anchorId, { limit: 20 }, { query: { enabled: tabIs("SHARED_SUMMARIES") && available.has("SHARED_SUMMARIES") && access.canViewAssignedSummaries, retry: false } });
   const routine = useRoutineInterviewsGetAssigned(overview.routine_interview?.id ?? "", { query: { enabled: tabIs("ROUTINE") && Boolean(overview.routine_interview), retry: false } });
-  const contextExpired = [inventory.error, support.error, history.error, previousSummaries.error].some((error) => counselingErrorCode(error) === "counseling_context_not_found");
+  const contextExpired = [inventory.error, support.error, history.error, previousSummaries.error].some((error) => counselingErrorCode(error) === "counseling_context_not_found" || shouldHideProtectedData(error));
+  const activeQuery = activeTab === "INVENTORY" ? inventory : activeTab === "SUPPORT_INDICATORS" ? support : activeTab === "HISTORY" ? history : activeTab === "SHARED_SUMMARIES" ? previousSummaries : activeTab === "ROUTINE" ? routine : null;
 
   useEffect(() => {
     onContextExpiredChange?.(contextExpired);
@@ -284,6 +343,8 @@ export function CounselingContextPanel({
             {tabs.map((tab) => <button key={tab.id} id={`counseling-context-tab-${tab.id}`} type="button" role="tab" aria-selected={activeTab === tab.id} aria-controls="counseling-context-panel" tabIndex={activeTab === tab.id ? 0 : -1} onClick={() => setActiveTab(tab.id)} className={`min-h-10 shrink-0 border-b-2 px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${activeTab === tab.id ? "border-brand text-brand" : "border-transparent text-muted hover:text-ink"}`}>{tab.label}</button>)}
           </div>
           <div id="counseling-context-panel" role="tabpanel" aria-labelledby={`counseling-context-tab-${activeTab}`} tabIndex={0} className="min-w-0 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+            {activeQuery && canShowLastKnownData(activeQuery) ? <RefreshFailureNotice onRetry={() => void activeQuery.refetch()} retrying={activeQuery.isFetching} /> : null}
+            {activeQuery?.isFetching && activeQuery.data && !activeQuery.isError ? <p role="status" className="text-sm text-muted">Refreshing…</p> : null}
             {activeTab === "OVERVIEW" ? <ContextOverview overview={overview} /> : null}
             {activeTab === "ROUTINE" ? <RoutineContext routine={routine} canManage={routineAccess.canManageAssigned} /> : null}
             {activeTab === "INVENTORY" ? <InventoryContext query={inventory} overview={overview} /> : null}
@@ -319,7 +380,7 @@ function ContextOverview({ overview }: { overview: CounselingContextOverviewResp
 
 function RoutineContext({ routine, canManage }: { routine: QueryResultWithData<CounselorRoutineDetailResponse>; canManage: boolean }) {
   if (routine.isPending) return <div aria-busy="true"><span className="sr-only">Loading assigned Routine Interview…</span><Skeleton className="h-12 w-full" /><Skeleton className="mt-3 h-56 w-full" /></div>;
-  if (routine.isError || !routine.data?.data) return <CounselingQueryError message={counselingErrorMessage(routine.error, "The Routine Interview could not be loaded within your current access.")} onRetry={() => void routine.refetch()} />;
+  if ((routine.isError && !canShowLastKnownData(routine)) || !routine.data?.data) return <CounselingQueryError message={counselingErrorMessage(routine.error, "The Routine Interview could not be loaded within your current access.")} onRetry={() => void routine.refetch()} />;
   const detail = routine.data.data;
   return (
     <div>
@@ -332,7 +393,7 @@ function RoutineContext({ routine, canManage }: { routine: QueryResultWithData<C
 
 function InventoryContext({ query, overview }: { query: QueryResultWithData<CounselingContextInventoryResponse>; overview: CounselingContextOverviewResponse }) {
   if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading contextual Individual Inventory…</span><Skeleton className="h-10 w-1/2" /><Skeleton className="mt-4 h-80 w-full" /></div>;
-  if (query.isError) return <CounselingQueryError message={counselingErrorMessage(query.error, "Contextual Individual Inventory could not be loaded.")} onRetry={() => void query.refetch()} />;
+  if (query.isError && !canShowLastKnownData(query)) return <CounselingQueryError message={counselingErrorMessage(query.error, "Contextual Individual Inventory could not be loaded.")} onRetry={() => void query.refetch()} />;
   const result = query.data?.data;
   if (!result?.available) {
     const unavailable: Record<string, string> = {
@@ -348,7 +409,7 @@ function InventoryContext({ query, overview }: { query: QueryResultWithData<Coun
 
 function SupportContext({ query }: { query: QueryResultWithData<CounselingContextSupportResponse> }) {
   if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading contextual support indicators…</span><Skeleton className="h-12 w-full" /><Skeleton className="mt-3 h-12 w-full" /></div>;
-  if (query.isError) return <CounselingQueryError message={counselingErrorMessage(query.error, "Contextual support indicators could not be loaded.")} onRetry={() => void query.refetch()} />;
+  if (query.isError && !canShowLastKnownData(query)) return <CounselingQueryError message={counselingErrorMessage(query.error, "Contextual support indicators could not be loaded.")} onRetry={() => void query.refetch()} />;
   const result = query.data?.data;
   if (!result?.available) {
     const message = result?.inventory_source_status === CounselingContextInventoryStatus.DRAFT
@@ -363,7 +424,7 @@ function SupportContext({ query }: { query: QueryResultWithData<CounselingContex
 
 function HistoryContext({ query }: { query: QueryResultWithData<CounselingContextHistoryResponse> }) {
   if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading minimized Counseling history…</span><Skeleton className="h-14 w-full" /><Skeleton className="mt-2 h-14 w-full" /></div>;
-  if (query.isError) return <CounselingQueryError message={counselingErrorMessage(query.error, "Counseling context history could not be loaded.")} onRetry={() => void query.refetch()} />;
+  if (query.isError && !canShowLastKnownData(query)) return <CounselingQueryError message={counselingErrorMessage(query.error, "Counseling context history could not be loaded.")} onRetry={() => void query.refetch()} />;
   const items = query.data?.data.items ?? [];
   if (!items.length) return <p className="border-y border-border py-5 text-sm text-muted">No contextual history is available.</p>;
   return <ol className="divide-y divide-border border-y border-border">{items.map((item) => <li key={`${item.kind}-${item.id}`} className="py-4"><p className="font-semibold text-ink">{historyKindLabels[item.kind]} · {item.title}</p><p className="mt-1 text-sm text-muted">{formatCounselingDateTime(item.occurred_at)} · {historyStatusLabels[item.status]}{item.reference_code ? ` · ${item.reference_code}` : ""}{item.delivery_mode ? ` · ${counselingDeliveryModeLabel(item.delivery_mode)}` : ""}</p>{item.provider ? <p className="mt-1 text-sm text-muted">Provider: {item.provider.display_name}</p> : null}</li>)}</ol>;
@@ -381,7 +442,7 @@ function SharedSummariesContext({
   onPublished: () => void;
 }) {
   if (query.isPending && access.canViewAssignedSummaries) return <div aria-busy="true"><span className="sr-only">Loading published Shared Summaries…</span><Skeleton className="h-20 w-full" /><Skeleton className="mt-2 h-20 w-full" /></div>;
-  if (query.isError && access.canViewAssignedSummaries) return <CounselingQueryError message={counselingErrorMessage(query.error, "Previously published Shared Summaries could not be loaded.")} onRetry={() => void query.refetch()} />;
+  if (query.isError && !canShowLastKnownData(query) && access.canViewAssignedSummaries) return <CounselingQueryError message={counselingErrorMessage(query.error, "Previously published Shared Summaries could not be loaded.")} onRetry={() => void query.refetch()} />;
   const items = query.data?.data.items ?? [];
   const encounterId = overview.matching_encounter?.id;
   return (

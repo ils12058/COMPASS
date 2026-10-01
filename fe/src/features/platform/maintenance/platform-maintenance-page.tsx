@@ -4,6 +4,9 @@ import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { canShowLastKnownData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { useServerBoundary } from "@/features/freshness/use-server-boundary";
 import {
   PlatformConfirmation,
   usePlatformAction,
@@ -88,7 +91,27 @@ export function PlatformMaintenancePage() {
   const [manualFormError, setManualFormError] = useState<string | null>(null);
   const [scheduleFormError, setScheduleFormError] = useState<string | null>(null);
   const [editingSchedule, setEditingSchedule] = useState(false);
-  const result = maintenanceQuery.data?.data;
+  const [boundaryVerificationPending, setBoundaryVerificationPending] = useState(false);
+  const result = maintenanceQuery.isError && !canShowLastKnownData(maintenanceQuery) ? undefined : maintenanceQuery.data?.data;
+  const maintenanceStale = boundaryVerificationPending || (maintenanceQuery.isError && Boolean(result));
+  const transitionBoundary = result?.state === MaintenanceState.SCHEDULED
+    ? result.scheduled_start_at
+    : result?.state === MaintenanceState.MAINTENANCE && result.source === MaintenanceSource.SCHEDULED
+      ? result.scheduled_end_at
+      : null;
+  async function refreshStatus() {
+    const response = await maintenanceQuery.refetch();
+    if (response.isSuccess) setBoundaryVerificationPending(false);
+  }
+  useServerBoundary({
+    boundary: transitionBoundary,
+    serverDate: maintenanceQuery.data?.headers.date,
+    receivedAt: maintenanceQuery.dataUpdatedAt,
+    onBoundary: () => {
+      setBoundaryVerificationPending(true);
+      void refreshStatus();
+    },
+  });
   const pending =
     enable.isPending ||
     disable.isPending ||
@@ -318,6 +341,7 @@ export function PlatformMaintenancePage() {
       <PlatformPageHeader
         title="Maintenance"
         description={`Review public status and administer manual or scheduled Maintenance Mode. Times use ${INSTITUTION_TIME_ZONE_LABEL}.`}
+        action={<Button variant="secondary" disabled={maintenanceQuery.isFetching} onClick={() => void refreshStatus()}>{maintenanceQuery.isFetching ? "Refreshing…" : "Refresh status"}</Button>}
       />
 
       {maintenanceQuery.isPending ? <PlatformRowsSkeleton rows={3} /> : null}
@@ -327,6 +351,7 @@ export function PlatformMaintenancePage() {
           onRetry={() => void maintenanceQuery.refetch()}
         />
       ) : null}
+      {maintenanceStale && result ? <RefreshFailureNotice message="Maintenance status may have changed. Showing the last confirmed result; management controls are unavailable until status is verified." onRetry={() => void refreshStatus()} retrying={maintenanceQuery.isFetching} /> : null}
 
       {result ? (
         <>
@@ -401,7 +426,7 @@ export function PlatformMaintenancePage() {
             </p>
           ) : null}
 
-          {canManage ? (
+          {canManage && !maintenanceStale ? (
             <section className="mt-8" aria-labelledby="maintenance-controls-heading">
               <h2
                 id="maintenance-controls-heading"

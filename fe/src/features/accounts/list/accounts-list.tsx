@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
   accountName,
   designationLabels,
@@ -91,6 +93,7 @@ export function AccountsList() {
     ...(search ? { search } : {}),
   };
   const list = useAccountsList(filters, { query: { retry: false } });
+  const confirmed = safeQueryData(list);
   const filtered = Boolean(
     filters.role ||
       filters.designation ||
@@ -236,6 +239,7 @@ export function AccountsList() {
         ) : null}
       </div>
 
+      {list.isError && confirmed ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
       {list.isPending ? (
         <div className="mt-6 space-y-3" aria-busy="true">
           <span className="sr-only">Loading accounts…</span>
@@ -243,7 +247,7 @@ export function AccountsList() {
             <Skeleton key={index} className="h-14 w-full" />
           ))}
         </div>
-      ) : list.isError ? (
+      ) : !confirmed ? (
         <div role="alert" className="mt-6 border-y border-border py-6">
           <p className="text-sm text-danger">
             {managedAccountError(list.error, "Accounts could not be loaded.")}
@@ -263,7 +267,7 @@ export function AccountsList() {
               Refreshing accounts…
             </p>
           ) : null}
-          {list.data.data.items.length === 0 ? (
+          {confirmed.data.items.length === 0 ? (
             <div className="border-b border-border py-10 text-sm text-muted">
               <p>
                 {page > 1
@@ -305,7 +309,7 @@ export function AccountsList() {
                   </tr>
                 </thead>
                 <tbody>
-                  {list.data.data.items.map((account) => (
+                  {confirmed.data.items.map((account) => (
                     <tr
                       key={account.id}
                       className="border-t border-border align-top"
@@ -345,7 +349,7 @@ export function AccountsList() {
               </table>
             </div>
           )}
-          {page > 1 || list.data.data.has_next ? (
+          {page > 1 || confirmed.data.has_next ? (
             <nav
               aria-label="Accounts pagination"
               className="mt-5 flex items-center justify-between gap-4"
@@ -360,11 +364,11 @@ export function AccountsList() {
                 Previous
               </Button>
               <span className="text-sm text-muted">
-                Page {list.data.data.page}
+                Page {confirmed.data.page}
               </span>
               <Button
                 variant="secondary"
-                disabled={!list.data.data.has_next}
+                disabled={!confirmed.data.has_next}
                 onClick={() =>
                   router.push(hrefWith("page", String(page + 1), false))
                 }

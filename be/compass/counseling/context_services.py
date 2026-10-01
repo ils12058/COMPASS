@@ -10,7 +10,11 @@ from compass.accounts.models import User
 from compass.appointments.models import Appointment
 from compass.call_slips.models import CallSlip
 from compass.inventory.models import StudentInventory
-from compass.inventory.services import InventoryStatus, get_current_inventory_status
+from compass.inventory.services import (
+    CurrentAcademicYearNotConfigured,
+    InventoryStatus,
+    get_current_inventory_status,
+)
 from compass.organization.models import StudentAffiliation
 from compass.referrals.models import Referral
 from compass.routine_interviews.models import RoutineInterview
@@ -178,7 +182,12 @@ def get_context_overview(access: CounselingContextAccess) -> CounselingContextOv
         .filter(student_id=access.student_id)
         .first()
     )
-    _status, inventory = _inventory_source(access)
+    try:
+        _status, inventory = _inventory_source(access)
+    except CurrentAcademicYearNotConfigured:
+        # Inventory enrichment is optional for the authorized core context.
+        # The dedicated Inventory and Support endpoints retain their scoped error.
+        inventory = None
     routine = _routine_interview(access)
 
     campus = None

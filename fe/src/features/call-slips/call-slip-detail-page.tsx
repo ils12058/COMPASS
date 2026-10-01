@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipQueryError, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipIssuanceModeLabels, callSlipStateLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
@@ -50,13 +52,16 @@ export function CallSlipDetailPage({ callSlipId }: { callSlipId: string }) {
 
 function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   const slip = useCallSlipsGetMy(callSlipId, { query: { retry: false } });
+  const confirmed = safeQueryData(slip);
 
-  if (slip.isError) return <div className="space-y-7"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
+  if (slip.isError && !confirmed) return <div className="space-y-7"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
   if (slip.isPending) return <CallSlipLoading />;
+  if (!confirmed) return <CallSlipLoading />;
 
-  const item = slip.data.data;
+  const item = confirmed.data;
   return (
     <div className="space-y-7">
+      {slip.isError ? <RefreshFailureNotice onRetry={() => void slip.refetch()} retrying={slip.isFetching} /> : null}
       <CallSlipHeading title="Call Slip / Interview Permit" description="Your Call Slip details" backHref="/portal/call-slips" backLabel="Back to My Call Slips" action={<CallSlipPdfDownload callSlipId={item.id} studentFacing />} />
       {item.state === CallSlipLifecycleStateValue.VOIDED ? <div role="status" className="border-y border-warning/30 py-4"><p className="font-semibold text-warning">Withdrawn</p><p className="mt-1 text-sm text-ink">This Call Slip is no longer active.</p></div> : null}
       <RecordSection title="Permit details">
@@ -86,13 +91,16 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   const { user } = usePortalSession();
   const referralAccess = getReferralAccess(user);
   const slip = useCallSlipsGet(callSlipId, { query: { retry: false } });
+  const confirmed = safeQueryData(slip);
 
-  if (slip.isError) return <div className="space-y-7"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
+  if (slip.isError && !confirmed) return <div className="space-y-7"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
   if (slip.isPending) return <CallSlipLoading />;
+  if (!confirmed) return <CallSlipLoading />;
 
-  const item = slip.data.data;
+  const item = confirmed.data;
   return (
     <div className="space-y-7">
+      {slip.isError ? <RefreshFailureNotice onRetry={() => void slip.refetch()} retrying={slip.isFetching} /> : null}
       <CallSlipHeading title="Call Slip / Interview Permit" description="Operational source record" backHref="/portal/call-slips" action={<CallSlipPdfDownload callSlipId={item.id} />} />
       {item.state === CallSlipLifecycleStateValue.VOIDED ? (
         <div role="status" className="border-y border-warning/30 py-4">
@@ -131,10 +139,10 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
           ) : <p className="mt-3 text-sm text-muted">A linked Referral exists, but its reference is unavailable in your current access.</p>}
         </section>
       ) : null}
-      <CallSlipLifecycleActions slip={item} onRefresh={async () => {
+      {!slip.isError ? <CallSlipLifecycleActions slip={item} onRefresh={async () => {
         const refreshed = await slip.refetch();
         return refreshed.isSuccess ? refreshed.data.data : undefined;
-      }} />
+      }} /> : null}
     </div>
   );
 }

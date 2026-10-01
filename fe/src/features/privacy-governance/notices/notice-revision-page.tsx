@@ -5,6 +5,9 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { canShowLastKnownData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { useServerBoundary } from "@/features/freshness/use-server-boundary";
 import { useUnsavedNavigation } from "@/features/form-safety/unsaved-changes-provider";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import {
@@ -37,7 +40,7 @@ import {
   hasPrivacyConflictCode,
   PrivacyConflictCode,
 } from "@/features/privacy-governance/privacy-governance-errors";
-import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
+import { formatDateOnly, formatInstitutionalDateTime, institutionalDateTimeInputToISO } from "@/lib/institutional-time";
 import {
   NoticePublishBlocker,
   RevisionStatusValue,
@@ -165,9 +168,21 @@ export function NoticeRevisionPage() {
   const action = usePrivacyAction();
   const [editing, setEditing] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const projectedRevision = detail.data?.data;
+  const publishBoundary = projectedRevision?.status === RevisionStatusValue.DRAFT &&
+    projectedRevision.publish_readiness.blocker === NoticePublishBlocker.EFFECTIVE_DATE_IN_FUTURE &&
+    projectedRevision.effective_on
+      ? institutionalDateTimeInputToISO(`${projectedRevision.effective_on}T00:00`)
+      : null;
+  useServerBoundary({
+    boundary: publishBoundary,
+    serverDate: detail.data?.headers.date,
+    receivedAt: detail.dataUpdatedAt,
+    onBoundary: () => { void detail.refetch(); },
+  });
 
   if (detail.isPending) return <PrivacyDetailSkeleton label="Loading notice revision…" />;
-  if (detail.isError) {
+  if ((detail.isError && !canShowLastKnownData(detail)) || !detail.data) {
     return (
       <PrivacyRecordUnavailable
         title="Notice revision unavailable"
@@ -184,7 +199,7 @@ export function NoticeRevisionPage() {
   const family = notice.data?.data;
   const isDraft = revision.status === RevisionStatusValue.DRAFT;
   const editable = canManage && isDraft && family?.is_active === true;
-  const publishReady = revision.publish_readiness.ready;
+  const publishReady = !detail.isError && revision.publish_readiness.ready;
   const hasPublished = family?.current_revision != null;
 
   async function confirmPublish() {
@@ -235,7 +250,7 @@ export function NoticeRevisionPage() {
           </>
         }
         action={
-          editable && !editing ? (
+          editable && !editing && !detail.isError ? (
             <>
               <Button
                 variant="secondary"
@@ -260,6 +275,7 @@ export function NoticeRevisionPage() {
           ) : null
         }
       />
+      {detail.isError ? <RefreshFailureNotice message="Latest revision state could not be checked. Showing the last confirmed revision; publishing is unavailable until a successful refresh." onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
 
       {searchParams.get("created") === "1" && !editing ? (
         <p role="status" className="mb-4 text-sm text-success">

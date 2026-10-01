@@ -5,6 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { canShowLastKnownData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
   PlatformConfirmation,
   usePlatformAction,
@@ -93,6 +95,7 @@ export function PlatformEmailDeliveryPage() {
   const [page, setPage] = useState(1);
   const [selectedDelivery, setSelectedDelivery] =
     useState<EmailDeliveryItemResponse | null>(null);
+  const [selectedDeliveryAt, setSelectedDeliveryAt] = useState(0);
   const summary = usePlatformOperationsGetEmailDeliverySummary({
     query: { retry: false, staleTime: 20_000 },
   });
@@ -106,11 +109,16 @@ export function PlatformEmailDeliveryPage() {
   });
   const retry = usePlatformOperationsRetryEmailDelivery();
   const action = usePlatformAction();
-  const summaryData = summary.data?.data;
-  const deliveryPage = deliveries.data?.data;
+  const summaryData = summary.isError && !canShowLastKnownData(summary) ? undefined : summary.data?.data;
+  const deliveryPage = deliveries.isError && !canShowLastKnownData(deliveries) ? undefined : deliveries.data?.data;
+  const rowsStale = deliveries.isError && Boolean(deliveryPage);
+
+  async function refreshEmailDelivery() {
+    await Promise.all([summary.refetch(), deliveries.refetch()]);
+  }
 
   async function requestRetry() {
-    if (!canManage || !selectedDelivery) return;
+    if (!canManage || !selectedDelivery || deliveries.isError || selectedDeliveryAt !== deliveries.dataUpdatedAt) return;
 
     let staleEligibility = false;
     const success = await action.run(
@@ -154,7 +162,8 @@ export function PlatformEmailDeliveryPage() {
     <section>
       <PlatformPageHeader
         title="Email delivery"
-        description="Operational delivery state only. Recipient identity and message content are not available here."
+        description="Operational delivery state only. Summary and rows update independently while queued deliveries are processed. Recipient identity and message content are not available here."
+        action={<Button variant="secondary" disabled={summary.isFetching || deliveries.isFetching} onClick={() => void refreshEmailDelivery()}>{summary.isFetching || deliveries.isFetching ? "Refreshing…" : "Refresh email delivery"}</Button>}
       />
 
       <section aria-labelledby="email-summary-heading" className="mb-9">
@@ -171,6 +180,7 @@ export function PlatformEmailDeliveryPage() {
             onRetry={() => void summary.refetch()}
           />
         ) : null}
+        {summary.isError && summaryData ? <RefreshFailureNotice message="Latest delivery summary could not be refreshed. Showing the last confirmed summary." onRetry={() => void summary.refetch()} retrying={summary.isFetching} /> : null}
         {summaryData ? (
           <dl className="grid gap-x-6 border-y border-border sm:grid-cols-2 lg:grid-cols-3">
             <div className="border-b border-border py-3">
@@ -265,6 +275,7 @@ export function PlatformEmailDeliveryPage() {
             onRetry={() => void deliveries.refetch()}
           />
         ) : null}
+        {rowsStale ? <RefreshFailureNotice message="Latest delivery rows could not be refreshed. Showing the last confirmed rows. Retry eligibility must be checked again." onRetry={() => void deliveries.refetch()} retrying={deliveries.isFetching} /> : null}
 
         {deliveryPage ? (
           deliveryPage.items.length ? (
@@ -316,7 +327,7 @@ export function PlatformEmailDeliveryPage() {
                         </td>
                         {canManage ? (
                           <td className="px-3 py-4 align-top">
-                            {delivery.manual_retry_allowed ? (
+                            {delivery.manual_retry_allowed && !rowsStale ? (
                               <Button
                                 variant="secondary"
                                 aria-label={`Request retry for ${delivery.event_code}, delivery ${delivery.id}`}
@@ -324,6 +335,7 @@ export function PlatformEmailDeliveryPage() {
                                   action.setError(null);
                                   action.setNotice(null);
                                   setSelectedDelivery(delivery);
+                                  setSelectedDeliveryAt(deliveries.dataUpdatedAt);
                                 }}
                               >
                                 Request retry
@@ -379,7 +391,7 @@ export function PlatformEmailDeliveryPage() {
       {action.stepUpDialog}
       {canManage ? (
         <PlatformConfirmation
-          open={selectedDelivery !== null}
+          open={selectedDelivery !== null && !deliveries.isError && selectedDeliveryAt === deliveries.dataUpdatedAt}
           title="Request an email delivery retry?"
           confirmLabel="Request retry"
           pendingLabel="Requesting…"
@@ -394,7 +406,7 @@ export function PlatformEmailDeliveryPage() {
           }}
           onConfirm={() => void requestRetry()}
         >
-          {selectedDelivery ? (
+          {selectedDelivery && !deliveries.isError && selectedDeliveryAt === deliveries.dataUpdatedAt ? (
             <>
               <p>
                 Request another attempt for <strong>{selectedDelivery.event_code}</strong>.

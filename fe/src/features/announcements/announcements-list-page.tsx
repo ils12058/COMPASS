@@ -4,6 +4,8 @@ import { Pin } from "lucide-react";
 import Link from "next/link";
 
 import { Label } from "@/components/ui/label";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { announcementErrorMessage } from "@/features/announcements/announcement-errors";
 import { announcementTimingLine } from "@/features/announcements/announcement-presentation";
 import {
@@ -48,7 +50,7 @@ export function AnnouncementsListPage() {
     },
     { query: { retry: false } },
   );
-  const result = list.isError ? undefined : list.data?.data;
+  const result = safeQueryData(list)?.data;
 
   return (
     <section aria-labelledby="announcements-heading">
@@ -101,10 +103,11 @@ export function AnnouncementsListPage() {
           </Link>
         ) : null}
       </div>
+      {list.isError && result ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
 
       {list.isPending ? (
         <ContentListSkeleton label="Loading Announcements…" />
-      ) : list.isError ? (
+      ) : !result ? (
         <div className="mt-5">
           <ContentQueryError
             message={announcementErrorMessage(list.error, "Announcements could not be loaded.")}

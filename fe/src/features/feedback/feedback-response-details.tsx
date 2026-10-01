@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { FeedbackAccessUnavailable, FeedbackPageHeading, FeedbackQueryError, FeedbackRatingLabel, feedbackErrorCode } from "@/features/feedback/feedback-shared";
@@ -66,17 +68,19 @@ export function CustomerFeedbackResponseDetail({ responseId }: { responseId: str
   const { user } = usePortalSession();
   const access = getFeedbackAccess(user);
   const detail = useFeedbackGetCustomerFeedbackResponse(responseId, { query: { retry: false, enabled: access.canViewCustomerFeedback } });
+  const confirmed = safeQueryData(detail);
   if (!access.canViewCustomerFeedback) return <FeedbackAccessUnavailable title="Customer Feedback response unavailable" />;
   if (detail.isPending) return <p aria-busy="true" className="py-8 text-sm text-muted">Loading Customer Feedback response…</p>;
-  if (detail.isError) {
+  if (!confirmed) {
     const missing = notFoundMessage(detail.error, "Customer Feedback");
     return <section><FeedbackPageHeading title={missing ?? "Customer Feedback response could not be loaded"} /><div className="mt-5">{missing ? <Link href="/portal/feedback/customer-feedback/responses" className="text-sm font-semibold text-brand underline">Back to responses</Link> : <FeedbackQueryError error={detail.error} fallback="Customer Feedback response could not be loaded." onRetry={() => void detail.refetch()} />}</div></section>;
   }
-  const item = detail.data.data;
+  const item = confirmed.data;
   const services = item.services_received.map((value) => serviceLabels[value] ?? value).join(", ");
 
   return (
     <section aria-labelledby="customer-feedback-detail-heading">
+      {detail.isError ? <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
       <FeedbackPageHeading headingId="customer-feedback-detail-heading" eyebrow="Customer Feedback response" title={item.respondent_name || "Customer Feedback response"} description={`Submitted ${formatInstitutionalDateTime(item.submitted_at)}.`} action={<Link href="/portal/feedback/customer-feedback/responses" className="inline-flex min-h-10 items-center rounded-md border border-border-strong px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to responses</Link>} />
       <DetailSection title="I. Service/s received">
         <DetailField label="Services received">{services}</DetailField>
@@ -132,17 +136,19 @@ export function CsmResponseDetail({ responseId }: { responseId: string }) {
   const { user } = usePortalSession();
   const access = getFeedbackAccess(user);
   const detail = useFeedbackGetCsmResponse(responseId, { query: { retry: false, enabled: access.canViewCsm } });
+  const confirmed = safeQueryData(detail);
   if (!access.canViewCsm) return <FeedbackAccessUnavailable title="CSM response unavailable" />;
   if (detail.isPending) return <p aria-busy="true" className="py-8 text-sm text-muted">Loading CSM response…</p>;
-  if (detail.isError) {
+  if (!confirmed) {
     const missing = notFoundMessage(detail.error, "CSM");
     return <section><FeedbackPageHeading title={missing ?? "CSM response could not be loaded"} /><div className="mt-5">{missing ? <Link href="/portal/feedback/csm/responses" className="text-sm font-semibold text-brand underline">Back to responses</Link> : <FeedbackQueryError error={detail.error} fallback="CSM response could not be loaded." onRetry={() => void detail.refetch()} />}</div></section>;
   }
-  const item = detail.data.data;
+  const item = confirmed.data;
   const clientLabel = item.client_type === CSMClientTypeValue.CITIZEN ? "Citizen" : item.client_type === CSMClientTypeValue.BUSINESS ? "Business" : "Government";
 
   return (
     <section aria-labelledby="csm-detail-heading">
+      {detail.isError ? <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
       <FeedbackPageHeading headingId="csm-detail-heading" title="Client Satisfaction Measurement response" description={`Submitted ${formatInstitutionalDateTime(item.submitted_at)}.`} action={<Link href="/portal/feedback/csm/responses" className="inline-flex min-h-10 items-center rounded-md border border-border-strong px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to responses</Link>} />
       <DetailSection title="Respondent and instrument data">
         <DetailField label="Client type">{clientLabel}</DetailField>
