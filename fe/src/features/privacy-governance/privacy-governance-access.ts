@@ -13,5 +13,5 @@ export function canManagePrivacyGovernance(user: CapabilityUser): boolean {
 }
 
 export function hasPrivacyGovernanceWorkspace(user: CapabilityUser): boolean {
-  return canViewPrivacyGovernance(user) || canManagePrivacyGovernance(user);
+  return canViewPrivacyGovernance(user);
 }
