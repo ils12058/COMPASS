@@ -113,7 +113,7 @@ export function ManagedActionFeedback({
           const resume = action.afterStepUp;
           action.setAfterStepUp(null);
           resume?.();
-        }
+        }}
       />
     </>
   );
