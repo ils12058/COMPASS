@@ -3,15 +3,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -429,7 +422,7 @@ function RoutineEncounterFinalization({
         </>
       )}
 
-      {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
+      {error && !confirmOpen ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
       <Button
         className="mt-5"
         disabled={disabled || pending || candidates.isPending || candidates.isError || items.length === 0 || (!appointmentBacked && !selectedEncounterId)}
@@ -438,39 +431,22 @@ function RoutineEncounterFinalization({
         Finalize Counselor Evaluation
       </Button>
 
-      <AlertDialog
+      <ConsequentialActionDialog
         open={confirmOpen}
-        onOpenChange={(open) => {
-          if (!pending) setConfirmOpen(open);
-        }}
+        title="Finalize Counselor Evaluation?"
+        confirmLabel="Finalize evaluation"
+        pendingLabel="Finalizing…"
+        pending={pending}
+        confirmDisabled={disabled}
+        error={error}
+        onOpenChange={setConfirmOpen}
+        onConfirm={() => void confirmFinalize()}
       >
-        <AlertDialogContent
-          onEscapeKeyDown={(event) => { if (pending) event.preventDefault(); }}
-        >
-          <AlertDialogTitle>Finalize Counselor Evaluation?</AlertDialogTitle>
-          <AlertDialogDescription>
-            After finalization, this Evaluation becomes read-only and remains linked to the completed Counseling interaction used for finalization.
-          </AlertDialogDescription>
-          {error ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={pending}>Cancel</Button>
-            </AlertDialogCancel>
-            <AlertDialogAction asChild>
-              <Button
-                disabled={pending || disabled}
-                onClick={(event) => {
-                  event.preventDefault();
-                  void confirmFinalize();
-                }}
-                aria-busy={pending}
-              >
-                {pending ? "Finalizing…" : "Finalize evaluation"}
-              </Button>
-            </AlertDialogAction>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p>
+          After finalization, this Evaluation becomes read-only and remains
+          linked to the completed Counseling interaction used for finalization.
+        </p>
+      </ConsequentialActionDialog>
     </section>
   );
 }
