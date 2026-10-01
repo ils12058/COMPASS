@@ -68,18 +68,15 @@ function historyRecord(state: unknown): HistoryStateRecord | null {
     : null;
 }
 
-function historyMarker(
-  state: unknown,
-  session: string,
-): CompassHistoryMarker | null {
+function readHistoryMarker(state: unknown): CompassHistoryMarker | null {
   const record = historyRecord(state);
   const value = record?.[HISTORY_STATE_KEY];
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
   const marker = value as Record<string, unknown>;
-  return marker.session === session && typeof marker.index === "number"
-    ? { session, index: marker.index }
+  return typeof marker.session === "string" && typeof marker.index === "number"
+    ? { session: marker.session, index: marker.index }
     : null;
 }
 
@@ -120,7 +117,8 @@ export function UnsavedChangesProvider({
 }: {
   children: ReactNode;
 }) {
-  const sessionId = useId();
+  const generatedSessionId = useId();
+  const historySessionRef = useRef(generatedSessionId);
   const registrationsRef = useRef(new Map<string, DirtyRegistration>());
   const currentHistoryIndexRef = useRef(0);
   const pendingTraversalDeltaRef = useRef<number | null>(null);
@@ -163,13 +161,16 @@ export function UnsavedChangesProvider({
     const originalPushState = browserHistory.pushState;
     const originalReplaceState = browserHistory.replaceState;
 
-    const existing = historyMarker(browserHistory.state, sessionId);
+    const existing = readHistoryMarker(browserHistory.state);
+    if (existing) {
+      historySessionRef.current = existing.session;
+    }
     currentHistoryIndexRef.current = existing?.index ?? 0;
     originalReplaceState.call(
       browserHistory,
       withHistoryMarker(
         browserHistory.state,
-        sessionId,
+        historySessionRef.current,
         currentHistoryIndexRef.current,
       ),
       "",
@@ -184,7 +185,7 @@ export function UnsavedChangesProvider({
       const nextIndex = currentHistoryIndexRef.current + 1;
       originalPushState.call(
         browserHistory,
-        withHistoryMarker(data, sessionId, nextIndex),
+        withHistoryMarker(data, historySessionRef.current, nextIndex),
         unused,
         url,
       );
@@ -200,7 +201,7 @@ export function UnsavedChangesProvider({
         browserHistory,
         withHistoryMarker(
           data,
-          sessionId,
+          historySessionRef.current,
           currentHistoryIndexRef.current,
         ),
         unused,
@@ -219,7 +220,7 @@ export function UnsavedChangesProvider({
         browserHistory.replaceState = originalReplaceState;
       }
     };
-  }, [sessionId]);
+  }, []);
 
   useEffect(() => {
     const navigation = (
@@ -254,7 +255,9 @@ export function UnsavedChangesProvider({
 
     const handlePopState = (event: PopStateEvent) => {
       const restoringIndex = restoringHistoryRef.current;
-      const targetMarker = historyMarker(event.state, sessionId);
+      const marker = readHistoryMarker(event.state);
+      const targetMarker =
+        marker?.session === historySessionRef.current ? marker : null;
 
       if (restoringIndex !== null) {
         event.stopImmediatePropagation();
@@ -317,7 +320,7 @@ export function UnsavedChangesProvider({
       window.removeEventListener("beforeunload", warnBeforeUnload);
       window.removeEventListener("popstate", handlePopState, true);
     };
-  }, [hasUnsavedChanges, sessionId]);
+  }, [hasUnsavedChanges]);
 
   const value = useMemo<UnsavedNavigationContextValue>(
     () => ({
