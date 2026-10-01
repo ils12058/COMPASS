@@ -160,8 +160,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
             ))}
           </ul>
           <CanonicalPagination page={data?.page ?? filters.page} hasNext={data?.has_next ?? false} onPageChange={(page) => router.push(studentFiltersToUrl({ ...filters, page }), { scroll: false })} label="My Call Slip results" />
-        </>
-      )}
+  
     </div>
   );
 }
@@ -216,10 +215,6 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
         description={access.canManageOperational ? "Review and manage Call Slips within your authorized Guidance scope." : "Review Call Slips within your authorized Guidance scope."}
         action={access.canManageOperational ? <Link href="/portal/call-slips/new" className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Issue Call Slip</Link> : null}
       />
-      {!access.canViewOperational ? (
-        <p className="max-w-2xl border-y border-border py-5 text-sm leading-6 text-muted">Your current access allows Call Slip issuance but not review of existing operational records.</p>
-      ) : (
-      <>
       <form onSubmit={submitFilters} className="grid gap-4 border-b border-border pb-6 md:grid-cols-2 xl:grid-cols-5 xl:items-end">
         <div className="grid gap-2 md:col-span-2 xl:col-span-2">
           <Label htmlFor="call-slips-search">Search</Label>
