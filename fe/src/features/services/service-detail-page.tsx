@@ -5,14 +5,8 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   ServicesDetailSkeleton,
@@ -373,50 +367,30 @@ export function ServiceDetailPage() {
         ) : null}
       </div>
 
-      <AlertDialog
+      <ConsequentialActionDialog
         open={lifecycleOpen}
+        title={
+          service.is_active
+            ? "Disable " + service.name + "?"
+            : "Enable " + service.name + "?"
+        }
+        confirmLabel={service.is_active ? "Disable Service" : "Enable Service"}
+        pendingLabel={service.is_active ? "Disabling…" : "Enabling…"}
+        pending={lifecyclePending}
+        error={action.error}
+        variant={service.is_active ? "danger" : "primary"}
         onOpenChange={(open) => {
-          if (lifecyclePending) return;
           setLifecycleOpen(open);
-          if (!open) {
-            action.setError(null);
-          }
+          if (!open) action.setError(null);
         }}
+        onConfirm={() => void confirmLifecycle()}
       >
-        <AlertDialogContent>
-          <AlertDialogTitle>
-            {service.is_active
-              ? "Disable " + service.name + "?"
-              : "Enable " + service.name + "?"}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {service.is_active
-              ? "The Service will no longer be available for new Appointment scheduling. Scheduling changes such as rescheduling or reassignment may also be unavailable while it remains inactive. Existing Appointment records will remain."
-              : "COMPASS will validate the complete active configuration before enabling this Service. If required configuration is missing, the Service will remain inactive."}
-          </AlertDialogDescription>
-          {action.messages}
-          <div className="mt-6 flex justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={lifecyclePending}>
-                Cancel
-              </Button>
-            </AlertDialogCancel>
-            <Button
-              variant={service.is_active ? "danger" : "primary"}
-              disabled={lifecyclePending}
-              onClick={() => void confirmLifecycle()}
-            >
-              {lifecyclePending
-                ? service.is_active
-                  ? "Disabling…"
-                  : "Enabling…"
-                : service.is_active
-                  ? "Disable Service"
-                  : "Enable Service"}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p>
+          {service.is_active
+            ? "The Service will no longer be available for new Appointment scheduling. Scheduling changes such as rescheduling or reassignment may also be unavailable while it remains inactive. Existing Appointment records will remain."
+            : "COMPASS will validate the complete active configuration before enabling this Service. If required configuration is missing, the Service will remain inactive."}
+        </p>
+      </ConsequentialActionDialog>
 
       {action.stepUpDialog}
     </section>
