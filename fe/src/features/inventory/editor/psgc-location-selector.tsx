@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import type { InventorySubmissionIssue } from "@/features/inventory/inventory-payload";
 import { InventoryNotice, inventorySelectClass } from "@/features/inventory/inventory-shared";
 import type { GeographicLocationPayload, GeographicLocationKindValue as LocationKind } from "@/lib/api/generated/model";
 import { GeographicLocationKindValue } from "@/lib/api/generated/model";
@@ -16,12 +17,20 @@ export function PSGCLocationSelector({
   kind,
   location,
   onChange,
+  validationIssues = [],
 }: {
   kind: LocationKind;
   location?: GeographicLocationPayload;
   onChange: (value: GeographicLocationPayload | undefined) => void;
+  validationIssues?: InventorySubmissionIssue[];
 }) {
   const permanent = kind === GeographicLocationKindValue.PERMANENT;
+  const prefix = `inventory-${kind.toLowerCase()}`;
+  const errorFor = (targetId: string) =>
+    validationIssues.find((issue) => issue.targetId === targetId)?.message;
+  const choiceError = errorFor(`${prefix}-location-choice`);
+  const regionError = errorFor(`${prefix}-region`);
+  const cityError = errorFor(`${prefix}-city`);
   const mode = !location
     ? ""
     : location.not_specified
@@ -166,19 +175,23 @@ export function PSGCLocationSelector({
 
       {!permanent || location ? (
         <div className="max-w-xl">
-          <Label htmlFor={`inventory-${kind.toLowerCase()}-location-choice`}>
+          <Label htmlFor={`${prefix}-location-choice`}>
             Location response
           </Label>
           <select
-            id={`inventory-${kind.toLowerCase()}-location-choice`}
+            id={`${prefix}-location-choice`}
             className={`mt-2 ${inventorySelectClass}`}
             value={mode}
+            aria-required={!permanent || undefined}
+            aria-invalid={choiceError ? true : undefined}
+            aria-describedby={choiceError ? `${prefix}-location-choice-error` : undefined}
             onChange={(event) => chooseMode(event.target.value)}
           >
             <option value="">Choose how to provide this location</option>
             <option value="specified">Provide structured location</option>
             <option value="not_specified">Prefer not to specify</option>
           </select>
+          {choiceError ? <p id={`${prefix}-location-choice-error`} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{choiceError}</p> : null}
         </div>
       ) : (
         <Button
@@ -202,13 +215,16 @@ export function PSGCLocationSelector({
           ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label htmlFor={`inventory-${kind.toLowerCase()}-region`}>Region</Label>
+              <Label htmlFor={`${prefix}-region`}>Region</Label>
               <select
-                id={`inventory-${kind.toLowerCase()}-region`}
+                id={`${prefix}-region`}
                 className={`mt-2 ${inventorySelectClass}`}
                 value={location?.region_psgc_code ?? ""}
                 disabled={regions.isPending || regions.isError}
-                onChange={(event) => chooseRegion(event.target.value)}
+                aria-required={!permanent || undefined}
+                aria-invalid={regionError ? true : undefined}
+                aria-describedby={regionError ? `${prefix}-region-error` : undefined}
+                onChange={(event) => chooseRegion(event.target.value)
               >
                 <option value="">Select a region</option>
                 {location?.region_psgc_code &&
@@ -221,6 +237,7 @@ export function PSGCLocationSelector({
                   <option key={item.code} value={item.code}>{item.name}</option>
                 ))}
               </select>
+              {regionError ? <p id={`${prefix}-region-error`} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{regionError}</p> : null}
               {regions.isPending ? <p role="status" className="mt-1 text-xs text-muted">Loading regions…</p> : null}
             </div>
 
