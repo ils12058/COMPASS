@@ -105,7 +105,7 @@ export function CounselingWorkspace({
 }) {
   const { user } = usePortalSession();
   const access = getCounselingAccess(user);
-  const allowed = access.isCounselor && (access.canViewAssigned || access.canManageAssigned);
+  const allowed = access.isCounselor && access.canViewAssigned;
   const overview = useCounselingContextGetOverview(anchorType, anchorId, {
     query: { enabled: allowed, retry: false },
   });
