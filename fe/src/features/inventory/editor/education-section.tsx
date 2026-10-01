@@ -15,7 +15,12 @@ export function EducationSection({
   programLookupPending = false,
   programLookupError = false,
   programDiscoveryAllowed = true,
+  validationIssues = [],
 }: InventorySectionProps) {
+  const errorFor = (targetId: string) =>
+    validationIssues.find((issue) => issue.targetId === targetId)?.message;
+  const programError = errorFor("inventory-program");
+  const yearLevelError = errorFor("inventory-year-level");
   const activeSelection = activePrograms.find((program) => program.id === draft.program_id);
   const preserveSnapshot =
     Boolean(draft.program_id) &&
@@ -79,6 +84,8 @@ export function EducationSection({
               value={draft.program_id ?? ""}
               disabled={programLookupPending || programLookupError || !programDiscoveryAllowed}
               aria-required="true"
+              aria-invalid={programError ? true : undefined}
+              aria-describedby={programError ? "inventory-program-error" : undefined}
               onChange={(event) => {
                 const selected = activePrograms.find((program) => program.id === event.target.value);
                 onChange({
@@ -101,6 +108,7 @@ export function EducationSection({
                 </option>
               ))}
             </select>
+            {programError ? <p id="inventory-program-error" role="alert" className="mt-1.5 text-xs leading-5 text-danger">{programError}</p> : null}
             {programLookupPending ? <p role="status" className="mt-1.5 text-xs text-muted">Loading active Programs…</p> : null}
           </div>
           <TextField
@@ -120,6 +128,8 @@ export function EducationSection({
               className={`mt-2 ${inventorySelectClass}`}
               value={draft.year_level ?? ""}
               aria-required="true"
+              aria-invalid={yearLevelError ? true : undefined}
+              aria-describedby={yearLevelError ? "inventory-year-level-error" : undefined}
               onChange={(event) => onChange({ year_level: event.target.value ? Number(event.target.value) : null })}
             >
               <option value="">Select a Year Level</option>
@@ -127,6 +137,7 @@ export function EducationSection({
                 <option key={year} value={year}>{year}{year === 1 ? "st" : year === 2 ? "nd" : year === 3 ? "rd" : "th"} year</option>
               ))}
             </select>
+            {yearLevelError ? <p id="inventory-year-level-error" role="alert" className="mt-1.5 text-xs leading-5 text-danger">{yearLevelError}</p> : null}
           </div>
           <TextField
             id="inventory-major"
