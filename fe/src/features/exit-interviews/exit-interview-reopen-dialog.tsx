@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ExitInterviewError } from "@/features/exit-interviews/exit-interview-shared";
+import { exitInterviewErrorMessage } from "@/features/exit-interviews/exit-interview-shared";
 import {
   exitInterviewsReopen,
   getExitInterviewsGetQueryKey,
@@ -29,19 +30,29 @@ export function ExitInterviewReopenAction({
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [reviewReason, setReviewReason] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const reopen = useMutation({
     mutationFn: (value: string) =>
       exitInterviewsReopen(exitInterviewId, { reason: value }),
     retry: false,
   });
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedReason = reason.trim();
     if (!normalizedReason) return;
+    setReviewError(null);
+    setReviewReason(normalizedReason);
+    setOpen(false);
+  }
 
+  async function confirmReopen() {
+    if (!reviewReason) return;
+    const reviewed = reviewReason;
+    setReviewError(null);
     try {
-      const result = await reopen.mutateAsync(normalizedReason);
+      const result = await reopen.mutateAsync(reviewed);
       const summary = result.data;
       await queryClient.cancelQueries({
         queryKey: getExitInterviewsGetQueryKey(summary.id),
@@ -54,11 +65,16 @@ export function ExitInterviewReopenAction({
       void queryClient.invalidateQueries({
         queryKey: getExitInterviewsListQueryKey(),
       });
-      setOpen(false);
+      setReviewReason(null);
       setReason("");
       router.push("/portal/exit-interviews?notice=reopened");
-    } catch {
-      // Keep the reason and dialog open so the Head can review the failure and retry deliberately.
+    } catch (caught) {
+      setReviewError(
+        exitInterviewErrorMessage(
+          caught,
+          "The Exit Interview could not be reopened. Review the reason and try again.",
+        ),
+      );
     }
   }
 
@@ -90,14 +106,6 @@ export function ExitInterviewReopenAction({
                 onChange={(event) => setReason(event.target.value)}
               />
             </div>
-            {reopen.isError ? (
-              <div className="mt-4">
-                <ExitInterviewError
-                  error={reopen.error}
-                  fallback="The Exit Interview could not be reopened. Review the reason and try again."
-                />
-              </div>
-            ) : null}
             <div className="mt-6 flex flex-wrap justify-end gap-3">
               <Button
                 type="button"
@@ -107,13 +115,40 @@ export function ExitInterviewReopenAction({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={reopen.isPending || !reason.trim()}>
-                {reopen.isPending ? "Reopening…" : "Reopen for correction"}
+              <Button type="submit" disabled={!reason.trim()}>
+                Review reopening
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
+      <ConsequentialActionDialog
+        open={reviewReason !== null}
+        title="Reopen Exit Interview for correction?"
+        confirmLabel="Reopen for correction"
+        pendingLabel="Reopening…"
+        pending={reopen.isPending}
+        error={reviewError}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setReviewReason(null);
+        }}
+        onConfirm={() => void confirmReopen()}
+      >
+        {reviewReason ? (
+          <>
+            <p>
+              The Student will be able to edit this response again. The reason
+              below will be visible to the Student.
+            </p>
+            <dl>
+              <dt className="text-muted">Reason for correction</dt>
+              <dd className="mt-1 whitespace-pre-wrap break-words font-semibold text-ink">
+                {reviewReason}
+              </dd>
+            </dl>
+          </>
+        ) : null}
+      </ConsequentialActionDialog>
     </>
   );
 }

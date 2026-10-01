@@ -80,6 +80,11 @@ class ProgramListResponse(StrictSchema):
     items: list[ProgramSummary]
 
 
+class OrganizationResponsibilityScope(StrEnum):
+    INSTITUTION_WIDE = "INSTITUTION_WIDE"
+    ASSIGNED_COLLEGES = "ASSIGNED_COLLEGES"
+
+
 class OrganizationPersonSummary(StrictSchema):
     id: UUID
     institutional_id: str | None
@@ -87,6 +92,7 @@ class OrganizationPersonSummary(StrictSchema):
     email: str
     role: RoleCode
     is_active: bool
+    responsibility_scope: OrganizationResponsibilityScope | None
 
 
 class PersonListResponse(StrictSchema):
@@ -204,6 +210,16 @@ def _program(program) -> dict[str, object]:
 
 
 def _person(user) -> dict[str, object]:
+    responsibility_scope = None
+    if user.role.code == "COUNSELOR":
+        responsibility_scope = (
+            OrganizationResponsibilityScope.INSTITUTION_WIDE
+            if any(
+                designation.code == "HEAD_GUIDANCE_COUNSELOR"
+                for designation in user.designations.all()
+            )
+            else OrganizationResponsibilityScope.ASSIGNED_COLLEGES
+        )
     return {
         "id": user.pk,
         "institutional_id": user.institutional_id,
@@ -211,6 +227,7 @@ def _person(user) -> dict[str, object]:
         "email": user.email,
         "role": user.role.code,
         "is_active": user.is_active,
+        "responsibility_scope": responsibility_scope,
     }
 
 
@@ -323,9 +340,11 @@ def counselor_responsibilities(
     campus_id: UUID | None = None,
 ):
     _require(request, "organization.manage")
-    qs = CounselorResponsibility.objects.select_related(
-        "college__campus", "counselor__role"
-    ).order_by("college__campus__code", "college__code")
+    qs = (
+        CounselorResponsibility.objects.select_related("college__campus", "counselor__role")
+        .prefetch_related("counselor__designations")
+        .order_by("college__campus__code", "college__code")
+    )
     if counselor_id is not None:
         qs = qs.filter(counselor_id=counselor_id)
     if college_id is not None:
@@ -381,8 +400,10 @@ def college_counselor_remove(request, college_id: UUID):
 )
 def staff_supervisions(request):
     _require(request, "organization.manage")
-    qs = StaffSupervision.objects.select_related("staff__role", "supervisor__role").order_by(
-        "staff__last_name", "staff__id"
+    qs = (
+        StaffSupervision.objects.select_related("staff__role", "supervisor__role")
+        .prefetch_related("supervisor__designations")
+        .order_by("staff__last_name", "staff__id")
     )
     return {
         "items": [

@@ -3,14 +3,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import {
   CompassApiError,
@@ -124,47 +117,19 @@ export function PlatformConfirmation({
   onConfirm: () => void;
 }) {
   return (
-    <AlertDialog
+    <ConsequentialActionDialog
       open={open}
-      onOpenChange={(next) => {
-        if (!pending) onOpenChange(next);
-      }}
+      title={title}
+      confirmLabel={confirmLabel}
+      cancelLabel={cancelLabel}
+      pendingLabel={pendingLabel}
+      pending={pending}
+      error={error}
+      variant={variant}
+      onOpenChange={onOpenChange}
+      onConfirm={onConfirm}
     >
-      <AlertDialogContent
-        onEscapeKeyDown={(event) => {
-          if (pending) event.preventDefault();
-        }}
-      >
-        <AlertDialogTitle>{title}</AlertDialogTitle>
-        <AlertDialogDescription asChild>
-          <div className="mt-2 space-y-3 text-sm leading-6 text-muted">
-            {children}
-          </div>
-        </AlertDialogDescription>
-        {error ? (
-          <p role="alert" className="mt-4 text-sm text-danger">
-            {error}
-          </p>
-        ) : null}
-        <div className="mt-6 flex flex-wrap justify-end gap-2">
-          <AlertDialogCancel asChild>
-            <Button
-              variant="secondary"
-              disabled={pending}
-              onClick={() => onOpenChange(false)}
-            >
-              {cancelLabel}
-            </Button>
-          </AlertDialogCancel>
-          <Button
-            variant={variant}
-            disabled={pending}
-            onClick={onConfirm}
-          >
-            {pending ? pendingLabel : confirmLabel}
-          </Button>
-        </div>
-      </AlertDialogContent>
-    </AlertDialog>
+      {children}
+    </ConsequentialActionDialog>
   );
 }

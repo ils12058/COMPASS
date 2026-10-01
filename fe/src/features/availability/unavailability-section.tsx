@@ -2,14 +2,8 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import {
   Dialog,
   DialogContent,
@@ -376,40 +370,28 @@ export function UnavailabilitySection({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
+      <ConsequentialActionDialog
         open={removal !== null}
+        title="Remove this unavailability?"
+        confirmLabel="Remove unavailability"
+        pendingLabel="Removing…"
+        pending={removePending}
+        error={error}
+        variant="danger"
         onOpenChange={(open) => {
-          if (removePending) return;
           if (!open) setRemoval(null);
         }}
+        onConfirm={() => void confirmRemoval()}
       >
-        <AlertDialogContent>
-          <AlertDialogTitle>Remove this unavailability?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {removal
-              ? formatInstitutionalDateTime(removal.starts_at) +
-                " – " +
-                formatInstitutionalDateTime(removal.ends_at) +
-                " will no longer subtract time from Availability."
-              : "This unavailability will be removed."}
-          </AlertDialogDescription>
-          <ActionFeedback error={error} notice={notice} />
-          <div className="mt-6 flex justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={removePending}>
-                Cancel
-              </Button>
-            </AlertDialogCancel>
-            <Button
-              variant="danger"
-              disabled={removePending}
-              onClick={() => void confirmRemoval()}
-            >
-              {removePending ? "Removing…" : "Remove unavailability"}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p>
+          {removal
+            ? formatInstitutionalDateTime(removal.starts_at) +
+              " – " +
+              formatInstitutionalDateTime(removal.ends_at) +
+              " will no longer subtract time from Availability."
+            : "This unavailability will be removed."}
+        </p>
+      </ConsequentialActionDialog>
     </section>
   );
 }

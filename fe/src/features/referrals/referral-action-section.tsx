@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -112,12 +113,15 @@ export function ReferralActionEntry({
   const [notice, setNotice] = useState<string | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
   const [reconcileRequired, setReconcileRequired] = useState(false);
+  const [review, setReview] = useState<{
+    action_type: ReferralActionTypeValue;
+    occurred_at: string;
+    remarks: string;
+  } | null>(null);
+  const [resumeReview, setResumeReview] = useState<typeof review>(null);
   const record = useMutation({
-    mutationFn: () => referralsRecordAction(referral.id, {
-      action_type: actionType,
-      occurred_at: institutionalDateTimeInputToISO(occurredAt)!,
-      remarks: remarks.trim(),
-    }),
+    mutationFn: (payload: NonNullable<typeof review>) =>
+      referralsRecordAction(referral.id, payload),
     retry: false,
   });
 
@@ -131,6 +135,8 @@ export function ReferralActionEntry({
     }
     const recorded = current.actions.some((item) => item.action_type === actionType);
     if (recorded) {
+      setReview(null);
+      setResumeReview(null);
       setOpen(false);
       setNotice("This source action is already recorded on the Referral.");
       return "recorded";
@@ -158,16 +164,32 @@ export function ReferralActionEntry({
       return setError("Action date cannot be earlier than Date referred.");
     }
 
+    setReview({
+      action_type: actionType,
+      occurred_at: occurredAtIso,
+      remarks: remarks.trim(),
+    });
+  }
+
+  async function confirmRecord() {
+    if (!review || reconcileRequired) return;
+    const reviewed = review;
+    setError(null);
+    setNotice(null);
     try {
-      await record.mutateAsync();
+      await record.mutateAsync(reviewed);
       await queryClient.invalidateQueries({ queryKey: getReferralsGetQueryKey(referral.id) });
+      setReview(null);
+      setResumeReview(null);
       setOpen(false);
       setNotice("Referral source action recorded.");
       setOccurredAt("");
       setRemarks("");
     } catch (caught) {
       if (referralErrorCode(caught) === "recent_mfa_required") {
-        setNotice("Verify your authenticator, then submit the action again.");
+        setReview(null);
+        setResumeReview(reviewed);
+        setNotice("Verify your authenticator, then review and confirm the source action again.");
         setStepUpOpen(true);
       } else if (referralErrorCode(caught) === "referral_conflict") {
         const result = await reconcile();
@@ -185,6 +207,9 @@ export function ReferralActionEntry({
       }
     }
   }
+
+  const actionLabel =
+    actionRows.find((row) => row.type === actionType)?.label ?? "Referral source action";
 
   return (
     <div className="mt-3">
@@ -220,7 +245,7 @@ export function ReferralActionEntry({
             <Textarea id={`action-remarks-${actionType}`} rows={3} maxLength={4_000} value={remarks} disabled={record.isPending || reconcileRequired} onChange={(event) => setRemarks(event.target.value)} />
             <p className="text-xs text-muted">{remarks.length} / 4,000 characters</p>
           </div>
-          {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+          {error && !review ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
           <div className="flex flex-wrap gap-2">
             {reconcileRequired ? (
               <Button type="button" variant="secondary" onClick={() => void reconcile()}>
@@ -228,7 +253,7 @@ export function ReferralActionEntry({
               </Button>
             ) : (
               <Button type="submit" disabled={record.isPending}>
-                {record.isPending ? "Recording…" : buttonLabel}
+                Review action
               </Button>
             )}
             <Button type="button" variant="secondary" disabled={record.isPending} onClick={() => { setOpen(false); setError(null); }}>
@@ -238,10 +263,57 @@ export function ReferralActionEntry({
         </form>
       )}
       {notice ? <p role="status" className="mt-3 text-sm text-muted">{notice}</p> : null}
+      <ConsequentialActionDialog
+        open={review !== null}
+        title={review ? `${buttonLabel}?` : "Review source action"}
+        confirmLabel={buttonLabel}
+        pendingLabel="Recording…"
+        pending={record.isPending}
+        confirmDisabled={reconcileRequired}
+        error={error}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setReview(null);
+        }}
+        onConfirm={() => void confirmRecord()}
+      >
+        {review ? (
+          <>
+            <dl className="grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-muted">Action</dt>
+                <dd className="font-semibold text-ink">{actionLabel}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Occurred</dt>
+                <dd className="font-semibold text-ink">
+                  {formatInstitutionalDateTime(review.occurred_at)} {INSTITUTION_TIME_ZONE_LABEL}
+                </dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-muted">Remarks</dt>
+                <dd className="whitespace-pre-wrap break-words font-semibold text-ink">
+                  {review.remarks || "None"}
+                </dd>
+              </div>
+            </dl>
+            <p className="font-semibold text-ink">
+              This source action cannot be edited or deleted after it is recorded.
+            </p>
+            {reconcileRequired ? (
+              <p>Refresh the Referral detail before deliberately retrying this source action.</p>
+            ) : null}
+          </>
+        ) : null}
+      </ConsequentialActionDialog>
       <StepUpDialog
         open={stepUpOpen}
         onOpenChange={setStepUpOpen}
-        onVerified={() => setNotice("Verification complete. Submit the source action again to continue.")}
+        onVerified={() => {
+          const reviewed = resumeReview;
+          setResumeReview(null);
+          setNotice("Verification complete. Review and confirm the source action again to continue.");
+          if (reviewed) setReview(reviewed);
+        }}
       />
     </div>
   );

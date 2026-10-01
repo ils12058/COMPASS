@@ -3,14 +3,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { accountErrorMessage } from "@/features/account/components/account-errors";
 import { SecurityBackLink } from "@/features/account/security/security-shared";
 import {
@@ -164,17 +158,24 @@ export function SessionsPage() {
         {trusted.isSuccess && browsers.length > 0 ? <ul className="mt-5 divide-y divide-border border-y border-border">{browsers.map((item) => <TrustedRow key={item.id} session={item} onRevoke={(id) => chooseAction({ kind: "trusted", id })} />)}</ul> : null}
       </section>
 
-      <AlertDialog open={action !== null} onOpenChange={(open) => { if (!open && !pending) { setAction(null); setActionError(null); } }}>
-        <AlertDialogContent>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-          {actionError ? <p role="alert" className="mt-3 text-sm text-danger">{actionError}</p> : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialogCancel asChild><Button variant="secondary" disabled={pending}>Cancel</Button></AlertDialogCancel>
-            <Button variant="danger" disabled={pending} onClick={() => void confirmAction()}>{pending ? pendingLabel : actionLabel}</Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConsequentialActionDialog
+        open={action !== null}
+        title={title}
+        confirmLabel={actionLabel}
+        pendingLabel={pendingLabel}
+        pending={pending}
+        error={actionError}
+        variant="danger"
+        onOpenChange={(open) => {
+          if (!open) {
+            setAction(null);
+            setActionError(null);
+          }
+        }}
+        onConfirm={() => void confirmAction()}
+      >
+        <p>{description}</p>
+      </ConsequentialActionDialog>
     </section>
   );
 }

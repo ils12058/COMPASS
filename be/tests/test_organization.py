@@ -458,11 +458,20 @@ def test_eligible_people_projection_is_complete_and_excludes_inactive_users():
     sync_policy()
     admin = make_user("people-admin@example.edu", "IT_ADMIN")
     active = make_user("active-counselor@example.edu", "COUNSELOR")
+    head = make_user("head-counselor@example.edu", "COUNSELOR")
     inactive = make_user("inactive-counselor@example.edu", "COUNSELOR", active=False)
     active.institutional_id = "EMP-001"
     active.first_name = "Active"
     active.last_name = "Counselor"
     active.save(update_fields=["institutional_id", "first_name", "last_name", "updated_at"])
+    head.institutional_id = "EMP-002"
+    head.first_name = "Head"
+    head.last_name = "Counselor"
+    head.save(update_fields=["institutional_id", "first_name", "last_name", "updated_at"])
+    UserDesignation.objects.create(
+        user=head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
 
     response = auth_client(admin).get(
         "/api/v1/organization/people",
@@ -479,7 +488,17 @@ def test_eligible_people_projection_is_complete_and_excludes_inactive_users():
             "email": active.email,
             "role": "COUNSELOR",
             "is_active": True,
-        }
+            "responsibility_scope": "ASSIGNED_COLLEGES",
+        },
+        {
+            "id": str(head.pk),
+            "institutional_id": "EMP-002",
+            "full_name": "Head Counselor",
+            "email": head.email,
+            "role": "COUNSELOR",
+            "is_active": True,
+            "responsibility_scope": "INSTITUTION_WIDE",
+        },
     ]
     assert str(inactive.pk) not in {item["id"] for item in payload["items"]}
 

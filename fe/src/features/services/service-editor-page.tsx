@@ -4,14 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { useState, type FormEvent, type ReactNode } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -686,68 +680,43 @@ export function EditServicePage() {
         codeReadOnly
         onSubmit={submit}
       />
-      <AlertDialog
+      <ConsequentialActionDialog
         open={review !== null}
+        title="Review Service scheduling consequences"
+        confirmLabel="Save Service changes"
+        pendingLabel="Saving…"
+        pending={update.isPending}
+        error={reviewError}
         onOpenChange={(open) => {
-          if (!open && !update.isPending) {
+          if (!open) {
             setReview(null);
             setReviewError(null);
           }
         }}
+        onConfirm={() => void confirmConsequenceReview()}
       >
-        <AlertDialogContent
-          onEscapeKeyDown={(event) => {
-            if (update.isPending) event.preventDefault();
-          }}
-        >
-          <AlertDialogTitle>Review Service scheduling consequences</AlertDialogTitle>
-          <AlertDialogDescription>
-            Review what this Service change means before saving it.
-          </AlertDialogDescription>
-          <div className="mt-4 space-y-3 text-sm leading-6 text-ink">
-            {review?.details?.existingAppointmentDependencyDetected ? (
-              <p>
-                Existing Appointments will remain scheduled. This change may
-                prevent affected Appointments from being rescheduled or
-                reassigned while the Service no longer supports their saved
-                configuration.
-              </p>
-            ) : null}
-            {review?.details?.counselingOnlineEnabled ? (
-              <p>
-                Online Counseling may become bookable where Availability permits
-                it. This does not verify that the E-Counseling provider
-                integration is ready.
-              </p>
-            ) : null}
-            {review && !review.details ? (
-              <p>
-                One or more scheduling consequences require review. Existing
-                Appointments are not changed automatically by this Service
-                update.
-              </p>
-            ) : null}
-          </div>
-          {reviewError ? (
-            <p role="alert" className="mt-4 text-sm text-danger">
-              {reviewError}
-            </p>
-          ) : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={update.isPending}>
-                Cancel
-              </Button>
-            </AlertDialogCancel>
-            <Button
-              disabled={update.isPending}
-              onClick={() => void confirmConsequenceReview()}
-            >
-              {update.isPending ? "Saving…" : "Save Service changes"}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p>Review what this Service change means before saving it.</p>
+        {review?.details?.existingAppointmentDependencyDetected ? (
+          <p>
+            Existing Appointments will remain scheduled. This change may
+            prevent affected Appointments from being rescheduled or reassigned
+            while the Service no longer supports their saved configuration.
+          </p>
+        ) : null}
+        {review?.details?.counselingOnlineEnabled ? (
+          <p>
+            Online Counseling may become bookable where Availability permits
+            it. This does not verify that the E-Counseling provider integration
+            is ready.
+          </p>
+        ) : null}
+        {review && !review.details ? (
+          <p>
+            One or more scheduling consequences require review. Existing
+            Appointments are not changed automatically by this Service update.
+          </p>
+        ) : null}
+      </ConsequentialActionDialog>
       {action.stepUpDialog}
     </section>
   );

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { goodMoralCancelMyRequest, goodMoralCancelRequest, getGoodMoralGetMyRequestQueryKey, getGoodMoralGetRequestQueryKey, getGoodMoralListMyRequestsQueryKey, getGoodMoralListRequestsQueryKey } from "@/lib/api/generated/good-moral/good-moral";
@@ -71,8 +71,7 @@ export function GoodMoralCancelAction({
     setError("The request could not be refreshed. Do not retry until its current state can be checked.");
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submit() {
     setError(null);
     setNotice(null);
     const cleanedReason = reason.trim();
@@ -113,38 +112,49 @@ export function GoodMoralCancelAction({
     <div className="space-y-3">
       <Button variant="danger" onClick={() => handleOpenChange(true)}>Cancel request</Button>
       {notice ? <GoodMoralNotice>{notice}</GoodMoralNotice> : null}
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent aria-describedby="good-moral-cancel-description">
-          <DialogTitle>Cancel this Good Moral request?</DialogTitle>
-          <DialogDescription id="good-moral-cancel-description">
-            {studentFacing
-              ? "The request will remain in your history and cannot be issued after cancellation."
-              : "The request will remain in the historical record and cannot be issued after cancellation."}
-          </DialogDescription>
-          <form onSubmit={submit} aria-busy={cancel.isPending} className="mt-5 space-y-4">
-            <div>
-              <Label htmlFor={`good-moral-cancel-reason-${requestId}`}>Reason for cancellation</Label>
-              <Textarea
-                id={`good-moral-cancel-reason-${requestId}`}
-                className="mt-2"
-                value={reason}
-                maxLength={1000}
-                onChange={(event) => setReason(event.target.value)}
-                required
-                aria-describedby={error ? `good-moral-cancel-error-${requestId}` : undefined}
-              />
-            </div>
-            {error ? <p id={`good-moral-cancel-error-${requestId}`} role="alert" className="text-sm leading-6 text-danger">{error}</p> : null}
-            {blockedUntilRefresh ? <Button type="button" variant="secondary" onClick={() => void reconcile()} disabled={cancel.isPending}>Refresh request state</Button> : null}
-            <div className="flex flex-wrap justify-end gap-3">
-              <Button variant="secondary" onClick={closeAndClear} disabled={cancel.isPending}>Keep request</Button>
-              <Button type="submit" variant="danger" disabled={cancel.isPending || blockedUntilRefresh || !reason.trim()}>
-                {cancel.isPending ? "Cancelling…" : "Cancel request"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ConsequentialActionDialog
+        open={open}
+        title="Cancel this Good Moral request?"
+        confirmLabel="Cancel request"
+        pendingLabel="Cancelling…"
+        pending={cancel.isPending}
+        confirmDisabled={blockedUntilRefresh || !reason.trim()}
+        error={error}
+        variant="danger"
+        cancelLabel="Keep request"
+        onOpenChange={handleOpenChange}
+        onConfirm={() => void submit()}
+      >
+        <p>
+          {studentFacing
+            ? "The request will remain in your history and cannot be issued after cancellation."
+            : "The request will remain in the historical record and cannot be issued after cancellation."}
+        </p>
+        <div>
+          <Label htmlFor={`good-moral-cancel-reason-${requestId}`}>Reason for cancellation</Label>
+          <Textarea
+            id={`good-moral-cancel-reason-${requestId}`}
+            className="mt-2"
+            value={reason}
+            maxLength={1000}
+            onChange={(event) => {
+              setReason(event.target.value);
+              setError(null);
+            }}
+            required
+          />
+        </div>
+        {blockedUntilRefresh ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void reconcile()}
+            disabled={cancel.isPending}
+          >
+            Refresh request state
+          </Button>
+        ) : null}
+      </ConsequentialActionDialog>
     </div>
   );
 }

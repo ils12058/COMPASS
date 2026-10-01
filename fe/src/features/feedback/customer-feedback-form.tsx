@@ -4,8 +4,8 @@ import { useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Input } from "@/components/ui/input";
@@ -263,10 +263,13 @@ export function CustomerFeedbackForm() {
       const code = feedbackErrorCode(caught);
       if (code === "idempotency_unavailable" || code === "idempotency_in_progress" || !(caught instanceof Error && "status" in caught)) {
         setUncertainIntent(intent);
+        setConfirmationOpen(false);
         setError(feedbackErrorMessage(caught, "The submission result could not be confirmed. Retry the same submission to check whether it was received."));
       } else if (code === "idempotency_key_conflict" || code === "invalid_idempotency_key") {
         intentRef.current = null;
         setUncertainIntent(null);
+        setConfirmationOpen(false);
+        setPreparedBody(null);
         setError(feedbackErrorMessage(caught, "Review the response and submit again."));
       } else {
         intentRef.current = null;
@@ -292,7 +295,7 @@ export function CustomerFeedbackForm() {
     <section aria-labelledby="customer-feedback-heading">
       <FeedbackPageHeading headingId="customer-feedback-heading" title="Customer Feedback Form" description={`Feedback for ${opportunityData.service_label}. Your response is submitted as a final response.`} />
       <form className="mt-4" onSubmit={prepareSubmission} noValidate>
-        {error ? <p role="alert" className="mb-5 border-y border-danger/30 py-3 text-sm text-danger">{error}</p> : null}
+        {error && !confirmationOpen ? <p role="alert" className="mb-5 border-y border-danger/30 py-3 text-sm text-danger">{error}</p> : null}
         {isUncertain ? (
           <div className="mb-6 border-y border-warning/40 bg-warning/10 px-4 py-4" role="status" aria-live="polite">
             <p className="text-sm font-semibold text-ink">Submission result not confirmed</p>
@@ -386,16 +389,25 @@ export function CustomerFeedbackForm() {
         </div>
       </form>
 
-      <AlertDialog open={confirmationOpen} onOpenChange={setConfirmationOpen}>
-        <AlertDialogContent>
-          <AlertDialogTitle>Submit Customer Feedback?</AlertDialogTitle>
-          <AlertDialogDescription>Your response will be submitted as a final response. COMPASS does not provide editing or response history after submission.</AlertDialogDescription>
-          <div className="mt-6 flex flex-wrap justify-end gap-3">
-            <AlertDialogCancel asChild><Button variant="secondary" onClick={() => setPreparedBody(null)}>Review response</Button></AlertDialogCancel>
-            <AlertDialogAction asChild><Button disabled={create.isPending} onClick={(event) => { event.preventDefault(); setConfirmationOpen(false); if (preparedBody) void send(preparedBody); }}>{create.isPending ? "Submitting…" : "Submit Customer Feedback"}</Button></AlertDialogAction>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConsequentialActionDialog
+        open={confirmationOpen}
+        title="Submit Customer Feedback?"
+        confirmLabel="Submit Customer Feedback"
+        cancelLabel="Review response"
+        pendingLabel="Submitting…"
+        pending={create.isPending}
+        confirmDisabled={!preparedBody}
+        error={error}
+        onOpenChange={(open) => {
+          setConfirmationOpen(open);
+          if (!open) setPreparedBody(null);
+        }}
+        onConfirm={() => {
+          if (preparedBody) void send(preparedBody);
+        }}
+      >
+        <p>Your response will be submitted as a final response. COMPASS does not provide editing or response history after submission.</p>
+      </ConsequentialActionDialog>
     </section>
   );
 }

@@ -482,6 +482,7 @@ def list_people(
     qs = (
         User.objects.filter(role__code=role, is_active=True)
         .select_related("role")
+        .prefetch_related("designations")
         .order_by("last_name", "first_name", "id")
     )
     if search and search.strip():

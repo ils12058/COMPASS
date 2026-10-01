@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { TotpStepUpPanel } from "@/features/auth/mfa/totp-step-up-panel";
 import { GoodMoralField, GoodMoralSection, formatGoodMoralDate, goodMoralErrorCode, goodMoralErrorMessage, uncertainGoodMoralMutation } from "@/features/good-moral/good-moral-shared";
@@ -12,7 +13,7 @@ import { goodMoralIssueRequest, getGoodMoralGetRequestQueryKey, getGoodMoralList
 import type { GoodMoralDetailResponse } from "@/lib/api/generated/model";
 import { authGetMfaStatus } from "@/lib/api/generated/auth/auth";
 
-type IssueDialogMode = "verify" | "confirm" | null;
+type IssueDialogMode = "verify" | null;
 
 export function GoodMoralIssueSection({
   item,
@@ -23,6 +24,7 @@ export function GoodMoralIssueSection({
 }) {
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<IssueDialogMode>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [checkingMfa, setCheckingMfa] = useState(false);
   const [verificationPending, setVerificationPending] = useState(false);
   const [mfaDisabled, setMfaDisabled] = useState(false);
@@ -48,8 +50,11 @@ export function GoodMoralIssueSection({
       if (!status.enabled) {
         setMfaDisabled(true);
         setError("Multi-factor authentication must be enabled before this certificate can be issued.");
+      } else if (status.recent) {
+        setMode(null);
+        setConfirmOpen(true);
       } else {
-        setMode(status.recent ? "confirm" : "verify");
+        setMode("verify");
       }
     } catch (caught) {
       setError(goodMoralErrorMessage(caught, "MFA status could not be verified. Issuance is unavailable until the security check succeeds."));
@@ -59,6 +64,7 @@ export function GoodMoralIssueSection({
   }
 
   async function handleRecentMfaRequired() {
+    setConfirmOpen(false);
     setMode(null);
     setError("Recent MFA is required. Verify again before confirming issuance.");
     try {
@@ -82,6 +88,7 @@ export function GoodMoralIssueSection({
       await issue.mutateAsync();
       await invalidate();
       await onRefresh();
+      setConfirmOpen(false);
       setMode(null);
       setNotice("Good Moral certificate issued.");
     } catch (caught) {
@@ -92,11 +99,13 @@ export function GoodMoralIssueSection({
       }
       if (code === "current_student_required") {
         await onRefresh();
+        setConfirmOpen(false);
         setMode(null);
         setError("This Current Student certificate can no longer be issued because the Student is no longer in CURRENT lifecycle.");
         return;
       }
       if (uncertainGoodMoralMutation(caught)) {
+        setConfirmOpen(false);
         setMode(null);
         const refreshed = await onRefresh();
         if (refreshed?.status === "ISSUED") {
@@ -138,12 +147,8 @@ export function GoodMoralIssueSection({
   }
 
   function handleDialogOpenChange(nextOpen: boolean) {
-    if (!nextOpen && (issue.isPending || verificationPending)) return;
-    if (!nextOpen) {
-      setMode(null);
-      return;
-    }
-    if (mode === null) setMode("confirm");
+    if (!nextOpen && verificationPending) return;
+    setMode(nextOpen ? "verify" : null);
   }
 
   return (
@@ -182,53 +187,61 @@ export function GoodMoralIssueSection({
               <Link href="/portal/account/security" className="font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open account security</Link> to enable an authenticator before issuing a certificate.
             </p>
           ) : null}
-          {error ? <p role="alert" className="max-w-2xl text-sm leading-6 text-danger">{error}</p> : null}
+          {error && !confirmOpen ? <p role="alert" className="max-w-2xl text-sm leading-6 text-danger">{error}</p> : null}
           {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
         </div>
       </GoodMoralSection>
 
-      <Dialog open={mode !== null} onOpenChange={handleDialogOpenChange}>
+      <Dialog open={mode === "verify"} onOpenChange={handleDialogOpenChange}>
         <DialogContent aria-describedby="good-moral-issue-dialog-description">
-          {mode === "verify" ? (
-            <>
-              <DialogTitle>Verify your identity</DialogTitle>
-              <DialogDescription id="good-moral-issue-dialog-description">Enter the current code from your authenticator app to continue issuing this certificate.</DialogDescription>
-              <TotpStepUpPanel
-                onVerified={() => setMode("confirm")}
-                onCancel={() => setMode(null)}
-                onPendingChange={setVerificationPending}
-              />
-            </>
-          ) : mode === "confirm" ? (
-            <>
-              <DialogTitle>Issue Good Moral certificate?</DialogTitle>
-              <DialogDescription id="good-moral-issue-dialog-description">Issuing freezes the approved Form Revision, document template version, issuance time, and issuing Counselor for this certificate.</DialogDescription>
-              <dl className="mt-5 grid gap-x-6 gap-y-4 sm:grid-cols-2">
-                <GoodMoralField label="Applicant name" value={item.applicant_name} />
-                <GoodMoralField label="Variant" value={item.variant === "CURRENT_STUDENT" ? "Current Student" : "Graduate"} />
-                {item.variant === "CURRENT_STUDENT" ? (
-                  <>
-                    <GoodMoralField label="Year level" value={item.year_level} />
-                    <GoodMoralField label="College" value={item.college} />
-                    <GoodMoralField label="Course" value={item.course} />
-                    <GoodMoralField label="Semester" value={item.semester} />
-                  </>
-                ) : (
-                  <>
-                    <GoodMoralField label="Degree" value={item.degree} />
-                    <GoodMoralField label="Graduation date" value={formatGoodMoralDate(item.graduation_date)} />
-                  </>
-                )}
-              </dl>
-              {error ? <p role="alert" className="mt-4 text-sm leading-6 text-danger">{error}</p> : null}
-              <div className="mt-6 flex flex-wrap justify-end gap-3">
-                <Button variant="secondary" onClick={() => setMode(null)} disabled={issue.isPending}>Cancel</Button>
-                <Button onClick={() => void confirmIssue()} disabled={issue.isPending}>{issue.isPending ? "Issuing certificate…" : "Issue certificate"}</Button>
-              </div>
-            </>
-          ) : null}
+          <DialogTitle>Verify your identity</DialogTitle>
+          <DialogDescription id="good-moral-issue-dialog-description">
+            Enter the current code from your authenticator app to continue issuing this certificate.
+          </DialogDescription>
+          <TotpStepUpPanel
+            onVerified={() => {
+              setMode(null);
+              setConfirmOpen(true);
+            }}
+            onCancel={() => setMode(null)}
+            onPendingChange={setVerificationPending}
+          />
         </DialogContent>
       </Dialog>
+
+      <ConsequentialActionDialog
+        open={confirmOpen}
+        title="Issue Good Moral certificate?"
+        confirmLabel="Issue certificate"
+        pendingLabel="Issuing certificate…"
+        pending={issue.isPending}
+        confirmDisabled={blockedUntilRefresh}
+        error={error}
+        onOpenChange={setConfirmOpen}
+        onConfirm={() => void confirmIssue()}
+      >
+        <p>
+          Issuing freezes the approved Form Revision, document template version,
+          issuance time, and issuing Counselor for this certificate.
+        </p>
+        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+          <GoodMoralField label="Applicant name" value={item.applicant_name} />
+          <GoodMoralField label="Variant" value={item.variant === "CURRENT_STUDENT" ? "Current Student" : "Graduate"} />
+          {item.variant === "CURRENT_STUDENT" ? (
+            <>
+              <GoodMoralField label="Year level" value={item.year_level} />
+              <GoodMoralField label="College" value={item.college} />
+              <GoodMoralField label="Course" value={item.course} />
+              <GoodMoralField label="Semester" value={item.semester} />
+            </>
+          ) : (
+            <>
+              <GoodMoralField label="Degree" value={item.degree} />
+              <GoodMoralField label="Graduation date" value={formatGoodMoralDate(item.graduation_date)} />
+            </>
+          )}
+        </dl>
+      </ConsequentialActionDialog>
     </>
   );
 }

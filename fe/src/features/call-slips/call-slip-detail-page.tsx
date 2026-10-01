@@ -5,8 +5,8 @@ import Link from "next/link";
 import { Download } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -290,25 +290,28 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
           <Label htmlFor="call-slip-interview-ended">Interview ended</Label>
           <Input id="call-slip-interview-ended" type="datetime-local" step="60" required max={`${institutionalDateInputValue()}T23:59`} value={value} disabled={mutation.isPending || reconcileRequired} onChange={(event) => setValue(event.target.value)} />
         </div>
-        {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+        {error && !confirmOpen ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
         {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
         <Button type="submit" variant="secondary" disabled={mutation.isPending || reconcileRequired}>{reconcileRequired ? "Refresh required" : "Review interview end"}</Button>
         {reconcileRequired ? <Button type="button" variant="secondary" className="ml-2" onClick={() => void record()}>Refresh Call Slip</Button> : null}
       </form>
-      <AlertDialog open={confirmOpen} onOpenChange={(open) => { if (!mutation.isPending) setConfirmOpen(open); }}>
-        <AlertDialogContent onEscapeKeyDown={(event) => { if (mutation.isPending) event.preventDefault(); }}>
-          <AlertDialogTitle>Record interview end?</AlertDialogTitle>
-          <AlertDialogDescription>This source timestamp becomes immutable after it is recorded.</AlertDialogDescription>
-          <p className="mt-4 text-sm text-ink">
-            {formatInstitutionalDateTime(
-              institutionalDateTimeInputToISO(value),
-            )}{" "}
-            {INSTITUTION_TIME_ZONE_LABEL}
-          </p>
-          {error ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2"><AlertDialogCancel asChild><Button variant="secondary" disabled={mutation.isPending}>Review details</Button></AlertDialogCancel><Button disabled={mutation.isPending} onClick={() => void record()}>{mutation.isPending ? "Recording…" : "Record interview end"}</Button></div>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConsequentialActionDialog
+        open={confirmOpen}
+        title="Record interview end?"
+        confirmLabel="Record interview end"
+        pendingLabel="Recording…"
+        pending={mutation.isPending}
+        confirmDisabled={reconcileRequired}
+        error={error}
+        onOpenChange={setConfirmOpen}
+        onConfirm={() => void record()}
+      >
+        <p>This source timestamp becomes immutable after it is recorded.</p>
+        <p className="font-semibold text-ink">
+          {formatInstitutionalDateTime(institutionalDateTimeInputToISO(value))}{" "}
+          {INSTITUTION_TIME_ZONE_LABEL}
+        </p>
+      </ConsequentialActionDialog>
       <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setNotice("Verification complete. Review and record the interview end again."); setConfirmOpen(true); }} />
     </div>
   );
@@ -389,22 +392,40 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
   return (
     <div className="mt-6 border-t border-border pt-6">
       <Button variant="danger" onClick={() => { setError(null); setNotice(null); setOpen(true); }}>Void Call Slip</Button>
-      {error ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
+      {error && !open ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
       {notice ? <p role="status" className="mt-3 text-sm text-muted">{notice}</p> : null}
       {reconcileRequired ? <Button className="mt-3" variant="secondary" onClick={() => void confirmVoid()}>Refresh Call Slip state</Button> : null}
-      <AlertDialog open={open} onOpenChange={(next) => { if (!mutation.isPending) setOpen(next); }}>
-        <AlertDialogContent onEscapeKeyDown={(event) => { if (mutation.isPending) event.preventDefault(); }}>
-          <AlertDialogTitle>Void this Call Slip?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {slip.void_notifies_student
-              ? "The Student will be notified that this Call Slip has been withdrawn."
-              : "This Call Slip was recorded as a historical entry, so the Student will not be notified that it was withdrawn."}
-          </AlertDialogDescription>
-          <div className="mt-4 grid gap-2"><Label htmlFor="call-slip-void-reason">Void reason</Label><Textarea id="call-slip-void-reason" rows={3} maxLength={1_000} required value={reason} disabled={mutation.isPending} onChange={(event) => setReason(event.target.value)} /><p className="text-xs text-muted">{reason.length} / 1,000 characters</p></div>
-          {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2"><AlertDialogCancel asChild><Button variant="secondary" disabled={mutation.isPending}>Cancel</Button></AlertDialogCancel><Button variant="danger" disabled={mutation.isPending || !reason.trim()} onClick={() => void confirmVoid()}>{mutation.isPending ? "Voiding…" : "Void Call Slip"}</Button></div>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConsequentialActionDialog
+        open={open}
+        title="Void this Call Slip?"
+        confirmLabel="Void Call Slip"
+        pendingLabel="Voiding…"
+        pending={mutation.isPending}
+        confirmDisabled={reconcileRequired || !reason.trim()}
+        error={error}
+        variant="danger"
+        onOpenChange={setOpen}
+        onConfirm={() => void confirmVoid()}
+      >
+        <p>
+          {slip.void_notifies_student
+            ? "The Student will be notified that this Call Slip has been withdrawn."
+            : "This Call Slip was recorded as a historical entry, so the Student will not be notified that it was withdrawn."}
+        </p>
+        <div className="grid gap-2">
+          <Label htmlFor="call-slip-void-reason">Void reason</Label>
+          <Textarea
+            id="call-slip-void-reason"
+            rows={3}
+            maxLength={1_000}
+            required
+            value={reason}
+            disabled={mutation.isPending}
+            onChange={(event) => setReason(event.target.value)}
+          />
+          <p className="text-xs text-muted">{reason.length} / 1,000 characters</p>
+        </div>
+      </ConsequentialActionDialog>
       <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setNotice("Verification complete. Review the reason and confirm the void again."); setOpen(true); }} />
     </div>
   );

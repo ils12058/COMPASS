@@ -8,7 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { organizationErrorMessage } from "@/features/organization/components/organization-action";
 import { useOrganizationListEligiblePeople } from "@/lib/api/generated/organization/organization";
-import type { OrganizationListEligiblePeopleParams } from "@/lib/api/generated/model";
+import type {
+  OrganizationListEligiblePeopleParams,
+  OrganizationPersonSummary,
+} from "@/lib/api/generated/model";
 
 export function PeoplePicker({
   id,
@@ -16,6 +19,7 @@ export function PeoplePicker({
   role,
   enabled,
   value,
+  selectedPerson,
   onChange,
 }: {
   id: string;
@@ -23,7 +27,8 @@ export function PeoplePicker({
   role: OrganizationListEligiblePeopleParams["role"];
   enabled: boolean;
   value: string;
-  onChange: (id: string) => void;
+  selectedPerson?: OrganizationPersonSummary | null;
+  onChange: (id: string, person: OrganizationPersonSummary) => void;
 }) {
   const [draft, setDraft] = useState("");
   const [search, setSearch] = useState("");
@@ -44,9 +49,32 @@ export function PeoplePicker({
     setSearch(draft.trim());
   }
 
+  const visibleSelected =
+    selectedPerson?.id === value
+      ? selectedPerson
+      : people.data?.data.items.find((person) => person.id === value);
+
   return (
     <fieldset className="min-w-0">
       <legend className="text-sm font-semibold text-ink">{label}</legend>
+      {value && visibleSelected ? (
+        <div className="mt-3 border-l-2 border-support bg-support-soft/40 px-3 py-3 text-sm">
+          <p className="font-semibold text-ink">{visibleSelected.full_name}</p>
+          <p className="mt-1 break-words text-xs text-muted">
+            {visibleSelected.institutional_id
+              ? `${visibleSelected.institutional_id} · ${visibleSelected.email}`
+              : visibleSelected.email}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            {visibleSelected.is_active ? "Active" : "Inactive"}
+            {visibleSelected.responsibility_scope === "INSTITUTION_WIDE"
+              ? " · Institution-wide responsibility scope"
+              : visibleSelected.responsibility_scope === "ASSIGNED_COLLEGES"
+                ? " · Assigned-College responsibility scope"
+                : ""}
+          </p>
+        </div>
+      ) : null}
       <form className="mt-3 flex gap-2" onSubmit={submit}>
         <div className="min-w-0 flex-1">
           <Label className="sr-only" htmlFor={id}>
@@ -103,7 +131,7 @@ export function PeoplePicker({
                   name={id}
                   value={person.id}
                   checked={value === person.id}
-                  onChange={() => onChange(person.id)}
+                  onChange={() => onChange(person.id, person)}
                 />
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium text-ink">

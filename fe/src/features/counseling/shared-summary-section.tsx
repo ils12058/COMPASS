@@ -3,14 +3,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { CounselingAccess } from "@/features/counseling/counseling-access";
@@ -102,22 +96,28 @@ export function SharedSummarySection({
             <Textarea id={`shared-summary-${encounterId}`} value={value} disabled={save.isPending || publish.isPending} onChange={(event) => { setDraft(event.target.value); setSaveError(null); setPublishError(null); }} rows={9} />
           </div>
           {saveError ? <p role="alert" className="mt-3 text-sm text-danger">{saveError}</p> : null}
-          {publishError ? <p role="alert" className="mt-3 text-sm text-danger">{publishError}</p> : null}
+          {publishError && !publishOpen ? <p role="alert" className="mt-3 text-sm text-danger">{publishError}</p> : null}
           <div className="mt-4 flex flex-wrap gap-2">
             <Button variant="secondary" disabled={!dirty || save.isPending || publish.isPending} onClick={() => void saveDraft()} aria-busy={save.isPending}>{save.isPending ? "Saving draft…" : "Save draft"}</Button>
             <Button disabled={!value.trim() || dirty || save.isPending || publish.isPending} onClick={() => { setPublishError(null); setPublishOpen(true); }}>Publish to Student</Button>
           </div>
-          <AlertDialog open={publishOpen} onOpenChange={(open) => { if (!publish.isPending) setPublishOpen(open); }}>
-            <AlertDialogContent>
-              <AlertDialogTitle>Publish this Shared Summary to the Student?</AlertDialogTitle>
-              <AlertDialogDescription>After publication, the summary becomes visible to the Student and is locked from ordinary editing.</AlertDialogDescription>
-              {publishError ? <p role="alert" className="mt-3 text-sm text-danger">{publishError}</p> : null}
-              <div className="mt-6 flex flex-wrap justify-end gap-2">
-                <AlertDialogCancel asChild><Button variant="secondary" disabled={publish.isPending}>Keep draft</Button></AlertDialogCancel>
-                <Button disabled={publish.isPending || !value.trim()} onClick={() => void publishSummary()} aria-busy={publish.isPending}>{publish.isPending ? "Publishing…" : "Publish summary"}</Button>
-              </div>
-            </AlertDialogContent>
-          </AlertDialog>
+          <ConsequentialActionDialog
+            open={publishOpen}
+            title="Publish this Shared Summary to the Student?"
+            confirmLabel="Publish summary"
+            cancelLabel="Keep draft"
+            pendingLabel="Publishing…"
+            pending={publish.isPending}
+            confirmDisabled={!value.trim()}
+            error={publishError}
+            onOpenChange={setPublishOpen}
+            onConfirm={() => void publishSummary()}
+          >
+            <p>
+              After publication, the summary becomes visible to the Student and
+              is locked from ordinary editing.
+            </p>
+          </ConsequentialActionDialog>
         </div>
       ) : absent ? (
         <p className="mt-3 text-sm text-muted">No Shared Summary has been drafted yet.</p>

@@ -4,14 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
 import { useMemo, useState, type FormEvent } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/features/auth/components/password-input";
@@ -216,20 +210,38 @@ export function AuthenticatorPage() {
           <div className="border-t border-border pt-5"><h2 className="font-heading text-xl font-semibold text-ink">Disable authenticator</h2><p className="mt-2 text-sm leading-6 text-muted">This removes your authenticator from future sign-ins.</p><Button variant="quiet" className="mt-3 text-danger" onClick={() => beginAction("disable")}>Disable authenticator</Button></div>
         </div>
       ) : null}
-      {error ? <p role="alert" className="mt-5 text-sm text-danger">{error}</p> : null}
+      {error && confirmAction === null ? <p role="alert" className="mt-5 text-sm text-danger">{error}</p> : null}
       {success ? <p role="status" className="mt-5 text-sm text-success">{success}</p> : null}
       <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setVerified(true); setError(null); setSuccess("Verification complete. Select the action again to continue."); }} />
-      <AlertDialog open={confirmAction !== null} onOpenChange={(open) => { if (!open && !actionPending) setConfirmAction(null); }}>
-        <AlertDialogContent>
-          <AlertDialogTitle>{confirmAction === "disable" ? "Disable authenticator app?" : "Generate new recovery codes?"}</AlertDialogTitle>
-          <AlertDialogDescription>{confirmAction === "disable" ? "You will no longer use this authenticator for sign-in. Existing recovery codes will no longer be usable, and trusted-browser state may be revoked." : "Generating new recovery codes invalidates the previous recovery codes. Save the new codes when they appear."}</AlertDialogDescription>
-          {error ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
-          <div className="mt-6 flex justify-end gap-2">
-            <AlertDialogCancel asChild><Button variant="secondary" disabled={actionPending}>Cancel</Button></AlertDialogCancel>
-            <Button variant={confirmAction === "disable" ? "danger" : "primary"} disabled={actionPending} onClick={() => void runConfirmedAction()}>{actionPending ? (confirmAction === "disable" ? "Disabling…" : "Generating…") : (confirmAction === "disable" ? "Disable authenticator" : "Generate new codes")}</Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConsequentialActionDialog
+        open={confirmAction !== null}
+        title={
+          confirmAction === "disable"
+            ? "Disable authenticator app?"
+            : "Generate new recovery codes?"
+        }
+        confirmLabel={
+          confirmAction === "disable"
+            ? "Disable authenticator"
+            : "Generate new codes"
+        }
+        pendingLabel={
+          confirmAction === "disable" ? "Disabling…" : "Generating…"
+        }
+        pending={actionPending}
+        error={error}
+        variant={confirmAction === "disable" ? "danger" : "primary"}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null);
+        }}
+        onConfirm={() => void runConfirmedAction()}
+      >
+        <p>
+          {confirmAction === "disable"
+            ? "You will no longer use this authenticator for sign-in. Existing recovery codes will no longer be usable, and trusted-browser state may be revoked."
+            : "Generating new recovery codes invalidates the previous recovery codes. Save the new codes when they appear."}
+        </p>
+      </ConsequentialActionDialog>
     </section>
   );
 }

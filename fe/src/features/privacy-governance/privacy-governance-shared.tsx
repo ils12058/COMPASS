@@ -5,14 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useId, useState, type ReactNode } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
@@ -396,69 +390,45 @@ export function PrivacyConfirmDialog({
   open,
   title,
   description,
-  children,
   confirmLabel,
   pendingLabel,
   pending,
   error,
-  destructive = false,
   confirmDisabled = false,
+  destructive = false,
   onOpenChange,
   onConfirm,
 }: {
   open: boolean;
   title: string;
   description: ReactNode;
-  children?: ReactNode;
   confirmLabel: string;
   pendingLabel: string;
   pending: boolean;
   error: string | null;
-  destructive?: boolean;
   confirmDisabled?: boolean;
+  destructive?: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }) {
   return (
-    <AlertDialog
+    <ConsequentialActionDialog
       open={open}
-      onOpenChange={(next) => {
-        if (pending) return;
-        onOpenChange(next);
-      }}
+      title={title}
+      confirmLabel={confirmLabel}
+      pendingLabel={pendingLabel}
+      pending={pending}
+      confirmDisabled={confirmDisabled}
+      error={error}
+      variant={destructive ? "danger" : "primary"}
+      onOpenChange={onOpenChange}
+      onConfirm={onConfirm}
     >
-      <AlertDialogContent>
-        <AlertDialogTitle>{title}</AlertDialogTitle>
-        <AlertDialogDescription asChild>
-          <div className="mt-2 space-y-2 text-sm leading-6 text-muted">{description}</div>
-        </AlertDialogDescription>
-        {children}
-        {error ? (
-          <p role="alert" className="mt-4 text-sm text-danger">
-            {error}
-          </p>
-        ) : null}
-        <div className="mt-6 flex flex-wrap justify-end gap-2">
-          <AlertDialogCancel asChild>
-            <Button variant="secondary" disabled={pending}>
-              Cancel
-            </Button>
-          </AlertDialogCancel>
-          <Button
-            variant={destructive ? "danger" : "primary"}
-            disabled={pending || confirmDisabled}
-            onClick={onConfirm}
-          >
-            {pending ? pendingLabel : confirmLabel}
-          </Button>
-        </div>
-      </AlertDialogContent>
-    </AlertDialog>
+      {description}
+    </ConsequentialActionDialog>
   );
 }
 
-// Keeps list filters and the page number in the URL so they survive
-// navigation to a record and back.
 export function useListSearchParams() {
   const router = useRouter();
   const pathname = usePathname();

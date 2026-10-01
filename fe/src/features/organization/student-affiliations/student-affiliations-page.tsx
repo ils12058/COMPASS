@@ -4,14 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +33,7 @@ import {
   useOrganizationRemoveStudentAffiliation,
   useOrganizationSetStudentAffiliation,
 } from "@/lib/api/generated/organization/organization";
+import type { CollegeSummary, OrganizationPersonSummary } from "@/lib/api/generated/model";
 
 function parsePage(value: string | null): number {
   const page = Number(value);
@@ -81,17 +76,24 @@ export function StudentAffiliationsPage() {
   const removeAffiliation = useOrganizationRemoveStudentAffiliation();
   const action = useOrganizationAction();
 
-  const [dialog, setDialog] = useState<{
-    studentId?: string;
-    studentLabel?: string;
-  } | null>(null);
+  const [dialog, setDialog] = useState<{ student: OrganizationPersonSummary | null } | null>(null);
   const [studentId, setStudentId] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState<OrganizationPersonSummary | null>(null);
   const [targetCollegeId, setTargetCollegeId] = useState("");
+  const [review, setReview] = useState<{
+    student: OrganizationPersonSummary;
+    currentCollege: CollegeSummary | null;
+    newCollege: CollegeSummary;
+  } | null>(null);
   const [removal, setRemoval] = useState<{
-    studentId: string;
-    label: string;
+    student: OrganizationPersonSummary;
+    college: CollegeSummary;
   } | null>(null);
 
+  const selectedAffiliation = useOrganizationListStudentAffiliations(
+    { student_id: studentId, page_size: 1 },
+    { query: { enabled: Boolean(dialog && studentId), retry: false } },
+  );
   const mutationPending =
     setAffiliation.isPending || removeAffiliation.isPending;
 
@@ -102,40 +104,49 @@ export function StudentAffiliationsPage() {
   }
 
   function openSet(
-    existingStudentId?: string,
-    studentLabel?: string,
+    student: OrganizationPersonSummary | null = null,
     currentCollegeId = "",
   ) {
     action.setError(null);
     action.setNotice(null);
-    setDialog({
-      studentId: existingStudentId,
-      studentLabel,
-    });
-    setStudentId(existingStudentId ?? "");
+    setDialog({ student });
+    setStudentId(student?.id ?? "");
+    setSelectedStudent(student);
     setTargetCollegeId(currentCollegeId);
   }
 
+  function reviewAffiliation() {
+    if (!selectedStudent || !targetCollegeId) return;
+    const newCollege = activeColleges.find((college) => college.id === targetCollegeId);
+    if (!newCollege) return;
+    const currentCollege =
+      selectedAffiliation.data?.data.items[0]?.college ??
+      list.data?.data.items.find((item) => item.student.id === selectedStudent.id)?.college ??
+      null;
+    if (currentCollege?.id === newCollege.id) return;
+    setReview({ student: selectedStudent, currentCollege, newCollege });
+    setDialog(null);
+    action.setError(null);
+  }
+
   async function saveAffiliation() {
-    if (!dialog || !studentId || !targetCollegeId) return;
-    const target = dialog;
+    if (!review) return;
+    const target = review;
     const response = await action.run(
       () =>
         setAffiliation.mutateAsync({
-          studentId,
-          data: { college_id: targetCollegeId },
+          studentId: target.student.id,
+          data: { college_id: target.newCollege.id },
         }),
       "The Student affiliation could not be saved.",
       {
-        onStepUpRequired: () => setDialog(null),
-        onStepUpVerified: () => setDialog(target),
+        onStepUpRequired: () => setReview(null),
+        onStepUpVerified: () => setReview(target),
       },
     );
     if (!response) return;
-    setDialog(null);
-    action.setNotice(
-      target.studentId ? "Student affiliation changed." : "Student affiliation set.",
-    );
+    setReview(null);
+    action.setNotice(target.currentCollege ? "Student affiliation changed." : "Student affiliation set.");
     await refresh();
   }
 
@@ -143,7 +154,7 @@ export function StudentAffiliationsPage() {
     if (!removal) return;
     const target = removal;
     const response = await action.run(
-      () => removeAffiliation.mutateAsync({ studentId: target.studentId }),
+      () => removeAffiliation.mutateAsync({ studentId: target.student.id }),
       "The Student affiliation could not be removed.",
       {
         onStepUpRequired: () => setRemoval(null),
@@ -334,11 +345,7 @@ export function StudentAffiliationsPage() {
                           <Button
                             variant="quiet"
                             onClick={() =>
-                              openSet(
-                                item.student.id,
-                                item.student.full_name,
-                                item.college.id,
-                              )
+                              openSet(item.student, item.college.id)
                             }
                           >
                             Change affiliation
@@ -348,8 +355,8 @@ export function StudentAffiliationsPage() {
                           variant="quiet"
                           onClick={() =>
                             setRemoval({
-                              studentId: item.student.id,
-                              label: item.student.full_name,
+                              student: item.student,
+                              college: item.college,
                             })
                           }
                         >
@@ -401,20 +408,22 @@ export function StudentAffiliationsPage() {
         }}
       >
         <DialogContent className="max-w-xl">
-          <DialogTitle>
-            {dialog?.studentId ? "Change affiliation" : "Set affiliation"}
-          </DialogTitle>
+          <DialogTitle>{dialog?.student ? "Change affiliation" : "Set affiliation"}</DialogTitle>
           <DialogDescription>
-            Each Student has one College affiliation. Setting a new College
-            replaces the current affiliation.
+            Choose a Student and College. The current and new affiliation will be reviewed before it is saved.
           </DialogDescription>
           <div className="mt-6 space-y-6">
-            {dialog?.studentId ? (
+            {dialog?.student ? (
               <div>
                 <p className="text-sm font-semibold text-ink">Student</p>
-                <p className="mt-2 rounded-md border border-border bg-surface-muted px-3 py-2 text-sm text-ink">
-                  {dialog.studentLabel}
-                </p>
+                <div className="mt-2 border-l-2 border-support bg-support-soft/40 px-3 py-3 text-sm">
+                  <p className="font-semibold text-ink">{dialog.student.full_name}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    {dialog.student.institutional_id
+                      ? `${dialog.student.institutional_id} · ${dialog.student.email}`
+                      : dialog.student.email}
+                  </p>
+                </div>
               </div>
             ) : (
               <PeoplePicker
@@ -423,7 +432,11 @@ export function StudentAffiliationsPage() {
                 role="STUDENT"
                 enabled={Boolean(dialog)}
                 value={studentId}
-                onChange={setStudentId}
+                selectedPerson={selectedStudent}
+                onChange={(id, person) => {
+                  setStudentId(id);
+                  setSelectedStudent(person);
+                }}
               />
             )}
             <div>
@@ -444,66 +457,80 @@ export function StudentAffiliationsPage() {
               </select>
             </div>
           </div>
+          {selectedAffiliation.isError ? (
+            <p role="alert" className="mt-4 text-sm text-danger">
+              The Student&apos;s current affiliation could not be verified. Refresh and try again.
+            </p>
+          ) : null}
           {action.messages}
           <div className="mt-6 flex justify-end gap-2">
-            <Button
-              variant="secondary"
-              disabled={mutationPending}
-              onClick={() => setDialog(null)}
-            >
+            <Button variant="secondary" disabled={mutationPending} onClick={() => setDialog(null)}>
               Cancel
             </Button>
             <Button
-              disabled={mutationPending || !studentId || !targetCollegeId}
-              onClick={() => void saveAffiliation()}
+              disabled={
+                mutationPending ||
+                !selectedStudent ||
+                !targetCollegeId ||
+                selectedAffiliation.isPending ||
+                selectedAffiliation.isError ||
+                selectedAffiliation.data?.data.items[0]?.college.id === targetCollegeId
+              }
+              onClick={reviewAffiliation}
             >
-              {setAffiliation.isPending
-                ? "Saving…"
-                : dialog?.studentId
-                  ? "Change affiliation"
-                  : "Set affiliation"}
+              Review affiliation
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
-        open={Boolean(removal)}
+      <ConsequentialActionDialog
+        open={review !== null}
+        title={review ? `${review.currentCollege ? "Change" : "Set"} ${review.student.full_name}'s College affiliation?` : "Review Student affiliation"}
+        confirmLabel={review?.currentCollege ? "Change affiliation" : "Set affiliation"}
+        pendingLabel={review?.currentCollege ? "Changing…" : "Setting…"}
+        pending={mutationPending}
+        error={action.error}
         onOpenChange={(open) => {
-          if (mutationPending) return;
+          if (!open) setReview(null);
+        }}
+        onConfirm={() => void saveAffiliation()}
+      >
+        {review ? (
+          <>
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <div><dt className="text-muted">Student</dt><dd className="font-semibold text-ink">{review.student.full_name}</dd></div>
+              <div><dt className="text-muted">Current College</dt><dd className="font-semibold text-ink">{review.currentCollege?.name ?? "Not assigned"}</dd></div>
+              <div><dt className="text-muted">New College</dt><dd className="font-semibold text-ink">{review.newCollege.name}</dd></div>
+            </dl>
+            {review.currentCollege ? <p>Changing this affiliation replaces the current College relationship.</p> : null}
+            <p>The College affiliation affects default institutional Counselor and routing behavior. Historical records are not rewritten by this change.</p>
+          </>
+        ) : null}
+      </ConsequentialActionDialog>
+
+      <ConsequentialActionDialog
+        open={removal !== null}
+        title={removal ? `Remove ${removal.student.full_name}'s College affiliation?` : "Remove Student affiliation?"}
+        confirmLabel="Remove affiliation"
+        pendingLabel="Removing…"
+        pending={mutationPending}
+        error={action.error}
+        variant="danger"
+        onOpenChange={(open) => {
           if (!open) {
             setRemoval(null);
             action.setError(null);
-            action.setNotice(null);
           }
         }}
+        onConfirm={() => void confirmRemove()}
       >
-        <AlertDialogContent>
-          <AlertDialogTitle>Remove Student affiliation?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {removal
-              ? `COMPASS will no longer have a College affiliation for ${removal.label} until a new one is assigned.`
-              : "The current College affiliation will be removed."}
-          </AlertDialogDescription>
-          {action.messages}
-          <div className="mt-6 flex justify-end gap-2">
-            <AlertDialogCancel asChild>
-              <Button variant="secondary" disabled={mutationPending}>
-                Cancel
-              </Button>
-            </AlertDialogCancel>
-            <Button
-              variant="danger"
-              disabled={mutationPending}
-              onClick={() => void confirmRemove()}
-            >
-              {removeAffiliation.isPending
-                ? "Removing…"
-                : "Remove affiliation"}
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p>
+          {removal
+            ? `${removal.student.full_name} will no longer be affiliated with ${removal.college.name} until a new College is assigned. Default institutional routing may change. Historical records are not deleted.`
+            : "The current College affiliation will be removed."}
+        </p>
+      </ConsequentialActionDialog>
 
       {action.stepUpDialog}
     </section>
