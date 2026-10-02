@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { goodMoralErrorMessage } from "@/features/good-moral/good-moral-shared";
 import { goodMoralDownloadCertificate, goodMoralDownloadMyCertificate } from "@/lib/api/generated/good-moral/good-moral";
 import { downloadBinaryResponse } from "@/lib/browser-download";
+import { institutionalPdfFallbackFilename } from "@/lib/institutional-pdf-filenames";
 
 export function GoodMoralPdfDownload({
   requestId,
@@ -25,7 +26,7 @@ export function GoodMoralPdfDownload({
       const response = studentFacing
         ? await goodMoralDownloadMyCertificate(requestId)
         : await goodMoralDownloadCertificate(requestId);
-      downloadBinaryResponse(response, "good-moral-certificate.pdf");
+      downloadBinaryResponse(response, institutionalPdfFallbackFilename("goodMoral", requestId));
     } catch (caught) {
       setError(goodMoralErrorMessage(caught, "The certificate could not be released right now. Try again later."));
     } finally {
@@ -39,6 +40,7 @@ export function GoodMoralPdfDownload({
         <Download aria-hidden="true" size={16} />
         {pending ? "Preparing certificate…" : "Download certificate"}
       </Button>
+      <p className="max-w-lg text-sm leading-6 text-muted">The printed certificate needs the authorized physical signature and dry seal before it is complete. The printed issuer name is not a signature.</p>
       {error ? <p role="alert" className="max-w-lg text-sm text-danger">{error}</p> : null}
     </div>
   );

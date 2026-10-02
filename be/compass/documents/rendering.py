@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from copy import deepcopy
 from dataclasses import dataclass
+from html import escape
 from io import BytesIO
 from typing import Any
 
@@ -66,6 +67,19 @@ def _page_footer_template() -> str:
     )
 
 
+def _referral_footer_template(controlled_form: dict[str, Any]) -> str:
+    code = escape(str(controlled_form.get("official_code") or ""))
+    revision = escape(str(controlled_form.get("official_revision") or ""))
+    return (
+        '<div style="width:100%;font-family:Arial,Helvetica,sans-serif;'
+        "font-size:8px;color:#333;padding:0 25mm;display:flex;"
+        'justify-content:space-between;align-items:flex-end;">'
+        f"<div><strong>{code}</strong><br>Revision: {revision}</div>"
+        '<div>Page <span class="pageNumber"></span> of '
+        '<span class="totalPages"></span></div></div>'
+    )
+
+
 def _repeat_accreditation_footer(pdf_bytes: bytes, overlay_bytes: bytes) -> bytes:
     overlay = PdfReader(BytesIO(overlay_bytes)).pages[0]
     writer = PdfWriter()
@@ -115,7 +129,7 @@ def render_document_pdf(
     context: dict[str, Any] | None = None,
 ) -> DocumentRenderResult:
     pdf_context = dict(context or {})
-    if template_key == "student_profiling_report":
+    if template_key in {"student_profiling_report", "referral_slip"}:
         pdf_context["document_pdf_footer"] = True
     html, spec = render_document_html(
         template_key,
@@ -123,6 +137,7 @@ def render_document_pdf(
         context=pdf_context,
     )
     show_report_pagination = spec.show_page_numbers and not (context or {}).get("controlled_form")
+    show_referral_pagination = spec.key == "referral_slip"
     timeout_ms = int(settings.DOCUMENT_RENDER_TIMEOUT_SECONDS * 1000)
     blocked_urls: list[str] = []
     accreditation_uri = None
@@ -401,10 +416,14 @@ def render_document_pdf(
                         format="A4",
                         print_background=True,
                         prefer_css_page_size=True,
-                        display_header_footer=show_report_pagination,
+                        display_header_footer=show_report_pagination or show_referral_pagination,
                         header_template="<span></span>",
                         footer_template=(
-                            _page_footer_template() if show_report_pagination else "<span></span>"
+                            _referral_footer_template((context or {}).get("controlled_form") or {})
+                            if show_referral_pagination
+                            else _page_footer_template()
+                            if show_report_pagination
+                            else "<span></span>"
                         ),
                     )
                 except PlaywrightError as exc:

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { reportErrorMessage } from "@/features/reports/reports-shared";
 import { downloadBinaryResponse } from "@/lib/browser-download";
+import { studentProfilingPdfFallbackFilename } from "@/lib/institutional-pdf-filenames";
 import type {
   ReportsDownloadStudentProfilePdfParams,
   ReportsDownloadStudentProfileXlsxParams,
@@ -16,9 +17,11 @@ import {
 
 export function StudentProfileDownloads({
   params,
+  academicYearLabel,
 }: {
   params: ReportsDownloadStudentProfilePdfParams &
     ReportsDownloadStudentProfileXlsxParams;
+  academicYearLabel: string;
 }) {
   const [pending, setPending] = useState({ pdf: false, xlsx: false });
   const [errors, setErrors] = useState<{
@@ -32,7 +35,7 @@ export function StudentProfileDownloads({
     setErrors((current) => ({ ...current, pdf: null }));
     try {
       const response = await reportsDownloadStudentProfilePdf(params);
-      downloadBinaryResponse(response, "COMPASS-Student-Profiling.pdf");
+      downloadBinaryResponse(response, studentProfilingPdfFallbackFilename(academicYearLabel));
     } catch (error) {
       setErrors((current) => ({
         ...current,

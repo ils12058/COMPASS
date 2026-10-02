@@ -5,6 +5,7 @@ import re
 import uuid
 from datetime import date
 from decimal import Decimal
+from io import BytesIO
 
 import pytest
 from django.apps import apps
@@ -12,6 +13,7 @@ from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.test import Client
 from django.utils import timezone
+from pypdf import PdfReader
 
 from compass.accounts.models import (
     Designation,
@@ -761,9 +763,12 @@ def test_saved_render_provenance_drives_html_after_current_data_and_revision_cha
     saved_revision_id = issued.form_revision_id
     saved_name = issued.applicant_name_snapshot
     saved_course = issued.course_snapshot
+    saved_issuer = issued.issued_by_name_snapshot
 
     student.first_name = "Changed"
     student.save(update_fields=["first_name", "updated_at"])
+    counselor.first_name = "Renamed"
+    counselor.save(update_fields=["first_name", "updated_at"])
     inventory.course_currently_enrolled = "Changed Course"
     inventory.save(update_fields=["course_currently_enrolled", "updated_at"])
 
@@ -805,6 +810,18 @@ def test_saved_render_provenance_drives_html_after_current_data_and_revision_cha
     assert "CNSC-OP-GCO-01F4" in html
     assert "Revision: 0" in html
     assert "Page 1 of 1" in html
+    assert saved_issuer in html
+    assert counselor.get_full_name() not in html
+    signature_area = html.split('<div class="good-moral-signature">', 1)[1].split(
+        '<div class="good-moral-receipt">', 1
+    )[0]
+    assert '<div class="good-moral-signature-line" aria-hidden="true"></div>' in signature_area
+    assert "<img" not in signature_area
+    pdf_pages = PdfReader(BytesIO(render_certificate_pdf(issued))).pages
+    assert len(pdf_pages) == 1
+    pdf_text = "\n".join(page.extract_text() for page in pdf_pages)
+    assert saved_issuer in pdf_text
+    assert counselor.get_full_name() not in pdf_text
 
 
 @pytest.mark.django_db
@@ -931,6 +948,26 @@ def test_pdf_endpoints_require_issued_state_and_use_safe_pdf_response(monkeypatc
     assert response["Content-Type"] == "application/pdf"
     assert response.content == fake_pdf
     assert response["Content-Disposition"] == (f'attachment; filename="good-moral-{issued.pk}.pdf"')
+    operational = auth_client(counselor).get(f"/api/v1/good-moral/requests/{issued.pk}/pdf")
+    assert operational.status_code == 200
+    assert operational["Content-Disposition"] == response["Content-Disposition"]
+    other_student = make_user("pdf.other@example.edu", lifecycle=StudentLifecycleStatus.GRADUATED)
+    assert (
+        auth_client(other_student).get(f"/api/v1/good-moral/me/{issued.pk}/pdf").status_code == 404
+    )
+
+    monkeypatch.setattr(
+        "compass.privacy_governance.releases.record_event",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("audit unavailable")),
+    )
+    for url, actor in (
+        (f"/api/v1/good-moral/me/{issued.pk}/pdf", student),
+        (f"/api/v1/good-moral/requests/{issued.pk}/pdf", counselor),
+    ):
+        blocked = auth_client(actor).get(url)
+        assert blocked.status_code == 503
+        assert blocked.json()["error"]["code"] == "release_audit_unavailable"
+        assert b"%PDF-" not in blocked.content
 
 
 @pytest.mark.django_db
@@ -974,10 +1011,26 @@ def test_real_chromium_smoke_renders_issued_graduate_certificate():
         context=AuditContext.user(counselor),
     )
 
+    saved_issuer = issued.issued_by_name_snapshot
+    counselor.first_name = "Renamed"
+    counselor.save(update_fields=["first_name", "updated_at"])
+    html, _ = render_document_html(
+        issued.document_template_key,
+        issued.document_template_version,
+        context=build_certificate_render_context(issued),
+    )
+    assert '<div class="good-moral-signature-line" aria-hidden="true"></div>' in html
+    assert saved_issuer in html
+    assert counselor.get_full_name() not in html
     pdf = render_certificate_pdf(issued)
 
     assert pdf.startswith(b"%PDF-")
     assert len(pdf) > 1024
+    pdf_pages = PdfReader(BytesIO(pdf)).pages
+    assert len(pdf_pages) == 1
+    pdf_text = "\n".join(page.extract_text() for page in pdf_pages)
+    assert saved_issuer in pdf_text
+    assert counselor.get_full_name() not in pdf_text
 
 
 @pytest.mark.django_db

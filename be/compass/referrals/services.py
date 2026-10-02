@@ -559,7 +559,6 @@ def build_referral_render_context(item: Referral) -> dict[str, object]:
         "controlled_form": {
             "official_code": item.form_revision.official_code,
             "official_revision": item.form_revision.official_revision,
-            "page_label": "Page 1 of 1",
         },
     }
 

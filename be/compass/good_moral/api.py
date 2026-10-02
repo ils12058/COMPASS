@@ -18,6 +18,7 @@ from compass.authentication.sessions import RecentMFARequired, require_recent_mf
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
+from compass.documents.filenames import institutional_pdf_content_disposition
 from compass.privacy_governance.releases import (
     ReleaseAuditUnavailable,
     record_good_moral_release,
@@ -352,7 +353,7 @@ def _pdf_response(
             ),
         ) from exc
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="good-moral-{item.pk}.pdf"'
+    response["Content-Disposition"] = institutional_pdf_content_disposition("good_moral", item.pk)
     return response
 
 

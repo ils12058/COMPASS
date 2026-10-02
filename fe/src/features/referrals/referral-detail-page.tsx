@@ -27,6 +27,7 @@ import {
   uncertainReferralMutation,
 } from "@/features/referrals/referrals-shared";
 import { downloadBinaryResponse } from "@/lib/browser-download";
+import { institutionalPdfFallbackFilename } from "@/lib/institutional-pdf-filenames";
 import {
   getReferralsGetQueryKey,
   getReferralsListQueryKey,
@@ -236,7 +237,7 @@ function ReferralPdfDownload({ referral }: { referral: ReferralDetailResponse })
     setError(null);
     try {
       const response = await referralsDownloadPdf(referral.id);
-      downloadBinaryResponse(response, `referral-${referral.reference_code}.pdf`);
+      downloadBinaryResponse(response, institutionalPdfFallbackFilename("referralSlip", referral.id));
     } catch (caught) {
       setError(referralErrorMessage(caught, "The document could not be released right now. Try again later."));
     } finally {

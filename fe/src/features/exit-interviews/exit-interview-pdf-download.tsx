@@ -9,6 +9,7 @@ import {
   exitInterviewsDownloadPdf,
 } from "@/lib/api/generated/exit-interviews/exit-interviews";
 import { downloadBinaryResponse } from "@/lib/browser-download";
+import { institutionalPdfFallbackFilename } from "@/lib/institutional-pdf-filenames";
 
 export function ExitInterviewPdfDownload({
   exitInterviewId,
@@ -27,7 +28,7 @@ export function ExitInterviewPdfDownload({
       const response = studentFacing
         ? await exitInterviewsDownloadMyPdf(exitInterviewId)
         : await exitInterviewsDownloadPdf(exitInterviewId);
-      downloadBinaryResponse(response, `exit-interview-${exitInterviewId}.pdf`);
+      downloadBinaryResponse(response, institutionalPdfFallbackFilename("exitInterview", exitInterviewId));
     } catch {
       setError("The submitted Exit Interview PDF could not be released right now. Try again later.");
     } finally {

@@ -158,6 +158,8 @@ def test_pdf_endpoints_enforce_owner_head_scope_and_fail_closed_release(monkeypa
     head = auth_client(make_head("exit-pdf-head@example.edu"))
     reviewed = head.get(head_url)
     assert reviewed.status_code == 200
+    assert reviewed["Content-Type"] == "application/pdf"
+    assert reviewed["Content-Disposition"] == own["Content-Disposition"]
     assert (
         AuditEvent.objects.filter(
             action="document.download_released", target_id=str(item.pk)
@@ -173,6 +175,10 @@ def test_pdf_endpoints_enforce_owner_head_scope_and_fail_closed_release(monkeypa
     assert blocked.status_code == 503
     assert blocked.json()["error"]["code"] == "release_audit_unavailable"
     assert b"%PDF-" not in blocked.content
+    blocked_head = head.get(head_url)
+    assert blocked_head.status_code == 503
+    assert blocked_head.json()["error"]["code"] == "release_audit_unavailable"
+    assert b"%PDF-" not in blocked_head.content
     assert (
         AuditEvent.objects.filter(
             action="document.download_released", target_id=str(item.pk)

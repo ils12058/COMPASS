@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import inspect
+from io import BytesIO
+from uuid import UUID
 
 import pytest
 from django.apps import apps
@@ -8,10 +10,12 @@ from django.test import Client
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
+from pypdf import PdfReader
 
 from compass.audit.actions import DOCUMENT_BRANDING_UPDATED
 from compass.documents import rendering
 from compass.documents.assets import get_asset_data_uri, get_document_assets
+from compass.documents.filenames import institutional_pdf_content_disposition
 from compass.documents.rendering import (
     DocumentRenderError,
     DocumentRenderUnavailable,
@@ -35,6 +39,65 @@ def sample_rows(count: int = 60) -> list[dict[str, str]]:
         }
         for index in range(1, count + 1)
     ]
+
+
+def test_institutional_pdf_filenames_use_only_opaque_record_identity():
+    record_id = UUID("12345678-1234-4234-8234-123456789abc")
+    for kind, prefix in (
+        ("individual_inventory", "individual-inventory"),
+        ("exit_interview", "exit-interview"),
+        ("good_moral", "good-moral"),
+        ("referral_slip", "referral-slip"),
+        ("call_slip", "call-slip"),
+    ):
+        assert institutional_pdf_content_disposition(kind, record_id) == (
+            f'attachment; filename="{prefix}-{record_id}.pdf"'
+        )
+
+
+@pytest.mark.parametrize("long_content", [False, True])
+def test_referral_pdf_footer_uses_rendered_page_count_and_preserves_content(long_content):
+    reason = "STARTREASON " + ("source reason " * 300 if long_content else "short") + " ENDREASON"
+    remarks = "STARTREMARKS " + ("saved remark " * 350 if long_content else "short") + " ENDREMARKS"
+    pdf = render_document_pdf(
+        "referral_slip",
+        1,
+        context={
+            "referral": {
+                "student_name": "Historical Student",
+                "course_year_block": "BSIS 4A",
+                "reason": reason,
+                "referrer_name": "Source Referrer",
+                "reference_code": "REF-2026-001",
+                "actions": [
+                    {"label": "Call the Parent/Guardian", "recorded": True, "remarks": remarks}
+                ],
+                "status_note": "SAVED-STATUS-MARKER",
+            },
+            "controlled_form": {
+                "official_code": "CNSC-OP-GTA-01F9",
+                "official_revision": "1",
+            },
+        },
+    ).pdf_bytes
+    pages = PdfReader(BytesIO(pdf)).pages
+    assert (len(pages) > 1) == long_content
+    text = "\n".join(page.extract_text() for page in pages)
+    for marker in (
+        "Historical Student",
+        "Source Referrer",
+        "STARTREASON",
+        "ENDREASON",
+        "STARTREMARKS",
+        "ENDREMARKS",
+        "SAVED-STATUS-MARKER",
+    ):
+        assert marker in text
+    for number, page in enumerate(pages, start=1):
+        page_text = page.extract_text()
+        assert f"Page {number} of {len(pages)}" in page_text
+        assert "CNSC-OP-GTA-01F9" in page_text
+        assert "Revision: 1" in page_text
 
 
 def test_canonical_branding_contains_only_confirmed_identity():

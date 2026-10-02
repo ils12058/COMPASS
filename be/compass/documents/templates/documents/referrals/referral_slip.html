@@ -1,6 +1,7 @@
 {% extends "documents/layouts/compact_form.html" %}
 {% block title %}Referral Slip{% endblock %}
 {% block body %}
+<style>@page { margin-bottom: 16mm; }</style>
 <section class="official-form referral-slip">
   {% if referral.is_voided %}<div class="document-state-banner">VOIDED</div>{% endif %}
   <h1 class="official-form-title">REFERRAL SLIP</h1>
