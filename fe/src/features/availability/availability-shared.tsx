@@ -190,7 +190,7 @@ function NavLink({
       href={href}
       aria-current={current ? "page" : undefined}
       className={
-        "inline-flex min-h-10 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
+        "inline-flex min-h-11 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
         (current
           ? "border-brand text-brand"
           : "border-transparent text-muted hover:text-ink")
@@ -207,7 +207,7 @@ export function AvailabilityNavigation() {
   const manage = canManageAvailability(user);
 
   return (
-    <div className="mb-8 border-b border-border">
+    <nav aria-label="Availability navigation" className="mb-8 border-b border-border">
       <div className="flex flex-wrap gap-x-5 gap-y-2">
         {self ? (
           <NavLink href="/portal/availability/me">My availability</NavLink>
@@ -219,7 +219,7 @@ export function AvailabilityNavigation() {
           </>
         ) : null}
       </div>
-    </div>
+    </nav>
   );
 }
 

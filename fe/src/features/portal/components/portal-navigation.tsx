@@ -82,7 +82,7 @@ function NavItem({
       onNavigate={onNavigate}
       aria-current={current ? "page" : undefined}
       className={cn(
-        "relative flex min-h-10 items-center gap-3 rounded-md px-3 text-sm text-on-brand/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand",
+        "relative flex min-h-11 items-center gap-3 rounded-md px-3 text-sm text-on-brand/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand",
         current
           ? "bg-on-brand/15 font-semibold text-on-brand before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-on-brand"
           : "font-medium hover:bg-on-brand/10 hover:text-on-brand",
@@ -112,7 +112,8 @@ export function PortalNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const hasCounseling = getCounselingAccess(user).hasWorkspace;
   const hasReferrals = getReferralAccess(user).hasWorkspace;
   const hasCallSlips = getCallSlipAccess(user).hasWorkspace;
-  const hasFeedback = getFeedbackAccess(user).hasOperationalWorkspace;
+  // Students who can submit Feedback reach the same entry page as the reviewing staff.
+  const hasFeedback = getFeedbackAccess(user).canOpenFeedback;
   const hasGoodMoral = getGoodMoralAccess(user).hasWorkspace;
   const hasExitInterviews = getExitInterviewAccess(user).hasWorkspace;
   const hasGraduateTracer = getGraduateTracerAccess(user).hasWorkspace;

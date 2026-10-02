@@ -72,8 +72,8 @@ export function ReportNavigation({
 
   return (
     <nav
-      aria-label="Reports"
-      className="mb-7 flex flex-wrap gap-x-6 gap-y-2 border-b border-border pb-3 text-sm"
+      aria-label="Reports navigation"
+      className="mb-7 flex flex-wrap gap-x-6 gap-y-2 border-b border-border text-sm"
     >
       {links.map((link) => (
         <Link
@@ -81,7 +81,7 @@ export function ReportNavigation({
           href={link.href}
           aria-current={current === link.key ? "page" : undefined}
           className={
-            "font-semibold underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
+            "inline-flex min-h-11 items-center font-semibold underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
             (current === link.key
               ? "text-ink"
               : "text-brand hover:underline")
