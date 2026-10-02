@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { AvailabilitySectionSkeleton } from "@/features/availability/availability-shared";
 import { ProviderAvailabilityPage } from "@/features/availability/availability-pages";
 
 export default function Page() {
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<AvailabilitySectionSkeleton label="Loading Counselors…" />}>
       <ProviderAvailabilityPage />
     </Suspense>
   );

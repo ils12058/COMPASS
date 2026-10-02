@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Skeleton } from "@/components/ui/skeleton";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
@@ -219,6 +221,29 @@ export function AppointmentsLocalNavigation() {
         );
       })}
     </nav>
+  );
+}
+
+export function AppointmentListSkeleton() {
+  return (
+    <LoadingRegion label="Loading Appointments…" className="space-y-3 py-4">
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-12 w-full" />
+    </LoadingRegion>
+  );
+}
+
+export function AppointmentDetailSkeleton() {
+  return (
+    <>
+      <AppointmentsLocalNavigation />
+      <LoadingRegion label="Loading Appointment details…">
+        <Skeleton className="h-9 w-2/5" />
+        <Skeleton className="mt-5 h-24 w-full" />
+        <Skeleton className="mt-5 h-48 w-full" />
+      </LoadingRegion>
+    </>
   );
 }
 

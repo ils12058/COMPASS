@@ -998,6 +998,11 @@ Do not use a huge centered spinner where the future layout is already known.
 
 Avoid large layout shifts when content arrives.
 
+Wrap an initial-loading region in `LoadingRegion` (`src/components/ui/loading-region.tsx`). It marks
+the region busy and gives one polite status naming what is loading, and its Skeleton shapes stay
+hidden from assistive technology. A route-level Suspense fallback reuses the feature's own loading
+state rather than a generic block.
+
 ---
 
 # 37. Background refresh
@@ -1099,6 +1104,15 @@ Do not hide focus indicators.
 Readers can enlarge text, add spacing, underline links, and reduce motion from the Accessibility
 control (`src/features/accessibility/`). Keep text and layout sizes in `rem` so the Text size
 setting scales them.
+
+The portal shell owns the one "Skip to main content" link and its `main#main-content` target. Do not
+add per-page skip links or a second `<main>`.
+
+Links between sections of one workspace sit in a `<nav>` named "<Workspace> navigation". Mark the
+current page with `aria-current="page"`, and keep each navigation link at least `min-h-11` tall.
+
+Announce each message once: do not put a `role="alert"` or `role="status"` element inside an
+`aria-live` container.
 
 ---
 

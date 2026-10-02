@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
@@ -88,6 +90,45 @@ export function CounselingUnavailable({
   children?: ReactNode;
 }) {
   return <WorkspaceUnavailable title={title}>{children}</WorkspaceUnavailable>;
+}
+
+export function CounselingListSkeleton({ label }: { label: string }) {
+  return (
+    <LoadingRegion label={label} className="space-y-2 py-3">
+      <Skeleton className="h-14 w-full" />
+      <Skeleton className="h-14 w-full" />
+      <Skeleton className="h-14 w-full" />
+    </LoadingRegion>
+  );
+}
+
+export function CounselingWorkspaceSkeleton() {
+  return (
+    <LoadingRegion label="Loading Counseling context…">
+      <Skeleton className="h-10 w-2/3" />
+      <Skeleton className="mt-5 h-32 w-full" />
+      <Skeleton className="mt-5 h-72 w-full" />
+    </LoadingRegion>
+  );
+}
+
+export function SharedSummaryDetailSkeleton() {
+  return (
+    <LoadingRegion label="Loading published Shared Summary…">
+      <Skeleton className="h-10 w-2/3" />
+      <Skeleton className="mt-4 h-32 w-full" />
+    </LoadingRegion>
+  );
+}
+
+export function EncounterDetailSkeleton() {
+  return (
+    <LoadingRegion label="Loading assigned Counseling Encounter…">
+      <Skeleton className="h-10 w-2/3" />
+      <Skeleton className="mt-4 h-28 w-full" />
+      <Skeleton className="mt-5 h-48 w-full" />
+    </LoadingRegion>
+  );
 }
 
 export function CounselingQueryError({

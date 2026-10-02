@@ -7,12 +7,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import type { CounselingAccess } from "@/features/counseling/counseling-access";
 import {
   counselingDeliveryModeLabel,
   counselingEntryModeLabel,
   counselingErrorMessage,
+  CounselingListSkeleton,
   CounselingPageHeading,
   CounselingPagination,
   CounselingQueryError,
@@ -96,7 +96,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
           </div>
 
           {encounters.isPending ? (
-            <div aria-busy="true" className="space-y-2 py-3"><span className="sr-only">Loading My Counseling Encounters…</span><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></div>
+            <CounselingListSkeleton label="Loading My Counseling Encounters…" />
           ) : encounters.isError ? (
             <CounselingQueryError message={counselingErrorMessage(encounters.error, "My Counseling Encounters could not be loaded.")} onRetry={() => void encounters.refetch()} />
           ) : items.length === 0 ? (

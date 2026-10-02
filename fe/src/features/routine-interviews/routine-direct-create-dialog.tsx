@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   routineDeliveryModeLabel,
@@ -233,10 +234,10 @@ function DirectCreateForm({
             <fieldset className="min-w-0">
             <legend className="mb-2 text-sm font-medium text-ink">Qualified Students</legend>
             {candidates.isPending ? (
-              <div aria-busy="true" className="space-y-2">
+              <LoadingRegion label="Loading qualified Students…" className="space-y-2">
                 <Skeleton className="h-16 w-full" />
                 <Skeleton className="h-16 w-full" />
-              </div>
+              </LoadingRegion>
             ) : candidates.isError ? (
               <div role="alert" className="border-y border-danger/30 py-4">
                 <p className="text-sm text-danger">{routineErrorMessage(candidates.error, "Student candidates could not be loaded.")}</p>

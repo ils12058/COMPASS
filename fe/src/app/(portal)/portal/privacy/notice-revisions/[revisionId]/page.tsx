@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { PrivacyDetailSkeleton } from "@/features/privacy-governance/privacy-governance-shared";
 import { NoticeRevisionPage } from "@/features/privacy-governance/notices/notice-revision-page";
 
 export const metadata: Metadata = { title: "Notice revision" };
 
 export default function Page() {
   return (
-    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+    <Suspense fallback={<PrivacyDetailSkeleton label="Loading notice revision…" />}>
       <NoticeRevisionPage />
     </Suspense>
   );

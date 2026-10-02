@@ -4,6 +4,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -66,6 +68,35 @@ export function CallSlipHeading({
         {action}
       </div>
     </header>
+  );
+}
+
+export function CallSlipListSkeleton({ label = "Loading Call Slips…" }: { label?: string }) {
+  return (
+    <LoadingRegion label={label} className="space-y-3">
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+    </LoadingRegion>
+  );
+}
+
+export function CallSlipDetailSkeleton({ label = "Loading Call Slip…" }: { label?: string }) {
+  return (
+    <LoadingRegion label={label} className="space-y-4">
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-48 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </LoadingRegion>
+  );
+}
+
+// Linked issuance first confirms the Referral and any current linked Call Slip.
+export function LinkedCallSlipCheckLoading() {
+  return (
+    <div className="space-y-4" aria-busy="true">
+      <p role="status" className="text-sm text-muted">Checking Referral and linked Call Slip state…</p>
+    </div>
   );
 }
 

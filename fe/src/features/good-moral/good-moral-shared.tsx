@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
@@ -79,6 +81,27 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
 
 export function uncertainGoodMoralMutation(error: unknown): boolean {
   return !(error instanceof CompassApiError) || error.status >= 500;
+}
+
+export function GoodMoralListSkeleton({ label = "Loading Good Moral requests…" }: { label?: string }) {
+  return (
+    <LoadingRegion label={label} className="space-y-3">
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+    </LoadingRegion>
+  );
+}
+
+export function GoodMoralDetailSkeleton() {
+  return (
+    <LoadingRegion label="Loading Good Moral request…" className="space-y-4">
+      <Skeleton className="h-10 w-1/2" />
+      <Skeleton className="h-44 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </LoadingRegion>
+  );
 }
 
 export function GoodMoralHeading({

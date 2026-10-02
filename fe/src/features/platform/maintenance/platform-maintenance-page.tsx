@@ -344,7 +344,7 @@ export function PlatformMaintenancePage() {
         action={<Button variant="secondary" disabled={maintenanceQuery.isFetching} onClick={() => void refreshStatus()}>{maintenanceQuery.isFetching ? "Refreshing…" : "Refresh status"}</Button>}
       />
 
-      {maintenanceQuery.isPending ? <PlatformRowsSkeleton rows={3} /> : null}
+      {maintenanceQuery.isPending ? <PlatformRowsSkeleton label="Loading maintenance status…" rows={3} /> : null}
       {maintenanceQuery.isError && !result ? (
         <PlatformQueryError
           message="Maintenance status could not be loaded."

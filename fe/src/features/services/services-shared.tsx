@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -312,23 +313,21 @@ export function ServicesQueryError({
 
 export function ServicesListSkeleton() {
   return (
-    <div className="mt-6 space-y-3" aria-busy="true">
+    <LoadingRegion label="Loading Services…" className="mt-6 space-y-3">
       {Array.from({ length: 5 }, (_, index) => (
         <Skeleton key={index} className="h-24 w-full" />
       ))}
-      <p className="sr-only">Loading Services…</p>
-    </div>
+    </LoadingRegion>
   );
 }
 
 export function ServicesDetailSkeleton() {
   return (
-    <div className="space-y-7" aria-busy="true">
+    <LoadingRegion label="Loading Service…" className="space-y-7">
       <Skeleton className="h-12 w-72 max-w-full" />
       <Skeleton className="h-20 w-full" />
       <Skeleton className="h-36 w-full" />
-      <p className="sr-only">Loading Service…</p>
-    </div>
+    </LoadingRegion>
   );
 }
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { Skeleton } from "@/components/ui/skeleton";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import {
   RoutineStudentIntakeEditor,
@@ -13,6 +12,7 @@ import {
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import {
   RoutineContextSummary,
+  RoutineInterviewDetailSkeleton,
   RoutinePageHeading,
   RoutineQueryError,
   RoutineUnavailable,
@@ -85,7 +85,7 @@ function StudentRoutineDetail({
   const actionable = detail?.workflow_state === RoutineWorkflowState.ACTIVE;
 
   if (query.isPending) {
-    return <div aria-busy="true"><Skeleton className="h-9 w-1/2" /><Skeleton className="mt-5 h-28 w-full" /><Skeleton className="mt-8 h-96 w-full" /><p className="sr-only">Loading Routine Interview…</p></div>;
+    return <RoutineInterviewDetailSkeleton />;
   }
   if (query.isError || !detail) {
     return (
@@ -157,7 +157,7 @@ function CounselorRoutineDetail({
   const actionable = detail?.workflow_state === RoutineWorkflowState.ACTIVE;
 
   if (query.isPending) {
-    return <div aria-busy="true"><Skeleton className="h-9 w-1/2" /><Skeleton className="mt-5 h-28 w-full" /><Skeleton className="mt-8 h-96 w-full" /><p className="sr-only">Loading Routine Interview…</p></div>;
+    return <RoutineInterviewDetailSkeleton />;
   }
   if (query.isError || !detail) {
     return (

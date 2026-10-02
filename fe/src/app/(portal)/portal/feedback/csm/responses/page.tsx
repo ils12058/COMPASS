@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { FeedbackListSkeleton } from "@/features/feedback/feedback-shared";
 import { CsmResponseList } from "@/features/feedback/feedback-response-lists";
 
 export default function Page() {
-  return <Suspense fallback={<Skeleton className="h-96 w-full" />}><CsmResponseList /></Suspense>;
+  return <Suspense fallback={<FeedbackListSkeleton label="Loading CSM responses…" />}><CsmResponseList /></Suspense>;
 }

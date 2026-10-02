@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { ExitInterviewDetailSkeleton } from "@/features/exit-interviews/exit-interview-shared";
 import { ExitInterviewDetailPage } from "@/features/exit-interviews/exit-interview-detail-page";
 
 export default async function Page({
@@ -10,7 +10,7 @@ export default async function Page({
 }) {
   const { exitInterviewId } = await params;
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<ExitInterviewDetailSkeleton />}>
       <ExitInterviewDetailPage exitInterviewId={exitInterviewId} />
     </Suspense>
   );

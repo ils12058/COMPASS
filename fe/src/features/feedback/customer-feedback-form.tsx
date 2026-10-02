@@ -11,7 +11,7 @@ import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-chang
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { usePortalSession } from "@/features/portal/components/portal-session";
-import { FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
+import { FeedbackFormSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { feedbackSubmitCustomerFeedback, useFeedbackGetMyOpportunity } from "@/lib/api/generated/feedback/feedback";
 import { CustomerFeedbackAccommodatedByValue, CustomerFeedbackRatingValue, CustomerFeedbackServiceValue, type CustomerFeedbackSubmitRequest } from "@/lib/api/generated/model";
@@ -167,7 +167,7 @@ export function CustomerFeedbackForm() {
     );
   }
   if (opportunity.isPending) {
-    return <p aria-busy="true" className="py-8 text-sm text-muted">Loading Feedback service…</p>;
+    return <FeedbackFormSkeleton label="Loading Feedback service…" />;
   }
   if (opportunity.isError) {
     if (feedbackErrorCode(opportunity.error) === "feedback_opportunity_not_found") {

@@ -26,6 +26,7 @@ import {
   CounselingPageHeading,
   CounselingQueryError,
   CounselingUnavailable,
+  CounselingWorkspaceSkeleton,
   formatCounselingDateTime,
 } from "@/features/counseling/counseling-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -163,7 +164,7 @@ export function CounselingWorkspace({
   if (contextUnavailable || invalidBoundary || boundaryReached || shouldHideProtectedData(overview.error) || counselingErrorCode(overview.error) === "counseling_context_not_found") {
     return <section role="alert" className="max-w-3xl border-y border-border py-7"><h1 className="font-heading text-2xl font-semibold text-ink">Counseling context unavailable</h1><p className="mt-3 text-sm leading-6 text-muted">This temporary context needs a new server access check before it can be shown.</p><Button className="mt-3" variant="secondary" onClick={() => void reauthorize()}>Check access again</Button></section>;
   }
-  if (overview.isPending) return <div aria-busy="true"><span className="sr-only">Loading Counseling context…</span><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-5 h-32 w-full" /><Skeleton className="mt-5 h-72 w-full" /></div>;
+  if (overview.isPending) return <CounselingWorkspaceSkeleton />;
   if ((overview.isError && !canShowLastKnownData(overview)) || !overview.data?.data) {
     const expired = counselingErrorCode(overview.error) === "counseling_context_not_found";
     return (

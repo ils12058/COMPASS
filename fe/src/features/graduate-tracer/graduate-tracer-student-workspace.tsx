@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { GraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
 import { GraduateTracerForm, GraduateTracerFormSkeleton } from "@/features/graduate-tracer/graduate-tracer-form";
@@ -131,5 +132,5 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
 }
 
 export function GraduateTracerStudentWorkspaceSkeleton() {
-  return <div className="space-y-5" aria-busy="true"><span className="sr-only">Loading Graduate Tracer workspace…</span><Skeleton className="h-10 w-72" /><Skeleton className="h-24 w-full max-w-3xl" /></div>;
+  return <LoadingRegion label="Loading Graduate Tracer workspace…" className="space-y-5"><Skeleton className="h-10 w-72" /><Skeleton className="h-24 w-full max-w-3xl" /></LoadingRegion>;
 }

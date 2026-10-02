@@ -7,10 +7,9 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
-import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipQueryError, callSlipDestinationLabel, callSlipStateLabel } from "@/features/call-slips/call-slips-shared";
+import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipListSkeleton, CallSlipQueryError, callSlipDestinationLabel, callSlipStateLabel } from "@/features/call-slips/call-slips-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -138,7 +137,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
       {!data && slips.isError ? (
         <CallSlipQueryError error={slips.error} fallback="Your Call Slips could not be loaded." onRetry={() => void slips.refetch()} />
       ) : slips.isPending ? (
-        <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading My Call Slips…</span><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
+        <CallSlipListSkeleton label="Loading My Call Slips…" />
       ) : items.length === 0 ? (
         <div className="border-y border-border py-6">
           <p className="text-sm text-muted">{hasFilters ? "No Call Slips match these filters." : "You do not have any Call Slips yet."}</p>
@@ -260,7 +259,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
       {!data && slips.isError ? (
         <CallSlipQueryError error={slips.error} fallback="Call Slips could not be loaded." onRetry={() => void slips.refetch()} />
       ) : slips.isPending ? (
-        <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading Call Slips…</span><Skeleton className="h-12 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
+        <CallSlipListSkeleton />
       ) : items.length === 0 ? (
         <div className="border-y border-border py-6">
           <p className="text-sm text-muted">{hasFilters ? "No Call Slips match these filters." : "No Call Slips have been recorded in your current scope."}</p>

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -190,7 +191,7 @@ function NavLink({
       href={href}
       aria-current={current ? "page" : undefined}
       className={
-        "inline-flex min-h-10 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
+        "inline-flex min-h-11 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
         (current
           ? "border-brand text-brand"
           : "border-transparent text-muted hover:text-ink")
@@ -207,7 +208,7 @@ export function AvailabilityNavigation() {
   const manage = canManageAvailability(user);
 
   return (
-    <div className="mb-8 border-b border-border">
+    <nav aria-label="Availability navigation" className="mb-8 border-b border-border">
       <div className="flex flex-wrap gap-x-5 gap-y-2">
         {self ? (
           <NavLink href="/portal/availability/me">My availability</NavLink>
@@ -219,7 +220,7 @@ export function AvailabilityNavigation() {
           </>
         ) : null}
       </div>
-    </div>
+    </nav>
   );
 }
 
@@ -323,12 +324,11 @@ export function AvailabilitySectionSkeleton({
   label?: string;
 }) {
   return (
-    <div className="mt-5 space-y-3" aria-busy="true">
+    <LoadingRegion label={label} className="mt-5 space-y-3">
       <Skeleton className="h-12 w-full" />
       <Skeleton className="h-12 w-full" />
       <Skeleton className="h-12 w-4/5" />
-      <p className="sr-only">{label}</p>
-    </div>
+    </LoadingRegion>
   );
 }
 

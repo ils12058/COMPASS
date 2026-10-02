@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { RoutineInterviewDetailSkeleton } from "@/features/routine-interviews/routine-interviews-shared";
 import { RoutineInterviewDetailPage } from "@/features/routine-interviews/routine-interview-detail-page";
 
 export default async function Page({
@@ -11,7 +11,7 @@ export default async function Page({
   const { routineInterviewId } = await params;
 
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<RoutineInterviewDetailSkeleton />}>
       <RoutineInterviewDetailPage routineInterviewId={routineInterviewId} />
     </Suspense>
   );

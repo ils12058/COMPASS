@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { CallSlipFormFields, type CallSlipDraft, toCallSlipRequestFields } from "@/features/call-slips/call-slip-form-fields";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
-import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipQueryError, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipStateLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
+import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipQueryError, LinkedCallSlipCheckLoading, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipStateLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { ReferralAccessUnavailable, ReferralQueryError } from "@/features/referrals/referrals-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -54,7 +54,7 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   if (!callSlipAccess.canManageOperational) return <CallSlipAccessUnavailable title="Linked Call Slip issuance unavailable" message="Call Slip management access is required." />;
   if (referral.isError) return <ReferralQueryError error={referral.error} fallback="The source Referral could not be loaded." onRetry={() => void referral.refetch()} />;
   if (referral.isPending || current.isPending || history.isPending) {
-    return <div className="space-y-4" aria-busy="true"><p role="status" className="text-sm text-muted">Checking Referral and linked Call Slip state…</p></div>;
+    return <LinkedCallSlipCheckLoading />;
   }
   if (current.isError) return <CallSlipQueryError error={current.error} fallback="Current linked Call Slip state could not be checked. Issuance is unavailable until it can be refreshed." onRetry={() => void current.refetch()} />;
   if (history.isError) return <CallSlipQueryError error={history.error} fallback="Linked Call Slip history could not be loaded." onRetry={() => void history.refetch()} />;

@@ -5,8 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
+  AppointmentListSkeleton,
   AppointmentStatusBadge,
   AppointmentsLocalNavigation,
   AppointmentsPageHeading,
@@ -164,12 +164,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
       </div>
 
       {list.isPending ? (
-        <div aria-busy="true" className="space-y-3 py-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <p className="sr-only">Loading Appointments…</p>
-        </div>
+        <AppointmentListSkeleton />
       ) : list.isError ? (
         <div role="alert" className="border-y border-danger/30 py-6">
           <p className="text-sm text-danger">

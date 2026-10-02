@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { GoodMoralListSkeleton } from "@/features/good-moral/good-moral-shared";
 import { GoodMoralWorkspacePage } from "@/features/good-moral/good-moral-page";
 import type { GoodMoralOperationalFilters } from "@/features/good-moral/good-moral-operational-list";
 import { GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
@@ -44,7 +44,7 @@ export default async function Page({
   };
 
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<GoodMoralListSkeleton />}>
       <GoodMoralWorkspacePage key={JSON.stringify(filters)} filters={filters} />
     </Suspense>
   );

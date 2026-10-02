@@ -20,7 +20,7 @@ export function PrivacyGovernanceNavigation() {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Privacy Governance" className="mb-8 border-b border-border">
+    <nav aria-label="Privacy Governance navigation" className="mb-8 border-b border-border">
       <div className="flex flex-wrap gap-x-5 gap-y-2">
         {links.map(({ href, label, related }) => {
           const current =
@@ -31,7 +31,7 @@ export function PrivacyGovernanceNavigation() {
               key={href}
               href={href}
               aria-current={current ? "page" : undefined}
-              className={`inline-flex min-h-10 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
+              className={`inline-flex min-h-11 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
                 current
                   ? "border-brand text-brand"
                   : "border-transparent text-muted hover:text-ink"

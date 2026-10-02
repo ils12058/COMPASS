@@ -17,7 +17,7 @@ export function AccountNavigation() {
   return (
     <div className="mb-8 border-b border-border">
       <p className="font-heading text-sm font-semibold text-brand">Account</p>
-      <nav aria-label="Account" className="mt-4 flex flex-wrap gap-x-6 gap-y-1">
+      <nav aria-label="Account navigation" className="mt-4 flex flex-wrap gap-x-6 gap-y-1">
         {sections.map(({ href, label }) => {
           const current = pathname === href || pathname.startsWith(`${href}/`);
           return (

@@ -29,7 +29,7 @@ export function PlatformEnvironmentPage() {
         description="Resolved non-secret configuration for this deployment. These values show how COMPASS is configured, not whether external services are currently reachable."
       />
 
-      {environment.isPending ? <PlatformRowsSkeleton rows={5} /> : null}
+      {environment.isPending ? <PlatformRowsSkeleton label="Loading environment details…" rows={5} /> : null}
       {environment.isError && !result ? (
         <PlatformQueryError
           message="Resolved environment diagnostics could not be loaded."

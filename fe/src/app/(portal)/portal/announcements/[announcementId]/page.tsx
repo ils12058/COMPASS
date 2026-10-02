@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { ContentDetailSkeleton } from "@/features/content/content-shared";
 import { AnnouncementDetailPage } from "@/features/announcements/announcement-detail-page";
 
 export const metadata: Metadata = { title: "Announcement" };
@@ -13,7 +13,7 @@ export default async function Page({
 }) {
   const { announcementId } = await params;
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<ContentDetailSkeleton label="Loading Announcement…" />}>
       <AnnouncementDetailPage key={announcementId} announcementId={announcementId} />
     </Suspense>
   );

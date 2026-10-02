@@ -12,7 +12,7 @@ import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
-import { FeedbackAccessUnavailable, FeedbackDate, FeedbackPageHeading, FeedbackQueryError, feedbackSelectClass } from "@/features/feedback/feedback-shared";
+import { FeedbackListSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackPageHeading, FeedbackQueryError, feedbackSelectClass } from "@/features/feedback/feedback-shared";
 import { useFeedbackListCustomerFeedbackResponses, useFeedbackListCsmResponses } from "@/lib/api/generated/feedback/feedback";
 import { CSMClientTypeValue, CustomerFeedbackServiceValue } from "@/lib/api/generated/model";
 
@@ -113,7 +113,7 @@ export function CustomerFeedbackResponseList() {
         <div className="mt-4 flex flex-wrap gap-3"><Button type="submit" variant="secondary">Apply filters</Button>{hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : null}</div>
       </form>
       {list.isError && rows ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
-      {list.isPending ? <p aria-busy="true" className="py-8 text-sm text-muted">Loading Customer Feedback responses…</p> : !rows ? <div className="mt-5"><FeedbackQueryError error={list.error} fallback="Customer Feedback responses could not be loaded." onRetry={() => void list.refetch()} /></div> : rows.items.length === 0 ? <p className="border-b border-border py-9 text-sm text-muted">{hasFilters ? "No Customer Feedback responses match the current search or filters." : "No Customer Feedback responses have been submitted."}</p> : rows ? (
+      {list.isPending ? <FeedbackListSkeleton label="Loading Customer Feedback responses…" /> : !rows ? <div className="mt-5"><FeedbackQueryError error={list.error} fallback="Customer Feedback responses could not be loaded." onRetry={() => void list.refetch()} /></div> : rows.items.length === 0 ? <p className="border-b border-border py-9 text-sm text-muted">{hasFilters ? "No Customer Feedback responses match the current search or filters." : "No Customer Feedback responses have been submitted."}</p> : rows ? (
         <>
           {list.isFetching ? <p role="status" className="mt-3 text-xs text-muted">Refreshing responses…</p> : null}
           <div className="mt-5 overflow-x-auto border-y border-border">
@@ -182,7 +182,7 @@ export function CsmResponseList() {
         <div className="mt-4 flex flex-wrap gap-3"><Button type="submit" variant="secondary">Apply filters</Button>{hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : null}</div>
       </form>
       {list.isError && rows ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
-      {list.isPending ? <p aria-busy="true" className="py-8 text-sm text-muted">Loading CSM responses…</p> : !rows ? <div className="mt-5"><FeedbackQueryError error={list.error} fallback="CSM responses could not be loaded." onRetry={() => void list.refetch()} /></div> : rows.items.length === 0 ? <p className="border-b border-border py-9 text-sm text-muted">{hasFilters ? "No CSM responses match the current filters." : "No CSM responses have been submitted."}</p> : rows ? (
+      {list.isPending ? <FeedbackListSkeleton label="Loading CSM responses…" /> : !rows ? <div className="mt-5"><FeedbackQueryError error={list.error} fallback="CSM responses could not be loaded." onRetry={() => void list.refetch()} /></div> : rows.items.length === 0 ? <p className="border-b border-border py-9 text-sm text-muted">{hasFilters ? "No CSM responses match the current filters." : "No CSM responses have been submitted."}</p> : rows ? (
         <>
           {list.isFetching ? <p role="status" className="mt-3 text-xs text-muted">Refreshing responses…</p> : null}
           <div className="mt-5 overflow-x-auto border-y border-border">

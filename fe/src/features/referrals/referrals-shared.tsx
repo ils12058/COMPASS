@@ -4,6 +4,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 
@@ -63,6 +65,26 @@ export function ReferralHeading({
         {action}
       </div>
     </header>
+  );
+}
+
+export function ReferralListSkeleton() {
+  return (
+    <LoadingRegion label="Loading Referrals…" className="space-y-3">
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+    </LoadingRegion>
+  );
+}
+
+export function ReferralDetailSkeleton() {
+  return (
+    <LoadingRegion label="Loading Referral…" className="space-y-4">
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-40 w-full" />
+      <Skeleton className="h-64 w-full" />
+    </LoadingRegion>
   );
 }
 

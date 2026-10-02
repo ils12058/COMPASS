@@ -1,14 +1,14 @@
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function AuthSessionLoading({ label = "Checking your session…" }: { label?: string }) {
   return (
-    <div aria-busy="true" aria-label={label}>
+    <LoadingRegion label={label}>
       <Skeleton className="h-9 w-3/4" />
       <Skeleton className="mt-4 h-5 w-full" />
       <Skeleton className="mt-8 h-11 w-full" />
-      <p className="sr-only">{label}</p>
-    </div>
+    </LoadingRegion>
   );
 }
 

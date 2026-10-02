@@ -7,10 +7,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
+  ExitInterviewListSkeleton,
   ExitInterviewError,
   ExitInterviewHeading,
   ExitInterviewStatus,
@@ -169,12 +169,7 @@ export function ExitInterviewOperationalList({
         />
       ) : null}
       {queue.isPending ? (
-        <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading Exit Interview queue…</span>
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
+        <ExitInterviewListSkeleton label="Loading Exit Interview queue…" />
       ) : queue.isError && (!page || hideStaleQueue) ? (
         <ExitInterviewError
           error={queue.error}

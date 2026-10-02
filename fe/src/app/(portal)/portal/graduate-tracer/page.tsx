@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { GraduateTracerStudentWorkspaceSkeleton } from "@/features/graduate-tracer/graduate-tracer-student-workspace";
 import { GraduateTracerWorkspacePage } from "@/features/graduate-tracer/graduate-tracer-workspace-page";
 import type { GraduateTracerOperationalFilters } from "@/features/graduate-tracer/graduate-tracer-operational-list";
 import { GTSEmploymentStateValue } from "@/lib/api/generated/model";
@@ -47,7 +47,7 @@ export default async function Page({
   };
 
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<GraduateTracerStudentWorkspaceSkeleton />}>
       <GraduateTracerWorkspacePage key={JSON.stringify(filters)} filters={filters} />
     </Suspense>
   );

@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { appointmentStatusLabel } from "@/features/appointments/appointments-shared";
 import { counselingDeliveryModeLabel, counselingErrorMessage, CounselingPagination, formatCounselingDateTime } from "@/features/counseling/counseling-shared";
@@ -136,7 +137,7 @@ export function EncounterCorrectionForm({
 
       <div className="mt-5 max-w-3xl">
         <Label htmlFor="correction-appointment">Appointment link</Label>
-        {candidates.isPending ? <div aria-busy="true" className="mt-2"><Skeleton className="h-10 w-full" /></div> : candidates.isError ? <p role="alert" className="mt-2 text-sm text-danger">{counselingErrorMessage(candidates.error, "Historical Appointment candidates could not be loaded. Other factual details may still be corrected.")}</p> : null}
+        {candidates.isPending ? <LoadingRegion label="Loading historical Appointment candidates…" className="mt-2"><Skeleton className="h-10 w-full" /></LoadingRegion> : candidates.isError ? <p role="alert" className="mt-2 text-sm text-danger">{counselingErrorMessage(candidates.error, "Historical Appointment candidates could not be loaded. Other factual details may still be corrected.")}</p> : null}
         <select id="correction-appointment" value={appointmentId} disabled={update.isPending || candidates.isPending || candidates.isError} onChange={(event) => {
           const nextId = event.target.value;
           setAppointmentId(nextId);

@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { FeedbackFormSkeleton } from "@/features/feedback/feedback-shared";
 import { CustomerFeedbackForm } from "@/features/feedback/customer-feedback-form";
 
 export default function Page() {
-  return <Suspense fallback={<Skeleton className="h-96 w-full" />}><CustomerFeedbackForm /></Suspense>;
+  return <Suspense fallback={<FeedbackFormSkeleton label="Loading Feedback service…" />}><CustomerFeedbackForm /></Suspense>;
 }

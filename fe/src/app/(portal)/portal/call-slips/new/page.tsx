@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { CallSlipDetailSkeleton } from "@/features/call-slips/call-slips-shared";
 import { DirectCallSlipCreatePage } from "@/features/call-slips/call-slip-create-page";
 
 export default function Page() {
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<CallSlipDetailSkeleton label="Loading Call Slip issuance…" />}>
       <DirectCallSlipCreatePage />
     </Suspense>
   );

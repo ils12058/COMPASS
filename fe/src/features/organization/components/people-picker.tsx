@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { organizationErrorMessage } from "@/features/organization/components/organization-action";
 import { useOrganizationListEligiblePeople } from "@/lib/api/generated/organization/organization";
@@ -94,10 +95,10 @@ export function PeoplePicker({
       </form>
 
       {people.isPending ? (
-        <div className="mt-3 space-y-2" aria-busy="true">
+        <LoadingRegion label="Loading eligible people…" className="mt-3 space-y-2">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
-        </div>
+        </LoadingRegion>
       ) : people.isError ? (
         <div role="alert" className="mt-3 text-sm text-danger">
           <p>

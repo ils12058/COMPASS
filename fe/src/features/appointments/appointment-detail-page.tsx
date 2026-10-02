@@ -13,9 +13,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import {
+  AppointmentDetailSkeleton,
   AppointmentStatusBadge,
   AppointmentsLocalNavigation,
   AppointmentsPageHeading,
@@ -500,15 +502,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
 
   if (!access.hasWorkspace) return <AppointmentsUnavailable />;
   if (appointmentQuery.isPending) {
-    return (
-      <section aria-busy="true">
-        <AppointmentsLocalNavigation />
-        <Skeleton className="h-9 w-2/5" />
-        <Skeleton className="mt-5 h-24 w-full" />
-        <Skeleton className="mt-5 h-48 w-full" />
-        <p className="sr-only">Loading Appointment details…</p>
-      </section>
-    );
+    return <AppointmentDetailSkeleton />;
   }
   if (appointmentQuery.isError || !appointment) {
     const notFound = appointmentErrorCode(appointmentQuery.error) === "appointment_not_found";
@@ -642,16 +636,16 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                 />
               </div>
               {rescheduleDate ? (
-                <div className="mt-4" aria-live="polite">
+                <div className="mt-4">
                   {rescheduleSlots.isPending ? (
-                    <div aria-busy="true" className="flex flex-wrap gap-2"><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /><p className="sr-only">Loading replacement times…</p></div>
+                    <LoadingRegion label="Loading replacement times…" className="flex flex-wrap gap-2"><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /></LoadingRegion>
                   ) : rescheduleSlots.isError ? (
                     <div role="alert"><p className="text-sm text-danger">Replacement times could not be loaded.</p><Button className="mt-2" variant="secondary" onClick={() => void rescheduleSlots.refetch()}>Retry</Button></div>
                   ) : rescheduleSlotItems.length === 0 ? (
-                    <p className="text-sm text-muted">No available appointment times were found for this date. Choose another date.</p>
+                    <p role="status" className="text-sm text-muted">No available appointment times were found for this date. Choose another date.</p>
                   ) : (
                     <>
-                      <p className="mb-3 text-sm font-semibold text-ink">Available times · {rescheduleSlots.data?.data.timezone}</p>
+                      <p role="status" className="mb-3 text-sm font-semibold text-ink">Available times · {rescheduleSlots.data?.data.timezone}</p>
                       <div role="group" aria-label="Available replacement times" className="flex flex-wrap gap-2">
                         {rescheduleSlotItems.map((slot: BookableSlotResponse) => (
                           <button
@@ -699,7 +693,9 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               <h3 className="font-heading text-lg font-semibold text-ink">Reassign counselor</h3>
               <p className="mt-3 text-sm text-muted"><span className="font-semibold text-ink">Current counselor:</span> {appointment.provider.display_name}</p>
               {candidates.isPending ? (
-                <Skeleton className="mt-4 h-10 w-full max-w-xl" />
+                <LoadingRegion label="Loading reassignment candidates…" className="mt-4">
+                  <Skeleton className="h-10 w-full max-w-xl" />
+                </LoadingRegion>
               ) : candidates.isError ? (
                 <div role="alert" className="mt-4"><p className="text-sm text-danger">Reassignment candidates could not be loaded.</p><Button className="mt-2" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button></div>
               ) : candidateItems.length === 0 ? (
