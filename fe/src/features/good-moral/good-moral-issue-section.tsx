@@ -31,7 +31,10 @@ export function GoodMoralIssueSection({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [blockedUntilRefresh, setBlockedUntilRefresh] = useState(false);
+  // Covers the whole confirmation, including the refresh after the request succeeds.
+  const [issuing, setIssuing] = useState(false);
   const issue = useMutation({ mutationFn: () => goodMoralIssueRequest(item.id), retry: false });
+  const issuePending = issue.isPending || issuing;
 
   async function invalidate() {
     await Promise.all([
@@ -84,6 +87,7 @@ export function GoodMoralIssueSection({
   async function confirmIssue() {
     setError(null);
     setNotice(null);
+    setIssuing(true);
     try {
       await issue.mutateAsync();
       await invalidate();
@@ -123,6 +127,8 @@ export function GoodMoralIssueSection({
         return;
       }
       setError(goodMoralErrorMessage(caught, "The Good Moral certificate could not be issued."));
+    } finally {
+      setIssuing(false);
     }
   }
 
@@ -173,7 +179,7 @@ export function GoodMoralIssueSection({
           <GoodMoralField label="Official Receipt amount" value={item.official_receipt_amount} />
         </dl>
         <div className="mt-5 flex flex-col items-start gap-3">
-          <Button onClick={() => void beginIssue()} disabled={checkingMfa || issue.isPending || blockedUntilRefresh}>
+          <Button onClick={() => void beginIssue()} disabled={checkingMfa || issuePending || blockedUntilRefresh}>
             {checkingMfa ? "Checking MFA…" : "Issue certificate"}
           </Button>
           {blockedUntilRefresh ? <Button variant="secondary" onClick={() => void refreshRequestState()}>Refresh request state</Button> : null}
@@ -209,7 +215,7 @@ export function GoodMoralIssueSection({
         title="Issue Good Moral certificate?"
         confirmLabel="Issue certificate"
         pendingLabel="Issuing certificate…"
-        pending={issue.isPending}
+        pending={issuePending}
         confirmDisabled={blockedUntilRefresh}
         error={error}
         onOpenChange={setConfirmOpen}
