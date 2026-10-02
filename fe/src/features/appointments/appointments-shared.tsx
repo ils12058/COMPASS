@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -270,32 +269,6 @@ export function AppointmentsPageHeading({
       </div>
       {action}
     </div>
-  );
-}
-
-export function PaginationControls({
-  page,
-  hasNext,
-  onPrevious,
-  onNext,
-}: {
-  page: number;
-  hasNext: boolean;
-  onPrevious: () => void;
-  onNext: () => void;
-}) {
-  return (
-    <nav aria-label="Appointment pages" className="flex items-center justify-between gap-3 border-t border-border py-4">
-      <p className="text-sm text-muted">Page {page}</p>
-      <div className="flex gap-2">
-        <Button variant="secondary" disabled={page <= 1} onClick={onPrevious}>
-          Previous
-        </Button>
-        <Button variant="secondary" disabled={!hasNext} onClick={onNext}>
-          Next
-        </Button>
-      </div>
-    </nav>
   );
 }
 

@@ -41,9 +41,6 @@ const knownErrors: Record<string, string> = {
   recent_mfa_required: "Recent authenticator verification is required.",
 };
 
-export const availabilitySelectClass =
-  "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
-
 export function canUseSelfAvailability(user: {
   role: RoleCode;
   capabilities: readonly CapabilityCode[];

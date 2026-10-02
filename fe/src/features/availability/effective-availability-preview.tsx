@@ -5,11 +5,12 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   AvailabilityQueryError,
   AvailabilitySectionSkeleton,
-  availabilitySelectClass,
 } from "@/features/availability/availability-shared";
 import { DeliveryMode } from "@/lib/api/generated/model";
 import { useAvailabilityGetProviderEffective } from "@/lib/api/generated/availability/availability";
@@ -249,9 +250,8 @@ export function EffectiveAvailabilityPreview({
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="grid gap-2 md:col-span-2">
               <Label htmlFor="effective-service">Service</Label>
-              <select
+              <Select
                 id="effective-service"
-                className={availabilitySelectClass}
                 value={serviceId}
                 onChange={(event) => chooseService(event.target.value)}
               >
@@ -261,13 +261,12 @@ export function EffectiveAvailabilityPreview({
                     {service.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="effective-mode">Delivery mode</Label>
-              <select
+              <Select
                 id="effective-mode"
-                className={availabilitySelectClass}
                 value={mode}
                 disabled={!selectedService}
                 onChange={(event) => {
@@ -282,15 +281,14 @@ export function EffectiveAvailabilityPreview({
                     {deliveryModeLabel(deliveryMode)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="effective-start">Start date</Label>
-              <input
+              <Input
                 id="effective-start"
                 type="date"
                 required
-                className={availabilitySelectClass}
                 value={startDate}
                 onChange={(event) => {
                   setStartDate(event.target.value);
@@ -300,11 +298,10 @@ export function EffectiveAvailabilityPreview({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="effective-through">Through</Label>
-              <input
+              <Input
                 id="effective-through"
                 type="date"
                 required
-                className={availabilitySelectClass}
                 value={throughDate}
                 onChange={(event) => {
                   setThroughDate(event.target.value);

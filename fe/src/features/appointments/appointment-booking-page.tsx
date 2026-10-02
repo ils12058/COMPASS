@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingRegion } from "@/components/ui/loading-region";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DeliveryMode,
@@ -22,12 +23,11 @@ import {
   useAppointmentsListBookingServices,
   useAppointmentsListEligibleCounselors,
 } from "@/lib/api/generated/appointments/appointments";
-import { appointmentErrorCode, appointmentErrorMessage, AppointmentsLocalNavigation, AppointmentsPageHeading, formatAppointmentDateTime, formatAppointmentTime, PaginationControls, deliveryModeLabel } from "@/features/appointments/appointments-shared";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { appointmentErrorCode, appointmentErrorMessage, AppointmentsLocalNavigation, AppointmentsPageHeading, formatAppointmentDateTime, formatAppointmentTime, deliveryModeLabel } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CompassApiError } from "@/lib/api/errors";
-
-const controlClass = "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 function BookingWorkspace() {
   const queryClient = useQueryClient();
@@ -295,11 +295,11 @@ function BookingWorkspace() {
               })}
             </ul>
             {servicePageData ? (
-              <PaginationControls
+              <CanonicalPagination
                 page={servicePageData.page}
                 hasNext={servicePageData.has_next}
-                onPrevious={() => setServicePage(Math.max(1, servicePage - 1))}
-                onNext={() => setServicePage(servicePage + 1)}
+                label="Service pages"
+                onPageChange={setServicePage}
               />
             ) : null}
           </>
@@ -345,9 +345,8 @@ function BookingWorkspace() {
           ) : (
             <div className="mt-4 grid gap-2 sm:max-w-xl">
               <Label htmlFor="booking-counselor">Counselor</Label>
-              <select
+              <Select
                 id="booking-counselor"
-                className={controlClass}
                 value={counselorId}
                 onChange={(event) => changeCounselor(event.target.value)}
               >
@@ -357,7 +356,7 @@ function BookingWorkspace() {
                     {candidate.display_name}{candidate.is_default ? " — Assigned counselor" : ""}
                   </option>
                 ))}
-              </select>
+              </Select>
               {selectedCounselor?.is_default ? (
                 <p className="text-xs text-muted">Assigned counselor is selected. You can choose another eligible Counselor.</p>
               ) : null}

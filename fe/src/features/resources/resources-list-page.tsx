@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
@@ -21,7 +22,6 @@ import {
   PublicationStatusBadge,
   contentPrimaryLinkClass,
   contentRecordLinkClass,
-  contentSelectClass,
 } from "@/features/content/content-shared";
 import { useContentListParams } from "@/features/content/use-content-list-params";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -84,9 +84,8 @@ export function ResourcesListPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="grid gap-2">
             <Label htmlFor="resource-status-filter">Status</Label>
-            <select
+            <Select
               id="resource-status-filter"
-              className={contentSelectClass}
               value={status ?? ""}
               onChange={(event) => update({ status: event.target.value || null })}
             >
@@ -94,13 +93,12 @@ export function ResourcesListPage() {
               {publicationStatusOrder.map((value) => (
                 <option key={value} value={value}>{publicationStatusLabels[value]}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="resource-audience-filter">Audience</Label>
-            <select
+            <Select
               id="resource-audience-filter"
-              className={contentSelectClass}
               value={audience ?? ""}
               onChange={(event) => update({ audience: event.target.value || null })}
             >
@@ -108,13 +106,12 @@ export function ResourcesListPage() {
               {publicationAudienceOrder.map((value) => (
                 <option key={value} value={value}>{publicationAudienceLabels[value]}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="resource-category-filter">Category</Label>
-            <select
+            <Select
               id="resource-category-filter"
-              className={contentSelectClass}
               value={category ?? ""}
               onChange={(event) => update({ category: event.target.value || null })}
             >
@@ -122,13 +119,12 @@ export function ResourcesListPage() {
               {Object.values(ResourceCategoryValue).map((value) => (
                 <option key={value} value={value}>{resourceCategoryLabels[value]}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="resource-kind-filter">Type</Label>
-            <select
+            <Select
               id="resource-kind-filter"
-              className={contentSelectClass}
               value={kind ?? ""}
               onChange={(event) => update({ kind: event.target.value || null })}
             >
@@ -136,7 +132,7 @@ export function ResourcesListPage() {
               {Object.values(ResourceKindValue).map((value) => (
                 <option key={value} value={value}>{resourceKindLabels[value]}</option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
         {hasFilters ? (
@@ -212,15 +208,15 @@ export function ResourcesListPage() {
               </tbody>
             </table>
           </div>
-          {page > 1 || result.has_next ? (
-            <CanonicalPagination
-              page={result.page}
-              hasNext={result.has_next}
-              label="Resource pages"
-              onPageChange={setPage}
-            />
-          ) : null}
         </>
+      ) : null}
+      {result ? (
+        <CanonicalPagination
+          page={result.page}
+          hasNext={result.has_next}
+          label="Resource pages"
+          onPageChange={setPage}
+        />
       ) : null}
     </section>
   );

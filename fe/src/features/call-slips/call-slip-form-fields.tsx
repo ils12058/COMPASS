@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   CallSlipDestinationTypeValue,
   type CallSlipCreateRequest,
@@ -40,9 +41,8 @@ export function CallSlipFormFields({
       </div>
       <div className="grid gap-2">
         <Label htmlFor="call-slip-destination">Please report to</Label>
-        <select
+        <Select
           id="call-slip-destination"
-          className="min-h-11 w-full rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           value={draft.destinationType}
           onChange={(event) => {
             const destinationType = event.target.value as CallSlipDestinationTypeValue;
@@ -58,7 +58,7 @@ export function CallSlipFormFields({
         >
           <option value={CallSlipDestinationTypeValue.GUIDANCE_OFFICE}>Guidance Office</option>
           <option value={CallSlipDestinationTypeValue.OTHER}>Other</option>
-        </select>
+        </Select>
       </div>
       {draft.destinationType === CallSlipDestinationTypeValue.OTHER ? (
         <div className="grid gap-2">

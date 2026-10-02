@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
@@ -285,7 +285,7 @@ export function CustomerFeedbackForm() {
         <div role="status" className="border-y border-success/30 py-8">
           <h1 id="customer-feedback-success" className="font-heading text-3xl font-bold text-ink">Customer Feedback submitted</h1>
           <p className="mt-3 text-sm leading-6 text-muted">Your response was received{success.submittedAt ? <> on <FeedbackDate value={success.submittedAt} /></> : null}.</p>
-          <GuardedPortalLink href="/portal/feedback" className="mt-6 inline-flex min-h-10 items-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Feedback</GuardedPortalLink>
+          <GuardedPortalLink href="/portal/feedback" className={buttonVariants({ variant: "primary", className: "mt-6" })}>Back to Feedback</GuardedPortalLink>
         </div>
       </section>
     );

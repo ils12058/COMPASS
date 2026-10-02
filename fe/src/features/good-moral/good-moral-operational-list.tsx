@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { GoodMoralListSkeleton, GoodMoralError, GoodMoralHeading, GoodMoralStatus, formatGoodMoralDateTime, goodMoralVariantLabel } from "@/features/good-moral/good-moral-shared";
 import { useGoodMoralListRequests } from "@/lib/api/generated/good-moral/good-moral";
 import { GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
@@ -38,6 +41,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
     page: filters.page,
     ...(filters.pageSize ? { page_size: filters.pageSize } : {}),
   };
+  const router = useRouter();
   const queue = useGoodMoralListRequests(params, { query: { retry: false } });
   const page = safeQueryData(queue)?.data;
   const hasFilters = Boolean(filters.search || filters.variant || filters.status);
@@ -53,20 +57,20 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
         </div>
         <div>
           <Label htmlFor="good-moral-variant">Variant</Label>
-          <select id="good-moral-variant" name="variant" defaultValue={filters.variant} className="mt-2 min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <Select id="good-moral-variant" name="variant" defaultValue={filters.variant} className="mt-2">
             <option value="">All variants</option>
             <option value={GoodMoralVariantValue.CURRENT_STUDENT}>Current Student</option>
             <option value={GoodMoralVariantValue.GRADUATE}>Graduate</option>
-          </select>
+          </Select>
         </div>
         <div>
           <Label htmlFor="good-moral-status">Status</Label>
-          <select id="good-moral-status" name="status" defaultValue={filters.status} className="mt-2 min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <Select id="good-moral-status" name="status" defaultValue={filters.status} className="mt-2">
             <option value="">All statuses</option>
             <option value={GoodMoralStatusValue.REQUESTED}>Requested</option>
             <option value={GoodMoralStatusValue.ISSUED}>Issued</option>
             <option value={GoodMoralStatusValue.CANCELLED}>Cancelled</option>
-          </select>
+          </Select>
         </div>
         {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
         <div className="flex flex-wrap items-end gap-3">
@@ -116,17 +120,17 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
               </tbody>
             </table>
           </div>
-          <nav aria-label="Good Moral request pages" className="flex items-center justify-between gap-4">
-            {page.page > 1 ? (
-              <Link href={pageHref(filters, page.page - 1)} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Previous</Link>
-            ) : <Button variant="secondary" disabled>Previous</Button>}
-            <p className="text-sm text-muted">Page {page.page}</p>
-            {page.has_next ? (
-              <Link href={pageHref({ ...filters, pageSize: page.page_size }, page.page + 1)} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Next</Link>
-            ) : <Button variant="secondary" disabled>Next</Button>}
-          </nav>
         </>
       )}
+
+      {page ? (
+        <CanonicalPagination
+          page={page.page}
+          hasNext={page.has_next}
+          label="Good Moral request pages"
+          onPageChange={(nextPage) => router.push(pageHref({ ...filters, pageSize: page.page_size }, nextPage))}
+        />
+      ) : null}
     </section>
   );
 }

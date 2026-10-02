@@ -7,6 +7,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import type { CounselingAccess } from "@/features/counseling/counseling-access";
 import {
   counselingDeliveryModeLabel,
@@ -14,7 +16,6 @@ import {
   counselingErrorMessage,
   CounselingListSkeleton,
   CounselingPageHeading,
-  CounselingPagination,
   CounselingQueryError,
   formatCounselingDateTime,
 } from "@/features/counseling/counseling-shared";
@@ -88,8 +89,8 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
       <section id="encounters" aria-labelledby="my-counseling-encounters-heading" className="mt-7">
           <h2 id="my-counseling-encounters-heading" className="font-heading text-xl font-semibold text-ink">My counseling encounters</h2>
           <div className="mb-5 mt-4 grid gap-4 border-y border-border py-5 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="grid gap-2"><Label htmlFor="counseling-entry-filter">Origin</Label><select id="counseling-entry-filter" value={entryMode ?? "ALL"} onChange={(event) => setFilter("entry_mode", event.target.value === "ALL" ? "" : event.target.value)} className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><option value="ALL">All origins</option><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></select></div>
-            <div className="grid gap-2"><Label htmlFor="counseling-delivery-filter">Delivery mode</Label><select id="counseling-delivery-filter" value={deliveryMode ?? "ALL"} onChange={(event) => setFilter("delivery_mode", event.target.value === "ALL" ? "" : event.target.value)} className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><option value="ALL">All delivery modes</option><option value="IN_PERSON">In person</option><option value="ONLINE">Online</option></select></div>
+            <div className="grid gap-2"><Label htmlFor="counseling-entry-filter">Origin</Label><Select id="counseling-entry-filter" value={entryMode ?? "ALL"} onChange={(event) => setFilter("entry_mode", event.target.value === "ALL" ? "" : event.target.value)}><option value="ALL">All origins</option><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></Select></div>
+            <div className="grid gap-2"><Label htmlFor="counseling-delivery-filter">Delivery mode</Label><Select id="counseling-delivery-filter" value={deliveryMode ?? "ALL"} onChange={(event) => setFilter("delivery_mode", event.target.value === "ALL" ? "" : event.target.value)}><option value="ALL">All delivery modes</option><option value="IN_PERSON">In person</option><option value="ONLINE">Online</option></Select></div>
             <div className="grid gap-2"><Label htmlFor="counseling-from-date">From date</Label><Input id="counseling-from-date" type="date" value={fromDate} onChange={(event) => setFilter("from_date", event.target.value)} /></div>
             <div className="grid gap-2"><Label htmlFor="counseling-to-date">To date</Label><Input id="counseling-to-date" type="date" value={toDate} onChange={(event) => setFilter("to_date", event.target.value)} /></div>
             {hasFilters ? <div className="sm:col-span-2 lg:col-span-4"><Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>Clear filters</Button></div> : null}
@@ -121,9 +122,9 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
                   </tbody>
                 </table>
               </div>
-              <CounselingPagination page={encounters.data?.data.page ?? page} hasNext={encounters.data?.data.has_next ?? false} onPageChange={(nextPage) => router.push(updateQuery(pathname, new URLSearchParams(searchParams.toString()), "page", String(nextPage)), { scroll: false })} />
             </>
           )}
+          {!encounters.isPending && !encounters.isError ? <CanonicalPagination label="Counseling results pages" page={encounters.data?.data.page ?? page} hasNext={encounters.data?.data.has_next ?? false} onPageChange={(nextPage) => router.push(updateQuery(pathname, new URLSearchParams(searchParams.toString()), "page", String(nextPage)), { scroll: false })} /> : null}
       </section>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -27,7 +28,7 @@ export function GoodMoralStudentHistory({
         title="Good Moral"
         description="Request and review your Good Moral Character certificates."
         action={requestHref && requestLabel ? (
-          <Link href={requestHref} className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body">
+          <Link href={requestHref} className={buttonVariants({ variant: "primary" })}>
             {requestLabel}
           </Link>
         ) : undefined}

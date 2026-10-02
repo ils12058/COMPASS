@@ -3,6 +3,7 @@
 import { CalendarPlus } from "lucide-react";
 import Link from "next/link";
 
+import { buttonVariants } from "@/components/ui/button";
 import { OverviewAnnouncements } from "@/features/portal/home/overview-announcements";
 import { OverviewAttention } from "@/features/portal/home/overview-attention";
 import { OverviewSummary } from "@/features/portal/home/overview-summary";
@@ -65,7 +66,7 @@ export function PortalHome() {
         {primaryAction ? (
           <Link
             href={primaryAction.href}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body"
+            className={buttonVariants({ variant: "primary" })}
           >
             <CalendarPlus size={17} aria-hidden="true" />
             {primaryAction.label}

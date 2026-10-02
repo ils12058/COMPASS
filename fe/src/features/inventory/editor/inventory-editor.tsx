@@ -4,8 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { Select } from "@/components/ui/select";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { BackgroundSection } from "@/features/inventory/editor/background-section";
@@ -172,7 +173,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
         </InventoryNotice>
         <GuardedPortalLink
           href="/portal/inventory"
-          className="inline-flex min-h-10 items-center justify-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className={buttonVariants({ variant: "secondary" })}
         >
           Return to Individual Inventory
         </GuardedPortalLink>
@@ -220,9 +221,9 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
           <label htmlFor="inventory-section-select" className="mb-2 block text-sm font-semibold text-ink md:sr-only">
             Inventory section
           </label>
-          <select
+          <Select
             id="inventory-section-select"
-            className="min-h-11 w-full rounded-md border border-border bg-surface-raised px-3 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus md:hidden"
+            className="min-h-11 font-semibold md:hidden"
             value={section}
             onChange={(event) => {
               const next = inventorySections.find((item) => item.id === event.target.value);
@@ -234,7 +235,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
                 {item.label}{item.id === "review" && issues.length ? ` · ${issues.length} needs attention` : ""}
               </option>
             ))}
-          </select>
+          </Select>
           <nav aria-label="Individual Inventory sections" className="hidden border-y border-border md:block">
             <ol>
               {inventorySections.map((item, index) => {

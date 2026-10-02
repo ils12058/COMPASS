@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
+import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import {
   counselingDeliveryModeLabel,
   counselingErrorMessage,
   CounselingPageHeading,
-  CounselingPagination,
   CounselingQueryError,
   CounselingUnavailable,
   formatCounselingDateTime,
@@ -59,7 +60,7 @@ export function StudentSharedSummaries({ access }: { access: CounselingAccess })
               </li>
             ))}
           </ul>
-          <CounselingPagination page={summaries.data?.data.page ?? page} hasNext={summaries.data?.data.has_next ?? false} onPageChange={(nextPage) => {
+          <CanonicalPagination label="Shared Summary pages" page={summaries.data?.data.page ?? page} hasNext={summaries.data?.data.has_next ?? false} onPageChange={(nextPage) => {
             const next = new URLSearchParams(searchParams.toString());
             if (nextPage > 1) next.set("page", String(nextPage)); else next.delete("page");
             const query = next.toString();
@@ -82,7 +83,7 @@ export function StudentSharedSummaryDetail({ summaryId }: { summaryId: string })
 
   return (
     <article className="max-w-4xl">
-      <CounselingPageHeading title="Counseling summary" description={`Counseling ended ${formatCounselingDateTime(summary.counseling_ended_at)} · ${counselingDeliveryModeLabel(summary.delivery_mode)} · Shared ${formatCounselingDateTime(summary.published_at)}`} action={<Link href="/portal/counseling" className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Counseling summaries</Link>} />
+      <CounselingPageHeading title="Counseling summary" description={`Counseling ended ${formatCounselingDateTime(summary.counseling_ended_at)} · ${counselingDeliveryModeLabel(summary.delivery_mode)} · Shared ${formatCounselingDateTime(summary.published_at)}`} action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>Back to Counseling summaries</Link>} />
       <div className="whitespace-pre-wrap break-words text-sm leading-7 text-ink">{summary.content}</div>
     </article>
   );

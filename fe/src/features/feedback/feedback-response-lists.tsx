@@ -8,11 +8,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
-import { FeedbackListSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackPageHeading, FeedbackQueryError, feedbackSelectClass } from "@/features/feedback/feedback-shared";
+import { FeedbackListSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackPageHeading, FeedbackQueryError } from "@/features/feedback/feedback-shared";
 import { useFeedbackListCustomerFeedbackResponses, useFeedbackListCsmResponses } from "@/lib/api/generated/feedback/feedback";
 import { CSMClientTypeValue, CustomerFeedbackServiceValue } from "@/lib/api/generated/model";
 
@@ -106,7 +108,7 @@ export function CustomerFeedbackResponseList() {
       <form key={searchParams.toString()} className="mt-5 border-y border-border py-5" onSubmit={applyFilters}>
         <div className="grid gap-4 lg:grid-cols-[minmax(16rem,1.3fr)_minmax(14rem,1fr)_minmax(20rem,1.2fr)] lg:items-end">
           <div><Label htmlFor="feedback-search">Search respondent name</Label><Input id="feedback-search" className="mt-2" name="search" type="search" placeholder="Search respondent name" defaultValue={search} /></div>
-          <div><Label htmlFor="feedback-service-filter">Service</Label><select id="feedback-service-filter" className={`${feedbackSelectClass} mt-2`} name="service" defaultValue={service ?? ""}><option value="">All services</option>{feedbackServices.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+          <div><Label htmlFor="feedback-service-filter">Service</Label><Select id="feedback-service-filter" className="mt-2" name="service" defaultValue={service ?? ""}><option value="">All services</option>{feedbackServices.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></div>
           <DateRangeFilters searchParams={params} />
         </div>
         {filterError ? <p role="alert" className="mt-3 text-sm text-danger">{filterError}</p> : null}
@@ -123,9 +125,9 @@ export function CustomerFeedbackResponseList() {
               <tbody className="divide-y divide-border">{rows.items.map((item) => <tr key={item.id} className="align-top"><th scope="row" className="sticky left-0 bg-body px-4 py-4 font-semibold text-ink"><Link href={`/portal/feedback/customer-feedback/responses/${item.id}`} className="text-brand underline hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{item.respondent_name || "Name not provided"}</Link></th><td className="max-w-md px-4 py-4 text-muted">{item.services_received.map((value) => feedbackServices.find(([candidate]) => candidate === value)?.[1] ?? value).join(", ")}</td><td className="whitespace-nowrap px-4 py-4 text-muted"><FeedbackDate value={item.submitted_at} /></td></tr>)}</tbody>
             </table>
           </div>
-          {rows.page > 1 || rows.has_next ? <nav aria-label="Customer Feedback response pagination" className="mt-5 flex items-center justify-between gap-4"><Button variant="secondary" disabled={rows.page <= 1} onClick={() => movePage(router, pathname, params, rows.page - 1)}>Previous</Button><span className="text-sm text-muted">Page {rows.page}</span><Button variant="secondary" disabled={!rows.has_next} onClick={() => movePage(router, pathname, params, rows.page + 1)}>Next</Button></nav> : null}
         </>
       ) : null}
+      {rows ? <CanonicalPagination className="mt-5" page={rows.page} hasNext={rows.has_next} label="Customer Feedback response pagination" onPageChange={(page) => movePage(router, pathname, params, page)} /> : null}
     </section>
   );
 }
@@ -174,7 +176,7 @@ export function CsmResponseList() {
       <FeedbackPageHeading headingId="csm-responses-heading" title="Client Satisfaction Measurement responses" description="Read-only access to submitted CSM responses. Service is a text filter against the service named in the response." />
       <form key={searchParams.toString()} className="mt-5 border-y border-border py-5" onSubmit={applyFilters}>
         <div className="grid gap-4 lg:grid-cols-[minmax(13rem,0.8fr)_minmax(15rem,1fr)_minmax(20rem,1.2fr)] lg:items-end">
-          <div><Label htmlFor="csm-client-filter">Client type</Label><select id="csm-client-filter" className={`${feedbackSelectClass} mt-2`} name="client_type" defaultValue={clientType ?? ""}><option value="">All client types</option>{clientTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+          <div><Label htmlFor="csm-client-filter">Client type</Label><Select id="csm-client-filter" className="mt-2" name="client_type" defaultValue={clientType ?? ""}><option value="">All client types</option>{clientTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></div>
           <div><Label htmlFor="csm-service-filter">Filter service availed</Label><Input id="csm-service-filter" className="mt-2" name="service" placeholder="Filter service availed" defaultValue={service} /></div>
           <DateRangeFilters searchParams={params} />
         </div>
@@ -192,9 +194,9 @@ export function CsmResponseList() {
               <tbody className="divide-y divide-border">{rows.items.map((item) => <tr key={item.id} className="align-top"><th scope="row" className="sticky left-0 bg-body px-4 py-4 font-semibold text-ink"><Link href={`/portal/feedback/csm/responses/${item.id}`} className="text-brand underline hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{clientTypes.find(([candidate]) => candidate === item.client_type)?.[1] ?? item.client_type}</Link></th><td className="max-w-md px-4 py-4 text-muted">{item.service_availed || "Not provided"}</td><td className="whitespace-nowrap px-4 py-4 text-muted"><FeedbackDate value={item.submitted_at} /></td></tr>)}</tbody>
             </table>
           </div>
-          {rows.page > 1 || rows.has_next ? <nav aria-label="CSM response pagination" className="mt-5 flex items-center justify-between gap-4"><Button variant="secondary" disabled={rows.page <= 1} onClick={() => movePage(router, pathname, params, rows.page - 1)}>Previous</Button><span className="text-sm text-muted">Page {rows.page}</span><Button variant="secondary" disabled={!rows.has_next} onClick={() => movePage(router, pathname, params, rows.page + 1)}>Next</Button></nav> : null}
         </>
       ) : null}
+      {rows ? <CanonicalPagination className="mt-5" page={rows.page} hasNext={rows.has_next} label="CSM response pagination" onPageChange={(page) => movePage(router, pathname, params, page)} /> : null}
     </section>
   );
 }

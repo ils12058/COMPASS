@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormError } from "@/features/auth/components/auth-states";
@@ -120,7 +120,7 @@ export function PasswordAccess() {
         <p className="mt-3 text-sm leading-6 text-muted">You can now sign in to COMPASS.</p>
         <Link
           href="/login"
-          className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-brand px-4 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className={buttonVariants({ variant: "primary", className: "mt-6 min-h-11 w-full" })}
         >
           Return to sign in
         </Link>

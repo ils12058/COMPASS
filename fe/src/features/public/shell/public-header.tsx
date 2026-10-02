@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId, useRef, useState } from "react";
 
+import { buttonVariants } from "@/components/ui/button";
 import { useAuthGetSession } from "@/lib/api/generated/auth/auth";
 import { cn } from "@/lib/utils/cn";
 
@@ -108,7 +109,7 @@ function MobileMenu({
         <Link
           href={accountHref}
           onClick={close}
-          className="flex min-h-11 items-center justify-center rounded-sm bg-brand px-3 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          className={buttonVariants({ variant: "primary", className: "flex min-h-11 rounded-sm px-3" })}
         >
           {accountLabel}
         </Link>
@@ -140,7 +141,7 @@ export function PublicHeader() {
           ))}
           <Link
             href={accountHref}
-            className="ml-2 inline-flex min-h-10 items-center rounded-md border border-brand bg-brand px-4 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className={buttonVariants({ variant: "primary", className: "ml-2" })}
           >
             {authenticated ? "Open COMPASS" : "Sign in"}
           </Link>

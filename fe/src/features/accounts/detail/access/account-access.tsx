@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingRegion } from "@/components/ui/loading-region";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { safeQueryData } from "@/features/freshness/query-freshness";
@@ -70,9 +71,6 @@ type Confirmation =
     }
   | { kind: "removeOverride"; capability: CapabilityCode }
   | null;
-
-const selectClass =
-  "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 export function AccountAccess() {
   const account = useManagedAccount();
@@ -347,9 +345,9 @@ export function AccountAccess() {
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <div className="w-full max-w-xs">
               <Label htmlFor="managed-role">New role</Label>
-              <select
+              <Select
                 id="managed-role"
-                className={`${selectClass} mt-2`}
+                className="mt-2"
                 value={roleDraft ?? account.role}
                 onChange={(event) => {
                   if (isRoleCode(event.target.value))
@@ -361,7 +359,7 @@ export function AccountAccess() {
                     {roleLabels[role]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <Button
               variant="secondary"
@@ -699,9 +697,8 @@ export function AccountAccess() {
           <form className="mt-6 space-y-4" onSubmit={reviewOverride}>
             <div className="grid gap-2">
               <Label htmlFor="override-capability">Capability</Label>
-              <select
+              <Select
                 id="override-capability"
-                className={selectClass}
                 required
                 value={overrideCapability}
                 onChange={(event) => {
@@ -718,13 +715,12 @@ export function AccountAccess() {
                     {capability.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="override-effect">Effect</Label>
-              <select
+              <Select
                 id="override-effect"
-                className={selectClass}
                 value={overrideEffect}
                 onChange={(event) => {
                   action.setError(null);
@@ -737,7 +733,7 @@ export function AccountAccess() {
               >
                 <option value={Effect.GRANT}>Grant</option>
                 <option value={Effect.REVOKE}>Revoke</option>
-              </select>
+              </Select>
             </div>
             {selectedOverrideCapability?.required_capabilities.length ? (
               <div className="border-l-2 border-border pl-3 text-sm leading-6 text-muted">

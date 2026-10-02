@@ -13,6 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { useOrganizationAction } from "@/features/organization/components/organization-action";
 import { PeoplePicker } from "@/features/organization/components/people-picker";
 import {
@@ -22,7 +24,6 @@ import {
   StatusBadge,
   TableSkeleton,
   replaceQueryParam,
-  selectClass,
 } from "@/features/organization/components/organization-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
@@ -236,9 +237,9 @@ export function StudentAffiliationsPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:w-[30rem]">
           <div>
             <Label htmlFor="affiliation-campus-filter">Campus</Label>
-            <select
+            <Select
               id="affiliation-campus-filter"
-              className={`${selectClass} mt-2`}
+              className="mt-2"
               value={campusId}
               disabled={!structureReady}
               onChange={(event) =>
@@ -251,13 +252,13 @@ export function StudentAffiliationsPage() {
                   {campus.code} — {campus.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <Label htmlFor="affiliation-college-filter">College</Label>
-            <select
+            <Select
               id="affiliation-college-filter"
-              className={`${selectClass} mt-2`}
+              className="mt-2"
               value={collegeId}
               disabled={!structureReady}
               onChange={(event) =>
@@ -270,7 +271,7 @@ export function StudentAffiliationsPage() {
                   {college.code} — {college.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
       </div>
@@ -369,32 +370,17 @@ export function StudentAffiliationsPage() {
               </tbody>
             </table>
           </div>
-          {page > 1 || list.data.data.has_next ? (
-            <nav
-              aria-label="Student affiliation pagination"
-              className="mt-5 flex items-center justify-between gap-4"
-            >
-              <Button
-                variant="secondary"
-                disabled={page <= 1}
-                onClick={() => movePage(page - 1)}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-muted">
-                Page {list.data.data.page}
-              </span>
-              <Button
-                variant="secondary"
-                disabled={!list.data.data.has_next}
-                onClick={() => movePage(page + 1)}
-              >
-                Next
-              </Button>
-            </nav>
-          ) : null}
         </>
       )}
+      {!list.isPending && !list.isError ? (
+        <CanonicalPagination
+          className="mt-5"
+          page={list.data.data.page}
+          hasNext={list.data.data.has_next}
+          label="Student affiliation pagination"
+          onPageChange={movePage}
+        />
+      ) : null}
 
       <Dialog
         open={Boolean(dialog)}
@@ -441,10 +427,10 @@ export function StudentAffiliationsPage() {
             )}
             <div>
               <Label htmlFor="student-affiliation-college">College</Label>
-              <select
+              <Select
                 id="student-affiliation-college"
                 required
-                className={`${selectClass} mt-2`}
+                className="mt-2"
                 value={targetCollegeId}
                 onChange={(event) => setTargetCollegeId(event.target.value)}
               >
@@ -454,7 +440,7 @@ export function StudentAffiliationsPage() {
                     {college.code} — {college.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
           {selectedAffiliation.isError ? (

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
@@ -75,7 +75,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
         title="Referrals"
         description="Record and review Student referrals within your authorized Guidance scope."
         action={access.canManage ? (
-          <Link href="/portal/referrals/new" className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <Link href="/portal/referrals/new" className={buttonVariants({ variant: "primary" })}>
             Record referral
           </Link>
         ) : null}
@@ -131,14 +131,12 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                 {filtered ? "No Referrals match these filters." : "No Referrals have been recorded in your current scope."}
               </p>
               {filtered ? <Link href="/portal/referrals" className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</Link> : null}
-              {(data?.page ?? filters.page) > 1 ? (
-                <CanonicalPagination
+              <CanonicalPagination
                   page={data?.page ?? filters.page}
                   hasNext={data?.has_next ?? false}
                   onPageChange={(page) => router.push(filtersToUrl({ ...filters, page }), { scroll: false })}
                   label="Referral results"
                 />
-              ) : null}
             </div>
           ) : (
             <>

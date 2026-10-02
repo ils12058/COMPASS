@@ -5,16 +5,17 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import {
   formatInventoryDate,
   InventoryHeading,
   InventoryQueryError,
   InventoryStatus,
-  inventorySelectClass,
 } from "@/features/inventory/inventory-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useAcademicYearsList } from "@/lib/api/generated/academic-years/academic-years";
@@ -140,9 +141,9 @@ export function CounselorInventoryRoster() {
           {canFilterYear ? (
             <div>
               <Label htmlFor="inventory-roster-year">Academic Year</Label>
-              <select
+              <Select
                 id="inventory-roster-year"
-                className={`mt-2 ${inventorySelectClass}`}
+                className="mt-2"
                 value={selectedYear?.id ?? (academicYearId && !invalidYear ? academicYearId : "")}
                 disabled={academicYears.isPending || academicYears.isError}
                 onChange={(event) => updateFilter("academic_year_id", event.target.value)}
@@ -156,15 +157,15 @@ export function CounselorInventoryRoster() {
                 {years.map((year) => (
                   <option key={year.id} value={year.id}>{year.label}{year.is_current ? " · Current" : ""}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           ) : null}
 
           <div>
             <Label htmlFor="inventory-roster-status">Status</Label>
-            <select
+            <Select
               id="inventory-roster-status"
-              className={`mt-2 ${inventorySelectClass}`}
+              className="mt-2"
               value={suppressMissing ? "" : status ?? ""}
               onChange={(event) => updateFilter("status", event.target.value)}
             >
@@ -172,14 +173,14 @@ export function CounselorInventoryRoster() {
               {!historicalYear ? <option value={InventoryStatusValue.MISSING}>Missing</option> : null}
               <option value={InventoryStatusValue.DRAFT}>Draft</option>
               <option value={InventoryStatusValue.SUBMITTED}>Submitted</option>
-            </select>
+            </Select>
           </div>
 
           <div>
             <Label htmlFor="inventory-roster-year-level">Year Level</Label>
-            <select
+            <Select
               id="inventory-roster-year-level"
-              className={`mt-2 ${inventorySelectClass}`}
+              className="mt-2"
               value={yearLevel ?? ""}
               onChange={(event) => updateFilter("year_level", event.target.value)}
             >
@@ -187,7 +188,7 @@ export function CounselorInventoryRoster() {
               {Array.from({ length: 10 }, (_, index) => index + 1).map((year) => (
                 <option key={year} value={year}>{year}{year === 1 ? "st" : year === 2 ? "nd" : year === 3 ? "rd" : "th"} year</option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
         {academicYears.isError && canFilterYear ? (
@@ -272,18 +273,17 @@ export function CounselorInventoryRoster() {
               </tbody>
             </table>
           </div>
-          {page > 1 || response.has_next ? (
-            <nav aria-label="Inventory roster pagination" className="mt-5 flex items-center justify-between gap-4">
-              <Button variant="secondary" disabled={page <= 1 || roster.isFetching} onClick={() => movePage(page - 1)}>
-                Previous
-              </Button>
-              <p aria-live="polite" className="text-sm text-muted">Page {response.page}</p>
-              <Button variant="secondary" disabled={!response.has_next || roster.isFetching} onClick={() => movePage(page + 1)}>
-                Next
-              </Button>
-            </nav>
-          ) : null}
         </>
+      ) : null}
+      {response && !roster.isError ? (
+        <CanonicalPagination
+          className="mt-5"
+          page={response.page}
+          hasNext={response.has_next}
+          disabled={roster.isFetching}
+          label="Inventory roster pagination"
+          onPageChange={movePage}
+        />
       ) : null}
     </section>
   );

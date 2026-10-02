@@ -440,15 +440,15 @@ export function NoticeDetailPage() {
                   <RevisionRow key={revision.id} revision={revision} />
                 ))}
               </ol>
-              {result.page > 1 || result.has_next ? (
-                <CanonicalPagination
-                  page={result.page}
-                  hasNext={result.has_next}
-                  onPageChange={setPage}
-                  label="Revision pages"
-                />
-              ) : null}
             </>
+          ) : null}
+          {result ? (
+            <CanonicalPagination
+              page={result.page}
+              hasNext={result.has_next}
+              onPageChange={setPage}
+              label="Revision pages"
+            />
           ) : null}
         </div>
       </section>

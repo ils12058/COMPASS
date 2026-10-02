@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { useMeListActivity, useMeListSecurityActivity } from "@/lib/api/generated/activity/activity";
 import type { ActivityItemResponse, ActivityPageResponse } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
@@ -10,12 +11,10 @@ import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 const PAGE_SIZE = 20;
 
 function ActivityList({
-  page,
   data,
   emptyText,
   onPageChange,
 }: {
-  page: number;
   data: ActivityPageResponse;
   emptyText: string;
   onPageChange: (page: number) => void;
@@ -36,11 +35,13 @@ function ActivityList({
           ))}
         </ol>
       )}
-      <div className="mt-5 flex items-center justify-between gap-3">
-        <Button variant="secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>Previous</Button>
-        <span className="text-sm text-muted">Page {data.page}</span>
-        <Button variant="secondary" disabled={!data.has_next} onClick={() => onPageChange(page + 1)}>Next</Button>
-      </div>
+      <CanonicalPagination
+        className="mt-5"
+        page={data.page}
+        hasNext={data.has_next}
+        label="Activity pages"
+        onPageChange={onPageChange}
+      />
     </div>
   );
 }
@@ -71,7 +72,6 @@ export function ActivityPage() {
         {current.isSuccess ? (
           <ActivityList
             data={current.data.data}
-            page={view === "my" ? myPage : securityPage}
             onPageChange={view === "my" ? setMyPage : setSecurityPage}
             emptyText={view === "my" ? "No account activity is available yet." : "No security activity is available yet."}
           />

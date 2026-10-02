@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   ActionFeedback,
-  availabilitySelectClass,
   modeScopeLabel,
   type StepUpHooks,
 } from "@/features/availability/availability-shared";
@@ -317,9 +317,8 @@ export function UnavailabilitySection({
             </p>
             <div className="grid gap-2">
               <Label htmlFor="unavailability-mode">Applies to</Label>
-              <select
+              <Select
                 id="unavailability-mode"
-                className={availabilitySelectClass}
                 value={modeScope}
                 onChange={(event) =>
                   setModeScope(event.target.value as AvailabilityModeScope)
@@ -334,7 +333,7 @@ export function UnavailabilitySection({
                 <option value={AvailabilityModeScope.ONLINE}>
                   {modeScopeLabel(AvailabilityModeScope.ONLINE)}
                 </option>
-              </select>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="unavailability-reason">

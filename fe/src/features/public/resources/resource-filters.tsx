@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { Select } from "@/components/ui/select";
 import { resourceCategoryLabels, resourceKindLabels } from "@/features/public/shared/presentation";
 import {
   ResourceCategoryValue,
@@ -28,29 +29,29 @@ export function ResourceFilters({ category, kind }: { category?: ResourceCategor
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end">
       <label className="grid gap-1.5 text-xs font-semibold text-muted sm:w-60">
         Category
-        <select
+        <Select
           value={category ?? ""}
           onChange={(event) => updateFilter("category", event.target.value)}
-          className="min-h-11 rounded-md border border-border-strong bg-surface-raised px-3 text-sm font-normal text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="font-normal"
         >
           <option value="">All categories</option>
           {Object.values(ResourceCategoryValue).map((value) => (
             <option key={value} value={value}>{resourceCategoryLabels[value]}</option>
           ))}
-        </select>
+        </Select>
       </label>
       <label className="grid gap-1.5 text-xs font-semibold text-muted sm:w-60">
         Resource type
-        <select
+        <Select
           value={kind ?? ""}
           onChange={(event) => updateFilter("kind", event.target.value)}
-          className="min-h-11 rounded-md border border-border-strong bg-surface-raised px-3 text-sm font-normal text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="font-normal"
         >
           <option value="">All resource types</option>
           {Object.values(ResourceKindValue).map((value) => (
             <option key={value} value={value}>{resourceKindLabels[value]}</option>
           ))}
-        </select>
+        </Select>
       </label>
     </div>
   );

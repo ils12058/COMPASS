@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
@@ -136,7 +136,7 @@ export function ServiceDetailPage() {
           canManage ? (
             <Link
               href={"/portal/services/" + service.id + "/edit"}
-              className="inline-flex min-h-10 items-center justify-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body"
+              className={buttonVariants({ variant: "secondary" })}
             >
               Edit Service
             </Link>

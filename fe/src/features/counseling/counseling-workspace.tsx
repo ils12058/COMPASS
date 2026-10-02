@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canShowLastKnownData, shouldHideProtectedData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -243,7 +243,7 @@ function CounselingWorkspaceContent({
 
   return (
     <div>
-      <CounselingPageHeading title="Counseling workspace" description="Temporary Counseling context is available only around the active interaction and configured review window." action={<Link href="/portal/counseling" className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">My Counseling Encounters</Link>} />
+      <CounselingPageHeading title="Counseling workspace" description="Temporary Counseling context is available only around the active interaction and configured review window." action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My Counseling Encounters</Link>} />
       {contextExpired ? (
         <section role="alert" className="border-y border-warning/40 py-5"><h2 className="font-heading text-xl font-semibold text-ink">Counseling context is no longer available</h2><p className="mt-2 text-sm leading-6 text-muted">This temporary Counseling Context is no longer available. Context access is limited to the active Counseling relationship and its configured review window.</p><p className="mt-2 text-sm text-muted">Your assigned Encounter remains available from My Counseling Encounters.</p></section>
       ) : (

@@ -5,13 +5,14 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   AppointmentListSkeleton,
   AppointmentStatusBadge,
   AppointmentsLocalNavigation,
   AppointmentsPageHeading,
   AppointmentsUnavailable,
-  PaginationControls,
   appointmentErrorMessage,
   deliveryModeLabel,
   formatAppointmentDateTime,
@@ -115,9 +116,8 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
       <div className="mb-6 grid gap-4 border-y border-border py-5 sm:grid-cols-2 xl:grid-cols-4">
         <div className="grid gap-2">
           <Label htmlFor="my-appointment-status">Status</Label>
-          <select
+          <Select
             id="my-appointment-status"
-            className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             value={upcoming ? UPCOMING_APPOINTMENTS_VIEW : status ?? "ALL"}
             onChange={(event) => updateFilter("status", event.target.value)}
           >
@@ -127,7 +127,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
             <option value={AppointmentStatus.CANCELLED}>Cancelled</option>
             <option value={AppointmentStatus.COMPLETED}>Completed</option>
             <option value={AppointmentStatus.NO_SHOW}>No-show</option>
-          </select>
+          </Select>
         </div>
         <div className="grid gap-2">
           <Label htmlFor="my-appointment-from">From date</Label>
@@ -151,15 +151,14 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
         </div>
         <div className="grid gap-2">
           <Label htmlFor="my-appointment-order">Order</Label>
-          <select
+          <Select
             id="my-appointment-order"
-            className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             value={ordering}
             onChange={(event) => updateFilter("ordering", event.target.value)}
           >
             <option value={AppointmentListOrdering.START_ASC}>Soonest first</option>
             <option value={AppointmentListOrdering.START_DESC}>Latest first</option>
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -195,14 +194,12 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
               {filtering ? "Clear filters" : "Show all statuses"}
             </Link>
           ) : null}
-          {page > 1 || pageData?.has_next ? (
-            <PaginationControls
-              page={pageData?.page ?? page}
-              hasNext={pageData?.has_next ?? false}
-              onPrevious={() => movePage(page - 1)}
-              onNext={() => movePage(page + 1)}
-            />
-          ) : null}
+          <CanonicalPagination
+            page={pageData?.page ?? page}
+            hasNext={pageData?.has_next ?? false}
+            label="Appointment pages"
+            onPageChange={movePage}
+          />
         </div>
       ) : (
         <>
@@ -281,11 +278,11 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
             ))}
           </ul>
 
-          <PaginationControls
+          <CanonicalPagination
             page={pageData?.page ?? page}
             hasNext={pageData?.has_next ?? false}
-            onPrevious={() => movePage(page - 1)}
-            onNext={() => movePage(page + 1)}
+            label="Appointment pages"
+            onPageChange={movePage}
           />
         </>
       )}

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import type {
   CallSlipStudentOptionResponse,
   ReferralStudentOptionResponse,
@@ -115,16 +116,14 @@ export function EligibleStudentPicker({
           ))}
         </ul>
       )}
-      {!isError && !isLoading && items.length > 0 ? (
-        <nav aria-label="Eligible Student results" className="mt-3 flex items-center justify-between gap-3">
-          <Button variant="secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-            Previous
-          </Button>
-          <span className="text-sm text-muted">Page {page}</span>
-          <Button variant="secondary" disabled={!hasNext} onClick={() => onPageChange(page + 1)}>
-            Next
-          </Button>
-        </nav>
+      {!isError && !isLoading ? (
+        <CanonicalPagination
+          className="mt-3"
+          page={page}
+          hasNext={hasNext}
+          label="Eligible Student results"
+          onPageChange={onPageChange}
+        />
       ) : null}
     </fieldset>
   );

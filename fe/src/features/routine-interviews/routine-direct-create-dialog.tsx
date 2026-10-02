@@ -14,7 +14,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingRegion } from "@/components/ui/loading-region";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   routineDeliveryModeLabel,
   routineEntryModeLabel,
@@ -33,8 +35,6 @@ import {
   useRoutineInterviewsGetDirectCreationOptions,
   useRoutineInterviewsListDirectStudentCandidates,
 } from "@/lib/api/generated/routine-interviews/routine-interviews";
-
-const controlClass = "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 const entryModes = [
   DirectRoutineEntryMode.WALK_IN,
@@ -272,13 +272,14 @@ function DirectCreateForm({
               </p>
             )}
             {pageData ? (
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <p className="text-xs text-muted">Page {pageData.page}</p>
-                <div className="flex gap-2">
-                  <Button type="button" variant="secondary" className="min-h-8 px-3 py-1 text-xs" disabled={pageData.page <= 1 || candidates.isFetching} onClick={() => setCandidatePage((current) => Math.max(1, current - 1))}>Previous</Button>
-                  <Button type="button" variant="secondary" className="min-h-8 px-3 py-1 text-xs" disabled={!pageData.has_next || candidates.isFetching} onClick={() => setCandidatePage((current) => current + 1)}>Next</Button>
-                </div>
-              </div>
+              <CanonicalPagination
+                className="mt-2"
+                page={pageData.page}
+                hasNext={pageData.has_next}
+                disabled={candidates.isFetching}
+                label="Qualified Student pages"
+                onPageChange={setCandidatePage}
+              />
             ) : null}
           </fieldset>
 
@@ -292,9 +293,8 @@ function DirectCreateForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="routine-direct-entry-mode">Nature of visit</Label>
-              <select
+              <Select
                 id="routine-direct-entry-mode"
-                className={controlClass}
                 value={entryMode}
                 onChange={(event) => {
                   setEntryMode(event.target.value as DirectRoutineEntryMode | "");
@@ -305,13 +305,12 @@ function DirectCreateForm({
               >
                 <option value="">Choose visit type</option>
                 {entryModes.map((mode) => <option key={mode} value={mode}>{routineEntryModeLabel(mode)}</option>)}
-              </select>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="routine-direct-delivery-mode">Delivery mode</Label>
-              <select
+              <Select
                 id="routine-direct-delivery-mode"
-                className={controlClass}
                 value={deliveryMode}
                 onChange={(event) => {
                   setSelectedDeliveryMode(event.target.value as DeliveryMode | "");
@@ -322,7 +321,7 @@ function DirectCreateForm({
               >
                 <option value="">Choose delivery mode</option>
                 {deliveryModes.map((mode) => <option key={mode} value={mode}>{routineDeliveryModeLabel(mode)}</option>)}
-              </select>
+              </Select>
             </div>
           </div>
 

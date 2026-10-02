@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -202,7 +202,7 @@ export function ReferralCreatePage() {
           <Button type="submit" disabled={create.isPending || eligibleStudents.isPending}>
             {create.isPending ? "Recording…" : "Record referral"}
           </Button>
-          <Link href="/portal/referrals" className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Cancel</Link>
+          <Link href="/portal/referrals" className={buttonVariants({ variant: "secondary" })}>Cancel</Link>
         </div>
       </form>
       <StepUpDialog

@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   ActionFeedback,
-  availabilitySelectClass,
   modeScopeLabel,
   type StepUpHooks,
   weeklyWindowLabel,
@@ -382,9 +382,8 @@ export function WeeklyScheduleEditor({
                         </div>
                         <div className="grid gap-2">
                           <Label htmlFor={prefix + "-mode"}>Applies to</Label>
-                          <select
+                          <Select
                             id={prefix + "-mode"}
-                            className={availabilitySelectClass}
                             disabled={!canMutate || pending}
                             value={window.mode_scope}
                             onChange={(event) =>
@@ -405,7 +404,7 @@ export function WeeklyScheduleEditor({
                             <option value={AvailabilityModeScope.ONLINE}>
                               {modeScopeLabel(AvailabilityModeScope.ONLINE)}
                             </option>
-                          </select>
+                          </Select>
                         </div>
                         {canMutate ? (
                           <Button

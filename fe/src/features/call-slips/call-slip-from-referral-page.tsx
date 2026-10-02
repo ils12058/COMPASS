@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -258,7 +258,7 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
         {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={create.isPending}>{create.isPending ? "Issuing…" : "Review linked issuance"}</Button>
-          <Link href={`/portal/referrals/${referral.id}`} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Cancel</Link>
+          <Link href={`/portal/referrals/${referral.id}`} className={buttonVariants({ variant: "secondary" })}>Cancel</Link>
         </div>
       </form>
 

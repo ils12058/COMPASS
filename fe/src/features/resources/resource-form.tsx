@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   publicationAudienceLabels,
   publicationAudienceReaders,
@@ -17,7 +18,6 @@ import {
   AudienceField,
   ContentConfirmDialog,
   contentSecondaryLinkClass,
-  contentSelectClass,
 } from "@/features/content/content-shared";
 import { MarkdownEditor } from "@/features/content/markdown-editor/markdown-editor";
 import { useMarkdownValue } from "@/features/content/markdown-editor/use-markdown-value";
@@ -360,9 +360,8 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
       <div className="grid gap-6 border-t border-border pt-7 md:grid-cols-2">
         <div className="grid content-start gap-2">
           <Label htmlFor="resource-category">Category</Label>
-          <select
+          <Select
             id="resource-category"
-            className={contentSelectClass}
             value={values.category ?? ""}
             aria-invalid={errors.category ? true : undefined}
             aria-describedby={errors.category ? "resource-category-error" : undefined}
@@ -375,7 +374,7 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
             {Object.values(ResourceCategoryValue).map((value) => (
               <option key={value} value={value}>{resourceCategoryLabels[value]}</option>
             ))}
-          </select>
+          </Select>
           {errors.category ? <p id="resource-category-error" className="text-sm text-danger">{errors.category}</p> : null}
         </div>
         <div className="grid content-start gap-2">

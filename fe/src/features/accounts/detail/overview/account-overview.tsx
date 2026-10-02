@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   isTurnstileConfigured,
   TurnstileWidget,
@@ -305,9 +306,9 @@ export function AccountOverview() {
             <div className="mt-4 flex flex-wrap items-end gap-3">
               <div>
                 <Label htmlFor="student-lifecycle">New status</Label>
-                <select
+                <Select
                   id="student-lifecycle"
-                  className="mt-2 min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm"
+                  className="mt-2"
                   value={lifecycle ?? ""}
                   onChange={(event) =>
                     setLifecycle(
@@ -325,7 +326,7 @@ export function AccountOverview() {
                       {lifecycleLabels[status]}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <Button
                 variant="secondary"
