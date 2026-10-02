@@ -385,7 +385,6 @@ export function StudentAffiliationsPage() {
       <Dialog
         open={Boolean(dialog)}
         onOpenChange={(open) => {
-          if (mutationPending) return;
           if (!open) {
             setDialog(null);
             action.setError(null);
@@ -393,7 +392,7 @@ export function StudentAffiliationsPage() {
           }
         }}
       >
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl" dismissible={!mutationPending}>
           <DialogTitle>{dialog?.student ? "Change affiliation" : "Set affiliation"}</DialogTitle>
           <DialogDescription>
             Choose a Student and College. The current and new affiliation will be reviewed before it is saved.

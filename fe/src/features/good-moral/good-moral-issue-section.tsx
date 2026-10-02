@@ -146,11 +146,6 @@ export function GoodMoralIssueSection({
     }
   }
 
-  function handleDialogOpenChange(nextOpen: boolean) {
-    if (!nextOpen && verificationPending) return;
-    setMode(nextOpen ? "verify" : null);
-  }
-
   return (
     <>
       <GoodMoralSection title="Issuance review">
@@ -192,8 +187,8 @@ export function GoodMoralIssueSection({
         </div>
       </GoodMoralSection>
 
-      <Dialog open={mode === "verify"} onOpenChange={handleDialogOpenChange}>
-        <DialogContent aria-describedby="good-moral-issue-dialog-description">
+      <Dialog open={mode === "verify"} onOpenChange={(nextOpen) => setMode(nextOpen ? "verify" : null)}>
+        <DialogContent aria-describedby="good-moral-issue-dialog-description" dismissible={!verificationPending}>
           <DialogTitle>Verify your identity</DialogTitle>
           <DialogDescription id="good-moral-issue-dialog-description">
             Enter the current code from your authenticator app to continue issuing this certificate.

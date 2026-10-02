@@ -61,11 +61,10 @@ export function StepUpDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => {
-      if (verify.isPending) return;
       if (next) onOpenChange(true);
       else close();
     }}>
-      <DialogContent onEscapeKeyDown={(event) => { if (verify.isPending) event.preventDefault(); }} onPointerDownOutside={(event) => { if (verify.isPending) event.preventDefault(); }}>
+      <DialogContent dismissible={!verify.isPending}>
         <DialogTitle>Verify it&apos;s you</DialogTitle>
         <DialogDescription>Enter the current code from your authenticator app.</DialogDescription>
         <form className="mt-6 space-y-5" onSubmit={submit}>

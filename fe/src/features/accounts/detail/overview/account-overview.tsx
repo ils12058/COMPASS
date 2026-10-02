@@ -343,13 +343,8 @@ export function AccountOverview() {
       ) : null}
 
       <ManagedActionFeedback action={action} showMessages={confirm === null} />
-      <Dialog
-        open={identityOpen}
-        onOpenChange={(open) => {
-          if (!updateIdentity.isPending) setIdentityOpen(open);
-        }}
-      >
-        <DialogContent>
+      <Dialog open={identityOpen} onOpenChange={setIdentityOpen}>
+        <DialogContent dismissible={!updateIdentity.isPending}>
           <DialogTitle>Edit identity</DialogTitle>
           <DialogDescription>
             Update the managed account&apos;s institutional identity. Sign-in
@@ -401,13 +396,8 @@ export function AccountOverview() {
           </form>
         </DialogContent>
       </Dialog>
-      <Dialog
-        open={emailOpen}
-        onOpenChange={(open) => {
-          if (!changeEmail.isPending) setEmailOpen(open);
-        }}
-      >
-        <DialogContent>
+      <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+        <DialogContent dismissible={!changeEmail.isPending}>
           <DialogTitle>Change sign-in email</DialogTitle>
           <DialogDescription>
             Verification goes to the proposed new mailbox. The account holder

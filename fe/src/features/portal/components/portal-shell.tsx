@@ -45,7 +45,8 @@ export function PortalShell({ children }: { children: ReactNode }) {
             </DialogTrigger>
             <DialogContent
               className="left-0 top-0 h-dvh max-h-dvh w-[18rem] max-w-[85vw] translate-x-0 translate-y-0 rounded-none border-y-0 border-l-0 p-0 data-[state=closed]:animate-[portal-drawer-out_150ms_ease-in] data-[state=open]:animate-[portal-drawer-in_200ms_ease-out]"
-              closeClassName="top-5 text-on-brand/80 hover:text-on-brand focus-visible:ring-on-brand"
+              closeLabel="Close navigation"
+              closeClassName="top-3.5 text-on-brand/80 hover:bg-on-brand/10 hover:text-on-brand focus-visible:ring-on-brand"
             >
               <DialogTitle className="sr-only">Portal navigation</DialogTitle>
               <PortalNavigation onNavigate={() => setMobileOpen(false)} />

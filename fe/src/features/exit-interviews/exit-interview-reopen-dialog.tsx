@@ -83,13 +83,11 @@ export function ExitInterviewReopenAction({
       <Button type="button" onClick={() => setOpen(true)}>
         Reopen for correction
       </Button>
-      <Dialog
-        open={open}
-        onOpenChange={(nextOpen) => {
-          if (!reopen.isPending) setOpen(nextOpen);
-        }}
-      >
-        <DialogContent aria-describedby="exit-interview-reopen-description">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          aria-describedby="exit-interview-reopen-description"
+          dismissible={!reopen.isPending}
+        >
           <DialogTitle>Reopen Exit Interview for correction?</DialogTitle>
           <DialogDescription id="exit-interview-reopen-description">
             The Student will be able to edit this response again. The reason you provide will be visible to the Student.
