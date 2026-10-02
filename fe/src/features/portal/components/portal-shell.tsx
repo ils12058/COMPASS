@@ -15,6 +15,14 @@ export function PortalShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-body lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
+      {/* The first Tab stop on every portal page. It stays out of the grid while hidden, and
+          following it moves focus past the navigation to the page content. */}
+      <a
+        href="#main-content"
+        className="sr-only text-sm font-semibold text-brand focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:border focus:border-border-strong focus:bg-surface-raised focus:px-4 focus:py-3 focus:shadow-dialog focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        Skip to main content
+      </a>
       <aside className="hidden bg-brand-strong lg:block">
         {/* The menu stays in view while long pages scroll, and scrolls on its own when it is
             taller than the screen. */}
@@ -50,7 +58,13 @@ export function PortalShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-12">
+        {/* tabIndex lets the skip link move focus here in every browser; the region itself draws
+            no focus ring, and the next Tab continues to the first control in the content. */}
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="mx-auto max-w-6xl px-5 py-10 focus:outline-none sm:px-8 sm:py-12"
+        >
           <PublicMaintenanceNotice />
           {children}
         </main>
