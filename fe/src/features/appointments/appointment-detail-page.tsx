@@ -236,6 +236,8 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const noShow = useAppointmentsMarkNoShow();
 
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  // Covers the whole confirmation, including the refresh after the request succeeds.
+  const [confirming, setConfirming] = useState(false);
   const [stepUpOpen, setStepUpOpen] = useState(false);
   const [stepUpAction, setStepUpAction] = useState<StepUpAction | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
@@ -293,7 +295,8 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
     reschedule.isPending ||
     reassign.isPending ||
     complete.isPending ||
-    noShow.isPending;
+    noShow.isPending ||
+    confirming;
 
   async function refreshAppointmentQueries(includeSchedulingSlots = false) {
     const invalidations = [
@@ -377,6 +380,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           : undefined;
     setError(null);
     setNotice(null);
+    setConfirming(true);
     try {
       if (confirmAction === "cancel") {
         await cancel.mutateAsync({ appointmentId });
@@ -408,6 +412,8 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         "confirm",
         confirmAction === "cancel" && adminActor ? "cancel" : undefined,
       );
+    } finally {
+      setConfirming(false);
     }
   }
 

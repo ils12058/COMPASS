@@ -329,10 +329,13 @@ function VoidReferralButton({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
+  // Covers the whole confirmation, including the refresh after the request succeeds.
+  const [voiding, setVoiding] = useState(false);
   const voidMutation = useMutation({
     mutationFn: () => referralsVoid(referral.id, { reason: reason.trim() }),
     retry: false,
   });
+  const voidPending = voidMutation.isPending || voiding;
 
   async function confirmVoid() {
     setError(null);
@@ -341,6 +344,7 @@ function VoidReferralButton({
       setError("Void reason is required.");
       return;
     }
+    setVoiding(true);
     try {
       await voidMutation.mutateAsync();
       await Promise.all([
@@ -381,6 +385,8 @@ function VoidReferralButton({
       } else {
         setError(referralErrorMessage(caught, "The Referral could not be voided."));
       }
+    } finally {
+      setVoiding(false);
     }
   }
 
@@ -395,7 +401,7 @@ function VoidReferralButton({
         title={`Void Referral ${referral.reference_code}?`}
         confirmLabel="Void Referral"
         pendingLabel="Voiding…"
-        pending={voidMutation.isPending}
+        pending={voidPending}
         confirmDisabled={!reason.trim()}
         error={error}
         variant="danger"
@@ -415,7 +421,7 @@ function VoidReferralButton({
             maxLength={1_000}
             required
             value={reason}
-            disabled={voidMutation.isPending}
+            disabled={voidPending}
             onChange={(event) => setReason(event.target.value)}
           />
           <p className="text-xs text-muted">{reason.length} / 1,000 characters</p>

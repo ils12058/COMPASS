@@ -57,9 +57,12 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
   const [notice, setNotice] = useState<string | null>(null);
   const [writeBlocked, setWriteBlocked] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
+  // Covers the whole submission, including the refresh after the request succeeds.
+  const [submitting, setSubmitting] = useState(false);
   const save = useInventoryUpdateMyCurrent();
   const submit = useInventorySubmitMyCurrent();
-  const pending = save.isPending || submit.isPending;
+  const submitPending = submit.isPending || submitting;
+  const pending = save.isPending || submitPending;
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   useUnsavedChangesGuard({
     dirty,
@@ -147,6 +150,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
     if (pending || dirty || issues.length > 0) return;
     setSubmitError(null);
     setNotice(null);
+    setSubmitting(true);
     try {
       const response = await submit.mutateAsync();
       const canonical = toInventoryPayload(response.data);
@@ -161,6 +165,8 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
       router.replace("/portal/inventory/current");
     } catch (error) {
       setSubmitError(setMutationError(error, "Your Individual Inventory could not be submitted."));
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -322,7 +328,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
                     disabled={pending || dirty || issues.length > 0}
                     onClick={() => setConfirmSubmit(true)}
                   >
-                    {submit.isPending ? "Submitting…" : dirty ? "Save progress before submit" : "Submit Individual Inventory"}
+                    {submitPending ? "Submitting…" : dirty ? "Save progress before submit" : "Submit Individual Inventory"}
                   </Button>
                 )}
               </div>
@@ -354,7 +360,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
         title={`Submit your Individual Inventory for Academic Year ${inventory.academic_year.label}?`}
         confirmLabel="Submit Individual Inventory"
         pendingLabel="Submitting…"
-        pending={submit.isPending}
+        pending={submitPending}
         confirmDisabled={dirty || issues.length > 0}
         error={submitError}
         onOpenChange={setConfirmSubmit}

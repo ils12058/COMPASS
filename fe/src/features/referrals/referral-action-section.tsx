@@ -120,11 +120,14 @@ export function ReferralActionEntry({
     remarks: string;
   } | null>(null);
   const [resumeReview, setResumeReview] = useState<typeof review>(null);
+  // Covers the whole confirmation, including the refresh after the request succeeds.
+  const [recording, setRecording] = useState(false);
   const record = useMutation({
     mutationFn: (payload: NonNullable<typeof review>) =>
       referralsRecordAction(referral.id, payload),
     retry: false,
   });
+  const recordPending = record.isPending || recording;
 
   async function reconcile(): Promise<"recorded" | "missing" | "unavailable"> {
     const current = await onRefresh();
@@ -177,6 +180,7 @@ export function ReferralActionEntry({
     const reviewed = review;
     setError(null);
     setNotice(null);
+    setRecording(true);
     try {
       await record.mutateAsync(reviewed);
       await queryClient.invalidateQueries({ queryKey: getReferralsGetQueryKey(referral.id) });
@@ -206,6 +210,8 @@ export function ReferralActionEntry({
       } else {
         setError(referralErrorMessage(caught, "The Referral source action could not be recorded."));
       }
+    } finally {
+      setRecording(false);
     }
   }
 
@@ -220,7 +226,7 @@ export function ReferralActionEntry({
           {buttonLabel}
         </Button>
       ) : (
-        <form className="max-w-xl space-y-4 border-l-2 border-border pl-4" onSubmit={submit} aria-busy={record.isPending}>
+        <form className="max-w-xl space-y-4 border-l-2 border-border pl-4" onSubmit={submit} aria-busy={recordPending}>
           <div className="grid gap-2">
             <Label htmlFor={`action-occurred-${actionType}`}>Action occurred</Label>
             <Input
@@ -230,7 +236,7 @@ export function ReferralActionEntry({
               required
               max={institutionalDateInputValue() + "T23:59"}
               value={occurredAt}
-              disabled={record.isPending || reconcileRequired}
+              disabled={recordPending || reconcileRequired}
               aria-describedby={`action-occurred-timezone-${actionType}`}
               onChange={(event) => setOccurredAt(event.target.value)}
             />
@@ -243,7 +249,7 @@ export function ReferralActionEntry({
           </div>
           <div className="grid gap-2">
             <Label htmlFor={`action-remarks-${actionType}`}>Remarks (optional)</Label>
-            <Textarea id={`action-remarks-${actionType}`} rows={3} maxLength={4_000} value={remarks} disabled={record.isPending || reconcileRequired} onChange={(event) => setRemarks(event.target.value)} />
+            <Textarea id={`action-remarks-${actionType}`} rows={3} maxLength={4_000} value={remarks} disabled={recordPending || reconcileRequired} onChange={(event) => setRemarks(event.target.value)} />
             <p className="text-xs text-muted">{remarks.length} / 4,000 characters</p>
           </div>
           {error && !review ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
@@ -253,11 +259,11 @@ export function ReferralActionEntry({
                 Refresh Referral detail
               </Button>
             ) : (
-              <Button type="submit" disabled={record.isPending}>
+              <Button type="submit" disabled={recordPending}>
                 Review action
               </Button>
             )}
-            <Button type="button" variant="secondary" disabled={record.isPending} onClick={() => { setOpen(false); setError(null); }}>
+            <Button type="button" variant="secondary" disabled={recordPending} onClick={() => { setOpen(false); setError(null); }}>
               Cancel
             </Button>
           </div>
@@ -269,7 +275,7 @@ export function ReferralActionEntry({
         title={review ? `${buttonLabel}?` : "Review source action"}
         confirmLabel={buttonLabel}
         pendingLabel="Recording…"
-        pending={record.isPending}
+        pending={recordPending}
         confirmDisabled={reconcileRequired}
         error={error}
         onOpenChange={(nextOpen) => {
