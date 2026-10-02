@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { safeQueryData, canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
@@ -649,32 +650,17 @@ export function ProviderAvailabilityPage() {
             </table>
           </div>
 
-          {page > 1 || providersData.data.has_next ? (
-            <nav
-              aria-label="Counselor pagination"
-              className="mt-5 flex items-center justify-between gap-4"
-            >
-              <Button
-                variant="secondary"
-                disabled={page <= 1}
-                onClick={() => movePage(page - 1)}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-muted">
-                Page {providersData.data.page}
-              </span>
-              <Button
-                variant="secondary"
-                disabled={!providersData.data.has_next}
-                onClick={() => movePage(page + 1)}
-              >
-                Next
-              </Button>
-            </nav>
-          ) : null}
         </>
       )}
+      {providersData ? (
+        <CanonicalPagination
+          className="mt-5"
+          page={providersData.data.page}
+          hasNext={providersData.data.has_next}
+          label="Counselor pagination"
+          onPageChange={movePage}
+        />
+      ) : null}
     </section>
   );
 }

@@ -4,6 +4,7 @@ import { Pin } from "lucide-react";
 import Link from "next/link";
 
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { announcementErrorMessage } from "@/features/announcements/announcement-errors";
@@ -24,7 +25,6 @@ import {
   PublicationStatusBadge,
   contentPrimaryLinkClass,
   contentRecordLinkClass,
-  contentSelectClass,
 } from "@/features/content/content-shared";
 import { useContentListParams } from "@/features/content/use-content-list-params";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -67,9 +67,8 @@ export function AnnouncementsListPage() {
       <div className="mt-8 flex flex-col gap-4 border-y border-border py-5 sm:flex-row sm:flex-wrap sm:items-end">
         <div className="grid gap-2 sm:w-52">
           <Label htmlFor="announcement-status-filter">Status</Label>
-          <select
+          <Select
             id="announcement-status-filter"
-            className={contentSelectClass}
             value={status ?? ""}
             onChange={(event) => update({ status: event.target.value || null })}
           >
@@ -79,13 +78,12 @@ export function AnnouncementsListPage() {
                 {publicationStatusLabels[value]}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="grid gap-2 sm:w-60">
           <Label htmlFor="announcement-audience-filter">Audience</Label>
-          <select
+          <Select
             id="announcement-audience-filter"
-            className={contentSelectClass}
             value={audience ?? ""}
             onChange={(event) => update({ audience: event.target.value || null })}
           >
@@ -95,7 +93,7 @@ export function AnnouncementsListPage() {
                 {publicationAudienceLabels[value]}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         {hasFilters ? (
           <Link href={hrefWith({ status: null, audience: null })} className={clearLinkClass} scroll={false}>
@@ -164,15 +162,15 @@ export function AnnouncementsListPage() {
               </li>
             ))}
           </ul>
-          {page > 1 || result.has_next ? (
-            <CanonicalPagination
-              page={result.page}
-              hasNext={result.has_next}
-              label="Announcement pages"
-              onPageChange={setPage}
-            />
-          ) : null}
         </>
+      ) : null}
+      {result ? (
+        <CanonicalPagination
+          page={result.page}
+          hasNext={result.has_next}
+          label="Announcement pages"
+          onPageChange={setPage}
+        />
       ) : null}
     </section>
   );

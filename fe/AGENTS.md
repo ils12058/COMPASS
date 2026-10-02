@@ -1114,6 +1114,14 @@ current page with `aria-current="page"`, and keep each navigation link at least 
 Announce each message once: do not put a `role="alert"` or `role="status"` element inside an
 `aria-live` container.
 
+Form controls use the shared `Input`, `Textarea`, and `Select` (`src/components/ui/`) instead of
+hand-written class strings. Each shows `aria-invalid="true"` with a danger border, so a field the
+form already knows is invalid looks invalid as well as being described by its error text.
+
+A link that navigates but is presented as an action stays a link and takes the button styling:
+`<Link className={buttonVariants({ variant: "secondary" })}>`. Actions that change data stay
+`<Button>`. Ordinary text links keep text-link styling.
+
 ---
 
 # 43. Responsive behavior
@@ -1315,6 +1323,12 @@ has_next
 Do not invent page counts or total records.
 
 When `has_next` is false, disable or omit Next appropriately.
+
+Authenticated lists page with `CanonicalPagination`
+(`src/features/portal/components/canonical-pagination.tsx`). It renders nothing for a single page
+and stays on an empty later page so the reader can go back, so render it whenever the list has
+loaded rather than only beside rows. The feature owns what `onPageChange` does, including which
+search and filter parameters it keeps. Public pages keep `PublicPagination`, which uses real links.
 
 ## Empty results
 

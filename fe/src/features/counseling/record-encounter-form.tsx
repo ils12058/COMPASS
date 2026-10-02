@@ -8,13 +8,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   counselingDeliveryModeLabel,
   counselingEntryModeLabel,
   counselingErrorCode,
   counselingErrorMessage,
-  CounselingPagination,
   formatCounselingDateTime,
 } from "@/features/counseling/counseling-shared";
 import type {
@@ -280,7 +281,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
                   </li>
                 ))}
               </ul>
-              <CounselingPagination page={appointmentCandidates.data?.data.page ?? page} hasNext={appointmentCandidates.data?.data.has_next ?? false} onPageChange={setPage} />
+              <CanonicalPagination label="Appointment candidate pages" page={appointmentCandidates.data?.data.page ?? page} hasNext={appointmentCandidates.data?.data.has_next ?? false} onPageChange={setPage} />
             </>
           )}
         </div>
@@ -310,23 +311,23 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
                   </li>
                 ))}
               </ul>
-              <CounselingPagination page={students.data?.data.page ?? page} hasNext={students.data?.data.has_next ?? false} onPageChange={setPage} />
+              <CanonicalPagination label="Student pages" page={students.data?.data.page ?? page} hasNext={students.data?.data.has_next ?? false} onPageChange={setPage} />
             </>
           )}
           {selectedStudent && options ? (
             <div className="grid gap-4 border-t border-border pt-5 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="counseling-entry-mode">Interaction origin</Label>
-                <select id="counseling-entry-mode" value={entryMode} onChange={(event) => setEntryMode(event.target.value as CounselingEntryMode)} disabled={create.isPending} className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                <Select id="counseling-entry-mode" value={entryMode} onChange={(event) => setEntryMode(event.target.value as CounselingEntryMode)} disabled={create.isPending}>
                   <option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option>
-                </select>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="counseling-delivery-mode">Delivery mode</Label>
-                <select id="counseling-delivery-mode" value={selectedDeliveryMode} onChange={(event) => setDeliveryMode(event.target.value as DeliveryMode)} disabled={create.isPending || options.delivery_modes.length === 1} className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                <Select id="counseling-delivery-mode" value={selectedDeliveryMode} onChange={(event) => setDeliveryMode(event.target.value as DeliveryMode)} disabled={create.isPending || options.delivery_modes.length === 1}>
                   {options.delivery_modes.length === 0 ? <option value="">No delivery mode configured</option> : null}
                   {options.delivery_modes.map((mode) => <option key={mode} value={mode}>{counselingDeliveryModeLabel(mode)}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
           ) : null}

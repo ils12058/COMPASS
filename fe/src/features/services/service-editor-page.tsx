@@ -8,13 +8,13 @@ import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   ServicesDetailSkeleton,
   ServicesPageHeading,
   ServicesQueryError,
   serviceSchedulingConsequenceDetails,
   servicesErrorMessage,
-  servicesSelectClass,
   useServicesAction,
   type ServiceSchedulingConsequenceDetails,
 } from "@/features/services/services-shared";
@@ -267,9 +267,8 @@ function ServiceForm({
             <Label htmlFor="service-appointment-policy">
               Appointment policy
             </Label>
-            <select
+            <Select
               id="service-appointment-policy"
-              className={servicesSelectClass}
               value={values.appointmentPolicy}
               onChange={(event) =>
                 setPolicy(event.target.value as AppointmentPolicy)
@@ -282,7 +281,7 @@ function ServiceForm({
               <option value={AppointmentPolicy.REQUIRED}>
                 Appointment required
               </option>
-            </select>
+            </Select>
             <p className="text-xs leading-5 text-muted">
               Services with an optional or required appointment policy can
               both be booked as Appointments.

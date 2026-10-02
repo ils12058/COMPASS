@@ -8,6 +8,7 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   formatRoutineDateTime,
   routineDeliveryModeLabel,
@@ -409,13 +410,14 @@ function RoutineEncounterFinalization({
                 ))}
               </div>
               {pageData ? (
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <p className="text-xs text-muted">Page {pageData.page}</p>
-                  <div className="flex gap-2">
-                    <Button type="button" variant="secondary" className="min-h-8 px-3 py-1 text-xs" disabled={pageData.page <= 1 || candidates.isFetching} onClick={() => setPage((current) => Math.max(1, current - 1))}>Previous</Button>
-                    <Button type="button" variant="secondary" className="min-h-8 px-3 py-1 text-xs" disabled={!pageData.has_next || candidates.isFetching} onClick={() => setPage((current) => current + 1)}>Next</Button>
-                  </div>
-                </div>
+                <CanonicalPagination
+                  className="mt-3"
+                  page={pageData.page}
+                  hasNext={pageData.has_next}
+                  disabled={candidates.isFetching}
+                  label="Counseling Encounter candidate pages"
+                  onPageChange={setPage}
+                />
               ) : null}
             </fieldset>
           )}

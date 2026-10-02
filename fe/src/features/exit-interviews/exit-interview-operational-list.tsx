@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
@@ -106,26 +107,26 @@ export function ExitInterviewOperationalList({
         </div>
         <div>
           <Label htmlFor="exit-interview-status">Status</Label>
-          <select
+          <Select
             id="exit-interview-status"
             name="status"
             defaultValue={filters.status}
-            className="mt-2 min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="mt-2"
           >
             <option value="">All statuses</option>
             <option value={ExitInterviewStatusValue.DRAFT}>Draft</option>
             <option value={ExitInterviewStatusValue.SUBMITTED}>Submitted</option>
-          </select>
+          </Select>
         </div>
         {canFilterYear ? (
           <div>
             <Label htmlFor="exit-interview-year">Academic Year</Label>
-            <select
+            <Select
               id="exit-interview-year"
               name="academic_year_id"
               value={yearChoice}
               onChange={(event) => setYearChoice(event.target.value)}
-              className="mt-2 min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="mt-2"
             >
               <option value="">All Academic Years</option>
               {academicYearId && !selectedYearKnown ? (
@@ -138,7 +139,7 @@ export function ExitInterviewOperationalList({
                   {year.label}{year.is_current ? " · Current" : ""}
                 </option>
               ))}
-            </select>
+            </Select>
             {academicYears.isError ? (
               <p className="mt-2 text-xs text-warning">Academic Year choices could not be loaded.</p>
             ) : null}

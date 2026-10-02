@@ -4,8 +4,8 @@ import type { ChangeEvent, ReactNode } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { inventorySelectClass } from "@/features/inventory/inventory-shared";
 
 export type FieldOption<T extends string> = readonly [T, string];
 
@@ -150,9 +150,9 @@ export function SelectField<T extends string>({
         {label}
         {required ? <span aria-hidden="true" className="ml-1 text-danger">*</span> : null}
       </Label>
-      <select
+      <Select
         id={id}
-        className={`mt-2 ${inventorySelectClass}`}
+        className="mt-2"
         value={value ?? ""}
         aria-required={required || undefined}
         aria-invalid={error ? true : undefined}
@@ -166,7 +166,7 @@ export function SelectField<T extends string>({
         {options.map(([optionValue, labelText]) => (
           <option key={optionValue} value={optionValue}>{labelText}</option>
         ))}
-      </select>
+      </Select>
       {hint ? <p id={hintId} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
       {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>

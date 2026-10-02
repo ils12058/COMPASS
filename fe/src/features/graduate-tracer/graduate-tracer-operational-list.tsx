@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { EMPLOYMENT_STATE_CHOICES, formatGraduateTracerDateTime } from "@/features/graduate-tracer/graduate-tracer-presentation";
@@ -78,10 +79,10 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
         </div>
         <div>
           <Label htmlFor="gts-employment-filter">Current employment state</Label>
-          <select id="gts-employment-filter" name="current_employment_state" defaultValue={filters.employmentState} className="mt-2 min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <Select id="gts-employment-filter" name="current_employment_state" defaultValue={filters.employmentState} className="mt-2">
             <option value="">All employment states</option>
             {EMPLOYMENT_STATE_CHOICES.map((choice) => <option key={choice.value} value={choice.value}>{choice.label === "Yes" ? "Employed" : choice.label === "No" ? "Not employed" : choice.label}</option>)}
-          </select>
+          </Select>
         </div>
         {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
         <div className="flex flex-wrap items-end gap-3 xl:col-span-1">
@@ -101,7 +102,7 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
       ) : !page ? null : page.items.length === 0 ? (
         <div className="border-y border-border py-6">
           <p className="text-sm text-muted">{hasFilters ? "No submitted Graduate Tracer responses match the current filters." : "No submitted Graduate Tracer responses are available."}</p>
-          {page.page > 1 ? <CanonicalPagination page={page.page} hasNext={page.has_next} label="Graduate Tracer response pages" onPageChange={(nextPage) => router.push(pageHref(filters, nextPage, page.page_size))} /> : null}
+          <CanonicalPagination page={page.page} hasNext={page.has_next} label="Graduate Tracer response pages" onPageChange={(nextPage) => router.push(pageHref(filters, nextPage, page.page_size))} />
         </div>
       ) : (
         <div className="overflow-x-auto rounded-md border border-border">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { EncounterCorrectionForm } from "@/features/counseling/encounter-correction-form";
 import {
@@ -34,14 +34,14 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
 
   if (!access.isCounselor || !access.canViewAssigned) return <CounselingUnavailable title="Encounter unavailable" />;
   if (query.isPending) return <EncounterDetailSkeleton />;
-  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" action={<Link href="/portal/counseling" className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">My Counseling Encounters</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "This Counseling Encounter is not available within your current access.")} onRetry={() => void query.refetch()} /></>;
+  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My Counseling Encounters</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "This Counseling Encounter is not available within your current access.")} onRetry={() => void query.refetch()} /></>;
 
   return (
     <article>
       <CounselingPageHeading
         title="Counseling Encounter"
         description={`${encounter.student.display_name} · ${counselingEntryModeLabel(encounter.entry_mode)}`}
-        action={<Link href="/portal/counseling" className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">My Counseling Encounters</Link>}
+        action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My Counseling Encounters</Link>}
       />
 
       <section aria-labelledby="encounter-details-heading">

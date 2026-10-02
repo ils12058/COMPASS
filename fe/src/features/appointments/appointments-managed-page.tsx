@@ -7,12 +7,13 @@ import { type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   AppointmentListSkeleton,
   AppointmentStatusBadge,
   AppointmentsLocalNavigation,
   AppointmentsPageHeading,
-  PaginationControls,
   appointmentErrorMessage,
   appointmentStatusLabel,
   deliveryModeLabel,
@@ -29,8 +30,6 @@ import {
 } from "@/lib/api/generated/model";
 import { useAppointmentsListManaged } from "@/lib/api/generated/appointments/appointments";
 import { useServicesList } from "@/lib/api/generated/services/services";
-
-const controlClass = "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 function isStatus(value: string | null): value is AppointmentStatus {
   return value !== null && Object.values(AppointmentStatus).includes(value as AppointmentStatus);
@@ -159,9 +158,8 @@ function ManagedAppointmentsList() {
           {canFilterService ? (
             <div className="grid gap-2">
               <Label htmlFor="managed-appointment-service">Service</Label>
-              <select
+              <Select
                 id="managed-appointment-service"
-                className={controlClass}
                 value={serviceId ?? ""}
                 disabled={services.isPending && !serviceId}
                 onChange={(event) => updateFilter("service", event.target.value)}
@@ -175,7 +173,7 @@ function ManagedAppointmentsList() {
                 {serviceOptions.map((service) => (
                   <option key={service.id} value={service.id}>{service.name}</option>
                 ))}
-              </select>
+              </Select>
               {services.isError ? (
                 <p className="text-xs text-warning">Service choices could not be loaded.</p>
               ) : null}
@@ -183,22 +181,22 @@ function ManagedAppointmentsList() {
           ) : null}
           <div className="grid gap-2">
             <Label htmlFor="managed-appointment-status">Status</Label>
-            <select id="managed-appointment-status" className={controlClass} value={upcoming ? UPCOMING_APPOINTMENTS_VIEW : status ?? "ALL"} onChange={(event) => updateFilter("status", event.target.value)}>
+            <Select id="managed-appointment-status" value={upcoming ? UPCOMING_APPOINTMENTS_VIEW : status ?? "ALL"} onChange={(event) => updateFilter("status", event.target.value)}>
               <option value={AppointmentStatus.SCHEDULED}>{appointmentStatusLabel(AppointmentStatus.SCHEDULED)}</option>
               <option value={UPCOMING_APPOINTMENTS_VIEW}>Upcoming (not yet started)</option>
               <option value="ALL">All statuses</option>
               <option value={AppointmentStatus.CANCELLED}>{appointmentStatusLabel(AppointmentStatus.CANCELLED)}</option>
               <option value={AppointmentStatus.COMPLETED}>{appointmentStatusLabel(AppointmentStatus.COMPLETED)}</option>
               <option value={AppointmentStatus.NO_SHOW}>{appointmentStatusLabel(AppointmentStatus.NO_SHOW)}</option>
-            </select>
+            </Select>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="managed-appointment-mode">Delivery</Label>
-            <select id="managed-appointment-mode" className={controlClass} value={mode ?? ""} onChange={(event) => updateFilter("mode", event.target.value)}>
+            <Select id="managed-appointment-mode" value={mode ?? ""} onChange={(event) => updateFilter("mode", event.target.value)}>
               <option value="">All modes</option>
               <option value={DeliveryMode.IN_PERSON}>In person</option>
               <option value={DeliveryMode.ONLINE}>Online</option>
-            </select>
+            </Select>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="managed-appointment-from">From</Label>
@@ -210,10 +208,10 @@ function ManagedAppointmentsList() {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="managed-appointment-order">Order</Label>
-            <select id="managed-appointment-order" className={controlClass} value={ordering} onChange={(event) => updateFilter("ordering", event.target.value)}>
+            <Select id="managed-appointment-order" value={ordering} onChange={(event) => updateFilter("ordering", event.target.value)}>
               <option value={AppointmentListOrdering.START_ASC}>Soonest first</option>
               <option value={AppointmentListOrdering.START_DESC}>Latest first</option>
-            </select>
+            </Select>
           </div>
           <div className="flex items-end">
             <Button type="submit" variant="secondary">Search</Button>
@@ -251,14 +249,12 @@ function ManagedAppointmentsList() {
               {hasFilters ? "Clear filters" : "Show all statuses"}
             </Link>
           ) : null}
-          {page > 1 || pageData?.has_next ? (
-            <PaginationControls
-              page={pageData?.page ?? page}
-              hasNext={pageData?.has_next ?? false}
-              onPrevious={() => movePage(page - 1)}
-              onNext={() => movePage(page + 1)}
-            />
-          ) : null}
+          <CanonicalPagination
+            page={pageData?.page ?? page}
+            hasNext={pageData?.has_next ?? false}
+            label="Appointment pages"
+            onPageChange={movePage}
+          />
         </div>
       ) : (
         <>
@@ -319,11 +315,11 @@ function ManagedAppointmentsList() {
               </li>
             ))}
           </ul>
-          <PaginationControls
+          <CanonicalPagination
             page={pageData?.page ?? page}
             hasNext={pageData?.has_next ?? false}
-            onPrevious={() => movePage(page - 1)}
-            onNext={() => movePage(page + 1)}
+            label="Appointment pages"
+            onPageChange={movePage}
           />
         </>
       )}

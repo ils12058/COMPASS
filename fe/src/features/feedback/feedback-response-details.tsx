@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { buttonVariants } from "@/components/ui/button";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -81,7 +82,7 @@ export function CustomerFeedbackResponseDetail({ responseId }: { responseId: str
   return (
     <section aria-labelledby="customer-feedback-detail-heading">
       {detail.isError ? <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
-      <FeedbackPageHeading headingId="customer-feedback-detail-heading" eyebrow="Customer Feedback response" title={item.respondent_name || "Customer Feedback response"} description={`Submitted ${formatInstitutionalDateTime(item.submitted_at)}.`} action={<Link href="/portal/feedback/customer-feedback/responses" className="inline-flex min-h-10 items-center rounded-md border border-border-strong px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to responses</Link>} />
+      <FeedbackPageHeading headingId="customer-feedback-detail-heading" eyebrow="Customer Feedback response" title={item.respondent_name || "Customer Feedback response"} description={`Submitted ${formatInstitutionalDateTime(item.submitted_at)}.`} action={<Link href="/portal/feedback/customer-feedback/responses" className={buttonVariants({ variant: "secondary" })}>Back to responses</Link>} />
       <DetailSection title="I. Service/s received">
         <DetailField label="Services received">{services}</DetailField>
         {item.services_received.includes(CustomerFeedbackServiceValue.OTHER) ? <DetailField label="Other service specified">{item.other_service}</DetailField> : null}
@@ -148,7 +149,7 @@ export function CsmResponseDetail({ responseId }: { responseId: string }) {
   return (
     <section aria-labelledby="csm-detail-heading">
       {detail.isError ? <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
-      <FeedbackPageHeading headingId="csm-detail-heading" title="Client Satisfaction Measurement response" description={`Submitted ${formatInstitutionalDateTime(item.submitted_at)}.`} action={<Link href="/portal/feedback/csm/responses" className="inline-flex min-h-10 items-center rounded-md border border-border-strong px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to responses</Link>} />
+      <FeedbackPageHeading headingId="csm-detail-heading" title="Client Satisfaction Measurement response" description={`Submitted ${formatInstitutionalDateTime(item.submitted_at)}.`} action={<Link href="/portal/feedback/csm/responses" className={buttonVariants({ variant: "secondary" })}>Back to responses</Link>} />
       <DetailSection title="Respondent and instrument data">
         <DetailField label="Client type">{clientLabel}</DetailField>
         <DetailField label="Sex">{item.sex === CSMSexValue.MALE ? "Male" : "Female"}</DetailField>

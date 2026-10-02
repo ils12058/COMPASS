@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   ManagedActionFeedback,
   useInvalidateManagedAccount,
@@ -22,8 +23,6 @@ import { useAccountsCreate } from "@/lib/api/generated/accounts/accounts";
 import { RoleCode, type AccountCreateRequest } from "@/lib/api/generated/model";
 
 const fieldClass = "grid gap-2";
-const selectClass =
-  "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 export function CreateAccount() {
   const router = useRouter();
@@ -155,9 +154,8 @@ export function CreateAccount() {
           </div>
           <div className={fieldClass}>
             <Label htmlFor="create-role">Role</Label>
-            <select
+            <Select
               id="create-role"
-              className={selectClass}
               value={form.role}
               onChange={(event) => {
                 if (isRoleCode(event.target.value))
@@ -169,7 +167,7 @@ export function CreateAccount() {
                   {roleLabels[role]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
         <label className="flex items-center gap-3 text-sm font-medium text-ink">

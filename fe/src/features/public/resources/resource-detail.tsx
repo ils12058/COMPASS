@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { ExternalLink, FileDown } from "lucide-react";
 import Link from "next/link";
 
+import { buttonVariants } from "@/components/ui/button";
 import { ResourceIcon } from "@/features/public/resources/resource-icon";
 import { PublicMarkdown } from "@/features/public/shared/public-markdown";
 import {
@@ -125,7 +126,7 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
               href={externalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className={buttonVariants({ variant: "primary", className: "min-h-11 px-5 py-2.5" })}
             >
               Open resource
               <ExternalLink size={18} aria-hidden="true" />

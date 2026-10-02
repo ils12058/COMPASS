@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   replaceServicesQueryParam,
   ServicesListSkeleton,
@@ -14,7 +16,6 @@ import {
   ServicesSearchField,
   ServicesStatusBadge,
   ServicesSystemRequiredBadge,
-  servicesSelectClass,
 } from "@/features/services/services-shared";
 import {
   AppointmentPolicy,
@@ -122,7 +123,7 @@ export function ServicesListPage() {
           canManage ? (
             <Link
               href="/portal/services/new"
-              className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body"
+              className={buttonVariants({ variant: "primary" })}
             >
               Create Service
             </Link>
@@ -135,9 +136,9 @@ export function ServicesListPage() {
           <ServicesSearchField />
           <div className="lg:w-64">
             <Label htmlFor="services-policy-filter">Appointment policy</Label>
-            <select
+            <Select
               id="services-policy-filter"
-              className={servicesSelectClass + " mt-2"}
+              className="mt-2"
               value={appointmentPolicy ?? ""}
               onChange={(event) => updatePolicy(event.target.value)}
             >
@@ -149,7 +150,7 @@ export function ServicesListPage() {
               <option value={AppointmentPolicy.REQUIRED}>
                 Appointment required
               </option>
-            </select>
+            </Select>
           </div>
         </div>
         {canManage ? (
@@ -258,32 +259,17 @@ export function ServicesListPage() {
               </li>
             ))}
           </ul>
-          {page > 1 || list.data.data.has_next ? (
-            <nav
-              aria-label="Services pagination"
-              className="mt-5 flex items-center justify-between gap-4"
-            >
-              <Button
-                variant="secondary"
-                disabled={page <= 1}
-                onClick={() => movePage(page - 1)}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-muted">
-                Page {list.data.data.page}
-              </span>
-              <Button
-                variant="secondary"
-                disabled={!list.data.data.has_next}
-                onClick={() => movePage(page + 1)}
-              >
-                Next
-              </Button>
-            </nav>
-          ) : null}
         </>
       )}
+      {!list.isPending && !list.isError ? (
+        <CanonicalPagination
+          className="mt-5"
+          page={list.data.data.page}
+          hasNext={list.data.data.has_next}
+          label="Services pagination"
+          onPageChange={movePage}
+        />
+      ) : null}
     </section>
   );
 }

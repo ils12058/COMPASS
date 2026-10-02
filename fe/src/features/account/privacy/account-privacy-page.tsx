@@ -187,15 +187,15 @@ export function AccountPrivacyPage() {
                   />
                 ))}
               </div>
-              {result.page > 1 || result.has_next ? (
-                <CanonicalPagination
-                  page={result.page}
-                  hasNext={result.has_next}
-                  onPageChange={setPage}
-                  label="Privacy notice pages"
-                />
-              ) : null}
             </>
+          ) : null}
+          {result ? (
+            <CanonicalPagination
+              page={result.page}
+              hasNext={result.has_next}
+              onPageChange={setPage}
+              label="Privacy notice pages"
+            />
           ) : null}
         </div>
       </section>

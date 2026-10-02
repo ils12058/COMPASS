@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingRegion } from "@/components/ui/loading-region";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { appointmentStatusLabel } from "@/features/appointments/appointments-shared";
-import { counselingDeliveryModeLabel, counselingErrorMessage, CounselingPagination, formatCounselingDateTime } from "@/features/counseling/counseling-shared";
+import { counselingDeliveryModeLabel, counselingErrorMessage, formatCounselingDateTime } from "@/features/counseling/counseling-shared";
 import type { CounselingEncounterResponse } from "@/lib/api/generated/model";
 import { CounselingEntryMode, DeliveryMode } from "@/lib/api/generated/model";
 import {
@@ -131,14 +133,14 @@ export function EncounterCorrectionForm({
       <p className="mt-1 text-sm text-muted">Use this to correct how the completed interaction was recorded. Actual times use {INSTITUTION_TIME_ZONE_LABEL}. Student, Counselor, Service, creator, and creation time cannot be changed.</p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <div className="grid gap-2"><Label htmlFor="correction-entry-mode">Interaction origin</Label><select id="correction-entry-mode" value={entryMode} disabled={update.isPending} onChange={(event) => { setEntryMode(event.target.value as CounselingEntryMode); setError(null); }} className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></select></div>
-        <div className="grid gap-2"><Label htmlFor="correction-delivery-mode">Delivery mode</Label><select id="correction-delivery-mode" value={deliveryMode} disabled={update.isPending} onChange={(event) => { setDeliveryMode(event.target.value as DeliveryMode); setError(null); }} className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{Object.values(DeliveryMode).map((mode) => <option key={mode} value={mode}>{counselingDeliveryModeLabel(mode)}</option>)}</select></div>
+        <div className="grid gap-2"><Label htmlFor="correction-entry-mode">Interaction origin</Label><Select id="correction-entry-mode" value={entryMode} disabled={update.isPending} onChange={(event) => { setEntryMode(event.target.value as CounselingEntryMode); setError(null); }}><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></Select></div>
+        <div className="grid gap-2"><Label htmlFor="correction-delivery-mode">Delivery mode</Label><Select id="correction-delivery-mode" value={deliveryMode} disabled={update.isPending} onChange={(event) => { setDeliveryMode(event.target.value as DeliveryMode); setError(null); }}>{Object.values(DeliveryMode).map((mode) => <option key={mode} value={mode}>{counselingDeliveryModeLabel(mode)}</option>)}</Select></div>
       </div>
 
       <div className="mt-5 max-w-3xl">
         <Label htmlFor="correction-appointment">Appointment link</Label>
         {candidates.isPending ? <LoadingRegion label="Loading historical Appointment candidates…" className="mt-2"><Skeleton className="h-10 w-full" /></LoadingRegion> : candidates.isError ? <p role="alert" className="mt-2 text-sm text-danger">{counselingErrorMessage(candidates.error, "Historical Appointment candidates could not be loaded. Other factual details may still be corrected.")}</p> : null}
-        <select id="correction-appointment" value={appointmentId} disabled={update.isPending || candidates.isPending || candidates.isError} onChange={(event) => {
+        <Select id="correction-appointment" value={appointmentId} disabled={update.isPending || candidates.isPending || candidates.isError} onChange={(event) => {
           const nextId = event.target.value;
           setAppointmentId(nextId);
           if (!nextId) {
@@ -149,13 +151,13 @@ export function EncounterCorrectionForm({
             if (selected) setDeliveryMode(selected.delivery_mode);
           }
           setError(null);
-        }} className="mt-2 min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+        }} className="mt-2">
           <option value="">No Appointment link</option>
           {currentAppointmentAvailable ? <option value={encounter.appointment?.id}>{encounter.appointment?.reference_code} · current link</option> : null}
           {items.map((item) => <option key={item.id} value={item.id}>{item.reference_code} · {formatCounselingDateTime(item.starts_at)} · {counselingDeliveryModeLabel(item.delivery_mode)} · {appointmentStatusLabel(item.status)}</option>)}
-        </select>
+        </Select>
         {!candidates.isPending && !candidates.isError && items.length === 0 && !encounter.appointment ? <p className="mt-2 text-sm text-muted">No Appointment candidates are available for this Encounter.</p> : null}
-        {!candidates.isPending && !candidates.isError ? <CounselingPagination page={candidates.data?.data.page ?? page} hasNext={candidates.data?.data.has_next ?? false} onPageChange={setPage} /> : null}
+        {!candidates.isPending && !candidates.isError ? <CanonicalPagination label="Appointment candidate pages" page={candidates.data?.data.page ?? page} hasNext={candidates.data?.data.has_next ?? false} onPageChange={setPage} /> : null}
         <p className="mt-2 text-xs text-muted">Selected: {selectedLabel}</p>
       </div>
 

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { organizationErrorMessage } from "@/features/organization/components/organization-action";
 import { useOrganizationListEligiblePeople } from "@/lib/api/generated/organization/organization";
 import type {
@@ -147,29 +148,17 @@ export function PeoplePicker({
               </label>
             ))}
           </div>
-          {page > 1 || people.data.data.has_next ? (
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <Button
-                variant="secondary"
-                disabled={page <= 1}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-              >
-                Previous
-              </Button>
-              <span className="text-xs text-muted">
-                Page {people.data.data.page}
-              </span>
-              <Button
-                variant="secondary"
-                disabled={!people.data.data.has_next}
-                onClick={() => setPage((current) => current + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          ) : null}
         </>
       )}
+      {!people.isPending && !people.isError ? (
+        <CanonicalPagination
+          className="mt-3"
+          page={people.data.data.page}
+          hasNext={people.data.data.has_next}
+          label={`${label} results`}
+          onPageChange={setPage}
+        />
+      ) : null}
     </fieldset>
   );
 }

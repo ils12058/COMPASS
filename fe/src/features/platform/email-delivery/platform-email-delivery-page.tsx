@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
@@ -12,10 +13,10 @@ import {
   usePlatformAction,
 } from "@/features/platform/platform-actions";
 import { hasPlatformManage } from "@/features/platform/platform-gate";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   emailDeliveryStatusLabels,
   PlatformPageHeader,
-  PlatformPagination,
   PlatformQueryError,
   PlatformRowsSkeleton,
   PlatformStatusBadge,
@@ -40,8 +41,6 @@ import {
 
 const PAGE_SIZE = 20;
 const EMAIL_STATUSES = Object.values(EmailDeliveryStatusValue);
-const selectClass =
-  "min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 const failureLabels: Record<EmailDeliveryFailureCode, string> = {
   [EmailDeliveryFailureCode.transport_error]: "Mail server could not be reached",
@@ -239,9 +238,8 @@ export function PlatformEmailDeliveryPage() {
           </h2>
           <div className="grid max-w-xs gap-2">
             <Label htmlFor="email-delivery-status">Status</Label>
-            <select
+            <Select
               id="email-delivery-status"
-              className={selectClass}
               value={status}
               onChange={(event) => {
                 setStatus(statusFilterFrom(event.target.value));
@@ -254,7 +252,7 @@ export function PlatformEmailDeliveryPage() {
                   {emailDeliveryStatusLabels[item]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -355,14 +353,6 @@ export function PlatformEmailDeliveryPage() {
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4">
-                <PlatformPagination
-                  page={deliveryPage.page}
-                  hasNext={deliveryPage.has_next}
-                  disabled={deliveries.isFetching}
-                  onPageChange={setPage}
-                />
-              </div>
             </>
           ) : status === "ALL" ? (
             <p className="border-y border-border py-6 text-sm text-muted">
@@ -385,6 +375,16 @@ export function PlatformEmailDeliveryPage() {
               </Button>
             </div>
           )
+        ) : null}
+        {deliveryPage ? (
+          <CanonicalPagination
+            className="mt-4"
+            page={deliveryPage.page}
+            hasNext={deliveryPage.has_next}
+            disabled={deliveries.isFetching}
+            label="Email delivery pages"
+            onPageChange={setPage}
+          />
         ) : null}
       </section>
 

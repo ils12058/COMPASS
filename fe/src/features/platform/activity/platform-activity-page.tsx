@@ -4,9 +4,9 @@ import { useState } from "react";
 
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   PlatformPageHeader,
-  PlatformPagination,
   PlatformQueryError,
   PlatformRowsSkeleton,
   PlatformTimestamp,
@@ -75,20 +75,22 @@ export function PlatformActivityPage() {
                 </li>
               ))}
             </ol>
-            <div className="mt-4">
-              <PlatformPagination
-                page={result.page}
-                hasNext={result.has_next}
-                disabled={activity.isFetching}
-                onPageChange={setPage}
-              />
-            </div>
           </>
         ) : (
           <p className="border-y border-border py-6 text-sm text-muted">
             No technical activity is available yet.
           </p>
         )
+      ) : null}
+      {result ? (
+        <CanonicalPagination
+          className="mt-4"
+          page={result.page}
+          hasNext={result.has_next}
+          disabled={activity.isFetching}
+          label="Technical activity pages"
+          onPageChange={setPage}
+        />
       ) : null}
     </section>
   );

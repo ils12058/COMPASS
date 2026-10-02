@@ -2,8 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import type { InventorySubmissionIssue } from "@/features/inventory/inventory-payload";
-import { InventoryNotice, inventorySelectClass } from "@/features/inventory/inventory-shared";
+import { InventoryNotice } from "@/features/inventory/inventory-shared";
 import type { GeographicLocationPayload, GeographicLocationKindValue as LocationKind } from "@/lib/api/generated/model";
 import { GeographicLocationKindValue } from "@/lib/api/generated/model";
 import {
@@ -178,9 +179,9 @@ export function PSGCLocationSelector({
           <Label htmlFor={`${prefix}-location-choice`}>
             Location response
           </Label>
-          <select
+          <Select
             id={`${prefix}-location-choice`}
-            className={`mt-2 ${inventorySelectClass}`}
+            className="mt-2"
             value={mode}
             aria-required={!permanent || undefined}
             aria-invalid={choiceError ? true : undefined}
@@ -190,7 +191,7 @@ export function PSGCLocationSelector({
             <option value="">Choose how to provide this location</option>
             <option value="specified">Provide structured location</option>
             <option value="not_specified">Prefer not to specify</option>
-          </select>
+          </Select>
           {choiceError ? <p id={`${prefix}-location-choice-error`} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{choiceError}</p> : null}
         </div>
       ) : (
@@ -216,9 +217,9 @@ export function PSGCLocationSelector({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor={`${prefix}-region`}>Region</Label>
-              <select
+              <Select
                 id={`${prefix}-region`}
-                className={`mt-2 ${inventorySelectClass}`}
+                className="mt-2"
                 value={location?.region_psgc_code ?? ""}
                 disabled={regions.isPending || regions.isError}
                 aria-required={!permanent || undefined}
@@ -236,7 +237,7 @@ export function PSGCLocationSelector({
                 {regionItems.map((item) => (
                   <option key={item.code} value={item.code}>{item.name}</option>
                 ))}
-              </select>
+              </Select>
               {regionError ? <p id={`${prefix}-region-error`} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{regionError}</p> : null}
               {regions.isPending ? <p role="status" className="mt-1 text-xs text-muted">Loading regions…</p> : null}
             </div>
@@ -245,9 +246,9 @@ export function PSGCLocationSelector({
               <Label htmlFor={`inventory-${kind.toLowerCase()}-province`}>
                 Province <span className="font-normal text-muted">(where applicable)</span>
               </Label>
-              <select
+              <Select
                 id={`inventory-${kind.toLowerCase()}-province`}
-                className={`mt-2 ${inventorySelectClass}`}
+                className="mt-2"
                 value={location?.province_psgc_code ?? ""}
                 disabled={!location?.region_psgc_code || provinces.isPending || provinces.isError}
                 onChange={(event) => chooseProvince(event.target.value)}
@@ -262,14 +263,14 @@ export function PSGCLocationSelector({
                 {provinceItems.map((item) => (
                   <option key={item.code} value={item.code}>{item.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div>
               <Label htmlFor={`${prefix}-city`}>City / Municipality</Label>
-              <select
+              <Select
                 id={`${prefix}-city`}
-                className={`mt-2 ${inventorySelectClass}`}
+                className="mt-2"
                 value={location?.city_municipality_psgc_code ?? ""}
                 disabled={!location?.region_psgc_code || cities.isPending || cities.isError}
                 aria-required={!permanent || undefined}
@@ -287,7 +288,7 @@ export function PSGCLocationSelector({
                 {cityItems.map((item) => (
                   <option key={item.code} value={item.code}>{item.name}</option>
                 ))}
-              </select>
+              </Select>
               {cityError ? <p id={`${prefix}-city-error`} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{cityError}</p> : null}
               {cities.isPending ? <p role="status" className="mt-1 text-xs text-muted">Loading cities and municipalities…</p> : null}
             </div>
@@ -296,9 +297,9 @@ export function PSGCLocationSelector({
               <Label htmlFor={`inventory-${kind.toLowerCase()}-barangay`}>
                 Barangay <span className="font-normal text-muted">(optional)</span>
               </Label>
-              <select
+              <Select
                 id={`inventory-${kind.toLowerCase()}-barangay`}
-                className={`mt-2 ${inventorySelectClass}`}
+                className="mt-2"
                 value={location?.barangay_psgc_code ?? ""}
                 disabled={!location?.city_municipality_psgc_code || barangays.isPending || barangays.isError}
                 onChange={(event) => chooseBarangay(event.target.value)}
@@ -313,7 +314,7 @@ export function PSGCLocationSelector({
                 {barangayItems.map((item) => (
                   <option key={item.code} value={item.code}>{item.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
           <p aria-live="polite" className="sr-only">

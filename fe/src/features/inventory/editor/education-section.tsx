@@ -1,9 +1,10 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import { BooleanField, TextAreaField, TextField } from "@/features/inventory/editor/fields";
 import type { InventorySectionProps } from "@/features/inventory/editor/types";
 import { educationLevelOptions } from "@/features/inventory/inventory-presentation";
-import { FieldGroup, InventoryNotice, inventorySelectClass } from "@/features/inventory/inventory-shared";
+import { FieldGroup, InventoryNotice } from "@/features/inventory/inventory-shared";
 import type { EducationEntryPayload } from "@/lib/api/generated/model";
 import { EducationLevelValue } from "@/lib/api/generated/model";
 
@@ -78,9 +79,9 @@ export function EducationSection({
             <label htmlFor="inventory-program" className="text-sm font-semibold text-ink">
               Current Program <span aria-hidden="true" className="ml-1 text-danger">*</span>
             </label>
-            <select
+            <Select
               id="inventory-program"
-              className={`mt-2 ${inventorySelectClass}`}
+              className="mt-2"
               value={draft.program_id ?? ""}
               disabled={programLookupPending || programLookupError || !programDiscoveryAllowed}
               aria-required="true"
@@ -107,7 +108,7 @@ export function EducationSection({
                   {program.code} · {program.name} — {program.college.name}
                 </option>
               ))}
-            </select>
+            </Select>
             {programError ? <p id="inventory-program-error" role="alert" className="mt-1.5 text-xs leading-5 text-danger">{programError}</p> : null}
             {programLookupPending ? <p role="status" className="mt-1.5 text-xs text-muted">Loading active Programs…</p> : null}
           </div>
@@ -123,9 +124,9 @@ export function EducationSection({
             <label htmlFor="inventory-year-level" className="text-sm font-semibold text-ink">
               Year Level <span aria-hidden="true" className="ml-1 text-danger">*</span>
             </label>
-            <select
+            <Select
               id="inventory-year-level"
-              className={`mt-2 ${inventorySelectClass}`}
+              className="mt-2"
               value={draft.year_level ?? ""}
               aria-required="true"
               aria-invalid={yearLevelError ? true : undefined}
@@ -136,7 +137,7 @@ export function EducationSection({
               {Array.from({ length: 10 }, (_, index) => index + 1).map((year) => (
                 <option key={year} value={year}>{year}{year === 1 ? "st" : year === 2 ? "nd" : year === 3 ? "rd" : "th"} year</option>
               ))}
-            </select>
+            </Select>
             {yearLevelError ? <p id="inventory-year-level-error" role="alert" className="mt-1.5 text-xs leading-5 text-danger">{yearLevelError}</p> : null}
           </div>
           <TextField

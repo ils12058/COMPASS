@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
@@ -63,7 +63,7 @@ export function GoodMoralRequestPage() {
     <section className="max-w-2xl space-y-5">
       <GoodMoralHeading title="Good Moral request unavailable" description="A new request is not available for your current Student lifecycle." />
       <p className="text-sm leading-6 text-muted">You can still review your existing Good Moral requests.</p>
-      <Link href="/portal/good-moral" className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Good Moral</Link>
+      <Link href="/portal/good-moral" className={buttonVariants({ variant: "secondary" })}>Back to Good Moral</Link>
     </section>
   );
 }

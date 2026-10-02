@@ -366,34 +366,3 @@ export function RoutineUnavailable({
     </WorkspaceUnavailable>
   );
 }
-
-export function RoutinePagination({
-  page,
-  hasNext,
-  label,
-  onPrevious,
-  onNext,
-}: {
-  page: number;
-  hasNext: boolean;
-  label: string;
-  onPrevious: () => void;
-  onNext: () => void;
-}) {
-  return (
-    <nav
-      aria-label={label}
-      className="flex items-center justify-between gap-3 border-t border-border py-4"
-    >
-      <p className="text-sm text-muted">Page {page}</p>
-      <div className="flex gap-2">
-        <Button variant="secondary" disabled={page <= 1} onClick={onPrevious}>
-          Previous
-        </Button>
-        <Button variant="secondary" disabled={!hasNext} onClick={onNext}>
-          Next
-        </Button>
-      </div>
-    </nav>
-  );
-}

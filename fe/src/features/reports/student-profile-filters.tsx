@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import type {
   AcademicYearResponse,
   CampusSummary,
@@ -23,9 +24,6 @@ import {
 
 type CampusChoice = CampusSummary | OrganizationReference;
 type CollegeChoice = CollegeSummary | ReportScopeCollege;
-
-const selectClass =
-  "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60";
 
 function isActiveChoice(choice: CampusChoice | CollegeChoice | ProgramSummary) {
   return !("is_active" in choice) || choice.is_active;
@@ -222,9 +220,9 @@ export function StudentProfileFilters({
       >
         <div className="min-w-0">
           <Label htmlFor="report-academic-year">Academic Year</Label>
-          <select
+          <Select
             id="report-academic-year"
-            className={selectClass + " mt-2"}
+            className="mt-2"
             value={draft.academic_year_id}
             disabled={academicYearsLoading || academicYearsError}
             onChange={(event) =>
@@ -241,7 +239,7 @@ export function StudentProfileFilters({
               {year.is_current ? " (Current)" : ""}
               </option>
             ))}
-          </select>
+          </Select>
           <p id="report-academic-year-state" className="mt-1 text-xs text-muted">
             {academicYearsLoading
               ? "Loading Academic Years…"
@@ -262,9 +260,9 @@ export function StudentProfileFilters({
         </div>
         <div className="min-w-0">
           <Label htmlFor="report-campus">Campus</Label>
-          <select
+          <Select
             id="report-campus"
-            className={selectClass + " mt-2"}
+            className="mt-2"
             value={draft.campus_id}
             disabled={scope.is_global && (campusesLoading || campusesError)}
             onChange={(event) => updateDraft("campus_id", event.target.value)}
@@ -277,7 +275,7 @@ export function StudentProfileFilters({
                 {optionLabel(campus)}
               </option>
             ))}
-          </select>
+          </Select>
           {scope.is_global && campusesError ? (
             <div id="report-campus-state" className="mt-1 text-xs text-danger">
               Campus choices could not be loaded.
@@ -298,9 +296,9 @@ export function StudentProfileFilters({
         </div>
         <div className="min-w-0">
           <Label htmlFor="report-college">College</Label>
-          <select
+          <Select
             id="report-college"
-            className={selectClass + " mt-2"}
+            className="mt-2"
             value={draft.college_id}
             disabled={scope.is_global && (collegesLoading || collegesError)}
             onChange={(event) => updateDraft("college_id", event.target.value)}
@@ -319,7 +317,7 @@ export function StudentProfileFilters({
                 {optionLabel(college)}
               </option>
             ))}
-          </select>
+          </Select>
           {scope.is_global && collegesError ? (
             <div id="report-college-state" className="mt-1 text-xs text-danger">
               College choices could not be loaded.
@@ -340,9 +338,9 @@ export function StudentProfileFilters({
         </div>
         <div className="min-w-0">
           <Label htmlFor="report-program">Program</Label>
-          <select
+          <Select
             id="report-program"
-            className={selectClass + " mt-2"}
+            className="mt-2"
             value={draft.program_id}
             disabled={
               !selectedCollege ||
@@ -360,7 +358,7 @@ export function StudentProfileFilters({
                 {optionLabel(program)}
               </option>
             ))}
-          </select>
+          </Select>
           <p id="report-program-state" className="mt-1 text-xs text-muted">
             {!draft.college_id
               ? "Select a College first."
@@ -383,9 +381,9 @@ export function StudentProfileFilters({
         </div>
         <div className="min-w-0">
           <Label htmlFor="report-year-level">Year Level</Label>
-          <select
+          <Select
             id="report-year-level"
-            className={selectClass + " mt-2"}
+            className="mt-2"
             value={draft.year_level}
             onChange={(event) => updateDraft("year_level", event.target.value)}
           >
@@ -405,7 +403,7 @@ export function StudentProfileFilters({
                 Year
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="flex flex-wrap items-end gap-3 sm:col-span-2 xl:col-span-5">
           <Button type="submit">Apply filters</Button>

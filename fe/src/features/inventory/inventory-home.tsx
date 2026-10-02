@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CounselorInventoryRoster } from "@/features/inventory/counselor/inventory-roster";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
@@ -147,7 +147,7 @@ function StudentInventoryHome() {
                 </p>
                 <Link
                   href="/portal/inventory/current"
-                  className="mt-4 inline-flex min-h-10 items-center rounded-md border border-brand px-4 py-2 text-sm font-semibold text-brand hover:bg-brand-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  className={buttonVariants({ variant: "quiet", className: "mt-4 border-brand" })}
                 >
                   {access.canManageSelf ? "Continue Individual Inventory" : "View saved Individual Inventory"}
                 </Link>
@@ -160,7 +160,7 @@ function StudentInventoryHome() {
                 </p>
                 <Link
                   href="/portal/inventory/current"
-                  className="mt-4 inline-flex min-h-10 items-center rounded-md border border-brand px-4 py-2 text-sm font-semibold text-brand hover:bg-brand-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  className={buttonVariants({ variant: "quiet", className: "mt-4 border-brand" })}
                 >
                   View submitted Inventory
                 </Link>

@@ -6,9 +6,11 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import type { RoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { RoutineDirectCreateDialog } from "@/features/routine-interviews/routine-direct-create-dialog";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   formatRoutineDateTime,
   formatRoutineDateTimeRange,
@@ -19,7 +21,6 @@ import {
   routineIntakeStatusLabel,
   RoutineInterviewListSkeleton,
   RoutinePageHeading,
-  RoutinePagination,
   RoutineQueryError,
   RoutineStatus,
 } from "@/features/routine-interviews/routine-interviews-shared";
@@ -159,9 +160,8 @@ export function CounselorRoutineWorkspace({
             {canFilterYear ? (
               <div className="grid gap-2">
                 <Label htmlFor="routine-queue-year">Academic Year</Label>
-                <select
+                <Select
                   id="routine-queue-year"
-                  className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   value={academicYearId ?? ""}
                   disabled={academicYears.isPending && !academicYearId}
                   onChange={(event) => setFilter("academic_year_id", event.target.value)}
@@ -177,7 +177,7 @@ export function CounselorRoutineWorkspace({
                       {year.label}{year.is_current ? " · Current" : ""}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {academicYears.isError ? (
                   <p className="text-xs text-warning">Academic Year choices could not be loaded.</p>
                 ) : null}
@@ -185,42 +185,39 @@ export function CounselorRoutineWorkspace({
             ) : null}
             <div className="grid gap-2">
               <Label htmlFor="routine-queue-delivery">Delivery mode</Label>
-              <select
+              <Select
                 id="routine-queue-delivery"
-                className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 value={deliveryParam ?? "ALL"}
                 onChange={(event) => setFilter("delivery_mode", event.target.value === "ALL" ? "" : event.target.value)}
               >
                 <option value="ALL">All delivery modes</option>
                 <option value={DeliveryMode.IN_PERSON}>In person</option>
                 <option value={DeliveryMode.ONLINE}>Online</option>
-              </select>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="routine-queue-intake">Student Intake</Label>
-              <select
+              <Select
                 id="routine-queue-intake"
-                className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 value={intakeParam ?? "ALL"}
                 onChange={(event) => setFilter("intake_status", event.target.value === "ALL" ? "" : event.target.value)}
               >
                 <option value="ALL">All statuses</option>
                 <option value={RoutineIntakeStatus.DRAFT}>Draft</option>
                 <option value={RoutineIntakeStatus.SUBMITTED}>Submitted</option>
-              </select>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="routine-queue-evaluation">Counselor Evaluation</Label>
-              <select
+              <Select
                 id="routine-queue-evaluation"
-                className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 value={evaluationParam ?? "ALL"}
                 onChange={(event) => setFilter("evaluation_status", event.target.value === "ALL" ? "" : event.target.value)}
               >
                 <option value="ALL">All statuses</option>
                 <option value={RoutineEvaluationStatus.DRAFT}>Draft</option>
                 <option value={RoutineEvaluationStatus.FINALIZED}>Finalized</option>
-              </select>
+              </Select>
             </div>
             {hasFilters ? (
               <div className="sm:col-span-2 xl:col-span-full">
@@ -282,17 +279,16 @@ export function CounselorRoutineWorkspace({
                   </tbody>
                 </table>
               </div>
-              {pageData ? (
-                <RoutinePagination
-                  page={pageData.page}
-                  hasNext={pageData.has_next}
-                  label="Assigned Routine Interviews pages"
-                  onPrevious={() => movePage(Math.max(1, pageData.page - 1))}
-                  onNext={() => movePage(pageData.page + 1)}
-                />
-              ) : null}
             </>
           )}
+          {!queue.isError && pageData ? (
+            <CanonicalPagination
+              page={pageData.page}
+              hasNext={pageData.has_next}
+              label="Assigned Routine Interviews pages"
+              onPageChange={movePage}
+            />
+          ) : null}
       </section>
     </div>
   );

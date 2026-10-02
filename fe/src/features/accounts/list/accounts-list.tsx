@@ -5,10 +5,11 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingRegion } from "@/components/ui/loading-region";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -22,12 +23,11 @@ import {
   roles,
 } from "@/features/accounts/presentation";
 import { managedAccountError } from "@/features/accounts/components/account-action";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { useAccountsList } from "@/lib/api/generated/accounts/accounts";
 import type { AccountsListParams } from "@/lib/api/generated/model";
 
 const pageSize = 20;
-const selectClass =
-  "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 function parsePage(value: string | null): number {
   const page = Number(value);
@@ -148,13 +148,13 @@ export function AccountsList() {
         <div className="flex flex-wrap gap-2">
           <Link
             href="/portal/accounts/import"
-            className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className={buttonVariants({ variant: "secondary" })}
           >
             Import CSV
           </Link>
           <Link
             href="/portal/accounts/new"
-            className="inline-flex min-h-10 items-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className={buttonVariants({ variant: "primary" })}
           >
             Create account
           </Link>
@@ -171,9 +171,9 @@ export function AccountsList() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-[35rem]">
             <div>
               <Label htmlFor="accounts-role">Role</Label>
-              <select
+              <Select
                 id="accounts-role"
-                className={`${selectClass} mt-2`}
+                className="mt-2"
                 value={filters.role ?? ""}
                 onChange={(event) => update("role", event.target.value)}
               >
@@ -183,13 +183,13 @@ export function AccountsList() {
                     {roleLabels[value]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <Label htmlFor="accounts-status">Status</Label>
-              <select
+              <Select
                 id="accounts-status"
-                className={`${selectClass} mt-2`}
+                className="mt-2"
                 value={
                   filters.is_active === undefined
                     ? ""
@@ -200,13 +200,13 @@ export function AccountsList() {
                 <option value="">All</option>
                 <option value="true">Active</option>
                 <option value="false">Disabled</option>
-              </select>
+              </Select>
             </div>
             <div>
               <Label htmlFor="accounts-designation">Designation</Label>
-              <select
+              <Select
                 id="accounts-designation"
-                className={`${selectClass} mt-2`}
+                className="mt-2"
                 value={filters.designation ?? ""}
                 onChange={(event) => update("designation", event.target.value)}
               >
@@ -216,13 +216,13 @@ export function AccountsList() {
                     {designationLabels[value]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <Label htmlFor="accounts-email">Email</Label>
-              <select
+              <Select
                 id="accounts-email"
-                className={`${selectClass} mt-2`}
+                className="mt-2"
                 value={
                   filters.email_verified === undefined
                     ? ""
@@ -235,7 +235,7 @@ export function AccountsList() {
                 <option value="">All</option>
                 <option value="true">Verified</option>
                 <option value="false">Not verified</option>
-              </select>
+              </Select>
             </div>
           </div>
         </div>
@@ -355,34 +355,15 @@ export function AccountsList() {
               </table>
             </div>
           )}
-          {page > 1 || confirmed.data.has_next ? (
-            <nav
-              aria-label="Accounts pagination"
-              className="mt-5 flex items-center justify-between gap-4"
-            >
-              <Button
-                variant="secondary"
-                disabled={page <= 1}
-                onClick={() =>
-                  router.push(hrefWith("page", String(page - 1), false))
-                }
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-muted">
-                Page {confirmed.data.page}
-              </span>
-              <Button
-                variant="secondary"
-                disabled={!confirmed.data.has_next}
-                onClick={() =>
-                  router.push(hrefWith("page", String(page + 1), false))
-                }
-              >
-                Next
-              </Button>
-            </nav>
-          ) : null}
+          <CanonicalPagination
+            className="mt-5"
+            page={confirmed.data.page}
+            hasNext={confirmed.data.has_next}
+            label="Accounts pagination"
+            onPageChange={(nextPage) =>
+              router.push(hrefWith("page", String(nextPage), false))
+            }
+          />
         </>
       )}
     </section>

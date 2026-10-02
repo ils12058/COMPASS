@@ -8,6 +8,7 @@ import { useId, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { LoadingRegion } from "@/components/ui/loading-region";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
@@ -25,9 +26,6 @@ import { revisionStatusLabels } from "@/features/privacy-governance/privacy-gove
 import type { RevisionStatusValue } from "@/lib/api/generated/model";
 
 export const PRIVACY_PAGE_SIZE = 20;
-
-export const privacySelectClass =
-  "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 export const primaryLinkClass =
   "inline-flex min-h-10 items-center justify-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body";
@@ -482,16 +480,15 @@ export function LifecycleFilter({
       <label htmlFor={id} className="text-sm font-medium text-ink">
         Status
       </label>
-      <select
+      <Select
         id={id}
-        className={privacySelectClass}
         value={value}
         onChange={(event) => onChange(lifecycleFilterFrom(event.target.value))}
       >
         <option value="active">Active</option>
         <option value="retired">Retired</option>
         <option value="all">All</option>
-      </select>
+      </Select>
     </div>
   );
 }

@@ -188,9 +188,6 @@ export function useServicesAction() {
   };
 }
 
-export const servicesSelectClass =
-  "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
-
 export function ServicesPageHeading({
   title,
   action,

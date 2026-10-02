@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Choice } from "@/features/graduate-tracer/graduate-tracer-presentation";
 
@@ -142,18 +143,17 @@ export function SelectField<T extends string>({
 }) {
   return (
     <FormField id={id} label={label} required={required} error={error}>
-      <select
+      <Select
         id={id}
         value={value ?? ""}
         aria-required={required || undefined}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         onChange={(event) => onChange(options.find((option) => option.value === event.target.value)?.value)}
-        className="min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink outline-none focus:border-focus focus:ring-2 focus:ring-focus/25 aria-[invalid=true]:border-danger aria-[invalid=true]:focus:border-danger aria-[invalid=true]:focus:ring-danger/25"
       >
         <option value="">{placeholder}</option>
         {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
+      </Select>
     </FormField>
   );
 }

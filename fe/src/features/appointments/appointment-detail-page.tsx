@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingRegion } from "@/components/ui/loading-region";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import {
   AppointmentDetailSkeleton,
@@ -73,8 +75,6 @@ import {
 type ConfirmAction = "cancel" | "complete" | "no-show";
 type StepUpAction = "cancel" | "reschedule" | "reassign";
 type ActionError = { scope: "confirm" | "reschedule" | "reassign"; message: string };
-
-const controlClass = "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 function occurredAt(value: string): string {
   return formatInstitutionalDateTime(value);
@@ -546,7 +546,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
 
       {appointment.counseling_context_available ? (
         <p className="mb-4">
-          <Link href={`/portal/counseling/workspace/appointment/${appointment.id}`} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <Link href={`/portal/counseling/workspace/appointment/${appointment.id}`} className={buttonVariants({ variant: "secondary" })}>
             Open Counseling workspace
           </Link>
         </p>
@@ -558,7 +558,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       ((ecounselingAccess.isStudent && ecounselingAccess.canViewSelf && appointment.student.id === user.id) ||
         (ecounselingAccess.isCounselor && ecounselingAccess.canViewAssigned && appointment.provider.id === user.id)) ? (
         <p className="mb-4">
-          <Link href={`/portal/e-counseling/${appointment.id}`} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <Link href={`/portal/e-counseling/${appointment.id}`} className={buttonVariants({ variant: "secondary" })}>
             Open E-Counseling
           </Link>
         </p>
@@ -669,7 +669,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               ) : null}
               <div className="mt-4 grid gap-2">
                 <Label htmlFor="reschedule-reason">Reason (optional)</Label>
-                <textarea id="reschedule-reason" disabled={reschedule.isPending} className={controlClass + " min-h-24 py-2"} value={rescheduleReason} onChange={(event) => setRescheduleReason(event.target.value)} />
+                <Textarea id="reschedule-reason" disabled={reschedule.isPending} className="min-h-24" value={rescheduleReason} onChange={(event) => setRescheduleReason(event.target.value)} />
               </div>
               {selectedRescheduleSlot ? (
                 <section aria-labelledby="reschedule-review-heading" className="mt-5 border-y border-border py-4">
@@ -703,15 +703,15 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               ) : (
                 <div className="mt-4 grid gap-2 sm:max-w-xl">
                   <Label htmlFor="reassignment-counselor">New counselor</Label>
-                  <select id="reassignment-counselor" disabled={reassign.isPending} className={controlClass} value={selectedProviderId} onChange={(event) => setSelectedProviderId(event.target.value)}>
+                  <Select id="reassignment-counselor" disabled={reassign.isPending} value={selectedProviderId} onChange={(event) => setSelectedProviderId(event.target.value)}>
                     <option value="">Choose a Counselor</option>
                     {candidateItems.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.display_name}</option>)}
-                  </select>
+                  </Select>
                 </div>
               )}
               <div className="mt-4 grid max-w-3xl gap-2">
                 <Label htmlFor="reassignment-reason">Reason</Label>
-                <textarea id="reassignment-reason" required disabled={reassign.isPending} className={controlClass + " min-h-24 py-2"} value={reassignmentReason} onChange={(event) => setReassignmentReason(event.target.value)} />
+                <Textarea id="reassignment-reason" required disabled={reassign.isPending} className="min-h-24" value={reassignmentReason} onChange={(event) => setReassignmentReason(event.target.value)} />
               </div>
               {selectedCandidate && reassignmentReason.trim() ? (
                 <div className="mt-4 border-y border-border py-4">

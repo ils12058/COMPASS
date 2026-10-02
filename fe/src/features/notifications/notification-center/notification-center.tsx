@@ -2,6 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { reconcileNotificationAuth } from "@/features/notifications/notification-auth";
 import { cacheConfirmedAllRead } from "@/features/notifications/notification-cache";
 import { NotificationRow } from "@/features/notifications/notification-center/notification-row";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   getNotificationsGetUnreadCountQueryKey,
@@ -39,6 +41,7 @@ function NotificationSkeleton() {
 export function NotificationCenter({ page }: { page: number }) {
   const { user } = usePortalSession();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const notifications = useNotificationsListMine({ page, page_size: PAGE_SIZE }, { query: { retry: false } });
   const unread = useNotificationsGetUnreadCount({ query: { retry: false } });
   const markAll = useNotificationsMarkAllRead();
@@ -93,11 +96,15 @@ export function NotificationCenter({ page }: { page: number }) {
               {data.items.map((item) => <NotificationRow key={item.id} notification={item} currentUserId={user.id} />)}
             </ol>
           ) : <p className="mt-7 border-t border-border py-7 text-sm text-muted">{page === 1 ? "No notifications are available yet." : "No notifications are available on this page. Go back to a previous page."}</p>}
-          <nav aria-label="Notification pages" className="mt-6 flex items-center justify-between gap-3">
-            {page > 1 ? <Link href={page === 2 ? "/portal/notifications" : `/portal/notifications?page=${page - 1}`} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Previous</Link> : <span />}
-            <span className="text-sm text-muted">Page {data.page}</span>
-            {data.has_next ? <Link href={`/portal/notifications?page=${page + 1}`} className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Next</Link> : <span />}
-          </nav>
+          <CanonicalPagination
+            className="mt-6"
+            page={data.page}
+            hasNext={data.has_next}
+            label="Notification pages"
+            onPageChange={(nextPage) =>
+              router.push(nextPage === 1 ? "/portal/notifications" : `/portal/notifications?page=${nextPage}`)
+            }
+          />
           <Link href="/portal/account/preferences" className="mt-8 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Manage email preference</Link>
         </>
       ) : null}

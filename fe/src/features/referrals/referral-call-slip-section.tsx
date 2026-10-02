@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CallSlipQueryError, callSlipStateLabel } from "@/features/call-slips/call-slips-shared";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -86,7 +87,7 @@ export function ReferralCallSlipSection({
                   ? "The Referral source action is already recorded. Issuing a linked Call Slip will reuse it without adding another action timestamp."
                   : "Issuing a linked Call Slip will also record the source Referral action in the same transaction."}
               </p>
-              <Link href={`/portal/referrals/${referral.id}/issue-call-slip`} className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+              <Link href={`/portal/referrals/${referral.id}/issue-call-slip`} className={buttonVariants({ variant: "primary", className: "mt-3" })}>
                 {history.data?.data.items.some((item) => item.state === CallSlipLifecycleStateValue.VOIDED)
                   ? "Issue another linked Call Slip"
                   : referralAction
@@ -162,9 +163,7 @@ function LinkedCallSlipHistory({
           ))}
         </ul>
       )}
-      {(page > 1 || hasNext) ? (
-        <CanonicalPagination page={page} hasNext={hasNext} onPageChange={onPageChange} label="Linked Call Slip history pages" />
-      ) : null}
+      <CanonicalPagination page={page} hasNext={hasNext} onPageChange={onPageChange} label="Linked Call Slip history pages" />
     </div>
   );
 }

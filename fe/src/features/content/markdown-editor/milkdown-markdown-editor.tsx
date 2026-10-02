@@ -61,6 +61,7 @@ import {
   type MarkdownLinkDialogState,
 } from "@/features/content/markdown-editor/markdown-link-dialog";
 import type { MarkdownEditorProps } from "@/features/content/markdown-editor/markdown-editor-types";
+import { cn } from "@/lib/utils/cn";
 
 // The preset writes empty paragraphs as a raw `<br />` placeholder. Published
 // pages escape raw HTML, so that text would appear literally; empty
@@ -272,7 +273,14 @@ function MarkdownEditorSurface({
   }
 
   return (
-    <div className="rounded-md border border-border bg-surface-raised has-[.ProseMirror-focused]:border-focus has-[.ProseMirror-focused]:ring-2 has-[.ProseMirror-focused]:ring-focus/25">
+    // The frame is the visible control, so it carries the same invalid treatment as Input.
+    <div
+      className={cn(
+        "rounded-md border border-border bg-surface-raised has-[.ProseMirror-focused]:border-focus has-[.ProseMirror-focused]:ring-2 has-[.ProseMirror-focused]:ring-focus/25",
+        invalid &&
+          "border-danger has-[.ProseMirror-focused]:border-danger has-[.ProseMirror-focused]:ring-danger/25",
+      )}
+    >
       <MarkdownEditorToolbar
         controls={id}
         state={toolbar}

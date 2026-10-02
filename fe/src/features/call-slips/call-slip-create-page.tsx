@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { CallSlipFormFields, type CallSlipDraft, toCallSlipRequestFields } from "@/features/call-slips/call-slip-form-fields";
@@ -150,7 +150,7 @@ export function DirectCallSlipCreatePage() {
         {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={create.isPending || students.isPending}>{create.isPending ? "Issuing…" : "Review issuance"}</Button>
-          <Link href="/portal/call-slips" className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Cancel</Link>
+          <Link href="/portal/call-slips" className={buttonVariants({ variant: "secondary" })}>Cancel</Link>
         </div>
       </form>
 

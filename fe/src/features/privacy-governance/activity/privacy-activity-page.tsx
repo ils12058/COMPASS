@@ -3,6 +3,7 @@
 import { keepPreviousData } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -13,7 +14,6 @@ import {
   PrivacyListSkeleton,
   PrivacyPageHeader,
   PrivacyQueryError,
-  privacySelectClass,
   RefreshingNotice,
   useListSearchParams,
 } from "@/features/privacy-governance/privacy-governance-shared";
@@ -110,9 +110,8 @@ export function PrivacyActivityPage() {
         <label htmlFor="privacy-activity-category" className="text-sm font-medium text-ink">
           Category
         </label>
-        <select
+        <Select
           id="privacy-activity-category"
-          className={privacySelectClass}
           value={category ?? ""}
           onChange={(event) => update({ category: categoryFrom(event.target.value) ?? null })}
         >
@@ -122,7 +121,7 @@ export function PrivacyActivityPage() {
               {activityCategoryLabels[option]}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       {query.isError && result ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
 
@@ -165,15 +164,15 @@ export function PrivacyActivityPage() {
               <ActivityItem key={item.id} item={item} />
             ))}
           </ol>
-          {result.page > 1 || result.has_next ? (
-            <CanonicalPagination
-              page={result.page}
-              hasNext={result.has_next}
-              onPageChange={setPage}
-              label="Activity pages"
-            />
-          ) : null}
         </>
+      ) : null}
+      {result ? (
+        <CanonicalPagination
+          page={result.page}
+          hasNext={result.has_next}
+          onPageChange={setPage}
+          label="Activity pages"
+        />
       ) : null}
     </section>
   );

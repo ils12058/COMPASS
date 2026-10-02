@@ -15,9 +15,6 @@ import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { organizationErrorMessage } from "@/features/organization/components/organization-action";
 
-export const selectClass =
-  "min-h-10 w-full rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
-
 export function StatusBadge({ active }: { active: boolean }) {
   return (
     <span
