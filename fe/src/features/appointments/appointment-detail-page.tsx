@@ -5,12 +5,7 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingRegion } from "@/components/ui/loading-region";
@@ -197,37 +192,31 @@ function ActionConfirmation({
       variant: "danger",
     },
   };
-  const selected = action ? content[action] : null;
+  if (!action) return null;
+  const selected = content[action];
 
   return (
-    <Dialog
-      open={action !== null}
+    <ConsequentialActionDialog
+      open
+      title={selected.title}
+      confirmLabel={selected.confirm}
+      pendingLabel={selected.pending}
+      pending={busy}
+      error={error}
+      variant={selected.variant}
+      cancelLabel="Keep Appointment"
       onOpenChange={(open) => {
-        if (!open && !busy) onClose();
+        if (!open) onClose();
       }}
+      onConfirm={onConfirm}
     >
-      {selected ? (
-        <DialogContent
-          onEscapeKeyDown={(event) => { if (busy) event.preventDefault(); }}
-          onPointerDownOutside={(event) => { if (busy) event.preventDefault(); }}
-        >
-          <DialogTitle>{selected.title}</DialogTitle>
-          <DialogDescription>{selected.description}</DialogDescription>
-          {routineInterviewWillClose ? (
-            <p className="mt-3 text-sm leading-6 text-muted">
-              The linked Routine Interview will remain in COMPASS for record history, but no further intake or evaluation changes can be made.
-            </p>
-          ) : null}
-          {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <Button variant="secondary" disabled={busy} onClick={onClose}>Keep Appointment</Button>
-            <Button variant={selected.variant} disabled={busy} onClick={onConfirm} aria-busy={busy}>
-              {busy ? selected.pending : selected.confirm}
-            </Button>
-          </div>
-        </DialogContent>
+      <p>{selected.description}</p>
+      {routineInterviewWillClose ? (
+        <p>
+          The linked Routine Interview will remain in COMPASS for record history, but no further intake or evaluation changes can be made.
+        </p>
       ) : null}
-    </Dialog>
+    </ConsequentialActionDialog>
   );
 }
 

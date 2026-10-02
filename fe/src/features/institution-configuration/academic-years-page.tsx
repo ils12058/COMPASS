@@ -107,7 +107,6 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
       <Dialog
         open={createOpen}
         onOpenChange={(open) => {
-          if (createYear.isPending) return;
           setCreateOpen(open);
           if (open) setPageNotice(null);
           action.resetFeedback();
@@ -235,14 +234,7 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
         </>
       )}
 
-        <DialogContent
-          onEscapeKeyDown={(event) => {
-            if (createYear.isPending) event.preventDefault();
-          }}
-          onPointerDownOutside={(event) => {
-            if (createYear.isPending) event.preventDefault();
-          }}
-        >
+        <DialogContent dismissible={!createYear.isPending}>
           <DialogTitle>Add Academic Year</DialogTitle>
           <DialogDescription>
             The new Academic Year will not become current automatically.

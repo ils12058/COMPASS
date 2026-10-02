@@ -3,6 +3,7 @@
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
 
+import { useDialogReturnFocus } from "@/components/ui/dialog-return-focus";
 import { cn } from "@/lib/utils/cn";
 
 export const AlertDialog = AlertDialogPrimitive.Root;
@@ -13,19 +14,25 @@ export const AlertDialogAction = AlertDialogPrimitive.Action;
 export const AlertDialogContent = forwardRef<
   ElementRef<typeof AlertDialogPrimitive.Content>,
   ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Portal>
-    <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay" />
-    <AlertDialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-surface-raised p-6 shadow-dialog focus:outline-none",
-        className,
-      )}
-      {...props}
-    />
-  </AlertDialogPrimitive.Portal>
-));
+>(({ className, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
+  const returnFocus = useDialogReturnFocus(onOpenAutoFocus, onCloseAutoFocus);
+
+  return (
+    <AlertDialogPrimitive.Portal>
+      <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay" />
+      <AlertDialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          "fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-surface-raised p-6 shadow-dialog focus:outline-none",
+          className,
+        )}
+        {...props}
+        onOpenAutoFocus={returnFocus.onOpenAutoFocus}
+        onCloseAutoFocus={returnFocus.onCloseAutoFocus}
+      />
+    </AlertDialogPrimitive.Portal>
+  );
+});
 AlertDialogContent.displayName = "AlertDialogContent";
 
 export const AlertDialogTitle = forwardRef<

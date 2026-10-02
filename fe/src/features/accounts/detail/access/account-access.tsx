@@ -682,13 +682,8 @@ export function AccountAccess() {
       </section>
 
       <ManagedActionFeedback action={action} showMessages={confirm === null} />
-      <Dialog
-        open={overrideOpen}
-        onOpenChange={(open) => {
-          if (!busy) setOverrideOpen(open);
-        }}
-      >
-        <DialogContent>
+      <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
+        <DialogContent dismissible={!busy}>
           <DialogTitle>Set capability override</DialogTitle>
           <DialogDescription>
             Choose one exception to this account&apos;s baseline access. A

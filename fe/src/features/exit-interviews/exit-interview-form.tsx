@@ -4,14 +4,9 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import type { ExitInterviewDetailResponse } from "@/lib/api/generated/model";
 import {
   CareerModeValue,
@@ -385,33 +380,21 @@ export function ExitInterviewForm({
         </div>
       </form>
 
-      <Dialog open={confirmSubmit} onOpenChange={(open) => {
-        if (!submit.isPending) setConfirmSubmit(open);
-      }}>
-        <DialogContent aria-describedby="exit-interview-submit-description">
-          <DialogTitle>Submit Exit Interview?</DialogTitle>
-          <DialogDescription id="exit-interview-submit-description">
-            Your response will be available to Head Guidance for review. You will not be able to edit it after submission unless it is reopened for correction.
-          </DialogDescription>
-          {submitError ? (
-            <p role="alert" className="mt-4 text-sm leading-6 text-danger">
-              {exitInterviewErrorMessage(submitError, "The Exit Interview could not be submitted.")}
-            </p>
-          ) : null}
-          <div className="mt-6 flex flex-wrap justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={() => setConfirmSubmit(false)} disabled={submit.isPending}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={() => void submitDraft()}
-              disabled={submit.isPending || submissionUncertain}
-            >
-              {submit.isPending ? "Submitting…" : "Submit Exit Interview"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ConsequentialActionDialog
+        open={confirmSubmit}
+        title="Submit Exit Interview?"
+        confirmLabel="Submit Exit Interview"
+        pendingLabel="Submitting…"
+        pending={submit.isPending}
+        confirmDisabled={submissionUncertain}
+        error={submitError ? exitInterviewErrorMessage(submitError, "The Exit Interview could not be submitted.") : null}
+        onOpenChange={setConfirmSubmit}
+        onConfirm={() => void submitDraft()}
+      >
+        <p>
+          Your response will be available to Head Guidance for review. You will not be able to edit it after submission unless it is reopened for correction.
+        </p>
+      </ConsequentialActionDialog>
     </section>
   );
 }

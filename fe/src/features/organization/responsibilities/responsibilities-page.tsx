@@ -514,7 +514,6 @@ export function ResponsibilitiesPage() {
       <Dialog
         open={Boolean(collegeDialog)}
         onOpenChange={(open) => {
-          if (collegePending) return;
           if (!open) {
             setCollegeDialog(null);
             action.setError(null);
@@ -522,7 +521,7 @@ export function ResponsibilitiesPage() {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent dismissible={!collegePending}>
           <DialogTitle>
             {collegeDialog?.currentCounselor
               ? "Reassign responsible Counselor"
@@ -645,7 +644,6 @@ export function ResponsibilitiesPage() {
       <Dialog
         open={Boolean(staffDialog)}
         onOpenChange={(open) => {
-          if (staffPending) return;
           if (!open) {
             setStaffDialog(null);
             action.setError(null);
@@ -653,7 +651,7 @@ export function ResponsibilitiesPage() {
           }
         }}
       >
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl" dismissible={!staffPending}>
           <DialogTitle>
             {staffDialog?.staff ? "Change Staff supervisor" : "Set Staff supervisor"}
           </DialogTitle>

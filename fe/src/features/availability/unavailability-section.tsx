@@ -274,12 +274,11 @@ export function UnavailabilitySection({
       <Dialog
         open={addOpen}
         onOpenChange={(open) => {
-          if (createPending) return;
           setAddOpen(open);
           if (!open && !administrative) setLocalError(null);
         }}
       >
-        <DialogContent>
+        <DialogContent dismissible={!createPending}>
           <DialogTitle>Add unavailability</DialogTitle>
           <DialogDescription>
             Add a dated period that should be removed from recurring Availability.

@@ -28,7 +28,15 @@ registerHooks({
       const parent = fileURLToPath(context.parentURL);
       if (parent.startsWith(srcRoot)) file = sourceFile(path.resolve(path.dirname(parent), specifier));
     }
-    return file ? { url: pathToFileURL(file).href, shortCircuit: true } : nextResolve(specifier, context);
+    if (file) return { url: pathToFileURL(file).href, shortCircuit: true };
+    try {
+      return nextResolve(specifier, context);
+    } catch (error) {
+      // Some packages, such as next, publish extensionless subpaths ("next/navigation") that
+      // bundlers resolve to the package's .js file.
+      if (error?.code !== "ERR_MODULE_NOT_FOUND" || !/^[\w@][^:]*\/[^.]+$/.test(specifier)) throw error;
+      return nextResolve(`${specifier}.js`, context);
+    }
   },
   load(url, context, nextLoad) {
     if (url.startsWith("file:") && /\.tsx?$/.test(url)) {

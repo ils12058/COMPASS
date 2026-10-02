@@ -49,43 +49,19 @@ export function RoutineDirectCreateDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const busyRef = useRef(false);
-  const [busy, setBusy] = useState(false);
-
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen && busyRef.current) return;
-        onOpenChange(nextOpen);
-      }}
-    >
-      {open ? (
-        <DirectCreateForm
-          onClose={() => onOpenChange(false)}
-          onPendingChange={(pending) => {
-            busyRef.current = pending;
-            setBusy(pending);
-          }}
-          pending={busy}
-        />
-      ) : null}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {open ? <DirectCreateForm onClose={() => onOpenChange(false)} /> : null}
     </Dialog>
   );
 }
 
-function DirectCreateForm({
-  onClose,
-  onPendingChange,
-  pending,
-}: {
-  onClose: () => void;
-  onPendingChange: (pending: boolean) => void;
-  pending: boolean;
-}) {
+function DirectCreateForm({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const intentRef = useRef<{ fingerprint: string; key: string } | null>(null);
+  // Stays true through the list refresh that follows the request, not only while it runs.
+  const [pending, setPending] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
   const [candidateSearch, setCandidateSearch] = useState("");
   const [candidatePage, setCandidatePage] = useState(1);
@@ -155,7 +131,7 @@ function DirectCreateForm({
       ? intentRef.current.key
       : globalThis.crypto.randomUUID();
     intentRef.current = { fingerprint, key };
-    onPendingChange(true);
+    setPending(true);
 
     try {
       const response = await create.mutateAsync({
@@ -177,16 +153,12 @@ function DirectCreateForm({
         "The create response could not be confirmed. Retry with the same Student and visit details to safely check the result.",
       ));
     } finally {
-      onPendingChange(false);
+      setPending(false);
     }
   }
 
   return (
-    <DialogContent
-      className="max-w-2xl"
-      onEscapeKeyDown={(event) => { if (pending) event.preventDefault(); }}
-      onPointerDownOutside={(event) => { if (pending) event.preventDefault(); }}
-    >
+    <DialogContent className="max-w-2xl" dismissible={!pending}>
       <DialogTitle>Start direct Routine Interview</DialogTitle>
       <DialogDescription>
         Create a Counselor-assigned Routine Interview for a qualified Student. The Student will complete their Intake separately.

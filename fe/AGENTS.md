@@ -828,6 +828,12 @@ Examples:
 
 Ordinary `Save changes` does not need an additional confirmation by default.
 
+Build confirmations with `ConsequentialActionDialog` (`src/components/ui/consequential-action-dialog.tsx`).
+It owns the pending, dismissal, and inline-error behavior. The feature supplies the meaning: title,
+consequence, action and pending labels, primary or danger variant, and error mapping. Do not
+assemble a confirmation from `Dialog`, and keep data entry in a `Dialog` even when a review step
+follows it.
+
 ---
 
 # 29. Confirmation copy
@@ -875,6 +881,14 @@ Dialogs must:
 
 Never nest modal dialogs.
 
+`DialogContent` names its close button "Close dialog". Pass `closeLabel` when what the dialog holds
+names it better, as the portal drawer does with "Close navigation". Confirmations have no corner
+close button; they close through their labeled actions.
+
+Focus returns to the control that opened a dialog, and after a two-step flow, such as a selection
+followed by its review, to the control that started the flow. A dialog that places focus itself,
+such as the Markdown link dialog, does so in `onCloseAutoFocus` by preventing the default.
+
 ---
 
 # 31. In-flight dialogs
@@ -907,6 +921,11 @@ mutation fails
 ```
 
 Do not optimistically announce a high-impact mutation as successful before the backend confirms it.
+
+A `Dialog` that owns a request passes `dismissible={!pending}` to `DialogContent`. The close button
+is removed, and Escape and outside clicks no longer close it, so do not intercept
+`onEscapeKeyDown`, `onPointerDownOutside`, or `onOpenChange` for the same purpose. Disable the
+dialog's own Cancel while pending.
 
 ---
 
