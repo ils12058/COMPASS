@@ -255,6 +255,7 @@ function StudentProfileReportWorkspace() {
         </h1>
         {report ? (
           <StudentProfileDownloads
+            academicYearLabel={report.report_context.academic_year.label}
             key={JSON.stringify({
               ...applied.params,
               academic_year_id: report.report_context.academic_year.id,

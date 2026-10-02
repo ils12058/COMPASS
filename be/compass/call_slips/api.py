@@ -16,6 +16,7 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
+from compass.documents.filenames import institutional_pdf_content_disposition
 from compass.privacy_governance.releases import (
     ReleaseAuditUnavailable,
     record_call_slip_release,
@@ -303,7 +304,7 @@ def _pdf_response(
             ),
         ) from exc
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="call-slip-{item.pk}.pdf"'
+    response["Content-Disposition"] = institutional_pdf_content_disposition("call_slip", item.pk)
     return response
 
 

@@ -314,7 +314,7 @@ def test_student_inventory_pdf_is_owned_submitted_only_and_audited_safely(monkey
 
 
 @pytest.mark.django_db
-def test_counselor_inventory_pdf_uses_existing_contextual_review_authority():
+def test_counselor_inventory_pdf_uses_existing_contextual_review_authority(monkeypatch):
     call_command("sync_identity_policy", verbosity=0)
     student = make_user("inventory-pdf-scoped-student@example.edu", "STUDENT")
     actor = make_user("inventory-pdf-scoped-admin@example.edu", "IT_ADMIN")
@@ -330,9 +330,21 @@ def test_counselor_inventory_pdf_uses_existing_contextual_review_authority():
     allowed = auth_client(counselor).get(f"/api/v1/inventory/records/{submitted.pk}/pdf")
     assert allowed.status_code == 200
     assert allowed["Content-Type"] == "application/pdf"
+    assert allowed["Content-Disposition"] == (
+        f'attachment; filename="individual-inventory-{submitted.pk}.pdf"'
+    )
     assert PdfReader(BytesIO(allowed.content)).pages
 
     hidden = auth_client(other_counselor).get(f"/api/v1/inventory/records/{submitted.pk}/pdf")
     assert hidden.status_code == 404
     denied = auth_client(unrelated_role).get(f"/api/v1/inventory/records/{submitted.pk}/pdf")
     assert denied.status_code == 403
+
+    monkeypatch.setattr(
+        "compass.privacy_governance.releases.record_event",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("audit unavailable")),
+    )
+    blocked = auth_client(counselor).get(f"/api/v1/inventory/records/{submitted.pk}/pdf")
+    assert blocked.status_code == 503
+    assert blocked.json()["error"]["code"] == "release_audit_unavailable"
+    assert b"%PDF-" not in blocked.content

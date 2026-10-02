@@ -19,7 +19,7 @@
       <div class="official-form-label">Time</div><div class="official-form-value"><span class="generated-value">{{ call_slip.report_time|time:"g:i A" }}</span></div>
     </div>
   </div>
-  <p class="call-slip-instruction">Show this permit to your instructor/professor to seek approval and proceed to the Guidance Counselor's Office.</p>
+  <p class="call-slip-instruction">Show this permit to your instructor/professor to seek approval and proceed to {% if call_slip.guidance_office_destination %}the Guidance Counselor's Office{% else %}<span class="generated-value">{{ call_slip.destination }}</span>{% endif %}.</p>
   <div class="signature-block"><div class="signature-line"><span class="generated-value">{{ call_slip.issued_by_name }}</span></div><div class="signature-caption">Guidance Counselor</div></div>
   <div class="official-form-grid"><div class="official-form-label">Interview Ended</div><div class="official-form-value">{% if call_slip.interview_ended_at %}<span class="generated-value">{{ call_slip.interview_ended_at|date:"M j, Y" }} {{ call_slip.interview_ended_at|time:"g:i A" }}</span>{% else %}—{% endif %}</div></div>
   {% if call_slip.show_operational_metadata and call_slip.referral_reference %}

@@ -16,6 +16,7 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
+from compass.documents.filenames import institutional_pdf_content_disposition
 from compass.privacy_governance.releases import (
     ReleaseAuditUnavailable,
     record_referral_release,
@@ -300,12 +301,10 @@ def _pdf_response(item, *, context: AuditContext) -> HttpResponse:
                 "privacy audit is unavailable."
             ),
         ) from exc
-    safe_reference = "".join(
-        character if character.isalnum() or character in {"-", "_", "."} else "-"
-        for character in item.reference_code
-    )
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="referral-{safe_reference}.pdf"'
+    response["Content-Disposition"] = institutional_pdf_content_disposition(
+        "referral_slip", item.pk
+    )
     return response
 
 

@@ -577,9 +577,13 @@ td.inventory-fit { display: table-cell; }
 }
 
 .good-moral-signature-name {
-  min-height: 6mm;
-  border-bottom: 0.25mm solid #111;
+  margin-top: 1mm;
   font-weight: 700;
+}
+
+.good-moral-signature-line {
+  height: 12mm;
+  border-bottom: 0.25mm solid #111;
 }
 
 .good-moral-receipt {

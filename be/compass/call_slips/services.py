@@ -865,6 +865,9 @@ def build_call_slip_render_context(
                 if item.destination_type == CallSlipDestinationType.GUIDANCE_OFFICE
                 else item.other_destination
             ),
+            "guidance_office_destination": (
+                item.destination_type == CallSlipDestinationType.GUIDANCE_OFFICE
+            ),
             "report_date": report_at.date(),
             "report_time": report_at.time().replace(second=0, microsecond=0),
             "issued_by_name": item.issued_by_name_snapshot,

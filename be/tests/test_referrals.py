@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from io import BytesIO
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -10,6 +11,7 @@ from django.core.management import call_command
 from django.db import close_old_connections
 from django.test import Client, override_settings
 from django.utils import timezone
+from pypdf import PdfReader
 
 from compass.accounts.models import Designation, Role, User, UserDesignation
 from compass.appointments.models import Appointment, AppointmentReferenceCounter
@@ -39,6 +41,7 @@ from compass.referrals.services import (
     get_referral,
     list_referrals,
     record_action,
+    render_referral_pdf,
     update_status_note,
     void_referral,
 )
@@ -226,6 +229,42 @@ def test_operational_identity_and_actor_provenance_keep_source_snapshot_distinct
     voided = client.get(f"/api/v1/referrals/{item.pk}")
     assert voided.status_code == 200
     assert voided.json()["voided_by"]["id"] == str(head.pk)
+
+
+@pytest.mark.django_db
+def test_referral_pdf_keeps_source_identity_safe_filename_and_fail_closed_release(monkeypatch):
+    sync_policy()
+    head = make_head()
+    student = make_user("referral-pdf-student@example.edu", "STUDENT")
+    item = create_for(head, student, key="pdf-source", fingerprint="a" * 64)
+    saved_name = item.student_name_snapshot
+    student.first_name = "Renamed"
+    student.save(update_fields=["first_name", "updated_at"])
+    pdf_text = "\n".join(
+        page.extract_text() for page in PdfReader(BytesIO(render_referral_pdf(item))).pages
+    )
+    assert saved_name in pdf_text
+    assert student.get_full_name() not in pdf_text
+    assert "CNSC-OP-GTA-01F9" in pdf_text
+    assert "Revision: 1" in pdf_text
+
+    url = f"/api/v1/referrals/{item.pk}/pdf"
+    response = auth_client(head).get(url)
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/pdf"
+    assert response["Content-Disposition"] == (
+        f'attachment; filename="referral-slip-{item.pk}.pdf"'
+    )
+    assert auth_client(student).get(url).status_code == 403
+
+    monkeypatch.setattr(
+        "compass.privacy_governance.releases.record_event",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("audit unavailable")),
+    )
+    blocked = auth_client(head).get(url)
+    assert blocked.status_code == 503
+    assert blocked.json()["error"]["code"] == "release_audit_unavailable"
+    assert b"%PDF-" not in blocked.content
 
 
 @pytest.mark.django_db

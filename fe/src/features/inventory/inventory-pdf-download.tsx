@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { inventoryErrorMessage } from "@/features/inventory/inventory-shared";
 import { inventoryDownloadMyPdf, inventoryDownloadRecordPdf } from "@/lib/api/generated/inventory/inventory";
 import { downloadBinaryResponse } from "@/lib/browser-download";
+import { institutionalPdfFallbackFilename } from "@/lib/institutional-pdf-filenames";
 
 export function InventoryPdfDownload({
   inventoryId,
@@ -25,7 +26,7 @@ export function InventoryPdfDownload({
       const response = studentFacing
         ? await inventoryDownloadMyPdf(inventoryId)
         : await inventoryDownloadRecordPdf(inventoryId);
-      downloadBinaryResponse(response, `individual-inventory-${inventoryId}.pdf`);
+      downloadBinaryResponse(response, institutionalPdfFallbackFilename("individualInventory", inventoryId));
     } catch (caught) {
       setError(inventoryErrorMessage(caught, "The official Individual Inventory PDF could not be released right now. Try again later."));
     } finally {

@@ -33,6 +33,7 @@ import {
 import { CallSlipLifecycleStateValue } from "@/lib/api/generated/model";
 import type { CallSlipOperationalResponse, CallSlipStudentResponse } from "@/lib/api/generated/model";
 import { downloadBinaryResponse } from "@/lib/browser-download";
+import { institutionalPdfFallbackFilename } from "@/lib/institutional-pdf-filenames";
 import {
   formatInstitutionalDateTime,
   INSTITUTION_TIME_ZONE_LABEL,
@@ -73,7 +74,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
       </RecordSection>
       <section aria-labelledby="student-call-slip-instruction" className="border-t border-border py-6">
         <h2 id="student-call-slip-instruction" className="font-heading text-xl font-semibold text-ink">Instruction</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-ink">Please show this permit to your instructor/professor and proceed according to the permit.</p>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-ink">Please show this permit to your instructor/professor and proceed to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
       </section>
       <RecordSection title="Issuance and status">
         <Field label="Guidance Counselor issuer (source snapshot)" value={item.issued_by_name_snapshot} />
@@ -120,7 +121,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
       </RecordSection>
       <section aria-labelledby="operational-call-slip-instruction" className="border-t border-border py-6">
         <h2 id="operational-call-slip-instruction" className="font-heading text-xl font-semibold text-ink">Source instruction</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-ink">Please show this permit to the Student&apos;s instructor/professor and proceed according to the permit.</p>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-ink">The Student should show this permit to their instructor/professor and proceed to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
       </section>
       <RecordSection title="Issuance and recordkeeping">
         <Field label="Issuer name on source Call Slip" value={item.issued_by_name_snapshot} />
@@ -182,7 +183,7 @@ function CallSlipPdfDownload({ callSlipId, studentFacing = false }: { callSlipId
     setError(null);
     try {
       const response = studentFacing ? await callSlipsDownloadMyPdf(callSlipId) : await callSlipsDownloadPdf(callSlipId);
-      downloadBinaryResponse(response, `call-slip-${callSlipId}.pdf`);
+      downloadBinaryResponse(response, institutionalPdfFallbackFilename("callSlip", callSlipId));
     } catch (caught) {
       setError(callSlipErrorMessage(caught, "The document could not be released right now. Try again later."));
     } finally {

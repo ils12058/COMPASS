@@ -15,6 +15,7 @@ from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.documents.filenames import institutional_pdf_content_disposition
 from compass.privacy_governance.releases import (
     ReleaseAuditUnavailable,
     record_exit_interview_release,
@@ -358,7 +359,9 @@ def _pdf_response(item, *, context: AuditContext, access_mode: str) -> HttpRespo
             "privacy audit is unavailable.",
         ) from exc
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="exit-interview-{item.pk}.pdf"'
+    response["Content-Disposition"] = institutional_pdf_content_disposition(
+        "exit_interview", item.pk
+    )
     return response
 
 

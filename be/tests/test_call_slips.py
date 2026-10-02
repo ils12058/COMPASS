@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -10,6 +12,7 @@ from django.core.management import call_command
 from django.db import IntegrityError, close_old_connections, transaction
 from django.test import Client, override_settings
 from django.utils import timezone
+from pypdf import PdfReader
 
 from compass.accounts.models import Designation, Role, User, UserDesignation
 from compass.appointments.models import Appointment
@@ -25,13 +28,16 @@ from compass.call_slips.services import (
     CallSlipNotPermitted,
     CallSlipReferralConflict,
     InvalidCallSlipInput,
+    build_call_slip_render_context,
     create_call_slip,
     create_call_slip_from_referral,
     list_call_slips,
     record_interview_ended,
+    render_call_slip_pdf,
     void_call_slip,
 )
 from compass.counseling.models import CounselingEncounter, CounselingSharedSummary
+from compass.documents.rendering import render_document_html
 from compass.ecounseling.models import ECounselingRoom
 from compass.institutional_forms.canonical import supported_schema_versions
 from compass.institutional_forms.models import FormFamily, FormRevision
@@ -92,6 +98,81 @@ def make_head(email: str = "head@example.edu") -> User:
 
 def audit_context(actor: User) -> AuditContext:
     return AuditContext.user(actor)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("destination_type", "other_destination", "expected_destination"),
+    [
+        ("GUIDANCE_OFFICE", "", "Guidance Counselor's Office"),
+        ("OTHER", "Registrar Office", "Registrar Office"),
+    ],
+)
+def test_call_slip_pdf_instruction_matches_saved_destination_and_release_policy(
+    monkeypatch, destination_type, other_destination, expected_destination
+):
+    sync_policy()
+    head = make_head()
+    student = make_user("call-slip-pdf-student@example.edu", "STUDENT")
+    item = create_for(
+        head,
+        student,
+        key="pdf-destination",
+        fingerprint="a" * 64,
+        destination_type=destination_type,
+        other_destination=other_destination,
+    )
+    saved_student = item.student_name_snapshot
+    saved_issuer = item.issued_by_name_snapshot
+    student.first_name = "Renamed"
+    student.save(update_fields=["first_name", "updated_at"])
+    head.first_name = "Renamed"
+    head.save(update_fields=["first_name", "updated_at"])
+
+    for access_mode in ("SELF", "GCO"):
+        html, _ = render_document_html(
+            "call_slip",
+            1,
+            context=build_call_slip_render_context(item, access_mode=access_mode),
+        )
+        assert expected_destination in html
+        assert "proceed to" in html
+        pdf = render_call_slip_pdf(item, access_mode=access_mode)
+        text = re.sub(
+            r"\s+", " ", "\n".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
+        )
+        assert expected_destination in text
+        assert saved_student in text and saved_issuer in text
+        assert student.get_full_name() not in text
+        assert head.get_full_name() not in text
+        assert "CNSC-OP-GTA-01F8" in text and "Revision: 0" in text
+        if destination_type == "OTHER":
+            assert "Guidance Counselor's Office" not in text
+
+    student_url = f"/api/v1/call-slips/me/{item.pk}/pdf"
+    operational_url = f"/api/v1/call-slips/{item.pk}/pdf"
+    own = auth_client(student).get(student_url)
+    operational = auth_client(head).get(operational_url)
+    for response in (own, operational):
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/pdf"
+        assert response["Content-Disposition"] == (
+            f'attachment; filename="call-slip-{item.pk}.pdf"'
+        )
+    assert auth_client(head).get(student_url).status_code == 403
+
+    monkeypatch.setattr(
+        "compass.privacy_governance.releases.record_event",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("audit unavailable")),
+    )
+    blocked = auth_client(student).get(student_url)
+    assert blocked.status_code == 503
+    assert blocked.json()["error"]["code"] == "release_audit_unavailable"
+    assert b"%PDF-" not in blocked.content
+    operational_blocked = auth_client(head).get(operational_url)
+    assert operational_blocked.status_code == 503
+    assert operational_blocked.json()["error"]["code"] == "release_audit_unavailable"
+    assert b"%PDF-" not in operational_blocked.content
 
 
 def auth_client(user: User) -> Client:

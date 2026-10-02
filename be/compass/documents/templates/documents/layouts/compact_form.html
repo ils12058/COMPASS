@@ -7,6 +7,6 @@
       {% block body %}{% endblock %}
     </main>
     {% include "documents/partials/accreditation_footer.html" %}
-    {% include "documents/partials/controlled_form_metadata.html" %}
+    {% if not document_pdf_footer %}{% include "documents/partials/controlled_form_metadata.html" %}{% endif %}
   </div>
 {% endblock %}
