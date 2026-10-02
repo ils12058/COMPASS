@@ -41,7 +41,7 @@ export function PlatformActivityPage() {
         description="A curated record of Platform Operations events. This is not the global Audit Trail."
       />
 
-      {activity.isPending ? <PlatformRowsSkeleton rows={5} /> : null}
+      {activity.isPending ? <PlatformRowsSkeleton label="Loading technical activity…" rows={5} /> : null}
       {activity.isError && !result ? (
         <PlatformQueryError
           message="Technical activity could not be loaded."

@@ -5,10 +5,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
-import { GoodMoralError, GoodMoralHeading, GoodMoralStatus, formatGoodMoralDateTime, goodMoralVariantLabel } from "@/features/good-moral/good-moral-shared";
+import { GoodMoralListSkeleton, GoodMoralError, GoodMoralHeading, GoodMoralStatus, formatGoodMoralDateTime, goodMoralVariantLabel } from "@/features/good-moral/good-moral-shared";
 import { useGoodMoralListRequests } from "@/lib/api/generated/good-moral/good-moral";
 import { GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
 
@@ -78,12 +77,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
       {queue.isError && page ? <RefreshFailureNotice onRetry={() => void queue.refetch()} retrying={queue.isFetching} /> : null}
 
       {queue.isPending ? (
-        <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading Good Moral requests…</span>
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
+        <GoodMoralListSkeleton />
       ) : !page ? (
         <GoodMoralError error={queue.error} fallback="Good Moral requests could not be loaded." onRetry={() => void queue.refetch()} />
       ) : !page ? null : page.items.length === 0 ? (

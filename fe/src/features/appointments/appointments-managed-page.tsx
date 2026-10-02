@@ -7,8 +7,8 @@ import { type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
+  AppointmentListSkeleton,
   AppointmentStatusBadge,
   AppointmentsLocalNavigation,
   AppointmentsPageHeading,
@@ -222,10 +222,7 @@ function ManagedAppointmentsList() {
       </div>
 
       {list.isPending ? (
-        <div aria-busy="true" className="space-y-3 py-5">
-          <Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" />
-          <p className="sr-only">Loading Appointments…</p>
-        </div>
+        <AppointmentListSkeleton />
       ) : list.isError ? (
         <div role="alert" className="border-y border-danger/30 py-6">
           <p className="text-sm text-danger">

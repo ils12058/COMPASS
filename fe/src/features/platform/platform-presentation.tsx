@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DiagnosticStatus, EmailDeliveryStatusValue } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
@@ -111,10 +112,16 @@ export function PlatformQueryError({
   );
 }
 
-export function PlatformRowsSkeleton({ rows = 4 }: { rows?: number }) {
+export function PlatformRowsSkeleton({
+  label,
+  rows = 4,
+}: {
+  label: string;
+  rows?: number;
+}) {
   return (
-    <div
-      aria-busy="true"
+    <LoadingRegion
+      label={label}
       className="divide-y divide-border border-y border-border"
     >
       {Array.from({ length: rows }).map((_, index) => (
@@ -123,8 +130,7 @@ export function PlatformRowsSkeleton({ rows = 4 }: { rows?: number }) {
           <Skeleton className="mt-3 h-3 w-3/4 rounded-sm" />
         </div>
       ))}
-      <p className="sr-only">Loading…</p>
-    </div>
+    </LoadingRegion>
   );
 }
 

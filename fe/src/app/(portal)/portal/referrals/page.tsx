@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { ReferralListSkeleton } from "@/features/referrals/referrals-shared";
 import { ReferralsPage, type ReferralListFilters } from "@/features/referrals/referrals-page";
 
 type SearchValue = string | string[] | undefined;
@@ -32,7 +32,7 @@ export default async function Page({
   };
 
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<ReferralListSkeleton />}>
       <ReferralsPage key={JSON.stringify(filters)} filters={filters} />
     </Suspense>
   );

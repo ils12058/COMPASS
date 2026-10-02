@@ -7,11 +7,11 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import {
   ReferralAccessUnavailable,
   ReferralHeading,
+  ReferralListSkeleton,
   ReferralQueryError,
 } from "@/features/referrals/referrals-shared";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -124,11 +124,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
           {referrals.isError ? (
             <ReferralQueryError error={referrals.error} fallback="Referrals could not be loaded." onRetry={() => void referrals.refetch()} />
           ) : referrals.isPending ? (
-            <div className="space-y-3" aria-busy="true"><span className="sr-only">Loading Referrals…</span>
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-            </div>
+            <ReferralListSkeleton />
           ) : items.length === 0 ? (
             <div className="border-y border-border py-6">
               <p className="text-sm text-muted">

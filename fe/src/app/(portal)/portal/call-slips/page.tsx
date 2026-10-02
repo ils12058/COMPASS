@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { CallSlipListSkeleton } from "@/features/call-slips/call-slips-shared";
 import { CallSlipsPage, type CallSlipListFilters, type CallSlipStudentListFilters } from "@/features/call-slips/call-slips-page";
 import { CallSlipDestinationTypeValue, CallSlipLifecycleStateValue } from "@/lib/api/generated/model";
 
@@ -45,7 +45,7 @@ export default async function Page({
   const studentFilters: CallSlipStudentListFilters = { fromDate, toDate, state, page };
 
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<CallSlipListSkeleton />}>
       <CallSlipsPage key={JSON.stringify([operationalFilters, studentFilters])} operationalFilters={operationalFilters} studentFilters={studentFilters} />
     </Suspense>
   );

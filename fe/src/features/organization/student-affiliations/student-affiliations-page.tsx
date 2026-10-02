@@ -284,7 +284,7 @@ export function StudentAffiliationsPage() {
       {action.notice && !dialog && !removal ? action.messages : null}
 
       {list.isPending ? (
-        <TableSkeleton />
+        <TableSkeleton label="Loading Student affiliations…" />
       ) : list.isError ? (
         <div className="mt-6">
           <QueryError

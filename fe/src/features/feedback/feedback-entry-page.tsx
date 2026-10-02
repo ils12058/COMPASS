@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import {
+  FeedbackListSkeleton,
   FeedbackAccessUnavailable,
   FeedbackDate,
   FeedbackPageHeading,
@@ -147,9 +148,7 @@ export function FeedbackEntryPage() {
           ) : null}
 
           {opportunities.isPending || (selectedId && selected.isPending) ? (
-            <p aria-busy="true" className="mt-4 border-y border-border py-5 text-sm text-muted">
-              Loading completed services…
-            </p>
+            <FeedbackListSkeleton label="Loading completed services…" />
           ) : null}
 
           {opportunities.isError ? (

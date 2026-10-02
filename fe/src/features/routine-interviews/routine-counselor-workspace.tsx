@@ -6,7 +6,6 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import type { RoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { RoutineDirectCreateDialog } from "@/features/routine-interviews/routine-direct-create-dialog";
@@ -18,6 +17,7 @@ import {
   routineErrorMessage,
   routineEvaluationStatusLabel,
   routineIntakeStatusLabel,
+  RoutineInterviewListSkeleton,
   RoutinePageHeading,
   RoutinePagination,
   RoutineQueryError,
@@ -235,11 +235,7 @@ export function CounselorRoutineWorkspace({
           </div>
 
           {queue.isPending ? (
-            <div aria-busy="true" className="space-y-3 py-4"><span className="sr-only">Loading assigned Routine Interviews…</span>
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
+            <RoutineInterviewListSkeleton label="Loading assigned Routine Interviews…" />
           ) : queue.isError ? (
             <RoutineQueryError
               message={routineErrorMessage(queue.error, "Try again in a moment.")}

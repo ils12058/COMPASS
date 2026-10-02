@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { AppointmentListSkeleton } from "@/features/appointments/appointments-shared";
 import { AppointmentsMyPage } from "@/features/appointments/appointments-my-page";
 
 export const metadata: Metadata = { title: "My appointments" };
 
 export default function Page() {
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<AppointmentListSkeleton />}>
       <AppointmentsMyPage />
     </Suspense>
   );

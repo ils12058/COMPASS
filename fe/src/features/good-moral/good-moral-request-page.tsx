@@ -188,7 +188,7 @@ function CreateFeedback({
   busy: boolean;
 }) {
   return (
-    <div aria-live="polite" className="space-y-3">
+    <div className="space-y-3">
       {state.error ? (
         <div role="alert" className="border-y border-danger/30 py-4 text-sm leading-6 text-danger">
           <p>{state.error}</p>

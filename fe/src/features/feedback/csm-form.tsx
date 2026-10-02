@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
-import { FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
+import { FeedbackFormSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
 import { feedbackSubmitCsm, useFeedbackGetMyOpportunity } from "@/lib/api/generated/feedback/feedback";
 import { CSMCC1Value, CSMCC2Value, CSMCC3Value, CSMClientTypeValue, CSMRatingValue, CSMSexValue, type CSMSubmitRequest } from "@/lib/api/generated/model";
 
@@ -165,7 +165,7 @@ export function CsmForm() {
     );
   }
   if (opportunity.isPending) {
-    return <p aria-busy="true" className="py-8 text-sm text-muted">Loading Feedback service…</p>;
+    return <FeedbackFormSkeleton label="Loading Feedback service…" />;
   }
   if (opportunity.isError) {
     if (feedbackErrorCode(opportunity.error) === "feedback_opportunity_not_found") {

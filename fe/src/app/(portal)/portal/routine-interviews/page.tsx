@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { RoutineInterviewListSkeleton } from "@/features/routine-interviews/routine-interviews-shared";
 import { RoutineInterviewsEntryPage } from "@/features/routine-interviews/routine-interviews-entry-page";
 
 export const metadata: Metadata = { title: "Routine Interviews" };
 
 export default function Page() {
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<RoutineInterviewListSkeleton label="Loading Routine Interviews…" />}>
       <RoutineInterviewsEntryPage />
     </Suspense>
   );

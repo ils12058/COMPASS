@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { FeedbackFormSkeleton } from "@/features/feedback/feedback-shared";
 import { CsmForm } from "@/features/feedback/csm-form";
 
 export default function Page() {
-  return <Suspense fallback={<Skeleton className="h-96 w-full" />}><CsmForm /></Suspense>;
+  return <Suspense fallback={<FeedbackFormSkeleton label="Loading Feedback service…" />}><CsmForm /></Suspense>;
 }

@@ -6,7 +6,7 @@ import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
-import { FeedbackAccessUnavailable, FeedbackPageHeading, FeedbackQueryError, FeedbackRatingLabel, feedbackErrorCode } from "@/features/feedback/feedback-shared";
+import { FeedbackDetailSkeleton, FeedbackAccessUnavailable, FeedbackPageHeading, FeedbackQueryError, FeedbackRatingLabel, feedbackErrorCode } from "@/features/feedback/feedback-shared";
 import { useFeedbackGetCustomerFeedbackResponse, useFeedbackGetCsmResponse } from "@/lib/api/generated/feedback/feedback";
 import { CSMCC1Value, CSMCC2Value, CSMCC3Value, CSMClientTypeValue, CSMRatingValue, CSMSexValue, CustomerFeedbackAccommodatedByValue, CustomerFeedbackServiceValue } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
@@ -70,7 +70,7 @@ export function CustomerFeedbackResponseDetail({ responseId }: { responseId: str
   const detail = useFeedbackGetCustomerFeedbackResponse(responseId, { query: { retry: false, enabled: access.canViewCustomerFeedback } });
   const confirmed = safeQueryData(detail);
   if (!access.canViewCustomerFeedback) return <FeedbackAccessUnavailable title="Customer Feedback response unavailable" />;
-  if (detail.isPending) return <p aria-busy="true" className="py-8 text-sm text-muted">Loading Customer Feedback response…</p>;
+  if (detail.isPending) return <FeedbackDetailSkeleton label="Loading Customer Feedback response…" />;
   if (!confirmed) {
     const missing = notFoundMessage(detail.error, "Customer Feedback");
     return <section><FeedbackPageHeading title={missing ?? "Customer Feedback response could not be loaded"} /><div className="mt-5">{missing ? <Link href="/portal/feedback/customer-feedback/responses" className="text-sm font-semibold text-brand underline">Back to responses</Link> : <FeedbackQueryError error={detail.error} fallback="Customer Feedback response could not be loaded." onRetry={() => void detail.refetch()} />}</div></section>;
@@ -137,7 +137,7 @@ export function CsmResponseDetail({ responseId }: { responseId: string }) {
   const detail = useFeedbackGetCsmResponse(responseId, { query: { retry: false, enabled: access.canViewCsm } });
   const confirmed = safeQueryData(detail);
   if (!access.canViewCsm) return <FeedbackAccessUnavailable title="CSM response unavailable" />;
-  if (detail.isPending) return <p aria-busy="true" className="py-8 text-sm text-muted">Loading CSM response…</p>;
+  if (detail.isPending) return <FeedbackDetailSkeleton label="Loading CSM response…" />;
   if (!confirmed) {
     const missing = notFoundMessage(detail.error, "CSM");
     return <section><FeedbackPageHeading title={missing ?? "CSM response could not be loaded"} /><div className="mt-5">{missing ? <Link href="/portal/feedback/csm/responses" className="text-sm font-semibold text-brand underline">Back to responses</Link> : <FeedbackQueryError error={detail.error} fallback="CSM response could not be loaded." onRetry={() => void detail.refetch()} />}</div></section>;

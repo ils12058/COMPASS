@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 import type { ExitInterviewStatusValue } from "@/lib/api/generated/model";
@@ -46,6 +48,28 @@ export function exitInterviewErrorMessage(
 
 export function isUncertainExitInterviewMutation(error: unknown): boolean {
   return !(error instanceof CompassApiError) || error.status >= 500;
+}
+
+export function ExitInterviewListSkeleton({ label = "Loading Exit Interviews…" }: { label?: string }) {
+  return (
+    <LoadingRegion label={label} className="space-y-3">
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+    </LoadingRegion>
+  );
+}
+
+export function ExitInterviewDetailSkeleton() {
+  return (
+    <LoadingRegion label="Loading Exit Interview…" className="space-y-4">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-12 w-2/3" />
+      <Skeleton className="h-40 w-full" />
+      <Skeleton className="h-64 w-full" />
+    </LoadingRegion>
+  );
 }
 
 export function ExitInterviewHeading({

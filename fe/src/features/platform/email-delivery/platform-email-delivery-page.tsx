@@ -173,7 +173,7 @@ export function PlatformEmailDeliveryPage() {
         >
           Delivery summary
         </h2>
-        {summary.isPending ? <PlatformRowsSkeleton rows={2} /> : null}
+        {summary.isPending ? <PlatformRowsSkeleton label="Loading delivery summary…" rows={2} /> : null}
         {summary.isError && !summaryData ? (
           <PlatformQueryError
             message="The email delivery summary could not be loaded."
@@ -268,7 +268,7 @@ export function PlatformEmailDeliveryPage() {
             {action.notice}
           </p>
         ) : null}
-        {deliveries.isPending ? <PlatformRowsSkeleton rows={5} /> : null}
+        {deliveries.isPending ? <PlatformRowsSkeleton label="Loading email deliveries…" rows={5} /> : null}
         {deliveries.isError && !deliveryPage ? (
           <PlatformQueryError
             message="Email delivery records could not be loaded."

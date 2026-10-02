@@ -5,7 +5,6 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { EncounterCorrectionForm } from "@/features/counseling/encounter-correction-form";
 import {
@@ -15,6 +14,7 @@ import {
   CounselingPageHeading,
   CounselingQueryError,
   CounselingUnavailable,
+  EncounterDetailSkeleton,
   formatCounselingDateTime,
 } from "@/features/counseling/counseling-shared";
 import { SharedSummarySection } from "@/features/counseling/shared-summary-section";
@@ -33,7 +33,7 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
   const encounter = query.data?.data;
 
   if (!access.isCounselor || !access.canViewAssigned) return <CounselingUnavailable title="Encounter unavailable" />;
-  if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading assigned Counseling Encounter…</span><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-4 h-28 w-full" /><Skeleton className="mt-5 h-48 w-full" /></div>;
+  if (query.isPending) return <EncounterDetailSkeleton />;
   if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" action={<Link href="/portal/counseling" className="inline-flex min-h-10 items-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">My Counseling Encounters</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "This Counseling Encounter is not available within your current access.")} onRetry={() => void query.refetch()} /></>;
 
   return (

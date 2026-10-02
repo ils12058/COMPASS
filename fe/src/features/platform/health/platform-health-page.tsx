@@ -66,7 +66,7 @@ export function PlatformHealthPage() {
         }
       />
 
-      {health.isPending ? <PlatformRowsSkeleton rows={5} /> : null}
+      {health.isPending ? <PlatformRowsSkeleton label="Loading platform health…" rows={5} /> : null}
       {health.isError && !result ? (
         <PlatformQueryError
           message="Platform health diagnostics could not be loaded."

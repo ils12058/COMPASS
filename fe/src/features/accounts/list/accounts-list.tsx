@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -66,6 +67,16 @@ function SearchField({
         />
       </div>
     </div>
+  );
+}
+
+export function AccountsListSkeleton() {
+  return (
+    <LoadingRegion label="Loading accounts…" className="mt-6 space-y-3">
+      {Array.from({ length: 6 }, (_, index) => (
+        <Skeleton key={index} className="h-14 w-full" />
+      ))}
+    </LoadingRegion>
   );
 }
 
@@ -241,12 +252,7 @@ export function AccountsList() {
 
       {list.isError && confirmed ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
       {list.isPending ? (
-        <div className="mt-6 space-y-3" aria-busy="true">
-          <span className="sr-only">Loading accounts…</span>
-          {Array.from({ length: 6 }, (_, index) => (
-            <Skeleton key={index} className="h-14 w-full" />
-          ))}
-        </div>
+        <AccountsListSkeleton />
       ) : !confirmed ? (
         <div role="alert" className="mt-6 border-y border-border py-6">
           <p className="text-sm text-danger">

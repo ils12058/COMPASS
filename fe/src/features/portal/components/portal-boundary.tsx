@@ -5,11 +5,11 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { loginPathForPortal, safePortalDestination } from "@/features/auth/utils/redirect";
 import { UnsavedChangesProvider } from "@/features/form-safety/unsaved-changes-provider";
 import { useServerBoundary } from "@/features/freshness/use-server-boundary";
 import { PortalSessionProvider } from "@/features/portal/components/portal-session";
+import { PortalSessionLoading } from "@/features/portal/components/portal-session-loading";
 import { PortalShell } from "@/features/portal/components/portal-shell";
 import { CompassApiError } from "@/lib/api/errors";
 import { useAuthGetSession } from "@/lib/api/generated/auth/auth";
@@ -65,15 +65,7 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
   }, [confirmedSignedOut, currentPath, queryClient, router]);
 
   if (session.isPending || confirmedSignedOut || (verificationRequired && session.isFetching)) {
-    return (
-      <main className="mx-auto flex min-h-dvh max-w-md items-center px-5" aria-busy="true">
-        <div className="w-full">
-          <Skeleton className="h-8 w-2/3" />
-          <Skeleton className="mt-4 h-5 w-full" />
-          <p className="sr-only">Checking your session…</p>
-        </div>
-      </main>
-    );
+    return <PortalSessionLoading />;
   }
 
   if (session.isError || verificationRequired || invalidProjection || !session.data?.data) {

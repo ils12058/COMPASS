@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 
-import { Skeleton } from "@/components/ui/skeleton";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { GoodMoralCancelAction } from "@/features/good-moral/good-moral-cancellation-action";
 import { GoodMoralPdfDownload } from "@/features/good-moral/good-moral-pdf";
 import {
+  GoodMoralDetailSkeleton,
   GoodMoralError,
   GoodMoralField,
   GoodMoralSection,
@@ -31,7 +31,7 @@ export function GoodMoralStudentDetail({
   const confirmed = safeQueryData(detail);
 
   if (detail.isPending) {
-    return <div className="space-y-4" aria-busy="true"><span className="sr-only">Loading Good Moral request…</span><Skeleton className="h-10 w-1/2" /><Skeleton className="h-44 w-full" /><Skeleton className="h-32 w-full" /></div>;
+    return <GoodMoralDetailSkeleton />;
   }
   if (!confirmed) {
     const notFound = goodMoralErrorCode(detail.error) === "good_moral_not_found";

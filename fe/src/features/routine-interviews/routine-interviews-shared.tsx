@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import type {
   DeliveryMode,
@@ -330,6 +332,26 @@ export function RoutineQueryError({
         </Button>
       ) : null}
     </section>
+  );
+}
+
+export function RoutineInterviewListSkeleton({ label }: { label: string }) {
+  return (
+    <LoadingRegion label={label} className="space-y-3 py-4">
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-12 w-full" />
+    </LoadingRegion>
+  );
+}
+
+export function RoutineInterviewDetailSkeleton() {
+  return (
+    <LoadingRegion label="Loading Routine Interview…">
+      <Skeleton className="h-9 w-1/2" />
+      <Skeleton className="mt-5 h-28 w-full" />
+      <Skeleton className="mt-8 h-96 w-full" />
+    </LoadingRegion>
   );
 }
 

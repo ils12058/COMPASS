@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { ExitInterviewListSkeleton } from "@/features/exit-interviews/exit-interview-shared";
 import { ExitInterviewWorkspacePage } from "@/features/exit-interviews/exit-interview-workspace-page";
 import type { ExitInterviewOperationalFilters } from "@/features/exit-interviews/exit-interview-operational-list";
 import { ExitInterviewStatusValue } from "@/lib/api/generated/model";
@@ -52,7 +52,7 @@ export default async function Page({
   const notice = singleValue(query.notice) === "reopened" ? "reopened" : undefined;
 
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<ExitInterviewListSkeleton />}>
       <ExitInterviewWorkspacePage
         key={JSON.stringify(filters)}
         filters={filters}

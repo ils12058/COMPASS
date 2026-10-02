@@ -7,6 +7,7 @@ import { useId, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
@@ -214,7 +215,7 @@ export function RevisionStatusBadge({ status }: { status: RevisionStatusValue })
 
 export function PrivacyListSkeleton({ rows = 5, label }: { rows?: number; label: string }) {
   return (
-    <div aria-busy="true" className="divide-y divide-border border-y border-border">
+    <LoadingRegion label={label} className="divide-y divide-border border-y border-border">
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="grid gap-2 py-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_6rem] sm:items-center sm:gap-6">
           <div>
@@ -225,14 +226,13 @@ export function PrivacyListSkeleton({ rows = 5, label }: { rows?: number; label:
           <Skeleton className="h-5 w-16" />
         </div>
       ))}
-      <p className="sr-only">{label}</p>
-    </div>
+    </LoadingRegion>
   );
 }
 
 export function PrivacyDetailSkeleton({ label }: { label: string }) {
   return (
-    <div aria-busy="true" className="max-w-4xl">
+    <LoadingRegion label={label} className="max-w-4xl">
       <Skeleton className="h-10 w-72 max-w-full" />
       <Skeleton className="mt-4 h-4 w-40" />
       <div className="mt-10 space-y-8">
@@ -243,8 +243,7 @@ export function PrivacyDetailSkeleton({ label }: { label: string }) {
           </div>
         ))}
       </div>
-      <p className="sr-only">{label}</p>
-    </div>
+    </LoadingRegion>
   );
 }
 

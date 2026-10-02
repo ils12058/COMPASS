@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { safeQueryData } from "@/features/freshness/query-freshness";
@@ -398,7 +399,9 @@ export function AccountAccess() {
             </button>
           </div>
         ) : assigned.isPending ? (
-          <Skeleton className="mt-4 h-12 w-full" />
+          <LoadingRegion label="Loading designations…" className="mt-4">
+            <Skeleton className="h-12 w-full" />
+          </LoadingRegion>
         ) : (
           <div className="mt-4 border-t border-border py-4">
             <p className="text-sm text-ink">
@@ -468,11 +471,11 @@ export function AccountAccess() {
           and overrides.
         </p>
         {effective.isPending ? (
-          <div aria-busy="true" className="mt-5 space-y-2">
+          <LoadingRegion label="Loading effective access…" className="mt-5 space-y-2">
             {Array.from({ length: 5 }, (_, index) => (
               <Skeleton key={index} className="h-12 w-full" />
             ))}
-          </div>
+          </LoadingRegion>
         ) : !effectiveData ? (
           <div role="alert" className="mt-4 text-sm text-danger">
             {managedAccountError(
@@ -602,7 +605,9 @@ export function AccountAccess() {
           </p>
         ) : null}
         {overrides.isPending ? (
-          <Skeleton className="mt-5 h-20 w-full" />
+          <LoadingRegion label="Loading capability overrides…" className="mt-5">
+            <Skeleton className="h-20 w-full" />
+          </LoadingRegion>
         ) : !overridesData ? (
           <div role="alert" className="mt-4 text-sm text-danger">
             {managedAccountError(

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   publicationAudienceDescriptions,
@@ -124,26 +125,24 @@ export function ContentQueryError({
 
 export function ContentListSkeleton({ label, rows = 5 }: { label: string; rows?: number }) {
   return (
-    <div aria-busy="true" className="mt-5 divide-y divide-border border-y border-border">
+    <LoadingRegion label={label} className="mt-5 divide-y divide-border border-y border-border">
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="py-4">
           <Skeleton className="h-5 w-2/3 max-w-96" />
           <Skeleton className="mt-2 h-4 w-48" />
         </div>
       ))}
-      <p className="sr-only">{label}</p>
-    </div>
+    </LoadingRegion>
   );
 }
 
 export function ContentDetailSkeleton({ label }: { label: string }) {
   return (
-    <div aria-busy="true" className="space-y-6">
+    <LoadingRegion label={label} className="space-y-6">
       <Skeleton className="h-10 w-80 max-w-full" />
       <Skeleton className="h-24 w-full" />
       <Skeleton className="h-64 w-full" />
-      <p className="sr-only">{label}</p>
-    </div>
+    </LoadingRegion>
   );
 }
 

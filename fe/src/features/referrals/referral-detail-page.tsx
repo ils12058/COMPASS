@@ -7,7 +7,6 @@ import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
@@ -20,6 +19,7 @@ import { canViewStudentSupportContext } from "@/features/student-support/student
 import { StudentSupportContextSection } from "@/features/student-support/student-support-context-section";
 import {
   ReferralAccessUnavailable,
+  ReferralDetailSkeleton,
   ReferralHeading,
   ReferralQueryError,
   referralErrorCode,
@@ -68,7 +68,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
     );
   }
   if (referral.isPending) {
-    return <div className="space-y-4" aria-busy="true"><span className="sr-only">Loading Referral…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-40 w-full" /><Skeleton className="h-64 w-full" /></div>;
+    return <ReferralDetailSkeleton />;
   }
 
   const item = referral.data.data;

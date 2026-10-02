@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { AppointmentDetailSkeleton } from "@/features/appointments/appointments-shared";
 import { AppointmentDetailPage } from "@/features/appointments/appointment-detail-page";
 
 export default async function Page({
@@ -10,7 +10,7 @@ export default async function Page({
 }) {
   const { appointmentId } = await params;
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<AppointmentDetailSkeleton />}>
       <AppointmentDetailPage appointmentId={appointmentId} />
     </Suspense>
   );

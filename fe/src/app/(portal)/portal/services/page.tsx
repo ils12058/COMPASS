@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { ServicesListSkeleton } from "@/features/services/services-shared";
 import { ServicesListPage } from "@/features/services/services-list-page";
 
 export default function Page() {
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<ServicesListSkeleton />}>
       <ServicesListPage />
     </Suspense>
   );

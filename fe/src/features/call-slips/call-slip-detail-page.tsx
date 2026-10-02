@@ -9,13 +9,12 @@ import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
-import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipQueryError, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipIssuanceModeLabels, callSlipStateLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
+import { CallSlipAccessUnavailable, CallSlipDetailSkeleton, CallSlipHeading, CallSlipQueryError, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipIssuanceModeLabels, callSlipStateLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import {
@@ -56,8 +55,8 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   const confirmed = safeQueryData(slip);
 
   if (slip.isError && !confirmed) return <div className="space-y-7"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
-  if (slip.isPending) return <CallSlipLoading />;
-  if (!confirmed) return <CallSlipLoading />;
+  if (slip.isPending) return <CallSlipDetailSkeleton />;
+  if (!confirmed) return <CallSlipDetailSkeleton />;
 
   const item = confirmed.data;
   return (
@@ -95,8 +94,8 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   const confirmed = safeQueryData(slip);
 
   if (slip.isError && !confirmed) return <div className="space-y-7"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
-  if (slip.isPending) return <CallSlipLoading />;
-  if (!confirmed) return <CallSlipLoading />;
+  if (slip.isPending) return <CallSlipDetailSkeleton />;
+  if (!confirmed) return <CallSlipDetailSkeleton />;
 
   const item = confirmed.data;
   return (
@@ -150,9 +149,6 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   );
 }
 
-function CallSlipLoading() {
-  return <div className="space-y-4" aria-busy="true"><span className="sr-only">Loading Call Slip…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-48 w-full" /><Skeleton className="h-32 w-full" /></div>;
-}
 
 function Field({ label, value }: { label: string; value: string }) {
   return <div><dt className="text-xs font-semibold text-muted">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{value}</dd></div>;

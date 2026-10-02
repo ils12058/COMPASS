@@ -11,6 +11,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { organizationErrorMessage } from "@/features/organization/components/organization-action";
 
@@ -120,14 +121,13 @@ export function QueryError({
   );
 }
 
-export function TableSkeleton() {
+export function TableSkeleton({ label = "Loading Organization records…" }: { label?: string }) {
   return (
-    <div className="mt-6 space-y-3" aria-busy="true">
+    <LoadingRegion label={label} className="mt-6 space-y-3">
       {Array.from({ length: 5 }, (_, index) => (
         <Skeleton key={index} className="h-14 w-full" />
       ))}
-      <p className="sr-only">Loading Organization records…</p>
-    </div>
+    </LoadingRegion>
   );
 }
 

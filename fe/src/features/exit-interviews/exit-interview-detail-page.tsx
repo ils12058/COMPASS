@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 
-import { Skeleton } from "@/components/ui/skeleton";
 import { ExitInterviewForm } from "@/features/exit-interviews/exit-interview-form";
 import { ExitInterviewPdfDownload } from "@/features/exit-interviews/exit-interview-pdf-download";
 import { ExitInterviewReopenAction } from "@/features/exit-interviews/exit-interview-reopen-dialog";
 import { ExitInterviewResponse } from "@/features/exit-interviews/exit-interview-response";
 import {
+  ExitInterviewDetailSkeleton,
   ExitInterviewError,
   ExitInterviewUnavailable,
   exitInterviewErrorCode,
@@ -20,16 +20,6 @@ import {
 } from "@/lib/api/generated/exit-interviews/exit-interviews";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 
-function DetailSkeleton() {
-  return (
-    <div className="space-y-4" aria-busy="true"><span className="sr-only">Loading Exit Interview…</span>
-      <Skeleton className="h-8 w-48" />
-      <Skeleton className="h-12 w-2/3" />
-      <Skeleton className="h-40 w-full" />
-      <Skeleton className="h-64 w-full" />
-    </div>
-  );
-}
 
 function StudentExitInterviewDetail({
   exitInterviewId,
@@ -44,7 +34,7 @@ function StudentExitInterviewDetail({
     query: { retry: false },
   });
 
-  if (detail.isPending) return <DetailSkeleton />;
+  if (detail.isPending) return <ExitInterviewDetailSkeleton />;
 
   const hideCachedDetail =
     detail.isError &&
@@ -131,7 +121,7 @@ function HeadExitInterviewDetail({
     query: { retry: false },
   });
 
-  if (detail.isPending) return <DetailSkeleton />;
+  if (detail.isPending) return <ExitInterviewDetailSkeleton />;
 
   const hideCachedDetail =
     detail.isError &&

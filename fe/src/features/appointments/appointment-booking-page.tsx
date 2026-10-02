@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DeliveryMode,
@@ -331,7 +332,9 @@ function BookingWorkspace() {
         <section aria-labelledby="booking-counselor-heading" className="border-b border-border py-5">
           <h2 id="booking-counselor-heading" className="font-heading text-xl font-semibold text-ink">3. Choose a Counselor</h2>
           {counselors.isPending ? (
-            <Skeleton className="mt-4 h-10 w-full max-w-xl" />
+            <LoadingRegion label="Loading Counselors…" className="mt-4">
+              <Skeleton className="h-10 w-full max-w-xl" />
+            </LoadingRegion>
           ) : counselors.isError ? (
             <div role="alert" className="mt-4">
               <p className="text-sm text-danger">Eligible Counselors could not be loaded.</p>
@@ -371,22 +374,21 @@ function BookingWorkspace() {
             <Input id="booking-date" type="date" value={date} onChange={(event) => changeDate(event.target.value)} />
           </div>
           {date ? (
-            <div className="mt-5" aria-live="polite">
+            <div className="mt-5">
               {slots.isPending ? (
-                <div aria-busy="true" className="flex flex-wrap gap-2">
+                <LoadingRegion label="Loading available times…" className="flex flex-wrap gap-2">
                   <Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" />
-                  <p className="sr-only">Loading available times…</p>
-                </div>
+                </LoadingRegion>
               ) : slots.isError ? (
                 <div role="alert">
                   <p className="text-sm text-danger">Available times could not be loaded.</p>
                   <Button className="mt-3" variant="secondary" onClick={() => void slots.refetch()}>Retry</Button>
                 </div>
               ) : slotItems.length === 0 ? (
-                <p className="text-sm text-muted">No available appointment times were found for this date. Choose another date.</p>
+                <p role="status" className="text-sm text-muted">No available appointment times were found for this date. Choose another date.</p>
               ) : (
                 <>
-                  <p className="mb-3 text-sm font-semibold text-ink">Available times · {slots.data?.data.timezone}</p>
+                  <p role="status" className="mb-3 text-sm font-semibold text-ink">Available times · {slots.data?.data.timezone}</p>
                   <div role="group" aria-label="Available appointment times" className="flex flex-wrap gap-2">
                     {slotItems.map((slot) => {
                       const selected = slot.starts_at === selectedSlotStart;

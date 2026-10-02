@@ -160,13 +160,13 @@ export function ResourceFileSection({ resource }: { resource: ResourceManagement
         ) : null}
       </div>
 
+      {error ? <p role="alert" className="mt-3 text-sm leading-6 text-danger">{error}</p> : null}
+      {download.isError ? (
+        <p role="alert" className="mt-3 text-sm leading-6 text-danger">
+          {resourceErrorMessage(download.error, "The download could not be prepared. Try again.")}
+        </p>
+      ) : null}
       <div aria-live="polite">
-        {error ? <p role="alert" className="mt-3 text-sm leading-6 text-danger">{error}</p> : null}
-        {download.isError ? (
-          <p role="alert" className="mt-3 text-sm leading-6 text-danger">
-            {resourceErrorMessage(download.error, "The download could not be prepared. Try again.")}
-          </p>
-        ) : null}
         {notice ? <p className="mt-3 text-sm text-success">{notice}</p> : null}
       </div>
 

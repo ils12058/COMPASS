@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
@@ -88,6 +90,46 @@ export function FeedbackSection({
       {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{description}</p> : null}
       <div className="mt-5 space-y-5">{children}</div>
     </section>
+  );
+}
+
+export function FeedbackFormSkeleton({ label }: { label: string }) {
+  return (
+    <LoadingRegion label={label} className="max-w-4xl">
+      <Skeleton className="h-4 w-48" />
+      <Skeleton className="mt-3 h-9 w-80 max-w-full" />
+      <Skeleton className="mt-3 h-4 w-full max-w-2xl" />
+      <div className="mt-8 space-y-6">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-48 w-full" />
+      </div>
+    </LoadingRegion>
+  );
+}
+
+export function FeedbackListSkeleton({ label }: { label: string }) {
+  return (
+    <LoadingRegion label={label} className="mt-5 space-y-3">
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-12 w-full" />
+    </LoadingRegion>
+  );
+}
+
+export function FeedbackDetailSkeleton({ label }: { label: string }) {
+  return (
+    <LoadingRegion label={label}>
+      <Skeleton className="h-4 w-48" />
+      <Skeleton className="mt-3 h-9 w-72 max-w-full" />
+      <Skeleton className="mt-3 h-4 w-56" />
+      <div className="mt-8 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+        {Array.from({ length: 6 }, (_, index) => (
+          <Skeleton key={index} className="h-12 w-full" />
+        ))}
+      </div>
+    </LoadingRegion>
   );
 }
 

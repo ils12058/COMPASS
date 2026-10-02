@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { ContentListSkeleton } from "@/features/content/content-shared";
 import { ResourcesListPage } from "@/features/resources/resources-list-page";
 
 export default function Page() {
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense fallback={<ContentListSkeleton label="Loading Resources…" />}>
       <ResourcesListPage />
     </Suspense>
   );
