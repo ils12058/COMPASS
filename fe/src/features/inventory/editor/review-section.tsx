@@ -76,7 +76,7 @@ export function ReviewSection({
           </p>
         ) : null}
         <p className="mt-4 text-sm leading-6 text-muted">
-          Submitting changes this annual record to read-only. An authorized Counselor may reopen the current-year record if a correction is needed. COMPASS does not use an approval workflow or digital signature for this action.
+          Submitting makes this annual record read-only. An authorized counselor may reopen the current-year record if you need to make a correction.
         </p>
       </FieldGroup>
 

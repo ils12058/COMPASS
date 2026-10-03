@@ -115,7 +115,7 @@ function StudentInventoryHome() {
                 <p className="text-sm leading-6 text-muted">Complete one Individual Inventory for the current Academic Year.</p>
                 {!access.isCurrentStudent ? (
                   <p className="mt-3 text-sm leading-6 text-muted">
-                    A new current-year Individual Inventory can only be started while your Student lifecycle is current. Your annual history remains available below.
+                    Only current students can start an Individual Inventory for this year. Your earlier records remain available below.
                   </p>
                 ) : access.canManageSelf ? (
                   <div className="mt-4">

@@ -150,7 +150,7 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
     case "inventory_not_found":
       return "This Individual Inventory could not be found or is not available to you.";
     case "permission_denied":
-      return "You do not have access to this Individual Inventory operation.";
+      return "You cannot view or change this Individual Inventory.";
     default:
       return fallback;
   }

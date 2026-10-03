@@ -125,7 +125,7 @@ export function getInventorySubmissionIssues(
     (location) => location.kind === GeographicLocationKindValue.CURRENT,
   );
   if (!currentLocation) {
-    add("personal", "inventory-current-location-choice", "Choose a response for your current structured location.");
+    add("personal", "inventory-current-location-choice", "Choose how to provide your current location.");
   } else if (!currentLocation.not_specified && !currentLocation.region_psgc_code) {
     add("personal", "inventory-current-region", "Select a region for your current location.");
   } else if (!currentLocation.not_specified && !currentLocation.city_municipality_psgc_code) {

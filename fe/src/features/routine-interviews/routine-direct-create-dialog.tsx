@@ -159,9 +159,9 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
 
   return (
     <DialogContent className="max-w-2xl" dismissible={!pending}>
-      <DialogTitle>Start direct Routine Interview</DialogTitle>
+      <DialogTitle>Start Routine Interview</DialogTitle>
       <DialogDescription>
-        Create a Counselor-assigned Routine Interview for a qualified Student. The Student will complete their Intake separately.
+        Start a Routine Interview for an eligible student. They will complete their intake separately.
       </DialogDescription>
 
       {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
@@ -172,12 +172,12 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
         </div>
       ) : options.isError ? (
         <div role="alert" className="mt-5 border-y border-danger/30 py-4">
-          <p className="text-sm text-danger">{routineErrorMessage(options.error, "Direct-creation options could not be loaded.")}</p>
+          <p className="text-sm text-danger">{routineErrorMessage(options.error, "Routine Interview options could not be loaded.")}</p>
           <Button className="mt-3" variant="secondary" onClick={() => void options.refetch()}>Retry</Button>
         </div>
       ) : deliveryModes.length === 0 ? (
         <p role="status" className="mt-5 border-y border-border py-4 text-sm text-muted">
-          Direct Routine Interview creation is not configured for an available delivery mode.
+          A delivery mode is not available for starting a Routine Interview.
         </p>
       ) : (
         <div className="mt-5 grid gap-5">

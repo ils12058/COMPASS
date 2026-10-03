@@ -142,7 +142,6 @@ export function GraduateTracerEmploymentSection({
 
           <div className="border-t border-border pt-6">
             <h3 className="font-semibold text-ink">First-job and job-change context</h3>
-            <p className="mt-1 text-sm leading-6 text-muted">The supplied survey has an inconsistent question-number sequence in this area. These fields use semantic labels and do not reconstruct a missing question.</p>
             {firstJob && draft.first_job_related_to_course !== false ? (
               <div className="mt-5 max-w-3xl">
                 <CheckboxField

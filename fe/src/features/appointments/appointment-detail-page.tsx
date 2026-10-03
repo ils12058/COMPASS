@@ -204,7 +204,7 @@ function ActionConfirmation({
       pending={busy}
       error={error}
       variant={selected.variant}
-      cancelLabel="Keep Appointment"
+      cancelLabel={action === "cancel" ? "Keep appointment" : "Back to appointment"}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
@@ -575,7 +575,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         <div><dt className="text-xs font-semibold text-muted">Date and time</dt><dd className="mt-1 text-sm text-ink">{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</dd></div>
         <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(appointment.delivery_mode)}</dd></div>
         {appointment.cancellation_cutoff_minutes !== null ? (
-          <div><dt className="text-xs font-semibold text-muted">Saved self-service cutoff</dt><dd className="mt-1 text-sm text-ink">Changes are subject to the {appointment.cancellation_cutoff_minutes}-minute cutoff saved with this Appointment.</dd></div>
+          <div><dt className="text-xs font-semibold text-muted">Student change deadline</dt><dd className="mt-1 text-sm text-ink">Students must cancel or reschedule at least {appointment.cancellation_cutoff_minutes} minutes before the appointment starts.</dd></div>
         ) : null}
         <div><dt className="text-xs font-semibold text-muted">Created</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.created_at)}</dd></div>
         {appointment.cancelled_at ? <div><dt className="text-xs font-semibold text-muted">Cancelled</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.cancelled_at)}</dd></div> : null}

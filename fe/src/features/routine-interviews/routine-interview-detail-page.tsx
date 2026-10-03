@@ -116,6 +116,7 @@ function StudentRoutineDetail({
         intakeSubmittedAt={detail.intake_submitted_at}
         createdAt={detail.created_at}
         formRevision={detail.form_revision}
+        studentFacing
       />
       <RoutineLifecycleNotice message={workflowMessage} />
       {canManage && actionable && detail.intake_status === "DRAFT" ? (

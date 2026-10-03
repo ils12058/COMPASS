@@ -128,7 +128,7 @@ export function CounselorRoutineWorkspace({
         title="Routine Interviews"
         description="View Routine Interviews assigned to you and manage Counselor Evaluations after Students submit their Intake."
         action={access.canManageAssigned ? (
-          <Button onClick={() => setCreateOpen(true)}>Start direct Routine Interview</Button>
+          <Button onClick={() => setCreateOpen(true)}>Start Routine Interview</Button>
         ) : undefined}
       />
 

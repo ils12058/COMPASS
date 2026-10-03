@@ -15,7 +15,7 @@ import {
 import { DeliveryMode } from "@/lib/api/generated/model";
 import { useAvailabilityGetProviderEffective } from "@/lib/api/generated/availability/availability";
 import { useServicesList } from "@/lib/api/generated/services/services";
-import { institutionalDateInputValue } from "@/lib/institutional-time";
+import { INSTITUTION_TIME_ZONE, INSTITUTION_TIME_ZONE_LABEL, institutionalDateInputValue } from "@/lib/institutional-time";
 
 type PreviewRequest = {
   service_id: string;
@@ -366,7 +366,7 @@ export function EffectiveAvailabilityPreview({
         ) : (
           <div className="mt-6">
             <p className="text-xs text-muted">
-              Timezone: {effectiveData.timezone}
+              Timezone: {effectiveData.timezone === INSTITUTION_TIME_ZONE ? INSTITUTION_TIME_ZONE_LABEL : effectiveData.timezone}
             </p>
             <div className="mt-3 divide-y divide-border border-y border-border">
               {grouped.map((group) => (

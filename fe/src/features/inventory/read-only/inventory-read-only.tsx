@@ -63,7 +63,7 @@ function StructuredLocation({
   return (
     <div className="border-b border-border/70 py-3">
       <dt className="text-xs font-semibold text-muted">
-        {location.kind === GeographicLocationKindValue.CURRENT ? "Current structured location" : "Permanent structured location"}
+        {location.kind === GeographicLocationKindValue.CURRENT ? "Current location details" : "Permanent location details"}
       </dt>
       <dd className="mt-1 text-sm leading-6 text-ink">{text}</dd>
     </div>

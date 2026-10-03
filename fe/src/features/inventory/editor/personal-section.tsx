@@ -199,7 +199,7 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
         </div>
       </FieldGroup>
 
-      <FieldGroup legend="Structured location">
+      <FieldGroup legend="Location details">
         <p className="mb-5 max-w-3xl text-sm leading-6 text-muted">
           The official location choices are separate from your address text. A province is not required in every area, and barangay is optional.
         </p>

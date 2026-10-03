@@ -23,7 +23,7 @@ export function StudentProfileCoverage({
   const values =
     coverage.mode === "CURRENT"
       ? [
-          { label: "Eligible Students", value: countValue(coverage.eligible_student_count) },
+          { label: "Current student accounts in scope", value: countValue(coverage.eligible_student_count) },
           { label: "Submitted", value: String(coverage.submitted_count) },
           { label: "Draft", value: String(coverage.draft_count) },
           {

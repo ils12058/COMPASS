@@ -170,7 +170,7 @@ export function ServiceDetailPage() {
       {action.notice || action.error ? action.messages : null}
 
       <div className="mt-8 divide-y divide-border border-y border-border">
-        <section className="py-7" aria-labelledby="service-description-heading">
+        {service.description.trim() ? <section className="py-7" aria-labelledby="service-description-heading">
           <h2
             id="service-description-heading"
             className="font-heading text-xl font-semibold text-ink"
@@ -178,9 +178,9 @@ export function ServiceDetailPage() {
             Description
           </h2>
           <p className="mt-3 max-w-4xl whitespace-pre-wrap text-sm leading-7 text-muted">
-            {service.description.trim() || "No description provided."}
+            {service.description.trim()}
           </p>
-        </section>
+        </section> : null}
 
         <section className="py-7" aria-labelledby="service-delivery-heading">
           <h2

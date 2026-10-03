@@ -291,7 +291,8 @@ export function ResponsibilitiesPage() {
             <p className="mt-2 text-sm text-muted">
               One responsible Counselor may be assigned to each College. When
               none is assigned, default routing uses the Head Guidance
-              Counselor.
+              Counselor if exactly one active Head Guidance Counselor can be
+              identified.
             </p>
           </div>
         </div>

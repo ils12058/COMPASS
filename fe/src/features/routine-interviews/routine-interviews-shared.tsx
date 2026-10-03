@@ -210,6 +210,7 @@ export function RoutineContextSummary({
   evaluationFinalizedAt,
   createdAt,
   formRevision,
+  studentFacing = false,
 }: {
   personName: string;
   inventoryContext: RoutineInventoryContext;
@@ -224,6 +225,7 @@ export function RoutineContextSummary({
   evaluationFinalizedAt?: string | null;
   createdAt: string;
   formRevision: RoutineFormRevisionSummary | null;
+  studentFacing?: boolean;
 }) {
   const revision = formRevisionLabel(formRevision);
   const major = inventoryContext.major.trim();
@@ -260,7 +262,7 @@ export function RoutineContextSummary({
         ) : null}
         {encounter ? (
           <MetadataItem
-            label="Counseling Encounter"
+            label={studentFacing ? "Counseling session" : "Counseling Encounter"}
             value={
               <span>
                 {formatRoutineDateTime(encounter.started_at)}
@@ -303,7 +305,7 @@ export function RoutineContextSummary({
             }
           />
         ) : null}
-        <MetadataItem label="Routine created" value={formatRoutineDateTime(createdAt)} />
+        <MetadataItem label="Created" value={formatRoutineDateTime(createdAt)} />
         {revision ? <MetadataItem label="Form revision" value={revision} /> : null}
       </dl>
     </section>
