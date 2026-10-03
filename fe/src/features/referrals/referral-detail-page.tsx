@@ -58,7 +58,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
   }
   if (referral.isError) {
     if (referralErrorCode(referral.error) === "referral_not_found") {
-      return <ReferralAccessUnavailable title="Referral not found" message="This Referral does not exist or is outside your Referral scope." />;
+      return <ReferralAccessUnavailable title="Referral not found" message="This referral could not be found or is unavailable to you." />;
     }
     return (
       <div className="space-y-7">
@@ -88,7 +88,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
     <div className="space-y-7">
       <ReferralHeading
         title={item.reference_code}
-        description="Referral source record"
+        description="Recorded referral details"
         backHref="/portal/referrals"
         action={<ReferralPdfDownload referral={item} />}
       />

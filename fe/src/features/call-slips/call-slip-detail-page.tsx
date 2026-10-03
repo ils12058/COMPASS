@@ -101,7 +101,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   return (
     <div className="space-y-7">
       {slip.isError ? <RefreshFailureNotice onRetry={() => void slip.refetch()} retrying={slip.isFetching} /> : null}
-      <CallSlipHeading title="Call Slip / Interview Permit" description="Operational source record" backHref="/portal/call-slips" action={<CallSlipPdfDownload callSlipId={item.id} />} />
+      <CallSlipHeading title="Call Slip / Interview Permit" description="Recorded Call Slip details" backHref="/portal/call-slips" action={<CallSlipPdfDownload callSlipId={item.id} />} />
       {item.state === CallSlipLifecycleStateValue.VOIDED ? (
         <div role="status" className="border-y border-warning/30 py-4">
           <p className="font-semibold text-warning">Voided</p>
@@ -161,7 +161,7 @@ function RecordSection({ title, children }: { title: string; children: ReactNode
 function FormRevisionSection({ revision }: { revision: CallSlipStudentResponse["form_revision"] }) {
   return (
     <section aria-labelledby="call-slip-form-revision-heading" className="border-t border-border py-6">
-      <h2 id="call-slip-form-revision-heading" className="font-heading text-xl font-semibold text-ink">Form provenance</h2>
+      <h2 id="call-slip-form-revision-heading" className="font-heading text-xl font-semibold text-ink">Official form</h2>
       <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
         <Field label="Official form code" value={revision.official_code ?? "Official code not recorded"} />
         <Field label="Official revision" value={revision.official_revision ? `Revision ${revision.official_revision}` : "Official revision not recorded"} />

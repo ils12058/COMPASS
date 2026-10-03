@@ -171,7 +171,7 @@ export function getInventorySubmissionIssues(
     activeProgramIds !== undefined &&
     (!payload.program_id || !activeProgramIds.has(payload.program_id))
   ) {
-    add("education", "inventory-program", "Choose a currently active Program.");
+    add("education", "inventory-program", "Choose a currently active program.");
   }
   if (!payload.year_level || payload.year_level < 1 || payload.year_level > 10) {
     add("education", "inventory-year-level", "Choose a Year Level from 1 through 10.");

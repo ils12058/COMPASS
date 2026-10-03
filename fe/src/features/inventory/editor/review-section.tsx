@@ -89,9 +89,9 @@ export function ReviewSection({
               return (
                 <li key={section.id} className="flex min-h-11 items-center justify-between gap-3 border-b border-border py-2">
                   <span className="text-sm text-ink">{section.label}</span>
-                  <span className={sectionIssues.length ? "text-xs font-semibold text-warning" : "text-xs text-muted"}>
-                    {sectionIssues.length ? `${sectionIssues.length} needs attention` : "No immediate issue"}
-                  </span>
+                  {sectionIssues.length ? (
+                    <span className="text-xs font-semibold text-warning">{sectionIssues.length} needs attention</span>
+                  ) : null}
                 </li>
               );
             })}

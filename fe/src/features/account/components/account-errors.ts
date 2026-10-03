@@ -15,7 +15,7 @@ const messages: Record<string, string> = {
   profile_photo_storage_unavailable: "The profile photo could not be updated right now. Your other profile information is still available.",
   profile_unavailable: "Your profile is temporarily unavailable. Please try again.",
   rate_limited: "Too many attempts. Please try again later.",
-  security_unavailable: "This security operation is temporarily unavailable. Please try again.",
+  security_unavailable: "This security action is temporarily unavailable. Please try again.",
   security_verification_failed: "Security verification could not be completed. Please try again.",
   totp_step_up_required: "An authenticator is required for this action. Manage it from Security.",
 };

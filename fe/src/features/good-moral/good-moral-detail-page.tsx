@@ -19,7 +19,7 @@ export function GoodMoralDetailPage({ requestId }: { requestId: string }) {
 
   if (access.isCounselor) {
     if (!access.canViewOperational) {
-      return <GoodMoralUnavailable title="Request unavailable" message="Your Counselor account does not have Good Moral request-view access." />;
+      return <GoodMoralUnavailable title="Request unavailable" message="This Good Moral request is unavailable to you." />;
     }
     return <GoodMoralCounselorDetail requestId={requestId} canManage={access.canManageOperational} canIssue={access.canIssue} />;
   }

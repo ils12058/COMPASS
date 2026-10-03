@@ -113,7 +113,7 @@ export function StudentProfileGeographySection({
       </div>
       {section.rows.length === 0 ? (
         <p className="border-b border-border py-4 text-sm text-muted">
-          No geographic categories were returned for this section.
+          No geographic data is available for this section.
         </p>
       ) : null}
     </section>

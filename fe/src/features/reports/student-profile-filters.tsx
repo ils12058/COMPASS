@@ -136,7 +136,7 @@ export function StudentProfileFilters({
         return;
       }
       if (!campusChoices.some((campus) => campus.id === draft.campus_id)) {
-        setDraftError("Choose a Campus available in your Reports scope.");
+        setDraftError("Choose a campus you can report on.");
         return;
       }
     }
@@ -146,7 +146,7 @@ export function StudentProfileFilters({
         return;
       }
       if (!selectedCollege) {
-        setDraftError("Choose a College available in your Reports scope.");
+        setDraftError("Choose a college you can report on.");
         return;
       }
       if (

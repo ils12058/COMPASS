@@ -26,7 +26,7 @@ const knownErrors: Record<string, string> = {
     "You cannot perform this administrative action on your own account.",
   rate_limited: "Too many attempts. Try again later.",
   security_unavailable:
-    "This security operation is temporarily unavailable. Try again later.",
+    "This security action is temporarily unavailable. Try again later.",
   recent_mfa_required: "Recent authenticator verification is required.",
 };
 

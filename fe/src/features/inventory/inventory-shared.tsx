@@ -74,13 +74,15 @@ export function InventoryNotice({
 export function InventoryStatus({
   status,
   correctionPending = false,
+  missingLabel = "Missing",
 }: {
   status: "MISSING" | "DRAFT" | "SUBMITTED";
   correctionPending?: boolean;
+  missingLabel?: string;
 }) {
   const label =
     status === "MISSING"
-      ? "Missing"
+      ? missingLabel
       : status === "DRAFT"
         ? correctionPending
           ? "Draft · Correction pending"

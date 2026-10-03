@@ -209,8 +209,8 @@ function ManagedAppointmentsList() {
           <div className="grid gap-2">
             <Label htmlFor="managed-appointment-order">Order</Label>
             <Select id="managed-appointment-order" value={ordering} onChange={(event) => updateFilter("ordering", event.target.value)}>
-              <option value={AppointmentListOrdering.START_ASC}>Soonest first</option>
-              <option value={AppointmentListOrdering.START_DESC}>Latest first</option>
+              <option value={AppointmentListOrdering.START_ASC}>Earliest start first</option>
+              <option value={AppointmentListOrdering.START_DESC}>Latest start first</option>
             </Select>
           </div>
           <div className="flex items-end">

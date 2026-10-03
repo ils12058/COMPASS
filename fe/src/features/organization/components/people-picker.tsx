@@ -70,9 +70,9 @@ export function PeoplePicker({
           <p className="mt-1 text-xs text-muted">
             {visibleSelected.is_active ? "Active" : "Inactive"}
             {visibleSelected.responsibility_scope === "INSTITUTION_WIDE"
-              ? " · Institution-wide responsibility scope"
+              ? " · Institution-wide responsibilities"
               : visibleSelected.responsibility_scope === "ASSIGNED_COLLEGES"
-                ? " · Assigned-College responsibility scope"
+                ? " · Assigned-college responsibilities"
                 : ""}
           </p>
         </div>

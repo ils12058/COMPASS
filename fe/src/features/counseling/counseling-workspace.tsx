@@ -163,7 +163,7 @@ export function CounselingWorkspace({
 
   if (!allowed) return <CounselingUnavailable title="Counseling context unavailable" />;
   if (contextUnavailable || invalidBoundary || boundaryReached || shouldHideProtectedData(overview.error) || counselingErrorCode(overview.error) === "counseling_context_not_found") {
-    return <section role="alert" className="max-w-3xl border-y border-border py-7"><h1 className="font-heading text-2xl font-semibold text-ink">Counseling context unavailable</h1><p className="mt-3 text-sm leading-6 text-muted">This temporary context needs a new server access check before it can be shown.</p><Button className="mt-3" variant="secondary" onClick={() => void reauthorize()}>Check access again</Button></section>;
+    return <section role="alert" className="max-w-3xl border-y border-border py-7"><h1 className="font-heading text-2xl font-semibold text-ink">Counseling information unavailable</h1><p className="mt-3 text-sm leading-6 text-muted">We cannot show this information until your access is checked again.</p><Button className="mt-3" variant="secondary" onClick={() => void reauthorize()}>Check again</Button></section>;
   }
   if (overview.isPending) return <CounselingWorkspaceSkeleton />;
   if ((overview.isError && !canShowLastKnownData(overview)) || !overview.data?.data) {
@@ -171,8 +171,8 @@ export function CounselingWorkspace({
     return (
       <section role="alert" className="max-w-3xl border-y border-border py-7">
         <h1 className="font-heading text-2xl font-semibold text-ink">Counseling context</h1>
-        <p className="mt-3 text-sm leading-6 text-muted">{expired ? "This temporary Counseling Context is no longer available." : counselingErrorMessage(overview.error, "Counseling Context is not currently available.")}</p>
-        {expired ? <p className="mt-2 text-sm leading-6 text-muted">Context access is limited to the active Counseling relationship and its configured review window.</p> : <Button className="mt-3" variant="secondary" onClick={() => void overview.refetch()}>Retry</Button>}
+        <p className="mt-3 text-sm leading-6 text-muted">{expired ? "This counseling view is no longer available." : counselingErrorMessage(overview.error, "Counseling information is not currently available.")}</p>
+        {expired ? <p className="mt-2 text-sm leading-6 text-muted">Return to your encounters to continue.</p> : <Button className="mt-3" variant="secondary" onClick={() => void overview.refetch()}>Retry</Button>}
         <Link href="/portal/counseling" className="mt-4 inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">My Counseling Encounters</Link>
       </section>
     );
@@ -256,14 +256,14 @@ function CounselingWorkspaceContent({
             <dl className="mt-3 divide-y divide-border">
               <Metadata label="Origin">{counselingEntryModeLabel(overview.entry_mode)}</Metadata>
               <Metadata label="Delivery">{counselingDeliveryModeLabel(overview.delivery_mode)}</Metadata>
-              <Metadata label="Context available until">{formatCounselingDateTime(overview.valid_until)}</Metadata>
+              <Metadata label="Available until">{formatCounselingDateTime(overview.valid_until)}</Metadata>
               <Metadata label="Routine Interview">{overview.routine_interview ? `${routineIntakeStatusLabel(overview.routine_interview.intake_status)} Intake · ${routineEvaluationStatusLabel(overview.routine_interview.evaluation_status)} Evaluation` : "No linked Routine Interview"}</Metadata>
               <Metadata label="Counseling Encounter">{overview.matching_encounter ? "Recorded" : "Not yet recorded"}</Metadata>
             </dl>
             {overview.matching_encounter ? (
               <div className="mt-4 border-t border-border pt-4"><p className="text-sm text-muted">Completed interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)}.</p><Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className="mt-3 inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">View encounter</Link></div>
             ) : access.canManageAssigned ? (
-              <div className="mt-4 border-t border-border pt-4"><p className="text-sm font-medium text-ink">Counseling Encounter not yet recorded</p><Button className="mt-3" disabled={recordUncertain} onClick={() => setRecordOpen((open) => !open)}>{recordUncertain ? "Recording result unconfirmed" : recordOpen ? "Close recording" : "Record completed encounter"}</Button>{recordOpen ? preset ? <div className="mt-4"><RecordEncounterForm preset={preset} onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} onCreated={() => void handleCreated()} /></div> : <p role="alert" className="mt-3 text-sm text-danger">This context does not provide a supported direct origin and delivery mode for recording.</p> : null}</div>
+              <div className="mt-4 border-t border-border pt-4"><p className="text-sm font-medium text-ink">Counseling Encounter not yet recorded</p><Button className="mt-3" disabled={recordUncertain} onClick={() => setRecordOpen((open) => !open)}>{recordUncertain ? "Recording result unconfirmed" : recordOpen ? "Close recording" : "Record completed encounter"}</Button>{recordOpen ? preset ? <div className="mt-4"><RecordEncounterForm preset={preset} onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} onCreated={() => void handleCreated()} /></div> : <p role="alert" className="mt-3 text-sm text-danger">This interaction cannot be recorded from this page. Review its visit type and delivery mode.</p> : null}</div>
             ) : null}
           </section>
 
@@ -401,13 +401,13 @@ function InventoryContext({ query, overview }: { query: QueryResultWithData<Coun
   const result = query.data?.data;
   if (!result?.available) {
     const unavailable: Record<string, string> = {
-      [CounselingContextInventoryStatus.MISSING]: "No current submitted Individual Inventory is available for this Counseling context.",
-      [CounselingContextInventoryStatus.DRAFT]: "The current Individual Inventory is still a draft and is not available for Counselor review.",
-      [CounselingContextInventoryStatus.SUBMITTED]: "A submitted Individual Inventory is not available for this Counseling context.",
+      [CounselingContextInventoryStatus.MISSING]: "No current submitted Individual Inventory is available for this student.",
+      [CounselingContextInventoryStatus.DRAFT]: "The current Individual Inventory is still a draft and is not available for counselor review.",
+      [CounselingContextInventoryStatus.SUBMITTED]: "A submitted Individual Inventory is not available here.",
     };
     return <p role="status" className="border-y border-border py-5 text-sm text-muted">{unavailable[result?.inventory_source_status ?? CounselingContextInventoryStatus.MISSING]}</p>;
   }
-  if (!result.inventory || result.inventory.status !== "SUBMITTED") return <p role="status" className="border-y border-border py-5 text-sm text-muted">The current submitted Individual Inventory is not available for this Counseling context.</p>;
+  if (!result.inventory || result.inventory.status !== "SUBMITTED") return <p role="status" className="border-y border-border py-5 text-sm text-muted">The current submitted Individual Inventory is not available here.</p>;
   return <InventoryReadOnly inventory={result.inventory} studentIdentity={{ display_name: overview.student.display_name, institutional_id: overview.student.institutional_id }} />;
 }
 
@@ -419,11 +419,11 @@ function SupportContext({ query }: { query: QueryResultWithData<CounselingContex
     const message = result?.inventory_source_status === CounselingContextInventoryStatus.DRAFT
       ? "Support indicators are unavailable because the current Individual Inventory is still a draft."
       : result?.inventory_source_status === CounselingContextInventoryStatus.SUBMITTED
-        ? "Support indicators are unavailable for this Counseling context."
+        ? "Support indicators are unavailable here."
         : "Support indicators are unavailable because no current submitted Individual Inventory is available.";
     return <p role="status" className="border-y border-border py-5 text-sm text-muted">{message}</p>;
   }
-  return result.indicators.length ? <ul className="divide-y divide-border border-y border-border">{result.indicators.map((indicator) => <li key={indicator.code} className="py-3 text-sm text-ink">{indicator.label}</li>)}</ul> : <p className="border-y border-border py-5 text-sm text-muted">No support indicators were returned for this Counseling context.</p>;
+  return result.indicators.length ? <ul className="divide-y divide-border border-y border-border">{result.indicators.map((indicator) => <li key={indicator.code} className="py-3 text-sm text-ink">{indicator.label}</li>)}</ul> : <p className="border-y border-border py-5 text-sm text-muted">No support indicators are recorded.</p>;
 }
 
 function HistoryContext({ query }: { query: QueryResultWithData<CounselingContextHistoryResponse> }) {

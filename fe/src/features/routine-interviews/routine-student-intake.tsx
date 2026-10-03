@@ -425,8 +425,9 @@ export function RoutineStudentIntakeEditor({
           Student Intake
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-          Answer what you would like to share. You may save a draft and return
-          before submitting.
+          Answer what you would like to share. To submit, add at least one
+          written response or select a concern. You may save a draft and return
+          later.
         </p>
       </header>
 

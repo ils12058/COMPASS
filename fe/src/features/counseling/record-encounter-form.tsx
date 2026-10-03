@@ -369,7 +369,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
       ) : null}
 
       {preset && selectedContextStudent ? (
-        <p className="sr-only">Recording is bound to {selectedContextStudent.studentName} and the current Counseling context.</p>
+        <p className="sr-only">This encounter will be recorded for {selectedContextStudent.studentName}.</p>
       ) : null}
     </section>
   );

@@ -109,7 +109,7 @@ function validateDraft(draft: DraftWindow[]): string | null {
         ) {
           return (
             weekdayLabels[weekday] +
-            " contains overlapping windows for the same delivery-mode context."
+            " has overlapping hours for the same delivery mode."
           );
         }
       }

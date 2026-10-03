@@ -196,9 +196,6 @@ export function FeedbackEntryPage() {
                 >
                   Customer Feedback responses
                 </Link>
-                <p className="mt-1 text-sm text-muted">
-                  Search, filter, and read stored Customer Feedback responses.
-                </p>
               </li>
             ) : null}
             {access.canViewCsm ? (
@@ -209,9 +206,6 @@ export function FeedbackEntryPage() {
                 >
                   CSM responses
                 </Link>
-                <p className="mt-1 text-sm text-muted">
-                  Filter and read stored Client Satisfaction Measurement responses.
-                </p>
               </li>
             ) : null}
           </ul>

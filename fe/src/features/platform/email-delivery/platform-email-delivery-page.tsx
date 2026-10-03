@@ -161,7 +161,7 @@ export function PlatformEmailDeliveryPage() {
     <section>
       <PlatformPageHeader
         title="Email delivery"
-        description="Operational delivery state only. Summary and rows update independently while queued deliveries are processed. Recipient identity and message content are not available here."
+        description="Delivery status updates as queued messages are processed. Recipient details and message contents are not shown here."
         action={<Button variant="secondary" disabled={summary.isFetching || deliveries.isFetching} onClick={() => void refreshEmailDelivery()}>{summary.isFetching || deliveries.isFetching ? "Refreshing…" : "Refresh email delivery"}</Button>}
       />
 

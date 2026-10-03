@@ -107,7 +107,7 @@ function StudentInventoryHome() {
           <div className="mt-4 border-y border-border py-5">
             <div className="flex flex-wrap items-center gap-3">
               <h3 className="font-heading text-lg font-semibold text-ink">{current.academic_year.label}</h3>
-              <InventoryStatus status={current.status} correctionPending={current.correction_pending} />
+              <InventoryStatus status={current.status} correctionPending={current.correction_pending} missingLabel="Not started" />
             </div>
 
             {current.status === InventoryStatusValue.MISSING ? (

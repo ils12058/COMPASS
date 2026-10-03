@@ -111,7 +111,7 @@ export function ServiceDetailPage() {
         wasActive
           ? disable.mutateAsync({ serviceId })
           : enable.mutateAsync({ serviceId }),
-      "The Service lifecycle could not be changed.",
+      "The service status could not be changed.",
       {
         onStepUpRequired: () => setLifecycleOpen(false),
         onStepUpVerified: () => setLifecycleOpen(true),
@@ -317,7 +317,7 @@ export function ServiceDetailPage() {
               id="service-lifecycle-heading"
               className="font-heading text-xl font-semibold text-ink"
             >
-              Lifecycle
+              Service status
             </h2>
             <dl className="mt-4 grid gap-5 sm:grid-cols-3">
               <div>

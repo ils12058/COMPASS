@@ -133,11 +133,11 @@ export function ReferralCreatePage() {
 
   return (
     <div className="space-y-7">
-      <ReferralHeading title="Record referral" description="Enter the source Referral details. Date referred, Guidance receipt, and the time COMPASS records this entry remain distinct." backHref="/portal/referrals" />
+      <ReferralHeading title="Record referral" description="Record when the referral was made and when Guidance received it. COMPASS also records when you entered it." backHref="/portal/referrals" />
       <form className="max-w-3xl space-y-8" onSubmit={submit} aria-busy={create.isPending}>
         <section aria-labelledby="referral-student-heading" className="border-b border-border pb-7">
           <h2 id="referral-student-heading" className="font-heading text-xl font-semibold text-ink">Student</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Search Students available for Referrals. College is shown for context.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">Find the student named on the referral. Their college is shown to help you choose the right person.</p>
           <div className="mt-4">
             <EligibleStudentPicker
               label="Choose Student"
@@ -170,7 +170,7 @@ export function ReferralCreatePage() {
             <div className="grid gap-2">
               <Label htmlFor="referral-reason">Reason for referral</Label>
               <Textarea id="referral-reason" required rows={6} maxLength={10_000} value={reason} onChange={(event) => setReason(event.target.value)} />
-              <p className="text-xs text-muted">Source text only. Do not classify severity, diagnosis, or risk.</p>
+              <p className="text-xs text-muted">Copy the reason as written on the referral. Do not add a diagnosis or risk assessment here.</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="referral-referrer-name">Referrer name</Label>

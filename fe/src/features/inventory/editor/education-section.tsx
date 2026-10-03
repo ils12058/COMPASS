@@ -95,7 +95,7 @@ export function EducationSection({
                 });
               }}
             >
-              <option value="">Select an active Program</option>
+              <option value="">Select an active program</option>
               {preserveSnapshot && draft.program_id ? (
                 <option value={draft.program_id}>
                   {programSnapshot
@@ -110,7 +110,7 @@ export function EducationSection({
               ))}
             </Select>
             {programError ? <p id="inventory-program-error" role="alert" className="mt-1.5 text-xs leading-5 text-danger">{programError}</p> : null}
-            {programLookupPending ? <p role="status" className="mt-1.5 text-xs text-muted">Loading active Programs…</p> : null}
+            {programLookupPending ? <p role="status" className="mt-1.5 text-xs text-muted">Loading active programs…</p> : null}
           </div>
           <TextField
             id="inventory-course-currently-enrolled"
@@ -159,7 +159,7 @@ export function EducationSection({
         ) : null}
         {preserveSnapshot && programSnapshot ? (
           <p className="mt-3 text-sm text-warning">
-            The saved Program {programSnapshot.code} · {programSnapshot.name} is no longer available for new selection. Choose an active Program before submission.
+            The saved program {programSnapshot.code} · {programSnapshot.name} is no longer available for new selection. Choose an active program before submission.
           </p>
         ) : null}
 

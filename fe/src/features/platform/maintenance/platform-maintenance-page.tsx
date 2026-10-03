@@ -285,8 +285,8 @@ export function PlatformMaintenancePage() {
     if (confirmation === "disable") {
       return (
         <p>
-          End manual Maintenance Mode? Normal API access will resume after the
-          server confirms this operation.
+          Ordinary COMPASS features will be available again after manual
+          Maintenance Mode ends.
         </p>
       );
     }

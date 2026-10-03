@@ -14,7 +14,7 @@ import type { ReportDisclosureWarning } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 const REPORT_ERROR_COPY: Record<string, string> = {
-  permission_denied: "This report request is outside your current Reports scope.",
+  permission_denied: "This report is unavailable for your assigned reporting area.",
   report_filter_not_found:
     "A selected report filter could not be found. Review the filters and try again.",
   report_configuration_conflict:

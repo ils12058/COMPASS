@@ -35,8 +35,8 @@ import type { OrganizationPersonSummary } from "@/lib/api/generated/model";
 
 function supervisionScopeConsequence(supervisor: OrganizationPersonSummary): string {
   return supervisor.responsibility_scope === "INSTITUTION_WIDE"
-    ? "The Staff member will inherit institution-wide organizational responsibility scope used by COMPASS routing workflows."
-    : "The Staff member will inherit this Counselor's configured organizational responsibility scope used by COMPASS routing workflows.";
+    ? "This staff member will share the counselor's institution-wide responsibilities in COMPASS."
+    : "This staff member will share the counselor's assigned-college responsibilities in COMPASS.";
 }
 
 export function ResponsibilitiesPage() {
@@ -418,9 +418,8 @@ export function ResponsibilitiesPage() {
               Staff supervision
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-              Guidance Services Staff inherit their supervising Counselor&apos;s
-              organizational responsibility scope where COMPASS workflows use
-              that scope.
+              Guidance Services Staff share their supervising counselor&apos;s
+              assigned responsibilities in COMPASS.
             </p>
           </div>
           <Button onClick={() => openStaff()}>Set supervisor</Button>

@@ -36,6 +36,16 @@ export type ParsedGraduateTracerFilters = {
 
 const UUID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
+const FILTER_LABELS: Record<string, string> = {
+  academic_year_id: "academic year",
+  campus_id: "campus",
+  college_id: "college",
+  program_id: "program",
+  year_level: "year level",
+  submitted_from: "submission start date",
+  submitted_to: "submission end date",
+};
+
 function readSingle(
   params: SearchParamReader,
   name: string,
@@ -43,7 +53,7 @@ function readSingle(
 ): string {
   const values = params.getAll(name);
   if (values.length > 1) {
-    errors.push("Use only one " + name.replaceAll("_", " ") + " value.");
+    errors.push("Only one " + (FILTER_LABELS[name] ?? "filter value") + " is allowed.");
   }
   return values[0] ?? "";
 }
@@ -64,9 +74,7 @@ export function validateStudentProfileDraft(
     if (!value) continue;
     if (!UUID_PATTERN.test(value)) {
       errors.push(
-        "Choose a valid " +
-          field.replaceAll("_id", "").replaceAll("_", " ") +
-          ".",
+        "Choose a valid " + FILTER_LABELS[field] + ".",
       );
       continue;
     }

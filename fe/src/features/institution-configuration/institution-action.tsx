@@ -13,10 +13,6 @@ const knownErrors: Record<string, string> = {
     "Check the Academic Year label and try again.",
   institutional_form_not_found:
     "The selected Form Family or Form Revision is no longer available.",
-  institutional_form_conflict:
-    "This Form Revision change conflicts with the current configuration.",
-  invalid_institutional_form_request:
-    "The Form Revision metadata was not accepted. Check the values and try again.",
   permission_denied:
     "You cannot make this institutional change with this account.",
 };

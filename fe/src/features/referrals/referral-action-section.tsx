@@ -50,7 +50,7 @@ export function ReferralActionsSection({
   return (
     <section aria-labelledby="referral-actions-heading" className="border-t border-border py-6">
       <h2 id="referral-actions-heading" className="font-heading text-xl font-semibold text-ink">Actions taken</h2>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">These rows record source Referral history. Recording a row does not place a call, send a letter, or send a notification.</p>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Record actions already taken. Adding an entry here does not place a call, send a letter, or notify the student.</p>
       <ol className="mt-4 divide-y divide-border border-y border-border">
         {actionRows.map((row) => {
           const action = referral.actions.find((item) => item.action_type === row.type);
