@@ -16,7 +16,7 @@ export function GraduateTracerWorkspacePage({ filters }: { filters: GraduateTrac
 
   return (
     <WorkspaceUnavailable title="Graduate Tracer unavailable">
-      Your current access does not include a Graduate Tracer workspace.
+      Graduate Tracer is unavailable to this account.
     </WorkspaceUnavailable>
   );
 }

@@ -10,7 +10,7 @@ export function AccountsGate({ children }: { children: ReactNode }) {
   if (!user.capabilities.includes("accounts.manage")) {
     return (
       <WorkspaceUnavailable title="Accounts unavailable">
-        Your current access does not include managed account administration.
+        Account administration is unavailable to this account.
       </WorkspaceUnavailable>
     );
   }

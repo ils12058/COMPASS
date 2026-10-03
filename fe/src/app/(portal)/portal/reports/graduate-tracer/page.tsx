@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Graduate Tracer Report" };
+
 import { Suspense } from "react";
 
 import { ReportsLoading } from "@/features/reports/reports-shared";

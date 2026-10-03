@@ -37,7 +37,7 @@ export function StudentProfileReportPage() {
   if (!canAttemptReports(user)) {
     return (
       <WorkspaceUnavailable title="Student Profiling unavailable">
-        Your current access does not include Reports.
+        Reports are unavailable to this account.
       </WorkspaceUnavailable>
     );
   }

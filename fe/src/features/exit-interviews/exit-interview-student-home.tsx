@@ -52,7 +52,7 @@ export function ExitInterviewStudentHome({
       <section className="max-w-2xl space-y-5">
         <ExitInterviewHeading title="Exit Interview" />
         <p role="alert" className="border-y border-border py-5 text-sm leading-6 text-muted">
-          Your current access does not allow you to view your Exit Interview records.
+          Your Exit Interview records are unavailable to this account.
         </p>
       </section>
     );
@@ -167,7 +167,7 @@ export function ExitInterviewStudentHome({
               No Exit Interview has been started for the current Academic Year.
               {access.canManageSelf
                 ? " Start only when you are ready to work on the form."
-                : " A current Student account with Exit Interview management access is required to start one."}
+                : " Only current students can start an Exit Interview."}
             </p>
             {access.canManageSelf ? (
               <div className="mt-4 flex flex-wrap items-center gap-3">

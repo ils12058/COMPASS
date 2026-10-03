@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Inventory Record" };
+
 import { InventoryRecordDetail } from "@/features/inventory/counselor/inventory-record-detail";
 
 export default async function InventoryRecordPage({

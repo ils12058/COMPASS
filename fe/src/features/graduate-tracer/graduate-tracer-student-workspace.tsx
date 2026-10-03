@@ -59,7 +59,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
     return (
       <section className="space-y-6">
         <GraduateTracerHeading title="Graduate Tracer Survey" />
-        <p role="alert" className="border-y border-border py-5 text-sm leading-6 text-muted">Your current access does not allow you to view your Graduate Tracer response.</p>
+        <p role="alert" className="border-y border-border py-5 text-sm leading-6 text-muted">Your Graduate Tracer response is unavailable to this account.</p>
       </section>
     );
   }
@@ -80,7 +80,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
         <GraduateTracerHeading
           id="graduate-tracer-student-heading"
           title="Graduate Tracer Survey"
-          description="Your Graduate Tracer response is tied to your COMPASS Student account."
+
           action={<GraduateTracerStatus submitted={submitted} />}
         />
         {response.isError ? <p role="alert" className="border-l-4 border-warning bg-warning/5 px-4 py-3 text-sm text-ink">The latest status could not be refreshed. Showing the last confirmed response.</p> : response.isFetching ? <p role="status" className="text-xs text-muted">Refreshing response status…</p> : null}
@@ -93,7 +93,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
           <GraduateTracerForm key={detail.id} detail={detail} />
         ) : (
           <div className="space-y-5">
-            <p className="border-l-4 border-warning bg-warning/5 px-4 py-3 text-sm leading-6 text-ink">This saved draft is read-only with your current access.</p>
+            <p className="border-l-4 border-warning bg-warning/5 px-4 py-3 text-sm leading-6 text-ink">This saved draft is read-only for this account.</p>
             <GraduateTracerResponse detail={detail} />
           </div>
         )}
@@ -124,7 +124,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
             {needsStatusCheck ? <Button className="mt-3" variant="secondary" onClick={() => void checkResponseStatus()} disabled={response.isFetching}>{response.isFetching ? "Checking…" : "Check response status"}</Button> : null}
           </>
         ) : (
-          <p className="mt-4 text-sm leading-6 text-ink">Your current access does not allow a Graduate Tracer response to be started.</p>
+          <p className="mt-4 text-sm leading-6 text-ink">You cannot start a Graduate Tracer response with this account.</p>
         )}
       </div>
     </section>

@@ -401,7 +401,7 @@ export function ResponsibilitiesPage() {
 
         {!canViewStructure ? (
           <p className="mt-3 text-xs leading-5 text-muted">
-            Your current access does not include Organization structure, so only
+            Organization structure is unavailable to this account, so only
             Colleges that already have a responsible Counselor are listed.
           </p>
         ) : null}

@@ -1,4 +1,4 @@
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 
 const messages: Record<string, string> = {
   csrf_failed: "Your security token expired. Please try again.",
@@ -27,6 +27,6 @@ export function accountErrorCode(error: unknown): string | undefined {
 export function accountErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
-  if (code === "invalid_profile_request") return readApiErrorMessage(error.body) ?? fallback;
+  if (code === "invalid_profile_request") return "Some profile details were not accepted. Review them and try again.";
   return code ? (messages[code] ?? fallback) : fallback;
 }

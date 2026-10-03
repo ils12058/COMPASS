@@ -388,7 +388,7 @@ export function ServiceDetailPage() {
         <p>
           {service.is_active
             ? "The Service will no longer be available for new Appointment scheduling. Scheduling changes such as rescheduling or reassignment may also be unavailable while it remains inactive. Existing Appointment records will remain."
-            : "COMPASS will validate the complete active configuration before enabling this Service. If required configuration is missing, the Service will remain inactive."}
+            : "This service will become available for new appointment scheduling once enabled."}
         </p>
       </ConsequentialActionDialog>
 

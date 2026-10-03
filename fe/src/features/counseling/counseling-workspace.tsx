@@ -27,6 +27,7 @@ import {
   CounselingQueryError,
   CounselingUnavailable,
   CounselingWorkspaceSkeleton,
+  expiredContextEncounterMessage,
   formatCounselingDateTime,
 } from "@/features/counseling/counseling-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -241,11 +242,13 @@ function CounselingWorkspaceContent({
     if (contextExpired) onContextInvalidated(true);
   }, [contextExpired, onContextInvalidated]);
 
+  const expiredEncounterMessage = expiredContextEncounterMessage(Boolean(overview.matching_encounter));
+
   return (
     <div>
-      <CounselingPageHeading title="Counseling workspace" description="Temporary Counseling context is available only around the active interaction and configured review window." action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My Counseling Encounters</Link>} />
+      <CounselingPageHeading title="Counseling workspace" action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My counseling encounters</Link>} />
       {contextExpired ? (
-        <section role="alert" className="border-y border-warning/40 py-5"><h2 className="font-heading text-xl font-semibold text-ink">Counseling context is no longer available</h2><p className="mt-2 text-sm leading-6 text-muted">This temporary Counseling Context is no longer available. Context access is limited to the active Counseling relationship and its configured review window.</p><p className="mt-2 text-sm text-muted">Your assigned Encounter remains available from My Counseling Encounters.</p></section>
+        <section role="alert" className="border-y border-warning/40 py-5"><h2 className="font-heading text-xl font-semibold text-ink">Counseling workspace is no longer available</h2><p className="mt-2 text-sm leading-6 text-muted">These interaction details can no longer be reviewed here.</p>{expiredEncounterMessage ? <p className="mt-2 text-sm text-muted">{expiredEncounterMessage}</p> : null}</section>
       ) : (
         <div className="grid gap-8 xl:grid-cols-[minmax(15rem,0.8fr)_minmax(0,2fr)]">
           <section aria-labelledby="counseling-interaction-heading" className="min-w-0 border-y border-border py-5">
@@ -381,13 +384,13 @@ function ContextOverview({ overview }: { overview: CounselingContextOverviewResp
 
 function RoutineContext({ routine, canManage }: { routine: QueryResultWithData<CounselorRoutineDetailResponse>; canManage: boolean }) {
   if (routine.isPending) return <div aria-busy="true"><span className="sr-only">Loading assigned Routine Interview…</span><Skeleton className="h-12 w-full" /><Skeleton className="mt-3 h-56 w-full" /></div>;
-  if ((routine.isError && !canShowLastKnownData(routine)) || !routine.data?.data) return <CounselingQueryError message={counselingErrorMessage(routine.error, "The Routine Interview could not be loaded within your current access.")} onRetry={() => void routine.refetch()} />;
+  if ((routine.isError && !canShowLastKnownData(routine)) || !routine.data?.data) return <CounselingQueryError message={counselingErrorMessage(routine.error, "The Routine Interview could not be loaded for this account.")} onRetry={() => void routine.refetch()} />;
   const detail = routine.data.data;
   return (
     <div>
-      <div className="mb-5 border-y border-border py-4"><p className="text-sm font-semibold text-ink">Student Intake · {routineIntakeStatusLabel(detail.intake_status)}</p><p className="mt-1 text-sm text-muted">{detail.intake_status === "SUBMITTED" ? "Submitted responses are read-only for Counselors." : "Student-authored responses are protected until submission."}</p></div>
+      <div className="mb-5 border-y border-border py-4"><p className="text-sm font-semibold text-ink">Student Intake · {routineIntakeStatusLabel(detail.intake_status)}</p><p className="mt-1 text-sm text-muted">{detail.intake_status === "SUBMITTED" ? "Submitted responses are read-only for counselors." : "Student responses remain private until submission."}</p></div>
       {detail.intake_status === "SUBMITTED" && detail.intake ? <RoutineStudentIntakeReadOnly intake={detail.intake} /> : <p role="status" className="border-b border-border py-5 text-sm text-muted">Student Intake is still a draft. The Student’s answers become available after they submit their Intake.</p>}
-      {detail.intake_status !== "SUBMITTED" ? <section className="mt-8 border-t border-border pt-5"><h3 className="font-heading text-lg font-semibold text-ink">Counselor Evaluation</h3><p className="mt-2 text-sm text-muted">Counselor Evaluation becomes available after the Student submits the Intake.</p></section> : detail.evaluation_status === "FINALIZED" ? <section className="mt-8 border-t border-border pt-5"><h3 className="font-heading text-lg font-semibold text-ink">Counselor Evaluation</h3><p className="mt-1 text-sm text-muted">Finalized {detail.evaluation_finalized_at ? formatCounselingDateTime(detail.evaluation_finalized_at) : ""} · Read-only</p><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></section> : canManage ? <RoutineCounselorEvaluationWorkspace key={detail.id} routineInterviewId={detail.id} entryMode={detail.entry_mode} initialEvaluation={detail.evaluation} evaluationFinalized={false} /> : <section className="mt-8 border-t border-border pt-5"><h3 className="font-heading text-lg font-semibold text-ink">Counselor Evaluation</h3><p className="mt-1 text-sm text-muted">Draft evaluation · Read-only in your current access.</p><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></section>}
+      {detail.intake_status !== "SUBMITTED" ? <section className="mt-8 border-t border-border pt-5"><h3 className="font-heading text-lg font-semibold text-ink">Counselor Evaluation</h3><p className="mt-2 text-sm text-muted">Counselor evaluation becomes available after the student submits the intake.</p></section> : detail.evaluation_status === "FINALIZED" ? <section className="mt-8 border-t border-border pt-5"><h3 className="font-heading text-lg font-semibold text-ink">Counselor Evaluation</h3><p className="mt-1 text-sm text-muted">Finalized {detail.evaluation_finalized_at ? formatCounselingDateTime(detail.evaluation_finalized_at) : ""} · Read-only</p><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></section> : canManage ? <RoutineCounselorEvaluationWorkspace key={detail.id} routineInterviewId={detail.id} entryMode={detail.entry_mode} initialEvaluation={detail.evaluation} evaluationFinalized={false} /> : <section className="mt-8 border-t border-border pt-5"><h3 className="font-heading text-lg font-semibold text-ink">Counselor Evaluation</h3><p className="mt-1 text-sm text-muted">Draft evaluation · Read-only for this account.</p><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></section>}
     </div>
   );
 }
@@ -450,7 +453,7 @@ function SharedSummariesContext({
     <div className="space-y-8">
       <section aria-labelledby="previous-shared-summaries-heading">
         <h3 id="previous-shared-summaries-heading" className="font-heading text-lg font-semibold text-ink">Previous published summaries</h3>
-        {!access.canViewAssignedSummaries ? <p className="mt-3 text-sm text-muted">Published Shared Summaries are not available in your current access.</p> : items.length ? <ul className="mt-3 divide-y divide-border border-y border-border">{items.map((item) => <li key={item.id} className="py-4"><p className="font-semibold text-ink">Counselor: {item.counselor.display_name}</p><p className="mt-1 text-sm text-muted">Counseling ended {formatCounselingDateTime(item.counseling_ended_at)} · Published {formatCounselingDateTime(item.published_at)}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-ink">{item.content}</p></li>)}</ul> : <p className="mt-3 border-y border-border py-5 text-sm text-muted">No previous published Shared Summaries are available.</p>}
+        {!access.canViewAssignedSummaries ? <p className="mt-3 text-sm text-muted">Published shared summaries are unavailable to this account.</p> : items.length ? <ul className="mt-3 divide-y divide-border border-y border-border">{items.map((item) => <li key={item.id} className="py-4"><p className="font-semibold text-ink">Counselor: {item.counselor.display_name}</p><p className="mt-1 text-sm text-muted">Counseling ended {formatCounselingDateTime(item.counseling_ended_at)} · Published {formatCounselingDateTime(item.published_at)}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-ink">{item.content}</p></li>)}</ul> : <p className="mt-3 border-y border-border py-5 text-sm text-muted">No previous published Shared Summaries are available.</p>}
       </section>
       {encounterId && access.canViewAssignedSummaries ? <section aria-labelledby="current-shared-summary-heading" className="border-t border-border pt-6"><h3 id="current-shared-summary-heading" className="sr-only">This encounter’s Shared Summary</h3><SharedSummarySection encounterId={encounterId} access={access} onPublished={onPublished} /></section> : null}
     </div>

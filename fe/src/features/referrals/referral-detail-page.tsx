@@ -54,7 +54,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
   );
 
   if (!referralAccess.canView) {
-    return <ReferralAccessUnavailable title="Referral unavailable" message="Your current access does not include Referral review." />;
+    return <ReferralAccessUnavailable title="Referral unavailable" message="Referral review is unavailable to this account." />;
   }
   if (referral.isError) {
     if (referralErrorCode(referral.error) === "referral_not_found") {
@@ -119,7 +119,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
           <dd className="mt-1 text-sm text-ink">{item.student_name_snapshot}</dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold text-muted">Course / Year / Block snapshot</dt>
+          <dt className="text-xs font-semibold text-muted">Course / Year / Block on referral</dt>
           <dd className="mt-1 text-sm text-ink">{item.course_year_block_snapshot}</dd>
         </div>
       </RecordSection>
@@ -211,7 +211,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         ) : referralAccess.canManage && isVoided ? (
           <p className="mt-3 text-sm text-muted">This Referral is voided. Its source content and PDF remain available for review.</p>
         ) : (
-          <p className="mt-3 text-sm text-muted">Your current access is read-only for this Referral.</p>
+          <p className="mt-3 text-sm text-muted">You can view this referral, but cannot change it.</p>
         )}
       </section>
     </div>

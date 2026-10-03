@@ -177,10 +177,10 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
         <div className="border-y border-border py-8">
           <p className="text-sm text-muted">
             {filtering
-              ? "No Appointments match the selected filters."
+              ? "No appointments match the selected filters."
               : status === AppointmentStatus.SCHEDULED
-                ? "No scheduled Appointments match this view."
-                : "No Appointments are available."}
+                ? "No scheduled appointments match this view."
+                : "No appointments are available."}
           </p>
           {status !== undefined || upcoming || fromDate || toDate ? (
             <Link

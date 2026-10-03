@@ -40,7 +40,7 @@ export function InventoryRecordDetail({ inventoryId }: { inventoryId: string }) 
   if (!access.canViewRoster) {
     return (
       <WorkspaceUnavailable title="Individual Inventory unavailable">
-        Submitted Inventory detail is available only to Counselors with Individual Inventory review access.
+        You cannot review this submitted Individual Inventory with this account.
       </WorkspaceUnavailable>
     );
   }

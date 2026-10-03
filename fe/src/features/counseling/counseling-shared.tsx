@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import type { CounselingEntryMode, DeliveryMode } from "@/lib/api/generated/model";
 
@@ -16,7 +16,7 @@ export function counselingErrorCode(error: unknown): string | undefined {
 
 const counselingErrors: Record<string, string> = {
   permission_denied: "You do not have permission to use this Counseling action.",
-  counseling_resource_not_found: "This Counseling record is not available within your current access.",
+  counseling_resource_not_found: "This counseling record is unavailable to this account.",
   counseling_invalid_request: "The Counseling request was not valid. Review the information and try again.",
   counseling_invalid_time: "The recorded start and end times are not valid. Review the actual interaction times.",
   counseling_appointment_already_used: "A Counseling Encounter has already been recorded for this Appointment. Refresh the candidates and your encounter list.",
@@ -25,7 +25,7 @@ const counselingErrors: Record<string, string> = {
   counseling_feedback_chronology_conflict: "This completion time cannot be saved because Feedback for this encounter was already made available before the corrected end time.",
   counseling_feedback_provenance_conflict: "This correction cannot be saved because the encounter's Feedback record is inconsistent. The record needs administrative review.",
   counseling_service_not_configured: "Counseling cannot be recorded because the Counseling Service is not configured.",
-  counseling_not_permitted: "This Counseling action is not available within your current access.",
+  counseling_not_permitted: "You cannot complete this counseling action with this account.",
   counseling_context_not_found: "This temporary Counseling Context is no longer available.",
   current_academic_year_not_configured: "The current Academic Year is not configured for this Counseling workflow.",
   shared_summary_not_found: "No Shared Summary has been drafted yet.",
@@ -37,7 +37,13 @@ export function counselingErrorMessage(error: unknown, fallback: string): string
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
   if (code && counselingErrors[code]) return counselingErrors[code];
-  return readApiErrorMessage(error.body) ?? fallback;
+  return fallback;
+}
+
+export function expiredContextEncounterMessage(hasEncounter: boolean): string | null {
+  return hasEncounter
+    ? "The recorded encounter remains available from My counseling encounters."
+    : null;
 }
 
 export function formatCounselingDateTime(value: string | null | undefined): string {
@@ -84,7 +90,7 @@ export function CounselingPageHeading({
 }
 export function CounselingUnavailable({
   title = "Counseling unavailable",
-  children = "Your current access does not include this Counseling workspace.",
+  children = "Counseling is unavailable to this account.",
 }: {
   title?: string;
   children?: ReactNode;

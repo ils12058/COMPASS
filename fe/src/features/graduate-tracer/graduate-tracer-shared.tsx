@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 
 export function graduateTracerErrorCode(error: unknown): string | undefined {
   return error instanceof CompassApiError ? readApiErrorCode(error.body) : undefined;
@@ -17,15 +17,15 @@ export function graduateTracerErrorMessage(error: unknown, fallback: string): st
     case "graduate_tracer_not_found":
       return "The Graduate Tracer response could not be found or is no longer available.";
     case "graduated_student_required":
-      return "Starting, editing, or submitting requires the Student lifecycle to be Graduated.";
+      return "Only graduates can start, edit, or submit a Graduate Tracer response.";
     case "graduate_tracer_conflict":
       return "The response changed or became unavailable before this action completed. Check its current status before continuing.";
     case "invalid_graduate_tracer_request":
-      return readApiErrorMessage(error.body) ?? "Review the survey answers and correct the invalid values.";
+      return "Review the survey answers and correct the invalid values.";
     case "permission_denied":
-      return "Your current access does not allow this Graduate Tracer action.";
+      return "You cannot complete this Graduate Tracer action with this account.";
     default:
-      return readApiErrorMessage(error.body) ?? fallback;
+      return fallback;
   }
 }
 

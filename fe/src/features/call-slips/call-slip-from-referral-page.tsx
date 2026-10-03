@@ -223,7 +223,7 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
 
         <section aria-labelledby="linked-call-slip-details-heading" className="border-b border-border pb-7">
           <h2 id="linked-call-slip-details-heading" className="font-heading text-xl font-semibold text-ink">Call Slip details</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Student and Referral are fixed. Course / Year is prefilled from the Referral snapshot but remains editable to reflect the Call Slip source.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">Student and Referral are fixed. Course / Year is prefilled from the referral and can be changed to match the Call Slip.</p>
           <div className="mt-5"><CallSlipFormFields draft={draft} onChange={setDraft} /></div>
         </section>
 
@@ -264,8 +264,8 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
 
       <ConsequentialActionDialog
         open={confirmOpen}
-        title="Confirm linked Call Slip issuance"
-        confirmLabel="Confirm and issue"
+        title="Issue linked Call Slip?"
+        confirmLabel="Issue Call Slip"
         cancelLabel="Review details"
         pendingLabel="Issuing…"
         pending={create.isPending}

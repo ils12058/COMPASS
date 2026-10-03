@@ -15,7 +15,7 @@ import type {
   RoutineInventoryContext,
   RoutinePersonSummary,
 } from "@/lib/api/generated/model";
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import {
   formatInstitutionalDateTime,
   INSTITUTION_TIME_ZONE,
@@ -89,9 +89,9 @@ const routineErrors: Record<string, string> = {
   current_student_required:
     "Only a current Student can start or update a Routine Interview.",
   routine_interview_not_found:
-    "This Routine Interview is not available in your current access.",
+    "This Routine Interview is unavailable to this account.",
   routine_interview_not_permitted:
-    "This Routine Interview is not available in your current access.",
+    "This Routine Interview is unavailable to this account.",
   routine_interview_inventory_required:
     "A submitted Individual Inventory for the current Academic Year is required before starting an Appointment-backed Routine Interview.",
   routine_interview_appointment_invalid:
@@ -123,7 +123,7 @@ export function routineErrorMessage(
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
   if (code && routineErrors[code]) return routineErrors[code];
-  return readApiErrorMessage(error.body) ?? fallback;
+  return fallback;
 }
 
 export function RoutinePageHeading({
@@ -356,7 +356,7 @@ export function RoutineInterviewDetailSkeleton() {
 }
 
 export function RoutineUnavailable({
-  message = "Your current access does not include a Routine Interview workspace.",
+  message = "Routine Interviews are unavailable to this account.",
 }: {
   message?: string;
 }) {

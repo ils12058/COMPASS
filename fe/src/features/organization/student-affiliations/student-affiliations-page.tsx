@@ -223,7 +223,7 @@ export function StudentAffiliationsPage() {
 
       {!canViewStructure ? (
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-          Your current access does not include Organization structure, so
+          Organization structure is unavailable to this account, so
           College choices for new or changed affiliations are unavailable.
           Existing affiliations are still listed.
         </p>

@@ -143,7 +143,7 @@ function StudentInventoryHome() {
                 <p className="text-sm leading-6 text-muted">
                   {access.canManageSelf
                     ? "Your saved progress is a draft. You can continue editing and save it before submission."
-                    : "This annual record is a draft. Your current Student lifecycle does not allow further changes."}
+                    : "This annual record is a draft. You can view it, but can no longer change it."}
                 </p>
                 <Link
                   href="/portal/inventory/current"

@@ -59,7 +59,7 @@ function RecordStatus({ workspace, canManage }: { workspace: CounselorWorkspaceR
     return <section aria-labelledby="e-counseling-encounter-heading" className="border-t border-border pt-5"><h2 id="e-counseling-encounter-heading" className="font-heading text-lg font-semibold text-ink">Counseling Encounter</h2><p className="mt-2 text-sm text-ink">Encounter recorded.</p><Link className="mt-3 inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href={`/portal/counseling/encounters/${workspace.counseling_encounter.id}`}>View encounter</Link></section>;
   }
 
-  return <section aria-labelledby="e-counseling-encounter-heading" className="border-t border-border pt-5"><h2 id="e-counseling-encounter-heading" className="font-heading text-lg font-semibold text-ink">Counseling Encounter</h2><p className="mt-2 text-sm text-muted">No Encounter has been recorded for this session yet. Recording an Encounter is separate from media consent and capture.</p>{canManage ? open ? <div className="mt-4 border-y border-border py-5"><RecordEncounterForm preset={preset} onCancel={() => setOpen(false)} onUncertain={() => setUncertain(true)} onCreated={() => void handleCreated()} /></div> : <Button className="mt-3" disabled={uncertain} onClick={() => setOpen(true)}>{uncertain ? "Recording result unconfirmed" : "Record completed encounter"}</Button> : null}</section>;
+  return <section aria-labelledby="e-counseling-encounter-heading" className="border-t border-border pt-5"><h2 id="e-counseling-encounter-heading" className="font-heading text-lg font-semibold text-ink">Counseling Encounter</h2><p className="mt-2 text-sm text-muted">No counseling encounter has been recorded for this session yet. Recording one is separate from media consent and capture.</p>{canManage ? open ? <div className="mt-4 border-y border-border py-5"><RecordEncounterForm preset={preset} onCancel={() => setOpen(false)} onUncertain={() => setUncertain(true)} onCreated={() => void handleCreated()} /></div> : <Button className="mt-3" disabled={uncertain} onClick={() => setOpen(true)}>{uncertain ? "Recording result unconfirmed" : "Record completed encounter"}</Button> : null}</section>;
 }
 
 function SessionPageHeader({ title, description }: { title: string; description: string }) {
@@ -152,7 +152,7 @@ export function ECounselingWorkspace({ appointmentId }: { appointmentId: string 
   const { user } = usePortalSession();
   const access = getECounselingAccess(user);
   if (!access.hasWorkspace) {
-    return <WorkspaceUnavailable title="E-Counseling unavailable">This session is not available within your current access.</WorkspaceUnavailable>;
+    return <WorkspaceUnavailable title="E-Counseling unavailable">This session is unavailable to this account.</WorkspaceUnavailable>;
   }
   return access.isStudent
     ? <StudentWorkspace appointmentId={appointmentId} access={access} />

@@ -156,7 +156,7 @@ export function EncounterCorrectionForm({
           {currentAppointmentAvailable ? <option value={encounter.appointment?.id}>{encounter.appointment?.reference_code} · current link</option> : null}
           {items.map((item) => <option key={item.id} value={item.id}>{item.reference_code} · {formatCounselingDateTime(item.starts_at)} · {counselingDeliveryModeLabel(item.delivery_mode)} · {appointmentStatusLabel(item.status)}</option>)}
         </Select>
-        {!candidates.isPending && !candidates.isError && items.length === 0 && !encounter.appointment ? <p className="mt-2 text-sm text-muted">No Appointment candidates are available for this Encounter.</p> : null}
+        {!candidates.isPending && !candidates.isError && items.length === 0 && !encounter.appointment ? <p className="mt-2 text-sm text-muted">No appointment candidates are available for this encounter.</p> : null}
         {!candidates.isPending && !candidates.isError ? <CanonicalPagination label="Appointment candidate pages" page={candidates.data?.data.page ?? page} hasNext={candidates.data?.data.has_next ?? false} onPageChange={setPage} /> : null}
         <p className="mt-2 text-xs text-muted">Selected: {selectedLabel}</p>
       </div>

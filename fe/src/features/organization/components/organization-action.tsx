@@ -6,7 +6,6 @@ import { StepUpDialog } from "@/features/account/security/security-shared";
 import {
   CompassApiError,
   readApiErrorCode,
-  readApiErrorMessage,
 } from "@/lib/api/errors";
 
 const knownErrors: Record<string, string> = {
@@ -25,15 +24,7 @@ export function organizationErrorMessage(
 ): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
-  const backendMessage = readApiErrorMessage(error.body);
-  if (
-    code === "organization_conflict" ||
-    code === "invalid_organization_request" ||
-    code === "organization_not_found"
-  ) {
-    return backendMessage ?? knownErrors[code] ?? fallback;
-  }
-  return (code && knownErrors[code]) || backendMessage || fallback;
+  return (code && knownErrors[code]) || fallback;
 }
 
 export function useOrganizationAction() {

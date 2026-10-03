@@ -66,7 +66,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
       {item.state === CallSlipLifecycleStateValue.VOIDED ? <div role="status" className="border-y border-warning/30 py-4"><p className="font-semibold text-warning">Withdrawn</p><p className="mt-1 text-sm text-ink">This Call Slip is no longer active.</p></div> : null}
       <RecordSection title="Permit details">
         <Field label="Student identity" value={item.student.display_name} />
-        <Field label="Name on source Call Slip" value={item.student_name_snapshot} />
+        <Field label="Name on Call Slip" value={item.student_name_snapshot} />
         <Field label="Course / Year" value={item.course_year_snapshot} />
         <Field label="Please report to" value={callSlipDestinationLabel(item.destination_type, item.other_destination)} />
         <Field label="Date and time to report" value={formatInstitutionalDateTime(item.report_at)} />
@@ -76,7 +76,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <p className="mt-3 max-w-3xl text-sm leading-6 text-ink">Please show this permit to your instructor/professor and proceed to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
       </section>
       <RecordSection title="Issuance and status">
-        <Field label="Guidance Counselor issuer (source snapshot)" value={item.issued_by_name_snapshot} />
+        <Field label="Issuing Guidance Counselor" value={item.issued_by_name_snapshot} />
         <Field label="State" value={callSlipStateLabel(item.state, true)} />
         <Field label="Current issuer account" value={item.issued_by.display_name} />
         <Field label="Interview ended" value={formatInstitutionalDateTime(item.interview_ended_at)} />
@@ -111,7 +111,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         </div>
       ) : null}
       <RecordSection title="Permit details">
-        <Field label="Student on source Call Slip" value={item.student_name_snapshot} />
+        <Field label="Student on Call Slip" value={item.student_name_snapshot} />
         <Field label="Current Student identity" value={item.student.display_name} />
         {item.student_institutional_id ? <Field label="Institutional ID" value={item.student_institutional_id} /> : null}
         <Field label="Course / Year" value={item.course_year_snapshot} />
@@ -123,7 +123,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <p className="mt-3 max-w-3xl text-sm leading-6 text-ink">The Student should show this permit to their instructor/professor and proceed to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
       </section>
       <RecordSection title="Issuance and recordkeeping">
-        <Field label="Issuer name on source Call Slip" value={item.issued_by_name_snapshot} />
+        <Field label="Issuer name on Call Slip" value={item.issued_by_name_snapshot} />
         <Field label="Current issuer account" value={item.issued_by.display_name} />
         <Field label="Recorded by" value={item.recorded_by?.display_name ?? "Not separately recorded"} />
         <Field label="Issuance mode" value={callSlipIssuanceModeLabels[item.issuance_mode]} />
@@ -138,7 +138,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
           <h2 id="linked-referral-heading" className="font-heading text-xl font-semibold text-ink">Linked Referral</h2>
           {referralAccess.canView ? (
             <Link href={`/portal/referrals/${item.referral.id}`} className="mt-3 inline-block font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open linked Referral {item.referral.reference_code}</Link>
-          ) : <p className="mt-3 text-sm text-muted">A linked Referral exists, but its reference is unavailable in your current access.</p>}
+          ) : <p className="mt-3 text-sm text-muted">A linked referral exists, but its reference is unavailable to this account.</p>}
         </section>
       ) : null}
       {!slip.isError ? <CallSlipLifecycleActions slip={item} onRefresh={async () => {

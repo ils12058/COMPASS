@@ -13,7 +13,7 @@ export function PrivacyGovernanceGate({ children }: { children: ReactNode }) {
 
   return (
     <WorkspaceUnavailable title="Privacy Governance unavailable">
-      Your current access does not include Privacy Governance.
+      Privacy Governance is unavailable to this account.
     </WorkspaceUnavailable>
   );
 }

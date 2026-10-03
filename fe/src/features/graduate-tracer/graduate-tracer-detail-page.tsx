@@ -21,7 +21,7 @@ export function GraduateTracerDetailPage({ responseId }: { responseId: string })
     return (
       <section className="space-y-6">
         <GraduateTracerHeading title="Graduate Tracer response" />
-        <p role="alert" className="border-y border-border py-5 text-sm leading-6 text-muted">Your current access does not allow you to view submitted Graduate Tracer responses.</p>
+        <p role="alert" className="border-y border-border py-5 text-sm leading-6 text-muted">Submitted Graduate Tracer responses are unavailable to this account.</p>
       </section>
     );
   }

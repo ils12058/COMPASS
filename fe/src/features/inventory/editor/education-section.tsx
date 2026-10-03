@@ -154,7 +154,7 @@ export function EducationSection({
         ) : null}
         {!programDiscoveryAllowed ? (
           <InventoryNotice tone="warning" role="status">
-            Program choices are not available with your current access. Saved Program data is preserved; you can continue editing and save progress.
+            Program choices are unavailable to this account. Your saved program information remains, and you can continue editing.
           </InventoryNotice>
         ) : null}
         {preserveSnapshot && programSnapshot ? (

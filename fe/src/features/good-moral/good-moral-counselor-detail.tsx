@@ -64,7 +64,7 @@ export function GoodMoralCounselorDetail({
         <div>
           <Link href="/portal/good-moral" className="mb-3 inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Good Moral queue</Link>
           <h1 id="good-moral-counselor-detail-heading" className="font-heading text-3xl font-bold text-ink">Good Moral request</h1>
-          <p className="mt-2 text-sm text-muted">{goodMoralVariantLabel(item.variant)} certificate</p>
+          <p className="mt-2 text-sm text-muted">{item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)} certificate` : `${goodMoralVariantLabel(item.variant)} request`}</p>
         </div>
         <GoodMoralStatus status={item.status} />
       </div>

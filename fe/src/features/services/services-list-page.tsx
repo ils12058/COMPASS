@@ -179,7 +179,7 @@ export function ServicesListPage() {
       ) : list.data.data.items.length === 0 ? (
         <p className="border-b border-border py-10 text-sm text-muted">
           {hasFilters
-            ? "No Services match the current search or filters."
+            ? "No services match the current search or filters."
             : canManage && includeInactive
               ? "No Services are configured yet."
               : "No active Services are currently available."}

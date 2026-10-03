@@ -56,24 +56,6 @@ const baseFieldLabels: PrivacyFieldLabels = {
   requires_acknowledgment: "Require acknowledgment",
 };
 
-function sentence(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return trimmed;
-  const capitalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-  return /[.!?]$/.test(capitalized) ? capitalized : capitalized + ".";
-}
-
-function translateInput(message: string, labels: PrivacyFieldLabels): string {
-  const known = inputCopy[message];
-  if (known) return known;
-  const match = /^([a-z_]+)(\b.*)$/.exec(message);
-  if (match) {
-    const label = labels[match[1]] ?? baseFieldLabels[match[1]];
-    if (label) return sentence(`“${label}”${match[2]}`);
-  }
-  return sentence(message);
-}
-
 function validationField(body: unknown): string | undefined {
   if (!body || typeof body !== "object" || !("error" in body)) return undefined;
   const error = (body as { error: unknown }).error;
@@ -100,13 +82,15 @@ export function privacyErrorMessage(
     case "recent_mfa_required":
       return "Recent authenticator verification is required.";
     case "permission_denied":
-      return "Your current access does not allow this Privacy Governance action.";
+      return "You cannot complete this privacy action with this account.";
     case "privacy_record_not_found":
       return "This privacy record is no longer available. Refresh and try again.";
     case "privacy_governance_conflict":
-      return message ? sentence(message) : fallback;
+      return "This privacy record changed before the action completed. Refresh it and review its current state.";
     case "invalid_privacy_governance_input":
-      return message ? translateInput(message, labels) : fallback;
+      return Object.hasOwn(inputCopy, message)
+        ? inputCopy[message]
+        : "Some privacy record details were not accepted. Review them and try again.";
     case "validation_error": {
       const field = validationField(error.body);
       const label = field ? labels[field] ?? baseFieldLabels[field] : undefined;

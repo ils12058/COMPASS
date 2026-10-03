@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "CSM Responses" };
+
 import { Suspense } from "react";
 
 import { FeedbackListSkeleton } from "@/features/feedback/feedback-shared";

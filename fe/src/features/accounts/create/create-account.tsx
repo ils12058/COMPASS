@@ -237,7 +237,7 @@ export function CreateAccount() {
                 : "This account will be created disabled and cannot sign in until enabled."}
             </p>
             {review.role === RoleCode.STUDENT ? (
-              <p>New Student accounts begin with Current Student lifecycle status.</p>
+              <p>New student accounts start with current student status.</p>
             ) : null}
           </>
         ) : null}

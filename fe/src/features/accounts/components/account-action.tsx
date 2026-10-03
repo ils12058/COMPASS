@@ -12,7 +12,7 @@ import {
   getAccountsListDesignationsQueryKey,
   getAccountsListQueryKey,
 } from "@/lib/api/generated/accounts/accounts";
-import { CompassApiError, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError } from "@/lib/api/errors";
 
 const knownErrors: Record<string, string> = {
   permission_denied: "You do not have permission to manage accounts.",
@@ -34,7 +34,7 @@ export function managedAccountError(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = accountErrorCode(error);
   if (code && knownErrors[code]) return knownErrors[code];
-  return readApiErrorMessage(error.body) ?? fallback;
+  return fallback;
 }
 
 export function useManagedAction() {

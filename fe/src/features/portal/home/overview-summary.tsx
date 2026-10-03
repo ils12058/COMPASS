@@ -17,7 +17,7 @@ function EmailDeliveryLine({ status }: { status: EmailDeliveryStatus }) {
         </span>
         <span aria-hidden="true"> · </span>
         {status.pending} pending
-        {status.duePending > 0 ? ` (${status.duePending} due now)` : null}
+        {status.duePending > 0 ? ` (${status.duePending} due for a delivery attempt)` : null}
         <span aria-hidden="true"> · </span>
         {status.sentToday} sent today
       </p>

@@ -128,11 +128,11 @@ const actionNames: Record<keyof AppointmentActionsResponse, string> = {
 // NOT_PERMITTED and NOT_SCHEDULED are not explained here: the actor's access and the
 // status badge already say why nothing can be changed.
 const blockerExplanations: Partial<Record<AppointmentActionBlocker, string>> = {
-  [AppointmentActionBlocker.ALREADY_STARTED]: "The Appointment has already started.",
-  [AppointmentActionBlocker.NOT_STARTED]: "Available once the Appointment starts.",
-  [AppointmentActionBlocker.NOT_ENDED]: "Available once the Appointment ends.",
-  [AppointmentActionBlocker.CUTOFF_PASSED]: "The self-service cutoff saved with this Appointment has passed.",
-  [AppointmentActionBlocker.CURRENT_STUDENT_REQUIRED]: "Only a current Student can reschedule an Appointment.",
+  [AppointmentActionBlocker.ALREADY_STARTED]: "The appointment has already started.",
+  [AppointmentActionBlocker.NOT_STARTED]: "Available once the appointment starts.",
+  [AppointmentActionBlocker.NOT_ENDED]: "Available once the appointment ends.",
+  [AppointmentActionBlocker.CUTOFF_PASSED]: "The deadline to change this appointment has passed.",
+  [AppointmentActionBlocker.CURRENT_STUDENT_REQUIRED]: "Only a current student can reschedule an appointment.",
   [AppointmentActionBlocker.ECOUNSELING_ROOM_LINKED]: "An E-Counseling room is already linked to this Appointment.",
   [AppointmentActionBlocker.ECOUNSELING_ACCESS_STARTED]: "This Appointment can no longer be cancelled because its online counseling access period has begun.",
   [AppointmentActionBlocker.ECOUNSELING_ACCESS_OPEN]: "Wait until the online counseling access or rejoin period has ended.",
@@ -171,22 +171,22 @@ function ActionConfirmation({
     cancel: {
       title: `Cancel Appointment ${referenceCode}?`,
       description: selfCancellation
-        ? "This will cancel the scheduled Appointment. The saved self-service cutoff and Appointment lifecycle rules still apply."
-        : "This will administratively cancel the scheduled Appointment in your authorized scope. Recent authenticator verification may be required.",
+        ? "This scheduled appointment will be cancelled. You can still view it in your appointment history."
+        : "This scheduled appointment will be cancelled. You can still view its record afterward.",
       confirm: "Cancel appointment",
       pending: "Cancelling…",
       variant: "danger",
     },
     complete: {
       title: `Complete Appointment ${referenceCode}?`,
-      description: "This marks the scheduled Appointment as completed. COMPASS checks its status and timing before saving.",
+      description: "This appointment will be marked completed and will no longer be scheduled.",
       confirm: "Complete appointment",
       pending: "Completing…",
       variant: "primary",
     },
     "no-show": {
       title: `Mark Appointment ${referenceCode} as no-show?`,
-      description: "This marks the scheduled Appointment as no-show. COMPASS checks its end time and related records before saving.",
+      description: "This appointment will be marked no-show and will no longer be scheduled.",
       confirm: "Mark no-show",
       pending: "Marking no-show…",
       variant: "danger",
@@ -510,7 +510,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted">
             {notFound
-              ? "This Appointment is not available within your current access."
+              ? "This appointment is unavailable to this account."
               : appointmentErrorMessage(appointmentQuery.error, "Appointment details could not be loaded.")}
           </p>
           <Button className="mt-4" variant="secondary" onClick={() => void appointmentQuery.refetch()}>Retry</Button>
@@ -567,7 +567,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       </div>
 
       <dl className="grid gap-x-8 gap-y-5 border-b border-border py-6 sm:grid-cols-2 lg:grid-cols-3">
-        <div><dt className="text-xs font-semibold text-muted">Service</dt><dd className="mt-1 text-sm text-ink">{appointment.service.name}<span className="ml-2 font-mono text-xs text-muted">{appointment.service.code}</span></dd></div>
+        <div><dt className="text-xs font-semibold text-muted">Service</dt><dd className="mt-1 text-sm text-ink">{appointment.service.name}</dd></div>
         {!access.isStudent ? (
           <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 break-words text-sm text-ink">{appointment.student.display_name}</dd>{appointment.student.institutional_id ? <dd className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</dd> : null}</div>
         ) : null}
@@ -734,7 +734,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
             <Button className="mt-3" variant="secondary" onClick={() => void historyQuery.refetch()}>Retry history</Button>
           </div>
         ) : historyItems.length === 0 ? (
-          <p className="mt-4 border-y border-border py-5 text-sm text-muted">No Appointment history entries are available.</p>
+          <p className="mt-4 border-y border-border py-5 text-sm text-muted">No appointment history entries are available.</p>
         ) : (
           <ol className="mt-4 divide-y divide-border border-y border-border">
             {historyItems.map((entry, index) => (

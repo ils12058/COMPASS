@@ -46,7 +46,7 @@ function StudentExitInterviewDetail({
       return (
         <div className="space-y-5">
           <Link href="/portal/exit-interviews" className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Exit Interviews</Link>
-          <ExitInterviewUnavailable title="Exit Interview unavailable" message="Your current access does not allow you to view this Exit Interview." />
+          <ExitInterviewUnavailable title="Exit Interview unavailable" message="This Exit Interview is unavailable to this account." />
         </div>
       );
     }
@@ -92,11 +92,11 @@ function StudentExitInterviewDetail({
         </p>
       ) : record.status === "DRAFT" && !isCurrentStudent ? (
         <p role="status" className="border-l-4 border-warning bg-warning/5 px-4 py-3 text-sm leading-6 text-ink">
-          This historical draft remains available to view, but correction is unavailable under the current Student lifecycle policy.
+          You can view this historical draft, but can no longer change it.
         </p>
       ) : record.status === "DRAFT" ? (
         <p role="status" className="border-l-4 border-border bg-surface-muted px-4 py-3 text-sm leading-6 text-muted">
-          This draft is read-only because current Exit Interview management access is not available.
+          You can view this draft, but cannot change it with this account.
         </p>
       ) : null}
       <ExitInterviewResponse
@@ -147,7 +147,7 @@ function HeadExitInterviewDetail({
       return (
         <section className="space-y-5">
           <Link href="/portal/exit-interviews" className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Exit Interview queue</Link>
-          <ExitInterviewUnavailable title="Exit Interview unavailable" message="Your current access does not allow you to review this Exit Interview." />
+          <ExitInterviewUnavailable title="Exit Interview unavailable" message="You cannot review this Exit Interview with this account." />
         </section>
       );
     }
@@ -214,7 +214,7 @@ export function ExitInterviewDetailPage({
 
   if (access.isStudent) {
     if (!access.canViewSelf) {
-      return <ExitInterviewUnavailable title="Exit Interview unavailable" message="Your current access does not include your Exit Interview records." />;
+      return <ExitInterviewUnavailable title="Exit Interview unavailable" message="Your Exit Interview records are unavailable to this account." />;
     }
     return (
       <StudentExitInterviewDetail
@@ -229,5 +229,5 @@ export function ExitInterviewDetailPage({
     return <HeadExitInterviewDetail exitInterviewId={exitInterviewId} canReopen={access.canReopen} />;
   }
 
-  return <ExitInterviewUnavailable title="Exit Interview unavailable" message="Your current access does not include the Exit Interview review workspace." />;
+  return <ExitInterviewUnavailable title="Exit Interview unavailable" message="Exit Interview review is unavailable to this account." />;
 }

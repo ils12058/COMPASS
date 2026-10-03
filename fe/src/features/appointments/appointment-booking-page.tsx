@@ -260,8 +260,8 @@ function BookingWorkspace() {
         ) : serviceItems.length === 0 ? (
           <p className="mt-5 border-y border-border py-6 text-sm text-muted">
             {serviceSearch.trim()
-              ? "No Appointment services match your search."
-              : "No Appointment services are currently available."}
+              ? "No appointment services match your search."
+              : "No appointment services are currently available."}
           </p>
         ) : (
           <>
@@ -281,7 +281,6 @@ function BookingWorkspace() {
                     >
                       <span className="flex flex-wrap items-baseline justify-between gap-2">
                         <span className="font-semibold text-ink">{item.name}</span>
-                        <span className="font-mono text-xs text-muted">{item.code}</span>
                       </span>
                       <span className="mt-1 block max-w-4xl text-sm leading-6 text-muted">{item.description || "No description provided."}</span>
                       <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
@@ -478,7 +477,9 @@ export function AppointmentBookingPage() {
         <h1 id="appointment-booking-unavailable-heading" className="font-heading text-3xl font-bold text-ink">Booking unavailable</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
           {access.isStudent
-            ? "Only a current Student with Appointment self-management access can book. Existing Appointments remain available from My Appointments."
+            ? access.canViewSelf
+              ? "Only current students can book appointments. You can still view your existing appointments."
+              : "Booking is unavailable to this account."
             : "Student self-booking is not available to this account."}
         </p>
         {access.canViewSelf ? (

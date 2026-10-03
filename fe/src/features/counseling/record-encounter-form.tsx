@@ -34,10 +34,7 @@ import {
   useCounselingListStudents,
 } from "@/lib/api/generated/counseling/counseling";
 import { CompassApiError } from "@/lib/api/errors";
-import {
-  INSTITUTION_TIME_ZONE_LABEL,
-  institutionalDateTimeInputToISO,
-} from "@/lib/institutional-time";
+import { institutionalDateTimeInputToISO } from "@/lib/institutional-time";
 
 type Source = "appointment" | "direct";
 
@@ -290,7 +287,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
       {!preset && source === "direct" ? (
         <div className="mt-5 space-y-5">
           {creationOptions.isPending ? <div aria-busy="true"><Skeleton className="h-12 w-full" /></div> : creationOptions.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(creationOptions.error, "Counseling recording options could not be loaded.")}</p> : options ? (
-            <div><p className="text-sm text-muted">Service: <span className="font-medium text-ink">{options.service.name} · {options.service.code}</span></p>{options.delivery_modes.length === 0 ? <p role="status" className="mt-2 text-sm text-warning">No delivery mode is currently configured for this Counseling Service.</p> : null}</div>
+            <div><p className="text-sm text-muted">Service: <span className="font-medium text-ink">{options.service.name}</span></p>{options.delivery_modes.length === 0 ? <p role="status" className="mt-2 text-sm text-warning">No delivery mode is currently configured for this Counseling Service.</p> : null}</div>
           ) : null}
           <form className="grid gap-2 sm:max-w-xl" onSubmit={(event) => { event.preventDefault(); setStudentQuery(studentSearch.trim()); setPage(1); setSelectedStudentId(""); setSelectedStudentRecord(null); setStartedAt(""); setEndedAt(""); setError(null); }}>
             <Label htmlFor="counseling-student-search">Search for a Student</Label>
@@ -299,7 +296,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
               <Button type="submit" variant="secondary">Search</Button>
             </div>
           </form>
-          {students.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Student candidates…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : students.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(students.error, "Student candidates could not be loaded.")}</p> : studentItems.length === 0 ? <p className="border-y border-border py-4 text-sm text-muted">No Students match this search.</p> : (
+          {students.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Student candidates…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : students.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(students.error, "Student candidates could not be loaded.")}</p> : studentItems.length === 0 ? <p className="border-y border-border py-4 text-sm text-muted">No students match this search.</p> : (
             <>
               <ul className="divide-y divide-border border-y border-border" aria-label="Student candidates">
                 {studentItems.map((student) => (

@@ -77,9 +77,9 @@ export function StudentSharedSummaryDetail({ summaryId }: { summaryId: string })
   const access = getCounselingAccess(user);
   const query = useCounselingGetMySharedSummary(summaryId, { query: { enabled: access.canViewOwnSummaries, retry: false } });
   const summary = query.data?.data;
-  if (!access.canViewOwnSummaries) return <CounselingUnavailable title="Counseling summary unavailable">This shared summary is not available within your current access.</CounselingUnavailable>;
+  if (!access.canViewOwnSummaries) return <CounselingUnavailable title="Counseling summary unavailable">This shared summary is unavailable to this account.</CounselingUnavailable>;
   if (query.isPending) return <SharedSummaryDetailSkeleton />;
-  if (query.isError || !summary) return <div><CounselingPageHeading title="Counseling summary" /><CounselingQueryError message={counselingErrorMessage(query.error, "This shared summary is not available within your current access.")} onRetry={() => void query.refetch()} /></div>;
+  if (query.isError || !summary) return <div><CounselingPageHeading title="Counseling summary" /><CounselingQueryError message={counselingErrorMessage(query.error, "This shared summary is unavailable to this account.")} onRetry={() => void query.refetch()} /></div>;
 
   return (
     <article className="max-w-4xl">

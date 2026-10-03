@@ -9,7 +9,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   CompassApiError,
   readApiErrorCode,
-  readApiErrorMessage,
 } from "@/lib/api/errors";
 import type { ReportDisclosureWarning } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
@@ -30,12 +29,7 @@ const REPORT_ERROR_COPY: Record<string, string> = {
 export function reportErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
-  const backendMessage = readApiErrorMessage(error.body);
-  const safeBackendMessage =
-    error.status >= 400 && error.status < 500 && backendMessage?.trim()
-      ? backendMessage.trim()
-      : undefined;
-  return (code && REPORT_ERROR_COPY[code]) || safeBackendMessage || fallback;
+  return (code && REPORT_ERROR_COPY[code]) || fallback;
 }
 
 export function isReportScopeDenied(error: unknown): boolean {

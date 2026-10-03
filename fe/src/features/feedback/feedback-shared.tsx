@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 const feedbackOpportunityIdPattern =
@@ -17,7 +17,6 @@ export function feedbackOpportunityId(value: string | null): string | null {
 export function feedbackErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
-  const message = readApiErrorMessage(error.body);
   const known: Record<string, string> = {
     permission_denied: "You do not have permission to use this Feedback workspace.",
     feedback_not_found: "The requested Feedback response could not be found.",
@@ -36,7 +35,7 @@ export function feedbackErrorMessage(error: unknown, fallback: string): string {
     idempotency_unavailable:
       "The submission result could not be confirmed. Retry the same response safely.",
   };
-  return (code && known[code]) || message || fallback;
+  return (code && known[code]) || fallback;
 }
 
 export function feedbackErrorCode(error: unknown): string | undefined {
@@ -132,7 +131,7 @@ export function FeedbackDetailSkeleton({ label }: { label: string }) {
 
 export function FeedbackAccessUnavailable({
   title = "Feedback unavailable",
-  message = "Your current access does not include this Feedback workspace.",
+  message = "Feedback is unavailable to this account.",
 }: {
   title?: string;
   message?: string;

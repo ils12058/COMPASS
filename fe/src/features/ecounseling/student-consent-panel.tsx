@@ -135,7 +135,7 @@ export function StudentConsentPanel({
                 </li>
               );
             })}</ul>
-      ) : <p className="mt-4 border-y border-border py-4 text-sm text-muted">Consent decisions are not available in your current access.</p>}
+      ) : <p className="mt-4 border-y border-border py-4 text-sm text-muted">Consent decisions are unavailable to this account.</p>}
       {error && !rows.some((row) => row.scope === error.scope) ? <p role="alert" className="mt-3 text-sm text-danger">{error.message}</p> : null}
       {notice ? <p role="status" className="mt-3 text-sm text-success">{notice}</p> : null}
       {notice === "Consent has been withdrawn." && hasLiveOrTransitionalMedia(latestMedia) ? <p role="status" className="mt-2 text-sm text-muted">The provider is still reconciling the media state.</p> : null}

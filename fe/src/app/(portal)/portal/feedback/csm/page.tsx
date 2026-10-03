@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Customer Satisfaction Measurement" };
+
 import { Suspense } from "react";
 
 import { FeedbackFormSkeleton } from "@/features/feedback/feedback-shared";

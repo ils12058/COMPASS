@@ -54,7 +54,7 @@ export function NoticeCreatePage() {
   if (!canManage) {
     return (
       <WorkspaceUnavailable title="Privacy notice creation unavailable">
-        Your current access does not include managing Privacy Governance records.
+        You cannot manage privacy notices with this account.
       </WorkspaceUnavailable>
     );
   }

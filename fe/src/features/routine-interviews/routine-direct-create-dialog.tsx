@@ -240,7 +240,7 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
               </div>
             ) : (
               <p className="border-y border-border py-4 text-sm text-muted">
-                {candidateSearch ? "No qualified Students match this search." : "No qualified Student candidates are available."}
+                {candidateSearch ? "No qualified students match this search." : "No qualified student candidates are available."}
               </p>
             )}
             {pageData ? (
@@ -298,7 +298,7 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
           </div>
 
           <p className="text-sm text-muted">
-            {options.data?.data.service.name} · {options.data?.data.service.code}
+            {options.data?.data.service.name}
           </p>
             <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
               <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>Cancel</Button>

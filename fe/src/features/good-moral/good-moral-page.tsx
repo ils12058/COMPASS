@@ -17,17 +17,11 @@ export function GoodMoralWorkspacePage({ filters }: { filters: GoodMoralOperatio
       : access.canRequestSelf && user.student_lifecycle_status === "GRADUATED"
         ? "/portal/good-moral/request"
         : null;
-    const requestLabel = user.student_lifecycle_status === "CURRENT"
-      ? "Request Current Student certificate"
-      : user.student_lifecycle_status === "GRADUATED"
-        ? "Request Graduate certificate"
-        : null;
-
     return (
       <GoodMoralStudentHistory
         canView={access.canViewSelf}
         requestHref={requestHref}
-        requestLabel={requestHref ? requestLabel : null}
+        requestLabel={requestHref ? "Request Good Moral Certificate" : null}
       />
     );
   }

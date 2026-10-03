@@ -65,7 +65,7 @@ export function ReferralCreatePage() {
   });
 
   if (!access.canManage) {
-    return <ReferralAccessUnavailable title="Referral recording unavailable" message="Your current access does not include Referral management." />;
+    return <ReferralAccessUnavailable title="Referral recording unavailable" message="Referral management is unavailable to this account." />;
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -165,7 +165,7 @@ export function ReferralCreatePage() {
             <div className="grid gap-2">
               <Label htmlFor="referral-course-year-block">Course / Year / Block</Label>
               <Input id="referral-course-year-block" maxLength={255} required value={courseYearBlock} onChange={(event) => setCourseYearBlock(event.target.value)} />
-              <p className="text-xs text-muted">Enter the value shown on the source Referral. It is saved as a historical snapshot.</p>
+              <p className="text-xs text-muted">Enter the value shown on the source Referral. It will remain as entered on this referral.</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="referral-reason">Reason for referral</Label>

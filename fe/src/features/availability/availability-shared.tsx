@@ -19,7 +19,6 @@ import {
 import {
   CompassApiError,
   readApiErrorCode,
-  readApiErrorMessage,
 } from "@/lib/api/errors";
 
 export type StepUpHooks = {
@@ -70,18 +69,7 @@ export function availabilityErrorMessage(
 ): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
-  const backendMessage = readApiErrorMessage(error.body);
-
-  if (
-    code === "availability_resource_not_found" ||
-    code === "invalid_availability_request" ||
-    code === "availability_not_applicable" ||
-    code === "availability_conflict"
-  ) {
-    return backendMessage ?? knownErrors[code] ?? fallback;
-  }
-
-  return (code && knownErrors[code]) || backendMessage || fallback;
+  return (code && knownErrors[code]) || fallback;
 }
 
 export function useAvailabilityAction() {
@@ -150,8 +138,8 @@ function AvailabilityUnavailable({
   return (
     <WorkspaceUnavailable title="Availability unavailable">
       {management
-        ? "Your current access does not include Availability administration."
-        : "Your current access does not include this Availability workspace."}
+        ? "Availability administration is unavailable to this account."
+        : "Availability is unavailable to this account."}
     </WorkspaceUnavailable>
   );
 }

@@ -32,18 +32,16 @@ export function announcementErrorMessage(error: unknown, fallback: string): stri
     case "authentication_required":
       return "Your COMPASS session has ended. Sign in again, then retry.";
     case "permission_denied":
-      return "Your current access does not include Announcement management.";
+      return "Announcement management is unavailable to this account.";
     case "announcement_not_found":
       return "This Announcement no longer exists.";
     case "publication_consequence_review_required":
       return "Review how these changes affect the published Announcement before saving.";
     case "announcement_not_editable":
-      return message
-        ? `${message} Its current status is shown on the Announcement page.`
-        : "This Announcement changed since you opened it. Its current status is shown on the Announcement page.";
+      return "This announcement can no longer be edited. Review its current status before continuing.";
     case "invalid_announcement_input":
-      return (message && inputMessages[message]) || fallback;
+      return message && Object.hasOwn(inputMessages, message) ? inputMessages[message] : fallback;
     default:
-      return error.status >= 500 ? fallback : message ?? fallback;
+      return fallback;
   }
 }

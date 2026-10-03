@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 import { StepUpDialog } from "@/features/account/security/security-shared";
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 
 const knownErrors: Record<string, string> = {
   academic_year_not_found: "The selected Academic Year is no longer available.",
@@ -18,7 +18,7 @@ const knownErrors: Record<string, string> = {
   invalid_institutional_form_request:
     "The Form Revision metadata was not accepted. Check the values and try again.",
   permission_denied:
-    "Your current access does not allow this Institution configuration change.",
+    "You cannot make this institutional change with this account.",
 };
 
 export function institutionConfigurationErrorMessage(
@@ -28,11 +28,7 @@ export function institutionConfigurationErrorMessage(
   if (!(error instanceof CompassApiError)) return fallback;
 
   const code = readApiErrorCode(error.body);
-  const backendMessage = readApiErrorMessage(error.body);
-  if (code && knownErrors[code]) {
-    return backendMessage ?? knownErrors[code];
-  }
-  return backendMessage ?? fallback;
+  return (code && knownErrors[code]) || fallback;
 }
 
 type StepUpOptions = {

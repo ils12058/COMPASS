@@ -106,7 +106,7 @@ export function FamilySection({ draft, onChange, validationIssues = [] }: Invent
             options={parentStatusCategoryOptions}
             onChange={(value) => onChange({ parent_status_category: value })}
             required
-            hint="This normalized response is used as the primary current condition."
+            hint="This answer describes your current situation."
           />
           <CheckboxGroupField
             legend="Additional parent circumstances"

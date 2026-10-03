@@ -53,7 +53,7 @@ export function DirectCallSlipCreatePage() {
   });
 
   if (!access.canManageOperational) {
-    return <CallSlipAccessUnavailable title="Call Slip issuance unavailable" message="Your current access does not include Call Slip management." />;
+    return <CallSlipAccessUnavailable title="Call Slip issuance unavailable" message="Call Slip management is unavailable to this account." />;
   }
 
   function prepare(event: FormEvent<HTMLFormElement>) {
@@ -156,8 +156,8 @@ export function DirectCallSlipCreatePage() {
 
       <ConsequentialActionDialog
         open={confirmOpen}
-        title="Confirm Call Slip issuance"
-        confirmLabel="Confirm and issue"
+        title="Issue Call Slip?"
+        confirmLabel="Issue Call Slip"
         cancelLabel="Review details"
         pendingLabel="Issuing…"
         pending={create.isPending}

@@ -15,7 +15,7 @@ function ContextUnavailable({ error, onRetry }: { error: unknown; onRetry: () =>
       : code === "current_academic_year_not_configured"
         ? "Support context is unavailable because no current Academic Year is configured."
         : denied
-          ? "Your current access does not include Student Support context."
+          ? "Student support information is unavailable to this account."
           : "Support context could not be loaded.";
   const canRetry = !denied && code !== "student_support_not_found" && code !== "current_academic_year_not_configured";
   return (

@@ -41,7 +41,7 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
             label="Full name"
             value={draft.full_name}
             onChange={(value) => onChange({ full_name: value })}
-            hint="This is the name snapshot for this annual Individual Inventory."
+            hint="This name will appear on this year’s Individual Inventory."
           />
           <TextField
             id="inventory-nickname"

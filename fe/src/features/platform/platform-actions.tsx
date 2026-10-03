@@ -8,7 +8,6 @@ import { StepUpDialog } from "@/features/account/security/security-shared";
 import {
   CompassApiError,
   readApiErrorCode,
-  readApiErrorMessage,
 } from "@/lib/api/errors";
 
 const knownErrors: Record<string, string> = {
@@ -34,7 +33,7 @@ const knownErrors: Record<string, string> = {
 export function platformErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
-  return (code && knownErrors[code]) || readApiErrorMessage(error.body) || fallback;
+  return (code && knownErrors[code]) || fallback;
 }
 
 export function usePlatformAction() {

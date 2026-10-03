@@ -34,7 +34,7 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
 
   if (!access.isCounselor || !access.canViewAssigned) return <CounselingUnavailable title="Encounter unavailable" />;
   if (query.isPending) return <EncounterDetailSkeleton />;
-  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My Counseling Encounters</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "This Counseling Encounter is not available within your current access.")} onRetry={() => void query.refetch()} /></>;
+  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My Counseling Encounters</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "This counseling encounter is unavailable to this account.")} onRetry={() => void query.refetch()} /></>;
 
   return (
     <article>
@@ -52,7 +52,7 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
         <dl className="grid gap-x-8 gap-y-2 border-b border-border py-4 sm:grid-cols-2 lg:grid-cols-3">
           <Metadata label="Student" value={encounter.student.display_name} />
           <Metadata label="Counselor" value={encounter.counselor.display_name} />
-          <Metadata label="Service" value={<>{encounter.service.name}<span className="ml-2 font-mono text-xs text-muted">{encounter.service.code}</span></>} />
+          <Metadata label="Service" value={<>{encounter.service.name}</>} />
           <Metadata label="Appointment" value={encounter.appointment ? <Link href={`/portal/appointments/${encounter.appointment.id}`} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.appointment.reference_code}</Link> : "No linked Appointment"} />
           <Metadata label="Origin" value={counselingEntryModeLabel(encounter.entry_mode)} />
           <Metadata label="Delivery mode" value={counselingDeliveryModeLabel(encounter.delivery_mode)} />

@@ -106,7 +106,7 @@ function StudentCurrentInventory() {
             <p className="self-center text-sm text-muted">
               {access.isCurrentStudent
                 ? "Starting a current-year Individual Inventory is not available for this account."
-                : "A new current-year Individual Inventory can only be started while your Student lifecycle is current."}
+                : "Only current students can start this year’s Individual Inventory."}
             </p>
           )}
         </div>

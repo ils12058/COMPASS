@@ -26,7 +26,7 @@ export function GoodMoralStudentHistory({
       <GoodMoralHeading
         headingId="good-moral-student-heading"
         title="Good Moral"
-        description="Request and review your Good Moral Character certificates."
+        description="Request a Good Moral Certificate and review your requests."
         action={requestHref && requestLabel ? (
           <Link href={requestHref} className={buttonVariants({ variant: "primary" })}>
             {requestLabel}
@@ -56,7 +56,7 @@ export function GoodMoralStudentHistory({
                 <li key={item.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(12rem,1fr)_auto] sm:items-center">
                   <div className="min-w-0">
                     <Link href={`/portal/good-moral/${item.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                      {goodMoralVariantLabel(item.variant)} certificate
+                      {item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)} certificate` : `${goodMoralVariantLabel(item.variant)} request`}
                     </Link>
                     <p className="mt-1 break-words text-sm text-muted">{item.applicant_name || "Applicant name not provided"}</p>
                     <p className="mt-1 text-xs text-muted">Requested {formatGoodMoralDateTime(item.created_at)}</p>
@@ -72,7 +72,7 @@ export function GoodMoralStudentHistory({
           )}
         </section>
       ) : (
-        <p className="border-y border-border py-5 text-sm text-muted">Request history is not available for your current access.</p>
+        <p className="border-y border-border py-5 text-sm text-muted">Your request history is unavailable to this account.</p>
       )}
     </section>
   );
