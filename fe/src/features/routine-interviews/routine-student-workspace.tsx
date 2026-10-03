@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { dataTable } from "@/components/ui/data-table";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import type { RoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import {
   formatRoutineDateTime,
@@ -16,7 +18,6 @@ import {
   routineErrorMessage,
   routineIntakeStatusLabel,
   RoutinePageHeading,
-  RoutineQueryError,
   RoutineStatus,
 } from "@/features/routine-interviews/routine-interviews-shared";
 import {
@@ -28,7 +29,8 @@ import {
   useRoutineInterviewsListMyAppointmentCandidates,
 } from "@/lib/api/generated/routine-interviews/routine-interviews";
 
-const tableCell = "px-4 py-3 align-top text-sm";
+const tableCell = dataTable.headerCell;
+const cell = `${dataTable.cell} text-sm`;
 
 export function StudentRoutineWorkspace({
   access,
@@ -78,52 +80,48 @@ export function StudentRoutineWorkspace({
       />
 
       {access.canManageSelf ? (
-        <section aria-labelledby="routine-appointment-candidates" className="mb-9">
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 id="routine-appointment-candidates" className="font-heading text-xl font-semibold text-ink">
-                Counseling Appointments
-              </h2>
-              <p className="mt-1 text-sm text-muted">
-                Start a Routine Interview for an eligible scheduled Appointment.
-              </p>
-            </div>
-            {candidates.isSuccess ? (
+        <Panel aria-labelledby="routine-appointment-candidates" className="mb-5">
+          <PanelHeader
+            title="Counseling Appointments"
+            titleId="routine-appointment-candidates"
+            description="Start a Routine Interview for an eligible scheduled Appointment."
+            actions={candidates.isSuccess ? (
               <Button variant="secondary" onClick={() => void candidates.refetch()} disabled={candidates.isFetching}>
                 Refresh
               </Button>
-            ) : null}
-          </div>
+            ) : undefined}
+          />
 
           {candidates.isPending ? (
-            <div aria-busy="true" className="space-y-3 border-y border-border py-4"><span className="sr-only">Loading eligible Appointments…</span>
-              <Skeleton className="h-14 w-full" />
-              <Skeleton className="h-14 w-full" />
-            </div>
+            <RowsSkeleton label="Loading eligible Appointments…" rows={2} />
           ) : candidates.isError ? (
-            <RoutineQueryError
-              title="Eligible Appointments could not be loaded."
-              message={inventoryRequired
+            <PanelMessage
+              role="alert"
+              tone="danger"
+              action={
+                <>
+                  {inventoryRequired ? (
+                    <Link className={buttonVariants({ variant: "secondary" })} href="/portal/inventory">
+                      Go to Individual Inventory
+                    </Link>
+                  ) : null}
+                  <Button variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>
+                </>
+              }
+            >
+              Eligible Appointments could not be loaded.{" "}
+              {inventoryRequired
                 ? "Submit your Individual Inventory for the current Academic Year before starting an Appointment-backed Routine Interview."
                 : routineErrorMessage(candidates.error, "Try again in a moment.")}
-              onRetry={() => void candidates.refetch()}
-            >
-              {inventoryRequired ? (
-                <p className="mt-3">
-                  <Link className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/portal/inventory">
-                    Go to Individual Inventory
-                  </Link>
-                </p>
-              ) : null}
-            </RoutineQueryError>
+            </PanelMessage>
           ) : appointmentItems.length === 0 ? (
-            <p className="border-y border-border py-5 text-sm text-muted">
+            <PanelMessage>
               No scheduled Counseling Appointments currently need a Routine Interview.
-            </p>
+            </PanelMessage>
           ) : (
-            <ul className="divide-y divide-border border-y border-border">
+            <ul className="divide-y divide-border">
               {appointmentItems.map((appointment) => (
-                <li key={appointment.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <li key={appointment.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                   <div className="min-w-0">
                     <p className="font-semibold text-ink">{appointment.reference_code}</p>
                     <p className="mt-1 text-sm text-muted">
@@ -142,42 +140,36 @@ export function StudentRoutineWorkspace({
             </ul>
           )}
           {startError ? (
-            <div role="alert" className="mt-3 text-sm text-danger">
+            <div role="alert" className="border-t border-border px-4 py-3 text-sm text-danger sm:px-5">
               <p>{routineErrorMessage(startError, "The Routine Interview could not be started. The eligible Appointment list has been refreshed; review it and try again.")}</p>
               {startInventoryRequired ? (
                 <Link className="mt-2 inline-block font-semibold underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/portal/inventory">Go to Individual Inventory</Link>
               ) : null}
             </div>
           ) : null}
-        </section>
+        </Panel>
       ) : null}
 
       {access.canViewSelf ? (
-        <section aria-labelledby="my-routine-interviews">
-          <h2 id="my-routine-interviews" className="mb-4 font-heading text-xl font-semibold text-ink">
-            Your Routine Interviews
-          </h2>
+        <Panel aria-labelledby="my-routine-interviews">
+          <PanelHeader title="Your Routine Interviews" titleId="my-routine-interviews" />
           {routines.isPending ? (
-            <div aria-busy="true" className="space-y-3 border-y border-border py-4"><span className="sr-only">Loading your Routine Interviews…</span>
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
+            <RowsSkeleton label="Loading your Routine Interviews…" rows={2} />
           ) : routines.isError ? (
-            <RoutineQueryError
-              message={routineErrorMessage(routines.error, "Try again in a moment.")}
-              onRetry={() => void routines.refetch()}
-            />
+            <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void routines.refetch()}>Retry</Button>}>
+              Routine Interviews could not be loaded. {routineErrorMessage(routines.error, "Try again in a moment.")}
+            </PanelMessage>
           ) : routineItems.length === 0 ? (
-            <p className="border-y border-border py-5 text-sm text-muted">
+            <PanelMessage>
               You do not have any Routine Interviews yet. Eligible Appointment-backed interviews will appear here, as will interviews created by your Counselor.
-            </p>
+            </PanelMessage>
           ) : (
-            <div className="overflow-x-auto border-y border-border">
-              <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left">
+            <div className={dataTable.scroll}>
+              <table className={`${dataTable.table} min-w-[760px]`}>
                 <caption className="sr-only">Your Routine Interviews</caption>
-                <thead className="bg-surface-muted text-xs font-semibold uppercase tracking-wide text-muted">
+                <thead className={dataTable.head}>
                   <tr>
-                    <th scope="col" className={`${tableCell} sticky left-0 z-20 bg-surface-muted`}>Routine Interview</th>
+                    <th scope="col" className={`${tableCell} ${dataTable.stickyHeaderCell}`}>Routine Interview</th>
                     <th scope="col" className={tableCell}>Academic Year</th>
                     <th scope="col" className={tableCell}>Counselor</th>
                     <th scope="col" className={tableCell}>Nature / delivery</th>
@@ -185,10 +177,10 @@ export function StudentRoutineWorkspace({
                     <th scope="col" className={tableCell}>Appointment</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className={dataTable.body}>
                   {routineItems.map((routine) => (
-                    <tr key={routine.id} className="group hover:bg-surface-muted/50">
-                      <th scope="row" className={`${tableCell} sticky left-0 z-10 min-w-40 bg-surface-raised font-normal group-hover:bg-surface-muted`}>
+                    <tr key={routine.id} className={dataTable.row}>
+                      <th scope="row" className={`${cell} ${dataTable.stickyCell} min-w-40 font-normal`}>
                         <Link href={`/portal/routine-interviews/${routine.id}`} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
                           {formatRoutineDateTime(routine.created_at)}
                         </Link>
@@ -196,15 +188,15 @@ export function StudentRoutineWorkspace({
                           <span className="mt-1 block text-xs text-muted">Submitted {formatRoutineDateTime(routine.intake_submitted_at)}</span>
                         ) : null}
                       </th>
-                      <td className={tableCell}>{routine.inventory_context.academic_year.label}</td>
-                      <td className={tableCell}>{routine.counselor.display_name}</td>
-                      <td className={tableCell}>{routineEntryModeLabel(routine.entry_mode)}<span className="block text-muted">{routineDeliveryModeLabel(routine.delivery_mode)}</span></td>
-                      <td className={tableCell}>
+                      <td className={cell}>{routine.inventory_context.academic_year.label}</td>
+                      <td className={cell}>{routine.counselor.display_name}</td>
+                      <td className={cell}>{routineEntryModeLabel(routine.entry_mode)}<span className="block text-muted">{routineDeliveryModeLabel(routine.delivery_mode)}</span></td>
+                      <td className={cell}>
                         <RoutineStatus complete={routine.intake_status === "SUBMITTED"}>
                           {routineIntakeStatusLabel(routine.intake_status)}
                         </RoutineStatus>
                       </td>
-                      <td className={tableCell}>
+                      <td className={cell}>
                         {routine.appointment ? (
                           <><span className="font-medium text-ink">{routine.appointment.reference_code}</span><span className="block text-muted">{formatRoutineDateTimeRange(routine.appointment.starts_at, routine.appointment.ends_at)}</span></>
                         ) : <span className="text-muted">—</span>}
@@ -215,7 +207,7 @@ export function StudentRoutineWorkspace({
               </table>
             </div>
           )}
-        </section>
+        </Panel>
       ) : null}
     </div>
   );

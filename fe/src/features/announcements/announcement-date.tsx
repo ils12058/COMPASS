@@ -7,7 +7,7 @@ export function AnnouncementDate({ value }: { value: string }) {
   return (
     <time
       dateTime={value}
-      className="flex flex-col items-center rounded-md border border-border bg-surface-subtle py-1.5 text-center"
+      className="flex flex-col items-center rounded-sm border border-brand-line bg-brand-wash py-1.5 text-center"
     >
       {parts ? (
         <>

@@ -22,6 +22,9 @@ import {
   CompassApiError,
   readApiErrorCode,
 } from "@/lib/api/errors";
+import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
+import { Notice } from "@/components/ui/notice";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 
 const knownErrors: Record<string, string> = {
   permission_denied: "You do not have permission to use this Services action.",
@@ -181,32 +184,33 @@ export function useServicesAction() {
 
 export function ServicesPageHeading({
   title,
+  description,
   action,
   backHref,
   backLabel,
+  children,
 }: {
   title: string;
+  description?: ReactNode;
   action?: ReactNode;
   backHref?: string;
   backLabel?: string;
+  // Facts that belong under the title, such as the Service code and status.
+  children?: ReactNode;
 }) {
   return (
-    <div>
-      {backHref ? (
-        <Link
-          href={backHref}
-          className="mb-5 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        >
+    <PageHeader
+      title={title}
+      description={description}
+      actions={action}
+      back={backHref ? (
+        <Link href={backHref} className={pageBackLinkClass}>
           ← {backLabel ?? "Services"}
         </Link>
-      ) : null}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-          {title}
-        </h1>
-        {action}
-      </div>
-    </div>
+      ) : undefined}
+    >
+      {children}
+    </PageHeader>
   );
 }
 
@@ -257,9 +261,9 @@ export function ServicesSearchField() {
   }, [current, pathname, router, searchParams, value]);
 
   return (
-    <div className="min-w-0 flex-1">
+    <div className="grid min-w-0 content-start gap-1.5">
       <Label htmlFor="services-search">Search Services</Label>
-      <div className="relative mt-2">
+      <div className="relative">
         <Search
           size={18}
           aria-hidden="true"
@@ -288,25 +292,18 @@ export function ServicesQueryError({
   onRetry: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-border py-6">
-      <p className="text-sm text-danger">
-        {servicesErrorMessage(error, fallback)}
-      </p>
-      <Button variant="secondary" className="mt-4" onClick={onRetry}>
-        Retry
-      </Button>
-    </div>
+    <Notice
+      tone="danger"
+      role="alert"
+      action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
+    >
+      {servicesErrorMessage(error, fallback)}
+    </Notice>
   );
 }
 
-export function ServicesListSkeleton() {
-  return (
-    <LoadingRegion label="Loading Services…" className="mt-6 space-y-3">
-      {Array.from({ length: 5 }, (_, index) => (
-        <Skeleton key={index} className="h-24 w-full" />
-      ))}
-    </LoadingRegion>
-  );
+export function ServicesListSkeleton({ framed = true }: { framed?: boolean }) {
+  return <RowsSkeleton label="Loading Services…" rows={5} framed={framed} />;
 }
 
 export function ServicesDetailSkeleton() {

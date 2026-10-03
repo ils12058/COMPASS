@@ -53,7 +53,7 @@ function RecoveryCodes({ codes, nextPath }: { codes: string[]; nextPath: string 
         Keep these codes somewhere secure. Each code can be used once if you cannot access your authenticator app.
       </p>
 
-      <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-2 border-y border-border bg-surface-subtle p-4 font-mono text-sm text-ink" aria-label="Recovery codes">
+      <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-2 rounded-sm border border-border bg-surface-subtle p-4 font-mono text-sm text-ink" aria-label="Recovery codes">
         {codes.map((code) => <code key={code} className="break-all">{code}</code>)}
       </div>
 
@@ -158,7 +158,7 @@ export function MandatoryTotpSetup() {
         <li>Confirm setup.</li>
       </ol>
 
-      <div className="mt-6 flex justify-center border-y border-border bg-surface-raised py-6">
+      <div className="mt-6 flex justify-center rounded-sm border border-border bg-surface-raised py-6">
         <QRCodeSVG value={setup.provisioning_uri} size={220} level="M" marginSize={2} title="Authenticator setup QR code" />
       </div>
 

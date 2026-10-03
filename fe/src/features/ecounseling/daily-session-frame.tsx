@@ -128,7 +128,7 @@ export function DailySessionFrame({
 
   return (
     <section aria-label="E-Counseling video session" className="min-w-0">
-      <div className="relative aspect-video min-h-60 w-full overflow-hidden rounded-md border border-border bg-ink">
+      <div className="relative aspect-video min-h-60 w-full overflow-hidden rounded-sm border border-brand-line bg-ink">
         <div ref={hostRef} className="absolute inset-0" />
         {state !== "joined" ? (
           <div className="absolute inset-x-0 bottom-0 bg-ink/90 px-4 py-3 text-sm text-on-brand" role={state === "error" ? "alert" : "status"}>

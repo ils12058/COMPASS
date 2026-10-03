@@ -43,11 +43,11 @@ export function EducationSection({
         <p className="mb-5 text-sm leading-6 text-muted">
           Add the school and years attended for each level. You can leave levels that do not apply blank.
         </p>
-        <div className="divide-y divide-border border-y border-border">
+        <div className="divide-y divide-border rounded-sm border border-border">
           {educationLevelOptions.map(([level, label]) => {
             const entry = (draft.education_entries ?? []).find((item) => item.level === level);
             return (
-              <section key={level} className="grid gap-4 py-5 lg:grid-cols-[12rem_minmax(0,1fr)_11rem_12rem] lg:items-start">
+              <section key={level} className="grid gap-4 px-4 py-5 lg:grid-cols-[12rem_minmax(0,1fr)_11rem_12rem] lg:items-start">
                 <h3 className="pt-2 text-sm font-semibold text-ink">{label}</h3>
                 <TextField
                   id={`inventory-education-${level.toLowerCase()}-school`}

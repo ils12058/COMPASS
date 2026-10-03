@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelBody, PanelHeader, PanelSection } from "@/components/ui/panel";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { callSlipErrorMessage } from "@/features/call-slips/call-slips-shared";
@@ -61,7 +63,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
       return <ReferralAccessUnavailable title="Referral not found" message="This referral could not be found or is unavailable to you." />;
     }
     return (
-      <div className="space-y-7">
+      <div className="space-y-5">
         <ReferralHeading title="Referral" backHref="/portal/referrals" />
         <ReferralQueryError error={referral.error} fallback="Referral detail could not be loaded." onRetry={() => void referral.refetch()} />
       </div>
@@ -85,7 +87,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
   }
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       <ReferralHeading
         title={item.reference_code}
         description="Recorded referral details"
@@ -94,14 +96,15 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
       />
 
       {isVoided ? (
-        <div role="status" className="border-y border-warning/30 py-4">
-          <p className="font-semibold text-warning">Voided</p>
-          <p className="mt-1 text-sm text-ink">{item.void_reason}</p>
-          <p className="mt-1 text-sm text-muted">Voided {formatInstitutionalDateTime(item.voided_at)}</p>
-          {item.voided_by ? <p className="mt-1 text-sm text-muted">Voided by {item.voided_by.display_name}</p> : null}
-        </div>
+        <Notice role="status" tone="warning" title={<span className="text-warning">Voided</span>}>
+          <p className="text-ink">{item.void_reason}</p>
+          <p className="mt-1 text-muted">Voided {formatInstitutionalDateTime(item.voided_at)}</p>
+          {item.voided_by ? <p className="mt-1 text-muted">Voided by {item.voided_by.display_name}</p> : null}
+        </Notice>
       ) : null}
 
+      {/* One record sheet in the order of the paper referral; the source note follows it. */}
+      <Panel as="div">
       <RecordSection title="Referral identity">
         <div>
           <dt className="text-xs font-semibold text-muted">Reference</dt>
@@ -128,8 +131,6 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         <div><dt className="text-xs font-semibold text-muted">Name</dt><dd className="mt-1 text-sm text-ink">{item.student.display_name}</dd></div>
         <div><dt className="text-xs font-semibold text-muted">Institutional ID</dt><dd className="mt-1 text-sm text-ink">{item.student.institutional_id ?? "Not recorded"}</dd></div>
       </RecordSection>
-
-      {canViewSupportContext ? <StudentSupportContextSection studentId={item.student.id} /> : null}
 
       <RecordSection title="Chronology">
         <div>
@@ -158,13 +159,15 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         </div>
       </RecordSection>
 
-      <section aria-labelledby="referral-status-note-heading" className="border-t border-border py-6">
-        <h2 id="referral-status-note-heading" className="font-heading text-xl font-semibold text-ink">Status note</h2>
-        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-ink">{item.status_note || "No status note recorded."}</p>
+      <PanelSection title="Status note" titleId="referral-status-note-heading">
+        <p className="whitespace-pre-wrap break-words text-sm leading-6 text-ink">{item.status_note || "No status note recorded."}</p>
         {referralAccess.canManage && !isVoided ? (
           <StatusNoteEditor key={`${item.id}-${item.updated_at}`} referralId={item.id} statusNote={item.status_note} />
         ) : null}
-      </section>
+      </PanelSection>
+      </Panel>
+
+      {canViewSupportContext ? <StudentSupportContextSection studentId={item.student.id} /> : null}
 
       <ReferralActionsSection
         referral={item}
@@ -186,8 +189,9 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         onRefresh={refreshDetail}
       />
 
-      <section aria-labelledby="referral-operational-actions-heading" className="border-t border-border py-6">
-        <h2 id="referral-operational-actions-heading" className="font-heading text-xl font-semibold text-ink">Operational actions</h2>
+      <Panel aria-labelledby="referral-operational-actions-heading">
+        <PanelHeader title="Operational actions" titleId="referral-operational-actions-heading" />
+        <PanelBody className="*:first:mt-0">
         {referralAccess.canManage && !isVoided ? (
           canCheckCallSlips && linkedCurrent.isPending ? (
             <p role="status" className="mt-3 text-sm text-muted">Checking linked Call Slip state before enabling Referral void.</p>
@@ -213,7 +217,8 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         ) : (
           <p className="mt-3 text-sm text-muted">You can view this referral, but cannot change it.</p>
         )}
-      </section>
+        </PanelBody>
+      </Panel>
     </div>
   );
 
@@ -221,10 +226,9 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
 
 function RecordSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section aria-label={title} className="border-t border-border py-6">
-      <h2 className="font-heading text-xl font-semibold text-ink">{title}</h2>
-      <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">{children}</dl>
-    </section>
+    <PanelSection title={title} titleId={"referral-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}>
+      <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">{children}</dl>
+    </PanelSection>
   );
 }
 
@@ -297,7 +301,7 @@ function StatusNoteEditor({ referralId, statusNote }: { referralId: string; stat
           Update status note
         </Button>
       ) : (
-        <form className="max-w-2xl space-y-3 border-l-2 border-border pl-4" onSubmit={submit} aria-busy={update.isPending}>
+        <form className="max-w-2xl space-y-3 rounded-sm bg-surface-subtle px-4 py-4" onSubmit={submit} aria-busy={update.isPending}>
           <div className="grid gap-2">
             <Label htmlFor="referral-status-note-editor">Status note</Label>
             <Textarea id="referral-status-note-editor" rows={4} maxLength={1_000} value={value} disabled={update.isPending} onChange={(event) => setValue(event.target.value)} />

@@ -7,14 +7,17 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
-import { FeedbackListSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackPageHeading, FeedbackQueryError } from "@/features/feedback/feedback-shared";
+import { FeedbackListSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackPageHeading, feedbackErrorMessage } from "@/features/feedback/feedback-shared";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import { useFeedbackListCustomerFeedbackResponses, useFeedbackListCsmResponses } from "@/lib/api/generated/feedback/feedback";
 import { CSMClientTypeValue, CustomerFeedbackServiceValue } from "@/lib/api/generated/model";
 
@@ -52,12 +55,14 @@ function movePage(router: ReturnType<typeof useRouter>, pathname: string, search
 
 function DateRangeFilters({ searchParams }: { searchParams: URLSearchParams }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <div><Label htmlFor="feedback-submitted-from">Submitted from</Label><Input id="feedback-submitted-from" className="mt-2" type="date" name="submitted_from" defaultValue={searchParams.get("submitted_from") ?? ""} /></div>
-      <div><Label htmlFor="feedback-submitted-to">Submitted to</Label><Input id="feedback-submitted-to" className="mt-2" type="date" name="submitted_to" defaultValue={searchParams.get("submitted_to") ?? ""} /></div>
-    </div>
+    <>
+      <FilterField label="Submitted from" htmlFor="feedback-submitted-from"><Input id="feedback-submitted-from" type="date" name="submitted_from" defaultValue={searchParams.get("submitted_from") ?? ""} /></FilterField>
+      <FilterField label="Submitted to" htmlFor="feedback-submitted-to"><Input id="feedback-submitted-to" type="date" name="submitted_to" defaultValue={searchParams.get("submitted_to") ?? ""} /></FilterField>
+    </>
   );
 }
+
+const responseTable = `${dataTable.table} min-w-[46rem]`;
 
 export function CustomerFeedbackResponseList() {
   const [filterError, setFilterError] = useState<string | null>(null);
@@ -105,29 +110,35 @@ export function CustomerFeedbackResponseList() {
   return (
     <section aria-labelledby="customer-feedback-responses-heading">
       <FeedbackPageHeading headingId="customer-feedback-responses-heading" title="Customer Feedback responses" description="Read-only access to submitted responses. Search is limited to respondent name." />
-      <form key={searchParams.toString()} className="mt-5 border-y border-border py-5" onSubmit={applyFilters}>
-        <div className="grid gap-4 lg:grid-cols-[minmax(16rem,1.3fr)_minmax(14rem,1fr)_minmax(20rem,1.2fr)] lg:items-end">
-          <div><Label htmlFor="feedback-search">Search respondent name</Label><Input id="feedback-search" className="mt-2" name="search" type="search" placeholder="Search respondent name" defaultValue={search} /></div>
-          <div><Label htmlFor="feedback-service-filter">Service</Label><Select id="feedback-service-filter" className="mt-2" name="service" defaultValue={service ?? ""}><option value="">All services</option>{feedbackServices.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></div>
+      <form key={searchParams.toString()} role="search" aria-label="Customer Feedback responses" className="mt-5" onSubmit={applyFilters}>
+        <FilterToolbar
+          fieldsClassName="lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]"
+          actions={<>{hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : null}<Button type="submit">Apply filters</Button></>}
+        >
+          <FilterField label="Search respondent name" htmlFor="feedback-search" className="sm:col-span-2 lg:col-span-1"><Input id="feedback-search" name="search" type="search" placeholder="Search respondent name" defaultValue={search} /></FilterField>
+          <FilterField label="Service" htmlFor="feedback-service-filter"><Select id="feedback-service-filter" name="service" defaultValue={service ?? ""}><option value="">All services</option>{feedbackServices.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></FilterField>
           <DateRangeFilters searchParams={params} />
-        </div>
-        {filterError ? <p role="alert" className="mt-3 text-sm text-danger">{filterError}</p> : null}
-        <div className="mt-4 flex flex-wrap gap-3"><Button type="submit" variant="secondary">Apply filters</Button>{hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : null}</div>
+          {filterError ? <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-4">{filterError}</p> : null}
+        </FilterToolbar>
       </form>
       {list.isError && rows ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
-      {list.isPending ? <FeedbackListSkeleton label="Loading Customer Feedback responses…" /> : !rows ? <div className="mt-5"><FeedbackQueryError error={list.error} fallback="Customer Feedback responses could not be loaded." onRetry={() => void list.refetch()} /></div> : rows.items.length === 0 ? <p className="border-b border-border py-9 text-sm text-muted">{hasFilters ? "No Customer Feedback responses match the current search or filters." : "No Customer Feedback responses have been submitted."}</p> : rows ? (
-        <>
-          {list.isFetching ? <p role="status" className="mt-3 text-xs text-muted">Refreshing responses…</p> : null}
-          <div className="mt-5 overflow-x-auto border-y border-border">
-            <table className="w-full min-w-[46rem] text-left text-sm">
+      <Panel aria-labelledby="customer-feedback-results-heading" className="mt-5">
+        <PanelHeader
+          title="Responses"
+          titleId="customer-feedback-results-heading"
+          context={list.isFetching && !list.isPending ? "Refreshing responses…" : rows ? describeResultPage({ count: rows.items.length, page: rows.page, hasNext: rows.has_next, noun: { one: "response", other: "responses" }, filtered: hasFilters }) : null}
+        />
+        {list.isPending ? <FeedbackListSkeleton label="Loading Customer Feedback responses…" /> : !rows ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>{feedbackErrorMessage(list.error, "Customer Feedback responses could not be loaded.")}</PanelMessage> : rows.items.length === 0 ? <PanelMessage>{hasFilters ? "No Customer Feedback responses match the current search or filters." : "No Customer Feedback responses have been submitted."}</PanelMessage> : (
+          <div className={dataTable.scroll}>
+            <table className={responseTable}>
               <caption className="sr-only">Customer Feedback response list</caption>
-              <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-muted"><tr><th scope="col" className="sticky left-0 bg-surface-muted px-4 py-3">Respondent</th><th scope="col" className="px-4 py-3">Services received</th><th scope="col" className="px-4 py-3">Submitted</th></tr></thead>
-              <tbody className="divide-y divide-border">{rows.items.map((item) => <tr key={item.id} className="align-top"><th scope="row" className="sticky left-0 bg-body px-4 py-4 font-semibold text-ink"><Link href={`/portal/feedback/customer-feedback/responses/${item.id}`} className="text-brand underline hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{item.respondent_name || "Name not provided"}</Link></th><td className="max-w-md px-4 py-4 text-muted">{item.services_received.map((value) => feedbackServices.find(([candidate]) => candidate === value)?.[1] ?? value).join(", ")}</td><td className="whitespace-nowrap px-4 py-4 text-muted"><FeedbackDate value={item.submitted_at} /></td></tr>)}</tbody>
+              <thead className={dataTable.head}><tr><th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Respondent</th><th scope="col" className={dataTable.headerCell}>Services received</th><th scope="col" className={dataTable.headerCell}>Submitted</th></tr></thead>
+              <tbody className={dataTable.body}>{rows.items.map((item) => <tr key={item.id} className={dataTable.row}><th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-semibold text-ink`}><Link href={`/portal/feedback/customer-feedback/responses/${item.id}`} className="text-brand underline hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{item.respondent_name || "Name not provided"}</Link></th><td className={`${dataTable.cell} max-w-md text-muted`}>{item.services_received.map((value) => feedbackServices.find(([candidate]) => candidate === value)?.[1] ?? value).join(", ")}</td><td className={`${dataTable.cell} whitespace-nowrap text-muted`}><FeedbackDate value={item.submitted_at} /></td></tr>)}</tbody>
             </table>
           </div>
-        </>
-      ) : null}
-      {rows ? <CanonicalPagination className="mt-5" page={rows.page} hasNext={rows.has_next} label="Customer Feedback response pagination" onPageChange={(page) => movePage(router, pathname, params, page)} /> : null}
+        )}
+        {rows ? <CanonicalPagination className="border-brand-line px-4 py-3 sm:px-5" page={rows.page} hasNext={rows.has_next} label="Customer Feedback response pagination" onPageChange={(page) => movePage(router, pathname, params, page)} /> : null}
+      </Panel>
     </section>
   );
 }
@@ -174,29 +185,35 @@ export function CsmResponseList() {
   return (
     <section aria-labelledby="csm-responses-heading">
       <FeedbackPageHeading headingId="csm-responses-heading" title="Client Satisfaction Measurement responses" description="Read-only access to submitted CSM responses. Service is a text filter against the service named in the response." />
-      <form key={searchParams.toString()} className="mt-5 border-y border-border py-5" onSubmit={applyFilters}>
-        <div className="grid gap-4 lg:grid-cols-[minmax(13rem,0.8fr)_minmax(15rem,1fr)_minmax(20rem,1.2fr)] lg:items-end">
-          <div><Label htmlFor="csm-client-filter">Client type</Label><Select id="csm-client-filter" className="mt-2" name="client_type" defaultValue={clientType ?? ""}><option value="">All client types</option>{clientTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></div>
-          <div><Label htmlFor="csm-service-filter">Filter service availed</Label><Input id="csm-service-filter" className="mt-2" name="service" placeholder="Filter service availed" defaultValue={service} /></div>
+      <form key={searchParams.toString()} role="search" aria-label="CSM responses" className="mt-5" onSubmit={applyFilters}>
+        <FilterToolbar
+          fieldsClassName="lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]"
+          actions={<>{hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : null}<Button type="submit">Apply filters</Button></>}
+        >
+          <FilterField label="Client type" htmlFor="csm-client-filter"><Select id="csm-client-filter" name="client_type" defaultValue={clientType ?? ""}><option value="">All client types</option>{clientTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></FilterField>
+          <FilterField label="Filter service availed" htmlFor="csm-service-filter"><Input id="csm-service-filter" name="service" placeholder="Filter service availed" defaultValue={service} /></FilterField>
           <DateRangeFilters searchParams={params} />
-        </div>
-        {filterError ? <p role="alert" className="mt-3 text-sm text-danger">{filterError}</p> : null}
-        <div className="mt-4 flex flex-wrap gap-3"><Button type="submit" variant="secondary">Apply filters</Button>{hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : null}</div>
+          {filterError ? <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-4">{filterError}</p> : null}
+        </FilterToolbar>
       </form>
       {list.isError && rows ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
-      {list.isPending ? <FeedbackListSkeleton label="Loading CSM responses…" /> : !rows ? <div className="mt-5"><FeedbackQueryError error={list.error} fallback="CSM responses could not be loaded." onRetry={() => void list.refetch()} /></div> : rows.items.length === 0 ? <p className="border-b border-border py-9 text-sm text-muted">{hasFilters ? "No CSM responses match the current filters." : "No CSM responses have been submitted."}</p> : rows ? (
-        <>
-          {list.isFetching ? <p role="status" className="mt-3 text-xs text-muted">Refreshing responses…</p> : null}
-          <div className="mt-5 overflow-x-auto border-y border-border">
-            <table className="w-full min-w-[46rem] text-left text-sm">
+      <Panel aria-labelledby="csm-results-heading" className="mt-5">
+        <PanelHeader
+          title="Responses"
+          titleId="csm-results-heading"
+          context={list.isFetching && !list.isPending ? "Refreshing responses…" : rows ? describeResultPage({ count: rows.items.length, page: rows.page, hasNext: rows.has_next, noun: { one: "response", other: "responses" }, filtered: hasFilters }) : null}
+        />
+        {list.isPending ? <FeedbackListSkeleton label="Loading CSM responses…" /> : !rows ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>{feedbackErrorMessage(list.error, "CSM responses could not be loaded.")}</PanelMessage> : rows.items.length === 0 ? <PanelMessage>{hasFilters ? "No CSM responses match the current filters." : "No CSM responses have been submitted."}</PanelMessage> : (
+          <div className={dataTable.scroll}>
+            <table className={responseTable}>
               <caption className="sr-only">Client Satisfaction Measurement response list</caption>
-              <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-muted"><tr><th scope="col" className="sticky left-0 bg-surface-muted px-4 py-3">Client type</th><th scope="col" className="px-4 py-3">Service availed</th><th scope="col" className="px-4 py-3">Submitted</th></tr></thead>
-              <tbody className="divide-y divide-border">{rows.items.map((item) => <tr key={item.id} className="align-top"><th scope="row" className="sticky left-0 bg-body px-4 py-4 font-semibold text-ink"><Link href={`/portal/feedback/csm/responses/${item.id}`} className="text-brand underline hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{clientTypes.find(([candidate]) => candidate === item.client_type)?.[1] ?? item.client_type}</Link></th><td className="max-w-md px-4 py-4 text-muted">{item.service_availed || "Not provided"}</td><td className="whitespace-nowrap px-4 py-4 text-muted"><FeedbackDate value={item.submitted_at} /></td></tr>)}</tbody>
+              <thead className={dataTable.head}><tr><th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Client type</th><th scope="col" className={dataTable.headerCell}>Service availed</th><th scope="col" className={dataTable.headerCell}>Submitted</th></tr></thead>
+              <tbody className={dataTable.body}>{rows.items.map((item) => <tr key={item.id} className={dataTable.row}><th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-semibold text-ink`}><Link href={`/portal/feedback/csm/responses/${item.id}`} className="text-brand underline hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{clientTypes.find(([candidate]) => candidate === item.client_type)?.[1] ?? item.client_type}</Link></th><td className={`${dataTable.cell} max-w-md text-muted`}>{item.service_availed || "Not provided"}</td><td className={`${dataTable.cell} whitespace-nowrap text-muted`}><FeedbackDate value={item.submitted_at} /></td></tr>)}</tbody>
             </table>
           </div>
-        </>
-      ) : null}
-      {rows ? <CanonicalPagination className="mt-5" page={rows.page} hasNext={rows.has_next} label="CSM response pagination" onPageChange={(page) => movePage(router, pathname, params, page)} /> : null}
+        )}
+        {rows ? <CanonicalPagination className="border-brand-line px-4 py-3 sm:px-5" page={rows.page} hasNext={rows.has_next} label="CSM response pagination" onPageChange={(page) => movePage(router, pathname, params, page)} /> : null}
+      </Panel>
     </section>
   );
 }

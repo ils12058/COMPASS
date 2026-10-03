@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { useStudentSupportGetContext } from "@/lib/api/generated/student-support/student-support";
 import { InventoryStatusValue } from "@/lib/api/generated/model";
@@ -36,10 +37,9 @@ export function StudentSupportContextSection({ studentId }: { studentId: string 
   const context = useStudentSupportGetContext(studentId, { query: { retry: false } });
 
   return (
-    <section aria-labelledby="student-support-context-heading" className="border-t border-border py-6">
-      <h2 id="student-support-context-heading" className="font-heading text-xl font-semibold text-ink">
-        Student support context
-      </h2>
+    <Panel aria-labelledby="student-support-context-heading">
+      <PanelHeader title="Student support context" titleId="student-support-context-heading" />
+      <div className="px-4 py-4 *:first:mt-0 sm:px-5">
 
       {context.isPending ? (
         <div aria-busy="true" className="mt-4 space-y-2">
@@ -63,9 +63,9 @@ export function StudentSupportContextSection({ studentId }: { studentId: string 
               This year’s Individual Inventory has not been submitted, so no support information is available.
             </p>
           ) : context.data.data.indicators.length > 0 ? (
-            <ul className="mt-3 max-w-md divide-y divide-border border-y border-border">
+            <ul className="mt-3 max-w-md divide-y divide-border rounded-sm border border-border">
               {context.data.data.indicators.map((indicator) => (
-                <li key={indicator.code} className="py-2.5 text-sm text-ink">{indicator.label}</li>
+                <li key={indicator.code} className="px-3 py-2.5 text-sm text-ink">{indicator.label}</li>
               ))}
             </ul>
           ) : (
@@ -78,6 +78,7 @@ export function StudentSupportContextSection({ studentId }: { studentId: string 
           ) : null}
         </div>
       )}
-    </section>
+      </div>
+    </Panel>
   );
 }

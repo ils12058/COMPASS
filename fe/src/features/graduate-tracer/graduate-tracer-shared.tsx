@@ -2,6 +2,9 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
+import { PageHeader } from "@/components/ui/page-header";
+import { Notice } from "@/components/ui/notice";
+import { PanelSection } from "@/components/ui/panel";
 
 export function graduateTracerErrorCode(error: unknown): string | undefined {
   return error instanceof CompassApiError ? readApiErrorCode(error.body) : undefined;
@@ -40,15 +43,7 @@ export function GraduateTracerHeading({
   description?: string;
   action?: ReactNode;
 }) {
-  return (
-    <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 id={id} className="font-heading text-3xl font-bold text-ink">{title}</h1>
-        {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{description}</p> : null}
-      </div>
-      {action}
-    </header>
-  );
+  return <PageHeader title={title} headingId={id} description={description} actions={action} />;
 }
 
 export function GraduateTracerError({
@@ -61,10 +56,13 @@ export function GraduateTracerError({
   onRetry?: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-danger/30 py-4 text-sm leading-6 text-ink">
-      <p>{graduateTracerErrorMessage(error, fallback)}</p>
-      {onRetry ? <Button variant="secondary" className="mt-3" onClick={onRetry}>Retry</Button> : null}
-    </div>
+    <Notice
+      tone="danger"
+      role="alert"
+      action={onRetry ? <Button variant="secondary" onClick={onRetry}>Retry</Button> : undefined}
+    >
+      {graduateTracerErrorMessage(error, fallback)}
+    </Notice>
   );
 }
 
@@ -78,11 +76,12 @@ export function GraduateTracerSection({
   children: ReactNode;
 }) {
   const headingId = `${id}-heading`;
+  // One part of the official survey; the form or response renders the parts inside one Panel.
+  // The section is a jump-link target, so it takes focus without drawing a ring.
   return (
-    <section id={id} tabIndex={-1} aria-labelledby={headingId} className="scroll-mt-6 border-t border-border py-6 focus:outline-none">
-      <h2 id={headingId} className="font-heading text-xl font-semibold text-ink">{title}</h2>
-      <div className="mt-5 space-y-6">{children}</div>
-    </section>
+    <PanelSection id={id} tabIndex={-1} title={title} titleId={headingId} className="scroll-mt-6 focus:outline-none">
+      <div className="space-y-6">{children}</div>
+    </PanelSection>
   );
 }
 

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { Notice } from "@/components/ui/notice";
+import { pageBackLinkClass } from "@/components/ui/page-header";
 import { ExitInterviewForm } from "@/features/exit-interviews/exit-interview-form";
 import { ExitInterviewPdfDownload } from "@/features/exit-interviews/exit-interview-pdf-download";
 import { ExitInterviewReopenAction } from "@/features/exit-interviews/exit-interview-reopen-dialog";
@@ -45,19 +47,18 @@ function StudentExitInterviewDetail({
     if (code === "permission_denied") {
       return (
         <div className="space-y-5">
-          <Link href="/portal/exit-interviews" className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Exit Interviews</Link>
+          <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interviews</Link>
           <ExitInterviewUnavailable title="Exit Interview unavailable" message="This Exit Interview is unavailable to this account." />
         </div>
       );
     }
     return (
       <section className="max-w-3xl space-y-5">
-        <Link href="/portal/exit-interviews" className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Exit Interviews</Link>
+        <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interviews</Link>
         {code === "exit_interview_not_found" ? (
-          <div role="alert" className="border-y border-border py-6">
-            <h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview not found</h1>
-            <p className="mt-2 text-sm text-muted">This Exit Interview could not be found.</p>
-          </div>
+          <Notice role="alert" title={<h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview not found</h1>}>
+            This Exit Interview could not be found.
+          </Notice>
         ) : (
           <ExitInterviewError error={detail.error} fallback="The Exit Interview could not be loaded." onRetry={() => void detail.refetch()} />
         )}
@@ -87,17 +88,17 @@ function StudentExitInterviewDetail({
       ) : null}
     <section className="space-y-4">
       {record.status === "DRAFT" && detail.isError ? (
-        <p role="status" className="border-l-4 border-warning bg-warning/5 px-4 py-3 text-sm leading-6 text-ink">
-          The latest status could not be confirmed. This last-confirmed draft is read-only until it can be refreshed.
-        </p>
+        <Notice role="status" tone="warning">
+          <span className="text-ink">The latest status could not be confirmed. This last-confirmed draft is read-only until it can be refreshed.</span>
+        </Notice>
       ) : record.status === "DRAFT" && !isCurrentStudent ? (
-        <p role="status" className="border-l-4 border-warning bg-warning/5 px-4 py-3 text-sm leading-6 text-ink">
-          You can view this historical draft, but can no longer change it.
-        </p>
+        <Notice role="status" tone="warning">
+          <span className="text-ink">You can view this historical draft, but can no longer change it.</span>
+        </Notice>
       ) : record.status === "DRAFT" ? (
-        <p role="status" className="border-l-4 border-border bg-surface-muted px-4 py-3 text-sm leading-6 text-muted">
+        <Notice role="status">
           You can view this draft, but cannot change it with this account.
-        </p>
+        </Notice>
       ) : null}
       <ExitInterviewResponse
         detail={record}
@@ -133,27 +134,24 @@ function HeadExitInterviewDetail({
     if (code === "exit_interview_not_submitted") {
       return (
         <section className="max-w-3xl space-y-5">
-          <Link href="/portal/exit-interviews" className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Exit Interview queue</Link>
-          <div role="status" className="border-y border-border py-6">
-            <h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview is not available for review</h1>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              This Exit Interview is currently a draft and is not available for Head Guidance review until the Student submits it.
-            </p>
-          </div>
+          <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview queue</Link>
+          <Notice role="status" title={<h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview is not available for review</h1>}>
+            This Exit Interview is currently a draft and is not available for Head Guidance review until the Student submits it.
+          </Notice>
         </section>
       );
     }
     if (code === "permission_denied") {
       return (
         <section className="space-y-5">
-          <Link href="/portal/exit-interviews" className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Exit Interview queue</Link>
+          <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview queue</Link>
           <ExitInterviewUnavailable title="Exit Interview unavailable" message="You cannot review this Exit Interview with this account." />
         </section>
       );
     }
     return (
       <section className="max-w-3xl space-y-5">
-        <Link href="/portal/exit-interviews" className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Exit Interview queue</Link>
+        <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview queue</Link>
         <ExitInterviewError error={detail.error} fallback="The submitted Exit Interview could not be loaded." onRetry={() => void detail.refetch()} />
       </section>
     );
@@ -170,13 +168,10 @@ function HeadExitInterviewDetail({
             onRetry={() => void detail.refetch()}
           />
         ) : null}
-        <Link href="/portal/exit-interviews" className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Exit Interview queue</Link>
-        <div role="status" className="border-y border-border py-6">
-          <h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview is not available for review</h1>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            This Exit Interview is currently a draft and is not available for Head Guidance review until the Student submits it.
-          </p>
-        </div>
+        <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview queue</Link>
+        <Notice role="status" title={<h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview is not available for review</h1>}>
+          This Exit Interview is currently a draft and is not available for Head Guidance review until the Student submits it.
+        </Notice>
       </section>
     );
   }

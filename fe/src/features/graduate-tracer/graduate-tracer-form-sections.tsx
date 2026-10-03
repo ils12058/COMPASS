@@ -80,9 +80,9 @@ export function GraduateTracerEducationSection({
         <h3 className="font-semibold text-ink">Q12. Educational Attainment (Baccalaureate Degree only) <span aria-hidden="true" className="text-danger">*</span></h3>
         <p className="mt-1 text-sm leading-6 text-muted">Add each baccalaureate degree you completed. At least one is required before submission.</p>
         {draft.education.length ? (
-          <div className="mt-4 divide-y divide-border border-y border-border">
+          <div className="mt-4 divide-y divide-border rounded-sm border border-border">
             {draft.education.map((row, index) => (
-              <fieldset key={row.formKey} className="space-y-4 py-5">
+              <fieldset key={row.formKey} className="space-y-4 px-4 py-5">
                 <legend className="font-semibold text-ink">Degree {index + 1}</legend>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextField id={`degree-${index}-name`} label="Degree(s) & Specialization(s)" value={row.degree_and_specialization} required error={errorFor(`degree-${index}-name`)} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, degree_and_specialization: value } : item))} />
@@ -114,9 +114,9 @@ export function GraduateTracerEducationSection({
         <h3 className="font-semibold text-ink">Q13. Professional Examinations</h3>
         <p className="mt-1 text-sm leading-6 text-muted">Optional. Add an examination name; date taken and rating may be left blank.</p>
         {draft.professional_exams.length ? (
-          <div className="mt-4 divide-y divide-border border-y border-border">
+          <div className="mt-4 divide-y divide-border rounded-sm border border-border">
             {draft.professional_exams.map((row, index) => (
-              <fieldset key={row.formKey} className="space-y-4 py-5">
+              <fieldset key={row.formKey} className="space-y-4 px-4 py-5">
                 <legend className="font-semibold text-ink">Examination {index + 1}</legend>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <TextField id={`exam-${index}-name`} label="Name of Examination" value={row.examination_name} required error={errorFor(`exam-${index}-name`)} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, examination_name: value } : item))} />
@@ -134,12 +134,12 @@ export function GraduateTracerEducationSection({
       <div className="border-t border-border pt-6">
         <h3 className="font-semibold text-ink">Q14. Reasons for taking degree(s)</h3>
         <p id="gts-degree-reasons-help" className="mt-1 text-sm leading-6 text-muted">Select any reasons that apply. The two columns are independent; the shared “Others, please specify” line is below the comparison.</p>
-        <div className="mt-4 overflow-x-auto rounded-md border border-border">
+        <div className="mt-4 overflow-x-auto rounded-sm border border-border">
           <table className="min-w-[42rem] w-full border-collapse text-sm">
             <caption className="sr-only">Reasons for taking undergraduate and graduate degree programs</caption>
-            <thead className="bg-surface-muted text-left text-xs uppercase tracking-wide text-muted">
+            <thead className="bg-brand-wash text-left text-xs uppercase tracking-wide text-brand-strong">
               <tr>
-                <th scope="col" className="sticky left-0 z-10 min-w-[20rem] bg-surface-muted px-3 py-3 font-semibold">Reason</th>
+                <th scope="col" className="sticky left-0 z-10 min-w-[20rem] bg-brand-wash px-3 py-3 font-semibold">Reason</th>
                 <th scope="col" className="min-w-44 px-3 py-3 font-semibold">Undergraduate / AB / BS</th>
                 <th scope="col" className="min-w-44 px-3 py-3 font-semibold">Graduate / MS / MA / PhD</th>
               </tr>
@@ -182,9 +182,9 @@ export function GraduateTracerTrainingSection({
         <h3 className="font-semibold text-ink">Q15a. Training(s) / Advance Studies Attended After College</h3>
         <p className="mt-1 text-sm leading-6 text-muted">Optional. Add each training or advance study attended after college.</p>
         {draft.trainings.length ? (
-          <div className="mt-4 divide-y divide-border border-y border-border">
+          <div className="mt-4 divide-y divide-border rounded-sm border border-border">
             {draft.trainings.map((row, index) => (
-              <fieldset key={row.formKey} className="space-y-4 py-5">
+              <fieldset key={row.formKey} className="space-y-4 px-4 py-5">
                 <legend className="font-semibold text-ink">Training / advance study {index + 1}</legend>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextField id={`training-${index}-title`} label="Title of Training or Advance Study" value={row.title} required error={errorFor(`training-${index}-title`)} onChange={(value) => onChange("trainings", draft.trainings.map((item, itemIndex) => itemIndex === index ? { ...item, title: value } : item))} />

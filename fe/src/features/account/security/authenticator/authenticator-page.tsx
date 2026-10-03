@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelBody, PanelFooter, PanelHeader, PanelSection } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { PasswordInput } from "@/features/auth/components/password-input";
 import { accountErrorCode, accountErrorMessage } from "@/features/account/components/account-errors";
 import { SecurityBackLink, StepUpDialog } from "@/features/account/security/security-shared";
@@ -49,10 +53,14 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
   }
 
   return (
-    <section aria-labelledby="recovery-heading" className="mt-7 border-t border-border pt-7">
-      <h2 id="recovery-heading" className="font-heading text-2xl font-semibold text-ink">Save your recovery codes</h2>
-      <p className="mt-2 text-sm leading-6 text-muted">Each code can be used once if you cannot access your authenticator app. The previous codes, if any, are no longer usable.</p>
-      <div aria-label="Recovery codes" className="mt-5 grid grid-cols-2 gap-3 border-y border-border bg-surface-subtle p-4 font-mono text-sm text-ink">
+    <Panel aria-labelledby="recovery-heading">
+      <PanelHeader
+        title="Save your recovery codes"
+        titleId="recovery-heading"
+        description="Each code can be used once if you cannot access your authenticator app. The previous codes, if any, are no longer usable."
+      />
+      <PanelBody>
+      <div aria-label="Recovery codes" className="grid grid-cols-2 gap-3 rounded-sm border border-border bg-surface-subtle p-4 font-mono text-sm text-ink">
         {codes.map((code) => <code key={code} className="break-all">{code}</code>)}
       </div>
       <Button variant="secondary" className="mt-4" onClick={() => void copy()}>{copied ? "Copied" : "Copy all"}</Button>
@@ -61,8 +69,11 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
         <input type="checkbox" className="mt-1 size-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />
         <span className="font-semibold">I have saved these recovery codes.</span>
       </label>
-      <Button className="mt-5" disabled={!acknowledged} onClick={onDone}>Return to authenticator</Button>
-    </section>
+      </PanelBody>
+      <PanelFooter>
+        <Button disabled={!acknowledged} onClick={onDone}>Return to authenticator</Button>
+      </PanelFooter>
+    </Panel>
   );
 }
 
@@ -167,16 +178,17 @@ export function AuthenticatorPage() {
   return (
     <section aria-labelledby="authenticator-heading" className="max-w-2xl">
       <SecurityBackLink />
-      <h1 id="authenticator-heading" className="font-heading text-3xl font-bold text-ink">Authenticator app</h1>
-      {mfa.isPending ? <p role="status" className="mt-7 text-sm text-muted">Checking authenticator status…</p> : null}
-      {mfa.isError ? <div role="alert" className="mt-7"><p className="text-sm text-danger">Authenticator status could not be loaded.</p><Button variant="secondary" className="mt-3" onClick={() => void mfa.refetch()}>Retry</Button></div> : null}
+      <PageHeader title="Authenticator app" headingId="authenticator-heading" />
+      {mfa.isPending ? <RowsSkeleton label="Checking authenticator status…" rows={2} framed /> : null}
+      {mfa.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void mfa.refetch()}>Retry</Button>}>Authenticator status could not be loaded.</Notice> : null}
       {mfa.isSuccess && codes ? <RecoveryCodes codes={codes} onDone={() => { setCodes(null); setError(null); }} /> : null}
       {mfa.isSuccess && !codes && !mfa.data.data.enabled && !setup ? (
-        <div className="mt-7 border-t border-border pt-6">
-          <p className="font-semibold text-ink">Not enabled</p>
-          <p className="mt-2 text-sm leading-6 text-muted">Use an authenticator app to add another verification step when signing in.</p>
-          <form className="mt-5 space-y-4" onSubmit={startSetup}>
-            <div className="grid gap-2">
+        <Panel as="div">
+          <form onSubmit={startSetup}>
+            <PanelBody>
+            <p className="font-semibold text-ink">Not enabled</p>
+            <p className="mt-1 text-sm leading-6 text-muted">Use an authenticator app to add another verification step when signing in.</p>
+            <div className="mt-5 grid max-w-md gap-2">
               <Label htmlFor="authenticator-current-password">Current password</Label>
               <PasswordInput
                 id="authenticator-current-password"
@@ -187,28 +199,40 @@ export function AuthenticatorPage() {
                 onChange={(event) => setCurrentPassword(event.target.value)}
               />
             </div>
-            <Button type="submit" disabled={start.isPending}>{start.isPending ? "Starting setup…" : "Set up authenticator"}</Button>
+            </PanelBody>
+            <PanelFooter>
+              <Button type="submit" disabled={start.isPending}>{start.isPending ? "Starting setup…" : "Set up authenticator"}</Button>
+            </PanelFooter>
           </form>
-        </div>
+        </Panel>
       ) : null}
       {mfa.isSuccess && !codes && !mfa.data.data.enabled && setup ? (
-        <div className="mt-7 border-t border-border pt-6">
-          <h2 className="font-heading text-xl font-semibold text-ink">Scan the setup code</h2>
-          <p className="mt-2 text-sm text-muted">Scan this QR code in your authenticator app, then enter its current code.</p>
-          <div className="mt-5 flex justify-center border-y border-border bg-surface-raised py-5"><QRCodeSVG value={setup.provisioning_uri} size={220} level="M" marginSize={2} title="Authenticator setup QR code" /></div>
-          {secret ? <details className="mt-4 border-b border-border pb-4 text-sm"><summary className="cursor-pointer font-semibold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Enter a setup key instead</summary><p className="mt-3 text-muted">Use this key only in your authenticator app:</p><code className="mt-2 block break-all bg-surface-muted p-3 font-mono text-ink">{secret}</code></details> : null}
-          <form className="mt-6 space-y-5" onSubmit={confirmSetup}>
-            <div className="grid gap-2"><Label htmlFor="authenticator-setup-code">Authenticator code</Label><Input id="authenticator-setup-code" autoComplete="one-time-code" inputMode="numeric" maxLength={6} required value={code} onChange={(event) => setCode(event.target.value)} /></div>
+        <Panel as="div">
+          <PanelHeader title="Scan the setup code" description="Scan this QR code in your authenticator app, then enter its current code." />
+          <form onSubmit={confirmSetup}>
+          <PanelBody>
+          <div className="flex justify-center rounded-sm border border-border bg-surface-raised py-5"><QRCodeSVG value={setup.provisioning_uri} size={220} level="M" marginSize={2} title="Authenticator setup QR code" /></div>
+          {secret ? <details className="mt-4 text-sm"><summary className="cursor-pointer font-semibold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Enter a setup key instead</summary><p className="mt-3 text-muted">Use this key only in your authenticator app:</p><code className="mt-2 block break-all bg-surface-muted p-3 font-mono text-ink">{secret}</code></details> : null}
+            <div className="mt-5 grid max-w-xs gap-2"><Label htmlFor="authenticator-setup-code">Authenticator code</Label><Input id="authenticator-setup-code" autoComplete="one-time-code" inputMode="numeric" maxLength={6} required value={code} onChange={(event) => setCode(event.target.value)} /></div>
+          </PanelBody>
+          <PanelFooter>
             <Button type="submit" disabled={confirm.isPending}>{confirm.isPending ? "Confirming…" : "Confirm authenticator"}</Button>
+          </PanelFooter>
           </form>
-        </div>
+        </Panel>
       ) : null}
       {mfa.isSuccess && !codes && mfa.data.data.enabled ? (
-        <div className="mt-7 space-y-6 border-t border-border pt-6">
-          <p className="font-semibold text-ink">Enabled</p>
-          <div className="border-t border-border pt-5"><h2 className="font-heading text-xl font-semibold text-ink">Recovery codes</h2><p className="mt-2 text-sm leading-6 text-muted">Generating new recovery codes invalidates the previous recovery codes.</p><Button variant="secondary" className="mt-4" onClick={() => beginAction("regenerate")}>Generate new recovery codes</Button></div>
-          <div className="border-t border-border pt-5"><h2 className="font-heading text-xl font-semibold text-ink">Disable authenticator</h2><p className="mt-2 text-sm leading-6 text-muted">This removes your authenticator from future sign-ins.</p><Button variant="quiet" className="mt-3 text-danger" onClick={() => beginAction("disable")}>Disable authenticator</Button></div>
-        </div>
+        <Panel as="div">
+          <PanelBody>
+            <p className="font-semibold text-ink">Enabled</p>
+          </PanelBody>
+          <PanelSection title="Recovery codes" titleId="authenticator-recovery-heading" description="Generating new recovery codes invalidates the previous recovery codes.">
+            <Button variant="secondary" onClick={() => beginAction("regenerate")}>Generate new recovery codes</Button>
+          </PanelSection>
+          <PanelSection title="Disable authenticator" titleId="authenticator-disable-heading" description="This removes your authenticator from future sign-ins.">
+            <Button variant="quiet" className="text-danger" onClick={() => beginAction("disable")}>Disable authenticator</Button>
+          </PanelSection>
+        </Panel>
       ) : null}
       {error && confirmAction === null ? <p role="alert" className="mt-5 text-sm text-danger">{error}</p> : null}
       {success ? <p role="status" className="mt-5 text-sm text-success">{success}</p> : null}

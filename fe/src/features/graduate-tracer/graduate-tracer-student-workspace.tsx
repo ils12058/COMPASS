@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Notice } from "@/components/ui/notice";
 import type { GraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
 import { GraduateTracerForm, GraduateTracerFormSkeleton } from "@/features/graduate-tracer/graduate-tracer-form";
 import { GraduateTracerResponse } from "@/features/graduate-tracer/graduate-tracer-response";
@@ -57,33 +58,33 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
 
   if (!access.canViewSelf) {
     return (
-      <section className="space-y-6">
+      <section className="space-y-5">
         <GraduateTracerHeading title="Graduate Tracer Survey" />
-        <p role="alert" className="border-y border-border py-5 text-sm leading-6 text-muted">Your Graduate Tracer response is unavailable to this account.</p>
+        <Notice role="alert">Your Graduate Tracer response is unavailable to this account.</Notice>
       </section>
     );
   }
 
   if (response.isPending && !detail) {
-    return <section className="space-y-6"><GraduateTracerHeading title="Graduate Tracer Survey" /><GraduateTracerFormSkeleton /></section>;
+    return <section className="space-y-5"><GraduateTracerHeading title="Graduate Tracer Survey" /><GraduateTracerFormSkeleton /></section>;
   }
 
   if (hideCached) {
-    return <section className="space-y-6"><GraduateTracerHeading title="Graduate Tracer Survey" /><GraduateTracerError error={response.error} fallback="Your Graduate Tracer response could not be loaded." onRetry={() => void response.refetch()} /></section>;
+    return <section className="space-y-5"><GraduateTracerHeading title="Graduate Tracer Survey" /><GraduateTracerError error={response.error} fallback="Your Graduate Tracer response could not be loaded." onRetry={() => void response.refetch()} /></section>;
   }
 
   if (detail) {
     const submitted = detail.status === "SUBMITTED";
     const editable = !submitted && access.canManageSelf;
     return (
-      <section className="space-y-6" aria-labelledby="graduate-tracer-student-heading">
+      <section className="space-y-5" aria-labelledby="graduate-tracer-student-heading">
         <GraduateTracerHeading
           id="graduate-tracer-student-heading"
           title="Graduate Tracer Survey"
 
           action={<GraduateTracerStatus submitted={submitted} />}
         />
-        {response.isError ? <p role="alert" className="border-l-4 border-warning bg-warning/5 px-4 py-3 text-sm text-ink">The latest status could not be refreshed. Showing the last confirmed response.</p> : response.isFetching ? <p role="status" className="text-xs text-muted">Refreshing response status…</p> : null}
+        {response.isError ? <Notice role="alert" tone="warning"><span className="text-ink">The latest status could not be refreshed. Showing the last confirmed response.</span></Notice> : response.isFetching ? <p role="status" className="text-xs text-muted">Refreshing response status…</p> : null}
         {submitted ? (
           <div className="space-y-6">
             <p className="text-sm text-muted">Submitted {formatGraduateTracerDateTime(detail.submitted_at)}. This response is read-only.</p>
@@ -93,7 +94,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
           <GraduateTracerForm key={detail.id} detail={detail} />
         ) : (
           <div className="space-y-5">
-            <p className="border-l-4 border-warning bg-warning/5 px-4 py-3 text-sm leading-6 text-ink">This saved draft is read-only for this account.</p>
+            <Notice tone="warning"><span className="text-ink">This saved draft is read-only for this account.</span></Notice>
             <GraduateTracerResponse detail={detail} />
           </div>
         )}
@@ -102,17 +103,17 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
   }
 
   if (response.isError && !isNotStarted) {
-    return <section className="space-y-6"><GraduateTracerHeading title="Graduate Tracer Survey" /><GraduateTracerError error={response.error} fallback="Your Graduate Tracer response could not be loaded." onRetry={() => void response.refetch()} /></section>;
+    return <section className="space-y-5"><GraduateTracerHeading title="Graduate Tracer Survey" /><GraduateTracerError error={response.error} fallback="Your Graduate Tracer response could not be loaded." onRetry={() => void response.refetch()} /></section>;
   }
 
   return (
-    <section className="space-y-6" aria-labelledby="graduate-tracer-student-heading">
+    <section className="space-y-5" aria-labelledby="graduate-tracer-student-heading">
       <GraduateTracerHeading
         id="graduate-tracer-student-heading"
         title="Graduate Tracer Survey"
         description="This survey collects information about graduate education and employment experiences to support graduate employability research and curriculum improvement."
       />
-      <div className="max-w-3xl border-y border-border py-5">
+      <div className="max-w-3xl rounded-sm border border-brand-line bg-surface-raised px-4 py-5 sm:px-5">
         <p className="text-sm leading-6 text-muted">Your response is treated confidentially. Only authorized Head Guidance reviewers can access it after you submit. Starting creates a private draft; it does not submit answers.</p>
         {access.canManageSelf ? (
           <>

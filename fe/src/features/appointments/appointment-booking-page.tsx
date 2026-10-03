@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
 import {
   DeliveryMode,
   type AppointmentBookingServiceSummary,
@@ -227,242 +230,251 @@ function BookingWorkspace() {
         title="Book appointment"
       />
 
-      <p className="mb-6 text-sm text-muted">
+      <p className="-mt-3 mb-5 text-sm text-muted">
         Service <span aria-hidden="true">→</span> Delivery <span aria-hidden="true">→</span> Counselor <span aria-hidden="true">→</span> Time <span aria-hidden="true">→</span> Review
       </p>
 
-      <section aria-labelledby="booking-service-heading" className="border-y border-border py-5">
-        <h2 id="booking-service-heading" className="font-heading text-xl font-semibold text-ink">1. Choose a Service</h2>
-        <div className="mt-4 grid gap-2 sm:max-w-xl">
-          <Label htmlFor="booking-service-search">Search Appointment Services</Label>
-          <Input
-            id="booking-service-search"
-            type="search"
-            value={serviceSearch}
-            onChange={(event) => {
-              setServiceSearch(event.target.value);
-              setServicePage(1);
-            }}
-            placeholder="Search by Service name or code"
-          />
-        </div>
-
-        {bookingServices.isPending ? (
-          <div aria-busy="true" className="mt-5 space-y-3">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-            <p className="sr-only">Loading Appointment Services…</p>
+      {/* One booking sheet: each step opens below the last, and the review closes the sheet with
+          the booking action. */}
+      <Panel as="div">
+        <PanelSection title="1. Choose a Service" titleId="booking-service-heading">
+          <div className="grid gap-2 sm:max-w-xl">
+            <Label htmlFor="booking-service-search">Search Appointment Services</Label>
+            <Input
+              id="booking-service-search"
+              type="search"
+              value={serviceSearch}
+              onChange={(event) => {
+                setServiceSearch(event.target.value);
+                setServicePage(1);
+              }}
+              placeholder="Search by Service name or code"
+            />
           </div>
-        ) : bookingServices.isError ? (
-          <div role="alert" className="mt-5 border-y border-danger/30 py-5">
-            <p className="text-sm text-danger">Appointment Services could not be loaded.</p>
-            <Button className="mt-3" variant="secondary" onClick={() => void bookingServices.refetch()}>Retry</Button>
-          </div>
-        ) : serviceItems.length === 0 ? (
-          <p className="mt-5 border-y border-border py-6 text-sm text-muted">
-            {serviceSearch.trim()
-              ? "No appointment services match your search."
-              : "No appointment services are currently available."}
-          </p>
-        ) : (
-          <>
-            <ul className="mt-5 divide-y divide-border border-y border-border">
-              {serviceItems.map((item) => {
-                const selected = service?.id === item.id;
-                return (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => changeService(item)}
-                      className={
-                        "w-full px-3 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
-                        (selected ? "bg-surface-muted" : "hover:bg-surface-muted/60")
-                      }
-                    >
-                      <span className="flex flex-wrap items-baseline justify-between gap-2">
-                        <span className="font-semibold text-ink">{item.name}</span>
-                      </span>
-                      {item.description.trim() ? <span className="mt-1 block max-w-4xl text-sm leading-6 text-muted">{item.description}</span> : null}
-                      <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-                        <span>{item.default_duration_minutes} minutes</span>
-                        <span>{item.delivery_modes.map(deliveryModeLabel).join(" · ")}</span>
-                        {item.requires_current_inventory ? <span>Current-year Inventory required</span> : null}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-            {servicePageData ? (
-              <CanonicalPagination
-                page={servicePageData.page}
-                hasNext={servicePageData.has_next}
-                label="Service pages"
-                onPageChange={setServicePage}
-              />
-            ) : null}
-          </>
-        )}
-      </section>
 
-      {service ? (
-        <section aria-labelledby="booking-delivery-heading" className="border-b border-border py-5">
-          <h2 id="booking-delivery-heading" className="font-heading text-xl font-semibold text-ink">2. Choose delivery mode</h2>
-          <fieldset className="mt-4 flex flex-wrap gap-3">
-            <legend className="sr-only">Delivery mode</legend>
-            {service.delivery_modes.map((mode) => (
-              <label key={mode} className="inline-flex min-h-10 items-center gap-2 border border-border bg-surface-raised px-3 text-sm text-ink focus-within:ring-2 focus-within:ring-focus">
-                <input
-                  type="radio"
-                  name="appointment-delivery-mode"
-                  value={mode}
-                  checked={deliveryMode === mode}
-                  onChange={() => changeDeliveryMode(mode)}
-                  className="accent-brand"
-                />
-                {deliveryModeLabel(mode)}
-              </label>
-            ))}
-          </fieldset>
-        </section>
-      ) : null}
-
-      {service && deliveryMode ? (
-        <section aria-labelledby="booking-counselor-heading" className="border-b border-border py-5">
-          <h2 id="booking-counselor-heading" className="font-heading text-xl font-semibold text-ink">3. Choose a Counselor</h2>
-          {counselors.isPending ? (
-            <LoadingRegion label="Loading Counselors…" className="mt-4">
-              <Skeleton className="h-10 w-full max-w-xl" />
-            </LoadingRegion>
-          ) : counselors.isError ? (
+          {bookingServices.isPending ? (
+            <div aria-busy="true" className="mt-4 space-y-3">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <p className="sr-only">Loading Appointment Services…</p>
+            </div>
+          ) : bookingServices.isError ? (
             <div role="alert" className="mt-4">
-              <p className="text-sm text-danger">Eligible Counselors could not be loaded.</p>
-              <Button className="mt-3" variant="secondary" onClick={() => void counselors.refetch()}>Retry</Button>
+              <p className="text-sm text-danger">Appointment Services could not be loaded.</p>
+              <Button className="mt-3" variant="secondary" onClick={() => void bookingServices.refetch()}>Retry</Button>
             </div>
-          ) : counselorItems.length === 0 ? (
-            <p className="mt-3 text-sm text-muted">No eligible Counselors are available for this Service and delivery mode.</p>
+          ) : serviceItems.length === 0 ? (
+            <p className="mt-4 text-sm text-muted">
+              {serviceSearch.trim()
+                ? "No appointment services match your search."
+                : "No appointment services are currently available."}
+            </p>
           ) : (
-            <div className="mt-4 grid gap-2 sm:max-w-xl">
-              <Label htmlFor="booking-counselor">Counselor</Label>
-              <Select
-                id="booking-counselor"
-                value={counselorId}
-                onChange={(event) => changeCounselor(event.target.value)}
-              >
-                {!counselorId ? <option value="">Choose a Counselor</option> : null}
-                {counselorItems.map((candidate) => (
-                  <option key={candidate.id} value={candidate.id}>
-                    {candidate.display_name}{candidate.is_default ? " — Assigned counselor" : ""}
-                  </option>
-                ))}
-              </Select>
-              {selectedCounselor?.is_default ? (
-                <p className="text-xs text-muted">Assigned counselor is selected. You can choose another eligible Counselor.</p>
+            <>
+              <ul className="mt-4 divide-y divide-border rounded-sm border border-border">
+                {serviceItems.map((item) => {
+                  const selected = service?.id === item.id;
+                  return (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => changeService(item)}
+                        className={
+                          "w-full px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus " +
+                          (selected ? "bg-brand-wash" : "hover:bg-surface-subtle")
+                        }
+                      >
+                        <span className="flex flex-wrap items-baseline justify-between gap-2">
+                          <span className={"font-semibold " + (selected ? "text-brand" : "text-ink")}>{item.name}</span>
+                          {selected ? <span className="text-xs font-semibold text-brand">Selected</span> : null}
+                        </span>
+                        {item.description.trim() ? <span className="mt-1 block max-w-4xl text-sm leading-6 text-muted">{item.description}</span> : null}
+                        <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+                          <span>{item.default_duration_minutes} minutes</span>
+                          <span>{item.delivery_modes.map(deliveryModeLabel).join(" · ")}</span>
+                          {item.requires_current_inventory ? <span>Current-year Inventory required</span> : null}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {servicePageData ? (
+                <CanonicalPagination
+                  className="border-t-0 pb-0"
+                  page={servicePageData.page}
+                  hasNext={servicePageData.has_next}
+                  label="Service pages"
+                  onPageChange={setServicePage}
+                />
               ) : null}
-            </div>
+            </>
           )}
-        </section>
-      ) : null}
+        </PanelSection>
 
-      {service && deliveryMode && selectedCounselor ? (
-        <section aria-labelledby="booking-time-heading" className="border-b border-border py-5">
-          <h2 id="booking-time-heading" className="font-heading text-xl font-semibold text-ink">4. Choose date and time</h2>
-          <div className="mt-4 grid gap-2 sm:max-w-xs">
-            <Label htmlFor="booking-date">Appointment date</Label>
-            <Input id="booking-date" type="date" value={date} onChange={(event) => changeDate(event.target.value)} />
-          </div>
-          {date ? (
-            <div className="mt-5">
-              {slots.isPending ? (
-                <LoadingRegion label="Loading available times…" className="flex flex-wrap gap-2">
-                  <Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" />
-                </LoadingRegion>
-              ) : slots.isError ? (
-                <div role="alert">
-                  <p className="text-sm text-danger">Available times could not be loaded.</p>
-                  <Button className="mt-3" variant="secondary" onClick={() => void slots.refetch()}>Retry</Button>
-                </div>
-              ) : slotItems.length === 0 ? (
-                <p role="status" className="text-sm text-muted">No available appointment times were found for this date. Choose another date.</p>
-              ) : (
-                <>
-                  <p role="status" className="mb-3 text-sm font-semibold text-ink">Available times · {slots.data?.data.timezone === INSTITUTION_TIME_ZONE ? INSTITUTION_TIME_ZONE_LABEL : slots.data?.data.timezone}</p>
-                  <div role="group" aria-label="Available appointment times" className="flex flex-wrap gap-2">
-                    {slotItems.map((slot) => {
-                      const selected = slot.starts_at === selectedSlotStart;
-                      return (
-                        <button
-                          key={slot.starts_at}
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() => changeSlot(slot.starts_at)}
-                          className={
-                            "min-h-10 border px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
-                            (selected ? "border-brand bg-brand text-on-brand" : "border-border bg-surface-raised text-ink hover:bg-surface-muted")
-                          }
-                        >
-                          {formatAppointmentTime(slot.starts_at, slots.data?.data.timezone)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {slots.isFetching ? <p role="status" className="mt-3 text-xs text-muted">Refreshing available times…</p> : null}
-                </>
-              )}
+        {service ? (
+          <PanelSection title="2. Choose delivery mode" titleId="booking-delivery-heading">
+            <fieldset className="flex flex-wrap gap-3">
+              <legend className="sr-only">Delivery mode</legend>
+              {service.delivery_modes.map((mode) => (
+                <label key={mode} className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface-raised px-3 text-sm text-ink focus-within:ring-2 focus-within:ring-focus has-[:checked]:border-brand has-[:checked]:bg-brand-wash has-[:checked]:font-semibold">
+                  <input
+                    type="radio"
+                    name="appointment-delivery-mode"
+                    value={mode}
+                    checked={deliveryMode === mode}
+                    onChange={() => changeDeliveryMode(mode)}
+                    className="accent-brand"
+                  />
+                  {deliveryModeLabel(mode)}
+                </label>
+              ))}
+            </fieldset>
+          </PanelSection>
+        ) : null}
+
+        {service && deliveryMode ? (
+          <PanelSection title="3. Choose a Counselor" titleId="booking-counselor-heading">
+            {counselors.isPending ? (
+              <LoadingRegion label="Loading Counselors…">
+                <Skeleton className="h-10 w-full max-w-xl" />
+              </LoadingRegion>
+            ) : counselors.isError ? (
+              <div role="alert">
+                <p className="text-sm text-danger">Eligible Counselors could not be loaded.</p>
+                <Button className="mt-3" variant="secondary" onClick={() => void counselors.refetch()}>Retry</Button>
+              </div>
+            ) : counselorItems.length === 0 ? (
+              <p className="text-sm text-muted">No eligible Counselors are available for this Service and delivery mode.</p>
+            ) : (
+              <div className="grid gap-2 sm:max-w-xl">
+                <Label htmlFor="booking-counselor">Counselor</Label>
+                <Select
+                  id="booking-counselor"
+                  value={counselorId}
+                  onChange={(event) => changeCounselor(event.target.value)}
+                >
+                  {!counselorId ? <option value="">Choose a Counselor</option> : null}
+                  {counselorItems.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.display_name}{candidate.is_default ? " — Assigned counselor" : ""}
+                    </option>
+                  ))}
+                </Select>
+                {selectedCounselor?.is_default ? (
+                  <p className="text-xs text-muted">Assigned counselor is selected. You can choose another eligible Counselor.</p>
+                ) : null}
+              </div>
+            )}
+          </PanelSection>
+        ) : null}
+
+        {service && deliveryMode && selectedCounselor ? (
+          <PanelSection title="4. Choose date and time" titleId="booking-time-heading">
+            <div className="grid gap-2 sm:max-w-xs">
+              <Label htmlFor="booking-date">Appointment date</Label>
+              <Input id="booking-date" type="date" value={date} onChange={(event) => changeDate(event.target.value)} />
             </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      {service && deliveryMode && selectedCounselor && selectedSlot ? (
-        <section aria-labelledby="booking-review-heading" className="py-5">
-          <h2 id="booking-review-heading" className="font-heading text-xl font-semibold text-ink">5. Review appointment</h2>
-          <dl className="mt-4 grid max-w-3xl gap-x-8 gap-y-4 border-y border-border py-5 sm:grid-cols-2">
-            <div><dt className="text-xs font-semibold text-muted">Service</dt><dd className="mt-1 text-sm text-ink">{service.name}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Counselor</dt><dd className="mt-1 text-sm text-ink">{selectedCounselor.display_name}{selectedCounselor.is_default ? " · Assigned counselor" : ""}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(deliveryMode)}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Schedule</dt><dd className="mt-1 text-sm text-ink">{formatAppointmentDateTime(selectedSlot.starts_at, selectedSlot.ends_at, slots.data?.data.timezone)}</dd></div>
-            <div><dt className="text-xs font-semibold text-muted">Duration</dt><dd className="mt-1 text-sm text-ink">{slots.data?.data.duration_minutes ?? service.default_duration_minutes} minutes</dd></div>
-            {service.cancellation_cutoff_minutes !== null ? (
-              <div><dt className="text-xs font-semibold text-muted">Self-service changes</dt><dd className="mt-1 text-sm text-ink">Available until {service.cancellation_cutoff_minutes} minutes before the Appointment.</dd></div>
+            {date ? (
+              <div className="mt-5">
+                {slots.isPending ? (
+                  <LoadingRegion label="Loading available times…" className="flex flex-wrap gap-2">
+                    <Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" />
+                  </LoadingRegion>
+                ) : slots.isError ? (
+                  <div role="alert">
+                    <p className="text-sm text-danger">Available times could not be loaded.</p>
+                    <Button className="mt-3" variant="secondary" onClick={() => void slots.refetch()}>Retry</Button>
+                  </div>
+                ) : slotItems.length === 0 ? (
+                  <p role="status" className="text-sm text-muted">No available appointment times were found for this date. Choose another date.</p>
+                ) : (
+                  <>
+                    <p role="status" className="mb-3 text-sm font-semibold text-ink">Available times · {slots.data?.data.timezone === INSTITUTION_TIME_ZONE ? INSTITUTION_TIME_ZONE_LABEL : slots.data?.data.timezone}</p>
+                    <div role="group" aria-label="Available appointment times" className="flex flex-wrap gap-2">
+                      {slotItems.map((slot) => {
+                        const selected = slot.starts_at === selectedSlotStart;
+                        return (
+                          <button
+                            key={slot.starts_at}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => changeSlot(slot.starts_at)}
+                            className={
+                              "min-h-11 rounded-md border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
+                              (selected ? "border-brand bg-brand text-on-brand" : "border-border-strong bg-surface-raised text-ink hover:bg-surface-subtle")
+                            }
+                          >
+                            {formatAppointmentTime(slot.starts_at, slots.data?.data.timezone)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {slots.isFetching ? <p role="status" className="mt-3 text-xs text-muted">Refreshing available times…</p> : null}
+                  </>
+                )}
+              </div>
             ) : null}
-          </dl>
-          {hasInventoryRequirement ? (
-            <label className="mt-5 flex max-w-3xl items-start gap-3 text-sm leading-6 text-ink">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 shrink-0 accent-brand"
-                checked={inventoryAcknowledged}
-                onChange={(event) => setInventoryAcknowledged(event.target.checked)}
-              />
-              <span>A submitted Individual Inventory for the current Academic Year is required to book this Service.</span>
-            </label>
-          ) : null}
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            <Button
-              disabled={create.isPending || createdAppointment !== null || (hasInventoryRequirement && !inventoryAcknowledged)}
-              onClick={() => void bookAppointment()}
-              aria-busy={create.isPending}
-            >
-              {create.isPending ? "Booking…" : "Book appointment"}
-            </Button>
-            <p className="text-xs text-muted">This Appointment will be scheduled immediately after a successful booking.</p>
-          </div>
-        </section>
-      ) : null}
+          </PanelSection>
+        ) : null}
 
-      {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
+        {service && deliveryMode && selectedCounselor && selectedSlot ? (
+          <>
+            <PanelSection title="5. Review appointment" titleId="booking-review-heading">
+              <dl className="grid max-w-3xl gap-x-8 gap-y-4 sm:grid-cols-2">
+                <div><dt className="text-xs font-semibold text-muted">Service</dt><dd className="mt-1 text-sm text-ink">{service.name}</dd></div>
+                <div><dt className="text-xs font-semibold text-muted">Counselor</dt><dd className="mt-1 text-sm text-ink">{selectedCounselor.display_name}{selectedCounselor.is_default ? " · Assigned counselor" : ""}</dd></div>
+                <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(deliveryMode)}</dd></div>
+                <div><dt className="text-xs font-semibold text-muted">Schedule</dt><dd className="mt-1 text-sm text-ink">{formatAppointmentDateTime(selectedSlot.starts_at, selectedSlot.ends_at, slots.data?.data.timezone)}</dd></div>
+                <div><dt className="text-xs font-semibold text-muted">Duration</dt><dd className="mt-1 text-sm text-ink">{slots.data?.data.duration_minutes ?? service.default_duration_minutes} minutes</dd></div>
+                {service.cancellation_cutoff_minutes !== null ? (
+                  <div><dt className="text-xs font-semibold text-muted">Self-service changes</dt><dd className="mt-1 text-sm text-ink">Available until {service.cancellation_cutoff_minutes} minutes before the Appointment.</dd></div>
+                ) : null}
+              </dl>
+              {hasInventoryRequirement ? (
+                <label className="mt-5 flex max-w-3xl items-start gap-3 text-sm leading-6 text-ink">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 shrink-0 accent-brand"
+                    checked={inventoryAcknowledged}
+                    onChange={(event) => setInventoryAcknowledged(event.target.checked)}
+                  />
+                  <span>A submitted Individual Inventory for the current Academic Year is required to book this Service.</span>
+                </label>
+              ) : null}
+            </PanelSection>
+            <PanelFooter>
+              <Button
+                disabled={create.isPending || createdAppointment !== null || (hasInventoryRequirement && !inventoryAcknowledged)}
+                onClick={() => void bookAppointment()}
+                aria-busy={create.isPending}
+              >
+                {create.isPending ? "Booking…" : "Book appointment"}
+              </Button>
+              <p className="text-xs text-muted">This Appointment will be scheduled immediately after a successful booking.</p>
+            </PanelFooter>
+          </>
+        ) : null}
+      </Panel>
+
+      {error ? <Notice role="alert" tone="danger" className="mt-4">{error}</Notice> : null}
       {createdAppointment ? (
-        <div role="status" className="mt-4 flex flex-col gap-3 border-y border-success/30 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-success">Appointment {createdAppointment.referenceCode} was scheduled.</p>
-          <Link
-            href={`/portal/appointments/${createdAppointment.id}`}
-            className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            View Appointment
-          </Link>
-        </div>
+        <Notice
+          role="status"
+          tone="success"
+          className="mt-4"
+          action={
+            <Link
+              href={`/portal/appointments/${createdAppointment.id}`}
+              className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              View Appointment
+            </Link>
+          }
+        >
+          Appointment {createdAppointment.referenceCode} was scheduled.
+        </Notice>
       ) : null}
     </section>
   );
@@ -475,22 +487,24 @@ export function AppointmentBookingPage() {
     return (
       <section aria-labelledby="appointment-booking-unavailable-heading">
         <AppointmentsLocalNavigation />
-        <h1 id="appointment-booking-unavailable-heading" className="font-heading text-3xl font-bold text-ink">Booking unavailable</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
+        <PageHeader title="Booking unavailable" headingId="appointment-booking-unavailable-heading" />
+        <Notice
+          className="max-w-2xl"
+          action={access.canViewSelf ? (
+            <Link
+              href="/portal/appointments/my"
+              className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              Go to My appointments
+            </Link>
+          ) : undefined}
+        >
           {access.isStudent
             ? access.canViewSelf
               ? "Only current students can book appointments. You can still view your existing appointments."
               : "Booking is unavailable to this account."
             : "Student self-booking is not available to this account."}
-        </p>
-        {access.canViewSelf ? (
-          <Link
-            href="/portal/appointments/my"
-            className="mt-4 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            Go to My appointments
-          </Link>
-        ) : null}
+        </Notice>
       </section>
     );
   }

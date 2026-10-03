@@ -8,6 +8,7 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   formatRoutineDateTime,
@@ -107,7 +108,7 @@ function RatingGroup({
         Scale anchors: 1 = Poor · 5 = Average · 10 = Excellent
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <label className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-sm text-ink focus-within:ring-2 focus-within:ring-focus">
+        <label className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-md border border-border-strong px-2.5 text-sm text-ink focus-within:ring-2 focus-within:ring-focus has-[:checked]:border-brand has-[:checked]:bg-brand-wash">
           <input
             type="radio"
             name={id}
@@ -120,7 +121,7 @@ function RatingGroup({
           Not rated
         </label>
         {Array.from({ length: 10 }, (_, index) => index + 1).map((rating) => (
-          <label key={rating} className="inline-flex size-9 cursor-pointer items-center justify-center gap-1 rounded-md border border-border text-sm font-semibold text-ink focus-within:ring-2 focus-within:ring-focus has-[:checked]:border-brand has-[:checked]:bg-brand-subtle">
+          <label key={rating} className="inline-flex size-10 cursor-pointer items-center justify-center gap-1 rounded-md border border-border-strong text-sm font-semibold text-ink focus-within:ring-2 focus-within:ring-focus has-[:checked]:border-brand has-[:checked]:bg-brand-wash has-[:checked]:text-brand">
             <input
               type="radio"
               name={id}
@@ -227,30 +228,33 @@ export function RoutineCounselorEvaluationWorkspace({
 
   if (evaluationFinalized) {
     return (
-      <section aria-labelledby="routine-evaluation-heading" className="mt-10 border-t-2 border-brand pt-6">
-        <header className="border-b border-border pb-4">
-          <h2 id="routine-evaluation-heading" className="font-heading text-2xl font-semibold text-ink">Counselor Evaluation</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">This finalized evaluation is read-only.</p>
-        </header>
-        <RoutineCounselorEvaluationReadOnly evaluation={initialEvaluation} />
-      </section>
+      <Panel aria-labelledby="routine-evaluation-heading">
+        <PanelHeader title="Counselor Evaluation" titleId="routine-evaluation-heading" description="This finalized evaluation is read-only." />
+        <div className="px-4 sm:px-5">
+          <RoutineCounselorEvaluationReadOnly evaluation={initialEvaluation} />
+        </div>
+      </Panel>
     );
   }
 
   return (
-    <section aria-labelledby="routine-evaluation-heading" className="mt-10 border-t-2 border-brand pt-6">
-      <header className="border-b border-border pb-4">
-        <h2 id="routine-evaluation-heading" className="font-heading text-2xl font-semibold text-ink">Counselor Evaluation</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-          Guidance Counselor / Coordinator section. This is separate from the Student-authored Intake.
-        </p>
-        <p className="mt-1 text-xs text-muted">Source evaluation scale: 1 = Poor · 5 = Average · 10 = Excellent.</p>
-      </header>
+    <Panel aria-labelledby="routine-evaluation-heading">
+      <PanelHeader
+        title="Counselor Evaluation"
+        titleId="routine-evaluation-heading"
+        description={
+          <>
+            <span className="block max-w-3xl">Guidance Counselor / Coordinator section. This is separate from the Student-authored Intake.</span>
+            <span className="mt-1 block text-xs">Source evaluation scale: 1 = Poor · 5 = Average · 10 = Excellent.</span>
+          </>
+        }
+      />
 
-      {saveError ? <p role="alert" className="mt-4 border-l-4 border-danger px-3 py-2 text-sm text-danger">{saveError}</p> : null}
-      {notice ? <p role="status" className="mt-4 text-sm text-success">{notice}</p> : null}
+      {saveError ? <p role="alert" className="border-b border-border px-4 py-3 text-sm text-danger sm:px-5">{saveError}</p> : null}
+      {notice ? <p role="status" className="border-b border-border px-4 py-3 text-sm text-success sm:px-5">{notice}</p> : null}
 
       <form
+        className="px-4 sm:px-5"
         onSubmit={(event) => {
           event.preventDefault();
           void saveProgress();
@@ -280,7 +284,7 @@ export function RoutineCounselorEvaluationWorkspace({
             />
           </div>
         ))}
-        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border py-5">
+        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border py-4">
           <Button type="submit" variant="secondary" disabled={save.isPending || !dirty}>
             {save.isPending ? "Saving…" : "Save evaluation"}
           </Button>
@@ -295,7 +299,7 @@ export function RoutineCounselorEvaluationWorkspace({
         entryMode={entryMode}
         disabled={dirty || save.isPending}
       />
-    </section>
+    </Panel>
   );
 }
 
@@ -357,9 +361,9 @@ function RoutineEncounterFinalization({
   }
 
   return (
-    <section aria-labelledby="routine-encounter-finalization" className="border-t border-border py-5">
-      <h3 id="routine-encounter-finalization" className="font-heading text-lg font-semibold text-ink">Finalize against a completed Counseling interaction</h3>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
+    <section aria-labelledby="routine-encounter-finalization" className="border-t border-brand-line px-4 py-5 sm:px-5">
+      <h3 id="routine-encounter-finalization" className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-brand">Finalize against a completed Counseling interaction</h3>
+      <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
         Finalizing is separate from saving. COMPASS verifies the completed Counseling Encounter and permanently locks this Evaluation.
       </p>
 
@@ -369,12 +373,12 @@ function RoutineEncounterFinalization({
           <Skeleton className="h-14 w-full" />
         </div>
       ) : candidates.isError ? (
-        <div role="alert" className="mt-4 border-y border-danger/30 py-4">
+        <div role="alert" className="mt-4">
           <p className="text-sm text-danger">{routineErrorMessage(candidates.error, "Matching completed Counseling interactions could not be loaded.")}</p>
           <Button className="mt-3" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>
         </div>
       ) : items.length === 0 ? (
-        <div className="mt-4 border-y border-border py-4">
+        <div className="mt-4 rounded-sm bg-surface-subtle px-4 py-3">
           <p className="font-medium text-ink">{appointmentBacked ? "Counseling interaction not yet recorded" : "No matching completed Counseling Encounter is available yet."}</p>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
             {appointmentBacked
@@ -385,15 +389,15 @@ function RoutineEncounterFinalization({
       ) : (
         <>
           {appointmentBacked ? (
-            <p className="mt-4 border-l-2 border-success pl-3 text-sm text-ink">
+            <p className="mt-4 rounded-sm bg-surface-subtle px-4 py-3 text-sm text-ink">
               A completed Counseling Encounter for this Appointment is available. COMPASS will resolve and link it automatically during finalization.
             </p>
           ) : (
             <fieldset className="mt-4 min-w-0">
               <legend className="mb-2 text-sm font-medium text-ink">Select the completed Counseling Encounter</legend>
-              <div className="divide-y divide-border border-y border-border">
+              <div className="divide-y divide-border rounded-sm border border-border">
                 {items.map((candidate: RoutineEncounterCandidate) => (
-                  <label key={candidate.id} className="flex cursor-pointer items-start gap-3 py-3">
+                  <label key={candidate.id} className="flex cursor-pointer items-start gap-3 px-3 py-3 has-[:checked]:bg-brand-wash">
                     <input
                       type="radio"
                       name="routine-finalize-encounter"

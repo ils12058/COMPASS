@@ -13,6 +13,9 @@ import {
   CallSlipIssuanceModeValue,
   CallSlipLifecycleStateValue,
 } from "@/lib/api/generated/model";
+import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
+import { Notice } from "@/components/ui/notice";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 
 const knownCallSlipErrors: Record<string, string> = {
   permission_denied: "You do not have permission to use this Call Slip workspace.",
@@ -54,31 +57,21 @@ export function CallSlipHeading({
   backLabel?: string;
 }) {
   return (
-    <header className="border-b border-border pb-6">
-      {backHref ? (
-        <Link href={backHref} className="mb-4 inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+    <PageHeader
+      title={title}
+      description={description}
+      actions={action}
+      back={backHref ? (
+        <Link href={backHref} className={pageBackLinkClass}>
           {backLabel ?? "Back to Call Slips"}
         </Link>
-      ) : null}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-heading text-3xl font-bold text-ink">{title}</h1>
-          {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{description}</p> : null}
-        </div>
-        {action}
-      </div>
-    </header>
+      ) : undefined}
+    />
   );
 }
 
-export function CallSlipListSkeleton({ label = "Loading Call Slips…" }: { label?: string }) {
-  return (
-    <LoadingRegion label={label} className="space-y-3">
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-16 w-full" />
-      <Skeleton className="h-16 w-full" />
-    </LoadingRegion>
-  );
+export function CallSlipListSkeleton({ label = "Loading Call Slips…", framed = true }: { label?: string; framed?: boolean }) {
+  return <RowsSkeleton label={label} framed={framed} />;
 }
 
 export function CallSlipDetailSkeleton({ label = "Loading Call Slip…" }: { label?: string }) {
@@ -120,10 +113,13 @@ export function CallSlipQueryError({
   onRetry: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-danger/30 py-5">
-      <p className="text-sm text-danger">{callSlipErrorMessage(error, fallback)}</p>
-      <Button variant="secondary" className="mt-3" onClick={onRetry}>Retry</Button>
-    </div>
+    <Notice
+      tone="danger"
+      role="alert"
+      action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
+    >
+      {callSlipErrorMessage(error, fallback)}
+    </Notice>
   );
 }
 

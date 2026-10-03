@@ -2,10 +2,12 @@
 
 import { keepPreviousData } from "@tanstack/react-query";
 
+import { Notice } from "@/components/ui/notice";
+import { Panel } from "@/components/ui/panel";
 import { PlainTextBlock } from "@/features/privacy-governance/plain-text-block";
 import { formatPublicDate } from "@/features/public/shared/presentation";
 import { PublicPagination } from "@/features/public/shared/public-pagination";
-import { PublicListSkeleton, PublicSectionError } from "@/features/public/shared/public-state";
+import { PublicListSkeleton, PublicPageError } from "@/features/public/shared/public-state";
 import { usePrivacyGovernanceListPublicNotices } from "@/lib/api/generated/privacy-governance/privacy-governance";
 
 // Notice text comes only from published PUBLIC revisions and is rendered as
@@ -20,7 +22,7 @@ export function PublicPrivacyNotices({ page }: { page: number }) {
 
   if (query.isError) {
     return (
-      <PublicSectionError
+      <PublicPageError
         message="Privacy notices could not be loaded."
         onRetry={() => void query.refetch()}
       />
@@ -31,22 +33,22 @@ export function PublicPrivacyNotices({ page }: { page: number }) {
 
   if (result.items.length === 0) {
     return (
-      <p className="border-y border-border py-6 text-sm leading-6 text-muted">
+      <Notice>
         {page === 1
           ? "No public COMPASS privacy notice is currently published."
           : "No privacy notices on this page."}
-      </p>
+      </Notice>
     );
   }
 
   return (
-    <div aria-busy={query.isFetching}>
-      <div className="divide-y divide-border border-y border-border">
+    <Panel as="div" aria-busy={query.isFetching}>
+      <div className="divide-y divide-border">
         {result.items.map((notice) => (
           <article
             key={notice.revision_id}
             aria-labelledby={`public-notice-${notice.revision_id}`}
-            className="py-8"
+            className="px-5 py-6 sm:px-8 sm:py-7"
           >
             <h2
               id={`public-notice-${notice.revision_id}`}
@@ -67,7 +69,7 @@ export function PublicPrivacyNotices({ page }: { page: number }) {
       </div>
 
       {query.isFetching && !query.isPending ? (
-        <p role="status" className="mt-3 text-xs text-muted">Refreshing privacy notices…</p>
+        <p role="status" className="border-t border-border px-5 py-2 text-xs text-muted sm:px-8">Refreshing privacy notices…</p>
       ) : null}
 
       <PublicPagination
@@ -75,6 +77,6 @@ export function PublicPrivacyNotices({ page }: { page: number }) {
         hasNext={result.has_next}
         buildHref={(nextPage) => `/privacy?page=${nextPage}`}
       />
-    </div>
+    </Panel>
   );
 }

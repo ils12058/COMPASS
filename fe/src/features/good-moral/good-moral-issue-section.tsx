@@ -154,9 +154,11 @@ export function GoodMoralIssueSection({
 
   return (
     <>
-      <GoodMoralSection title="Issuance review">
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Review the certificate details before issuing. The issued certificate will record the approved form revision, issuance date, and issuing counselor.</p>
-        <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+      <GoodMoralSection
+        title="Issuance review"
+        description="Review the certificate details before issuing. The issued certificate will record the approved form revision, issuance date, and issuing counselor."
+      >
+        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
           <GoodMoralField label="Applicant name" value={item.applicant_name} />
           {item.variant === "CURRENT_STUDENT" ? (
             <>
@@ -178,7 +180,7 @@ export function GoodMoralIssueSection({
           <GoodMoralField label="Official Receipt date" value={formatGoodMoralDate(item.official_receipt_date)} />
           <GoodMoralField label="Official Receipt amount" value={item.official_receipt_amount} />
         </dl>
-        <div className="mt-5 flex flex-col items-start gap-3">
+        <div className="mt-5 flex flex-col items-start gap-3 border-t border-border pt-4">
           <Button onClick={() => void beginIssue()} disabled={checkingMfa || issuePending || blockedUntilRefresh}>
             {checkingMfa ? "Checking MFA…" : "Issue certificate"}
           </Button>

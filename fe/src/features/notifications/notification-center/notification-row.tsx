@@ -45,15 +45,15 @@ export function NotificationRow({ notification, currentUserId }: { notification:
   }
 
   return (
-    <li className={`border-b border-border px-3 py-5 sm:px-4 ${notification.is_read ? "" : "bg-surface-subtle"}`}>
+    <li className={`border-b border-border px-4 py-4 last:border-b-0 sm:px-5 ${notification.is_read ? "" : "bg-surface-subtle"}`}>
       <article aria-labelledby={`notification-${notification.id}`}>
         <div className="flex min-w-0 items-start gap-3">
           <span aria-hidden="true" className={`mt-2 size-2 shrink-0 rounded-full ${notification.is_read ? "bg-transparent" : "bg-brand"}`} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <h2 id={`notification-${notification.id}`} className={`font-heading text-lg text-ink ${notification.is_read ? "font-semibold" : "font-bold"}`}>
+              <h3 id={`notification-${notification.id}`} className={`font-heading text-base text-ink ${notification.is_read ? "font-semibold" : "font-bold"}`}>
                 {notification.title}
-              </h2>
+              </h3>
               {!notification.is_read ? <span className="text-xs font-semibold text-brand">Unread</span> : null}
               {notification.policy === "MANDATORY_SECURITY" ? <span className="text-xs font-semibold text-support-strong">Security</span> : null}
             </div>

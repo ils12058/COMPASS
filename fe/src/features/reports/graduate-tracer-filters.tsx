@@ -5,7 +5,8 @@ import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { Notice } from "@/components/ui/notice";
 import {
   graduateTracerFilterQuery,
   validateGraduateTracerDraft,
@@ -42,30 +43,27 @@ export function GraduateTracerFilters({
   }
 
   return (
-    <section
-      aria-labelledby="graduate-tracer-filters-heading"
-      className="mt-6 border-y border-border py-5"
-    >
-      <h2
-        id="graduate-tracer-filters-heading"
-        className="font-heading text-lg font-semibold text-ink"
-      >
-        Submission period
-      </h2>
+    <div>
       {initialErrors.length > 0 ? (
-        <p role="alert" className="mt-3 text-sm leading-6 text-danger">
+        <Notice role="alert" tone="danger" className="mb-3">
           The applied URL filters are invalid: {initialErrors.join(" ")} Reset or correct them, then apply the filters.
-        </p>
+        </Notice>
       ) : null}
-      <form
-        className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,18rem)_minmax(12rem,18rem)_auto]"
-        onSubmit={submit}
-      >
-        <div>
-          <Label htmlFor="graduate-tracer-submitted-from">Submitted From</Label>
+      <form aria-label="Submission period" onSubmit={submit}>
+        <FilterToolbar
+          fieldsClassName="sm:grid-cols-2 lg:grid-cols-[minmax(12rem,18rem)_minmax(12rem,18rem)]"
+          actions={
+            <>
+              <Button type="button" variant="secondary" onClick={reset}>
+                Reset
+              </Button>
+              <Button type="submit">Apply filters</Button>
+            </>
+          }
+        >
+        <FilterField label="Submitted From" htmlFor="graduate-tracer-submitted-from">
           <Input
             id="graduate-tracer-submitted-from"
-            className="mt-2"
             type="date"
             value={draft.submitted_from}
             onChange={(event) => {
@@ -76,12 +74,10 @@ export function GraduateTracerFilters({
               }));
             }}
           />
-        </div>
-        <div>
-          <Label htmlFor="graduate-tracer-submitted-to">Submitted To</Label>
+        </FilterField>
+        <FilterField label="Submitted To" htmlFor="graduate-tracer-submitted-to">
           <Input
             id="graduate-tracer-submitted-to"
-            className="mt-2"
             type="date"
             value={draft.submitted_to}
             onChange={(event) => {
@@ -92,19 +88,14 @@ export function GraduateTracerFilters({
               }));
             }}
           />
-        </div>
-        <div className="flex flex-wrap items-end gap-3">
-          <Button type="submit">Apply filters</Button>
-          <Button type="button" variant="secondary" onClick={reset}>
-            Reset
-          </Button>
-        </div>
+        </FilterField>
+        </FilterToolbar>
       </form>
       {draftError ? (
         <p role="alert" className="mt-3 text-sm leading-6 text-danger">
           {draftError}
         </p>
       ) : null}
-    </section>
+    </div>
   );
 }

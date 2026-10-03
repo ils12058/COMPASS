@@ -3,6 +3,10 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelMessage } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
+import { workspaceTabClass } from "@/components/ui/workspace-tabs";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { useMeListActivity, useMeListSecurityActivity } from "@/lib/api/generated/activity/activity";
 import type { ActivityItemResponse, ActivityPageResponse } from "@/lib/api/generated/model";
@@ -21,28 +25,28 @@ function ActivityList({
 }) {
   const items: ActivityItemResponse[] = data.items;
   return (
-    <div className="mt-6">
-      {items.length === 0 ? <p className="border-t border-border py-7 text-sm text-muted">{emptyText}</p> : (
-        <ol className="divide-y divide-border border-y border-border">
+    <>
+      {items.length === 0 ? <PanelMessage>{emptyText}</PanelMessage> : (
+        <ol className="divide-y divide-border">
           {items.map((item) => (
-            <li key={item.id} className="py-5">
+            <li key={item.id} className="px-4 py-4 sm:px-5">
               <time dateTime={item.occurred_at} className="text-xs font-medium text-muted">
                 {formatInstitutionalDateTime(item.occurred_at)}
               </time>
-              <p className="mt-2 font-heading text-lg font-semibold text-ink">{item.title}</p>
+              <p className="mt-1 font-semibold text-ink">{item.title}</p>
               <p className="mt-1 text-sm leading-6 text-muted">{item.description}</p>
             </li>
           ))}
         </ol>
       )}
       <CanonicalPagination
-        className="mt-5"
+        className="border-brand-line px-4 py-3 sm:px-5"
         page={data.page}
         hasNext={data.has_next}
         label="Activity pages"
         onPageChange={onPageChange}
       />
-    </div>
+    </>
   );
 }
 
@@ -56,18 +60,23 @@ export function ActivityPage() {
 
   return (
     <section aria-labelledby="activity-heading">
-      <h1 id="activity-heading" className="font-heading text-3xl font-bold text-ink">Activity</h1>
-      <div role="group" aria-label="Account activity view" className="mt-7 flex gap-5 border-b border-border">
-        <button type="button" aria-pressed={view === "my"} onClick={() => setView("my")} className={`-mb-px min-h-11 border-b-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${view === "my" ? "border-brand text-brand" : "border-transparent text-muted"}`}>My activity</button>
-        <button type="button" aria-pressed={view === "security"} onClick={() => setView("security")} className={`-mb-px min-h-11 border-b-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${view === "security" ? "border-brand text-brand" : "border-transparent text-muted"}`}>Security activity</button>
+      <PageHeader title="Activity" headingId="activity-heading" />
+      <Panel as="div">
+      {/* The two views share one panel; the switch sits in its top band. */}
+      <div role="group" aria-label="Account activity view" className="flex gap-x-6 border-b border-brand-line px-4 sm:px-5">
+        <button type="button" aria-pressed={view === "my"} onClick={() => setView("my")} className={workspaceTabClass(view === "my")}>My activity</button>
+        <button type="button" aria-pressed={view === "security"} onClick={() => setView("security")} className={workspaceTabClass(view === "security")}>Security activity</button>
       </div>
       <div aria-label={view === "my" ? "My activity" : "Security activity"}>
-        {current.isPending ? <p role="status" className="mt-7 text-sm text-muted">Loading activity…</p> : null}
+        {current.isPending ? <RowsSkeleton label="Loading activity…" rows={4} /> : null}
         {current.isError ? (
-          <div className="mt-7" role="alert">
-            <p className="text-sm text-danger">{view === "my" ? "My activity" : "Security activity"} could not be loaded.</p>
-            <Button variant="secondary" className="mt-3" onClick={() => void current.refetch()}>Retry</Button>
-          </div>
+          <PanelMessage
+            role="alert"
+            tone="danger"
+            action={<Button variant="secondary" onClick={() => void current.refetch()}>Retry</Button>}
+          >
+            {view === "my" ? "My activity" : "Security activity"} could not be loaded.
+          </PanelMessage>
         ) : null}
         {current.isSuccess ? (
           <ActivityList
@@ -77,6 +86,7 @@ export function ActivityPage() {
           />
         ) : null}
       </div>
+      </Panel>
     </section>
   );
 }

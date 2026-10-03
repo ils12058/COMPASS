@@ -64,7 +64,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="mx-auto max-w-6xl px-5 py-10 focus:outline-none sm:px-8 sm:py-12"
+          className="mx-auto max-w-6xl px-5 py-7 focus:outline-none sm:px-8 sm:py-9"
         >
           <PublicMaintenanceNotice />
           {children}

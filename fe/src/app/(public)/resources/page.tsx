@@ -32,10 +32,12 @@ export default async function ResourcesPage({
 
   return (
     <main>
-      <PublicPageHeader>
-        <h1 className="font-heading text-4xl font-bold tracking-tight text-ink">Resources</h1>
+      <PublicPageHeader
+        illustration={{ src: "/illustrations/gco-character-point-right.png", width: 338, height: 330 }}
+      >
+        <h1 className="font-heading text-3xl font-bold tracking-tight text-ink sm:text-4xl">Resources</h1>
       </PublicPageHeader>
-      <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
+      <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8 sm:py-9">
         <ResourceList mode="index" category={category} kind={kind} page={readPage(params.page)} />
       </div>
     </main>

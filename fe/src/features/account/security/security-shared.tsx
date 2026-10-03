@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { pageBackLinkClass } from "@/components/ui/page-header";
 import { accountErrorMessage } from "@/features/account/components/account-errors";
 import {
   getAuthGetMfaStatusQueryKey,
@@ -17,7 +18,7 @@ import {
 
 export function SecurityBackLink() {
   return (
-    <Link href="/portal/account/security" className="mb-6 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+    <Link href="/portal/account/security" className={pageBackLinkClass}>
       ← Security
     </Link>
   );

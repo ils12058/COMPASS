@@ -15,6 +15,8 @@ import {
   type PublicationAudience,
   type PublicationStatus,
 } from "@/features/content/content-presentation";
+import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
+import { Notice } from "@/components/ui/notice";
 
 export const contentPrimaryLinkClass =
   "inline-flex min-h-10 items-center justify-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body motion-reduce:transition-none";
@@ -57,28 +59,18 @@ export function ContentPageHeading({
   children?: ReactNode;
 }) {
   return (
-    <div>
-      {backHref ? (
-        <Link
-          href={backHref}
-          className="mb-5 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        >
+    <PageHeader
+      title={title}
+      headingId={headingId}
+      actions={action}
+      back={backHref ? (
+        <Link href={backHref} className={pageBackLinkClass}>
           ← {backLabel}
         </Link>
-      ) : null}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1
-            id={headingId}
-            className="break-words font-heading text-3xl font-bold text-ink sm:text-4xl"
-          >
-            {title}
-          </h1>
-          {children}
-        </div>
-        {action ? <div className="flex flex-wrap gap-2">{action}</div> : null}
-      </div>
-    </div>
+      ) : undefined}
+    >
+      {children}
+    </PageHeader>
   );
 }
 
@@ -89,15 +81,10 @@ export function ContentNotice({
   tone: "success" | "warning" | "info";
   children: ReactNode;
 }) {
-  const tones = {
-    success: "border-success bg-success/5",
-    warning: "border-warning bg-warning/5",
-    info: "border-info bg-info/5",
-  } as const;
   return (
-    <div role="status" className={`border-l-4 px-4 py-3 text-sm leading-6 text-ink ${tones[tone]}`}>
+    <Notice tone={tone} role="status">
       {children}
-    </div>
+    </Notice>
   );
 }
 
@@ -109,22 +96,22 @@ export function ContentQueryError({
   onRetry?: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-border py-6">
-      <p className="text-sm leading-6 text-danger">{message}</p>
-      {onRetry ? (
-        <Button variant="secondary" className="mt-4" onClick={onRetry}>
-          Retry
-        </Button>
-      ) : null}
-    </div>
+    <Notice
+      tone="danger"
+      role="alert"
+      action={onRetry ? <Button variant="secondary" onClick={onRetry}>Retry</Button> : undefined}
+    >
+      {message}
+    </Notice>
   );
 }
 
+// Rows inside a content results panel; the panel draws the frame.
 export function ContentListSkeleton({ label, rows = 5 }: { label: string; rows?: number }) {
   return (
-    <LoadingRegion label={label} className="mt-5 divide-y divide-border border-y border-border">
+    <LoadingRegion label={label} className="divide-y divide-border">
       {Array.from({ length: rows }, (_, index) => (
-        <div key={index} className="py-4">
+        <div key={index} className="px-4 py-4 sm:px-5">
           <Skeleton className="h-5 w-2/3 max-w-96" />
           <Skeleton className="mt-2 h-4 w-48" />
         </div>
@@ -210,7 +197,7 @@ export function AudienceField({
             <label
               key={audience}
               htmlFor={id}
-              className="flex cursor-pointer gap-3 rounded-md border border-border bg-surface-raised px-3 py-3 has-[:checked]:border-brand has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus"
+              className="flex cursor-pointer gap-3 rounded-md border border-border-strong bg-surface-raised px-3 py-3 has-[:checked]:border-brand has-[:checked]:bg-brand-wash has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus"
             >
               <input
                 id={id}

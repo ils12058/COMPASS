@@ -3,6 +3,8 @@
 import Link from "next/link";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { Notice } from "@/components/ui/notice";
+import { pageBackLinkClass } from "@/components/ui/page-header";
 import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
 import { GraduateTracerResponse } from "@/features/graduate-tracer/graduate-tracer-response";
 import { GraduateTracerError, GraduateTracerHeading, graduateTracerErrorCode } from "@/features/graduate-tracer/graduate-tracer-shared";
@@ -19,23 +21,23 @@ export function GraduateTracerDetailPage({ responseId }: { responseId: string })
 
   if (!access.canViewOperational) {
     return (
-      <section className="space-y-6">
+      <section className="space-y-5">
         <GraduateTracerHeading title="Graduate Tracer response" />
-        <p role="alert" className="border-y border-border py-5 text-sm leading-6 text-muted">Submitted Graduate Tracer responses are unavailable to this account.</p>
+        <Notice role="alert">Submitted Graduate Tracer responses are unavailable to this account.</Notice>
       </section>
     );
   }
 
   if (detail.isPending) {
-    return <section className="space-y-6" aria-busy="true"><Skeleton className="h-9 w-64" /><Skeleton className="h-20 w-full" /><Skeleton className="h-56 w-full" /><p className="sr-only">Loading Graduate Tracer response…</p></section>;
+    return <section className="space-y-5" aria-busy="true"><Skeleton className="h-9 w-64" /><Skeleton className="h-20 w-full" /><Skeleton className="h-56 w-full" /><p className="sr-only">Loading Graduate Tracer response…</p></section>;
   }
 
   const response = detail.data?.data;
   const mustHideCached = detail.error instanceof CompassApiError && [401, 403, 404].includes(detail.error.status);
   if ((!response && detail.isError) || mustHideCached) {
     return (
-      <section className="space-y-6">
-        <Link href="/portal/graduate-tracer" className="inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Graduate Tracer queue</Link>
+      <section className="space-y-5">
+        <Link href="/portal/graduate-tracer" className={pageBackLinkClass}>Back to Graduate Tracer queue</Link>
         <GraduateTracerHeading title="Graduate Tracer response" />
         <GraduateTracerError error={detail.error} fallback={graduateTracerErrorCode(detail.error) === "graduate_tracer_not_submitted" ? "This response is not available because it has not been submitted." : "The submitted Graduate Tracer response could not be loaded."} onRetry={() => void detail.refetch()} />
       </section>
@@ -45,16 +47,16 @@ export function GraduateTracerDetailPage({ responseId }: { responseId: string })
   if (!response) return null;
   if (response.status !== GraduateTracerStatusValue.SUBMITTED) {
     return (
-      <section className="space-y-6">
-        <Link href="/portal/graduate-tracer" className="inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Graduate Tracer queue</Link>
+      <section className="space-y-5">
+        <Link href="/portal/graduate-tracer" className={pageBackLinkClass}>Back to Graduate Tracer queue</Link>
         <GraduateTracerHeading title="Graduate Tracer response" />
-        <p role="alert" className="border-y border-border py-5 text-sm leading-6 text-muted">This response has not been submitted, so it is not available for review.</p>
+        <Notice role="alert">This response has not been submitted, so it is not available for review.</Notice>
       </section>
     );
   }
   return (
-    <section className="space-y-6">
-      <Link href="/portal/graduate-tracer" className="inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Graduate Tracer queue</Link>
+    <section className="space-y-5">
+      <Link href="/portal/graduate-tracer" className={pageBackLinkClass}>Back to Graduate Tracer queue</Link>
       <GraduateTracerHeading
         title={response.name || response.student.display_name}
         description={

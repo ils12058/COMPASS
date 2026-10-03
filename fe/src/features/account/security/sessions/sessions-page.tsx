@@ -5,6 +5,9 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { accountErrorMessage } from "@/features/account/components/account-errors";
 import { SecurityBackLink } from "@/features/account/security/security-shared";
 import {
@@ -33,7 +36,7 @@ function formatDate(value: string): string {
 
 function SessionRow({ session, onRevoke }: { session: SessionSummary; onRevoke: (id: string) => void }) {
   return (
-    <li className="flex flex-col gap-3 py-5 sm:flex-row sm:items-start sm:justify-between">
+    <li className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
       <div className="min-w-0">
         <p className="font-semibold text-ink">{session.user_agent_summary || "Signed-in session"}</p>
         {session.is_current ? <p className="mt-1 text-sm font-semibold text-success">Current session</p> : null}
@@ -47,7 +50,7 @@ function SessionRow({ session, onRevoke }: { session: SessionSummary; onRevoke: 
 
 function TrustedRow({ session, onRevoke }: { session: TrustedSessionSummary; onRevoke: (id: string) => void }) {
   return (
-    <li className="flex flex-col gap-3 py-5 sm:flex-row sm:items-start sm:justify-between">
+    <li className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
       <div className="min-w-0">
         <p className="font-semibold text-ink">{session.user_agent_summary || "Trusted browser"}</p>
         {session.is_current ? <p className="mt-1 text-sm font-semibold text-success">This browser</p> : null}
@@ -132,31 +135,38 @@ export function SessionsPage() {
   return (
     <section aria-labelledby="sessions-heading" className="max-w-3xl">
       <SecurityBackLink />
-      <h1 id="sessions-heading" className="font-heading text-3xl font-bold text-ink">Sessions and trusted browsers</h1>
-      <p className="mt-2 text-sm leading-6 text-muted">Manage where you are signed in and which browsers are trusted. These are separate security settings.</p>
-      {notice ? <p role="status" className="mt-5 text-sm text-success">{notice}</p> : null}
+      <PageHeader
+        title="Sessions and trusted browsers"
+        headingId="sessions-heading"
+        description="Manage where you are signed in and which browsers are trusted. These are separate security settings."
+      />
+      {notice ? <p role="status" className="mb-4 text-sm text-success">{notice}</p> : null}
 
-      <section aria-labelledby="signed-in-heading" className="mt-9">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div><h2 id="signed-in-heading" className="font-heading text-2xl font-semibold text-ink">Signed-in sessions</h2><p className="mt-1 text-sm text-muted">Other sessions can be signed out without ending this one.</p></div>
-          {sessions.isSuccess && otherSessionExists ? <Button variant="secondary" onClick={() => chooseAction({ kind: "other-sessions" })}>Sign out other sessions</Button> : null}
-        </div>
-        {sessions.isPending ? <p role="status" className="mt-5 text-sm text-muted">Loading signed-in sessions…</p> : null}
-        {sessions.isError ? <div role="alert" className="mt-5"><p className="text-sm text-danger">Signed-in sessions could not be loaded.</p><Button variant="secondary" className="mt-3" onClick={() => void sessions.refetch()}>Retry</Button></div> : null}
-        {sessions.isSuccess && signedIn.length === 0 ? <p className="mt-5 border-t border-border py-5 text-sm text-muted">No signed-in sessions are available to display.</p> : null}
-        {sessions.isSuccess && signedIn.length > 0 ? <ul className="mt-5 divide-y divide-border border-y border-border">{signedIn.map((item) => <SessionRow key={item.id} session={item} onRevoke={(id) => chooseAction({ kind: "session", id })} />)}</ul> : null}
-      </section>
+      <Panel aria-labelledby="signed-in-heading">
+        <PanelHeader
+          title="Signed-in sessions"
+          titleId="signed-in-heading"
+          description="Other sessions can be signed out without ending this one."
+          actions={sessions.isSuccess && otherSessionExists ? <Button variant="secondary" onClick={() => chooseAction({ kind: "other-sessions" })}>Sign out other sessions</Button> : null}
+        />
+        {sessions.isPending ? <RowsSkeleton label="Loading signed-in sessions…" rows={2} /> : null}
+        {sessions.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void sessions.refetch()}>Retry</Button>}>Signed-in sessions could not be loaded.</PanelMessage> : null}
+        {sessions.isSuccess && signedIn.length === 0 ? <PanelMessage>No signed-in sessions are available to display.</PanelMessage> : null}
+        {sessions.isSuccess && signedIn.length > 0 ? <ul className="divide-y divide-border">{signedIn.map((item) => <SessionRow key={item.id} session={item} onRevoke={(id) => chooseAction({ kind: "session", id })} />)}</ul> : null}
+      </Panel>
 
-      <section aria-labelledby="trusted-heading" className="mt-11">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div><h2 id="trusted-heading" className="font-heading text-2xl font-semibold text-ink">Trusted browsers</h2><p className="mt-1 text-sm leading-6 text-muted">A trusted browser may reduce MFA prompts on future sign-ins. Removing trust does not sign out an active session.</p></div>
-          {trusted.isSuccess && otherTrustedExists ? <Button variant="secondary" onClick={() => chooseAction({ kind: "other-trusted", currentExists: currentTrustedExists })}>{currentTrustedExists ? "Remove trust from other browsers" : "Remove all trusted browsers"}</Button> : null}
-        </div>
-        {trusted.isPending ? <p role="status" className="mt-5 text-sm text-muted">Loading trusted browsers…</p> : null}
-        {trusted.isError ? <div role="alert" className="mt-5"><p className="text-sm text-danger">Trusted browsers could not be loaded.</p><Button variant="secondary" className="mt-3" onClick={() => void trusted.refetch()}>Retry</Button></div> : null}
-        {trusted.isSuccess && browsers.length === 0 ? <p className="mt-5 border-t border-border py-5 text-sm text-muted">No trusted browsers are currently listed.</p> : null}
-        {trusted.isSuccess && browsers.length > 0 ? <ul className="mt-5 divide-y divide-border border-y border-border">{browsers.map((item) => <TrustedRow key={item.id} session={item} onRevoke={(id) => chooseAction({ kind: "trusted", id })} />)}</ul> : null}
-      </section>
+      <Panel className="mt-5" aria-labelledby="trusted-heading">
+        <PanelHeader
+          title="Trusted browsers"
+          titleId="trusted-heading"
+          description="A trusted browser may reduce MFA prompts on future sign-ins. Removing trust does not sign out an active session."
+          actions={trusted.isSuccess && otherTrustedExists ? <Button variant="secondary" onClick={() => chooseAction({ kind: "other-trusted", currentExists: currentTrustedExists })}>{currentTrustedExists ? "Remove trust from other browsers" : "Remove all trusted browsers"}</Button> : null}
+        />
+        {trusted.isPending ? <RowsSkeleton label="Loading trusted browsers…" rows={2} /> : null}
+        {trusted.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void trusted.refetch()}>Retry</Button>}>Trusted browsers could not be loaded.</PanelMessage> : null}
+        {trusted.isSuccess && browsers.length === 0 ? <PanelMessage>No trusted browsers are currently listed.</PanelMessage> : null}
+        {trusted.isSuccess && browsers.length > 0 ? <ul className="divide-y divide-border">{browsers.map((item) => <TrustedRow key={item.id} session={item} onRevoke={(id) => chooseAction({ kind: "trusted", id })} />)}</ul> : null}
+      </Panel>
 
       <ConsequentialActionDialog
         open={action !== null}

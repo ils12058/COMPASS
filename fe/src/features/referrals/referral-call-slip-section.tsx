@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { CallSlipQueryError, callSlipStateLabel } from "@/features/call-slips/call-slips-shared";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { ReferralActionEntry } from "@/features/referrals/referral-action-section";
@@ -44,8 +45,9 @@ export function ReferralCallSlipSection({
   );
 
   return (
-    <section aria-labelledby="referral-call-slips-heading" className="border-t border-border py-6">
-      <h2 id="referral-call-slips-heading" className="font-heading text-xl font-semibold text-ink">Call Slip / Interview Permit</h2>
+    <Panel aria-labelledby="referral-call-slips-heading">
+      <PanelHeader title="Call Slip / Interview Permit" titleId="referral-call-slips-heading" />
+      <div className="px-4 py-4 *:first:mt-0 sm:px-5">
       {!canViewCallSlips ? (
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">Linked Call Slip details are unavailable here. Open the Call Slip to check its issuance status if you have access.</p>
       ) : currentError ? (
@@ -81,7 +83,7 @@ export function ReferralCallSlipSection({
           )}
 
           {!isVoided && !currentItems[0] && canManageCallSlips ? (
-            <div className="mt-5 border-t border-border pt-5">
+            <div className="mt-5 border-t border-border pt-4">
               <p className="text-sm leading-6 text-muted">
                 {referralAction
                   ? "The Referral source action is already recorded. Issuing a linked Call Slip will reuse it without adding another action timestamp."
@@ -108,7 +110,8 @@ export function ReferralCallSlipSection({
           {isVoided ? <p className="mt-4 text-sm text-muted">A voided Referral cannot receive a new linked Call Slip.</p> : null}
         </>
       )}
-    </section>
+      </div>
+    </Panel>
   );
 }
 
@@ -118,7 +121,7 @@ function LinkedCallSlipSummary({
   callSlip: CallSlipOperationalResponse;
 }) {
   return (
-    <div className="mt-4 border-l-2 border-brand pl-4">
+    <div className="mt-4 rounded-sm border border-border bg-surface-subtle px-4 py-3">
       <p className="font-semibold text-ink">{callSlipStateLabel(callSlip.state)}</p>
       <p className="mt-1 text-sm text-muted">{callSlip.student_name_snapshot} · {callSlip.course_year_snapshot}</p>
       <p className="mt-1 text-sm text-muted">Report {formatInstitutionalDateTime(callSlip.report_at)} · {callSlip.destination_type === "GUIDANCE_OFFICE" ? "Guidance Office" : callSlip.other_destination}</p>
@@ -151,9 +154,9 @@ function LinkedCallSlipHistory({
       {historical.length === 0 ? (
         <p className="mt-2 text-sm text-muted">No earlier linked Call Slips on this page.</p>
       ) : (
-        <ul className="mt-2 divide-y divide-border border-y border-border">
+        <ul className="mt-2 divide-y divide-border rounded-sm border border-border">
           {historical.map((item) => (
-            <li key={item.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <li key={item.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-medium text-ink">{callSlipStateLabel(item.state)}</p>
                 <p className="mt-1 text-sm text-muted">{formatInstitutionalDateTime(item.report_at)} · {item.destination_type === "GUIDANCE_OFFICE" ? "Guidance Office" : item.other_destination}</p>

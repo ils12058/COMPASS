@@ -5,6 +5,9 @@ import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DiagnosticStatus, EmailDeliveryStatusValue } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
+import { PageHeader } from "@/components/ui/page-header";
+import { Notice } from "@/components/ui/notice";
+import { cn } from "@/lib/utils/cn";
 
 const diagnosticLabels: Record<DiagnosticStatus, string> = {
   [DiagnosticStatus.HEALTHY]: "Healthy",
@@ -73,26 +76,16 @@ export function PlatformStatusBadge({
 
 export function PlatformPageHeader({
   title,
+  headingId = "platform-page-heading",
   description,
   action,
 }: {
   title: string;
+  headingId?: string;
   description?: string;
   action?: ReactNode;
 }) {
-  return (
-    <header className="mb-8 flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 className="font-heading text-3xl font-bold text-ink">{title}</h1>
-        {description ? (
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            {description}
-          </p>
-        ) : null}
-      </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
-    </header>
-  );
+  return <PageHeader title={title} headingId={headingId} description={description} actions={action} />;
 }
 
 export function PlatformQueryError({
@@ -103,29 +96,36 @@ export function PlatformQueryError({
   onRetry: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-border py-6">
-      <p className="text-sm leading-6 text-danger">{message}</p>
-      <Button className="mt-3" variant="secondary" onClick={onRetry}>
-        Try again
-      </Button>
-    </div>
+    <Notice
+      tone="danger"
+      role="alert"
+      action={<Button variant="secondary" onClick={onRetry}>Try again</Button>}
+    >
+      {message}
+    </Notice>
   );
 }
 
+// Inside a results Panel the panel draws the frame; on the canvas the skeleton frames itself.
 export function PlatformRowsSkeleton({
   label,
   rows = 4,
+  framed = true,
 }: {
   label: string;
   rows?: number;
+  framed?: boolean;
 }) {
   return (
     <LoadingRegion
       label={label}
-      className="divide-y divide-border border-y border-border"
+      className={cn(
+        "divide-y divide-border",
+        framed && "rounded-sm border border-brand-line bg-surface-raised",
+      )}
     >
       {Array.from({ length: rows }).map((_, index) => (
-        <div key={index} className="py-5">
+        <div key={index} className="px-4 py-4 sm:px-5">
           <Skeleton className="h-4 w-36 rounded-sm" />
           <Skeleton className="mt-3 h-3 w-3/4 rounded-sm" />
         </div>

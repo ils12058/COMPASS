@@ -1,6 +1,8 @@
 "use client";
 
 import { buttonVariants } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import {
   RoutineStudentIntakeEditor,
@@ -40,9 +42,9 @@ function routineWorkflowMessage(state: RoutineWorkflowState): string | null {
 function RoutineLifecycleNotice({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <p role="status" className="mb-6 border-y border-border py-4 text-sm leading-6 text-muted">
+    <Notice role="status" className="mb-5">
       {message} The record remains available as historical context.
-    </p>
+    </Notice>
   );
 }
 
@@ -126,19 +128,20 @@ function StudentRoutineDetail({
           initialIntake={detail.intake}
         />
       ) : (
-        <section aria-labelledby="routine-student-intake-heading">
-          <header className="border-b border-border pb-4">
-            <h2 id="routine-student-intake-heading" className="font-heading text-2xl font-semibold text-ink">Student Intake</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              {detail.intake_status === "SUBMITTED"
-                ? "Submitted responses are read-only."
-                : !actionable
-                  ? "This draft is preserved for history and is now read-only."
-                  : "You can view your draft, but your current Student status does not allow Intake changes."}
-            </p>
-          </header>
-          <RoutineStudentIntakeReadOnly intake={detail.intake} />
-        </section>
+        <Panel aria-labelledby="routine-student-intake-heading">
+          <PanelHeader
+            title="Student Intake"
+            titleId="routine-student-intake-heading"
+            description={detail.intake_status === "SUBMITTED"
+              ? "Submitted responses are read-only."
+              : !actionable
+                ? "This draft is preserved for history and is now read-only."
+                : "You can view your draft, but your current Student status does not allow Intake changes."}
+          />
+          <div className="px-4 sm:px-5">
+            <RoutineStudentIntakeReadOnly intake={detail.intake} />
+          </div>
+        </Panel>
       )}
     </div>
   );
@@ -200,39 +203,44 @@ function CounselorRoutineDetail({
       />
       <RoutineLifecycleNotice message={workflowMessage} />
 
-      <section aria-labelledby="routine-student-intake-heading">
-        <header className="border-b border-border pb-4">
-          <h2 id="routine-student-intake-heading" className="font-heading text-2xl font-semibold text-ink">Student Intake</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            {detail.intake_status === "DRAFT"
-              ? "Student-authored responses are protected until submission."
-              : "Student-authored responses are read-only for Counselors."}
-          </p>
-        </header>
+      <div className="space-y-5">
+      <Panel aria-labelledby="routine-student-intake-heading">
+        <PanelHeader
+          title="Student Intake"
+          titleId="routine-student-intake-heading"
+          description={detail.intake_status === "DRAFT"
+            ? "Student-authored responses are protected until submission."
+            : "Student-authored responses are read-only for Counselors."}
+        />
         {detail.intake_status === "DRAFT" || detail.intake === null ? (
-          <p role="status" className="border-b border-border py-5 text-sm text-muted">
+          <PanelMessage role="status">
             Student Intake is still a draft. The Student’s answers become available after they submit their Intake.
-          </p>
+          </PanelMessage>
         ) : (
-          <RoutineStudentIntakeReadOnly intake={detail.intake} />
+          <div className="px-4 sm:px-5">
+            <RoutineStudentIntakeReadOnly intake={detail.intake} />
+          </div>
         )}
-      </section>
+      </Panel>
 
       {detail.intake_status !== "SUBMITTED" ? (
-        <section aria-labelledby="routine-evaluation-unavailable" className="mt-10 border-t-2 border-border pt-6">
-          <h2 id="routine-evaluation-unavailable" className="font-heading text-2xl font-semibold text-ink">Counselor Evaluation</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
+        <Panel aria-labelledby="routine-evaluation-unavailable">
+          <PanelHeader title="Counselor Evaluation" titleId="routine-evaluation-unavailable" />
+          <PanelMessage>
             Counselor Evaluation becomes available after the Student submits the Intake.
-          </p>
-        </section>
+          </PanelMessage>
+        </Panel>
       ) : detail.evaluation_status === "FINALIZED" ? (
-        <section aria-labelledby="routine-evaluation-heading" className="mt-10 border-t-2 border-brand pt-6">
-          <header className="border-b border-border pb-4">
-            <h2 id="routine-evaluation-heading" className="font-heading text-2xl font-semibold text-ink">Counselor Evaluation</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">Finalized{detail.evaluation_finalized_at ? ` ${formatRoutineDateTime(detail.evaluation_finalized_at)}` : ""}. Read-only.</p>
-          </header>
-          <RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} />
-        </section>
+        <Panel aria-labelledby="routine-evaluation-heading">
+          <PanelHeader
+            title="Counselor Evaluation"
+            titleId="routine-evaluation-heading"
+            description={`Finalized${detail.evaluation_finalized_at ? ` ${formatRoutineDateTime(detail.evaluation_finalized_at)}` : ""}. Read-only.`}
+          />
+          <div className="px-4 sm:px-5">
+            <RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} />
+          </div>
+        </Panel>
       ) : canManage ? (
         <RoutineCounselorEvaluationWorkspace
           key={detail.id}
@@ -242,18 +250,20 @@ function CounselorRoutineDetail({
           evaluationFinalized={false}
         />
       ) : (
-        <section aria-labelledby="routine-evaluation-heading" className="mt-10 border-t-2 border-brand pt-6">
-          <header className="border-b border-border pb-4">
-            <h2 id="routine-evaluation-heading" className="font-heading text-2xl font-semibold text-ink">Counselor Evaluation</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-            {actionable
+        <Panel aria-labelledby="routine-evaluation-heading">
+          <PanelHeader
+            title="Counselor Evaluation"
+            titleId="routine-evaluation-heading"
+            description={actionable
               ? "Draft evaluation · Read-only for this account."
               : "Draft evaluation · Preserved for history and read-only because the Appointment is no longer active."}
-          </p>
-          </header>
-          <RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} />
-        </section>
+          />
+          <div className="px-4 sm:px-5">
+            <RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} />
+          </div>
+        </Panel>
       )}
+      </div>
     </div>
   );
 }

@@ -11,11 +11,13 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { dataTable } from "@/components/ui/data-table";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { useOrganizationAction } from "@/features/organization/components/organization-action";
 import { PeoplePicker } from "@/features/organization/components/people-picker";
 import {
   PageHeading,
-  QueryError,
+  PanelQueryError,
   StatusBadge,
   TableSkeleton,
 } from "@/features/organization/components/organization-shared";
@@ -263,12 +265,12 @@ export function ResponsibilitiesPage() {
         })) ?? []);
 
   return (
-    <section>
-      <PageHeading title="Responsibilities" />
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-        Organization responsibility defines default institutional routing. It
-        does not by itself grant blanket access to confidential records.
-      </p>
+    <section aria-labelledby="responsibilities-heading">
+      <PageHeading
+        title="Responsibilities"
+        headingId="responsibilities-heading"
+        description="Organization responsibility defines default institutional routing. It does not by itself grant blanket access to confidential records."
+      />
       {action.notice &&
       !collegeDialog &&
       !collegeReview &&
@@ -279,74 +281,60 @@ export function ResponsibilitiesPage() {
         ? action.messages
         : null}
 
-      <section className="mt-10" aria-labelledby="college-counselors-heading">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2
-              id="college-counselors-heading"
-              className="font-heading text-2xl font-semibold text-ink"
-            >
-              College counselors
-            </h2>
-            <p className="mt-2 text-sm text-muted">
-              One responsible Counselor may be assigned to each College. When
-              none is assigned, default routing uses the Head Guidance
-              Counselor if exactly one active Head Guidance Counselor can be
-              identified.
-            </p>
-          </div>
-        </div>
+      <Panel className="mt-5" aria-labelledby="college-counselors-heading">
+        <PanelHeader
+          title="College counselors"
+          titleId="college-counselors-heading"
+          description="One responsible Counselor may be assigned to each College. When none is assigned, default routing uses the Head Guidance Counselor if exactly one active Head Guidance Counselor can be identified."
+        />
 
         {responsibilities.isPending ||
         (canViewStructure && colleges.isPending) ? (
           <TableSkeleton />
         ) : responsibilities.isError ? (
-          <div className="mt-5">
-            <QueryError
-              error={responsibilities.error}
-              fallback="College Counselor responsibilities could not be loaded."
-              onRetry={() => void responsibilities.refetch()}
-            />
-          </div>
+          <PanelQueryError
+            error={responsibilities.error}
+            fallback="College Counselor responsibilities could not be loaded."
+            onRetry={() => void responsibilities.refetch()}
+          />
         ) : canViewStructure && colleges.isError ? (
-          <div className="mt-5">
-            <QueryError
-              error={colleges.error}
-              fallback="College structure could not be loaded."
-              onRetry={() => void colleges.refetch()}
-            />
-          </div>
+          <PanelQueryError
+            error={colleges.error}
+            fallback="College structure could not be loaded."
+            onRetry={() => void colleges.refetch()}
+          />
         ) : collegeRows.length === 0 ? (
-          <p className="mt-5 border-y border-border py-8 text-sm text-muted">
+          <PanelMessage>
             No College Counselor responsibilities are configured.
-          </p>
+          </PanelMessage>
         ) : (
-          <div className="mt-5 overflow-x-auto border-y border-border">
-            <table className="w-full min-w-[42rem] border-collapse text-left text-sm">
-              <thead className="bg-surface-subtle text-xs font-semibold uppercase tracking-wide text-muted">
+          <div className={dataTable.scroll}>
+            <table className={`${dataTable.table} min-w-[42rem]`}>
+              <caption className="sr-only">College counselors</caption>
+              <thead className={dataTable.head}>
                 <tr>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>
                     College
                   </th>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Campus
                   </th>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Responsible Counselor
                   </th>
-                  <th scope="col" className="px-4 py-3 text-right">
+                  <th scope="col" className={`${dataTable.headerCell} text-right`}>
                     Action
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className={dataTable.body}>
                 {collegeRows.map(({ college, assignment }) => (
-                  <tr key={college.id} className="border-t border-border">
-                    <th scope="row" className="px-4 py-4 font-semibold text-ink">
+                  <tr key={college.id} className={dataTable.row}>
+                    <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-semibold text-ink`}>
                       {college.name}
                     </th>
-                    <td className="px-4 py-4">{college.campus.name}</td>
-                    <td className="px-4 py-4">
+                    <td className={dataTable.cell}>{college.campus.name}</td>
+                    <td className={dataTable.cell}>
                       {assignment ? (
                         <div className="space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
@@ -363,7 +351,7 @@ export function ResponsibilitiesPage() {
                         "Not assigned"
                       )}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className={`${dataTable.cell} py-2`}>
                       <div className="flex justify-end gap-1">
                         <Button
                           variant="quiet"
@@ -401,64 +389,54 @@ export function ResponsibilitiesPage() {
         )}
 
         {!canViewStructure ? (
-          <p className="mt-3 text-xs leading-5 text-muted">
+          <p className="border-t border-brand-line px-4 py-3 text-xs leading-5 text-muted sm:px-5">
             Organization structure is unavailable to this account, so only
             Colleges that already have a responsible Counselor are listed.
           </p>
         ) : null}
-      </section>
+      </Panel>
 
-      <section className="mt-12" aria-labelledby="staff-supervision-heading">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2
-              id="staff-supervision-heading"
-              className="font-heading text-2xl font-semibold text-ink"
-            >
-              Staff supervision
-            </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-              Guidance Services Staff share their supervising counselor&apos;s
-              assigned responsibilities in COMPASS.
-            </p>
-          </div>
-          <Button onClick={() => openStaff()}>Set supervisor</Button>
-        </div>
+      <Panel className="mt-5" aria-labelledby="staff-supervision-heading">
+        <PanelHeader
+          title="Staff supervision"
+          titleId="staff-supervision-heading"
+          description="Guidance Services Staff share their supervising counselor's assigned responsibilities in COMPASS."
+          actions={<Button onClick={() => openStaff()}>Set supervisor</Button>}
+        />
 
         {supervisions.isPending ? (
           <TableSkeleton />
         ) : supervisions.isError ? (
-          <div className="mt-5">
-            <QueryError
-              error={supervisions.error}
-              fallback="Staff supervision relationships could not be loaded."
-              onRetry={() => void supervisions.refetch()}
-            />
-          </div>
+          <PanelQueryError
+            error={supervisions.error}
+            fallback="Staff supervision relationships could not be loaded."
+            onRetry={() => void supervisions.refetch()}
+          />
         ) : supervisions.data.data.items.length === 0 ? (
-          <p className="mt-5 border-y border-border py-8 text-sm text-muted">
+          <PanelMessage>
             No Staff supervision relationships are configured.
-          </p>
+          </PanelMessage>
         ) : (
-          <div className="mt-5 overflow-x-auto border-y border-border">
-            <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
-              <thead className="bg-surface-subtle text-xs font-semibold uppercase tracking-wide text-muted">
+          <div className={dataTable.scroll}>
+            <table className={`${dataTable.table} min-w-[36rem]`}>
+              <caption className="sr-only">Staff supervision</caption>
+              <thead className={dataTable.head}>
                 <tr>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>
                     Guidance Services Staff
                   </th>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Supervisor
                   </th>
-                  <th scope="col" className="px-4 py-3 text-right">
+                  <th scope="col" className={`${dataTable.headerCell} text-right`}>
                     Action
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className={dataTable.body}>
                 {supervisions.data.data.items.map((item) => (
-                  <tr key={item.staff.id} className="border-t border-border">
-                    <th scope="row" className="px-4 py-4">
+                  <tr key={item.staff.id} className={dataTable.row}>
+                    <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-normal`}>
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-semibold text-ink">
@@ -469,7 +447,7 @@ export function ResponsibilitiesPage() {
                         <p className="text-xs text-muted">{item.staff.email}</p>
                       </div>
                     </th>
-                    <td className="px-4 py-4">
+                    <td className={dataTable.cell}>
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-medium text-ink">
@@ -480,7 +458,7 @@ export function ResponsibilitiesPage() {
                         <p className="text-xs text-muted">{item.supervisor.email}</p>
                       </div>
                     </td>
-                    <td className="px-4 py-2">
+                    <td className={`${dataTable.cell} py-2`}>
                       <div className="flex justify-end gap-1">
                         <Button
                           variant="quiet"
@@ -509,7 +487,7 @@ export function ResponsibilitiesPage() {
             </table>
           </div>
         )}
-      </section>
+      </Panel>
 
       <Dialog
         open={Boolean(collegeDialog)}
@@ -662,7 +640,7 @@ export function ResponsibilitiesPage() {
             {staffDialog?.staff ? (
               <div>
                 <p className="text-sm font-semibold text-ink">Guidance Services Staff</p>
-                <div className="mt-2 border-l-2 border-support bg-support-soft/40 px-3 py-3 text-sm">
+                <div className="mt-2 rounded-sm border border-brand-line bg-brand-wash px-3 py-3 text-sm">
                   <p className="font-semibold text-ink">{staffDialog.staff.full_name}</p>
                   <p className="mt-1 text-xs text-muted">
                     {staffDialog.staff.institutional_id

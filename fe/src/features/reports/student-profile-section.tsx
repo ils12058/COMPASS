@@ -2,7 +2,9 @@ import type {
   DistributionSection,
   ProgramColumn,
 } from "@/lib/api/generated/model";
-import { formatReportPercentage } from "@/features/reports/reports-shared";
+import { dataTable } from "@/components/ui/data-table";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
+import { formatReportPercentage, reportSection } from "@/features/reports/reports-shared";
 
 function programName(program: ProgramColumn): string {
   if (program.is_legacy) return program.name;
@@ -30,17 +32,10 @@ export function StudentProfileProgramLegend({
 }) {
   if (columns.length < 2) return null;
   return (
-    <section
-      aria-labelledby="student-profile-program-legend-heading"
-      className="mt-6 border-y border-border py-4"
-    >
-      <h2
-        id="student-profile-program-legend-heading"
-        className="text-sm font-semibold text-ink"
-      >
-        Program columns
-      </h2>
-      <ul className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-3">
+    <Panel aria-labelledby="student-profile-program-legend-heading">
+      <PanelHeader title="Program columns" titleId="student-profile-program-legend-heading" />
+      <PanelBody>
+      <ul className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-3">
         {columns.map((program) => (
           <li key={program.key} className="min-w-0">
             <span className="font-semibold text-ink">{programName(program)}</span>
@@ -52,7 +47,8 @@ export function StudentProfileProgramLegend({
           </li>
         ))}
       </ul>
-    </section>
+      </PanelBody>
+    </Panel>
   );
 }
 
@@ -66,12 +62,9 @@ export function StudentProfileSection({
   const headingId = "student-profile-section-" + section.key;
 
   return (
-    <section aria-labelledby={headingId} className="mt-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3
-          id={headingId}
-          className="font-heading text-lg font-semibold text-ink"
-        >
+    <section aria-labelledby={headingId} className={reportSection.root}>
+      <div className={reportSection.head}>
+        <h3 id={headingId} className={reportSection.title}>
           {section.label}
         </h3>
         <p className="text-xs text-muted">Denominator: {section.denominator}</p>
@@ -80,17 +73,17 @@ export function StudentProfileSection({
         role="region"
         aria-labelledby={headingId}
         tabIndex={0}
-        className="mt-3 overflow-x-auto border-y border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className={reportSection.region}
       >
-        <table className="min-w-max w-full border-collapse text-left text-sm">
+        <table className={`${dataTable.table} min-w-max`}>
           <caption className="sr-only">
             {section.label} distribution by Program, with total and percentage
           </caption>
-          <thead className="bg-surface-muted text-xs text-muted">
+          <thead className={reportSection.tableHead}>
             <tr>
               <th
                 scope="col"
-                className="sticky left-0 z-10 min-w-52 bg-surface-muted px-3 py-3 font-semibold"
+                className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell} min-w-52`}
               >
                 Category
               </th>
@@ -98,7 +91,7 @@ export function StudentProfileSection({
                 <th
                   key={program.key}
                   scope="col"
-                  className="min-w-36 px-3 py-3 font-semibold"
+                  className={`${dataTable.headerCell} min-w-36`}
                   title={programContext(program) || undefined}
                 >
                   <span className="block text-ink">{programName(program)}</span>
@@ -109,15 +102,15 @@ export function StudentProfileSection({
                   ) : null}
                 </th>
               ))}
-              <th scope="col" className="min-w-24 px-3 py-3 font-semibold">
+              <th scope="col" className={`${dataTable.headerCell} min-w-24`}>
                 Total
               </th>
-              <th scope="col" className="min-w-28 px-3 py-3 font-semibold">
+              <th scope="col" className={`${dataTable.headerCell} min-w-28`}>
                 Percentage
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className={dataTable.body}>
             {section.rows.map((row) => {
               const countsByProgram = new Map(
                 row.program_counts.map((count) => [
@@ -126,25 +119,25 @@ export function StudentProfileSection({
                 ]),
               );
               return (
-                <tr key={row.key}>
+                <tr key={row.key} className={dataTable.row}>
                   <th
                     scope="row"
-                    className="sticky left-0 z-10 min-w-52 bg-surface px-3 py-3 font-medium text-ink"
+                    className={`${dataTable.cell} ${dataTable.stickyCell} min-w-52 font-medium text-ink`}
                   >
                     {row.label}
                   </th>
                   {programColumns.map((program) => (
                     <td
                       key={program.key}
-                      className="px-3 py-3 tabular-nums text-ink"
+                      className={`${dataTable.cell} tabular-nums text-ink`}
                     >
                       {String(countsByProgram.get(program.key) ?? 0)}
                     </td>
                   ))}
-                  <td className="px-3 py-3 font-semibold tabular-nums text-ink">
+                  <td className={`${dataTable.cell} font-semibold tabular-nums text-ink`}>
                     {row.total_count}
                   </td>
-                  <td className="px-3 py-3 tabular-nums text-ink">
+                  <td className={`${dataTable.cell} tabular-nums text-ink`}>
                     {formatReportPercentage(row.percentage)}
                   </td>
                 </tr>
@@ -154,7 +147,7 @@ export function StudentProfileSection({
         </table>
       </div>
       {section.rows.length === 0 ? (
-        <p className="border-b border-border py-4 text-sm text-muted">
+        <p className={reportSection.empty}>
           No data is available for this section.
         </p>
       ) : null}

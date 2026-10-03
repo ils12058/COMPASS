@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import {
@@ -59,7 +60,7 @@ function OpportunityRow({
   const query = `?opportunity=${encodeURIComponent(opportunity.id)}`;
   return (
     <li
-      className={`py-5 ${highlighted ? "border-l-2 border-brand pl-4" : ""}`}
+      className={`px-4 py-4 sm:px-5 ${highlighted ? "bg-brand-wash" : ""}`}
     >
       <h3 className="font-heading text-lg font-semibold text-ink">
         {opportunity.service_label}
@@ -127,24 +128,17 @@ export function FeedbackEntryPage() {
       />
 
       {access.hasStudentSubmissionAccess ? (
-        <section className="mt-7" aria-labelledby="feedback-services-heading">
-          <h2
-            id="feedback-services-heading"
-            className="font-heading text-xl font-semibold text-ink"
-          >
-            Completed services
-          </h2>
+        <Panel className="mt-5" aria-labelledby="feedback-services-heading">
+          <PanelHeader title="Completed services" titleId="feedback-services-heading" />
 
           {invalidSelected ? (
-            <p role="alert" className="mt-4 border-y border-border py-5 text-sm text-muted">
+            <PanelMessage role="alert" className="border-b border-border">
               This Feedback link is not available.
-            </p>
+            </PanelMessage>
           ) : selected.isError && selectedId ? (
-            <div className="mt-4">
-              <p role="alert" className="border-y border-border py-5 text-sm text-muted">
-                This Feedback opportunity is not available.
-              </p>
-            </div>
+            <PanelMessage role="alert" className="border-b border-border">
+              This Feedback opportunity is not available.
+            </PanelMessage>
           ) : null}
 
           {opportunities.isPending || (selectedId && selected.isPending) ? (
@@ -152,7 +146,7 @@ export function FeedbackEntryPage() {
           ) : null}
 
           {opportunities.isError ? (
-            <div className="mt-4">
+            <div className="px-4 py-4 sm:px-5">
               <FeedbackQueryError
                 error={opportunities.error}
                 fallback="Completed services could not be loaded."
@@ -163,7 +157,7 @@ export function FeedbackEntryPage() {
 
           {!opportunities.isPending && !opportunities.isError ? (
             pending.length || (selectedOpportunity && !selectedAlreadyListed) ? (
-              <ul className="mt-4 divide-y divide-border border-y border-border">
+              <ul className="divide-y divide-border">
                 {selectedOpportunity && !selectedAlreadyListed ? (
                   <OpportunityRow opportunity={selectedOpportunity} highlighted />
                 ) : null}
@@ -176,20 +170,20 @@ export function FeedbackEntryPage() {
                 ))}
               </ul>
             ) : (
-              <p className="mt-4 border-y border-border py-6 text-sm text-muted">
+              <PanelMessage>
                 You do not currently have a completed service waiting for feedback.
-              </p>
+              </PanelMessage>
             )
           ) : null}
-        </section>
+        </Panel>
       ) : null}
 
       {access.hasOperationalWorkspace ? (
-        <section className="mt-9 border-t border-border pt-7">
-          <h2 className="font-heading text-xl font-semibold text-ink">Review responses</h2>
-          <ul className="mt-4 divide-y divide-border border-y border-border">
+        <Panel className="mt-5" aria-labelledby="feedback-review-heading">
+          <PanelHeader title="Review responses" titleId="feedback-review-heading" />
+          <ul className="divide-y divide-border">
             {access.canViewCustomerFeedback ? (
-              <li className="py-5">
+              <li className="px-4 py-4 sm:px-5">
                 <Link
                   href="/portal/feedback/customer-feedback/responses"
                   className="font-semibold text-brand underline hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
@@ -199,7 +193,7 @@ export function FeedbackEntryPage() {
               </li>
             ) : null}
             {access.canViewCsm ? (
-              <li className="py-5">
+              <li className="px-4 py-4 sm:px-5">
                 <Link
                   href="/portal/feedback/csm/responses"
                   className="font-semibold text-brand underline hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
@@ -209,7 +203,7 @@ export function FeedbackEntryPage() {
               </li>
             ) : null}
           </ul>
-        </section>
+        </Panel>
       ) : null}
     </section>
   );

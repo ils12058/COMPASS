@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { dataTable } from "@/components/ui/data-table";
+import { pageBackLinkClass } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
 import type { ExitInterviewDetailResponse } from "@/lib/api/generated/model";
 import {
   DELAY_REASONS,
@@ -46,20 +49,20 @@ function RatingTable({
   return (
     <>
       <p className="mt-3 text-sm leading-6 text-muted">{legend}</p>
-      <div className="mt-3 overflow-x-auto rounded-md border border-border">
-        <table className="min-w-[34rem] w-full border-collapse text-sm">
+      <div className={`${dataTable.scroll} mt-3 rounded-sm border border-border`}>
+        <table className={`${dataTable.table} min-w-[34rem]`}>
           <caption className="sr-only">{caption}</caption>
-          <thead className="bg-surface-muted text-left text-xs uppercase tracking-wide text-muted">
+          <thead className={dataTable.head}>
             <tr>
-              <th scope="col" className="sticky left-0 z-10 min-w-64 bg-surface-muted px-3 py-3 font-semibold">Item</th>
-              <th scope="col" className="px-3 py-3 font-semibold">Response</th>
+              <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell} min-w-64`}>Item</th>
+              <th scope="col" className={dataTable.headerCell}>Response</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className={dataTable.body}>
             {rows.map((row) => (
               <tr key={row.code}>
-                <th scope="row" className="sticky left-0 z-10 bg-surface-raised px-3 py-3 text-left font-medium text-ink">{row.label}</th>
-                <td className="px-3 py-3 text-ink">{renderValue(row.value)}</td>
+                <th scope="row" className={`${dataTable.cell} sticky left-0 z-10 bg-surface-raised text-left font-medium text-ink`}>{row.label}</th>
+                <td className={`${dataTable.cell} text-ink`}>{renderValue(row.value)}</td>
               </tr>
             ))}
           </tbody>
@@ -92,11 +95,9 @@ export function ExitInterviewResponse({
     ),
   );
   return (
-    <section className="space-y-2">
-      <Link
-        href={backHref}
-        className="inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
+    <section className="space-y-5">
+      <div>
+      <Link href={backHref} className={pageBackLinkClass}>
         {studentFacing ? "Back to Exit Interviews" : "Back to Exit Interview queue"}
       </Link>
       <ExitInterviewHeading
@@ -110,7 +111,11 @@ export function ExitInterviewResponse({
         }
       />
 
-      <section aria-labelledby="exit-interview-record-facts" className="py-5">
+      </div>
+
+      {/* One sheet in the order of the official form: the record facts, then each Section. */}
+      <Panel as="div">
+      <section aria-labelledby="exit-interview-record-facts" className="px-4 py-4 sm:px-5">
         <h2 id="exit-interview-record-facts" className="sr-only">Exit Interview record facts</h2>
         <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
           <ExitInterviewField label="Academic Year" value={detail.academic_year.label} />
@@ -202,6 +207,7 @@ export function ExitInterviewResponse({
           <ExitInterviewField label="Suggestions / Recommendations" value={detail.suggestions_recommendations} />
         </div>
       </ExitInterviewSection>
+      </Panel>
 
       {detail.reopen_events.length ? (
         <ExitInterviewCorrectionHistory

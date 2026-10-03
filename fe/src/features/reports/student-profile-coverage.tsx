@@ -1,3 +1,4 @@
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import type { InventoryCoverage, Methodology } from "@/lib/api/generated/model";
 
 const FILTER_LABELS: Record<string, string> = {
@@ -12,6 +13,9 @@ const FILTER_LABELS: Record<string, string> = {
 function countValue(value: number | null): string {
   return value === null ? "Unavailable" : String(value);
 }
+
+// Limits on what the counts above can show; each sits under the counts, separated by the panel's line.
+const coverageNote = "border-t border-brand-line px-4 py-3 text-sm leading-6 text-ink sm:px-5";
 
 export function StudentProfileCoverage({
   coverage,
@@ -44,37 +48,30 @@ export function StudentProfileCoverage({
   );
 
   return (
-    <section
-      aria-labelledby="inventory-coverage-heading"
-      className="mt-8 border-y border-border py-5"
-    >
-      <h2
-        id="inventory-coverage-heading"
-        className="font-heading text-xl font-semibold text-ink"
-      >
-        Inventory Coverage
-      </h2>
-      <p className="mt-3 max-w-5xl text-sm leading-6 text-muted">
-        {coverage.scope_note}
-      </p>
-      <dl className="mt-5 grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
+    <Panel className="overflow-hidden" aria-labelledby="inventory-coverage-heading">
+      <PanelHeader
+        title="Inventory Coverage"
+        titleId="inventory-coverage-heading"
+        description={coverage.scope_note}
+      />
+      <dl className="grid grid-cols-1 gap-px bg-border sm:grid-cols-2 xl:grid-cols-4">
         {values.map((item) => (
-          <div key={item.label} className="border-l-2 border-border pl-3">
+          <div key={item.label} className="min-w-0 bg-surface-raised px-4 py-3.5 sm:px-5">
             <dt className="text-sm text-muted">{item.label}</dt>
-            <dd className="mt-1 text-xl font-semibold text-ink">
+            <dd className="mt-1 font-heading text-xl font-semibold tabular-nums text-ink">
               {item.value}
             </dd>
           </div>
         ))}
       </dl>
       {coverage.mode === "HISTORICAL_LIMITED" ? (
-        <p className="mt-5 border-l-2 border-warning pl-3 text-sm leading-6 text-muted">
+        <p className={coverageNote}>
           {methodology.historical_coverage_note ??
             "Historical missing-Inventory coverage cannot be reconstructed from current COMPASS data."}
         </p>
       ) : null}
       {ignored.length > 0 ? (
-        <p className="mt-5 border-l-2 border-warning pl-3 text-sm leading-6 text-muted">
+        <p className={coverageNote}>
           Inventory Coverage does not use these selected filters: {ignored.join(", ")}.
           {coverage.ignored_filters.some(
             (filter) => filter === "program_id" || filter === "year_level",
@@ -83,6 +80,6 @@ export function StudentProfileCoverage({
             : ""}
         </p>
       ) : null}
-    </section>
+    </Panel>
   );
 }

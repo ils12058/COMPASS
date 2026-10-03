@@ -1,3 +1,4 @@
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
 import type { StudentProfilingReportResponse } from "@/lib/api/generated/model";
 import { reportGeneratedAt } from "@/features/reports/reports-shared";
 
@@ -51,17 +52,10 @@ export function StudentProfileContext({
   ];
 
   return (
-    <section
-      aria-labelledby="student-profile-context-heading"
-      className="mt-6 border-y border-border py-5"
-    >
-      <h2
-        id="student-profile-context-heading"
-        className="font-heading text-lg font-semibold text-ink"
-      >
-        Report context
-      </h2>
-      <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
+    <Panel aria-labelledby="student-profile-context-heading">
+      <PanelHeader title="Report context" titleId="student-profile-context-heading" />
+      <PanelBody>
+      <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
         {values.map((item) => (
           <div key={item.label} className="min-w-0">
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -76,6 +70,7 @@ export function StudentProfileContext({
           </div>
         ))}
       </dl>
-    </section>
+      </PanelBody>
+    </Panel>
   );
 }

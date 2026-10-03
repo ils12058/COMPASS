@@ -16,6 +16,9 @@ import { LoadingRegion } from "@/components/ui/loading-region";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { dataTable } from "@/components/ui/data-table";
+import { Panel, PanelBody, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
@@ -323,31 +326,31 @@ export function AccountAccess() {
   const confirmation = confirm ? confirmationText(confirm) : null;
 
   return (
-    <div className="space-y-10">
-      <section aria-labelledby="role-heading">
-        <h2
-          id="role-heading"
-          className="font-heading text-xl font-semibold text-ink"
-        >
-          Role
-        </h2>
-        <p className="mt-3 text-sm text-muted">
-          Current role:{" "}
-          <span className="font-semibold text-ink">
-            {roleLabels[account.role]}
-          </span>
-        </p>
+    <div className="space-y-5">
+      <Panel aria-labelledby="role-heading">
+        <PanelHeader
+          title="Role"
+          titleId="role-heading"
+          description={
+            <>
+              Current role:{" "}
+              <span className="font-semibold text-ink">
+                {roleLabels[account.role]}
+              </span>
+            </>
+          }
+        />
+        <PanelBody>
         {self ? (
-          <p className="mt-3 text-sm text-muted">
+          <p className="text-sm text-muted">
             You cannot change your own administrative authority here.
           </p>
         ) : (
-          <div className="mt-4 flex flex-wrap items-end gap-3">
-            <div className="w-full max-w-xs">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="grid w-full max-w-xs gap-1.5">
               <Label htmlFor="managed-role">New role</Label>
               <Select
                 id="managed-role"
-                className="mt-2"
                 value={roleDraft ?? account.role}
                 onChange={(event) => {
                   if (isRoleCode(event.target.value))
@@ -372,18 +375,14 @@ export function AccountAccess() {
             </Button>
           </div>
         )}
-      </section>
+        </PanelBody>
+      </Panel>
 
-      <section aria-labelledby="designations-heading">
-        {assigned.isError && assignedData ? <RefreshFailureNotice onRetry={() => void assigned.refetch()} retrying={assigned.isFetching} /> : null}
-        <h2
-          id="designations-heading"
-          className="font-heading text-xl font-semibold text-ink"
-        >
-          Institutional designations
-        </h2>
+      {assigned.isError && assignedData ? <RefreshFailureNotice onRetry={() => void assigned.refetch()} retrying={assigned.isFetching} /> : null}
+      <Panel aria-labelledby="designations-heading">
+        <PanelHeader title="Institutional designations" titleId="designations-heading" />
         {assigned.isError && !assignedData ? (
-          <div role="alert" className="mt-3 text-sm text-danger">
+          <div role="alert" className="px-4 py-5 text-sm text-danger sm:px-5">
             {managedAccountError(
               assigned.error,
               "Designations could not be loaded.",
@@ -397,11 +396,11 @@ export function AccountAccess() {
             </button>
           </div>
         ) : assigned.isPending ? (
-          <LoadingRegion label="Loading designations…" className="mt-4">
+          <LoadingRegion label="Loading designations…" className="px-4 py-5 sm:px-5">
             <Skeleton className="h-12 w-full" />
           </LoadingRegion>
         ) : (
-          <div className="mt-4 border-t border-border py-4">
+          <PanelBody>
             <p className="text-sm text-ink">
               {currentDesignations.length
                 ? currentDesignations
@@ -451,30 +450,21 @@ export function AccountAccess() {
                 You can view these designations, but cannot change them with this account.
               </p>
             )}
-          </div>
+          </PanelBody>
         )}
-      </section>
+      </Panel>
 
-      <section aria-labelledby="effective-heading">
-        {effective.isError && effectiveData ? <RefreshFailureNotice onRetry={() => void effective.refetch()} retrying={effective.isFetching} /> : null}
-        <h2
-          id="effective-heading"
-          className="font-heading text-xl font-semibold text-ink"
-        >
-          Effective access
-        </h2>
-        <p className="mt-2 text-sm text-muted">
-          Current access resulting from this account&apos;s role, designations,
-          and overrides.
-        </p>
+      {effective.isError && effectiveData ? <RefreshFailureNotice onRetry={() => void effective.refetch()} retrying={effective.isFetching} /> : null}
+      <Panel aria-labelledby="effective-heading">
+        <PanelHeader
+          title="Effective access"
+          titleId="effective-heading"
+          description="Current access resulting from this account's role, designations, and overrides."
+        />
         {effective.isPending ? (
-          <LoadingRegion label="Loading effective access…" className="mt-5 space-y-2">
-            {Array.from({ length: 5 }, (_, index) => (
-              <Skeleton key={index} className="h-12 w-full" />
-            ))}
-          </LoadingRegion>
+          <RowsSkeleton label="Loading effective access…" rows={5} />
         ) : !effectiveData ? (
-          <div role="alert" className="mt-4 text-sm text-danger">
+          <div role="alert" className="px-4 py-5 text-sm text-danger sm:px-5">
             {managedAccountError(
               effective.error,
               "Effective access could not be loaded.",
@@ -488,33 +478,31 @@ export function AccountAccess() {
             </button>
           </div>
         ) : (
-          <div className="mt-5 max-h-[40rem] overflow-auto border-y border-border">
-            <table className="w-full min-w-[43rem] text-left text-sm">
-              <thead className="sticky top-0 bg-surface-subtle text-xs uppercase tracking-wide text-muted">
+          <div className="max-h-[40rem] overflow-auto rounded-b-sm">
+            <table className={`${dataTable.table} min-w-[43rem]`}>
+              <caption className="sr-only">Effective access</caption>
+              <thead className={`${dataTable.head} sticky top-0 z-10`}>
                 <tr>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Capability
                   </th>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Effective
                   </th>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Granted by
                   </th>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Override
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className={dataTable.body}>
                 {effectiveData.capabilities.map((capability) => (
-                  <tr
-                    key={capability.code}
-                    className="border-t border-border align-top"
-                  >
+                  <tr key={capability.code} className={dataTable.row}>
                     <th
                       scope="row"
-                      className="px-3 py-3 font-semibold text-ink"
+                      className={`${dataTable.cell} font-semibold text-ink`}
                     >
                       {capability.name}
                       <span className="mt-1 block font-normal text-muted">
@@ -541,10 +529,10 @@ export function AccountAccess() {
                         </span>
                       ) : null}
                     </th>
-                    <td className="px-3 py-3">
+                    <td className={dataTable.cell}>
                       {capability.effective ? "Yes" : "No"}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className={dataTable.cell}>
                       {capability.baseline_sources.length
                         ? capability.baseline_sources
                             .map((source) =>
@@ -558,7 +546,7 @@ export function AccountAccess() {
                             .join(", ")
                         : "—"}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className={dataTable.cell}>
                       {capability.override
                         ? `${capability.override.effect === Effect.GRANT ? "Grant" : "Revoke"}${capability.override.active ? "" : " (expired)"}`
                         : "—"}
@@ -569,44 +557,38 @@ export function AccountAccess() {
             </table>
           </div>
         )}
-      </section>
+      </Panel>
 
-      <section aria-labelledby="overrides-heading">
-        {overrides.isError && overridesData ? <RefreshFailureNotice onRetry={() => void overrides.refetch()} retrying={overrides.isFetching} /> : null}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2
-            id="overrides-heading"
-            className="font-heading text-xl font-semibold text-ink"
-          >
-            Capability overrides
-          </h2>
-          {!self && effective.isSuccess && !overrides.isError ? (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                action.setError(null);
-                setOverrideExpiryError(null);
-                setOverrideOpen(true);
-              }}
-            >
-              Set override
-            </Button>
-          ) : null}
-        </div>
-        <p className="mt-2 text-sm text-muted">
-          Overrides are exceptional changes to role and designation access.
-        </p>
+      {overrides.isError && overridesData ? <RefreshFailureNotice onRetry={() => void overrides.refetch()} retrying={overrides.isFetching} /> : null}
+      <Panel aria-labelledby="overrides-heading">
+        <PanelHeader
+          title="Capability overrides"
+          titleId="overrides-heading"
+          description="Overrides are exceptional changes to role and designation access."
+          actions={
+            !self && effective.isSuccess && !overrides.isError ? (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  action.setError(null);
+                  setOverrideExpiryError(null);
+                  setOverrideOpen(true);
+                }}
+              >
+                Set override
+              </Button>
+            ) : null
+          }
+        />
         {self ? (
-          <p className="mt-3 text-sm text-muted">
+          <p className="border-b border-border px-4 py-3 text-sm text-muted sm:px-5">
             You cannot change your own capability overrides here.
           </p>
         ) : null}
         {overrides.isPending ? (
-          <LoadingRegion label="Loading capability overrides…" className="mt-5">
-            <Skeleton className="h-20 w-full" />
-          </LoadingRegion>
+          <RowsSkeleton label="Loading capability overrides…" rows={2} />
         ) : !overridesData ? (
-          <div role="alert" className="mt-4 text-sm text-danger">
+          <div role="alert" className="px-4 py-5 text-sm text-danger sm:px-5">
             {managedAccountError(
               overrides.error,
               "Overrides could not be loaded.",
@@ -620,11 +602,9 @@ export function AccountAccess() {
             </button>
           </div>
         ) : overridesData.overrides.length === 0 ? (
-          <p className="mt-5 border-t border-border py-5 text-sm text-muted">
-            No capability overrides are recorded.
-          </p>
+          <PanelMessage>No capability overrides are recorded.</PanelMessage>
         ) : (
-          <div className="mt-5 divide-y divide-border border-y border-border">
+          <div className="divide-y divide-border">
             {overridesData.overrides.map((override) => {
               const capability = effectiveData?.capabilities.find(
                 (item) => item.code === override.capability,
@@ -633,7 +613,7 @@ export function AccountAccess() {
               return (
                 <div
                   key={override.capability}
-                  className="flex flex-wrap items-start justify-between gap-4 py-4 text-sm"
+                  className="flex flex-wrap items-start justify-between gap-4 px-4 py-4 text-sm sm:px-5"
                 >
                   <div>
                     <p className="font-semibold text-ink">
@@ -678,7 +658,7 @@ export function AccountAccess() {
             })}
           </div>
         )}
-      </section>
+      </Panel>
 
       <ManagedActionFeedback action={action} showMessages={confirm === null} />
       <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
@@ -730,7 +710,7 @@ export function AccountAccess() {
               </Select>
             </div>
             {selectedOverrideCapability?.required_capabilities.length ? (
-              <div className="border-l-2 border-border pl-3 text-sm leading-6 text-muted">
+              <div className="rounded-sm bg-surface-subtle px-3 py-2.5 text-sm leading-6 text-muted">
                 <p>
                   This capability requires:{" "}
                   {selectedOverrideCapability.required_capabilities

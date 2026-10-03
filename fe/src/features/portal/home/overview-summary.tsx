@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
   EmailDeliveryStatus,
@@ -9,7 +10,7 @@ import type {
 
 function EmailDeliveryLine({ status }: { status: EmailDeliveryStatus }) {
   return (
-    <div className="mt-4 border-y border-border py-4">
+    <div className="border-t border-brand-line px-4 py-3.5 sm:px-5">
       <p className="text-sm font-semibold text-ink">Email delivery</p>
       <p className="mt-1 text-sm leading-6 text-muted">
         <span className={status.failed > 0 ? "font-semibold text-danger" : undefined}>
@@ -33,6 +34,9 @@ function EmailDeliveryLine({ status }: { status: EmailDeliveryStatus }) {
   );
 }
 
+// Counts are a compact grid inside one surface: lines between them, no separate tiles or icons.
+const metricGrid = "grid grid-cols-2 gap-px bg-border";
+
 export function OverviewSummary({
   metrics,
   emailStatus,
@@ -52,17 +56,15 @@ export function OverviewSummary({
   if (!isPending && !isError && !hasContent) return null;
 
   return (
-    <section className="mt-8 border-t border-border pt-6" aria-labelledby="overview-summary-heading">
-      <h2 id="overview-summary-heading" className="font-heading text-xl font-semibold text-ink">
-        Summary
-      </h2>
+    <Panel className="overflow-hidden" aria-labelledby="overview-summary-heading">
+      <PanelHeader title="Summary" titleId="overview-summary-heading" />
 
       {isPending ? (
-        <div className="mt-4 grid grid-cols-2 border-l border-t border-border" aria-busy="true">
+        <div className={metricGrid} aria-busy="true">
           {[0, 1, 2, 3].map((item) => (
-            <div key={item} className="border-b border-r border-border px-4 py-4">
+            <div key={item} className="bg-surface-raised px-4 py-3.5 sm:px-5">
               <Skeleton className="h-4 w-2/3" />
-              <Skeleton className="mt-3 h-8 w-12" />
+              <Skeleton className="mt-3 h-7 w-12" />
             </div>
           ))}
           <p className="sr-only">Loading Overview summary metrics…</p>
@@ -70,27 +72,32 @@ export function OverviewSummary({
       ) : null}
 
       {isError && !hasContent ? (
-        <div role="alert" className="mt-4 border-y border-danger/30 py-5">
-          <p className="text-sm leading-6 text-danger">{errorMessage}</p>
-          <Button className="mt-3" variant="secondary" onClick={onRetry}>
-            Retry
-          </Button>
-        </div>
+        <PanelMessage
+          role="alert"
+          tone="danger"
+          action={
+            <Button variant="secondary" onClick={onRetry}>
+              Retry
+            </Button>
+          }
+        >
+          {errorMessage}
+        </PanelMessage>
       ) : null}
 
       {isError && hasContent ? (
-        <p role="status" className="mt-3 text-sm text-muted">
+        <p role="status" className="border-b border-border px-4 py-3 text-sm text-muted sm:px-5">
           The summary could not be refreshed. Showing the last confirmed counts.
         </p>
       ) : null}
 
       {!isPending && metrics.length > 0 ? (
-        <dl className="mt-4 grid grid-cols-2 border-l border-t border-border">
+        <dl className={metricGrid}>
           {metrics.map((metric, index) => (
-            // The label link stretches over the whole tile, so the count is clickable too.
+            // The label link stretches over the whole cell, so the count is clickable too.
             <div
               key={metric.label + "-" + index}
-              className="relative min-w-0 border-b border-r border-border px-4 py-4 transition-colors last:odd:col-span-2 has-[a:hover]:bg-surface-muted"
+              className="relative min-w-0 bg-surface-raised px-4 py-3.5 transition-colors last:odd:col-span-2 has-[a:hover]:bg-surface-subtle sm:px-5"
             >
               <dt className="text-sm font-medium leading-5 text-muted">
                 {metric.href ? (
@@ -113,6 +120,6 @@ export function OverviewSummary({
       ) : null}
 
       {!isPending && emailStatus ? <EmailDeliveryLine status={emailStatus} /> : null}
-    </section>
+    </Panel>
   );
 }

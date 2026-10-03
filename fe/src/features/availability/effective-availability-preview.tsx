@@ -8,6 +8,7 @@ import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notic
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import {
   AvailabilityQueryError,
   AvailabilitySectionSkeleton,
@@ -215,18 +216,13 @@ export function EffectiveAvailabilityPreview({
   }, [effectiveData]);
 
   return (
-    <section aria-labelledby="effective-availability-heading">
-      <h2
-        id="effective-availability-heading"
-        className="font-heading text-2xl font-semibold text-ink"
-      >
-        Schedule preview
-      </h2>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-        This shows where office hours, counselor hours, time off, and service
-        rules overlap. It does not account for appointments already booked;
-        check appointment booking for open times.
-      </p>
+    <Panel aria-labelledby="effective-availability-heading">
+      <PanelHeader
+        title="Schedule preview"
+        titleId="effective-availability-heading"
+        description="This shows where office hours, counselor hours, time off, and service rules overlap. It does not account for appointments already booked; check appointment booking for open times."
+      />
+      <div className="px-4 py-4 *:first:mt-0 sm:px-5">
 
       {services.isError && serviceData ? <RefreshFailureNotice onRetry={() => void services.refetch()} retrying={services.isFetching} /> : null}
       {services.isPending ? (
@@ -240,12 +236,12 @@ export function EffectiveAvailabilityPreview({
           />
         </div>
       ) : serviceData.items.length === 0 ? (
-        <p className="mt-5 border-y border-border py-7 text-sm text-muted">
+        <p className="mt-4 text-sm text-muted">
           No active Services are currently available for this preview.
         </p>
       ) : (
         <form
-          className="mt-5 border-y border-border py-5"
+          className="mt-4 rounded-sm bg-surface-subtle p-4"
           onSubmit={submit}
         >
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -360,7 +356,7 @@ export function EffectiveAvailabilityPreview({
             />
           </div>
         ) : effectiveData.windows.length === 0 ? (
-          <p className="mt-5 border-y border-border py-7 text-sm text-muted">
+          <p className="mt-5 text-sm text-muted">
             No effective Availability exists for this Service, delivery mode,
             and date range.
           </p>
@@ -369,9 +365,9 @@ export function EffectiveAvailabilityPreview({
             <p className="text-xs text-muted">
               Timezone: {effectiveData.timezone === INSTITUTION_TIME_ZONE ? INSTITUTION_TIME_ZONE_LABEL : effectiveData.timezone}
             </p>
-            <div className="mt-3 divide-y divide-border border-y border-border">
+            <div className="mt-3 divide-y divide-border rounded-sm border border-border">
               {grouped.map((group) => (
-                <section key={group.key} className="py-4">
+                <section key={group.key} className="px-4 py-4">
                   <h3 className="font-semibold text-ink">{group.label}</h3>
                   <ul className="mt-2 space-y-1 text-sm text-muted">
                     {group.windows.map((window) => (
@@ -395,6 +391,7 @@ export function EffectiveAvailabilityPreview({
         )}
         </>
       ) : null}
-    </section>
+      </div>
+    </Panel>
   );
 }

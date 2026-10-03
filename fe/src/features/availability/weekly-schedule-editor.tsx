@@ -7,6 +7,7 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import {
   ActionFeedback,
   modeScopeLabel,
@@ -217,40 +218,32 @@ export function WeeklyScheduleEditor({
 
   if (cleanupOnly) {
     return (
-      <section aria-labelledby="weekly-schedule-heading">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2
-              id="weekly-schedule-heading"
-              className="font-heading text-2xl font-semibold text-ink"
-            >
-              Weekly schedule
-            </h2>
-            <p className="mt-2 text-sm text-muted">
-              You can review or clear these saved weekly hours. Existing
-              appointments stay scheduled.
-            </p>
-          </div>
-          {canMutate && windows.length > 0 ? (
+      <Panel aria-labelledby="weekly-schedule-heading">
+        <PanelHeader
+          title="Weekly schedule"
+          titleId="weekly-schedule-heading"
+          description="You can review or clear these saved weekly hours. Existing appointments stay scheduled."
+          actions={canMutate && windows.length > 0 ? (
             <Button variant="danger" onClick={() => setClearOpen(true)}>
               Clear weekly schedule
             </Button>
-          ) : null}
-        </div>
+          ) : undefined}
+        />
+        <div className="px-4 py-4 *:first:mt-0 sm:px-5">
 
         {windows.length === 0 ? (
-          <p className="mt-5 border-y border-border py-7 text-sm text-muted">
+          <p className="text-sm text-muted">
             No weekly hours are set.
           </p>
         ) : (
-          <div className="mt-5 divide-y divide-border border-y border-border">
+          <div className="divide-y divide-border rounded-sm border border-border">
             {weekdayOrder.map((weekday) => {
               const rows = windows.filter(
                 (window) => window.weekday === weekday,
               );
               if (rows.length === 0) return null;
               return (
-                <section key={weekday} className="py-4">
+                <section key={weekday} className="px-4 py-4">
                   <h3 className="font-semibold text-ink">
                     {weekdayLabels[weekday]}
                   </h3>
@@ -284,42 +277,33 @@ export function WeeklyScheduleEditor({
             records are not removed.
           </p>
         </ConsequentialActionDialog>
-      </section>
+        </div>
+      </Panel>
     );
   }
 
   return (
-    <section aria-labelledby="weekly-schedule-heading">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2
-            id="weekly-schedule-heading"
-            className="font-heading text-2xl font-semibold text-ink"
-          >
-            Weekly schedule
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            Saving replaces all weekly hours shown below. These hours help
-            determine when new appointments can be offered. Existing appointments
-            stay scheduled; review them separately if the hours change.
-          </p>
-        </div>
-        {canMutate ? (
+    <Panel aria-labelledby="weekly-schedule-heading">
+      <PanelHeader
+        title="Weekly schedule"
+        titleId="weekly-schedule-heading"
+        description="Saving replaces all weekly hours shown below. These hours help determine when new appointments can be offered. Existing appointments stay scheduled; review them separately if the hours change."
+        actions={canMutate ? (
           <Button
             disabled={pending || !dirty}
             onClick={() => void save()}
           >
             {pending ? "Saving…" : "Save weekly schedule"}
           </Button>
-        ) : null}
-      </div>
+        ) : undefined}
+      />
 
-      <div className="mt-5 divide-y divide-border border-y border-border">
+      <div className="divide-y divide-border">
         {weekdayOrder.map((weekday) => {
           const rows = draft.filter((window) => window.weekday === weekday);
 
           return (
-            <section key={weekday} className="py-5" aria-labelledby={"weekday-" + weekday}>
+            <section key={weekday} className="px-4 py-4 sm:px-5" aria-labelledby={"weekday-" + weekday}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3
                   id={"weekday-" + weekday}
@@ -433,12 +417,16 @@ export function WeeklyScheduleEditor({
         })}
       </div>
 
-      {localError ? (
-        <p role="alert" className="mt-4 text-sm text-danger">
-          {localError}
-        </p>
+      {localError || error || notice ? (
+        <div className="border-t border-brand-line px-4 pb-4 sm:px-5">
+          {localError ? (
+            <p role="alert" className="mt-4 text-sm text-danger">
+              {localError}
+            </p>
+          ) : null}
+          <ActionFeedback error={error} notice={notice} />
+        </div>
       ) : null}
-      <ActionFeedback error={error} notice={notice} />
-    </section>
+    </Panel>
   );
 }

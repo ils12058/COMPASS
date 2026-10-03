@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
 import { InventoryPdfDownload } from "@/features/inventory/inventory-pdf-download";
@@ -144,7 +146,7 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
         title="Submitted Individual Inventory"
         description={`${inventory.academic_year.label} · ${inventory.form_revision.official_code} · Revision ${inventory.form_revision.official_revision}`}
         action={(
-          <Link href="/portal/inventory" className="inline-flex min-h-10 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <Link href="/portal/inventory" className={buttonVariants({ variant: "secondary" })}>
             Roster
           </Link>
         )}
@@ -173,12 +175,12 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
       </div>
 
       {historyOpen ? (
-        <div className="mt-5 border-y border-border py-5">
+        <div className="mt-5">
           <CounselorStudentInventoryHistory studentId={inventory.student.id} currentInventoryId={inventory.id} />
         </div>
       ) : null}
 
-      <div className="mt-7">
+      <div className="mt-5">
         <InventoryReadOnly
           inventory={inventory}
           studentIdentity={{
@@ -239,18 +241,18 @@ function CounselorStudentInventoryHistory({
   const history = useInventoryListStudentHistory(studentId, { query: { retry: false } });
 
   if (history.isPending) {
-    return <p role="status" className="text-sm text-muted">Loading annual Student Inventory history…</p>;
+    return <Notice role="status">Loading annual Student Inventory history…</Notice>;
   }
   if (history.isError) {
     return <InventoryQueryError error={history.error} fallback="Annual Student Inventory history could not be loaded." onRetry={() => void history.refetch()} />;
   }
   const items = history.data.data.items;
-  if (!items.length) return <p className="text-sm text-muted">No earlier Individual Inventory records are available.</p>;
+  if (!items.length) return <Notice>No earlier Individual Inventory records are available.</Notice>;
 
   return (
-    <section aria-labelledby="counselor-inventory-history-heading">
-      <h2 id="counselor-inventory-history-heading" className="font-heading text-lg font-semibold text-ink">Annual Student Inventory history</h2>
-      <ul className="mt-3 divide-y divide-border border-y border-border">
+    <Panel aria-labelledby="counselor-inventory-history-heading">
+      <PanelHeader title="Annual Student Inventory history" titleId="counselor-inventory-history-heading" />
+      <ul className="divide-y divide-border">
         {items.map((item) => {
           const link = item.status === InventoryStatusValue.SUBMITTED;
           const identity = (
@@ -259,7 +261,7 @@ function CounselorStudentInventoryHistory({
             </>
           );
           return (
-            <li key={item.inventory_id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <li key={item.inventory_id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <div>
                 {link ? (
                   <Link href={`/portal/inventory/records/${item.inventory_id}`} className="font-semibold text-ink hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
@@ -277,6 +279,6 @@ function CounselorStudentInventoryHistory({
           );
         })}
       </ul>
-    </section>
+    </Panel>
   );
 }

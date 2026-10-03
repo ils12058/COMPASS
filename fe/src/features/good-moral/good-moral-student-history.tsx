@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 
-import { buttonVariants } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
-import { GoodMoralError, GoodMoralHeading, GoodMoralStatus, formatGoodMoralDateTime, goodMoralVariantLabel } from "@/features/good-moral/good-moral-shared";
+import { GoodMoralHeading, GoodMoralListSkeleton, GoodMoralStatus, formatGoodMoralDateTime, goodMoralErrorMessage, goodMoralVariantLabel } from "@/features/good-moral/good-moral-shared";
 import { useGoodMoralListMyRequests } from "@/lib/api/generated/good-moral/good-moral";
 
 export function GoodMoralStudentHistory({
@@ -22,7 +22,7 @@ export function GoodMoralStudentHistory({
   const confirmed = safeQueryData(history);
 
   return (
-    <section className="space-y-6" aria-labelledby="good-moral-student-heading">
+    <section className="space-y-5" aria-labelledby="good-moral-student-heading">
       <GoodMoralHeading
         headingId="good-moral-student-heading"
         title="Good Moral"
@@ -35,25 +35,25 @@ export function GoodMoralStudentHistory({
       />
 
       {canView ? (
-        <section aria-labelledby="good-moral-my-requests-heading">
-          <h2 id="good-moral-my-requests-heading" className="font-heading text-xl font-semibold text-ink">My requests</h2>
-          {history.isError && confirmed ? <RefreshFailureNotice onRetry={() => void history.refetch()} retrying={history.isFetching} /> : null}
+        <Panel aria-labelledby="good-moral-my-requests-heading">
+          <PanelHeader title="My requests" titleId="good-moral-my-requests-heading" />
+          {history.isError && confirmed ? <div className="px-4 sm:px-5"><RefreshFailureNotice onRetry={() => void history.refetch()} retrying={history.isFetching} /></div> : null}
           {history.isPending ? (
-            <div className="mt-4 space-y-3" aria-busy="true"><span className="sr-only">Loading Good Moral requests…</span>
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-            </div>
+            <GoodMoralListSkeleton label="Loading Good Moral requests…" framed={false} />
           ) : !confirmed ? (
-            <div className="mt-4"><GoodMoralError error={history.error} fallback="Your Good Moral requests could not be loaded." onRetry={() => void history.refetch()} /></div>
+            <PanelMessage
+              role="alert"
+              tone="danger"
+              action={<Button variant="secondary" onClick={() => void history.refetch()}>Retry</Button>}
+            >
+              {goodMoralErrorMessage(history.error, "Your Good Moral requests could not be loaded.")}
+            </PanelMessage>
           ) : confirmed.data.items.length === 0 ? (
-            <p className="mt-4 border-y border-border py-5 text-sm text-muted">
-              You do not have any Good Moral requests yet.
-            </p>
+            <PanelMessage>You do not have any Good Moral requests yet.</PanelMessage>
           ) : (
-            <ol className="mt-4 divide-y divide-border border-y border-border">
+            <ol className="divide-y divide-border">
               {confirmed.data.items.map((item) => (
-                <li key={item.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(12rem,1fr)_auto] sm:items-center">
+                <li key={item.id} className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(12rem,1fr)_auto] sm:items-center sm:px-5">
                   <div className="min-w-0">
                     <Link href={`/portal/good-moral/${item.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
                       {item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)} certificate` : `${goodMoralVariantLabel(item.variant)} request`}
@@ -70,9 +70,11 @@ export function GoodMoralStudentHistory({
               ))}
             </ol>
           )}
-        </section>
+        </Panel>
       ) : (
-        <p className="border-y border-border py-5 text-sm text-muted">Your request history is unavailable to this account.</p>
+        <Panel as="div">
+          <PanelMessage>Your request history is unavailable to this account.</PanelMessage>
+        </Panel>
       )}
     </section>
   );

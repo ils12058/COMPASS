@@ -113,7 +113,7 @@ export function GraduateTracerEmploymentSection({
               onChange={(value) => onChange("first_job_after_college", value)}
             />
             {firstJob ? (
-              <div className="mt-6 space-y-6 border-l-2 border-support pl-4 sm:pl-6">
+              <div className="mt-6 space-y-6 rounded-sm bg-surface-subtle px-4 py-5 sm:px-6">
                 <CheckboxField
                   id="gts-staying-reasons"
                   legend="What are your reason(s) for staying on the job?"
@@ -193,12 +193,12 @@ export function GraduateTracerEmploymentSection({
 
           <div className="border-t border-border pt-6">
             <h3 className="font-semibold text-ink">Job level position</h3>
-            <div className="mt-4 overflow-x-auto rounded-md border border-border">
+            <div className="mt-4 overflow-x-auto rounded-sm border border-border">
               <table className="min-w-[38rem] w-full border-collapse text-sm">
                 <caption className="sr-only">Compare job level in the first job and current or present job</caption>
-                <thead className="bg-surface-muted text-left text-xs uppercase tracking-wide text-muted">
+                <thead className="bg-brand-wash text-left text-xs uppercase tracking-wide text-brand-strong">
                   <tr>
-                    <th scope="col" className="sticky left-0 z-10 min-w-[18rem] bg-surface-muted px-3 py-3 font-semibold">Job Level</th>
+                    <th scope="col" className="sticky left-0 z-10 min-w-[18rem] bg-brand-wash px-3 py-3 font-semibold">Job Level</th>
                     <th scope="col" className="min-w-36 px-3 py-3 font-semibold">First Job <span aria-hidden="true" className="text-danger">*</span></th>
                     <th scope="col" className="min-w-36 px-3 py-3 font-semibold">Current or Present Job <span aria-hidden="true" className="text-danger">*</span></th>
                   </tr>

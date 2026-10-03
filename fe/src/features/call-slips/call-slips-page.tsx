@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
-import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipListSkeleton, CallSlipQueryError, callSlipDestinationLabel, callSlipStateLabel } from "@/features/call-slips/call-slips-shared";
+import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipListSkeleton, callSlipDestinationLabel, callSlipErrorMessage, callSlipStateLabel } from "@/features/call-slips/call-slips-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -105,52 +108,59 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
   const hasFilters = Boolean(filters.fromDate || filters.toDate || filters.state || filters.page > 1);
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       <CallSlipHeading title="My Call Slips"  />
-      <form onSubmit={submitFilters} className="grid gap-4 border-b border-border pb-6 sm:grid-cols-3 sm:items-end">
-        <div className="grid gap-2">
-          <Label htmlFor="my-call-slips-state">Status</Label>
-          <Select id="my-call-slips-state" value={draft.state} onChange={(event) => setDraft({ ...draft, state: lifecycleStateFrom(event.target.value) })}>
-            <option value="">All statuses</option>
-            {Object.values(CallSlipLifecycleStateValue).map((state) => (
-              <option key={state} value={state}>{callSlipStateLabel(state, true)}</option>
-            ))}
-          </Select>
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="my-call-slips-from">From</Label>
-          <Input id="my-call-slips-from" type="date" value={draft.fromDate} onChange={(event) => setDraft({ ...draft, fromDate: event.target.value })} />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="my-call-slips-to">To</Label>
-          <Input id="my-call-slips-to" type="date" value={draft.toDate} onChange={(event) => setDraft({ ...draft, toDate: event.target.value })} />
-        </div>
-        {draft.fromDate && draft.toDate && draft.fromDate > draft.toDate ? (
-          <p role="alert" className="text-sm text-danger sm:col-span-3">From date must not be after To date.</p>
-        ) : null}
-        <div className="flex flex-wrap gap-2 sm:col-span-3">
-          <Button type="submit" variant="secondary">Apply filters</Button>
-          {hasFilters ? <Link href="/portal/call-slips" className="inline-flex min-h-10 items-center px-3 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</Link> : null}
-        </div>
+      <form onSubmit={submitFilters} aria-label="My Call Slips filters">
+        <FilterToolbar
+          fieldsClassName="lg:grid-cols-3"
+          actions={
+            <>
+              {hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
+              <Button type="submit">Apply filters</Button>
+            </>
+          }
+        >
+          <FilterField label="Status" htmlFor="my-call-slips-state">
+            <Select id="my-call-slips-state" value={draft.state} onChange={(event) => setDraft({ ...draft, state: lifecycleStateFrom(event.target.value) })}>
+              <option value="">All statuses</option>
+              {Object.values(CallSlipLifecycleStateValue).map((state) => (
+                <option key={state} value={state}>{callSlipStateLabel(state, true)}</option>
+              ))}
+            </Select>
+          </FilterField>
+          <FilterField label="From" htmlFor="my-call-slips-from">
+            <Input id="my-call-slips-from" type="date" value={draft.fromDate} onChange={(event) => setDraft({ ...draft, fromDate: event.target.value })} />
+          </FilterField>
+          <FilterField label="To" htmlFor="my-call-slips-to">
+            <Input id="my-call-slips-to" type="date" value={draft.toDate} onChange={(event) => setDraft({ ...draft, toDate: event.target.value })} />
+          </FilterField>
+          {draft.fromDate && draft.toDate && draft.fromDate > draft.toDate ? (
+            <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-3">From date must not be after To date.</p>
+          ) : null}
+        </FilterToolbar>
       </form>
       {slips.isError && data ? <RefreshFailureNotice onRetry={() => void slips.refetch()} retrying={slips.isFetching} /> : null}
 
-      {!data && slips.isError ? (
-        <CallSlipQueryError error={slips.error} fallback="Your Call Slips could not be loaded." onRetry={() => void slips.refetch()} />
-      ) : slips.isPending ? (
-        <CallSlipListSkeleton label="Loading My Call Slips…" />
-      ) : items.length === 0 ? (
-        <div className="border-y border-border py-6">
-          <p className="text-sm text-muted">{hasFilters ? "No Call Slips match these filters." : "You do not have any Call Slips yet."}</p>
-          {hasFilters ? <Link href="/portal/call-slips" className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</Link> : null}
-          <CanonicalPagination page={data?.page ?? filters.page} hasNext={data?.has_next ?? false} onPageChange={(page) => router.push(studentFiltersToUrl({ ...filters, page }), { scroll: false })} label="My Call Slip results" />
-        </div>
-      ) : (
-        <>
-          <p className="text-sm text-muted" aria-live="polite">Showing {items.length} {items.length === 1 ? "Call Slip" : "Call Slips"} on page {data?.page ?? filters.page}.</p>
-          <ul className="divide-y divide-border border-y border-border">
+      <Panel aria-labelledby="my-call-slips-results">
+        <PanelHeader
+          title="Call Slips"
+          titleId="my-call-slips-results"
+          context={data && items.length > 0 ? `Showing ${items.length} ${items.length === 1 ? "Call Slip" : "Call Slips"} on page ${data.page}.` : null}
+        />
+        {!data && slips.isError ? (
+          <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void slips.refetch()}>Retry</Button>}>
+            {callSlipErrorMessage(slips.error, "Your Call Slips could not be loaded.")}
+          </PanelMessage>
+        ) : slips.isPending ? (
+          <CallSlipListSkeleton label="Loading My Call Slips…" framed={false} />
+        ) : items.length === 0 ? (
+          <PanelMessage action={hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>
+            {hasFilters ? "No Call Slips match these filters." : "You do not have any Call Slips yet."}
+          </PanelMessage>
+        ) : (
+          <ul className="divide-y divide-border">
             {items.map((slip) => (
-              <li key={slip.id} className="grid gap-x-8 gap-y-2 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <li key={slip.id} className="grid gap-x-8 gap-y-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:px-5">
                 <div>
                   <Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Call Slip for {formatInstitutionalDateTime(slip.report_at)}</Link>
                 </div>
@@ -162,9 +172,9 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
               </li>
             ))}
           </ul>
-          <CanonicalPagination page={data?.page ?? filters.page} hasNext={data?.has_next ?? false} onPageChange={(page) => router.push(studentFiltersToUrl({ ...filters, page }), { scroll: false })} label="My Call Slip results" />
-        </>
-      )}
+        )}
+        {data ? <CanonicalPagination className="border-brand-line px-4 py-3 sm:px-5" page={data.page ?? filters.page} hasNext={data.has_next ?? false} onPageChange={(page) => router.push(studentFiltersToUrl({ ...filters, page }), { scroll: false })} label="My Call Slip results" /> : null}
+      </Panel>
     </div>
   );
 }
@@ -211,95 +221,110 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
     ? filters
     : { ...filters, includeVoided: false, state: effectiveState(filters, false) };
   const hasFilters = Boolean(effectiveFilters.search || effectiveFilters.destination || effectiveFilters.fromDate || effectiveFilters.toDate || effectiveFilters.includeVoided || effectiveFilters.state || effectiveFilters.page > 1);
+  const advancedCount = [effectiveFilters.destination, effectiveFilters.state, effectiveFilters.fromDate, effectiveFilters.toDate, effectiveFilters.includeVoided].filter(Boolean).length;
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       <CallSlipHeading
         title="Call Slips"
         description={access.canManageOperational ? "Review and manage Call Slips assigned to your guidance area." : "Review Call Slips assigned to your guidance area."}
         action={access.canManageOperational ? <Link href="/portal/call-slips/new" className={buttonVariants({ variant: "primary" })}>Issue Call Slip</Link> : null}
       />
-      <form onSubmit={submitFilters} className="grid gap-4 border-b border-border pb-6 md:grid-cols-2 xl:grid-cols-5 xl:items-end">
-        <div className="grid gap-2 md:col-span-2 xl:col-span-2">
-          <Label htmlFor="call-slips-search">Search</Label>
-          <Input id="call-slips-search" type="search" maxLength={160} placeholder="Search Student or Referral reference" value={draft.search} onChange={(event) => setDraft({ ...draft, search: event.target.value })} />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="call-slips-destination">Destination</Label>
-          <Select id="call-slips-destination" value={draft.destination} onChange={(event) => setDraft({ ...draft, destination: event.target.value as CallSlipListFilters["destination"] })}>
-            <option value="">All destinations</option>
-            <option value={CallSlipDestinationTypeValue.GUIDANCE_OFFICE}>Guidance Office</option>
-            <option value={CallSlipDestinationTypeValue.OTHER}>Other</option>
-          </Select>
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="call-slips-state">Status</Label>
-          <Select id="call-slips-state" value={draft.state} onChange={(event) => setDraft({ ...draft, state: lifecycleStateFrom(event.target.value) })}>
-            <option value="">{access.canManageOperational ? "Active and completed" : "All statuses"}</option>
-            <option value={CallSlipLifecycleStateValue.ACTIVE}>{callSlipStateLabel(CallSlipLifecycleStateValue.ACTIVE, false)}</option>
-            <option value={CallSlipLifecycleStateValue.COMPLETED}>{callSlipStateLabel(CallSlipLifecycleStateValue.COMPLETED, false)}</option>
-            {access.canManageOperational ? <option value={CallSlipLifecycleStateValue.VOIDED}>{callSlipStateLabel(CallSlipLifecycleStateValue.VOIDED, false)}</option> : null}
-          </Select>
-        </div>
-        <div className="grid gap-2"><Label htmlFor="call-slips-from">From</Label><Input id="call-slips-from" type="date" value={draft.fromDate} onChange={(event) => setDraft({ ...draft, fromDate: event.target.value })} /></div>
-        <div className="grid gap-2"><Label htmlFor="call-slips-to">To</Label><Input id="call-slips-to" type="date" value={draft.toDate} onChange={(event) => setDraft({ ...draft, toDate: event.target.value })} /></div>
-        {access.canManageOperational ? (
-          <div className="flex min-h-11 items-center gap-3">
-            <input id="call-slips-include-voided" className="h-4 w-4 accent-brand" type="checkbox" checked={draft.includeVoided} onChange={(event) => setDraft({ ...draft, includeVoided: event.target.checked })} />
-            <Label htmlFor="call-slips-include-voided">Include voided</Label>
-          </div>
-        ) : null}
-        {draft.fromDate && draft.toDate && draft.fromDate > draft.toDate ? <p role="alert" className="text-sm text-danger md:col-span-2">From date must not be after To date.</p> : null}
-        <div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-5">
-          <Button type="submit" variant="secondary">Apply filters</Button>
-          {hasFilters ? <Link href="/portal/call-slips" className="inline-flex min-h-10 items-center px-3 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</Link> : null}
-        </div>
+      <form onSubmit={submitFilters} role="search" aria-label="Call Slips">
+        <FilterToolbar
+          advancedCount={advancedCount}
+          advancedClassName="lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]"
+          actions={
+            <>
+              {hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
+              <Button type="submit">Apply filters</Button>
+            </>
+          }
+          advanced={
+            <>
+          <FilterField label="Destination" htmlFor="call-slips-destination">
+            <Select id="call-slips-destination" value={draft.destination} onChange={(event) => setDraft({ ...draft, destination: event.target.value as CallSlipListFilters["destination"] })}>
+              <option value="">All destinations</option>
+              <option value={CallSlipDestinationTypeValue.GUIDANCE_OFFICE}>Guidance Office</option>
+              <option value={CallSlipDestinationTypeValue.OTHER}>Other</option>
+            </Select>
+          </FilterField>
+          <FilterField label="Status" htmlFor="call-slips-state">
+            <Select id="call-slips-state" value={draft.state} onChange={(event) => setDraft({ ...draft, state: lifecycleStateFrom(event.target.value) })}>
+              <option value="">{access.canManageOperational ? "Active and completed" : "All statuses"}</option>
+              <option value={CallSlipLifecycleStateValue.ACTIVE}>{callSlipStateLabel(CallSlipLifecycleStateValue.ACTIVE, false)}</option>
+              <option value={CallSlipLifecycleStateValue.COMPLETED}>{callSlipStateLabel(CallSlipLifecycleStateValue.COMPLETED, false)}</option>
+              {access.canManageOperational ? <option value={CallSlipLifecycleStateValue.VOIDED}>{callSlipStateLabel(CallSlipLifecycleStateValue.VOIDED, false)}</option> : null}
+            </Select>
+          </FilterField>
+          <FilterField label="From" htmlFor="call-slips-from"><Input id="call-slips-from" type="date" value={draft.fromDate} onChange={(event) => setDraft({ ...draft, fromDate: event.target.value })} /></FilterField>
+          <FilterField label="To" htmlFor="call-slips-to"><Input id="call-slips-to" type="date" value={draft.toDate} onChange={(event) => setDraft({ ...draft, toDate: event.target.value })} /></FilterField>
+          {access.canManageOperational ? (
+            <div className="flex min-h-11 items-center gap-3 self-end">
+              <input id="call-slips-include-voided" className="h-4 w-4 accent-brand" type="checkbox" checked={draft.includeVoided} onChange={(event) => setDraft({ ...draft, includeVoided: event.target.checked })} />
+              <Label htmlFor="call-slips-include-voided">Include voided</Label>
+            </div>
+          ) : null}
+          {draft.fromDate && draft.toDate && draft.fromDate > draft.toDate ? <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-full">From date must not be after To date.</p> : null}
+            </>
+          }
+        >
+          <FilterField label="Search" htmlFor="call-slips-search">
+            <Input id="call-slips-search" type="search" maxLength={160} placeholder="Search Student or Referral reference" value={draft.search} onChange={(event) => setDraft({ ...draft, search: event.target.value })} />
+          </FilterField>
+        </FilterToolbar>
       </form>
       {slips.isError && data ? <RefreshFailureNotice onRetry={() => void slips.refetch()} retrying={slips.isFetching} /> : null}
 
-      {!data && slips.isError ? (
-        <CallSlipQueryError error={slips.error} fallback="Call Slips could not be loaded." onRetry={() => void slips.refetch()} />
-      ) : slips.isPending ? (
-        <CallSlipListSkeleton />
-      ) : items.length === 0 ? (
-        <div className="border-y border-border py-6">
-          <p className="text-sm text-muted">{hasFilters ? "No Call Slips match these filters." : "No Call Slips have been recorded."}</p>
-          {hasFilters ? <Link href="/portal/call-slips" className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</Link> : null}
-          <CanonicalPagination page={data?.page ?? filters.page} hasNext={data?.has_next ?? false} onPageChange={(page) => router.push(operationalFiltersToUrl({ ...effectiveFilters, page }), { scroll: false })} label="Call Slip results" />
-        </div>
-      ) : (
-        <>
-          <p className="text-sm text-muted" aria-live="polite">Showing {items.length} {items.length === 1 ? "Call Slip" : "Call Slips"} on page {data?.page ?? filters.page}.</p>
-          <ul className="divide-y divide-border border-y border-border md:hidden">
-            {items.map((slip) => (
-              <li key={slip.id} className="space-y-2 py-4">
-                <Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.student_name_snapshot}</Link>
-                {slip.student_institutional_id ? <p className="text-xs text-muted">{slip.student_institutional_id}</p> : null}
-                <p className="text-sm text-ink">{slip.course_year_snapshot}</p>
-                <p className="text-sm text-muted">Report {formatInstitutionalDateTime(slip.report_at)} · {callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</p>
-                <p className="text-sm text-muted">Issued by {slip.issued_by_name_snapshot} · {callSlipStateLabel(slip.state)}</p>
-                {slip.referral ? <p className="text-sm text-muted">Referral {referralAccess.canView ? <Link href={`/portal/referrals/${slip.referral.id}`} className="font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.referral.reference_code}</Link> : slip.referral.reference_code}</p> : null}
-              </li>
-            ))}
-          </ul>
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[850px] border-collapse text-left text-sm">
-              <caption className="sr-only">Call Slips</caption>
-              <thead><tr className="border-b border-border-strong text-xs font-semibold uppercase tracking-wide text-muted">
-                <th scope="col" className="px-3 py-3">Student</th><th scope="col" className="px-3 py-3">Course / Year</th><th scope="col" className="px-3 py-3">Report</th><th scope="col" className="px-3 py-3">Destination</th><th scope="col" className="px-3 py-3">Issuer</th><th scope="col" className="px-3 py-3">State</th><th scope="col" className="px-3 py-3">Referral</th>
-              </tr></thead>
-              <tbody className="divide-y divide-border">{items.map((slip) => (
-                <tr key={slip.id} className="align-top">
-                  <th scope="row" className="px-3 py-4 font-normal"><Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.student_name_snapshot}</Link>{slip.student_institutional_id ? <span className="mt-1 block text-xs text-muted">{slip.student_institutional_id}</span> : null}</th>
-                  <td className="px-3 py-4 text-ink">{slip.course_year_snapshot}</td><td className="px-3 py-4 text-ink">{formatInstitutionalDateTime(slip.report_at)}</td><td className="px-3 py-4 text-ink">{callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</td><td className="px-3 py-4 text-ink">{slip.issued_by_name_snapshot}</td><td className="px-3 py-4 text-ink">{callSlipStateLabel(slip.state)}</td>
-                  <td className="px-3 py-4 text-ink">{slip.referral ? referralAccess.canView ? <Link href={`/portal/referrals/${slip.referral.id}`} className="font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.referral.reference_code}</Link> : slip.referral.reference_code : <span className="text-muted">—</span>}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-          <CanonicalPagination page={data?.page ?? filters.page} hasNext={data?.has_next ?? false} onPageChange={(page) => router.push(operationalFiltersToUrl({ ...effectiveFilters, page }), { scroll: false })} label="Call Slip results" />
-        </>
-      )}
+      <Panel aria-labelledby="call-slips-results">
+        <PanelHeader
+          title="Call Slips"
+          titleId="call-slips-results"
+          context={data && items.length > 0 ? `Showing ${items.length} ${items.length === 1 ? "Call Slip" : "Call Slips"} on page ${data.page}.` : null}
+        />
+        {!data && slips.isError ? (
+          <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void slips.refetch()}>Retry</Button>}>
+            {callSlipErrorMessage(slips.error, "Call Slips could not be loaded.")}
+          </PanelMessage>
+        ) : slips.isPending ? (
+          <CallSlipListSkeleton framed={false} />
+        ) : items.length === 0 ? (
+          <PanelMessage action={hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>
+            {hasFilters ? "No Call Slips match these filters." : "No Call Slips have been recorded."}
+          </PanelMessage>
+        ) : (
+          <>
+            <ul className="divide-y divide-border md:hidden">
+              {items.map((slip) => (
+                <li key={slip.id} className="space-y-2 px-4 py-4">
+                  <Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.student_name_snapshot}</Link>
+                  {slip.student_institutional_id ? <p className="text-xs text-muted">{slip.student_institutional_id}</p> : null}
+                  <p className="text-sm text-ink">{slip.course_year_snapshot}</p>
+                  <p className="text-sm text-muted">Report {formatInstitutionalDateTime(slip.report_at)} · {callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</p>
+                  <p className="text-sm text-muted">Issued by {slip.issued_by_name_snapshot} · {callSlipStateLabel(slip.state)}</p>
+                  {slip.referral ? <p className="text-sm text-muted">Referral {referralAccess.canView ? <Link href={`/portal/referrals/${slip.referral.id}`} className="font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.referral.reference_code}</Link> : slip.referral.reference_code}</p> : null}
+                </li>
+              ))}
+            </ul>
+            <div className={`${dataTable.scroll} hidden md:block`}>
+              <table className={`${dataTable.table} min-w-[850px]`}>
+                <caption className="sr-only">Call Slips</caption>
+                <thead className={dataTable.head}><tr>
+                  <th scope="col" className={dataTable.headerCell}>Student</th><th scope="col" className={dataTable.headerCell}>Course / Year</th><th scope="col" className={dataTable.headerCell}>Report</th><th scope="col" className={dataTable.headerCell}>Destination</th><th scope="col" className={dataTable.headerCell}>Issuer</th><th scope="col" className={dataTable.headerCell}>State</th><th scope="col" className={dataTable.headerCell}>Referral</th>
+                </tr></thead>
+                <tbody className={dataTable.body}>{items.map((slip) => (
+                  <tr key={slip.id} className={dataTable.row}>
+                    <th scope="row" className={`${dataTable.cell} font-normal`}><Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.student_name_snapshot}</Link>{slip.student_institutional_id ? <span className="mt-1 block text-xs text-muted">{slip.student_institutional_id}</span> : null}</th>
+                    <td className={`${dataTable.cell} text-ink`}>{slip.course_year_snapshot}</td><td className={`${dataTable.cell} text-ink`}>{formatInstitutionalDateTime(slip.report_at)}</td><td className={`${dataTable.cell} text-ink`}>{callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</td><td className={`${dataTable.cell} text-ink`}>{slip.issued_by_name_snapshot}</td><td className={`${dataTable.cell} text-ink`}>{callSlipStateLabel(slip.state)}</td>
+                    <td className={`${dataTable.cell} text-ink`}>{slip.referral ? referralAccess.canView ? <Link href={`/portal/referrals/${slip.referral.id}`} className="font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.referral.reference_code}</Link> : slip.referral.reference_code : <span className="text-muted">—</span>}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </>
+        )}
+        {data ? <CanonicalPagination className="border-brand-line px-4 py-3 sm:px-5" page={data.page ?? filters.page} hasNext={data.has_next ?? false} onPageChange={(page) => router.push(operationalFiltersToUrl({ ...effectiveFilters, page }), { scroll: false })} label="Call Slip results" /> : null}
+      </Panel>
     </div>
   );
 }

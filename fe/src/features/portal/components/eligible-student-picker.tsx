@@ -73,13 +73,13 @@ export function EligibleStudentPicker({
         </Button>
       </form>
       {selectedStudent ? (
-        <p className="mt-3 border-l-2 border-brand pl-3 text-sm text-ink">
+        <p className="mt-3 rounded-sm bg-brand-wash px-3 py-2 text-sm text-ink">
           Selected: <span className="font-semibold">{selectedStudent.display_name}</span>
           {selectedStudent.institutional_id ? ` · ${selectedStudent.institutional_id}` : ""}
         </p>
       ) : null}
       {isError ? (
-        <div role="alert" className="mt-4 border-y border-danger/30 py-4">
+        <div role="alert" className="mt-4">
           <p className="text-sm text-danger">{errorMessage}</p>
           <Button className="mt-3" variant="secondary" onClick={onRetry}>
             Retry Student search
@@ -88,14 +88,14 @@ export function EligibleStudentPicker({
       ) : isLoading ? (
         <p role="status" className="mt-4 text-sm text-muted">Loading eligible Students…</p>
       ) : items.length === 0 ? (
-        <p className="mt-4 border-y border-border py-4 text-sm text-muted">
+        <p className="mt-4 rounded-sm bg-surface-subtle px-4 py-3 text-sm text-muted">
           No eligible students match this search.
         </p>
       ) : (
-        <ul className="mt-3 divide-y divide-border border-y border-border">
+        <ul className="mt-3 divide-y divide-border rounded-sm border border-border">
           {items.map((student) => (
-            <li key={student.id} className="py-3">
-              <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm text-ink">
+            <li key={student.id}>
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-3 text-sm text-ink transition-colors hover:bg-surface-subtle has-[:checked]:bg-brand-wash">
                 <input
                   className="mt-1 h-4 w-4 shrink-0 accent-brand"
                   type="radio"
@@ -118,7 +118,7 @@ export function EligibleStudentPicker({
       )}
       {!isError && !isLoading ? (
         <CanonicalPagination
-          className="mt-3"
+          className="mt-3 border-t-0 pb-0"
           page={page}
           hasNext={hasNext}
           label="Eligible Student results"

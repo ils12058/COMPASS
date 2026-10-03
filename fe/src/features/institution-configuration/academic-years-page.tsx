@@ -20,6 +20,10 @@ import {
 } from "@/lib/api/generated/academic-years/academic-years";
 import type { AcademicYearResponse } from "@/lib/api/generated/model";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 
 export function AcademicYearsPage() {
   const { user } = usePortalSession();
@@ -113,60 +117,60 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
         }}
       >
         <>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-              Academic Years
-            </h1>
-            {canManage ? (
-              <DialogTrigger asChild>
-                <Button>Add Academic Year</Button>
-              </DialogTrigger>
-            ) : null}
-          </div>
+          <PageHeader
+            title="Academic Years"
+            actions={
+              canManage ? (
+                <DialogTrigger asChild>
+                  <Button>Add Academic Year</Button>
+                </DialogTrigger>
+              ) : null
+            }
+          />
 
       {pageNotice ? (
-        <p role="status" className="mt-5 text-sm leading-6 text-success">
+        <p role="status" className="mb-4 text-sm leading-6 text-success">
           {pageNotice}
         </p>
       ) : null}
       {years.isError && years.data ? (
-        <p role="alert" className="mt-4 text-sm leading-6 text-danger">
+        <Notice role="alert" tone="warning" className="mb-4">
           Academic Years could not be refreshed. The displayed data may be out of date.
-        </p>
+        </Notice>
       ) : null}
 
       {years.isError && !years.data ? (
-        <div role="alert" className="mt-6 border-y border-danger/30 py-4">
-          <p className="text-sm leading-6 text-danger">
-            {institutionConfigurationErrorMessage(
-              years.error,
-              "Academic Years could not be loaded.",
-            )}
-          </p>
-          <Button
-            variant="secondary"
-            className="mt-3"
-            onClick={() => void years.refetch()}
-          >
-            Retry
-          </Button>
-        </div>
+        <Notice
+          role="alert"
+          tone="danger"
+          action={
+            <Button variant="secondary" onClick={() => void years.refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {institutionConfigurationErrorMessage(
+            years.error,
+            "Academic Years could not be loaded.",
+          )}
+        </Notice>
       ) : (
-        <>
+        <Panel aria-labelledby="academic-year-list-heading">
+          <PanelHeader title="Academic years" titleId="academic-year-list-heading" />
           <section
             aria-labelledby="current-academic-year-heading"
-            className="mt-8 border-y border-border py-5"
+            className="border-b border-brand-line bg-brand-wash px-4 py-4 sm:px-5"
           >
-            <h2
+            <h3
               id="current-academic-year-heading"
               className="text-sm font-semibold text-muted"
             >
               Current Academic Year
-            </h2>
+            </h3>
             {years.isPending ? (
-              <Skeleton className="mt-3 h-7 w-48" />
+              <Skeleton className="mt-2 h-7 w-48" />
             ) : currentYear ? (
-              <p className="mt-2 font-heading text-2xl font-semibold text-ink">
+              <p className="mt-1 font-heading text-xl font-semibold text-ink">
                 {currentYear.label}
               </p>
             ) : (
@@ -183,29 +187,18 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
             )}
           </section>
 
-          <section aria-labelledby="academic-year-list-heading" className="mt-8">
-            <h2
-              id="academic-year-list-heading"
-              className="font-heading text-xl font-semibold text-ink"
-            >
-              Academic years
-            </h2>
             {years.isPending ? (
-              <div className="mt-4 space-y-3" aria-busy="true">
-                <Skeleton className="h-14 w-full" />
-                <Skeleton className="h-14 w-full" />
-                <p className="sr-only">Loading Academic Years…</p>
-              </div>
+              <RowsSkeleton label="Loading Academic Years…" rows={2} />
             ) : items.length === 0 ? (
-              <p className="mt-4 border-y border-border py-5 text-sm text-muted">
+              <PanelMessage>
                 No Academic Years have been configured yet.
-              </p>
+              </PanelMessage>
             ) : (
-              <ul className="mt-3 border-y border-border">
+              <ul className="divide-y divide-border">
                 {items.map((year) => (
                   <li
                     key={year.id}
-                    className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-border py-4 last:border-b-0"
+                    className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-3.5 sm:px-5"
                   >
                     <div className="min-w-0">
                       <p className="break-words font-semibold text-ink">
@@ -230,8 +223,7 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
                 ))}
               </ul>
             )}
-          </section>
-        </>
+        </Panel>
       )}
 
         <DialogContent dismissible={!createYear.isPending}>

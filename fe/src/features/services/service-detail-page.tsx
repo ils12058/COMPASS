@@ -7,6 +7,8 @@ import { useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelSection } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   ServicesDetailSkeleton,
@@ -72,7 +74,7 @@ export function ServiceDetailPage() {
           backHref="/portal/services"
           backLabel="Services"
         />
-        <div className="mt-6">
+        <div className="mt-5">
           <ServicesQueryError
             error={detail.error}
             fallback="The Service could not be loaded."
@@ -142,53 +144,41 @@ export function ServiceDetailPage() {
             </Link>
           ) : null
         }
-      />
-
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <p className="font-mono text-xs text-muted">{service.code}</p>
-        {canManage ? <ServicesStatusBadge active={service.is_active} /> : null}
-        {systemRequired ? <ServicesSystemRequiredBadge /> : null}
-      </div>
-      {systemRequired ? (
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-          COMPASS uses this Service for Counseling, Routine Interviews, and
-          E-Counseling, so it must stay active and always allow Counselors. Its
-          other settings can be changed.
-        </p>
-      ) : null}
+      >
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <p className="font-mono text-xs text-muted">{service.code}</p>
+          {canManage ? <ServicesStatusBadge active={service.is_active} /> : null}
+          {systemRequired ? <ServicesSystemRequiredBadge /> : null}
+        </div>
+        {systemRequired ? (
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
+            COMPASS uses this Service for Counseling, Routine Interviews, and
+            E-Counseling, so it must stay active and always allow Counselors. Its
+            other settings can be changed.
+          </p>
+        ) : null}
+      </ServicesPageHeading>
 
       {createdNotice ? (
-        <p role="status" className="mt-5 text-sm text-success">
+        <Notice role="status" tone="success" className="mt-5">
           Service created. It remains inactive until enabled.
-        </p>
+        </Notice>
       ) : null}
       {updatedNotice ? (
-        <p role="status" className="mt-5 text-sm text-success">
+        <Notice role="status" tone="success" className="mt-5">
           Service updated.
-        </p>
+        </Notice>
       ) : null}
       {action.notice || action.error ? action.messages : null}
 
-      <div className="mt-8 divide-y divide-border border-y border-border">
-        {service.description.trim() ? <section className="py-7" aria-labelledby="service-description-heading">
-          <h2
-            id="service-description-heading"
-            className="font-heading text-xl font-semibold text-ink"
-          >
-            Description
-          </h2>
+      <Panel as="div" className="mt-5">
+        {service.description.trim() ? <PanelSection title="Description" titleId="service-description-heading">
           <p className="mt-3 max-w-4xl whitespace-pre-wrap text-sm leading-7 text-muted">
             {service.description.trim()}
           </p>
-        </section> : null}
+        </PanelSection> : null}
 
-        <section className="py-7" aria-labelledby="service-delivery-heading">
-          <h2
-            id="service-delivery-heading"
-            className="font-heading text-xl font-semibold text-ink"
-          >
-            Service delivery
-          </h2>
+        <PanelSection title="Service delivery" titleId="service-delivery-heading">
           <p className="mt-3 text-sm text-ink">
             {service.delivery_modes.length === 0
               ? "No delivery mode configured."
@@ -210,15 +200,9 @@ export function ServiceDetailPage() {
               E-Counseling provider readiness is managed separately.
             </p>
           ) : null}
-        </section>
+        </PanelSection>
 
-        <section className="py-7" aria-labelledby="service-appointment-heading">
-          <h2
-            id="service-appointment-heading"
-            className="font-heading text-xl font-semibold text-ink"
-          >
-            Appointment settings
-          </h2>
+        <PanelSection title="Appointment settings" titleId="service-appointment-heading">
           <dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -260,29 +244,17 @@ export function ServiceDetailPage() {
               Appointments retain their saved timing and cancellation cutoff.
             </p>
           ) : null}
-        </section>
+        </PanelSection>
 
-        <section className="py-7" aria-labelledby="service-requirements-heading">
-          <h2
-            id="service-requirements-heading"
-            className="font-heading text-xl font-semibold text-ink"
-          >
-            Student requirements
-          </h2>
+        <PanelSection title="Student requirements" titleId="service-requirements-heading">
           <p className="mt-3 text-sm leading-6 text-ink">
             {service.requires_current_inventory
               ? "A submitted current Individual Inventory is required before appointment booking for this Service."
               : "This Service does not require a submitted current Individual Inventory before appointment booking."}
           </p>
-        </section>
+        </PanelSection>
 
-        <section className="py-7" aria-labelledby="service-provider-heading">
-          <h2
-            id="service-provider-heading"
-            className="font-heading text-xl font-semibold text-ink"
-          >
-            Provider eligibility
-          </h2>
+        <PanelSection title="Provider eligibility" titleId="service-provider-heading">
           {canManage ? (
             <div className="mt-3 space-y-2 text-sm leading-6 text-ink">
               {hasCounselor ? <p>Counselor</p> : null}
@@ -309,16 +281,10 @@ export function ServiceDetailPage() {
                   : "Provider eligibility is not configured."}
             </p>
           )}
-        </section>
+        </PanelSection>
 
         {canManage ? (
-          <section className="py-7" aria-labelledby="service-lifecycle-heading">
-            <h2
-              id="service-lifecycle-heading"
-              className="font-heading text-xl font-semibold text-ink"
-            >
-              Service status
-            </h2>
+          <PanelSection title="Service status" titleId="service-lifecycle-heading">
             <dl className="mt-4 grid gap-5 sm:grid-cols-3">
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -363,9 +329,9 @@ export function ServiceDetailPage() {
                 </Button>
               )}
             </div>
-          </section>
+          </PanelSection>
         ) : null}
-      </div>
+      </Panel>
 
       <ConsequentialActionDialog
         open={lifecycleOpen}

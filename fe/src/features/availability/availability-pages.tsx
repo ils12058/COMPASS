@@ -5,11 +5,18 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import { safeQueryData, canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
+  availabilityErrorMessage,
   AvailabilityPageHeading,
   AvailabilityQueryError,
   AvailabilityRouteUnavailable,
@@ -124,7 +131,7 @@ export function MyAvailabilityPage() {
     <section>
       <AvailabilityPageHeading title="My availability" />
 
-      <div className="mt-9">
+      <div className="mt-5">
         {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
         {weekly.isPending ? (
           <AvailabilitySectionSkeleton label="Loading weekly Availability…" />
@@ -147,7 +154,7 @@ export function MyAvailabilityPage() {
         )}
       </div>
 
-      <div className="mt-12 border-t border-border pt-10">
+      <div className="mt-5">
         {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
         {exceptions.isPending ? (
           <AvailabilitySectionSkeleton label="Loading unavailability…" />
@@ -173,7 +180,7 @@ export function MyAvailabilityPage() {
         )}
       </div>
 
-      <div className="mt-12 border-t border-border pt-10">
+      <div className="mt-5">
         <EffectiveAvailabilityPreview
           providerId={user.id}
           refreshToken={previewRefresh}
@@ -258,7 +265,7 @@ export function OfficeAvailabilityPage() {
         description="Set the office's regular days and hours. New appointment times can be offered only when the office and a counselor are both available."
       />
 
-      <div className="mt-9">
+      <div className="mt-5">
         {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
         {weekly.isPending ? (
           <AvailabilitySectionSkeleton label="Loading Office weekly Availability…" />
@@ -281,7 +288,7 @@ export function OfficeAvailabilityPage() {
         )}
       </div>
 
-      <div className="mt-12 border-t border-border pt-10">
+      <div className="mt-5">
         {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
         {exceptions.isPending ? (
           <AvailabilitySectionSkeleton label="Loading Office unavailability…" />
@@ -408,31 +415,29 @@ function ProviderWorkspace({
 
   return (
     <section>
-      <Button variant="quiet" onClick={onBack}>
-        ← Counselors
-      </Button>
-      <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-            {provider.full_name || provider.email}
-          </h1>
-          <p className="mt-2 break-all text-sm text-muted">{provider.email}</p>
-        </div>
-        <AvailabilityStatusBadge
-          active={provider.is_active}
-          legacy={legacy}
-        />
-      </div>
+      <PageHeader
+        title={provider.full_name || provider.email}
+        meta={<AvailabilityStatusBadge active={provider.is_active} legacy={legacy} />}
+        back={
+          <Button variant="quiet" className="mb-2 px-1" onClick={onBack}>
+            ← Counselors
+          </Button>
+        }
+      >
+        <p className="mt-1.5 break-all text-sm text-muted">{provider.email}</p>
+      </PageHeader>
 
       {!operational ? (
-        <p className="mt-5 max-w-3xl border-l-2 border-warning pl-4 text-sm leading-6 text-muted">
-          {legacy
-            ? "This is historical Guidance Services Staff Availability. Existing configuration can be reviewed or removed, but new operational Availability cannot be configured."
-            : "This provider is inactive. Existing Availability can be reviewed or removed, but new Availability cannot be configured."}
-        </p>
+        <Notice tone="warning" className="mt-5 max-w-3xl">
+          <span className="text-muted">
+            {legacy
+              ? "This is historical Guidance Services Staff Availability. Existing configuration can be reviewed or removed, but new operational Availability cannot be configured."
+              : "This provider is inactive. Existing Availability can be reviewed or removed, but new Availability cannot be configured."}
+          </span>
+        </Notice>
       ) : null}
 
-      <div className="mt-9">
+      <div className="mt-5">
         {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
         {weekly.isPending ? (
           <AvailabilitySectionSkeleton label="Loading provider weekly Availability…" />
@@ -456,7 +461,7 @@ function ProviderWorkspace({
         )}
       </div>
 
-      <div className="mt-12 border-t border-border pt-10">
+      <div className="mt-5">
         {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
         {exceptions.isPending ? (
           <AvailabilitySectionSkeleton label="Loading provider unavailability…" />
@@ -483,7 +488,7 @@ function ProviderWorkspace({
       </div>
 
       {canPreview ? (
-        <div className="mt-12 border-t border-border pt-10">
+        <div className="mt-5">
           <EffectiveAvailabilityPreview
             providerId={provider.id}
             refreshToken={previewRefresh}
@@ -561,81 +566,72 @@ export function ProviderAvailabilityPage() {
     <section>
       <AvailabilityPageHeading title="Counselor availability" />
 
-      <div className="mt-8 border-y border-border py-5">
-        <Label htmlFor="provider-search">Search Counselors</Label>
-        <Input
-          id="provider-search"
-          className="mt-2 max-w-xl"
-          value={searchValue}
-          placeholder="Search Counselors by name or email"
-          onChange={(event) => setSearchValue(event.target.value)}
-        />
-      </div>
+      {/* A lone directory search that applies as you type. */}
+      <FilterToolbar className="mt-5" fieldsClassName="lg:grid-cols-[minmax(0,28rem)]">
+        <FilterField label="Search Counselors" htmlFor="provider-search">
+          <Input
+            id="provider-search"
+            type="search"
+            value={searchValue}
+            placeholder="Search Counselors by name or email"
+            onChange={(event) => setSearchValue(event.target.value)}
+          />
+        </FilterField>
+      </FilterToolbar>
 
       {providers.isError && canShowLastKnownData(providers) ? <RefreshFailureNotice onRetry={() => void providers.refetch()} retrying={providers.isFetching} /> : null}
-      {providers.isPending ? (
-        <AvailabilitySectionSkeleton label="Loading Counselors…" />
-      ) : !providersData ? (
-        <div className="mt-6">
-          <AvailabilityQueryError
-            error={providers.error}
-            fallback="Counselors could not be loaded."
-            onRetry={() => void providers.refetch()}
-          />
-        </div>
-      ) : providersData.data.items.length === 0 ? (
-        <p className="mt-5 border-y border-border py-8 text-sm text-muted">
-          {search
-            ? "No counselors match the current search."
-            : "No counselors are available."}
-        </p>
-      ) : (
-        <>
-          {providers.isFetching ? (
-            <p role="status" className="mt-4 text-xs text-muted">
-              Refreshing Counselors…
-            </p>
-          ) : null}
-          <div className="mt-5 overflow-x-auto border-y border-border">
-            <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
-              <thead className="bg-surface-subtle text-xs font-semibold uppercase tracking-wide text-muted">
+      <Panel className="mt-5" aria-labelledby="provider-results-heading">
+        <PanelHeader
+          title="Counselors"
+          titleId="provider-results-heading"
+          context={providers.isFetching && !providers.isPending
+            ? "Refreshing Counselors…"
+            : providersData
+              ? describeResultPage({ count: providersData.data.items.length, page: providersData.data.page, hasNext: providersData.data.has_next, noun: { one: "Counselor", other: "Counselors" }, filtered: Boolean(search) })
+              : null}
+        />
+        {providers.isPending ? (
+          <RowsSkeleton label="Loading Counselors…" />
+        ) : !providersData ? (
+          <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void providers.refetch()}>Retry</Button>}>
+            {availabilityErrorMessage(providers.error, "Counselors could not be loaded.")}
+          </PanelMessage>
+        ) : providersData.data.items.length === 0 ? (
+          <PanelMessage>
+            {search
+              ? "No counselors match the current search."
+              : "No counselors are available."}
+          </PanelMessage>
+        ) : (
+          <div className={dataTable.scroll}>
+            <table className={`${dataTable.table} min-w-[40rem]`}>
+              <thead className={dataTable.head}>
                 <tr>
-                  <th scope="col" className="px-4 py-3">
-                    Name
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Email
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Status
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right">
-                    Action
-                  </th>
+                  <th scope="col" className={dataTable.headerCell}>Name</th>
+                  <th scope="col" className={dataTable.headerCell}>Email</th>
+                  <th scope="col" className={dataTable.headerCell}>Status</th>
+                  <th scope="col" className={`${dataTable.headerCell} text-right`}>Action</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className={dataTable.body}>
                 {providersData.data.items.map((provider) => {
                   const legacy =
                     provider.role === "GUIDANCE_SERVICES_STAFF";
                   return (
-                    <tr key={provider.id} className="border-t border-border">
-                      <th
-                        scope="row"
-                        className="px-4 py-4 font-semibold text-ink"
-                      >
+                    <tr key={provider.id} className={dataTable.row}>
+                      <th scope="row" className={`${dataTable.cell} font-semibold text-ink`}>
                         {provider.full_name || provider.email}
                       </th>
-                      <td className="px-4 py-4 text-muted">
+                      <td className={`${dataTable.cell} text-muted`}>
                         {provider.email}
                       </td>
-                      <td className="px-4 py-4">
+                      <td className={dataTable.cell}>
                         <AvailabilityStatusBadge
                           active={provider.is_active}
                           legacy={legacy}
                         />
                       </td>
-                      <td className="px-4 py-2 text-right">
+                      <td className={`${dataTable.cell} py-2 text-right`}>
                         <Button
                           variant="quiet"
                           onClick={() => setSelected(provider)}
@@ -649,18 +645,17 @@ export function ProviderAvailabilityPage() {
               </tbody>
             </table>
           </div>
-
-        </>
-      )}
-      {providersData ? (
-        <CanonicalPagination
-          className="mt-5"
-          page={providersData.data.page}
-          hasNext={providersData.data.has_next}
-          label="Counselor pagination"
-          onPageChange={movePage}
-        />
-      ) : null}
+        )}
+        {providersData ? (
+          <CanonicalPagination
+            className="border-brand-line px-4 py-3 sm:px-5"
+            page={providersData.data.page}
+            hasNext={providersData.data.has_next}
+            label="Counselor pagination"
+            onPageChange={movePage}
+          />
+        ) : null}
+      </Panel>
     </section>
   );
 }

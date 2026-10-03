@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import type { CounselingAccess } from "@/features/counseling/counseling-access";
 import { counselingErrorCode, counselingErrorMessage, formatCounselingDateTime } from "@/features/counseling/counseling-shared";
 import {
@@ -80,8 +81,9 @@ export function SharedSummarySection({
   }
 
   return (
-    <section aria-labelledby="shared-summary-heading" className="border-t border-border pt-6">
-      <h2 id="shared-summary-heading" className="font-heading text-xl font-semibold text-ink">Shared Summary</h2>
+    <Panel aria-labelledby="shared-summary-heading">
+      <PanelHeader title="Shared Summary" titleId="shared-summary-heading" />
+      <div className="px-4 py-4 *:first:mt-0 sm:px-5">
       {summaryQuery.isPending ? <p aria-busy="true" className="mt-3 text-sm text-muted">Loading Shared Summary…</p> : summaryQuery.isError && !absent ? <p role="alert" className="mt-3 text-sm text-danger">{counselingErrorMessage(summaryQuery.error, "Shared Summary could not be loaded.")}</p> : summary?.published_at ? (
         <div className="mt-4">
           <p className="text-sm font-semibold text-success">Published to Student · {formatCounselingDateTime(summary.published_at)}</p>
@@ -127,6 +129,7 @@ export function SharedSummarySection({
           <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-7 text-ink">{summary?.content}</div>
         </div>
       )}
-    </section>
+      </div>
+    </Panel>
   );
 }

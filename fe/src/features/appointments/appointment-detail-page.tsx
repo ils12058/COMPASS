@@ -12,6 +12,9 @@ import { LoadingRegion } from "@/components/ui/loading-region";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelBody, PanelHeader, PanelMessage, PanelSection, RecordSummary } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import {
   AppointmentDetailSkeleton,
@@ -504,17 +507,20 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
     return (
       <section>
         <AppointmentsLocalNavigation />
-        <div role="alert" className="max-w-2xl border-y border-border py-7">
-          <h1 className="font-heading text-3xl font-bold text-ink">
-            {notFound ? "Appointment not available" : "Appointment could not be loaded"}
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-muted">
-            {notFound
-              ? "This appointment is unavailable to this account."
-              : appointmentErrorMessage(appointmentQuery.error, "Appointment details could not be loaded.")}
-          </p>
-          <Button className="mt-4" variant="secondary" onClick={() => void appointmentQuery.refetch()}>Retry</Button>
-        </div>
+        <Notice
+          role="alert"
+          className="max-w-2xl px-5 py-6 sm:px-6"
+          title={
+            <h1 className="font-heading text-2xl font-bold text-ink">
+              {notFound ? "Appointment not available" : "Appointment could not be loaded"}
+            </h1>
+          }
+          action={<Button variant="secondary" onClick={() => void appointmentQuery.refetch()}>Retry</Button>}
+        >
+          {notFound
+            ? "This appointment is unavailable to this account."
+            : appointmentErrorMessage(appointmentQuery.error, "Appointment details could not be loaded.")}
+        </Notice>
       </section>
     );
   }
@@ -531,64 +537,86 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           )
         : undefined;
 
+  const showCounselingLink = appointment.counseling_context_available;
+  const showEcounselingLink =
+    appointment.status === AppointmentStatus.SCHEDULED &&
+    isCounselingService(appointment.service) &&
+    appointment.delivery_mode === DeliveryMode.ONLINE &&
+    ((ecounselingAccess.isStudent && ecounselingAccess.canViewSelf && appointment.student.id === user.id) ||
+      (ecounselingAccess.isCounselor && ecounselingAccess.canViewAssigned && appointment.provider.id === user.id));
+
   return (
     <section aria-labelledby="appointment-detail-heading">
       <AppointmentsLocalNavigation />
       <AppointmentsPageHeading
         headingId="appointment-detail-heading"
         title="Appointment details"
+        action={showCounselingLink || showEcounselingLink ? (
+          <>
+            {showCounselingLink ? (
+              <Link href={`/portal/counseling/workspace/appointment/${appointment.id}`} className={buttonVariants({ variant: "secondary" })}>
+                Open Counseling workspace
+              </Link>
+            ) : null}
+            {showEcounselingLink ? (
+              <Link href={`/portal/e-counseling/${appointment.id}`} className={buttonVariants({ variant: "secondary" })}>
+                Open E-Counseling
+              </Link>
+            ) : null}
+          </>
+        ) : undefined}
       />
 
-      {appointment.counseling_context_available ? (
-        <p className="mb-4">
-          <Link href={`/portal/counseling/workspace/appointment/${appointment.id}`} className={buttonVariants({ variant: "secondary" })}>
-            Open Counseling workspace
-          </Link>
-        </p>
-      ) : null}
+      {notice ? <Notice role="status" tone="success" className="mb-4">{notice}</Notice> : null}
 
-      {appointment.status === AppointmentStatus.SCHEDULED &&
-      isCounselingService(appointment.service) &&
-      appointment.delivery_mode === DeliveryMode.ONLINE &&
-      ((ecounselingAccess.isStudent && ecounselingAccess.canViewSelf && appointment.student.id === user.id) ||
-        (ecounselingAccess.isCounselor && ecounselingAccess.canViewAssigned && appointment.provider.id === user.id)) ? (
-        <p className="mb-4">
-          <Link href={`/portal/e-counseling/${appointment.id}`} className={buttonVariants({ variant: "secondary" })}>
-            Open E-Counseling
-          </Link>
-        </p>
-      ) : null}
-
-      {notice ? <p role="status" className="mb-4 text-sm text-success">{notice}</p> : null}
-
-      <div className="flex flex-wrap items-center gap-3 border-y border-border py-4">
-        <span className="break-all font-mono text-sm font-semibold text-ink">{appointment.reference_code}</span>
-        <AppointmentStatusBadge status={appointment.status} />
-      </div>
-
-      <dl className="grid gap-x-8 gap-y-5 border-b border-border py-6 sm:grid-cols-2 lg:grid-cols-3">
-        <div><dt className="text-xs font-semibold text-muted">Service</dt><dd className="mt-1 text-sm text-ink">{appointment.service.name}</dd></div>
-        {!access.isStudent ? (
-          <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 break-words text-sm text-ink">{appointment.student.display_name}</dd>{appointment.student.institutional_id ? <dd className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</dd> : null}</div>
-        ) : null}
-        <div><dt className="text-xs font-semibold text-muted">Counselor</dt><dd className="mt-1 text-sm text-ink">{appointment.provider.display_name}</dd></div>
-        <div><dt className="text-xs font-semibold text-muted">Date and time</dt><dd className="mt-1 text-sm text-ink">{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</dd></div>
-        <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(appointment.delivery_mode)}</dd></div>
-        {appointment.cancellation_cutoff_minutes !== null ? (
-          <div><dt className="text-xs font-semibold text-muted">Student change deadline</dt><dd className="mt-1 text-sm text-ink">Students must cancel or reschedule at least {appointment.cancellation_cutoff_minutes} minutes before the appointment starts.</dd></div>
-        ) : null}
-        <div><dt className="text-xs font-semibold text-muted">Created</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.created_at)}</dd></div>
-        {appointment.cancelled_at ? <div><dt className="text-xs font-semibold text-muted">Cancelled</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.cancelled_at)}</dd></div> : null}
-        {appointment.completed_at ? <div><dt className="text-xs font-semibold text-muted">Completed</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.completed_at)}</dd></div> : null}
-        {appointment.no_show_at ? <div><dt className="text-xs font-semibold text-muted">Marked no-show</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.no_show_at)}</dd></div> : null}
-      </dl>
+      <div className="space-y-5">
+      <Panel aria-labelledby="appointment-reference-heading">
+        <RecordSummary
+          label="Appointment"
+          title={<span className="break-all font-mono text-lg">{appointment.reference_code}</span>}
+          titleId="appointment-reference-heading"
+          status={<AppointmentStatusBadge status={appointment.status} />}
+          facts={[
+            { label: "Service", value: appointment.service.name },
+            ...(!access.isStudent
+              ? [{
+                  label: "Student",
+                  value: (
+                    <>
+                      <span className="block break-words">{appointment.student.display_name}</span>
+                      {appointment.student.institutional_id ? <span className="mt-0.5 block break-all text-xs text-muted">{appointment.student.institutional_id}</span> : null}
+                    </>
+                  ),
+                }]
+              : []),
+            { label: "Counselor", value: appointment.provider.display_name },
+            { label: "Date and time", value: formatAppointmentDateTime(appointment.starts_at, appointment.ends_at) },
+          ]}
+        />
+        <PanelSection title="Details" titleId="appointment-details-heading">
+          <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(appointment.delivery_mode)}</dd></div>
+            {appointment.cancellation_cutoff_minutes !== null ? (
+              <div><dt className="text-xs font-semibold text-muted">Student change deadline</dt><dd className="mt-1 text-sm text-ink">Students must cancel or reschedule at least {appointment.cancellation_cutoff_minutes} minutes before the appointment starts.</dd></div>
+            ) : null}
+            <div><dt className="text-xs font-semibold text-muted">Created</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.created_at)}</dd></div>
+            {appointment.cancelled_at ? <div><dt className="text-xs font-semibold text-muted">Cancelled</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.cancelled_at)}</dd></div> : null}
+            {appointment.completed_at ? <div><dt className="text-xs font-semibold text-muted">Completed</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.completed_at)}</dd></div> : null}
+            {appointment.no_show_at ? <div><dt className="text-xs font-semibold text-muted">Marked no-show</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.no_show_at)}</dd></div> : null}
+          </dl>
+        </PanelSection>
+      </Panel>
 
       {(canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || unavailable.length > 0) ? (
-        <section aria-labelledby="appointment-actions-heading" className="border-b border-border py-6">
-          <h2 id="appointment-actions-heading" className="font-heading text-xl font-semibold text-ink">Appointment actions</h2>
-          {access.isStudent && canReschedule && appointment.cancellation_cutoff_minutes !== null ? (
-            <p className="mt-2 max-w-3xl text-sm text-muted">Rescheduling is subject to the cutoff saved with this Appointment. COMPASS confirms whether a change is still allowed when you submit.</p>
-          ) : null}
+        <Panel aria-labelledby="appointment-actions-heading">
+          <PanelHeader
+            title="Appointment actions"
+            titleId="appointment-actions-heading"
+            description={access.isStudent && canReschedule && appointment.cancellation_cutoff_minutes !== null
+              ? "Rescheduling is subject to the cutoff saved with this Appointment. COMPASS confirms whether a change is still allowed when you submit."
+              : undefined}
+          />
+          <PanelBody className="*:first:mt-0">
           {canCancel || canReschedule || canReassign || canComplete || canMarkNoShow ? (
             <div className="mt-4 flex flex-wrap gap-2">
               {canCancel ? <Button variant="danger" disabled={pending} onClick={() => { setError(null); setConfirmAction("cancel"); }}>Cancel appointment</Button> : null}
@@ -611,12 +639,17 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               </ul>
             </div>
           ) : null}
+          </PanelBody>
 
           {canReschedule && rescheduleOpen ? (
-            <form onSubmit={submitReschedule} className="mt-6 max-w-3xl border-t border-border pt-5">
-              <h3 className="font-heading text-lg font-semibold text-ink">Reschedule appointment</h3>
-              <p className="mt-1 text-sm text-muted">Choose a date to load replacement times from the Appointment service.</p>
-              <div className="mt-4 grid gap-2 sm:max-w-xs">
+            <PanelSection
+              title="Reschedule appointment"
+              titleId="reschedule-appointment-heading"
+              level={3}
+              description="Choose a date to load replacement times from the Appointment service."
+            >
+            <form onSubmit={submitReschedule} className="max-w-3xl">
+              <div className="grid gap-2 sm:max-w-xs">
                 <Label htmlFor="reschedule-date">New date</Label>
                 <Input
                   id="reschedule-date"
@@ -650,8 +683,8 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                             aria-pressed={rescheduleSlotStart === slot.starts_at}
                             onClick={() => setRescheduleSlotStart(slot.starts_at)}
                             className={
-                              "min-h-10 border px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
-                              (rescheduleSlotStart === slot.starts_at ? "border-brand bg-brand text-on-brand" : "border-border bg-surface-raised text-ink hover:bg-surface-muted")
+                              "min-h-11 rounded-md border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
+                              (rescheduleSlotStart === slot.starts_at ? "border-brand bg-brand text-on-brand" : "border-border-strong bg-surface-raised text-ink hover:bg-surface-subtle")
                             }
                           >
                             {formatAppointmentTime(slot.starts_at, rescheduleSlots.data?.data.timezone)}
@@ -667,7 +700,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                 <Textarea id="reschedule-reason" disabled={reschedule.isPending} className="min-h-24" value={rescheduleReason} onChange={(event) => setRescheduleReason(event.target.value)} />
               </div>
               {selectedRescheduleSlot ? (
-                <section aria-labelledby="reschedule-review-heading" className="mt-5 border-y border-border py-4">
+                <section aria-labelledby="reschedule-review-heading" className="mt-5 rounded-sm bg-surface-subtle px-4 py-3.5">
                   <h4 id="reschedule-review-heading" className="font-semibold text-ink">Review reschedule</h4>
                   <dl className="mt-3 grid gap-3 sm:grid-cols-2">
                     <div><dt className="text-xs text-muted">Current time</dt><dd className="mt-1 text-sm text-ink">{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</dd></div>
@@ -681,12 +714,13 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                 {reschedule.isPending ? "Rescheduling…" : "Reschedule appointment"}
               </Button>
             </form>
+            </PanelSection>
           ) : null}
 
           {canReassign && reassignmentOpen ? (
-            <form onSubmit={submitReassignment} className="mt-6 max-w-3xl border-t border-border pt-5">
-              <h3 className="font-heading text-lg font-semibold text-ink">Reassign counselor</h3>
-              <p className="mt-3 text-sm text-muted"><span className="font-semibold text-ink">Current counselor:</span> {appointment.provider.display_name}</p>
+            <PanelSection title="Reassign counselor" titleId="reassign-counselor-heading" level={3}>
+            <form onSubmit={submitReassignment} className="max-w-3xl">
+              <p className="text-sm text-muted"><span className="font-semibold text-ink">Current counselor:</span> {appointment.provider.display_name}</p>
               {candidates.isPending ? (
                 <LoadingRegion label="Loading reassignment candidates…" className="mt-4">
                   <Skeleton className="h-10 w-full max-w-xl" />
@@ -709,7 +743,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                 <Textarea id="reassignment-reason" required disabled={reassign.isPending} className="min-h-24" value={reassignmentReason} onChange={(event) => setReassignmentReason(event.target.value)} />
               </div>
               {selectedCandidate && reassignmentReason.trim() ? (
-                <div className="mt-4 border-y border-border py-4">
+                <div className="mt-4 rounded-sm bg-surface-subtle px-4 py-3.5">
                   <h4 className="font-semibold text-ink">Review reassignment</h4>
                   <p className="mt-2 text-sm text-ink">{appointment.provider.display_name} <span aria-hidden="true">→</span> {selectedCandidate.display_name}</p>
                   <p className="mt-2 whitespace-pre-wrap text-sm text-muted">Reason: {reassignmentReason.trim()}</p>
@@ -720,25 +754,29 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                 {reassign.isPending ? "Reassigning…" : "Reassign counselor"}
               </Button>
             </form>
+            </PanelSection>
           ) : null}
-        </section>
+        </Panel>
       ) : null}
 
-      <section aria-labelledby="appointment-history-heading" className="py-6">
-        <h2 id="appointment-history-heading" className="font-heading text-xl font-semibold text-ink">Appointment history</h2>
+      <Panel aria-labelledby="appointment-history-heading">
+        <PanelHeader title="Appointment history" titleId="appointment-history-heading" />
         {historyQuery.isPending ? (
-          <div aria-busy="true" className="mt-4 space-y-3"><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /><p className="sr-only">Loading Appointment history…</p></div>
+          <RowsSkeleton label="Loading Appointment history…" rows={2} />
         ) : historyQuery.isError ? (
-          <div role="alert" className="mt-4 border-y border-danger/30 py-5">
-            <p className="text-sm text-danger">Appointment history could not be loaded.</p>
-            <Button className="mt-3" variant="secondary" onClick={() => void historyQuery.refetch()}>Retry history</Button>
-          </div>
+          <PanelMessage
+            role="alert"
+            tone="danger"
+            action={<Button variant="secondary" onClick={() => void historyQuery.refetch()}>Retry history</Button>}
+          >
+            Appointment history could not be loaded.
+          </PanelMessage>
         ) : historyItems.length === 0 ? (
-          <p className="mt-4 border-y border-border py-5 text-sm text-muted">No appointment history entries are available.</p>
+          <PanelMessage>No appointment history entries are available.</PanelMessage>
         ) : (
-          <ol className="mt-4 divide-y divide-border border-y border-border">
+          <ol className="divide-y divide-border">
             {historyItems.map((entry, index) => (
-              <li key={`${entry.event_type}-${entry.occurred_at}-${index}`} className="py-4">
+              <li key={`${entry.event_type}-${entry.occurred_at}-${index}`} className="px-4 py-3.5 sm:px-5">
                 <article>
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
                     <h3 className="font-semibold text-ink">{eventLabel(entry.event_type)}</h3>
@@ -752,7 +790,8 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
             ))}
           </ol>
         )}
-      </section>
+      </Panel>
+      </div>
 
       <ActionConfirmation
         action={confirmAction}

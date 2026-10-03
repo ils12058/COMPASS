@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { canViewOrganizationStructure } from "@/features/institution-configuration/institution-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs";
 
 function NavLink({ href, children }: { href: string; children: ReactNode }) {
   const pathname = usePathname();
@@ -14,11 +15,7 @@ function NavLink({ href, children }: { href: string; children: ReactNode }) {
     <Link
       href={href}
       aria-current={current ? "page" : undefined}
-      className={`inline-flex min-h-11 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
-        current
-          ? "border-brand text-brand"
-          : "border-transparent text-muted hover:text-ink"
-      }`}
+      className={workspaceTabClass(current)}
     >
       {children}
     </Link>
@@ -31,18 +28,16 @@ export function OrganizationNavigation() {
   const canViewStructure = canViewOrganizationStructure(user);
 
   return (
-    <nav aria-label="Organization navigation" className="mb-8 border-b border-border">
-      <div className="flex flex-wrap gap-x-5 gap-y-2">
-        {canViewStructure ? (
-          <NavLink href="/portal/organization">Structure</NavLink>
-        ) : null}
-        <NavLink href="/portal/organization/responsibilities">
-          Responsibilities
-        </NavLink>
-        <NavLink href="/portal/organization/student-affiliations">
-          Student affiliations
-        </NavLink>
-      </div>
-    </nav>
+    <WorkspaceTabs label="Organization navigation">
+      {canViewStructure ? (
+        <NavLink href="/portal/organization">Structure</NavLink>
+      ) : null}
+      <NavLink href="/portal/organization/responsibilities">
+        Responsibilities
+      </NavLink>
+      <NavLink href="/portal/organization/student-affiliations">
+        Student affiliations
+      </NavLink>
+    </WorkspaceTabs>
   );
 }

@@ -2,11 +2,15 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 import type { GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
+import { Notice } from "@/components/ui/notice";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 
 export function goodMoralVariantLabel(variant: GoodMoralVariantValue): string {
   return variant === "CURRENT_STUDENT" ? "Current Student" : "Graduate";
@@ -83,23 +87,32 @@ export function uncertainGoodMoralMutation(error: unknown): boolean {
   return !(error instanceof CompassApiError) || error.status >= 500;
 }
 
-export function GoodMoralListSkeleton({ label = "Loading Good Moral requests…" }: { label?: string }) {
-  return (
-    <LoadingRegion label={label} className="space-y-3">
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-16 w-full" />
-      <Skeleton className="h-16 w-full" />
-      <Skeleton className="h-16 w-full" />
-    </LoadingRegion>
-  );
+// Rows shaped like the queue table. Inside the results panel the panel draws the frame; the route
+// fallback has no panel yet, so it draws its own.
+// Inside the results panel the panel draws the frame; the route fallback has no panel yet.
+export function GoodMoralListSkeleton({
+  label = "Loading Good Moral requests…",
+  framed = true,
+}: {
+  label?: string;
+  framed?: boolean;
+}) {
+  return <RowsSkeleton label={label} rows={4} framed={framed} />;
 }
 
 export function GoodMoralDetailSkeleton() {
   return (
-    <LoadingRegion label="Loading Good Moral request…" className="space-y-4">
-      <Skeleton className="h-10 w-1/2" />
-      <Skeleton className="h-44 w-full" />
-      <Skeleton className="h-32 w-full" />
+    <LoadingRegion label="Loading Good Moral request…" className="space-y-5">
+      <Skeleton className="h-9 w-72 max-w-full" />
+      <div className="rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5">
+        <Skeleton className="h-6 w-64 max-w-full" />
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((fact) => (
+            <Skeleton key={fact} className="h-9 w-full" />
+          ))}
+        </div>
+      </div>
+      <Skeleton className="h-40 w-full rounded-sm" />
     </LoadingRegion>
   );
 }
@@ -109,22 +122,22 @@ export function GoodMoralHeading({
   description,
   action,
   headingId,
+  back,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
   headingId?: string;
+  back?: ReactNode;
 }) {
   return (
-    <header className="border-b border-border pb-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 id={headingId} className="font-heading text-3xl font-bold text-ink">{title}</h1>
-          {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{description}</p> : null}
-        </div>
-        {action}
-      </div>
-    </header>
+    <PageHeader
+      title={title}
+      headingId={headingId}
+      description={description}
+      back={back}
+      actions={action}
+    />
   );
 }
 
@@ -148,10 +161,13 @@ export function GoodMoralError({
   onRetry: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-danger/30 py-5">
-      <p className="text-sm text-danger">{goodMoralErrorMessage(error, fallback)}</p>
-      <Button variant="secondary" className="mt-3" onClick={onRetry}>Retry</Button>
-    </div>
+    <Notice
+      tone="danger"
+      role="alert"
+      action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
+    >
+      {goodMoralErrorMessage(error, fallback)}
+    </Notice>
   );
 }
 
@@ -169,21 +185,27 @@ export function GoodMoralNotice({
   );
 }
 
+// One Good Moral region on its own working surface. Older section content opened with a top margin
+// under the heading; the panel body pads instead, so a leading margin is dropped.
 export function GoodMoralSection({
   title,
   children,
   labelledBy,
+  description,
+  actions,
 }: {
   title: string;
   children: ReactNode;
   labelledBy?: string;
+  description?: ReactNode;
+  actions?: ReactNode;
 }) {
   const headingId = labelledBy ?? title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   return (
-    <section aria-labelledby={headingId} className="border-t border-border py-6">
-      <h2 id={headingId} className="font-heading text-xl font-semibold text-ink">{title}</h2>
-      {children}
-    </section>
+    <Panel aria-labelledby={headingId}>
+      <PanelHeader title={title} titleId={headingId} description={description} actions={actions} />
+      <div className="px-4 py-4 *:first:mt-0 sm:px-5">{children}</div>
+    </Panel>
   );
 }
 

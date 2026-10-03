@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 
-import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
@@ -18,7 +22,6 @@ import {
 import {
   ContentListSkeleton,
   ContentPageHeading,
-  ContentQueryError,
   PublicationStatusBadge,
   contentPrimaryLinkClass,
   contentRecordLinkClass,
@@ -36,10 +39,6 @@ import { useResourcesListManaged } from "@/lib/api/generated/resources/resources
 import { ResourceCategoryValue, ResourceKindValue } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
-const clearLinkClass =
-  "inline-flex min-h-10 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
-const headerCell = "px-3 py-3 font-semibold";
-const bodyCell = "px-3 py-4 align-top";
 
 const noFilters = { status: null, audience: null, category: null, kind: null };
 
@@ -80,144 +79,144 @@ export function ResourcesListPage() {
         }
       />
 
-      <div className="mt-8 border-y border-border py-5">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="grid gap-2">
-            <Label htmlFor="resource-status-filter">Status</Label>
-            <Select
-              id="resource-status-filter"
-              value={status ?? ""}
-              onChange={(event) => update({ status: event.target.value || null })}
-            >
-              <option value="">All statuses</option>
-              {publicationStatusOrder.map((value) => (
-                <option key={value} value={value}>{publicationStatusLabels[value]}</option>
-              ))}
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="resource-audience-filter">Audience</Label>
-            <Select
-              id="resource-audience-filter"
-              value={audience ?? ""}
-              onChange={(event) => update({ audience: event.target.value || null })}
-            >
-              <option value="">All audiences</option>
-              {publicationAudienceOrder.map((value) => (
-                <option key={value} value={value}>{publicationAudienceLabels[value]}</option>
-              ))}
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="resource-category-filter">Category</Label>
-            <Select
-              id="resource-category-filter"
-              value={category ?? ""}
-              onChange={(event) => update({ category: event.target.value || null })}
-            >
-              <option value="">All categories</option>
-              {Object.values(ResourceCategoryValue).map((value) => (
-                <option key={value} value={value}>{resourceCategoryLabels[value]}</option>
-              ))}
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="resource-kind-filter">Type</Label>
-            <Select
-              id="resource-kind-filter"
-              value={kind ?? ""}
-              onChange={(event) => update({ kind: event.target.value || null })}
-            >
-              <option value="">All types</option>
-              {Object.values(ResourceKindValue).map((value) => (
-                <option key={value} value={value}>{resourceKindLabels[value]}</option>
-              ))}
-            </Select>
-          </div>
-        </div>
-        {hasFilters ? (
-          <Link href={hrefWith(noFilters)} className={`mt-3 ${clearLinkClass}`} scroll={false}>
+      {/* Selects only, so each choice applies as soon as it changes. */}
+      <FilterToolbar
+        className="mt-5"
+        actions={hasFilters ? (
+          <Link href={hrefWith(noFilters)} className={buttonVariants({ variant: "quiet" })} scroll={false}>
             Clear filters
           </Link>
-        ) : null}
-      </div>
+        ) : undefined}
+      >
+        <FilterField label="Status" htmlFor="resource-status-filter">
+          <Select
+            id="resource-status-filter"
+            value={status ?? ""}
+            onChange={(event) => update({ status: event.target.value || null })}
+          >
+            <option value="">All statuses</option>
+            {publicationStatusOrder.map((value) => (
+              <option key={value} value={value}>{publicationStatusLabels[value]}</option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="Audience" htmlFor="resource-audience-filter">
+          <Select
+            id="resource-audience-filter"
+            value={audience ?? ""}
+            onChange={(event) => update({ audience: event.target.value || null })}
+          >
+            <option value="">All audiences</option>
+            {publicationAudienceOrder.map((value) => (
+              <option key={value} value={value}>{publicationAudienceLabels[value]}</option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="Category" htmlFor="resource-category-filter">
+          <Select
+            id="resource-category-filter"
+            value={category ?? ""}
+            onChange={(event) => update({ category: event.target.value || null })}
+          >
+            <option value="">All categories</option>
+            {Object.values(ResourceCategoryValue).map((value) => (
+              <option key={value} value={value}>{resourceCategoryLabels[value]}</option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="Type" htmlFor="resource-kind-filter">
+          <Select
+            id="resource-kind-filter"
+            value={kind ?? ""}
+            onChange={(event) => update({ kind: event.target.value || null })}
+          >
+            <option value="">All types</option>
+            {Object.values(ResourceKindValue).map((value) => (
+              <option key={value} value={value}>{resourceKindLabels[value]}</option>
+            ))}
+          </Select>
+        </FilterField>
+      </FilterToolbar>
 
       {list.isError && result ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
+      <Panel className="mt-5" aria-labelledby="resource-results-heading">
+        <PanelHeader
+          title="Resource records"
+          titleId="resource-results-heading"
+          context={list.isFetching && !list.isPending
+            ? "Refreshing Resources…"
+            : result
+              ? describeResultPage({ count: result.items.length, page: result.page, hasNext: result.has_next, noun: { one: "Resource", other: "Resources" }, filtered: hasFilters })
+              : null}
+        />
       {list.isPending ? (
         <ContentListSkeleton label="Loading Resources…" />
       ) : !result ? (
-        <div className="mt-5">
-          <ContentQueryError
-            message={resourceErrorMessage(list.error, "Resources could not be loaded.")}
-            onRetry={() => void list.refetch()}
-          />
-        </div>
+        <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>
+          {resourceErrorMessage(list.error, "Resources could not be loaded.")}
+        </PanelMessage>
       ) : result && result.items.length === 0 ? (
-        <div className="border-b border-border py-8">
-          <p className="text-sm text-muted">
-            {page > 1
-              ? "No Resources are on this page."
-              : hasFilters
-                ? "No Resources match the selected filters."
-                : "No Resources have been created yet."}
-          </p>
-          {page > 1 ? (
-            <Link href={hrefWith({ page: null }, false)} className={`mt-2 ${clearLinkClass}`}>
+        <PanelMessage
+          action={page > 1 ? (
+            <Link href={hrefWith({ page: null }, false)} className={buttonVariants({ variant: "secondary" })}>
               Go to the first page
             </Link>
           ) : hasFilters ? (
-            <Link href={hrefWith(noFilters)} className={`mt-2 ${clearLinkClass}`} scroll={false}>
+            <Link href={hrefWith(noFilters)} className={buttonVariants({ variant: "secondary" })} scroll={false}>
               Clear filters
             </Link>
-          ) : null}
-        </div>
+          ) : undefined}
+        >
+          {page > 1
+            ? "No Resources are on this page."
+            : hasFilters
+              ? "No Resources match the selected filters."
+              : "No Resources have been created yet."}
+        </PanelMessage>
       ) : result ? (
-        <>
-          {list.isFetching ? (
-            <p role="status" className="mt-4 text-xs text-muted">Refreshing Resources…</p>
-          ) : null}
-          <div className="mt-5 overflow-x-auto border-y border-border">
-            <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
+          <div className={dataTable.scroll}>
+            <table className={`${dataTable.table} min-w-[52rem]`}>
               <caption className="sr-only">Managed Resources</caption>
-              <thead className="bg-surface-muted text-xs text-muted">
+              <thead className={dataTable.head}>
                 <tr>
-                  <th scope="col" className={`${headerCell} sticky left-0 z-10 bg-surface-muted`}>Resource</th>
-                  <th scope="col" className={headerCell}>Category</th>
-                  <th scope="col" className={headerCell}>Audience</th>
-                  <th scope="col" className={headerCell}>Status</th>
-                  <th scope="col" className={`${headerCell} text-right`}>Order</th>
-                  <th scope="col" className={headerCell}>Last updated</th>
+                  <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Resource</th>
+                  <th scope="col" className={dataTable.headerCell}>Category</th>
+                  <th scope="col" className={dataTable.headerCell}>Audience</th>
+                  <th scope="col" className={dataTable.headerCell}>Status</th>
+                  <th scope="col" className={`${dataTable.headerCell} text-right`}>Order</th>
+                  <th scope="col" className={dataTable.headerCell}>Last updated</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border bg-surface-raised">
+              <tbody className={dataTable.body}>
                 {result.items.map((item) => (
-                  <tr key={item.id}>
-                    <th scope="row" className={`${bodyCell} sticky left-0 min-w-64 max-w-sm bg-surface-raised text-left font-normal`}>
+                  <tr key={item.id} className={dataTable.row}>
+                    <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} min-w-64 max-w-sm text-left font-normal`}>
                       <Link href={`/portal/resources/${item.id}`} className={`${contentRecordLinkClass} break-words`}>
                         {displayTitle(item.title, "Untitled Resource")}
                       </Link>
                       <span className="mt-1 block text-xs text-muted">{resourceKindLabels[item.kind]}</span>
                     </th>
-                    <td className={`${bodyCell} text-ink`}>{resourceCategoryLabels[item.category]}</td>
-                    <td className={`${bodyCell} text-ink`}>{publicationAudienceLabels[item.audience]}</td>
-                    <td className={bodyCell}><PublicationStatusBadge status={item.status} /></td>
-                    <td className={`${bodyCell} text-right tabular-nums text-ink`}>{item.display_order}</td>
-                    <td className={`${bodyCell} whitespace-nowrap text-ink`}>{formatInstitutionalDateTime(item.updated_at)}</td>
+                    <td className={`${dataTable.cell} text-ink`}>{resourceCategoryLabels[item.category]}</td>
+                    <td className={`${dataTable.cell} text-ink`}>{publicationAudienceLabels[item.audience]}</td>
+                    <td className={dataTable.cell}><PublicationStatusBadge status={item.status} /></td>
+                    <td className={`${dataTable.cell} text-right tabular-nums text-ink`}>{item.display_order}</td>
+                    <td className={`${dataTable.cell} whitespace-nowrap text-ink`}>{formatInstitutionalDateTime(item.updated_at)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </>
       ) : null}
       {result ? (
         <CanonicalPagination
+          className="border-brand-line px-4 py-3 sm:px-5"
           page={result.page}
           hasNext={result.has_next}
           label="Resource pages"
           onPageChange={setPage}
         />
       ) : null}
+      </Panel>
     </section>
   );
 }

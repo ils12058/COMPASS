@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { OverviewAttentionData } from "@/features/portal/home/overview-work";
 
@@ -8,29 +9,27 @@ export function OverviewAttention({ data }: { data: OverviewAttentionData }) {
   if (!data.isVisible) return null;
 
   return (
-    <section className="mt-8 border-t border-border pt-6" aria-labelledby="overview-attention-heading">
-      <h2 id="overview-attention-heading" className="font-heading text-xl font-semibold text-ink">
-        Needs your attention
-      </h2>
+    <Panel aria-labelledby="overview-attention-heading">
+      <PanelHeader title="Needs your attention" titleId="overview-attention-heading" />
 
       {data.staleNotices.map((notice) => (
-        <p key={notice} role="status" className="mt-3 text-sm text-muted">
+        <p key={notice} role="status" className="border-b border-border px-4 py-3 text-sm text-muted sm:px-5">
           {notice}
         </p>
       ))}
 
       {data.items.length > 0 ? (
-        <ul className="mt-3 divide-y divide-border border-y border-border">
+        <ul className="divide-y divide-border">
           {data.items.map((item) => (
             <li
               key={item.id}
               role={item.isError ? "alert" : undefined}
-              className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+              className="grid gap-3 px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-5"
             >
               <div className="min-w-0">
                 <p className="font-semibold text-ink">{item.title}</p>
-                {item.subject ? <p className="mt-1 text-sm text-ink">{item.subject}</p> : null}
-                <p className="mt-1 text-sm leading-6 text-muted">{item.detail}</p>
+                {item.subject ? <p className="mt-0.5 text-sm text-ink">{item.subject}</p> : null}
+                <p className="mt-0.5 text-sm leading-6 text-muted">{item.detail}</p>
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:justify-end">
                 <Link
@@ -48,19 +47,19 @@ export function OverviewAttention({ data }: { data: OverviewAttentionData }) {
             </li>
           ))}
           {data.isPending ? (
-            <li aria-busy="true" aria-hidden="true" className="space-y-2 py-4">
+            <li aria-busy="true" aria-hidden="true" className="space-y-2 px-4 py-4 sm:px-5">
               <Skeleton className="h-4 w-44" />
               <Skeleton className="h-4 w-2/3" />
             </li>
           ) : null}
         </ul>
       ) : data.isPending ? (
-        <div aria-busy="true" className="mt-3 space-y-3 border-y border-border py-4">
+        <div aria-busy="true" className="space-y-3 px-4 py-4 sm:px-5">
           <Skeleton className="h-4 w-44" />
           <Skeleton className="h-4 w-2/3" />
           <p className="sr-only">Checking for items that need attention…</p>
         </div>
       ) : null}
-    </section>
+    </Panel>
   );
 }

@@ -44,9 +44,9 @@ export function BackgroundSection({ draft, onChange }: InventorySectionProps) {
         <p className="mb-5 text-sm leading-6 text-muted">
           List siblings from eldest to youngest, including yourself. Mark the row that represents you.
         </p>
-        <ol className="divide-y divide-border border-y border-border">
+        <ol className="divide-y divide-border rounded-sm border border-border">
           {siblings.map((sibling, index) => (
-            <li key={`sibling-${index}`} className="py-5">
+            <li key={`sibling-${index}`} className="px-4 py-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="font-semibold text-ink">Sibling {index + 1}</h3>
                 <div className="flex flex-wrap gap-2">

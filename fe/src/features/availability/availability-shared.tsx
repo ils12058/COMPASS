@@ -20,6 +20,9 @@ import {
   CompassApiError,
   readApiErrorCode,
 } from "@/lib/api/errors";
+import { PageHeader } from "@/components/ui/page-header";
+import { Notice } from "@/components/ui/notice";
+import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs";
 
 export type StepUpHooks = {
   onStepUpRequired?: () => void;
@@ -175,12 +178,7 @@ function NavLink({
     <Link
       href={href}
       aria-current={current ? "page" : undefined}
-      className={
-        "inline-flex min-h-11 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
-        (current
-          ? "border-brand text-brand"
-          : "border-transparent text-muted hover:text-ink")
-      }
+      className={workspaceTabClass(current)}
     >
       {children}
     </Link>
@@ -193,19 +191,17 @@ export function AvailabilityNavigation() {
   const manage = canManageAvailability(user);
 
   return (
-    <nav aria-label="Availability navigation" className="mb-8 border-b border-border">
-      <div className="flex flex-wrap gap-x-5 gap-y-2">
-        {self ? (
-          <NavLink href="/portal/availability/me">My availability</NavLink>
-        ) : null}
-        {manage ? (
-          <>
-            <NavLink href="/portal/availability/office">Office</NavLink>
-            <NavLink href="/portal/availability/providers">Counselors</NavLink>
-          </>
-        ) : null}
-      </div>
-    </nav>
+    <WorkspaceTabs label="Availability navigation">
+      {self ? (
+        <NavLink href="/portal/availability/me">My availability</NavLink>
+      ) : null}
+      {manage ? (
+        <>
+          <NavLink href="/portal/availability/office">Office</NavLink>
+          <NavLink href="/portal/availability/providers">Counselors</NavLink>
+        </>
+      ) : null}
+    </WorkspaceTabs>
   );
 }
 
@@ -240,21 +236,7 @@ export function AvailabilityPageHeading({
   description?: string;
   action?: ReactNode;
 }) {
-  return (
-    <div>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-          {title}
-        </h1>
-        {action}
-      </div>
-      {description ? (
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-          {description}
-        </p>
-      ) : null}
-    </div>
-  );
+  return <PageHeader title={title} description={description} actions={action} />;
 }
 
 export function AvailabilityStatusBadge({
@@ -292,14 +274,13 @@ export function AvailabilityQueryError({
   onRetry: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-border py-6">
-      <p className="text-sm text-danger">
-        {availabilityErrorMessage(error, fallback)}
-      </p>
-      <Button variant="secondary" className="mt-4" onClick={onRetry}>
-        Retry
-      </Button>
-    </div>
+    <Notice
+      tone="danger"
+      role="alert"
+      action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
+    >
+      {availabilityErrorMessage(error, fallback)}
+    </Notice>
   );
 }
 

@@ -28,6 +28,8 @@
   --color-surface-subtle: var(--compass-surface-subtle);
   --color-border: var(--compass-border);
   --color-border-strong: var(--compass-border-strong);
+  --color-brand-line: var(--compass-brand-line);
+  --color-brand-wash: var(--compass-brand-wash);
   --color-focus: var(--compass-focus);
   --color-overlay: var(--compass-overlay);
   --radius-sm: var(--compass-radius-sm);
@@ -41,6 +43,7 @@
     border-color: var(--compass-border);
   }
 }
+
 
 html {
   background: var(--compass-body);

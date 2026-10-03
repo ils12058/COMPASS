@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
 import { Select } from "@/components/ui/select";
 import { resourceCategoryLabels, resourceKindLabels } from "@/features/public/shared/presentation";
 import {
@@ -25,34 +26,33 @@ export function ResourceFilters({ category, kind }: { category?: ResourceCategor
     router.push(query ? `${pathname}?${query}` : pathname);
   }
 
+  // Two selects and nothing to type, so each choice applies as soon as it changes.
   return (
-    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end">
-      <label className="grid gap-1.5 text-xs font-semibold text-muted sm:w-60">
-        Category
+    <FilterToolbar fieldsClassName="sm:grid-cols-2 lg:grid-cols-[repeat(2,minmax(0,16rem))]">
+      <FilterField label="Category" htmlFor="resource-filter-category">
         <Select
+          id="resource-filter-category"
           value={category ?? ""}
           onChange={(event) => updateFilter("category", event.target.value)}
-          className="font-normal"
         >
           <option value="">All categories</option>
           {Object.values(ResourceCategoryValue).map((value) => (
             <option key={value} value={value}>{resourceCategoryLabels[value]}</option>
           ))}
         </Select>
-      </label>
-      <label className="grid gap-1.5 text-xs font-semibold text-muted sm:w-60">
-        Resource type
+      </FilterField>
+      <FilterField label="Resource type" htmlFor="resource-filter-kind">
         <Select
+          id="resource-filter-kind"
           value={kind ?? ""}
           onChange={(event) => updateFilter("kind", event.target.value)}
-          className="font-normal"
         >
           <option value="">All resource types</option>
           {Object.values(ResourceKindValue).map((value) => (
             <option key={value} value={value}>{resourceKindLabels[value]}</option>
           ))}
         </Select>
-      </label>
-    </div>
+      </FilterField>
+    </FilterToolbar>
   );
 }

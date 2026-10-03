@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { EncounterCorrectionForm } from "@/features/counseling/encounter-correction-form";
 import {
@@ -22,7 +23,7 @@ import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useCounselingGetEncounter } from "@/lib/api/generated/counseling/counseling";
 
 function Metadata({ label, value }: { label: string; value: ReactNode }) {
-  return <div className="border-b border-border/70 py-3"><dt className="text-xs font-semibold text-muted">{label}</dt><dd className="mt-1 break-words text-sm text-ink">{value}</dd></div>;
+  return <div className="min-w-0"><dt className="text-xs font-semibold text-muted">{label}</dt><dd className="mt-1 break-words text-sm text-ink">{value}</dd></div>;
 }
 
 export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
@@ -44,12 +45,14 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
         action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My Counseling Encounters</Link>}
       />
 
-      <section aria-labelledby="encounter-details-heading">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
-          <div><h2 id="encounter-details-heading" className="font-heading text-xl font-semibold text-ink">Recorded interaction details</h2><p className="mt-1 text-sm text-muted">This is a factual record of a completed Counseling interaction.</p></div>
-          {access.canManageAssigned ? <Button variant="secondary" onClick={() => setCorrectionOpen((open) => !open)}>{correctionOpen ? "Close correction" : "Correct encounter details"}</Button> : null}
-        </div>
-        <dl className="grid gap-x-8 gap-y-2 border-b border-border py-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Panel aria-labelledby="encounter-details-heading">
+        <PanelHeader
+          title="Recorded interaction details"
+          titleId="encounter-details-heading"
+          description="This is a factual record of a completed Counseling interaction."
+          actions={access.canManageAssigned ? <Button variant="secondary" onClick={() => setCorrectionOpen((open) => !open)}>{correctionOpen ? "Close correction" : "Correct encounter details"}</Button> : undefined}
+        />
+        <dl className="grid gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-3">
           <Metadata label="Student" value={encounter.student.display_name} />
           <Metadata label="Counselor" value={encounter.counselor.display_name} />
           <Metadata label="Service" value={<>{encounter.service.name}</>} />
@@ -62,9 +65,9 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
           <Metadata label="Last updated" value={formatCounselingDateTime(encounter.updated_at)} />
         </dl>
         {correctionOpen && access.canManageAssigned ? <EncounterCorrectionForm encounter={encounter} onClose={() => setCorrectionOpen(false)} /> : null}
-      </section>
+      </Panel>
 
-      {access.canViewAssignedSummaries ? <div className="mt-8"><SharedSummarySection encounterId={encounter.id} access={access} /></div> : null}
+      {access.canViewAssignedSummaries ? <div className="mt-5"><SharedSummarySection encounterId={encounter.id} access={access} /></div> : null}
     </article>
   );
 }

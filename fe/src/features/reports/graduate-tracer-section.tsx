@@ -1,5 +1,6 @@
 import type { GraduateTracerDistributionSection } from "@/lib/api/generated/model";
-import { formatReportPercentage } from "@/features/reports/reports-shared";
+import { dataTable } from "@/components/ui/data-table";
+import { formatReportPercentage, reportSection } from "@/features/reports/reports-shared";
 
 export function GraduateTracerSection({
   section,
@@ -8,60 +9,59 @@ export function GraduateTracerSection({
 }) {
   const headingId = "graduate-tracer-section-" + section.key;
   return (
-    <section aria-labelledby={headingId} className="mt-8">
-      <h3
-        id={headingId}
-        className="font-heading text-lg font-semibold text-ink"
-      >
-        {section.label}
-      </h3>
-      <p className="mt-1 text-xs text-muted">
-        Denominator: {section.denominator_label} ({section.denominator})
-      </p>
-      {section.multiple_selection ? (
-        <p className="mt-3 border-l-2 border-border pl-3 text-sm leading-6 text-muted">
-          Respondents may select more than one answer, so percentages may total more than 100%.
+    <section aria-labelledby={headingId} className={reportSection.root}>
+      <div className={reportSection.head}>
+        <h3 id={headingId} className={reportSection.title}>
+          {section.label}
+        </h3>
+        <p className="text-xs text-muted">
+          Denominator: {section.denominator_label} ({section.denominator})
         </p>
-      ) : null}
+        {section.multiple_selection ? (
+          <p className="basis-full text-sm leading-6 text-muted">
+            Respondents may select more than one answer, so percentages may total more than 100%.
+          </p>
+        ) : null}
+      </div>
       <div
         role="region"
         aria-labelledby={headingId}
         tabIndex={0}
-        className="mt-3 overflow-x-auto border-y border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className={reportSection.region}
       >
-        <table className="w-full min-w-[34rem] border-collapse text-left text-sm">
+        <table className={`${dataTable.table} min-w-[34rem]`}>
           <caption className="sr-only">
             {section.label}; denominator {section.denominator_label}, {section.denominator}
           </caption>
-          <thead className="bg-surface-muted text-xs text-muted">
+          <thead className={reportSection.tableHead}>
             <tr>
               <th
                 scope="col"
-                className="sticky left-0 z-10 min-w-64 bg-surface-muted px-3 py-3 font-semibold"
+                className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell} min-w-64`}
               >
                 Category
               </th>
-              <th scope="col" className="min-w-28 px-3 py-3 font-semibold">
+              <th scope="col" className={`${dataTable.headerCell} min-w-28`}>
                 Count
               </th>
-              <th scope="col" className="min-w-32 px-3 py-3 font-semibold">
+              <th scope="col" className={`${dataTable.headerCell} min-w-32`}>
                 Percentage
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className={dataTable.body}>
             {section.rows.map((row) => (
-              <tr key={row.key}>
+              <tr key={row.key} className={dataTable.row}>
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 min-w-64 bg-surface px-3 py-3 font-medium text-ink"
+                  className={`${dataTable.cell} ${dataTable.stickyCell} min-w-64 font-medium text-ink`}
                 >
                   {row.label}
                 </th>
-                <td className="px-3 py-3 tabular-nums text-ink">
+                <td className={`${dataTable.cell} tabular-nums text-ink`}>
                   {row.count}
                 </td>
-                <td className="px-3 py-3 tabular-nums text-ink">
+                <td className={`${dataTable.cell} tabular-nums text-ink`}>
                   {formatReportPercentage(row.percentage)}
                 </td>
               </tr>
@@ -70,7 +70,7 @@ export function GraduateTracerSection({
         </table>
       </div>
       {section.rows.length === 0 ? (
-        <p className="border-b border-border py-4 text-sm text-muted">
+        <p className={reportSection.empty}>
           No data is available for this section.
         </p>
       ) : null}

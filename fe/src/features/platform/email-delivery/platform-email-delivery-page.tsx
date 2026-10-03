@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
@@ -14,10 +16,10 @@ import {
 } from "@/features/platform/platform-actions";
 import { hasPlatformManage } from "@/features/platform/platform-gate";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import {
   emailDeliveryStatusLabels,
   PlatformPageHeader,
-  PlatformQueryError,
   PlatformRowsSkeleton,
   PlatformStatusBadge,
   PlatformTimestamp,
@@ -40,6 +42,7 @@ import {
 } from "@/lib/api/generated/platform-operations/platform-operations";
 
 const PAGE_SIZE = 20;
+const summaryCell = "min-w-0 bg-surface-raised px-4 py-3.5 sm:px-5";
 const EMAIL_STATUSES = Object.values(EmailDeliveryStatusValue);
 
 const failureLabels: Record<EmailDeliveryFailureCode, string> = {
@@ -158,227 +161,240 @@ export function PlatformEmailDeliveryPage() {
   }
 
   return (
-    <section>
+    <section aria-labelledby="platform-page-heading">
       <PlatformPageHeader
         title="Email delivery"
         description="Delivery status updates as queued messages are processed. Recipient details and message contents are not shown here."
         action={<Button variant="secondary" disabled={summary.isFetching || deliveries.isFetching} onClick={() => void refreshEmailDelivery()}>{summary.isFetching || deliveries.isFetching ? "Refreshing…" : "Refresh email delivery"}</Button>}
       />
 
-      <section aria-labelledby="email-summary-heading" className="mb-9">
-        <h2
-          id="email-summary-heading"
-          className="mb-3 font-heading text-xl font-semibold text-ink"
-        >
-          Delivery summary
-        </h2>
-        {summary.isPending ? <PlatformRowsSkeleton label="Loading delivery summary…" rows={2} /> : null}
+      <Panel className="overflow-hidden" aria-labelledby="email-summary-heading">
+        <PanelHeader title="Delivery summary" titleId="email-summary-heading" />
+        {summary.isPending ? <PlatformRowsSkeleton label="Loading delivery summary…" rows={2} framed={false} /> : null}
         {summary.isError && !summaryData ? (
-          <PlatformQueryError
-            message="The email delivery summary could not be loaded."
-            onRetry={() => void summary.refetch()}
-          />
+          <PanelMessage
+            role="alert"
+            tone="danger"
+            action={<Button variant="secondary" onClick={() => void summary.refetch()}>Try again</Button>}
+          >
+            The email delivery summary could not be loaded.
+          </PanelMessage>
         ) : null}
-        {summary.isError && summaryData ? <RefreshFailureNotice message="Latest delivery summary could not be refreshed. Showing the last confirmed summary." onRetry={() => void summary.refetch()} retrying={summary.isFetching} /> : null}
+        {summary.isError && summaryData ? (
+          <div className="px-4 sm:px-5">
+            <RefreshFailureNotice message="Latest delivery summary could not be refreshed. Showing the last confirmed summary." onRetry={() => void summary.refetch()} retrying={summary.isFetching} />
+          </div>
+        ) : null}
         {summaryData ? (
-          <dl className="grid gap-x-6 border-y border-border sm:grid-cols-2 lg:grid-cols-3">
-            <div className="border-b border-border py-3">
-              <dt className="text-xs font-medium text-muted">Pending</dt>
-              <dd className="mt-1 text-lg font-semibold text-ink">
+          <dl className="grid grid-cols-2 gap-px bg-border sm:grid-cols-3">
+            <div className={summaryCell}>
+              <dt className="text-sm font-medium text-muted">Pending</dt>
+              <dd className="mt-1 font-heading text-2xl font-semibold tabular-nums text-ink">
                 {summaryData.pending_count}
               </dd>
             </div>
-            <div className="border-b border-border py-3">
-              <dt className="text-xs font-medium text-muted">Processing</dt>
-              <dd className="mt-1 text-lg font-semibold text-ink">
+            <div className={summaryCell}>
+              <dt className="text-sm font-medium text-muted">Processing</dt>
+              <dd className="mt-1 font-heading text-2xl font-semibold tabular-nums text-ink">
                 {summaryData.processing_count}
               </dd>
             </div>
-            <div className="border-b border-border py-3">
-              <dt className="text-xs font-medium text-muted">Failed</dt>
-              <dd className="mt-1 text-lg font-semibold text-ink">
+            <div className={summaryCell}>
+              <dt className="text-sm font-medium text-muted">Failed</dt>
+              <dd className="mt-1 font-heading text-2xl font-semibold tabular-nums text-ink">
                 {summaryData.failed_count}
               </dd>
             </div>
-            <div className="border-b border-border py-3">
-              <dt className="text-xs font-medium text-muted">Cancelled</dt>
-              <dd className="mt-1 text-lg font-semibold text-ink">
+            <div className={summaryCell}>
+              <dt className="text-sm font-medium text-muted">Cancelled</dt>
+              <dd className="mt-1 font-heading text-2xl font-semibold tabular-nums text-ink">
                 {summaryData.cancelled_count}
               </dd>
             </div>
-            <div className="border-b border-border py-3">
-              <dt className="text-xs font-medium text-muted">Sent today</dt>
-              <dd className="mt-1 text-lg font-semibold text-ink">
+            <div className={summaryCell}>
+              <dt className="text-sm font-medium text-muted">Sent today</dt>
+              <dd className="mt-1 font-heading text-2xl font-semibold tabular-nums text-ink">
                 {summaryData.sent_today}
               </dd>
             </div>
-            <div className="border-b border-border py-3">
-              <dt className="text-xs font-medium text-muted">Due pending</dt>
-              <dd className="mt-1 text-lg font-semibold text-ink">
+            <div className={summaryCell}>
+              <dt className="text-sm font-medium text-muted">Due pending</dt>
+              <dd className="mt-1 font-heading text-2xl font-semibold tabular-nums text-ink">
                 {summaryData.due_pending_count}
               </dd>
             </div>
-            <div className="py-3 sm:col-span-2 lg:col-span-3">
-              <dt className="text-xs font-medium text-muted">Oldest pending</dt>
+            <div className={`${summaryCell} col-span-2 sm:col-span-3`}>
+              <dt className="text-sm font-medium text-muted">Oldest pending</dt>
               <dd className="mt-1 text-sm text-ink">
                 <PlatformTimestamp value={summaryData.oldest_pending_at} />
               </dd>
             </div>
           </dl>
         ) : null}
-      </section>
+      </Panel>
 
-      <section aria-labelledby="email-list-heading">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <h2
-            id="email-list-heading"
-            className="font-heading text-xl font-semibold text-ink"
+      {/* One status choice, applied on change. */}
+      <FilterToolbar className="mt-5">
+        <FilterField label="Status" htmlFor="email-delivery-status">
+          <Select
+            id="email-delivery-status"
+            value={status}
+            onChange={(event) => {
+              setStatus(statusFilterFrom(event.target.value));
+              setPage(1);
+            }}
           >
-            Deliveries
-          </h2>
-          <div className="grid max-w-xs gap-2">
-            <Label htmlFor="email-delivery-status">Status</Label>
-            <Select
-              id="email-delivery-status"
-              value={status}
-              onChange={(event) => {
-                setStatus(statusFilterFrom(event.target.value));
-                setPage(1);
-              }}
-            >
-              <option value="ALL">All statuses</option>
-              {EMAIL_STATUSES.map((item) => (
-                <option key={item} value={item}>
-                  {emailDeliveryStatusLabels[item]}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
+            <option value="ALL">All statuses</option>
+            {EMAIL_STATUSES.map((item) => (
+              <option key={item} value={item}>
+                {emailDeliveryStatusLabels[item]}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+      </FilterToolbar>
 
-        {action.error ? (
-          <p role="alert" className="mb-4 text-sm text-danger">
-            {action.error}
-          </p>
-        ) : null}
-        {action.notice ? (
-          <p role="status" className="mb-4 text-sm text-success">
-            {action.notice}
-          </p>
-        ) : null}
-        {deliveries.isPending ? <PlatformRowsSkeleton label="Loading email deliveries…" rows={5} /> : null}
+      {action.error ? (
+        <p role="alert" className="mt-3 text-sm text-danger">
+          {action.error}
+        </p>
+      ) : null}
+      {action.notice ? (
+        <p role="status" className="mt-3 text-sm text-success">
+          {action.notice}
+        </p>
+      ) : null}
+      {rowsStale ? <RefreshFailureNotice message="Latest delivery rows could not be refreshed. Showing the last confirmed rows. Retry eligibility must be checked again." onRetry={() => void deliveries.refetch()} retrying={deliveries.isFetching} /> : null}
+
+      <Panel className={rowsStale ? undefined : "mt-5"} aria-labelledby="email-list-heading">
+        <PanelHeader
+          title="Deliveries"
+          titleId="email-list-heading"
+          context={
+            deliveries.isFetching && !deliveries.isPending
+              ? "Refreshing email deliveries…"
+              : deliveryPage && !deliveries.isError
+                ? describeResultPage({
+                    count: deliveryPage.items.length,
+                    page: deliveryPage.page,
+                    hasNext: deliveryPage.has_next,
+                    noun: { one: "delivery", other: "deliveries" },
+                    filtered: status !== "ALL",
+                  })
+                : null
+          }
+        />
+        {deliveries.isPending ? <PlatformRowsSkeleton label="Loading email deliveries…" rows={5} framed={false} /> : null}
         {deliveries.isError && !deliveryPage ? (
-          <PlatformQueryError
-            message="Email delivery records could not be loaded."
-            onRetry={() => void deliveries.refetch()}
-          />
+          <PanelMessage
+            role="alert"
+            tone="danger"
+            action={<Button variant="secondary" onClick={() => void deliveries.refetch()}>Try again</Button>}
+          >
+            Email delivery records could not be loaded.
+          </PanelMessage>
         ) : null}
-        {rowsStale ? <RefreshFailureNotice message="Latest delivery rows could not be refreshed. Showing the last confirmed rows. Retry eligibility must be checked again." onRetry={() => void deliveries.refetch()} retrying={deliveries.isFetching} /> : null}
 
         {deliveryPage ? (
           deliveryPage.items.length ? (
-            <>
-              <div className="overflow-x-auto border-y border-border">
-                <table className="min-w-[58rem] border-collapse text-left text-sm">
-                  <caption className="sr-only">Email delivery operations</caption>
-                  <thead className="bg-surface-muted text-xs text-muted">
-                    <tr>
-                      <th scope="col" className="sticky left-0 z-10 bg-surface-muted px-3 py-3 font-semibold">
-                        Delivery
-                      </th>
-                      <th scope="col" className="px-3 py-3 font-semibold">Status</th>
-                      <th scope="col" className="px-3 py-3 font-semibold">Attempts</th>
-                      <th scope="col" className="px-3 py-3 font-semibold">Created</th>
-                      <th scope="col" className="px-3 py-3 font-semibold">Timing</th>
-                      {canManage ? (
-                        <th scope="col" className="px-3 py-3 font-semibold">Action</th>
+            <div className={dataTable.scroll}>
+              <table className={`${dataTable.table} min-w-[58rem]`}>
+                <caption className="sr-only">Email delivery operations</caption>
+                <thead className={dataTable.head}>
+                  <tr>
+                    <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>
+                      Delivery
+                    </th>
+                    <th scope="col" className={dataTable.headerCell}>Status</th>
+                    <th scope="col" className={dataTable.headerCell}>Attempts</th>
+                    <th scope="col" className={dataTable.headerCell}>Created</th>
+                    <th scope="col" className={dataTable.headerCell}>Timing</th>
+                    {canManage ? (
+                      <th scope="col" className={dataTable.headerCell}>Action</th>
+                    ) : null}
+                  </tr>
+                </thead>
+                <tbody className={dataTable.body}>
+                {deliveryPage.items.map((delivery) => (
+                  <tr key={delivery.id} className={dataTable.row}>
+                    <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} max-w-64 text-left font-medium`}>
+                      <span className="block break-all text-sm font-semibold text-ink">
+                        {delivery.event_code}
+                      </span>
+                      <code className="mt-1 block break-all text-[0.7rem] font-normal text-muted">
+                        {delivery.id}
+                      </code>
+                    </th>
+                    <td className={dataTable.cell}>
+                      <PlatformStatusBadge status={delivery.status} />
+                      {delivery.failure_code ? (
+                        <p className="mt-2 max-w-48 break-words text-xs text-muted">
+                          {failureLabels[delivery.failure_code]}
+                        </p>
                       ) : null}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {deliveryPage.items.map((delivery) => (
-                      <tr key={delivery.id}>
-                        <th scope="row" className="sticky left-0 z-10 max-w-64 bg-surface-raised px-3 py-4 text-left align-top font-medium">
-                          <span className="block break-all text-sm font-semibold text-ink">
-                            {delivery.event_code}
+                    </td>
+                    <td className={`${dataTable.cell} text-ink`}>
+                      {delivery.attempt_count}
+                    </td>
+                    <td className={`${dataTable.cell} text-xs text-ink`}>
+                      <PlatformTimestamp value={delivery.created_at} />
+                    </td>
+                    <td className={dataTable.cell}>
+                      <Timing delivery={delivery} />
+                    </td>
+                    {canManage ? (
+                      <td className={dataTable.cell}>
+                        {delivery.manual_retry_allowed && !rowsStale ? (
+                          <Button
+                            variant="secondary"
+                            aria-label={`Request retry for ${delivery.event_code}, delivery ${delivery.id}`}
+                            onClick={() => {
+                              action.setError(null);
+                              action.setNotice(null);
+                              setSelectedDelivery(delivery);
+                              setSelectedDeliveryAt(deliveries.dataUpdatedAt);
+                            }}
+                          >
+                            Request retry
+                          </Button>
+                        ) : delivery.manual_retry_blocker &&
+                          retryBlockerLabels[delivery.manual_retry_blocker] ? (
+                          <span className="text-xs text-muted">
+                            {retryBlockerLabels[delivery.manual_retry_blocker]}
                           </span>
-                          <code className="mt-1 block break-all text-[0.7rem] font-normal text-muted">
-                            {delivery.id}
-                          </code>
-                        </th>
-                        <td className="px-3 py-4 align-top">
-                          <PlatformStatusBadge status={delivery.status} />
-                          {delivery.failure_code ? (
-                            <p className="mt-2 max-w-48 break-words text-xs text-muted">
-                              {failureLabels[delivery.failure_code]}
-                            </p>
-                          ) : null}
-                        </td>
-                        <td className="px-3 py-4 align-top text-ink">
-                          {delivery.attempt_count}
-                        </td>
-                        <td className="px-3 py-4 align-top text-xs text-ink">
-                          <PlatformTimestamp value={delivery.created_at} />
-                        </td>
-                        <td className="px-3 py-4 align-top">
-                          <Timing delivery={delivery} />
-                        </td>
-                        {canManage ? (
-                          <td className="px-3 py-4 align-top">
-                            {delivery.manual_retry_allowed && !rowsStale ? (
-                              <Button
-                                variant="secondary"
-                                aria-label={`Request retry for ${delivery.event_code}, delivery ${delivery.id}`}
-                                onClick={() => {
-                                  action.setError(null);
-                                  action.setNotice(null);
-                                  setSelectedDelivery(delivery);
-                                  setSelectedDeliveryAt(deliveries.dataUpdatedAt);
-                                }}
-                              >
-                                Request retry
-                              </Button>
-                            ) : delivery.manual_retry_blocker &&
-                              retryBlockerLabels[delivery.manual_retry_blocker] ? (
-                              <span className="text-xs text-muted">
-                                {retryBlockerLabels[delivery.manual_retry_blocker]}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted">—</span>
-                            )}
-                          </td>
-                        ) : null}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          ) : status === "ALL" ? (
-            <p className="border-y border-border py-6 text-sm text-muted">
-              No email deliveries are available.
-            </p>
-          ) : (
-            <div className="border-y border-border py-6">
-              <p className="text-sm text-muted">
-                No email deliveries match the selected status.
-              </p>
-              <Button
-                className="mt-3"
-                variant="secondary"
-                onClick={() => {
-                  setStatus("ALL");
-                  setPage(1);
-                }}
-              >
-                Clear status filter
-              </Button>
+                        ) : (
+                          <span className="text-xs text-muted">—</span>
+                        )}
+                      </td>
+                    ) : null}
+                  </tr>
+                ))}
+                </tbody>
+              </table>
             </div>
+          ) : status === "ALL" ? (
+            <PanelMessage>No email deliveries are available.</PanelMessage>
+          ) : (
+            <PanelMessage
+              action={
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setStatus("ALL");
+                    setPage(1);
+                  }}
+                >
+                  Clear status filter
+                </Button>
+              }
+            >
+              No email deliveries match the selected status.
+            </PanelMessage>
           )
         ) : null}
         {deliveryPage ? (
           <CanonicalPagination
-            className="mt-4"
+            className="border-brand-line px-4 py-3 sm:px-5"
             page={deliveryPage.page}
             hasNext={deliveryPage.has_next}
             disabled={deliveries.isFetching}
@@ -386,7 +402,7 @@ export function PlatformEmailDeliveryPage() {
             onPageChange={setPage}
           />
         ) : null}
-      </section>
+      </Panel>
 
       {action.stepUpDialog}
       {canManage ? (

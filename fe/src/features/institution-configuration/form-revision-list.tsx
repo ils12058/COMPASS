@@ -1,5 +1,6 @@
 "use client";
 
+import { dataTable } from "@/components/ui/data-table";
 import { FormRevisionStatusBadge } from "@/features/institution-configuration/institution-shared";
 import type { FormRevisionResponse } from "@/lib/api/generated/model";
 
@@ -11,32 +12,33 @@ export function FormRevisionList({
   revisions: FormRevisionResponse[];
 }) {
   return (
-    <div className="min-w-0 overflow-x-auto rounded-sm border border-border">
-      <table className="w-full min-w-[36rem] text-left text-sm">
+    // Sits flush inside the selected family's Panel, which draws the frame.
+    <div className={`min-w-0 ${dataTable.scroll}`}>
+      <table className={`${dataTable.table} min-w-[36rem]`}>
         <caption className="sr-only">
           Form Revisions for {familyTitle}
         </caption>
-        <thead className="border-b border-border bg-surface-muted text-xs font-semibold text-muted">
+        <thead className={dataTable.head}>
           <tr>
-            <th scope="col" className="px-4 py-3">Official code</th>
-            <th scope="col" className="px-4 py-3">Official revision</th>
-            <th scope="col" className="px-4 py-3">Status</th>
-            <th scope="col" className="px-4 py-3">COMPASS support</th>
+            <th scope="col" className={dataTable.headerCell}>Official code</th>
+            <th scope="col" className={dataTable.headerCell}>Official revision</th>
+            <th scope="col" className={dataTable.headerCell}>Status</th>
+            <th scope="col" className={dataTable.headerCell}>COMPASS support</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border">
+        <tbody className={dataTable.body}>
           {revisions.map((revision) => (
-            <tr key={revision.id}>
-              <td className="px-4 py-3 font-mono text-xs text-ink">
+            <tr key={revision.id} className={dataTable.row}>
+              <td className={`${dataTable.cell} font-mono text-xs text-ink`}>
                 {revision.official_code ?? "Not recorded"}
               </td>
-              <td className="px-4 py-3 text-ink">
+              <td className={`${dataTable.cell} text-ink`}>
                 {revision.official_revision ?? "Not recorded"}
               </td>
-              <td className="px-4 py-3">
+              <td className={dataTable.cell}>
                 <FormRevisionStatusBadge status={revision.status} />
               </td>
-              <td className="px-4 py-3">
+              <td className={dataTable.cell}>
                 {revision.supported ? (
                   <span className="font-semibold text-success">Supported</span>
                 ) : (

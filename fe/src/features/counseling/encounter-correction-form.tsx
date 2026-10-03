@@ -128,8 +128,8 @@ export function EncounterCorrectionForm({
   }
 
   return (
-    <form onSubmit={submit} className="mt-5 border-y border-border py-5" aria-labelledby="correct-encounter-heading">
-      <h3 id="correct-encounter-heading" className="font-heading text-lg font-semibold text-ink">Correct encounter details</h3>
+    <form onSubmit={submit} className="border-t border-brand-line px-4 py-5 sm:px-5" aria-labelledby="correct-encounter-heading">
+      <h3 id="correct-encounter-heading" className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-brand">Correct encounter details</h3>
       <p className="mt-1 text-sm text-muted">Use this to correct how the completed interaction was recorded. Actual times use {INSTITUTION_TIME_ZONE_LABEL}. Student, Counselor, Service, creator, and creation time cannot be changed.</p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -157,7 +157,7 @@ export function EncounterCorrectionForm({
           {items.map((item) => <option key={item.id} value={item.id}>{item.reference_code} · {formatCounselingDateTime(item.starts_at)} · {counselingDeliveryModeLabel(item.delivery_mode)} · {appointmentStatusLabel(item.status)}</option>)}
         </Select>
         {!candidates.isPending && !candidates.isError && items.length === 0 && !encounter.appointment ? <p className="mt-2 text-sm text-muted">No appointment candidates are available for this encounter.</p> : null}
-        {!candidates.isPending && !candidates.isError ? <CanonicalPagination label="Appointment candidate pages" page={candidates.data?.data.page ?? page} hasNext={candidates.data?.data.has_next ?? false} onPageChange={setPage} /> : null}
+        {!candidates.isPending && !candidates.isError ? <CanonicalPagination className="border-t-0 pb-0" label="Appointment candidate pages" page={candidates.data?.data.page ?? page} hasNext={candidates.data?.data.has_next ?? false} onPageChange={setPage} /> : null}
         <p className="mt-2 text-xs text-muted">Selected: {selectedLabel}</p>
       </div>
 

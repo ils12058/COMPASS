@@ -1,6 +1,12 @@
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
 import type { GraduateTracerReportResponse } from "@/lib/api/generated/model";
 import { GraduateTracerSection } from "@/features/reports/graduate-tracer-section";
-import { ReportDisclosureNotice } from "@/features/reports/reports-shared";
+import {
+  ReportDisclosureNotice,
+  reportDetails,
+  reportStack,
+} from "@/features/reports/reports-shared";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 type GraduateTracerSectionKey = keyof GraduateTracerReportResponse["sections"];
@@ -71,18 +77,11 @@ export function GraduateTracerReportContent({
   isFetching: boolean;
 }) {
   return (
-    <div aria-busy={isFetching}>
-      <section
-        aria-labelledby="graduate-tracer-context-heading"
-        className="mt-6 border-y border-border py-5"
-      >
-        <h2
-          id="graduate-tracer-context-heading"
-          className="font-heading text-lg font-semibold text-ink"
-        >
-          Report context
-        </h2>
-        <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div aria-busy={isFetching} className={reportStack}>
+      <Panel aria-labelledby="graduate-tracer-context-heading">
+        <PanelHeader title="Report context" titleId="graduate-tracer-context-heading" />
+        <PanelBody>
+        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
               Submitted Response Count
@@ -111,40 +110,32 @@ export function GraduateTracerReportContent({
             </dd>
           </div>
         </dl>
-      </section>
+        </PanelBody>
+      </Panel>
       <ReportDisclosureNotice warnings={report.disclosure_warnings} />
       {report.report_context.submitted_response_count === 0 ? (
-        <p className="mt-5 border-l-2 border-border pl-3 text-sm leading-6 text-muted">
+        <Notice>
           No submitted Graduate Tracer responses match the selected submission period.
-        </p>
+        </Notice>
       ) : null}
 
       {GRADUATE_TRACER_GROUPS.map((group) => (
-        <section
-          key={group.title}
-          aria-labelledby={groupId(group.title)}
-          className="mt-9"
-        >
-          <h2
-            id={groupId(group.title)}
-            className="font-heading text-xl font-semibold text-ink"
-          >
-            {group.title}
-          </h2>
+        <Panel key={group.title} aria-labelledby={groupId(group.title)}>
+          <PanelHeader title={group.title} titleId={groupId(group.title)} />
           {group.keys.map((key) => (
             <GraduateTracerSection
               key={key}
               section={report.sections[key]}
             />
           ))}
-        </section>
+        </Panel>
       ))}
 
-      <details className="mt-9 border-y border-border py-4">
-        <summary className="cursor-pointer font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+      <details className={reportDetails.root}>
+        <summary className={reportDetails.summary}>
           How this report is calculated
         </summary>
-        <dl className="mt-4 space-y-4 text-sm leading-6">
+        <dl className={reportDetails.body}>
           <div>
             <dt className="font-semibold text-ink">Population</dt>
             <dd className="mt-1 text-muted">{report.methodology.population}</dd>

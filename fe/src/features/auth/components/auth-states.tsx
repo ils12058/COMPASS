@@ -20,7 +20,7 @@ export function AuthFailure({
   onRetry: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-border py-6">
+    <div role="alert" className="rounded-sm border border-brand-line bg-surface-raised px-5 py-5">
       <h1 className="font-heading text-2xl font-bold text-ink">Session verification unavailable</h1>
       <p className="mt-3 text-sm leading-6 text-muted">{message}</p>
       <Button className="mt-5" variant="secondary" onClick={onRetry}>Retry</Button>

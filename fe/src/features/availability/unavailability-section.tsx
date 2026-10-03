@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import {
   ActionFeedback,
   modeScopeLabel,
@@ -43,11 +44,11 @@ function ExceptionList({
   if (items.length === 0) return null;
 
   return (
-    <ul className="divide-y divide-border border-y border-border">
+    <ul className="divide-y divide-border rounded-sm border border-border">
       {items.map((item) => (
         <li
           key={item.id}
-          className="grid gap-4 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start"
+          className="grid gap-4 px-4 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start"
         >
           <div className="min-w-0">
             <p className="font-medium text-ink">
@@ -200,22 +201,12 @@ export function UnavailabilitySection({
   const modalOpen = addOpen || removal !== null;
 
   return (
-    <section aria-labelledby="unavailability-heading">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2
-            id="unavailability-heading"
-            className="font-heading text-2xl font-semibold text-ink"
-          >
-            Unavailability
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            Dated unavailability removes future bookable time from recurring
-            Availability. Existing Appointments remain scheduled. Times use{" "}
-            {INSTITUTION_TIME_ZONE_LABEL}.
-          </p>
-        </div>
-        {canCreate ? (
+    <Panel aria-labelledby="unavailability-heading">
+      <PanelHeader
+        title="Unavailability"
+        titleId="unavailability-heading"
+        description={<>Dated unavailability removes future bookable time from recurring Availability. Existing Appointments remain scheduled. Times use {INSTITUTION_TIME_ZONE_LABEL}.</>}
+        actions={canCreate ? (
           <Button
             onClick={() => {
               setLocalError(null);
@@ -224,17 +215,18 @@ export function UnavailabilitySection({
           >
             Add unavailability
           </Button>
-        ) : null}
-      </div>
+        ) : undefined}
+      />
+      <div className="px-4 py-4 *:first:mt-0 sm:px-5">
 
       {!modalOpen ? <ActionFeedback error={error} notice={notice} /> : null}
 
       {items.length === 0 ? (
-        <p className="mt-5 border-y border-border py-7 text-sm text-muted">
+        <p className="mt-4 text-sm text-muted">
           No unavailability has been recorded.
         </p>
       ) : (
-        <div className="mt-5 space-y-8">
+        <div className="mt-4 space-y-6">
           {upcoming.length > 0 ? (
             <section aria-labelledby="upcoming-unavailability-heading">
               <h3
@@ -390,6 +382,7 @@ export function UnavailabilitySection({
             : "This unavailability will be removed."}
         </p>
       </ConsequentialActionDialog>
-    </section>
+      </div>
+    </Panel>
   );
 }

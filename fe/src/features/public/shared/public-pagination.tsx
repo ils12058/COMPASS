@@ -14,7 +14,7 @@ export function PublicPagination({ buildHref, hasNext, page }: PublicPaginationP
   if (page <= 1 && !hasNext) return null;
 
   return (
-    <nav aria-label="Pagination" className="mt-8 flex items-center justify-between gap-4 border-t border-border pt-5">
+    <nav aria-label="Pagination" className="flex items-center justify-between gap-4 border-t border-brand-line px-4 py-3 sm:px-5">
       {page > 1 ? (
         <Link href={buildHref(page - 1)} className={linkClassName} scroll>
           <ChevronLeft size={17} aria-hidden="true" />

@@ -20,13 +20,15 @@ export default async function PrivacyPage({
   return (
     <main>
       <PublicPageHeader>
-        <h1 className="font-heading text-4xl font-bold tracking-tight text-ink">Privacy</h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-muted">
+        <h1 className="font-heading text-3xl font-bold tracking-tight text-ink sm:text-4xl">Privacy</h1>
+        <p className="mt-2 max-w-2xl text-base leading-7 text-muted">
           Official privacy notices for COMPASS.
         </p>
       </PublicPageHeader>
-      <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-14">
-        <PublicPrivacyNotices page={readPage(page)} />
+      <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8 sm:py-9">
+        <div className="max-w-4xl">
+          <PublicPrivacyNotices page={readPage(page)} />
+        </div>
       </div>
     </main>
   );

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { GraduateTracerEducationSection, GraduateTracerGeneralSection, GraduateTracerTrainingSection } from "@/features/graduate-tracer/graduate-tracer-form-sections";
 import { GraduateTracerCurriculumSection, GraduateTracerEmploymentSection } from "@/features/graduate-tracer/graduate-tracer-employment-section";
 import { FORM_SECTIONS, graduateTracerDraftFromDetail, graduateTracerPayloadFromDraft, getGraduateTracerDraftRowIssues, getGraduateTracerSubmissionIssues, normalizeGraduateTracerDraft, type GraduateTracerFormDraft, type SubmissionIssue } from "@/features/graduate-tracer/graduate-tracer-presentation";
@@ -200,17 +202,12 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
   }
 
   return (
-    <section className="space-y-6" aria-labelledby="graduate-tracer-form-heading">
-      <header className="border-b border-border pb-5">
-        <h2 id="graduate-tracer-form-heading" className="font-heading text-xl font-semibold text-ink">Graduate Tracer Survey</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Your draft remains private until you submit it.</p>
-      </header>
-
-      <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10">
-        <nav aria-label="Survey sections" className="mb-6 overflow-x-auto lg:mb-0">
-          <div className="flex min-w-max gap-2 border-b border-border pb-3 lg:sticky lg:top-5 lg:min-w-0 lg:flex-col lg:gap-1 lg:border-b-0 lg:border-l lg:pb-0 lg:pl-3">
+    <section aria-labelledby="graduate-tracer-form-heading">
+      <div className="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6">
+        <nav aria-label="Survey sections" className="mb-5 overflow-x-auto lg:mb-0">
+          <div className="flex min-w-max gap-2 lg:sticky lg:top-5 lg:min-w-0 lg:flex-col lg:gap-1">
             {FORM_SECTIONS.map((section) => (
-              <a key={section.id} href={`#${section.id}`} className="inline-flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-muted hover:bg-surface-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+              <a key={section.id} href={`#${section.id}`} className="inline-flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-muted transition-colors hover:bg-brand-wash hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
                 {section.label}
               </a>
             ))}
@@ -218,9 +215,19 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
         </nav>
 
         <form onSubmit={(event) => event.preventDefault()} aria-busy={pending} className="min-w-0">
-          {localIssue ? <p role="alert" className="mb-5 border-l-4 border-warning bg-warning/5 px-4 py-3 text-sm leading-6 text-ink">{localIssue}</p> : null}
-          {saveError ? <p role="alert" className="mb-5 border-l-4 border-danger bg-danger/5 px-4 py-3 text-sm leading-6 text-ink">{saveError}</p> : null}
-          {saveMessage ? <p role="status" className="mb-5 border-l-4 border-success bg-success/5 px-4 py-3 text-sm text-ink">{saveMessage}</p> : null}
+          <Panel as="div">
+          <PanelHeader
+            title="Graduate Tracer Survey"
+            titleId="graduate-tracer-form-heading"
+            description="Your draft remains private until you submit it."
+          />
+          {localIssue || saveError || saveMessage ? (
+            <div className="space-y-3 border-b border-brand-line px-4 py-4 sm:px-5">
+              {localIssue ? <Notice role="alert" tone="warning"><span className="text-ink">{localIssue}</span></Notice> : null}
+              {saveError ? <Notice role="alert" tone="danger"><span className="text-ink">{saveError}</span></Notice> : null}
+              {saveMessage ? <Notice role="status" tone="success"><span className="text-ink">{saveMessage}</span></Notice> : null}
+            </div>
+          ) : null}
 
           <fieldset disabled={pending} className="min-w-0">
             <GraduateTracerGeneralSection draft={draft} onChange={updateDraft} errorFor={errorFor} />
@@ -230,7 +237,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
             <GraduateTracerCurriculumSection draft={draft} onChange={updateDraft} />
           </fieldset>
 
-          <div className="border-t border-border py-6">
+          <div className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-5 sm:px-5">
             {dirty ? <p className="mb-3 text-sm text-warning">Unsaved changes. Save the draft before submitting.</p> : null}
             {draftRowIssues.length ? <p className="mb-3 text-sm text-warning">{draftRowIssues[0].message}</p> : null}
             <div className="flex flex-wrap gap-3">
@@ -267,6 +274,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
               </ConsequentialActionDialog>
             </div>
           </div>
+          </Panel>
         </form>
       </div>
     </section>

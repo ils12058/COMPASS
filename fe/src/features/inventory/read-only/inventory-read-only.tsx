@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { dataTable } from "@/components/ui/data-table";
+import { Panel, PanelSection } from "@/components/ui/panel";
 import { enumLabel, educationLevelOptions, inventorySections } from "@/features/inventory/inventory-presentation";
 import { DefinitionValue, formatInventoryDate, formatInventoryDateOnly } from "@/features/inventory/inventory-shared";
 import type {
@@ -38,10 +40,9 @@ function RecordSection({
   children: ReactNode;
 }) {
   return (
-    <section className="border-t border-border pt-6">
-      <h2 className="font-heading text-xl font-semibold text-ink">{title}</h2>
-      <div className="mt-3">{children}</div>
-    </section>
+    <PanelSection title={title} titleId={"inventory-record-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}>
+      {children}
+    </PanelSection>
   );
 }
 
@@ -80,21 +81,21 @@ function RowTable({
   rows: string[][];
 }) {
   return (
-    <div className="overflow-x-auto border-y border-border">
-      <table className="w-full min-w-[34rem] border-collapse text-left text-sm">
+    <div className={`${dataTable.scroll} rounded-sm border border-border`}>
+      <table className={`${dataTable.table} min-w-[34rem]`}>
         <caption className="sr-only">{caption}</caption>
-        <thead>
-          <tr className="border-b border-border bg-surface-muted">
+        <thead className={dataTable.head}>
+          <tr>
             {headings.map((heading) => (
-              <th key={heading} scope="col" className="px-3 py-2.5 font-semibold text-ink">{heading}</th>
+              <th key={heading} scope="col" className={dataTable.headerCell}>{heading}</th>
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody className={dataTable.body}>
           {rows.map((row, rowIndex) => (
-            <tr key={`${caption}-${rowIndex}`} className="border-b border-border last:border-b-0">
+            <tr key={`${caption}-${rowIndex}`}>
               {row.map((value, cellIndex) => (
-                <td key={`${caption}-${rowIndex}-${cellIndex}`} className="px-3 py-3 align-top whitespace-pre-wrap text-ink">{shown(value)}</td>
+                <td key={`${caption}-${rowIndex}-${cellIndex}`} className={`${dataTable.cell} whitespace-pre-wrap text-ink`}>{shown(value)}</td>
               ))}
             </tr>
           ))}
@@ -119,9 +120,10 @@ export function InventoryReadOnly({
   const transportation = inventory.transportation_entries ?? [];
 
   return (
-    <div className="space-y-7">
+    // One record sheet in the order of the official Individual Inventory form.
+    <Panel as="div">
       {studentIdentity ? (
-        <section className="border-b border-border pb-5" aria-labelledby="inventory-record-student-heading">
+        <section className="border-b border-brand-line px-4 py-4 sm:px-5" aria-labelledby="inventory-record-student-heading">
           <h2 id="inventory-record-student-heading" className="font-heading text-xl font-semibold text-ink">
             {studentIdentity.display_name}
           </h2>
@@ -129,7 +131,7 @@ export function InventoryReadOnly({
         </section>
       ) : null}
 
-      <dl className="grid gap-x-6 sm:grid-cols-2">
+      <dl className="grid gap-x-6 px-4 pb-2 pt-1 sm:grid-cols-2 sm:px-5">
         <DefinitionValue label="Academic Year" value={inventory.academic_year.label} />
         <DefinitionValue
           label="Official Form Revision"
@@ -366,6 +368,6 @@ export function InventoryReadOnly({
           <DefinitionValue label="Current fears" value={shown(inventory.current_fears)} />
         </ValueGrid>
       </RecordSection>
-    </div>
+    </Panel>
   );
 }

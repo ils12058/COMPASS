@@ -7,6 +7,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { isTurnstileConfigured, TurnstileWidget } from "@/features/auth/components/turnstile-widget";
 import { accountErrorCode, accountErrorMessage } from "@/features/account/components/account-errors";
 import { SecurityBackLink, StepUpDialog } from "@/features/account/security/security-shared";
@@ -116,37 +120,51 @@ export function EmailChangePage() {
   return (
     <section aria-labelledby="email-heading" className="max-w-2xl">
       <SecurityBackLink />
-      <h1 id="email-heading" className="font-heading text-3xl font-bold text-ink">Change sign-in email</h1>
-      <p className="mt-3 text-sm text-muted">Current sign-in email: <span className="break-all font-semibold text-ink">{user.email}</span></p>
-      {mfa.isPending ? <p role="status" className="mt-7 text-sm text-muted">Checking security requirements…</p> : null}
-      {mfa.isError ? <div role="alert" className="mt-7"><p className="text-sm text-danger">Security requirements could not be loaded.</p><Button variant="secondary" className="mt-3" onClick={() => void mfa.refetch()}>Retry</Button></div> : null}
+      <PageHeader
+        title="Change sign-in email"
+        headingId="email-heading"
+        description={<>Current sign-in email: <span className="break-all font-semibold text-ink">{user.email}</span></>}
+      />
+      {mfa.isPending ? <RowsSkeleton label="Checking security requirements…" rows={2} framed /> : null}
+      {mfa.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void mfa.refetch()}>Retry</Button>}>Security requirements could not be loaded.</Notice> : null}
       {mfa.isSuccess && !usesMfa && !currentChallengeId ? (
-        <div className="mt-7 border-t border-border pt-6">
-          <h2 className="font-heading text-xl font-semibold text-ink">Verify your current email</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">First, request a code at your current sign-in email. You will verify the new email separately.</p>
-          <div className="mt-5"><TurnstileWidget action="email_otp" onTokenChange={setToken} resetKey={resetKey} /></div>
+        <Panel as="div">
+          <PanelHeader title="Verify your current email" description="First, request a code at your current sign-in email. You will verify the new email separately." />
+          <PanelBody>
+          <TurnstileWidget action="email_otp" onTokenChange={setToken} resetKey={resetKey} />
           <Button className="mt-4" disabled={busy || (isTurnstileConfigured && !token)} onClick={() => void requestCurrentProof()}>{challenge.isPending ? "Sending code…" : "Send current-email code"}</Button>
-        </div>
+          </PanelBody>
+        </Panel>
       ) : null}
       {mfa.isSuccess && !pending && (usesMfa || currentChallengeId) ? (
-        <form className="mt-7 space-y-5 border-t border-border pt-6" onSubmit={requestNewEmail}>
-          <h2 className="font-heading text-xl font-semibold text-ink">Enter your new email</h2>
+        <Panel as="div">
+        <form onSubmit={requestNewEmail}>
+          <PanelHeader title="Enter your new email" />
+          <PanelBody className="space-y-5">
           {!usesMfa ? <div className="grid gap-2"><Label htmlFor="current-email-code">Code from current email</Label><Input id="current-email-code" autoComplete="one-time-code" inputMode="numeric" required value={currentCode} onChange={(event) => setCurrentCode(event.target.value)} /></div> : null}
           <div className="grid gap-2"><Label htmlFor="new-sign-in-email">New sign-in email</Label><Input id="new-sign-in-email" type="email" autoComplete="email" required value={newEmail} onChange={(event) => setNewEmail(event.target.value)} /></div>
           {usesMfa && !recent ? <p className="text-sm text-muted">Authenticator verification is required before the new email can be requested.</p> : null}
           <TurnstileWidget action="email_otp" onTokenChange={setToken} resetKey={resetKey} />
           <Button type="submit" disabled={busy || (isTurnstileConfigured && !token)}>{requestChange.isPending ? "Requesting change…" : usesMfa && !recent ? "Verify to continue" : "Send code to new email"}</Button>
           {!usesMfa ? <button type="button" onClick={() => { setCurrentChallengeId(null); setCurrentCode(""); setError(null); resetTurnstile(); }} className="block min-h-10 text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Request a new current-email code</button> : null}
+          </PanelBody>
         </form>
+        </Panel>
       ) : null}
       {mfa.isSuccess && pending ? (
-        <form className="mt-7 space-y-5 border-t border-border pt-6" onSubmit={confirmNewEmail}>
-          <h2 className="font-heading text-xl font-semibold text-ink">Verify your new email</h2>
-          <p className="text-sm leading-6 text-muted">Enter the code sent to <span className="break-all font-semibold text-ink">{newEmail}</span>. Confirming this change will sign you out.</p>
+        <Panel as="div">
+        <form onSubmit={confirmNewEmail}>
+          <PanelHeader
+            title="Verify your new email"
+            description={<>Enter the code sent to <span className="break-all font-semibold text-ink">{newEmail}</span>. Confirming this change will sign you out.</>}
+          />
+          <PanelBody className="space-y-5">
           <div className="grid gap-2"><Label htmlFor="new-email-code">Code from new email</Label><Input id="new-email-code" autoComplete="one-time-code" inputMode="numeric" required value={newCode} onChange={(event) => setNewCode(event.target.value)} /></div>
           <Button type="submit" disabled={busy}>{confirmChange.isPending ? "Changing email…" : "Change sign-in email"}</Button>
           <button type="button" onClick={() => { setPending(null); setNewCode(""); setError(null); }} className="block min-h-10 text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Start a new email request</button>
+          </PanelBody>
         </form>
+        </Panel>
       ) : null}
       {error ? <p role="alert" className="mt-5 text-sm text-danger">{error}</p> : null}
       {setupRequired ? <Link href="/portal/account/security/authenticator" className="mt-3 inline-flex min-h-10 items-center font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Manage authenticator</Link> : null}

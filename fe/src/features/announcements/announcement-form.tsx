@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Panel } from "@/components/ui/panel";
 import { refreshAnnouncementQueries, storeManagedAnnouncement } from "@/features/announcements/announcement-cache";
 import {
   announcementErrorCode,
@@ -240,7 +241,9 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
 
   return (
     <>
-    <form className="mt-8 space-y-8" onSubmit={(event) => void submit(event)} noValidate>
+    <form className="mt-5" onSubmit={(event) => void submit(event)} noValidate>
+      <Panel as="div">
+      <div className="space-y-7 px-4 py-5 sm:px-5">
       <div className="grid gap-2">
         <Label htmlFor="announcement-title">Title</Label>
         <Input
@@ -263,7 +266,7 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
         onChange={(audience) => setField("audience", audience)}
       />
 
-      <div className="grid gap-6 border-t border-border pt-7 md:grid-cols-2">
+      <div className="grid gap-6 border-t border-border pt-6 md:grid-cols-2">
         <div>
           <label htmlFor="announcement-pinned" className="flex min-h-10 cursor-pointer items-start gap-3">
             <input
@@ -309,7 +312,7 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
         </div>
       </div>
 
-      <div className="grid gap-2 border-t border-border pt-7">
+      <div className="grid gap-2 border-t border-border pt-6">
         <p id="announcement-body-label" className="text-sm font-semibold text-ink">Body</p>
         <p id="announcement-body-hint" className="text-xs leading-5 text-muted">
           Readers see this text on the Announcement page.
@@ -332,7 +335,9 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
         ) : null}
       </div>
 
-      <div className="border-t border-border pt-6">
+      </div>
+
+      <div className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-4 sm:px-5">
         {formError ? (
           <p role="alert" className="mb-4 text-sm leading-6 text-danger">{formError}</p>
         ) : null}
@@ -350,6 +355,7 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
           </Button>
         </div>
       </div>
+      </Panel>
     </form>
     <ContentConfirmDialog
       open={reviewOpen}

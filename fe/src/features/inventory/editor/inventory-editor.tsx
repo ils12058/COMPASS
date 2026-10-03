@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Select } from "@/components/ui/select";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { BackgroundSection } from "@/features/inventory/editor/background-section";
@@ -207,7 +208,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
         description={`${inventory.academic_year.label} · ${inventory.form_revision.official_code} · Revision ${inventory.form_revision.official_revision}`}
       />
 
-      <div className="mt-6">
+      <div className="mt-5">
         <InventoryNotice>
           Your Individual Inventory helps the Guidance and Counseling Office understand your needs and future plans. Please provide accurate information. Your responses are handled as confidential Student information.
         </InventoryNotice>
@@ -222,7 +223,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
         </div>
       ) : null}
 
-      <div className="mt-8 md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:gap-8">
+      <div className="mt-5 md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:items-start md:gap-6">
         <div className="mb-6 md:mb-0">
           <label htmlFor="inventory-section-select" className="mb-2 block text-sm font-semibold text-ink md:sr-only">
             Inventory section
@@ -242,7 +243,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
               </option>
             ))}
           </Select>
-          <nav aria-label="Individual Inventory sections" className="hidden border-y border-border md:block">
+          <nav aria-label="Individual Inventory sections" className="hidden overflow-hidden rounded-sm border border-brand-line bg-surface-raised md:sticky md:top-5 md:block">
             <ol>
               {inventorySections.map((item, index) => {
                 const count = issues.filter((issue) => issue.section === item.id).length;
@@ -252,7 +253,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
                     <button
                       type="button"
                       aria-current={active ? "step" : undefined}
-                      className={`flex min-h-12 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${active ? "border-l-4 border-brand bg-brand-subtle font-semibold text-brand" : "text-ink hover:bg-surface-muted"}`}
+                      className={`flex min-h-12 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${active ? "bg-brand-wash font-semibold text-brand" : "text-ink hover:bg-surface-subtle"}`}
                       onClick={() => navigateToSection(item.id)}
                     >
                       <span><span className="mr-2 text-xs text-muted">{index + 1}.</span>{item.label}</span>
@@ -265,21 +266,22 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
           </nav>
         </div>
 
-        <div className="min-w-0">
-          <div className="mb-5">
-            <p className="text-xs font-semibold text-muted">
-              Section {currentSectionIndex + 1} of {inventorySections.length}
-            </p>
-            <h2 id="inventory-editor-heading" className="mt-1 font-heading text-xl font-semibold text-ink">
-              {inventorySections[currentSectionIndex]?.label}
-            </h2>
-          </div>
+        <Panel as="div" className="min-w-0">
+          <PanelHeader
+            title={inventorySections[currentSectionIndex]?.label}
+            titleId="inventory-editor-heading"
+            context={`Section ${currentSectionIndex + 1} of ${inventorySections.length}`}
+          />
 
-          {saveError ? <div className="mb-4"><InventoryNotice tone="danger" role="alert">{saveError}</InventoryNotice></div> : null}
-          {submitError ? <div className="mb-4"><InventoryNotice tone="danger" role="alert">{submitError}</InventoryNotice></div> : null}
-          {notice ? <div className="mb-4"><InventoryNotice tone="success">{notice}</InventoryNotice></div> : null}
+          {saveError || submitError || notice ? (
+            <div className="space-y-3 border-b border-brand-line px-4 py-4 sm:px-5">
+              {saveError ? <InventoryNotice tone="danger" role="alert">{saveError}</InventoryNotice> : null}
+              {submitError ? <InventoryNotice tone="danger" role="alert">{submitError}</InventoryNotice> : null}
+              {notice ? <InventoryNotice tone="success">{notice}</InventoryNotice> : null}
+            </div>
+          ) : null}
 
-          <fieldset disabled={pending} className="min-w-0 disabled:opacity-100">
+          <fieldset disabled={pending} className="min-w-0 px-4 py-5 disabled:opacity-100 sm:px-5">
             {section === "personal" ? <PersonalSection {...sectionProps} /> : null}
             {section === "family" ? <FamilySection {...sectionProps} /> : null}
             {section === "background" ? <BackgroundSection {...sectionProps} /> : null}
@@ -300,7 +302,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
             ) : null}
           </fieldset>
 
-          <div className="mt-8 border-t border-border pt-5">
+          <div className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-4 sm:px-5">
             {dirty ? (
               <p role="status" className="mb-4 text-sm font-semibold text-warning">Unsaved changes</p>
             ) : (
@@ -352,7 +354,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
               </div>
             </div>
           </div>
-        </div>
+        </Panel>
       </div>
 
       <ConsequentialActionDialog

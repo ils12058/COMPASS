@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
 import { loginPathForPortal, safePortalDestination } from "@/features/auth/utils/redirect";
 import { UnsavedChangesProvider } from "@/features/form-safety/unsaved-changes-provider";
 import { useServerBoundary } from "@/features/freshness/use-server-boundary";
@@ -71,15 +72,18 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
   if (session.isError || verificationRequired || invalidProjection || !session.data?.data) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-lg items-center px-5">
-        <section role="alert" className="border-y border-border py-7">
-          <h1 className="font-heading text-3xl font-bold text-ink">We could not verify your session.</h1>
-          <p className="mt-3 text-sm leading-6 text-muted">
-            We could not check your session, so this page cannot be shown yet.
-          </p>
-          <Button className="mt-5" variant="secondary" onClick={() => void verifySession(true)}>
-            Retry
-          </Button>
-        </section>
+        <Notice
+          role="alert"
+          className="w-full px-5 py-6 sm:px-6"
+          title={<h1 className="font-heading text-2xl font-bold text-ink">We could not verify your session.</h1>}
+          action={
+            <Button variant="secondary" onClick={() => void verifySession(true)}>
+              Retry
+            </Button>
+          }
+        >
+          We could not check your session, so this page cannot be shown yet.
+        </Notice>
       </main>
     );
   }

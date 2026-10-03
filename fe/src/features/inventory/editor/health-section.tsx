@@ -62,7 +62,7 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
           />
         </div>
         {boarding ? (
-          <div className="mt-5 grid gap-4 border-l-2 border-border pl-4 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4 rounded-sm bg-surface-subtle p-4 sm:grid-cols-2">
             <BooleanField
               legend="Is the boarding house exclusive to one sex?"
               value={draft.boarding_exclusive}
