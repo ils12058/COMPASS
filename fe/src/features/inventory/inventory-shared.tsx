@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export function InventoryHeading({
@@ -74,13 +74,15 @@ export function InventoryNotice({
 export function InventoryStatus({
   status,
   correctionPending = false,
+  missingLabel = "Missing",
 }: {
   status: "MISSING" | "DRAFT" | "SUBMITTED";
   correctionPending?: boolean;
+  missingLabel?: string;
 }) {
   const label =
     status === "MISSING"
-      ? "Missing"
+      ? missingLabel
       : status === "DRAFT"
         ? correctionPending
           ? "Draft · Correction pending"
@@ -127,7 +129,6 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
   if (!(error instanceof CompassApiError)) return fallback;
 
   const code = readApiErrorCode(error.body);
-  const message = readApiErrorMessage(error.body);
 
   switch (code) {
     case "current_academic_year_not_configured":
@@ -135,11 +136,11 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
     case "inventory_form_revision_not_configured":
       return "The official Individual Inventory Form Revision has not been configured for this COMPASS version. Please contact the Guidance and Counseling Office.";
     case "current_student_required":
-      return "Only a Student with a current lifecycle can start, edit, or submit this year's Individual Inventory. Your saved annual history remains available.";
+      return "Only current students can start, edit, or submit this year’s Individual Inventory. Your saved history remains available.";
     case "inventory_conflict":
-      return message ?? "The Inventory changed while you were working. Refresh its status before continuing.";
+      return "The Individual Inventory changed while you were working. Refresh it before continuing.";
     case "inventory_invalid":
-      return message ?? "Some required Inventory details need attention. Review the form and try submitting again.";
+      return "Some required Individual Inventory details need attention. Review the form and try submitting again.";
     case "psgc_reference_unavailable":
       return "Your Inventory is still saved as a draft. Official location verification is temporarily unavailable. Please try submitting again later.";
     case "inventory_not_submitted":
@@ -151,9 +152,9 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
     case "inventory_not_found":
       return "This Individual Inventory could not be found or is not available to you.";
     case "permission_denied":
-      return "You do not have access to this Individual Inventory operation.";
+      return "You cannot view or change this Individual Inventory.";
     default:
-      return message ?? fallback;
+      return fallback;
   }
 }
 

@@ -4,7 +4,9 @@ import type { ReactNode } from "react";
 import { PlatformGate } from "@/features/platform/platform-gate";
 import { PlatformNavigation } from "@/features/platform/platform-navigation";
 
-export const metadata: Metadata = { title: "Platform Operations" };
+export const metadata: Metadata = {
+  title: { default: "Platform Operations", template: "%s | COMPASS" },
+};
 
 export default function PlatformLayout({
   children,

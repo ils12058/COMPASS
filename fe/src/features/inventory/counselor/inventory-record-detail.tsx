@@ -40,7 +40,7 @@ export function InventoryRecordDetail({ inventoryId }: { inventoryId: string }) 
   if (!access.canViewRoster) {
     return (
       <WorkspaceUnavailable title="Individual Inventory unavailable">
-        Submitted Inventory detail is available only to Counselors with Individual Inventory review access.
+        You cannot review this submitted Individual Inventory with this account.
       </WorkspaceUnavailable>
     );
   }
@@ -245,7 +245,7 @@ function CounselorStudentInventoryHistory({
     return <InventoryQueryError error={history.error} fallback="Annual Student Inventory history could not be loaded." onRetry={() => void history.refetch()} />;
   }
   const items = history.data.data.items;
-  if (!items.length) return <p className="text-sm text-muted">No annual Individual Inventory records were returned.</p>;
+  if (!items.length) return <p className="text-sm text-muted">No earlier Individual Inventory records are available.</p>;
 
   return (
     <section aria-labelledby="counselor-inventory-history-heading">

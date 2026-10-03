@@ -160,7 +160,7 @@ export function PSGCLocationSelector({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 id={`inventory-${kind.toLowerCase()}-location-heading`} className="font-semibold text-ink">
-            {permanent ? "Permanent structured location" : "Current structured location"}
+            {permanent ? "Permanent location details" : "Current location details"}
             {!permanent ? <span className="ml-1 text-danger" aria-hidden="true">*</span> : null}
           </h3>
           <p className="mt-1 text-xs leading-5 text-muted">
@@ -177,7 +177,7 @@ export function PSGCLocationSelector({
       {!permanent || location ? (
         <div className="max-w-xl">
           <Label htmlFor={`${prefix}-location-choice`}>
-            Location response
+            How would you like to provide this location?
           </Label>
           <Select
             id={`${prefix}-location-choice`}
@@ -189,7 +189,7 @@ export function PSGCLocationSelector({
             onChange={(event) => chooseMode(event.target.value)}
           >
             <option value="">Choose how to provide this location</option>
-            <option value="specified">Provide structured location</option>
+            <option value="specified">Select location details</option>
             <option value="not_specified">Prefer not to specify</option>
           </Select>
           {choiceError ? <p id={`${prefix}-location-choice-error`} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{choiceError}</p> : null}
@@ -199,7 +199,7 @@ export function PSGCLocationSelector({
           variant="secondary"
           onClick={() => onChange({ kind, not_specified: true })}
         >
-          Add permanent structured location
+          Add permanent location details
         </Button>
       )}
 

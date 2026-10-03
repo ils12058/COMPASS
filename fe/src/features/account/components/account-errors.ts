@@ -1,4 +1,4 @@
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 
 const messages: Record<string, string> = {
   csrf_failed: "Your security token expired. Please try again.",
@@ -15,7 +15,7 @@ const messages: Record<string, string> = {
   profile_photo_storage_unavailable: "The profile photo could not be updated right now. Your other profile information is still available.",
   profile_unavailable: "Your profile is temporarily unavailable. Please try again.",
   rate_limited: "Too many attempts. Please try again later.",
-  security_unavailable: "This security operation is temporarily unavailable. Please try again.",
+  security_unavailable: "This security action is temporarily unavailable. Please try again.",
   security_verification_failed: "Security verification could not be completed. Please try again.",
   totp_step_up_required: "An authenticator is required for this action. Manage it from Security.",
 };
@@ -27,6 +27,6 @@ export function accountErrorCode(error: unknown): string | undefined {
 export function accountErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
-  if (code === "invalid_profile_request") return readApiErrorMessage(error.body) ?? fallback;
+  if (code === "invalid_profile_request") return "Some profile details were not accepted. Review them and try again.";
   return code ? (messages[code] ?? fallback) : fallback;
 }

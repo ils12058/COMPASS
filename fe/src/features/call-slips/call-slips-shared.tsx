@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import {
   CallSlipDestinationTypeValue,
   CallSlipIssuanceModeValue,
@@ -17,7 +17,7 @@ import {
 const knownCallSlipErrors: Record<string, string> = {
   permission_denied: "You do not have permission to use this Call Slip workspace.",
   call_slip_not_found: "Call Slip not found.",
-  call_slip_not_permitted: "This Call Slip is not available within your current access.",
+  call_slip_not_permitted: "This Call Slip is unavailable to this account.",
   call_slip_document_unavailable: "The document could not be released right now. Try again later.",
   release_audit_unavailable: "The document could not be released right now. Try again later.",
   invalid_call_slip_request: "The Call Slip request contains a value that was not accepted. Review the details and try again.",
@@ -33,7 +33,7 @@ export function callSlipErrorCode(error: unknown): string | undefined {
 export function callSlipErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
-  return (code && knownCallSlipErrors[code]) || readApiErrorMessage(error.body) || fallback;
+  return (code && knownCallSlipErrors[code]) || fallback;
 }
 
 export function uncertainCallSlipMutation(error: unknown): boolean {
@@ -102,7 +102,7 @@ export function LinkedCallSlipCheckLoading() {
 
 export function CallSlipAccessUnavailable({
   title = "Call Slips unavailable",
-  message = "Your current access does not include this Call Slip workspace.",
+  message = "Call Slips are unavailable to this account.",
 }: {
   title?: string;
   message?: string;

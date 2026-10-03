@@ -76,7 +76,7 @@ export function ReviewSection({
           </p>
         ) : null}
         <p className="mt-4 text-sm leading-6 text-muted">
-          Submitting changes this annual record to read-only. An authorized Counselor may reopen the current-year record if a correction is needed. COMPASS does not use an approval workflow or digital signature for this action.
+          Submitting makes this annual record read-only. An authorized counselor may reopen the current-year record if you need to make a correction.
         </p>
       </FieldGroup>
 
@@ -89,9 +89,9 @@ export function ReviewSection({
               return (
                 <li key={section.id} className="flex min-h-11 items-center justify-between gap-3 border-b border-border py-2">
                   <span className="text-sm text-ink">{section.label}</span>
-                  <span className={sectionIssues.length ? "text-xs font-semibold text-warning" : "text-xs text-muted"}>
-                    {sectionIssues.length ? `${sectionIssues.length} needs attention` : "No immediate issue"}
-                  </span>
+                  {sectionIssues.length ? (
+                    <span className="text-xs font-semibold text-warning">{sectionIssues.length} needs attention</span>
+                  ) : null}
                 </li>
               );
             })}

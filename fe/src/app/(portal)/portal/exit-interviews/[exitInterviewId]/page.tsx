@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Exit Interview Details" };
+
 import { Suspense } from "react";
 
 import { ExitInterviewDetailSkeleton } from "@/features/exit-interviews/exit-interview-shared";

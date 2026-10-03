@@ -21,7 +21,6 @@ import { hasServicesWorkspace } from "@/features/services/services-access";
 import {
   CompassApiError,
   readApiErrorCode,
-  readApiErrorMessage,
 } from "@/lib/api/errors";
 
 const knownErrors: Record<string, string> = {
@@ -91,15 +90,7 @@ export function servicesErrorMessage(
 ): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
-  const backendMessage = readApiErrorMessage(error.body);
-  if (
-    code === "service_catalog_conflict" ||
-    code === "invalid_service_catalog_request" ||
-    code === "service_not_found"
-  ) {
-    return backendMessage ?? knownErrors[code] ?? fallback;
-  }
-  return (code && knownErrors[code]) || backendMessage || fallback;
+  return (code && knownErrors[code]) || fallback;
 }
 
 export function ServicesGate({ children }: { children: ReactNode }) {
@@ -108,7 +99,7 @@ export function ServicesGate({ children }: { children: ReactNode }) {
     children
   ) : (
     <WorkspaceUnavailable title="Services unavailable">
-      Your current access does not include Service Catalog management.
+      Service management is unavailable to this account.
     </WorkspaceUnavailable>
   );
 }

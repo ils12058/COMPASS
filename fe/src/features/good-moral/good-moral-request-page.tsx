@@ -49,7 +49,7 @@ export function GoodMoralRequestPage() {
   const lifecycle = user.student_lifecycle_status;
 
   if (!access.isStudent || !access.canRequestSelf) {
-    return <GoodMoralUnavailable title="Request unavailable" message="Your current access does not allow Good Moral request creation." />;
+    return <GoodMoralUnavailable title="Request unavailable" message="You cannot submit a Good Moral request with this account." />;
   }
 
   if (lifecycle === "CURRENT") {
@@ -61,7 +61,7 @@ export function GoodMoralRequestPage() {
 
   return (
     <section className="max-w-2xl space-y-5">
-      <GoodMoralHeading title="Good Moral request unavailable" description="A new request is not available for your current Student lifecycle." />
+      <GoodMoralHeading title="Good Moral request unavailable" description="A new request is available only to current students and graduates." />
       <p className="text-sm leading-6 text-muted">You can still review your existing Good Moral requests.</p>
       <Link href="/portal/good-moral" className={buttonVariants({ variant: "secondary" })}>Back to Good Moral</Link>
     </section>
@@ -221,7 +221,7 @@ function CurrentStudentRequestForm() {
 
   return (
     <RequestFormFrame
-      title="Request Current Student certificate"
+      title="Request Good Moral Certificate"
       description="Enter the year level and semester to record on your request."
     >
       <p className="text-sm leading-6 text-muted">
@@ -264,8 +264,8 @@ function GraduateRequestForm() {
   }
 
   return (
-    <RequestFormFrame title="Request Graduate certificate" description="Enter the certificate facts for your Graduate Good Moral request.">
-      <p className="text-sm leading-6 text-muted">Graduate request details are recorded on this certificate request and are not looked up from your current enrollment records.</p>
+    <RequestFormFrame title="Request Good Moral Certificate" description="Enter your graduation details for the certificate.">
+      <p className="text-sm leading-6 text-muted">These details will be recorded on your request rather than taken from current enrollment records.</p>
       <CreateFeedback state={create} busy={create.isPending} />
       <form onSubmit={submit} aria-busy={create.isPending} className="max-w-2xl space-y-5">
         <fieldset disabled={fieldsLocked} className="space-y-5 disabled:opacity-80">

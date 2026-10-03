@@ -59,7 +59,7 @@ export function OrganizationStructurePage() {
         <PageHeading title="Organization structure" />
       </div>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-        Read-only UCN Campus, College, and Program references used across COMPASS workflows.
+        UCN campus, college, and program records used across COMPASS. These records are read-only here.
       </p>
 
       {campusItems.length === 0 ? (
@@ -85,7 +85,7 @@ export function OrganizationStructurePage() {
                 </div>
 
                 {campusColleges.length === 0 ? (
-                  <p className="mt-4 text-sm text-muted">No Colleges are recorded for this Campus.</p>
+                  <p className="mt-4 text-sm text-muted">No colleges are recorded for this campus.</p>
                 ) : (
                   <div className="mt-5 divide-y divide-border border-t border-border">
                     {campusColleges.map((college) => {
@@ -108,7 +108,7 @@ export function OrganizationStructurePage() {
                           </div>
 
                           {collegePrograms.length === 0 ? (
-                            <p className="mt-3 text-sm text-muted">No Programs are recorded.</p>
+                            <p className="mt-3 text-sm text-muted">No programs are recorded.</p>
                           ) : (
                             <ul className="mt-3 divide-y divide-border border-y border-border">
                               {collegePrograms.map((program) => (

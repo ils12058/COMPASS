@@ -111,7 +111,7 @@ export function ServiceDetailPage() {
         wasActive
           ? disable.mutateAsync({ serviceId })
           : enable.mutateAsync({ serviceId }),
-      "The Service lifecycle could not be changed.",
+      "The service status could not be changed.",
       {
         onStepUpRequired: () => setLifecycleOpen(false),
         onStepUpVerified: () => setLifecycleOpen(true),
@@ -170,7 +170,7 @@ export function ServiceDetailPage() {
       {action.notice || action.error ? action.messages : null}
 
       <div className="mt-8 divide-y divide-border border-y border-border">
-        <section className="py-7" aria-labelledby="service-description-heading">
+        {service.description.trim() ? <section className="py-7" aria-labelledby="service-description-heading">
           <h2
             id="service-description-heading"
             className="font-heading text-xl font-semibold text-ink"
@@ -178,9 +178,9 @@ export function ServiceDetailPage() {
             Description
           </h2>
           <p className="mt-3 max-w-4xl whitespace-pre-wrap text-sm leading-7 text-muted">
-            {service.description.trim() || "No description provided."}
+            {service.description.trim()}
           </p>
-        </section>
+        </section> : null}
 
         <section className="py-7" aria-labelledby="service-delivery-heading">
           <h2
@@ -317,7 +317,7 @@ export function ServiceDetailPage() {
               id="service-lifecycle-heading"
               className="font-heading text-xl font-semibold text-ink"
             >
-              Lifecycle
+              Service status
             </h2>
             <dl className="mt-4 grid gap-5 sm:grid-cols-3">
               <div>
@@ -388,7 +388,7 @@ export function ServiceDetailPage() {
         <p>
           {service.is_active
             ? "The Service will no longer be available for new Appointment scheduling. Scheduling changes such as rescheduling or reassignment may also be unavailable while it remains inactive. Existing Appointment records will remain."
-            : "COMPASS will validate the complete active configuration before enabling this Service. If required configuration is missing, the Service will remain inactive."}
+            : "This service will become available for new appointment scheduling once enabled."}
         </p>
       </ConsequentialActionDialog>
 

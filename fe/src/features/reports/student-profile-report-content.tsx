@@ -72,7 +72,7 @@ export function StudentProfileReportContent({
       <ReportDisclosureNotice warnings={report.disclosure_warnings} />
       {report.report_context.submitted_inventory_count === 0 ? (
         <p className="mt-5 border-l-2 border-border pl-3 text-sm leading-6 text-muted">
-          No submitted Individual Inventories match the selected report context.
+          No submitted Individual Inventory records match the selected report filters.
         </p>
       ) : null}
       <StudentProfileCoverage
@@ -139,8 +139,7 @@ export function StudentProfileReportContent({
         </dl>
       </details>
       <p className="mt-4 text-xs leading-5 text-muted">
-        Exports are regenerated on demand using this displayed filter context;
-        they are not immutable snapshots.
+        Each export uses the selected filters and the records available when you download it.
       </p>
     </div>
   );

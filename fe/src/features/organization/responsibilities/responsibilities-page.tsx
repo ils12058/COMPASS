@@ -35,8 +35,8 @@ import type { OrganizationPersonSummary } from "@/lib/api/generated/model";
 
 function supervisionScopeConsequence(supervisor: OrganizationPersonSummary): string {
   return supervisor.responsibility_scope === "INSTITUTION_WIDE"
-    ? "The Staff member will inherit institution-wide organizational responsibility scope used by COMPASS routing workflows."
-    : "The Staff member will inherit this Counselor's configured organizational responsibility scope used by COMPASS routing workflows.";
+    ? "This staff member will share the counselor's institution-wide responsibilities in COMPASS."
+    : "This staff member will share the counselor's assigned-college responsibilities in COMPASS.";
 }
 
 export function ResponsibilitiesPage() {
@@ -291,7 +291,8 @@ export function ResponsibilitiesPage() {
             <p className="mt-2 text-sm text-muted">
               One responsible Counselor may be assigned to each College. When
               none is assigned, default routing uses the Head Guidance
-              Counselor.
+              Counselor if exactly one active Head Guidance Counselor can be
+              identified.
             </p>
           </div>
         </div>
@@ -401,7 +402,7 @@ export function ResponsibilitiesPage() {
 
         {!canViewStructure ? (
           <p className="mt-3 text-xs leading-5 text-muted">
-            Your current access does not include Organization structure, so only
+            Organization structure is unavailable to this account, so only
             Colleges that already have a responsible Counselor are listed.
           </p>
         ) : null}
@@ -417,9 +418,8 @@ export function ResponsibilitiesPage() {
               Staff supervision
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-              Guidance Services Staff inherit their supervising Counselor&apos;s
-              organizational responsibility scope where COMPASS workflows use
-              that scope.
+              Guidance Services Staff share their supervising counselor&apos;s
+              assigned responsibilities in COMPASS.
             </p>
           </div>
           <Button onClick={() => openStaff()}>Set supervisor</Button>

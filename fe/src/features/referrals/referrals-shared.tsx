@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 
 const knownReferralErrors: Record<string, string> = {
   permission_denied: "You do not have permission to use this Referral workspace.",
   referral_not_found: "Referral not found.",
-  referral_not_permitted: "This Referral is not available within your current Guidance access.",
+  referral_not_permitted: "This referral is unavailable to this account.",
   referral_document_unavailable: "The document could not be released right now. Try again later.",
   release_audit_unavailable: "The document could not be released right now. Try again later.",
   invalid_referral_request: "The Referral request contains a value that was not accepted. Review the details and try again.",
@@ -30,7 +30,7 @@ export function referralErrorCode(error: unknown): string | undefined {
 export function referralErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
-  return (code && knownReferralErrors[code]) || readApiErrorMessage(error.body) || fallback;
+  return (code && knownReferralErrors[code]) || fallback;
 }
 
 export function uncertainReferralMutation(error: unknown): boolean {
@@ -90,7 +90,7 @@ export function ReferralDetailSkeleton() {
 
 export function ReferralAccessUnavailable({
   title = "Referrals unavailable",
-  message = "Your current access does not include the Referral workspace.",
+  message = "Referrals are unavailable to this account.",
 }: {
   title?: string;
   message?: string;

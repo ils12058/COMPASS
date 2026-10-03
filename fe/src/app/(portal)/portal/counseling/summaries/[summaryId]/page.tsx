@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Shared Counseling Summary" };
+
 import { Suspense } from "react";
 
 import { SharedSummaryDetailSkeleton } from "@/features/counseling/counseling-shared";

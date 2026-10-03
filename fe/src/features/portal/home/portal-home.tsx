@@ -7,14 +7,12 @@ import { buttonVariants } from "@/components/ui/button";
 import { OverviewAnnouncements } from "@/features/portal/home/overview-announcements";
 import { OverviewAttention } from "@/features/portal/home/overview-attention";
 import { OverviewSummary } from "@/features/portal/home/overview-summary";
-import { OverviewUpcoming } from "@/features/portal/home/overview-upcoming";
 import {
   getEmailDeliveryStatus,
   getOverviewGreeting,
   getOverviewMetrics,
   getOverviewPrimaryAction,
   getOverviewRoleContext,
-  getOverviewUpcomingItems,
 } from "@/features/portal/home/overview-presentation";
 import { useOverviewAttention } from "@/features/portal/home/overview-work";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -43,10 +41,9 @@ export function PortalHome() {
   const attention = useOverviewAttention(user, summary);
   const metrics = summary ? getOverviewMetrics(summary, user) : [];
   const emailStatus = summary ? getEmailDeliveryStatus(summary, user) : null;
-  const upcoming = summary ? getOverviewUpcomingItems(summary, user) : [];
   const primaryAction = getOverviewPrimaryAction(user);
   // Some roles have nothing to act on here; then the context column takes the full width.
-  const hasActionColumn = attention.isVisible || upcoming.length > 0;
+  const hasActionColumn = attention.isVisible;
   const greeting = getOverviewGreeting(user);
   const roleContext = getOverviewRoleContext(user);
 
@@ -84,7 +81,6 @@ export function PortalHome() {
         {hasActionColumn ? (
           <div className="min-w-0">
             <OverviewAttention data={attention} />
-            <OverviewUpcoming items={upcoming} />
           </div>
         ) : null}
         <div className="min-w-0">

@@ -12,7 +12,7 @@ export function ResourcesGate({ children }: { children: ReactNode }) {
     children
   ) : (
     <WorkspaceUnavailable title="Resources unavailable">
-      Your current access does not include Resource management.
+      Resource management is unavailable to this account.
     </WorkspaceUnavailable>
   );
 }

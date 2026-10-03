@@ -68,7 +68,7 @@ export function RoutineInterviewDetailPage({
   if (access.isCounselor && access.canViewAssigned) {
     return <CounselorRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageAssigned} />;
   }
-  return <RoutineUnavailable message="This Routine Interview is not available within your current access." />;
+  return <RoutineUnavailable message="This Routine Interview is unavailable to this account." />;
 }
 
 function StudentRoutineDetail({
@@ -92,7 +92,7 @@ function StudentRoutineDetail({
     return (
       <div>
         <RoutinePageHeading title="Routine Interview" action={<RoutineBackLink />} />
-        <RoutineQueryError message={routineErrorMessage(query.error, "This Routine Interview could not be loaded or is not available within your current access.")} onRetry={() => void query.refetch()} />
+        <RoutineQueryError message={routineErrorMessage(query.error, "This Routine Interview could not be loaded for this account.")} onRetry={() => void query.refetch()} />
       </div>
     );
   }
@@ -116,6 +116,7 @@ function StudentRoutineDetail({
         intakeSubmittedAt={detail.intake_submitted_at}
         createdAt={detail.created_at}
         formRevision={detail.form_revision}
+        studentFacing
       />
       <RoutineLifecycleNotice message={workflowMessage} />
       {canManage && actionable && detail.intake_status === "DRAFT" ? (
@@ -164,7 +165,7 @@ function CounselorRoutineDetail({
     return (
       <div>
         <RoutinePageHeading title="Routine Interview" action={<RoutineBackLink />} />
-        <RoutineQueryError message={routineErrorMessage(query.error, "This Routine Interview could not be loaded or is not available within your current access.")} onRetry={() => void query.refetch()} />
+        <RoutineQueryError message={routineErrorMessage(query.error, "This Routine Interview could not be loaded for this account.")} onRetry={() => void query.refetch()} />
       </div>
     );
   }
@@ -246,7 +247,7 @@ function CounselorRoutineDetail({
             <h2 id="routine-evaluation-heading" className="font-heading text-2xl font-semibold text-ink">Counselor Evaluation</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
             {actionable
-              ? "Draft evaluation · Read-only in your current access."
+              ? "Draft evaluation · Read-only for this account."
               : "Draft evaluation · Preserved for history and read-only because the Appointment is no longer active."}
           </p>
           </header>

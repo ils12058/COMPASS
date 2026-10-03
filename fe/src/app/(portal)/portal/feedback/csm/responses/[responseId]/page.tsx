@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "CSM Response Details" };
+
 import { CsmResponseDetail } from "@/features/feedback/feedback-response-details";
 
 export default async function Page({ params }: { params: Promise<{ responseId: string }> }) {

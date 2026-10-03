@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Provider Availability" };
+
 import { Suspense } from "react";
 
 import { AvailabilitySectionSkeleton } from "@/features/availability/availability-shared";

@@ -1,7 +1,7 @@
 import type { InventoryCoverage, Methodology } from "@/lib/api/generated/model";
 
 const FILTER_LABELS: Record<string, string> = {
-  access_scope: "authorized report scope",
+  access_scope: "authorized reporting area",
   academic_year_id: "Academic Year",
   campus_id: "Campus",
   college_id: "College",
@@ -23,7 +23,7 @@ export function StudentProfileCoverage({
   const values =
     coverage.mode === "CURRENT"
       ? [
-          { label: "Eligible Students", value: countValue(coverage.eligible_student_count) },
+          { label: "Current student accounts included", value: countValue(coverage.eligible_student_count) },
           { label: "Submitted", value: String(coverage.submitted_count) },
           { label: "Draft", value: String(coverage.draft_count) },
           {

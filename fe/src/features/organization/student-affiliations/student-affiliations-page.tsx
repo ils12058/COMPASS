@@ -223,7 +223,7 @@ export function StudentAffiliationsPage() {
 
       {!canViewStructure ? (
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-          Your current access does not include Organization structure, so
+          Organization structure is unavailable to this account, so
           College choices for new or changed affiliations are unavailable.
           Existing affiliations are still listed.
         </p>
@@ -231,8 +231,8 @@ export function StudentAffiliationsPage() {
 
       <div className="mt-8 flex flex-col gap-4 border-y border-border py-5 lg:flex-row lg:items-end">
         <SearchField
-          label="Search Student affiliations"
-          placeholder="Search by Student name or Institutional ID"
+          label="Search student affiliations"
+          placeholder="Search by student name or institutional ID"
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:w-[30rem]">
           <div>

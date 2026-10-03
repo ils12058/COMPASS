@@ -106,7 +106,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
 
   return (
     <div className="space-y-7">
-      <CallSlipHeading title="My Call Slips" description="Review Call Slips issued to you." />
+      <CallSlipHeading title="My Call Slips"  />
       <form onSubmit={submitFilters} className="grid gap-4 border-b border-border pb-6 sm:grid-cols-3 sm:items-end">
         <div className="grid gap-2">
           <Label htmlFor="my-call-slips-state">Status</Label>
@@ -216,7 +216,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
     <div className="space-y-7">
       <CallSlipHeading
         title="Call Slips"
-        description={access.canManageOperational ? "Review and manage Call Slips within your authorized Guidance scope." : "Review Call Slips within your authorized Guidance scope."}
+        description={access.canManageOperational ? "Review and manage Call Slips assigned to your guidance area." : "Review Call Slips assigned to your guidance area."}
         action={access.canManageOperational ? <Link href="/portal/call-slips/new" className={buttonVariants({ variant: "primary" })}>Issue Call Slip</Link> : null}
       />
       <form onSubmit={submitFilters} className="grid gap-4 border-b border-border pb-6 md:grid-cols-2 xl:grid-cols-5 xl:items-end">
@@ -263,7 +263,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
         <CallSlipListSkeleton />
       ) : items.length === 0 ? (
         <div className="border-y border-border py-6">
-          <p className="text-sm text-muted">{hasFilters ? "No Call Slips match these filters." : "No Call Slips have been recorded in your current scope."}</p>
+          <p className="text-sm text-muted">{hasFilters ? "No Call Slips match these filters." : "No Call Slips have been recorded."}</p>
           {hasFilters ? <Link href="/portal/call-slips" className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</Link> : null}
           <CanonicalPagination page={data?.page ?? filters.page} hasNext={data?.has_next ?? false} onPageChange={(page) => router.push(operationalFiltersToUrl({ ...effectiveFilters, page }), { scroll: false })} label="Call Slip results" />
         </div>

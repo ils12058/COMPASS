@@ -1,4 +1,4 @@
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import {
   ECounselingCaptureStatus,
@@ -17,8 +17,8 @@ export function ecounselingErrorMessage(error: unknown, fallback: string): strin
   const code = readApiErrorCode(error.body);
   const messages: Record<string, string> = {
     current_student_required: "Only a current Student can approve this consent. You can still decline it.",
-    ecounseling_not_found: "This E-Counseling session is not available within your current access.",
-    ecounseling_not_permitted: "This E-Counseling action is not available within your current access.",
+    ecounseling_not_found: "This E-Counseling session is unavailable to this account.",
+    ecounseling_not_permitted: "You cannot complete this E-Counseling action with this account.",
     ecounseling_appointment_not_eligible: "This Appointment is no longer eligible for E-Counseling.",
     ecounseling_consent_not_found: "That consent is no longer available. Refresh the session state.",
     ecounseling_consent_not_approved: "The required consent is not currently effective.",
@@ -29,7 +29,7 @@ export function ecounselingErrorMessage(error: unknown, fallback: string): strin
     ecounseling_provider_unavailable: "The provider could not confirm this media control. Counseling access is unaffected.",
     ecounseling_invalid_provider_response: "The provider could not confirm this media control. Counseling access is unaffected.",
   };
-  return (code && messages[code]) || readApiErrorMessage(error.body) || fallback;
+  return (code && messages[code]) || fallback;
 }
 
 // A withdrawn consent keeps decision APPROVED; withdrawn_at and effective describe it.

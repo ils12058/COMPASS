@@ -47,7 +47,7 @@ export function ReferralCallSlipSection({
     <section aria-labelledby="referral-call-slips-heading" className="border-t border-border py-6">
       <h2 id="referral-call-slips-heading" className="font-heading text-xl font-semibold text-ink">Call Slip / Interview Permit</h2>
       {!canViewCallSlips ? (
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">Linked Call Slip details are not available in your current access, so the existing issuance state cannot be verified here.</p>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">Linked Call Slip details are unavailable here. Open the Call Slip to check its issuance status if you have access.</p>
       ) : currentError ? (
         <div className="mt-4">
           <CallSlipQueryError error={currentError} fallback="Linked Call Slip state could not be checked." onRetry={() => { retryCurrent(); void history.refetch(); }} />

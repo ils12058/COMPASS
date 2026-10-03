@@ -139,7 +139,7 @@ function ManagedAppointmentsList() {
       <AppointmentsPageHeading
         headingId="manage-appointments-heading"
         title="Manage appointments"
-        description="Appointments within your authorized operational scope."
+        description="Review appointments assigned to the areas you manage."
       />
 
       <div className="border-y border-border py-5">
@@ -209,8 +209,8 @@ function ManagedAppointmentsList() {
           <div className="grid gap-2">
             <Label htmlFor="managed-appointment-order">Order</Label>
             <Select id="managed-appointment-order" value={ordering} onChange={(event) => updateFilter("ordering", event.target.value)}>
-              <option value={AppointmentListOrdering.START_ASC}>Soonest first</option>
-              <option value={AppointmentListOrdering.START_DESC}>Latest first</option>
+              <option value={AppointmentListOrdering.START_ASC}>Earliest start first</option>
+              <option value={AppointmentListOrdering.START_DESC}>Latest start first</option>
             </Select>
           </div>
           <div className="flex items-end">
@@ -224,7 +224,7 @@ function ManagedAppointmentsList() {
       ) : list.isError ? (
         <div role="alert" className="border-y border-danger/30 py-6">
           <p className="text-sm text-danger">
-            {appointmentErrorMessage(list.error, "Appointments within your scope could not be loaded.")}
+            {appointmentErrorMessage(list.error, "Managed appointments could not be loaded.")}
           </p>
           <Button className="mt-4" variant="secondary" onClick={() => void list.refetch()}>Retry</Button>
         </div>
@@ -232,10 +232,10 @@ function ManagedAppointmentsList() {
         <div className="border-y border-border py-8">
           <p className="text-sm text-muted">
             {hasFilters
-              ? "No Appointments match the selected filters within your scope."
+              ? "No appointments match the selected filters."
               : status === AppointmentStatus.SCHEDULED
-                ? "No scheduled Appointments are available within your operational scope."
-                : "No Appointments are available within your operational scope."}
+                ? "No scheduled appointments are available."
+                : "No appointments are available."}
           </p>
           {hasFilters || status !== undefined ? (
             <Link
@@ -261,7 +261,7 @@ function ManagedAppointmentsList() {
           {list.isFetching ? <p role="status" className="mt-4 text-xs text-muted">Refreshing Appointments…</p> : null}
           <div className="mt-4 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
-              <caption className="sr-only">Appointments within your authorized operational scope</caption>
+              <caption className="sr-only">Managed appointments</caption>
               <thead className="border-y border-border bg-surface-muted text-xs text-muted">
                 <tr>
                   <th scope="col" className="px-3 py-3 font-semibold">Appointment</th>
@@ -332,7 +332,7 @@ export function AppointmentsManagedPage() {
   if (!user.capabilities.includes("appointments.manage")) {
     return (
       <AppointmentsUnavailable>
-        Your current access does not include operational Appointment management.
+        Appointment management is unavailable to this account.
       </AppointmentsUnavailable>
     );
   }

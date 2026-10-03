@@ -18,7 +18,7 @@ export function ReportsIndex() {
   if (!canAttemptReports(user)) {
     return (
       <WorkspaceUnavailable title="Reports unavailable">
-        Your current access does not include Reports.
+        Reports are unavailable to this account.
       </WorkspaceUnavailable>
     );
   }
@@ -40,7 +40,7 @@ function ReportsIndexWorkspace() {
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </div>
-        <p className="sr-only">Resolving your Reports scope…</p>
+        <p className="sr-only">Checking your report access…</p>
       </section>
     );
   }
@@ -56,7 +56,7 @@ function ReportsIndexWorkspace() {
             role="status"
             className="mt-6 border-y border-border py-5 text-sm leading-6 text-muted"
           >
-            No active report scope is currently assigned to your account.
+            No reporting area is currently assigned to your account.
           </p>
         </section>
       );
@@ -69,7 +69,7 @@ function ReportsIndexWorkspace() {
         <div className="mt-6">
           <ReportQueryError
             error={scopeQuery.error}
-            fallback="Reports scope could not be resolved."
+            fallback="Your report access could not be checked."
             onRetry={() => void scopeQuery.refetch()}
           />
         </div>
@@ -87,7 +87,7 @@ function ReportsIndexWorkspace() {
           role="status"
           className="mt-6 border-y border-border py-5 text-sm leading-6 text-muted"
         >
-          No active report scope is currently assigned to your account.
+          No reporting area is currently assigned to your account.
         </p>
       </section>
     );

@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Appointment Details" };
+
 import { Suspense } from "react";
 
 import { AppointmentDetailSkeleton } from "@/features/appointments/appointments-shared";

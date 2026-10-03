@@ -15,7 +15,7 @@ import {
 import { DeliveryMode } from "@/lib/api/generated/model";
 import { useAvailabilityGetProviderEffective } from "@/lib/api/generated/availability/availability";
 import { useServicesList } from "@/lib/api/generated/services/services";
-import { institutionalDateInputValue } from "@/lib/institutional-time";
+import { INSTITUTION_TIME_ZONE, INSTITUTION_TIME_ZONE_LABEL, institutionalDateInputValue } from "@/lib/institutional-time";
 
 type PreviewRequest = {
   service_id: string;
@@ -220,11 +220,12 @@ export function EffectiveAvailabilityPreview({
         id="effective-availability-heading"
         className="font-heading text-2xl font-semibold text-ink"
       >
-        Effective availability preview
+        Schedule preview
       </h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-        This preview combines Office and Counselor schedules, unavailability,
-        and Service constraints. Final Appointment availability may differ.
+        This shows where office hours, counselor hours, time off, and service
+        rules overlap. It does not account for appointments already booked;
+        check appointment booking for open times.
       </p>
 
       {services.isError && serviceData ? <RefreshFailureNotice onRetry={() => void services.refetch()} retrying={services.isFetching} /> : null}
@@ -366,7 +367,7 @@ export function EffectiveAvailabilityPreview({
         ) : (
           <div className="mt-6">
             <p className="text-xs text-muted">
-              Timezone: {effectiveData.timezone}
+              Timezone: {effectiveData.timezone === INSTITUTION_TIME_ZONE ? INSTITUTION_TIME_ZONE_LABEL : effectiveData.timezone}
             </p>
             <div className="mt-3 divide-y divide-border border-y border-border">
               {grouped.map((group) => (

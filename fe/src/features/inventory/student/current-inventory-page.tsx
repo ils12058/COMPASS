@@ -92,7 +92,9 @@ function StudentCurrentInventory() {
       <section className="space-y-5">
         <InventoryHeading title="Individual Inventory" description={value.academic_year.label} />
         <InventoryNotice title="No Individual Inventory for this Academic Year yet" tone="neutral">
-          Start your Individual Inventory when you are ready. It is recorded for the current Academic Year using the current official form.
+          {access.canManageSelf
+            ? "Start your Individual Inventory when you are ready. It will use the official form for this academic year."
+            : "No Individual Inventory has been started for this academic year."}
         </InventoryNotice>
         <div className="flex flex-wrap gap-3">
           <Link href="/portal/inventory" className="inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
@@ -106,7 +108,7 @@ function StudentCurrentInventory() {
             <p className="self-center text-sm text-muted">
               {access.isCurrentStudent
                 ? "Starting a current-year Individual Inventory is not available for this account."
-                : "A new current-year Individual Inventory can only be started while your Student lifecycle is current."}
+                : "Only current students can start this year’s Individual Inventory."}
             </p>
           )}
         </div>
@@ -156,7 +158,9 @@ function StudentCurrentInventory() {
       {inventory.status === InventoryStatusValue.DRAFT ? (
         <div className="mt-5">
           <InventoryNotice title="Read-only annual record" tone="warning">
-            Your Student lifecycle is not current, so this draft can no longer be changed or submitted. You can still read this annual record.
+            {access.isCurrentStudent
+              ? "You can still read this draft, but editing and submission are unavailable for this account."
+              : "You can still read this draft, but you can no longer change or submit it because you are no longer a current student."}
           </InventoryNotice>
         </div>
       ) : null}

@@ -104,7 +104,7 @@ export function CustomerFeedbackResponseDetail({ responseId }: { responseId: str
         <DetailField label="Name">{item.respondent_name}</DetailField><DetailField label="Course/Year">{item.course_year}</DetailField>
         <DetailField label="Address">{item.address}</DetailField><DetailField label="Mobile Number">{item.mobile_number}</DetailField>
       </DetailSection>
-      <DetailSection title="Form Revision provenance">
+      <DetailSection title="Official form revision">
         <DetailField label="Official code">{item.form_revision.official_code}</DetailField><DetailField label="Official revision">{item.form_revision.official_revision}</DetailField>
       </DetailSection>
     </section>

@@ -119,7 +119,7 @@ export function CounselorInventoryRoster() {
     <section aria-label="Counselor Individual Inventory roster">
       <InventoryHeading
         title="Individual Inventory"
-        description="Students within your authorized Guidance scope."
+        description="Review students assigned to your guidance area."
       />
 
       <div className="border-b border-border py-5">
@@ -222,8 +222,8 @@ export function CounselorInventoryRoster() {
           {effectiveStatus === InventoryStatusValue.MISSING
             ? "No Students are currently missing an Inventory under these filters."
             : hasFilters
-              ? "No Students match these filters."
-              : "No Students are available within your current Inventory scope."}
+              ? "No students match these filters."
+              : "No students are available."}
         </p>
       ) : response ? (
         <>

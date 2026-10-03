@@ -175,7 +175,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
       <div className="space-y-6">
         <InventoryHeading title="Individual Inventory" />
         <InventoryNotice title="Editing is no longer available" tone="warning" role="alert">
-          Your Student lifecycle is no longer current. This annual record remains saved and readable, but it cannot be edited or submitted.
+          You can still read this record, but you can no longer edit or submit it because you are no longer a current student.
         </InventoryNotice>
         <GuardedPortalLink
           href="/portal/inventory"

@@ -188,7 +188,6 @@ export function GraduateTracerResponse({ detail }: { detail: GraduateTracerDetai
 
             <div className="border-t border-border pt-5">
               <h3 className="font-semibold text-ink">First-job and job-change context</h3>
-              <p className="mt-1 text-sm text-muted">Semantic fields from the survey&apos;s inconsistently numbered source area.</p>
               <div className="mt-4">
                 <Answers>
                   <GraduateTracerAnswer label="Reasons for accepting the first job" value={choiceListLabel(detail.reasons_for_accepting_first_job, JOB_REASON_CHOICES)} />

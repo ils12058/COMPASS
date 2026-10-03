@@ -50,23 +50,23 @@ export function shouldHideResourceData(error: unknown): boolean {
 export function resourceErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const message = readApiErrorMessage(error.body);
-  const known = message ? knownMessages[message] : undefined;
+  const known = message && Object.hasOwn(knownMessages, message) ? knownMessages[message] : undefined;
   switch (readApiErrorCode(error.body)) {
     case "authentication_required":
       return "Your COMPASS session has ended. Sign in again, then retry.";
     case "permission_denied":
-      return "Your current access does not include Resource management.";
+      return "Resource management is unavailable to this account.";
     case "resource_not_found":
       return "This Resource no longer exists.";
     case "publication_consequence_review_required":
       return "Review how these changes affect the published Resource before saving.";
     case "resource_conflict":
-      return known ?? `${message ?? "This Resource changed since you opened it."} Its current status is shown on the Resource page.`;
+      return known ?? "This resource changed since you opened it. Review its current status before continuing.";
     case "invalid_resource_input":
       return known ?? fallback;
     case "resource_storage_unavailable":
       return "File storage is unavailable right now. Try again in a few minutes.";
     default:
-      return error.status >= 500 ? fallback : message ?? fallback;
+      return fallback;
   }
 }

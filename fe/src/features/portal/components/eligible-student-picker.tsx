@@ -89,7 +89,7 @@ export function EligibleStudentPicker({
         <p role="status" className="mt-4 text-sm text-muted">Loading eligible Students…</p>
       ) : items.length === 0 ? (
         <p className="mt-4 border-y border-border py-4 text-sm text-muted">
-          No eligible Students match this search.
+          No eligible students match this search.
         </p>
       ) : (
         <ul className="mt-3 divide-y divide-border border-y border-border">

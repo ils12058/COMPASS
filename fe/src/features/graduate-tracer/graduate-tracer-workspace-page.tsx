@@ -14,9 +14,17 @@ export function GraduateTracerWorkspacePage({ filters }: { filters: GraduateTrac
   if (access.hasStudentWorkspace) return <GraduateTracerStudentWorkspace access={access} />;
   if (access.hasOperationalWorkspace) return <GraduateTracerOperationalList filters={filters} />;
 
+  if (access.isStudent && !access.isGraduatedStudent) {
+    return (
+      <WorkspaceUnavailable title="Graduate Tracer unavailable">
+        The Graduate Tracer Survey is for graduates.
+      </WorkspaceUnavailable>
+    );
+  }
+
   return (
     <WorkspaceUnavailable title="Graduate Tracer unavailable">
-      Your current access does not include a Graduate Tracer workspace.
+      Graduate Tracer is unavailable to this account.
     </WorkspaceUnavailable>
   );
 }

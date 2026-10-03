@@ -38,7 +38,7 @@ function policyLabel(policy: AppointmentPolicy): string {
 
 function descriptionExcerpt(value: string): string {
   const trimmed = value.trim();
-  if (!trimmed) return "No description provided.";
+  if (!trimmed) return "";
   return trimmed.length > 180 ? trimmed.slice(0, 177) + "…" : trimmed;
 }
 
@@ -179,7 +179,7 @@ export function ServicesListPage() {
       ) : list.data.data.items.length === 0 ? (
         <p className="border-b border-border py-10 text-sm text-muted">
           {hasFilters
-            ? "No Services match the current search or filters."
+            ? "No services match the current search or filters."
             : canManage && includeInactive
               ? "No Services are configured yet."
               : "No active Services are currently available."}
@@ -215,9 +215,11 @@ export function ServicesListPage() {
                   <p className="mt-1 font-mono text-xs text-muted">
                     {service.code}
                   </p>
-                  <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-                    {descriptionExcerpt(service.description)}
-                  </p>
+                  {service.description.trim() ? (
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+                      {descriptionExcerpt(service.description)}
+                    </p>
+                  ) : null}
                 </div>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm md:grid-cols-1">
                   <div>

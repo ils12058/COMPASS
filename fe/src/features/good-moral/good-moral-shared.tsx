@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 import type { GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
 
@@ -56,13 +56,13 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
     case "good_moral_not_found":
       return "Good Moral request not found.";
     case "good_moral_inventory_required":
-      return "A submitted Individual Inventory for the current Academic Year is required before requesting this certificate.";
+      return "Submit your Individual Inventory for the current academic year before requesting a certificate.";
     case "good_moral_affiliation_required":
-      return "A current active College affiliation is required for this certificate.";
+      return "A current college affiliation is required to request this certificate.";
     case "current_student_required":
-      return "Current Student lifecycle is required for this certificate request.";
+      return "This request is available only to current students.";
     case "graduated_student_required":
-      return "Graduated Student lifecycle is required for this certificate request.";
+      return "This request is available only to graduates.";
     case "good_moral_configuration_conflict":
       return "This certificate cannot be issued because its approved document configuration is not currently available.";
     case "good_moral_document_unavailable":
@@ -73,9 +73,9 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
     case "recent_mfa_required":
       return "Recent authenticator verification is required before issuing this certificate.";
     case "permission_denied":
-      return "Your current access does not allow this Good Moral action.";
+      return "You cannot complete this Good Moral action with this account.";
     default:
-      return readApiErrorMessage(error.body) ?? fallback;
+      return fallback;
   }
 }
 
@@ -130,7 +130,7 @@ export function GoodMoralHeading({
 
 export function GoodMoralUnavailable({
   title = "Good Moral unavailable",
-  message = "Your current access does not include the Good Moral workspace.",
+  message = "Good Moral is unavailable to this account.",
 }: {
   title?: string;
   message?: string;

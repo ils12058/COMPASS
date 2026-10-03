@@ -32,7 +32,10 @@ export class CompassApiError extends Error {
 
 export function readApiErrorCode(body: unknown): string | undefined {
   const error = getErrorObject(body);
-  return typeof error?.code === "string" ? error.code : undefined;
+  const code = error?.code;
+  return typeof code === "string" && /^[a-z][a-z0-9_]*$/.test(code) && code !== "constructor"
+    ? code
+    : undefined;
 }
 
 export function readApiErrorMessage(body: unknown): string | undefined {

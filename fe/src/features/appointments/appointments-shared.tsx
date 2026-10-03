@@ -10,7 +10,7 @@ import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { AppointmentStatus, DeliveryMode } from "@/lib/api/generated/model";
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { INSTITUTION_TIME_ZONE } from "@/lib/institutional-time";
 
 const statusLabels: Record<string, string> = {
@@ -28,23 +28,23 @@ const statusClasses: Record<string, string> = {
 };
 
 const knownErrors: Record<string, string> = {
-  current_student_required: "Only a current Student can book or reschedule an Appointment.",
+  current_student_required: "Only a current student can book or reschedule an appointment.",
   current_academic_year_not_configured:
-    "Booking for this Service cannot continue because the current Academic Year required for the Inventory prerequisite is not configured.",
+    "Booking is unavailable until the current academic year is set up for this service.",
   current_inventory_required:
-    "A submitted Individual Inventory for the current Academic Year is required to book this Service.",
-  appointment_not_found: "This Appointment is not available within your current access.",
+    "Submit your Individual Inventory for the current academic year before booking this service.",
+  appointment_not_found: "This appointment is unavailable to this account.",
   invalid_appointment_request: "The Appointment request contains a value that is not accepted.",
   appointment_default_provider_unresolved:
     "A Counselor could not be resolved. Choose an eligible Counselor and try again.",
   appointment_time_unavailable: "That time is no longer available. Choose another available time.",
   appointment_time_conflict: "That time conflicts with another Appointment. Choose another available time.",
   appointment_lifecycle_conflict:
-    "This Appointment can no longer be changed in the requested way.",
+    "This appointment can no longer be changed. Refresh it to review its current status.",
   appointment_cancellation_cutoff_passed:
-    "The self-service cancellation or rescheduling cutoff has passed.",
+    "The deadline to cancel or reschedule this appointment has passed.",
   appointment_cancellation_conflict:
-    "This Appointment cannot be cancelled in its current state.",
+    "This appointment can no longer be cancelled.",
   ecounseling_access_started:
     "This Appointment can no longer be cancelled because its online counseling access period has begun.",
   ecounseling_access_open:
@@ -74,11 +74,11 @@ export function appointmentErrorMessage(
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
   if (code && knownErrors[code]) return knownErrors[code];
-  return readApiErrorMessage(error.body) ?? fallback;
+  return fallback;
 }
 
 export function appointmentStatusLabel(status: string): string {
-  return statusLabels[status] ?? status;
+  return statusLabels[status] ?? "Status unavailable";
 }
 
 export function AppointmentStatusBadge({ status }: { status: string }) {
@@ -143,7 +143,7 @@ export function formatAppointmentTime(value: string, timeZone?: string): string 
 }
 
 export function AppointmentsUnavailable({
-  children = "Your current access does not include an Appointment workspace.",
+  children = "Appointments are unavailable to this account.",
 }: {
   children?: ReactNode;
 }) {
@@ -174,8 +174,10 @@ export function AppointmentsWorkspaceGate({
     return (
       <AppointmentsUnavailable>
         {section === "book" && access.isStudent
-          ? "Only a current Student with Appointment self-management access can book. You can still view existing Appointments from My Appointments."
-          : "Your current access does not include this Appointment workspace."}
+          ? access.canViewSelf
+            ? "Only current students can book appointments. You can still view your existing appointments."
+            : "Booking is unavailable to this account."
+          : "This appointment page is unavailable to this account."}
       </AppointmentsUnavailable>
     );
   }

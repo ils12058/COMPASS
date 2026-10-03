@@ -63,7 +63,7 @@ function StructuredLocation({
   return (
     <div className="border-b border-border/70 py-3">
       <dt className="text-xs font-semibold text-muted">
-        {location.kind === GeographicLocationKindValue.CURRENT ? "Current structured location" : "Permanent structured location"}
+        {location.kind === GeographicLocationKindValue.CURRENT ? "Current location details" : "Permanent location details"}
       </dt>
       <dd className="mt-1 text-sm leading-6 text-ink">{text}</dd>
     </div>
@@ -284,7 +284,7 @@ export function InventoryReadOnly({
         ) : <p className="text-sm text-muted">No educational history provided.</p>}
         <ValueGrid>
           <DefinitionValue label="Program" value={inventory.program ? `${inventory.program.code} · ${inventory.program.name}` : "Not provided"} />
-          <DefinitionValue label="Current course snapshot" value={shown(inventory.course_currently_enrolled)} />
+          <DefinitionValue label="Course at submission" value={shown(inventory.course_currently_enrolled)} />
           <DefinitionValue label="Year Level" value={shown(inventory.year_level)} />
           <DefinitionValue label="Major" value={shown(inventory.major)} />
           <DefinitionValue label="Satisfied with schedule" value={yesNo(inventory.schedule_satisfied)} />

@@ -107,7 +107,7 @@ function StudentInventoryHome() {
           <div className="mt-4 border-y border-border py-5">
             <div className="flex flex-wrap items-center gap-3">
               <h3 className="font-heading text-lg font-semibold text-ink">{current.academic_year.label}</h3>
-              <InventoryStatus status={current.status} correctionPending={current.correction_pending} />
+              <InventoryStatus status={current.status} correctionPending={current.correction_pending} missingLabel="Not started" />
             </div>
 
             {current.status === InventoryStatusValue.MISSING ? (
@@ -115,7 +115,7 @@ function StudentInventoryHome() {
                 <p className="text-sm leading-6 text-muted">Complete one Individual Inventory for the current Academic Year.</p>
                 {!access.isCurrentStudent ? (
                   <p className="mt-3 text-sm leading-6 text-muted">
-                    A new current-year Individual Inventory can only be started while your Student lifecycle is current. Your annual history remains available below.
+                    Only current students can start an Individual Inventory for this year. Your earlier records remain available below.
                   </p>
                 ) : access.canManageSelf ? (
                   <div className="mt-4">
@@ -143,7 +143,7 @@ function StudentInventoryHome() {
                 <p className="text-sm leading-6 text-muted">
                   {access.canManageSelf
                     ? "Your saved progress is a draft. You can continue editing and save it before submission."
-                    : "This annual record is a draft. Your current Student lifecycle does not allow further changes."}
+                    : "This annual record is a draft. You can view it, but can no longer change it."}
                 </p>
                 <Link
                   href="/portal/inventory/current"

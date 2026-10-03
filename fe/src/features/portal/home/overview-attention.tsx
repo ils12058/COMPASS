@@ -60,11 +60,7 @@ export function OverviewAttention({ data }: { data: OverviewAttentionData }) {
           <Skeleton className="h-4 w-2/3" />
           <p className="sr-only">Checking for items that need attention…</p>
         </div>
-      ) : (
-        <p className="mt-3 border-y border-border py-4 text-sm text-muted">
-          {data.emptyMessage}
-        </p>
-      )}
+      ) : null}
     </section>
   );
 }

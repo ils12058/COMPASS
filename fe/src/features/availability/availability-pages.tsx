@@ -255,7 +255,7 @@ export function OfficeAvailabilityPage() {
     <section>
       <AvailabilityPageHeading
         title="Office availability"
-        description="Office availability defines the operating windows within which provider availability can become effective."
+        description="Set the office's regular days and hours. New appointment times can be offered only when the office and a counselor are both available."
       />
 
       <div className="mt-9">
@@ -586,8 +586,8 @@ export function ProviderAvailabilityPage() {
       ) : providersData.data.items.length === 0 ? (
         <p className="mt-5 border-y border-border py-8 text-sm text-muted">
           {search
-            ? "No Counselors match the current search."
-            : "No Counselors are available."}
+            ? "No counselors match the current search."
+            : "No counselors are available."}
         </p>
       ) : (
         <>

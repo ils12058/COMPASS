@@ -28,6 +28,7 @@ import { appointmentErrorCode, appointmentErrorMessage, AppointmentsLocalNavigat
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CompassApiError } from "@/lib/api/errors";
+import { INSTITUTION_TIME_ZONE, INSTITUTION_TIME_ZONE_LABEL } from "@/lib/institutional-time";
 
 function BookingWorkspace() {
   const queryClient = useQueryClient();
@@ -260,8 +261,8 @@ function BookingWorkspace() {
         ) : serviceItems.length === 0 ? (
           <p className="mt-5 border-y border-border py-6 text-sm text-muted">
             {serviceSearch.trim()
-              ? "No Appointment services match your search."
-              : "No Appointment services are currently available."}
+              ? "No appointment services match your search."
+              : "No appointment services are currently available."}
           </p>
         ) : (
           <>
@@ -281,9 +282,8 @@ function BookingWorkspace() {
                     >
                       <span className="flex flex-wrap items-baseline justify-between gap-2">
                         <span className="font-semibold text-ink">{item.name}</span>
-                        <span className="font-mono text-xs text-muted">{item.code}</span>
                       </span>
-                      <span className="mt-1 block max-w-4xl text-sm leading-6 text-muted">{item.description || "No description provided."}</span>
+                      {item.description.trim() ? <span className="mt-1 block max-w-4xl text-sm leading-6 text-muted">{item.description}</span> : null}
                       <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
                         <span>{item.default_duration_minutes} minutes</span>
                         <span>{item.delivery_modes.map(deliveryModeLabel).join(" · ")}</span>
@@ -387,7 +387,7 @@ function BookingWorkspace() {
                 <p role="status" className="text-sm text-muted">No available appointment times were found for this date. Choose another date.</p>
               ) : (
                 <>
-                  <p role="status" className="mb-3 text-sm font-semibold text-ink">Available times · {slots.data?.data.timezone}</p>
+                  <p role="status" className="mb-3 text-sm font-semibold text-ink">Available times · {slots.data?.data.timezone === INSTITUTION_TIME_ZONE ? INSTITUTION_TIME_ZONE_LABEL : slots.data?.data.timezone}</p>
                   <div role="group" aria-label="Available appointment times" className="flex flex-wrap gap-2">
                     {slotItems.map((slot) => {
                       const selected = slot.starts_at === selectedSlotStart;
@@ -478,7 +478,9 @@ export function AppointmentBookingPage() {
         <h1 id="appointment-booking-unavailable-heading" className="font-heading text-3xl font-bold text-ink">Booking unavailable</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
           {access.isStudent
-            ? "Only a current Student with Appointment self-management access can book. Existing Appointments remain available from My Appointments."
+            ? access.canViewSelf
+              ? "Only current students can book appointments. You can still view your existing appointments."
+              : "Booking is unavailable to this account."
             : "Student self-booking is not available to this account."}
         </p>
         {access.canViewSelf ? (

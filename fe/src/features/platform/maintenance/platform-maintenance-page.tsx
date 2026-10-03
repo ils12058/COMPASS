@@ -263,8 +263,9 @@ export function PlatformMaintenancePage() {
       return (
         <>
           <p>
-            Enable Maintenance Mode? Normal application APIs may become
-            unavailable. Manual Maintenance Mode remains active until explicitly
+            Ordinary application features will be unavailable while Maintenance
+            Mode is active. Sign-in and platform controls remain available.
+            Manual Maintenance Mode remains active until explicitly
             disabled; the expected end does not turn it off automatically.
           </p>
           <p className="font-medium text-ink">Public message</p>
@@ -284,8 +285,8 @@ export function PlatformMaintenancePage() {
     if (confirmation === "disable") {
       return (
         <p>
-          End manual Maintenance Mode? Normal API access will resume after the
-          server confirms this operation.
+          Ordinary COMPASS features will be available again after manual
+          Maintenance Mode ends.
         </p>
       );
     }

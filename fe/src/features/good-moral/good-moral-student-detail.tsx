@@ -56,7 +56,7 @@ export function GoodMoralStudentDetail({
         <div>
           <Link href="/portal/good-moral" className="mb-3 inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Good Moral</Link>
           <h1 id="good-moral-student-detail-heading" className="font-heading text-3xl font-bold text-ink">Good Moral request</h1>
-          <p className="mt-2 text-sm text-muted">{goodMoralVariantLabel(item.variant)} certificate</p>
+          <p className="mt-2 text-sm text-muted">{item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)} certificate` : `${goodMoralVariantLabel(item.variant)} request`}</p>
         </div>
         <GoodMoralStatus status={item.status} />
       </div>
@@ -113,7 +113,7 @@ export function GoodMoralStudentDetail({
 
       {item.status === "REQUESTED" && canCancel && !detail.isError ? (
         <GoodMoralSection title="Request actions">
-          <p className="mb-4 text-sm leading-6 text-muted">A requested certificate can be cancelled. It will remain in your request history.</p>
+          <p className="mb-4 text-sm leading-6 text-muted">You can cancel this request. It will remain in your request history.</p>
           <GoodMoralCancelAction requestId={item.id} studentFacing onRefresh={refresh} />
         </GoodMoralSection>
       ) : null}

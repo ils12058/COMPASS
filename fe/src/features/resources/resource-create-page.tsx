@@ -8,7 +8,7 @@ export function ResourceCreatePage() {
     <section>
       <ContentPageHeading title="Create Resource" backHref="/portal/resources" backLabel="Resources">
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-          New Resources are saved as drafts. Readers see a Resource only after it is published.
+          New resources are saved as drafts. Readers can see them after they are published.
         </p>
       </ContentPageHeading>
       <ResourceForm resource={null} />

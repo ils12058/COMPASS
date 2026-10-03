@@ -132,14 +132,14 @@ export function AccountOverview() {
         if (kind === "enable")
           return enable.mutateAsync({ userId: account.id });
         if (!selectedLifecycle)
-          throw new Error("Select a Student lifecycle status.");
+          throw new Error("Select a student status.");
         return updateLifecycle.mutateAsync({
           userId: account.id,
           data: { status: selectedLifecycle },
         });
       },
       kind === "lifecycle"
-        ? "Student lifecycle could not be updated."
+        ? "Student status could not be updated."
         : "Account status could not be changed.",
       () => setConfirm(null),
       undefined,
@@ -153,7 +153,7 @@ export function AccountOverview() {
         ? "Account disabled."
         : kind === "enable"
           ? "Account enabled."
-          : "Student lifecycle updated.",
+          : "Student status updated.",
     );
   }
 
@@ -289,7 +289,7 @@ export function AccountOverview() {
             id="lifecycle-heading"
             className="font-heading text-xl font-semibold text-ink"
           >
-            Student lifecycle
+            Student status
           </h2>
           <p className="mt-3 text-sm text-muted">
             Current status:{" "}
@@ -299,8 +299,7 @@ export function AccountOverview() {
           </p>
           {self ? (
             <p className="mt-3 text-sm text-muted">
-              You cannot change your own Student lifecycle through
-              administrative account management.
+              You cannot change your own student status here.
             </p>
           ) : (
             <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -335,7 +334,7 @@ export function AccountOverview() {
                 }
                 onClick={() => setConfirm("lifecycle")}
               >
-                Update lifecycle
+                Update student status
               </Button>
             </div>
           )}
@@ -460,21 +459,21 @@ export function AccountOverview() {
             ? `Disable ${accountName(account)}'s account?`
             : confirm === "enable"
               ? `Enable ${accountName(account)}'s account?`
-              : `Update ${accountName(account)}'s Student lifecycle?`
+              : `Update ${accountName(account)}'s student status?`
         }
         confirmLabel={
           confirm === "disable"
             ? "Disable account"
             : confirm === "enable"
               ? "Enable account"
-              : "Update lifecycle"
+              : "Update student status"
         }
         pendingLabel={
           confirm === "disable"
             ? "Disabling…"
             : confirm === "enable"
               ? "Enabling…"
-              : "Updating lifecycle…"
+              : "Updating student status…"
         }
         pending={busy}
         error={action.error}
@@ -490,8 +489,8 @@ export function AccountOverview() {
             : confirm === "enable"
               ? "This restores account access. Password, email verification, and MFA states remain separate."
               : lifecycle === StudentLifecycleCode.CURRENT
-                ? "Change the Student lifecycle to Current. Current-student workflows such as Individual Inventory, Appointment booking, and Routine Interviews become available again. Sign-in and existing records are not affected."
-                : `Change the Student lifecycle to ${lifecycle ? lifecycleLabels[lifecycle] : "the selected status"}. The Student will no longer be able to start or update current-student workflows such as Individual Inventory, Appointment booking, Routine Interviews, and Exit Interviews. Sign-in and historical records remain available.`}
+                ? "Change this student’s status to current. They can start or update Individual Inventory, appointment booking, and Routine Interviews again. Sign-in and existing records are unaffected."
+                : `Change this student’s status to ${lifecycle ? lifecycleLabels[lifecycle] : "the selected status"}. They will no longer be able to start or update Individual Inventory, appointment booking, Routine Interviews, or Exit Interviews. Sign-in and historical records remain available.`}
         </p>
       </ConsequentialActionDialog>
     </div>

@@ -193,7 +193,7 @@ function InstitutionalFormsWorkspace({
               <div className="mt-4 border-y border-border py-5">
                 <p className="text-sm leading-6 text-muted">
                   {selectedFamily.configuration_state === FormFamilyConfigurationState.REVISION_NOT_REQUIRED
-                    ? "No confirmed controlled-document revision is required for this Form Family. COMPASS supports its current schema without inventing an official code or revision."
+                    ? "No official controlled-document revision is required for this form family in COMPASS."
                     : "No Form Revision is recorded for this family."}
                 </p>
               </div>

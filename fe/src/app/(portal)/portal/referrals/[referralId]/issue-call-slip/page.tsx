@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Issue Call Slip" };
+
 import { Suspense } from "react";
 
 import { LinkedCallSlipCheckLoading } from "@/features/call-slips/call-slips-shared";

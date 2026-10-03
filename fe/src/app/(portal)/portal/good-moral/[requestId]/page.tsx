@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Good Moral Request" };
+
 import { Suspense } from "react";
 
 import { GoodMoralDetailSkeleton } from "@/features/good-moral/good-moral-shared";

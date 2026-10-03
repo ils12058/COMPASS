@@ -6,7 +6,9 @@ import {
   AvailabilityNavigation,
 } from "@/features/availability/availability-shared";
 
-export const metadata: Metadata = { title: "Availability" };
+export const metadata: Metadata = {
+  title: { default: "Availability", template: "%s | COMPASS" },
+};
 
 export default function AvailabilityLayout({
   children,

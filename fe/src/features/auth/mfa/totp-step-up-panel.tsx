@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authVerifyTotp, getAuthGetMfaStatusQueryKey, getAuthGetSessionQueryKey } from "@/lib/api/generated/auth/auth";
-import { CompassApiError, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError } from "@/lib/api/errors";
 
 function authenticationErrorMessage(error: unknown): string {
   if (error instanceof CompassApiError) {
-    return readApiErrorMessage(error.body) ?? "Authenticator verification could not be completed.";
+    return "Authenticator verification could not be completed. Check the code and try again.";
   }
   return "Authenticator verification could not be completed. Check your connection and try again.";
 }

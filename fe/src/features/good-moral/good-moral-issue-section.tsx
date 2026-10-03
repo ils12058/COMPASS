@@ -105,7 +105,7 @@ export function GoodMoralIssueSection({
         await onRefresh();
         setConfirmOpen(false);
         setMode(null);
-        setError("This Current Student certificate can no longer be issued because the Student is no longer in CURRENT lifecycle.");
+        setError("This certificate can no longer be issued because the applicant is no longer a current student.");
         return;
       }
       if (uncertainGoodMoralMutation(caught)) {
@@ -155,7 +155,7 @@ export function GoodMoralIssueSection({
   return (
     <>
       <GoodMoralSection title="Issuance review">
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Review the certificate facts before issuing. Issuance freezes the approved Form Revision, document template version, issuance time, and issuing Counselor for this certificate.</p>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Review the certificate details before issuing. The issued certificate will record the approved form revision, issuance date, and issuing counselor.</p>
         <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
           <GoodMoralField label="Applicant name" value={item.applicant_name} />
           {item.variant === "CURRENT_STUDENT" ? (
@@ -222,8 +222,8 @@ export function GoodMoralIssueSection({
         onConfirm={() => void confirmIssue()}
       >
         <p>
-          Issuing freezes the approved Form Revision, document template version,
-          issuance time, and issuing Counselor for this certificate.
+          The issued certificate will record the approved form revision,
+          issuance date, and issuing counselor. Review the details below before issuing.
         </p>
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           <GoodMoralField label="Applicant name" value={item.applicant_name} />

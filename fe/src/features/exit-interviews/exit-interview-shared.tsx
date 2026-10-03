@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import type { ExitInterviewStatusValue } from "@/lib/api/generated/model";
 
 export function exitInterviewErrorCode(error: unknown): string | undefined {
@@ -32,7 +32,7 @@ export function exitInterviewErrorMessage(
     case "exit_interview_inventory_required":
       return "A submitted Individual Inventory for the current Academic Year is required before starting an Exit Interview.";
     case "current_student_required":
-      return "Only Students with Current lifecycle status can start, edit, or submit an Exit Interview.";
+      return "Only current students can start, edit, or submit an Exit Interview.";
     case "current_academic_year_not_configured":
       return "A current Academic Year is not configured. Contact the institutional administrator.";
     case "exit_interview_not_submitted":
@@ -40,9 +40,9 @@ export function exitInterviewErrorMessage(
     case "exit_interview_conflict":
       return "The Exit Interview changed before this action completed. Refresh the record and review its current status.";
     case "permission_denied":
-      return "Your current access does not allow this Exit Interview action.";
+      return "You cannot complete this Exit Interview action with this account.";
     default:
-      return readApiErrorMessage(error.body) ?? fallback;
+      return fallback;
   }
 }
 
@@ -157,7 +157,7 @@ export function ExitInterviewField({
 
 export function ExitInterviewUnavailable({
   title = "Exit Interview unavailable",
-  message = "Your current access does not include this Exit Interview workspace.",
+  message = "This Exit Interview is unavailable to this account.",
 }: {
   title?: string;
   message?: string;

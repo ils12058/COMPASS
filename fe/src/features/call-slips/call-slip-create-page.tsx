@@ -15,6 +15,7 @@ import { EligibleStudentPicker, type EligibleStudentOption } from "@/features/po
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { callSlipsCreate, getCallSlipsListQueryKey, useCallSlipsListEligibleStudents } from "@/lib/api/generated/call-slips/call-slips";
 import type { CallSlipCreateRequest } from "@/lib/api/generated/model";
+import { formatInstitutionalDateTime, INSTITUTION_TIME_ZONE_LABEL, institutionalDateTimeInputToISO } from "@/lib/institutional-time";
 
 type CreateIntent = { fingerprint: string; key: string; payload: CallSlipCreateRequest };
 
@@ -53,7 +54,7 @@ export function DirectCallSlipCreatePage() {
   });
 
   if (!access.canManageOperational) {
-    return <CallSlipAccessUnavailable title="Call Slip issuance unavailable" message="Your current access does not include Call Slip management." />;
+    return <CallSlipAccessUnavailable title="Call Slip issuance unavailable" message="Call Slip management is unavailable to this account." />;
   }
 
   function prepare(event: FormEvent<HTMLFormElement>) {
@@ -112,11 +113,11 @@ export function DirectCallSlipCreatePage() {
 
   return (
     <div className="space-y-7">
-      <CallSlipHeading title="Issue Call Slip" description="Record a Call Slip not requiring the linked Referral workflow." backHref="/portal/call-slips" />
+      <CallSlipHeading title="Issue Call Slip" description="Issue a Call Slip without linking it to a referral." backHref="/portal/call-slips" />
       <form className="max-w-3xl space-y-8" onSubmit={prepare} aria-busy={create.isPending}>
         <section aria-labelledby="direct-call-slip-student-heading" className="border-b border-border pb-7">
           <h2 id="direct-call-slip-student-heading" className="font-heading text-xl font-semibold text-ink">Student</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Search Students available for Call Slips. The issuer is recorded automatically.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">Find the student who will receive the Call Slip. Your name will be recorded as the issuer.</p>
           <div className="mt-4">
             <EligibleStudentPicker
               label="Choose Student"
@@ -143,7 +144,7 @@ export function DirectCallSlipCreatePage() {
           <div className="mt-5">
             <CallSlipFormFields draft={draft} onChange={setDraft} />
           </div>
-          <p className="mt-5 text-sm leading-6 text-muted">The entered Course / Year and report time are source text. Report date/time may be past, present, or future and does not determine whether this is a live or historical issuance.</p>
+          <p className="mt-5 text-sm leading-6 text-muted">Enter course/year and report time as shown on the source form. Choose below whether this issuance should notify the student.</p>
         </section>
 
         {error && !confirmOpen ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
@@ -156,8 +157,8 @@ export function DirectCallSlipCreatePage() {
 
       <ConsequentialActionDialog
         open={confirmOpen}
-        title="Confirm Call Slip issuance"
-        confirmLabel="Confirm and issue"
+        title="Issue Call Slip?"
+        confirmLabel="Issue Call Slip"
         cancelLabel="Review details"
         pendingLabel="Issuing…"
         pending={create.isPending}
@@ -166,14 +167,14 @@ export function DirectCallSlipCreatePage() {
         onConfirm={() => void issueConfirmed()}
       >
         <p>
-          Review the source details and selected issuance mode. COMPASS records
-          the issuer and any separate recorder.
+          Check the student and report details before issuing. The selected
+          notification option determines whether the student is notified.
         </p>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 text-ink">{student?.display_name ?? "Not selected"}{student?.institutional_id ? ` · ${student.institutional_id}` : ""}</dd></div>
           <div><dt className="text-xs font-semibold text-muted">Course / Year</dt><dd className="mt-1 text-ink">{draft.courseYear || "Not entered"}</dd></div>
           <div><dt className="text-xs font-semibold text-muted">Destination</dt><dd className="mt-1 text-ink">{selectedDestination}</dd></div>
-          <div><dt className="text-xs font-semibold text-muted">Report date and time</dt><dd className="mt-1 text-ink">{draft.reportAt || "Not entered"}</dd></div>
+          <div><dt className="text-xs font-semibold text-muted">Report date and time</dt><dd className="mt-1 text-ink">{formatInstitutionalDateTime(institutionalDateTimeInputToISO(draft.reportAt))} {INSTITUTION_TIME_ZONE_LABEL}</dd></div>
           <div className="sm:col-span-2"><dt className="text-xs font-semibold text-muted">Issuance mode</dt><dd className="mt-1 text-ink">{draft.notifyStudent ? "Live issuance — creates an in-app notification and queues required operational email." : "Historical / back-entry — no new issuance notification."}</dd></div>
         </dl>
       </ConsequentialActionDialog>

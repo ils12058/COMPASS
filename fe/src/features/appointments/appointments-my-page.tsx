@@ -108,8 +108,8 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
         title="My appointments"
         description={
           access.isStudent
-            ? "View your scheduled and past Appointments."
-            : "View Appointments assigned to you as Counselor."
+            ? "View scheduled appointments or use the status filter to see past appointments."
+            : "View appointments assigned to you as a counselor."
         }
       />
 
@@ -156,8 +156,8 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
             value={ordering}
             onChange={(event) => updateFilter("ordering", event.target.value)}
           >
-            <option value={AppointmentListOrdering.START_ASC}>Soonest first</option>
-            <option value={AppointmentListOrdering.START_DESC}>Latest first</option>
+            <option value={AppointmentListOrdering.START_ASC}>Earliest start first</option>
+            <option value={AppointmentListOrdering.START_DESC}>Latest start first</option>
           </Select>
         </div>
       </div>
@@ -177,10 +177,10 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
         <div className="border-y border-border py-8">
           <p className="text-sm text-muted">
             {filtering
-              ? "No Appointments match the selected filters."
+              ? "No appointments match the selected filters."
               : status === AppointmentStatus.SCHEDULED
-                ? "No scheduled Appointments match this view."
-                : "No Appointments are available."}
+                ? "No scheduled appointments match this view."
+                : "No appointments are available."}
           </p>
           {status !== undefined || upcoming || fromDate || toDate ? (
             <Link

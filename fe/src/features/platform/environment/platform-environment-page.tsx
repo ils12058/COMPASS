@@ -73,7 +73,7 @@ export function PlatformEnvironmentPage() {
                     </dl>
                   ) : (
                     <p className="mt-2 text-sm text-muted">
-                      No resolved values were returned for this category.
+                      No values are available for this category.
                     </p>
                   )}
                 </section>
@@ -81,7 +81,7 @@ export function PlatformEnvironmentPage() {
             </div>
           ) : (
             <p className="border-y border-border py-5 text-sm text-muted">
-              No environment categories were returned.
+              No environment categories are available.
             </p>
           )}
         </>

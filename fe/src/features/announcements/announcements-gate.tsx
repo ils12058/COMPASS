@@ -12,7 +12,7 @@ export function AnnouncementsGate({ children }: { children: ReactNode }) {
     children
   ) : (
     <WorkspaceUnavailable title="Announcements unavailable">
-      Your current access does not include Announcement management.
+      Announcement management is unavailable to this account.
     </WorkspaceUnavailable>
   );
 }

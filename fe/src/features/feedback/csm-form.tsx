@@ -340,7 +340,7 @@ export function CsmForm() {
           if (preparedBody) void send(preparedBody);
         }}
       >
-        <p>Your response will be submitted as a final response. COMPASS does not provide editing or response history after submission.</p>
+        <p>Once submitted, you will not be able to edit or view this response again.</p>
       </ConsequentialActionDialog>
     </section>
   );

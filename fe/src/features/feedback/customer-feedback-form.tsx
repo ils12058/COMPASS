@@ -293,7 +293,7 @@ export function CustomerFeedbackForm() {
 
   return (
     <section aria-labelledby="customer-feedback-heading">
-      <FeedbackPageHeading headingId="customer-feedback-heading" title="Customer Feedback Form" description={`Feedback for ${opportunityData.service_label}. Your response is submitted as a final response.`} />
+      <FeedbackPageHeading headingId="customer-feedback-heading" title="Customer Feedback Form" description={`Feedback for ${opportunityData.service_label}. Check your answers before submitting.`} />
       <form className="mt-4" onSubmit={prepareSubmission} noValidate>
         {error && !confirmationOpen ? <p role="alert" className="mb-5 border-y border-danger/30 py-3 text-sm text-danger">{error}</p> : null}
         {isUncertain ? (
@@ -406,7 +406,7 @@ export function CustomerFeedbackForm() {
           if (preparedBody) void send(preparedBody);
         }}
       >
-        <p>Your response will be submitted as a final response. COMPASS does not provide editing or response history after submission.</p>
+        <p>Once submitted, you will not be able to edit or view this response again.</p>
       </ConsequentialActionDialog>
     </section>
   );

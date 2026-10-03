@@ -74,7 +74,7 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
         <section role="alert" className="border-y border-border py-7">
           <h1 className="font-heading text-3xl font-bold text-ink">We could not verify your session.</h1>
           <p className="mt-3 text-sm leading-6 text-muted">
-            Protected COMPASS content remains unavailable until the session check succeeds.
+            We could not check your session, so this page cannot be shown yet.
           </p>
           <Button className="mt-5" variant="secondary" onClick={() => void verifySession(true)}>
             Retry

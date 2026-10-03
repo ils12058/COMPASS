@@ -28,7 +28,7 @@ export function GraduateTracerReportPage() {
   if (!canAttemptReports(user)) {
     return (
       <WorkspaceUnavailable title="Graduate Tracer unavailable">
-        Your current access does not include Reports.
+        Reports are unavailable to this account.
       </WorkspaceUnavailable>
     );
   }
@@ -52,7 +52,7 @@ function GraduateTracerReportWorkspace() {
 
   if (scopeQuery.isPending) {
     return (
-      <section aria-busy="true" aria-label="Resolving Graduate Tracer scope">
+      <section aria-busy="true" aria-label="Checking Graduate Tracer report access">
         <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
           Graduate Tracer
         </h1>
@@ -60,7 +60,7 @@ function GraduateTracerReportWorkspace() {
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-28 w-full" />
         </div>
-        <p className="sr-only">Resolving your Reports scope…</p>
+        <p className="sr-only">Checking your report access…</p>
       </section>
     );
   }
@@ -72,7 +72,7 @@ function GraduateTracerReportWorkspace() {
             Graduate Tracer unavailable
           </h1>
           <p role="status" className="mt-5 border-y border-border py-5 text-sm text-muted">
-            No active report scope is currently assigned to your account.
+            No reporting area is currently assigned to your account.
           </p>
         </section>
       );
@@ -85,7 +85,7 @@ function GraduateTracerReportWorkspace() {
         <div className="mt-5">
           <ReportQueryError
             error={scopeQuery.error}
-            fallback="Reports scope could not be resolved."
+            fallback="Your report access could not be checked."
             onRetry={() => void scopeQuery.refetch()}
           />
         </div>
@@ -99,7 +99,7 @@ function GraduateTracerReportWorkspace() {
           Graduate Tracer unavailable
         </h1>
         <p role="status" className="mt-5 border-y border-border py-5 text-sm text-muted">
-          No active report scope is currently assigned to your account.
+          No reporting area is currently assigned to your account.
         </p>
       </section>
     );
@@ -112,7 +112,7 @@ function GraduateTracerReportWorkspace() {
           Graduate Tracer unavailable
         </h1>
         <p className="mt-5 border-y border-border py-5 text-sm leading-6 text-muted">
-          Graduate Tracer aggregate reporting requires institution-wide Reports scope.
+          Graduate Tracer reports are available only with institution-wide report access.
         </p>
         <Link
           href="/portal/reports/student-profile"

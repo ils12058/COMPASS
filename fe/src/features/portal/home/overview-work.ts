@@ -41,9 +41,16 @@ export type OverviewAttentionData = {
   items: OverviewAttentionItem[];
   isPending: boolean;
   isVisible: boolean;
-  emptyMessage: string;
   staleNotices: string[];
 };
+
+export function shouldShowOverviewAttention(
+  itemCount: number,
+  isPending: boolean,
+  staleNoticeCount: number,
+): boolean {
+  return itemCount > 0 || isPending || staleNoticeCount > 0;
+}
 
 function hasCount(value: number | null | undefined): value is number {
   return value !== null && value !== undefined;
@@ -207,7 +214,7 @@ export function useOverviewAttention(
       items.push({
         id: "student-routine-summary",
         title: "Routine Interview drafts",
-        detail: "Your Overview summary still reports drafts. Open the workspace to review them.",
+        detail: "You may still have drafts to finish. Open Routine Interviews to review them.",
         href: "/portal/routine-interviews",
         actionLabel: "Open Routine Interviews",
       });
@@ -325,7 +332,7 @@ export function useOverviewAttention(
       items.push({
         id: "counselor-routine-summary",
         title: "Routine evaluations pending",
-        detail: "Your Overview summary still reports pending evaluations. Open the workspace to review them.",
+        detail: "Evaluations may still need review. Open Routine Interviews to check them.",
         href: PENDING_ROUTINE_EVALUATIONS,
         actionLabel: "Open Routine Interviews",
       });
@@ -365,7 +372,7 @@ export function useOverviewAttention(
       items.push({
         id: "good-moral-summary",
         title: "Good Moral requests",
-        detail: "Your Overview summary still reports requests awaiting issuance. Open the workspace to review them.",
+        detail: "Requests may still be awaiting issuance. Open Good Moral to review them.",
         href: REQUESTED_GOOD_MORAL,
         actionLabel: "Open Good Moral",
       });
@@ -394,7 +401,7 @@ export function useOverviewAttention(
       dueEmailCount !== undefined &&
       dueEmailCount > 0
     ) {
-      detail = failedEmailCount + " failed · " + dueEmailCount + " due pending";
+      detail = failedEmailCount + " failed · " + dueEmailCount + " due for a delivery attempt";
     } else if (
       failedEmailCount !== null &&
       failedEmailCount !== undefined &&
@@ -410,7 +417,7 @@ export function useOverviewAttention(
         dueEmailCount +
         " email " +
         (dueEmailCount === 1 ? "delivery is" : "deliveries are") +
-        " due and pending";
+        " due for a delivery attempt";
     } else {
       detail = "Email delivery requires review";
     }
@@ -423,30 +430,6 @@ export function useOverviewAttention(
     });
   }
 
-  const studentAttentionScope =
-    inventoryEnabled ||
-    exitEnabled ||
-    graduateEnabled ||
-    (isStudent &&
-      routineAccess.canViewSelf &&
-      hasCount(summary?.student?.routine_intake_draft_count));
-  const counselorAttentionScope =
-    (isCounselor &&
-      routineAccess.canViewAssigned &&
-      hasCount(summary?.guidance?.routine_evaluation_pending_count)) ||
-    (isCounselor &&
-      goodMoralAccess.canViewOperational &&
-      hasCount(summary?.guidance?.good_moral_requested_count));
-  const platformAttentionScope =
-    canViewEmailDeliveries &&
-    ((platform?.email_failed_count !== null && platform?.email_failed_count !== undefined) ||
-      (platform?.email_due_pending_count !== null && platform?.email_due_pending_count !== undefined));
-  const isVisible =
-    items.length > 0 ||
-    studentAttentionScope ||
-    counselorAttentionScope ||
-    platformAttentionScope;
-
   const isPending =
     (inventoryEnabled && inventory.isPending) ||
     (studentRoutineEnabled && studentRoutines.isPending) ||
@@ -454,14 +437,12 @@ export function useOverviewAttention(
     (graduateEnabled && graduateResponse.isPending) ||
     (counselorRoutineEnabled && counselorRoutines.isPending) ||
     (goodMoralEnabled && goodMoralRequests.isPending);
+  const isVisible = shouldShowOverviewAttention(items.length, isPending, staleNotices.length);
 
   return {
     items,
     isPending,
     isVisible,
-    emptyMessage: isStudent
-      ? "No current forms require your attention."
-      : "No current items require your attention.",
     staleNotices: Array.from(new Set(staleNotices)),
   };
 }

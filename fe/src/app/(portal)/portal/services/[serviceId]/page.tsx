@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Service Details" };
+
 import { Suspense } from "react";
 
 import { ServicesDetailSkeleton } from "@/features/services/services-shared";

@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Routine Interview Details" };
+
 import { Suspense } from "react";
 
 import { RoutineInterviewDetailSkeleton } from "@/features/routine-interviews/routine-interviews-shared";

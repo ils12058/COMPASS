@@ -101,7 +101,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
           ) : encounters.isError ? (
             <CounselingQueryError message={counselingErrorMessage(encounters.error, "My Counseling Encounters could not be loaded.")} onRetry={() => void encounters.refetch()} />
           ) : items.length === 0 ? (
-            <p className="border-y border-border py-6 text-sm text-muted">{hasFilters ? "No Counseling Encounters match the current filters. Clear or adjust them to broaden the results." : "There are no Counseling Encounters assigned to you yet."}</p>
+            <p className="border-y border-border py-6 text-sm text-muted">{hasFilters ? "No counseling encounters match the current filters. Clear or adjust them to broaden the results." : "No counseling encounters are assigned to you yet."}</p>
           ) : (
             <>
               <div className="overflow-x-auto border-y border-border">

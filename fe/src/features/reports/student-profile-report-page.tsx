@@ -37,7 +37,7 @@ export function StudentProfileReportPage() {
   if (!canAttemptReports(user)) {
     return (
       <WorkspaceUnavailable title="Student Profiling unavailable">
-        Your current access does not include Reports.
+        Reports are unavailable to this account.
       </WorkspaceUnavailable>
     );
   }
@@ -121,12 +121,12 @@ function StudentProfileReportWorkspace() {
         !campusesQuery.data
       ) {
         appliedFilterIssue =
-          "Campus choices could not be loaded to validate the applied report filter.";
+          "Campus choices could not be loaded. Retry before applying the report filters.";
       } else if (
         !campusChoices.some((campus) => campus.id === applied.params.campus_id)
       ) {
         appliedFilterIssue =
-          "The applied Campus is not available in your Reports scope.";
+          "The selected campus is unavailable for your reporting area.";
       }
     }
     if (!appliedFilterIssue && applied.params.college_id) {
@@ -138,21 +138,21 @@ function StudentProfileReportWorkspace() {
         !collegesQuery.data
       ) {
         appliedFilterIssue =
-          "College choices could not be loaded to validate the applied report filter.";
+          "College choices could not be loaded. Retry before applying the report filters.";
       } else if (!appliedCollege) {
         appliedFilterIssue =
-          "The applied College is not available in your Reports scope.";
+          "The selected college is unavailable for your reporting area.";
       } else if (
         applied.params.campus_id &&
         appliedCollege.campus.id !== applied.params.campus_id
       ) {
         appliedFilterIssue =
-          "The applied College does not belong to the selected Campus.";
+          "The selected college does not belong to the selected campus.";
       }
     }
     if (!appliedFilterIssue && applied.params.program_id) {
       if (!applied.params.college_id) {
-        appliedFilterIssue = "A Program filter requires a College filter.";
+        appliedFilterIssue = "Choose a college before choosing a program.";
       } else if (appliedProgramsQuery.isPending) {
         appliedFilterPending = true;
       } else if (
@@ -186,7 +186,7 @@ function StudentProfileReportWorkspace() {
 
   if (scopeQuery.isPending) {
     return (
-      <section aria-busy="true" aria-label="Resolving Student Profiling scope">
+      <section aria-busy="true" aria-label="Checking Student Profiling access">
         <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
           Student Profiling
         </h1>
@@ -194,7 +194,7 @@ function StudentProfileReportWorkspace() {
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-28 w-full" />
         </div>
-        <p className="sr-only">Resolving your Reports scope…</p>
+        <p className="sr-only">Checking your report access…</p>
       </section>
     );
   }
@@ -206,7 +206,7 @@ function StudentProfileReportWorkspace() {
             Student Profiling unavailable
           </h1>
           <p role="status" className="mt-5 border-y border-border py-5 text-sm text-muted">
-            No active report scope is currently assigned to your account.
+            No reporting area is currently assigned to your account.
           </p>
         </section>
       );
@@ -219,7 +219,7 @@ function StudentProfileReportWorkspace() {
         <div className="mt-5">
           <ReportQueryError
             error={scopeQuery.error}
-            fallback="Reports scope could not be resolved."
+            fallback="Your report access could not be checked."
             onRetry={() => void scopeQuery.refetch()}
           />
         </div>
@@ -233,7 +233,7 @@ function StudentProfileReportWorkspace() {
           Student Profiling unavailable
         </h1>
         <p role="status" className="mt-5 border-y border-border py-5 text-sm text-muted">
-          No active report scope is currently assigned to your account.
+          No reporting area is currently assigned to your account.
         </p>
       </section>
     );

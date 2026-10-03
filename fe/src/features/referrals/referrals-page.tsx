@@ -73,7 +73,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
     <div className="space-y-7">
       <ReferralHeading
         title="Referrals"
-        description="Record and review Student referrals within your authorized Guidance scope."
+        description="Record and review student referrals for your guidance area."
         action={access.canManage ? (
           <Link href="/portal/referrals/new" className={buttonVariants({ variant: "primary" })}>
             Record referral
@@ -128,7 +128,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
           ) : items.length === 0 ? (
             <div className="border-y border-border py-6">
               <p className="text-sm text-muted">
-                {filtered ? "No Referrals match these filters." : "No Referrals have been recorded in your current scope."}
+                {filtered ? "No referrals match these filters." : "No referrals have been recorded."}
               </p>
               {filtered ? <Link href="/portal/referrals" className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</Link> : null}
               <CanonicalPagination

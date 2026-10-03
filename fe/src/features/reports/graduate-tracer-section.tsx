@@ -71,7 +71,7 @@ export function GraduateTracerSection({
       </div>
       {section.rows.length === 0 ? (
         <p className="border-b border-border py-4 text-sm text-muted">
-          No categories were returned for this section.
+          No data is available for this section.
         </p>
       ) : null}
     </section>

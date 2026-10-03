@@ -203,7 +203,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
     <section className="space-y-6" aria-labelledby="graduate-tracer-form-heading">
       <header className="border-b border-border pb-5">
         <h2 id="graduate-tracer-form-heading" className="font-heading text-xl font-semibold text-ink">Graduate Tracer Survey</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">This survey collects information about your education and employment experiences to support graduate employability research and curriculum improvement. Your draft is private to you until you submit it.</p>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Your draft remains private until you submit it.</p>
       </header>
 
       <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10">
@@ -251,7 +251,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
               >
                 <p>
                   Your response will be finalized and made available to
-                  authorized Guidance and Counseling Office reviewers. You will
+                  authorized Head Guidance reviewers. You will
                   not be able to edit it after submission.
                 </p>
                 {needsSubmissionCheck ? (

@@ -109,7 +109,7 @@ function validateDraft(draft: DraftWindow[]): string | null {
         ) {
           return (
             weekdayLabels[weekday] +
-            " contains overlapping windows for the same delivery-mode context."
+            " has overlapping hours for the same delivery mode."
           );
         }
       }
@@ -227,8 +227,8 @@ export function WeeklyScheduleEditor({
               Weekly schedule
             </h2>
             <p className="mt-2 text-sm text-muted">
-              Existing recurring Availability may be reviewed or removed. Changes
-              affect future bookable times; existing Appointments remain unchanged.
+              You can review or clear these saved weekly hours. Existing
+              appointments stay scheduled.
             </p>
           </div>
           {canMutate && windows.length > 0 ? (
@@ -240,7 +240,7 @@ export function WeeklyScheduleEditor({
 
         {windows.length === 0 ? (
           <p className="mt-5 border-y border-border py-7 text-sm text-muted">
-            No recurring Availability has been configured.
+            No weekly hours are set.
           </p>
         ) : (
           <div className="mt-5 divide-y divide-border border-y border-border">
@@ -299,9 +299,9 @@ export function WeeklyScheduleEditor({
             Weekly schedule
           </h2>
           <p className="mt-2 text-sm text-muted">
-            Saving replaces the complete recurring weekly configuration. The new
-            schedule controls future bookable times; existing Appointments remain
-            unchanged and must be reviewed separately if needed.
+            Saving replaces all weekly hours shown below. These hours help
+            determine when new appointments can be offered. Existing appointments
+            stay scheduled; review them separately if the hours change.
           </p>
         </div>
         {canMutate ? (
@@ -340,7 +340,7 @@ export function WeeklyScheduleEditor({
 
               {rows.length === 0 ? (
                 <p className="mt-3 text-sm text-muted">
-                  No recurring availability
+                  No hours set
                 </p>
               ) : (
                 <div className="mt-3 space-y-3">

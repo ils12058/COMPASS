@@ -269,7 +269,7 @@ export function AccountAccess() {
     if (item.kind === "role")
       return [
         `Change ${name}'s role from ${roleLabels[account.role]} to ${roleLabels[item.role]}?`,
-        `This changes the account's baseline COMPASS access. If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.${item.role === "STUDENT" && !account.student_lifecycle_status ? " COMPASS will also initialize the account as a Current Student according to the backend Student-role transition rule." : ""}`,
+        `This changes the account's baseline COMPASS access. If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.${item.role === "STUDENT" && !account.student_lifecycle_status ? " The account will also begin with current student status." : ""}`,
         "Change role",
         "Changing role…",
       ];
@@ -448,8 +448,7 @@ export function AccountAccess() {
               </div>
             ) : (
               <p className="mt-3 text-sm text-muted">
-                You can view designations, but your current access does not
-                allow changing them.
+                You can view these designations, but cannot change them with this account.
               </p>
             )}
           </div>
