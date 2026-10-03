@@ -1,5 +1,11 @@
+import { ExternalLink } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+
+import { FooterAccountLink } from "@/features/public/shell/footer-account-link";
+
+const footerLinkClass =
+  "min-h-9 py-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand";
 
 export function PublicFooter() {
   return (
@@ -14,7 +20,7 @@ export function PublicFooter() {
             Counseling Office Management Platform and Student Services
           </p>
         </div>
-        <div className="flex items-center gap-3 self-start text-sm leading-6 text-on-brand/80">
+        <div className="flex items-start gap-3 self-start text-sm leading-6 text-on-brand/80">
           {/* The maroon mark disappears on this background; the user-approved exception in
               fe/AGENTS.md allows the solid white version here. */}
           <Image
@@ -22,26 +28,32 @@ export function PublicFooter() {
             width={89}
             height={82}
             alt=""
-            className="h-10 w-auto shrink-0 brightness-0 invert"
+            className="mt-1 h-10 w-auto shrink-0 brightness-0 invert"
           />
           <div>
             <p className="font-semibold text-on-brand">University of Camarines Norte</p>
             <p>Guidance and Counseling Office</p>
+            <a
+              href="https://ucn.edu.ph"
+              className="mt-1 inline-flex min-h-9 items-center gap-1.5 font-semibold text-on-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand"
+            >
+              ucn.edu.ph
+              <ExternalLink size={14} aria-hidden="true" />
+              <span className="sr-only">, the University of Camarines Norte website</span>
+            </a>
           </div>
         </div>
         <nav aria-label="Footer navigation" className="flex flex-col items-start gap-1 text-sm">
-          <Link className="min-h-9 py-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand" href="/announcements">
+          <Link className={footerLinkClass} href="/announcements">
             Announcements
           </Link>
-          <Link className="min-h-9 py-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand" href="/resources">
+          <Link className={footerLinkClass} href="/resources">
             Resources
           </Link>
-          <Link className="min-h-9 py-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand" href="/privacy">
+          <Link className={footerLinkClass} href="/privacy">
             Privacy
           </Link>
-          <Link className="min-h-9 py-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand" href="/login">
-            Sign in
-          </Link>
+          <FooterAccountLink className={footerLinkClass} />
         </nav>
       </div>
       <div className="border-t border-on-brand/20">

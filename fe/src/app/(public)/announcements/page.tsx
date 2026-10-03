@@ -19,7 +19,9 @@ export default async function AnnouncementsPage({
 
   return (
     <main>
-      <PublicPageHeader>
+      <PublicPageHeader
+        illustration={{ src: "/illustrations/gco-character-point-up.png", width: 330, height: 330 }}
+      >
         <h1 className="font-heading text-3xl font-bold tracking-tight text-ink sm:text-4xl">Announcements</h1>
       </PublicPageHeader>
       {/* Same left edge as the page title; the list keeps a readable width. */}

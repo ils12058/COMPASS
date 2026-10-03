@@ -88,37 +88,24 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
   const hasResources = canManageResources(user);
   const hasPrivacyGovernance = hasPrivacyGovernanceWorkspace(user);
 
+  // Daily work comes first; institution setup and administration sit at the end.
   const groups: { label: string; links: CandidateLink[] }[] = [
-    {
-      label: "Identity & Access",
-      links: [
-        { href: "/portal/accounts", label: "Accounts", icon: UsersRound, visible: canManageAccounts },
-      ],
-    },
-    {
-      label: "Institution",
-      links: [
-        { href: "/portal/organization", label: "Organization", icon: Building2, visible: hasInstitution && hasOrganization },
-        { href: "/portal/academic-years", label: "Academic Years", icon: CalendarRange, visible: hasInstitution && hasAcademicYears },
-        { href: "/portal/institutional-forms", label: "Institutional Forms", icon: FileText, visible: hasInstitution && hasInstitutionalForms },
-      ],
-    },
     {
       label: "Scheduling",
       links: [
-        { href: "/portal/services", label: "Services", icon: HeartHandshake, visible: hasServices },
         { href: "/portal/appointments", label: "Appointments", icon: CalendarClock, visible: hasAppointments },
         { href: "/portal/availability", label: "Availability", icon: Clock3, visible: hasAvailability },
+        { href: "/portal/services", label: "Services", icon: HeartHandshake, visible: hasServices },
       ],
     },
     {
       label: "Records",
       links: [
-        { href: "/portal/inventory", label: "Individual Inventory", icon: ClipboardList, visible: hasInventory },
         { href: "/portal/routine-interviews", label: "Routine Interviews", icon: MessagesSquare, visible: hasRoutineInterviews },
         { href: "/portal/counseling", label: "Counseling", icon: MessageCircleHeart, visible: hasCounseling },
         { href: "/portal/referrals", label: "Referrals", icon: Forward, visible: hasReferrals },
         { href: "/portal/call-slips", label: "Call Slips", icon: ScrollText, visible: hasCallSlips },
+        { href: "/portal/inventory", label: "Individual Inventory", icon: ClipboardList, visible: hasInventory },
       ],
     },
     {
@@ -140,6 +127,20 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
     {
       label: "Reports",
       links: [{ href: "/portal/reports", label: "Reports", icon: ChartColumn, visible: hasReports }],
+    },
+    {
+      label: "Institution",
+      links: [
+        { href: "/portal/organization", label: "Organization", icon: Building2, visible: hasInstitution && hasOrganization },
+        { href: "/portal/academic-years", label: "Academic Years", icon: CalendarRange, visible: hasInstitution && hasAcademicYears },
+        { href: "/portal/institutional-forms", label: "Institutional Forms", icon: FileText, visible: hasInstitution && hasInstitutionalForms },
+      ],
+    },
+    {
+      label: "Identity & Access",
+      links: [
+        { href: "/portal/accounts", label: "Accounts", icon: UsersRound, visible: canManageAccounts },
+      ],
     },
     {
       label: "Privacy",

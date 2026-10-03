@@ -90,6 +90,12 @@ that background. This does not permit recoloring brand marks anywhere else.
 
 Character illustrations are appropriate primarily for public-facing, onboarding, empty-state, or friendly informational contexts where they genuinely support the message. They should normally not appear inside dense administrative workspaces.
 
+Current placements: the group image in the public landing hero; the waving character at sign-in;
+the pointing-up character in the public Announcements title band and on the not-found page; and
+the pointing-right character in the public Resources title band (`PublicPageHeader`
+`illustration`). A character repeats only on pages that never appear together. Do not add one to
+detail pages, the landing's lower regions, or portal screens.
+
 ---
 
 # 3. Technology baseline
@@ -1770,6 +1776,12 @@ A page may coordinate multiple operations.
 Several operations may belong inside one record-detail workflow.
 
 Do not create sidebar pages merely because separate API endpoints exist.
+
+The portal sidebar and the public landing's quick access read one access list,
+`portalWorkspaceGroups` (`src/features/portal/components/portal-workspaces.ts`). It orders the
+sidebar by how often the work happens: scheduling, records, requests and surveys, content, and
+reports first; institution setup, identity and access, privacy governance, and platform operations
+last. Add a workspace there, in the group where its daily use belongs.
 
 Information architecture is product design, not an automatic projection of the backend router.
 

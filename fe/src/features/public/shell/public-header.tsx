@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useId, useRef, useState } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
+import { PublicAccountMenu } from "@/features/public/shell/public-account-menu";
 import { useAuthGetSession } from "@/lib/api/generated/auth/auth";
 import { cn } from "@/lib/utils/cn";
 
@@ -50,12 +51,11 @@ const menuBar =
 
 function MobileMenu({
   pathname,
-  accountHref,
-  accountLabel,
+  signInHref,
 }: {
   pathname: string;
-  accountHref: string;
-  accountLabel: string;
+  // Present only while signed out; a signed-in reader uses the account menu beside this button.
+  signInHref?: string;
 }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
@@ -105,14 +105,18 @@ function MobileMenu({
             {item.label}
           </Link>
         ))}
-        <div className="my-1 h-px bg-border" aria-hidden="true" />
-        <Link
-          href={accountHref}
-          onClick={close}
-          className={buttonVariants({ variant: "primary", className: "flex min-h-11 rounded-sm px-3" })}
-        >
-          {accountLabel}
-        </Link>
+        {signInHref ? (
+          <>
+            <div className="my-1 h-px bg-border" aria-hidden="true" />
+            <Link
+              href={signInHref}
+              onClick={close}
+              className={buttonVariants({ variant: "primary", className: "flex min-h-11 rounded-sm px-3" })}
+            >
+              Sign in to COMPASS
+            </Link>
+          </>
+        ) : null}
       </nav>
     </div>
   );
@@ -121,13 +125,13 @@ function MobileMenu({
 export function PublicHeader() {
   const pathname = usePathname();
   const session = useAuthGetSession({ query: { retry: false, staleTime: 60_000 } });
-  const authenticated = session.isSuccess && session.data.data.authenticated;
-  const accountHref = authenticated ? "/portal" : "/login";
+  const user = session.isSuccess && session.data.data.authenticated ? session.data.data.user : null;
 
   return (
     <header className="relative z-30 border-b border-border bg-surface-raised">
-      <div className="mx-auto flex h-18 max-w-6xl items-center justify-between gap-6 px-5 sm:px-8">
+      <div className="mx-auto flex h-18 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
         <Brand />
+        <div className="flex items-center gap-2">
         <nav aria-label="Public navigation" className="hidden items-center gap-1 md:flex">
           {navigation.map((item) => (
             <Link
@@ -139,19 +143,20 @@ export function PublicHeader() {
               {item.label}
             </Link>
           ))}
-          <Link
-            href={accountHref}
-            className={buttonVariants({ variant: "primary", className: "ml-2" })}
-          >
-            {authenticated ? "Open COMPASS" : "Sign in"}
-          </Link>
         </nav>
-        <MobileMenu
-          key={pathname}
-          pathname={pathname}
-          accountHref={accountHref}
-          accountLabel={authenticated ? "Open COMPASS" : "Sign in to COMPASS"}
-        />
+        {/* Signed in, the reader's own menu replaces the Sign in button at every width. */}
+        {user ? (
+          <PublicAccountMenu user={user} />
+        ) : (
+          <Link
+            href="/login"
+            className={buttonVariants({ variant: "primary", className: "ml-2 hidden md:inline-flex" })}
+          >
+            Sign in
+          </Link>
+        )}
+        <MobileMenu key={pathname} pathname={pathname} signInHref={user ? undefined : "/login"} />
+        </div>
       </div>
     </header>
   );

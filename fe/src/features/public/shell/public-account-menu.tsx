@@ -1,56 +1,53 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, UserRound } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { LayoutDashboard, LogOut, UserRound } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
-import { useUnsavedNavigation } from "@/features/form-safety/unsaved-changes-provider";
-import { usePortalSession } from "@/features/portal/components/portal-session";
 import { AccountMenu } from "@/features/account/components/account-menu";
 import { authErrorMessage } from "@/features/auth/utils/errors";
 import { CompassApiError } from "@/lib/api/errors";
 import { useAuthLogout } from "@/lib/api/generated/auth/auth";
+import type { UserSummary } from "@/lib/api/generated/model";
 import { useProfileGetMyProfile } from "@/lib/api/generated/profile/profile";
 
-export function PortalUserMenu() {
-  const { user } = usePortalSession();
+// The signed-in reader's menu on the public site. Signing out keeps the reader on the page they
+// are reading; resetting the cached queries drops their account data and refetches the session,
+// so the header returns to "Sign in".
+export function PublicAccountMenu({ user }: { user: UserSummary }) {
   const queryClient = useQueryClient();
-  const router = useRouter();
-  const { confirmDiscard } = useUnsavedNavigation();
   const [error, setError] = useState<string | null>(null);
   const logout = useAuthLogout();
   const profile = useProfileGetMyProfile({ query: { retry: false, staleTime: 60_000 } }).data?.data;
 
-  function finishLogout() {
-    queryClient.clear();
-    router.replace("/");
-  }
-
   async function signOut() {
-    if (!confirmDiscard()) return;
     setError(null);
     try {
       await logout.mutateAsync();
-      finishLogout();
     } catch (caught) {
-      if (caught instanceof CompassApiError && caught.status === 401) {
-        finishLogout();
+      if (!(caught instanceof CompassApiError && caught.status === 401)) {
+        setError(authErrorMessage(caught, "Sign out could not be completed. Please try again."));
         return;
       }
-      setError(authErrorMessage(caught, "Sign out could not be completed. Please try again."));
     }
+    await queryClient.resetQueries();
   }
 
   return (
     <AccountMenu user={user} profile={profile} error={error}>
       <DropdownMenuItem asChild>
-        <GuardedPortalLink href="/portal/account/profile">
+        <Link href="/portal">
+          <LayoutDashboard size={17} className="mr-2" aria-hidden="true" />
+          Open COMPASS
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <Link href="/portal/account/profile">
           <UserRound size={17} className="mr-2" aria-hidden="true" />
           Account
-        </GuardedPortalLink>
+        </Link>
       </DropdownMenuItem>
       <DropdownMenuSeparator className="my-1 h-px bg-border" />
       <DropdownMenuItem disabled={logout.isPending} onSelect={() => void signOut()}>

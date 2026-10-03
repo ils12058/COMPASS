@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
@@ -95,12 +96,26 @@ function LoginForm({ nextPath, emailChanged }: { nextPath: string; emailChanged:
           <p>For security, sign in again using your new email.</p>
         </div>
       ) : null}
-      <h1 id="login-heading" className="font-heading text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-        Sign in to COMPASS
-      </h1>
-      <p className="mt-3 text-sm leading-6 text-muted">
-        Use your University of Camarines Norte COMPASS account.
-      </p>
+      {/* The waving GCO character greets the reader once, here at sign-in. */}
+      <div className="flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 id="login-heading" className="font-heading text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+            Sign in to COMPASS
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            Use your University of Camarines Norte COMPASS account.
+          </p>
+        </div>
+        <Image
+          src="/illustrations/gco-character-wave.png"
+          width={330}
+          height={330}
+          alt=""
+          aria-hidden="true"
+          priority
+          className="hidden h-24 w-auto shrink-0 sm:block"
+        />
+      </div>
 
       <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
         <div className="grid gap-2">
