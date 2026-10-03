@@ -84,10 +84,9 @@ Do not:
 
 Preserve the aspect ratio and visual integrity of brand assets.
 
-User-approved exceptions: on the maroon public footer and the branded authentication canvas,
-`public/brand/ucn-logo.png` may be rendered in solid white with a CSS filter
-(`brightness-0 invert`), because the maroon mark is not visible on those backgrounds. This does
-not permit recoloring brand marks anywhere else.
+User-approved exception: on the maroon public footer, `public/brand/ucn-logo.png` may be
+rendered in solid white with a CSS filter (`brightness-0 invert`), because the maroon mark is not
+visible on that background. This does not permit recoloring brand marks anywhere else.
 
 Character illustrations are appropriate primarily for public-facing, onboarding, empty-state, or friendly informational contexts where they genuinely support the message. They should normally not appear inside dense administrative workspaces.
 

@@ -40,13 +40,11 @@ const SWITCHES: readonly { key: AccessibilitySwitch; label: string; description:
   },
 ];
 
-type Placement = "floating" | "header" | "auth";
+type Placement = "floating" | "header";
 
 const triggerStyles: Record<Placement, string> = {
   floating:
     "fixed bottom-4 right-4 z-40 inline-flex size-12 items-center justify-center rounded-full border border-brand bg-surface-raised text-brand shadow-md transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 print:hidden",
-  auth:
-    "absolute right-4 top-4 z-40 inline-flex size-12 items-center justify-center rounded-full border border-brand bg-surface-raised text-brand shadow-md transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 print:hidden sm:fixed sm:bottom-4 sm:top-auto",
   header:
     "relative inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-expanded:bg-surface-muted aria-expanded:text-brand",
 };
@@ -55,7 +53,6 @@ const triggerStyles: Record<Placement, string> = {
 // panel is positioned against the page, just below the portal header.
 const panelStyles: Record<Placement, string> = {
   floating: "fixed bottom-20 right-4 origin-bottom-right",
-  auth: "fixed right-4 top-20 origin-top-right sm:bottom-20 sm:top-auto sm:origin-bottom-right",
   header: "absolute top-20 right-4 origin-top-right sm:right-6 lg:right-8",
 };
 
