@@ -84,13 +84,13 @@ Do not:
 
 Preserve the aspect ratio and visual integrity of brand assets.
 
-User-approved exception: on the maroon public footer, `public/brand/ucn-logo.png` may be rendered
-in solid white with a CSS filter (`brightness-0 invert`), because the maroon mark is not visible on
-that background. This does not permit recoloring brand marks anywhere else.
+User-approved exception: on the maroon public footer, `public/brand/ucn-logo.png` may be
+rendered in solid white with a CSS filter (`brightness-0 invert`), because the maroon mark is not
+visible on that background. This does not permit recoloring brand marks anywhere else.
 
 Character illustrations are appropriate primarily for public-facing, onboarding, empty-state, or friendly informational contexts where they genuinely support the message. They should normally not appear inside dense administrative workspaces.
 
-Current placements: the group image in the public landing hero; the waving character at sign-in;
+Current placements: the group image in the public landing hero;
 the pointing-up character in the public Announcements title band; and
 the pointing-right character in the public Resources title band (`PublicPageHeader`
 `illustration`). A character repeats only on pages that never appear together. Do not add one to

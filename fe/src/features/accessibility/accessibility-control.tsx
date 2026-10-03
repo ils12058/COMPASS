@@ -85,7 +85,7 @@ export function AccessibilityControl({ placement }: { placement: Placement }) {
         title="Accessibility settings"
         className={triggerStyles[placement]}
       >
-        <Accessibility size={placement === "floating" ? 22 : 20} aria-hidden="true" />
+        <Accessibility size={placement === "header" ? 20 : 22} aria-hidden="true" />
       </button>
 
       <div

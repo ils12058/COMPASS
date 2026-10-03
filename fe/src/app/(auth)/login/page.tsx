@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { AuthSurface } from "@/features/auth/components/auth-surface";
 import { LoginScreen } from "@/features/auth/login/login-screen";
 import { safePortalDestination } from "@/features/auth/utils/redirect";
 
@@ -12,5 +13,9 @@ export default async function LoginPage({
 }) {
   const { next, email_changed } = await searchParams;
   const requested = Array.isArray(next) ? next[0] : next;
-  return <LoginScreen nextPath={safePortalDestination(requested)} emailChanged={email_changed === "1"} />;
+  return (
+    <AuthSurface>
+      <LoginScreen nextPath={safePortalDestination(requested)} emailChanged={email_changed === "1"} />
+    </AuthSurface>
+  );
 }
