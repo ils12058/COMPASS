@@ -220,11 +220,12 @@ export function EffectiveAvailabilityPreview({
         id="effective-availability-heading"
         className="font-heading text-2xl font-semibold text-ink"
       >
-        Effective availability preview
+        Schedule preview
       </h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-        This preview combines Office and Counselor schedules, unavailability,
-        and Service constraints. Final Appointment availability may differ.
+        This shows where office hours, counselor hours, time off, and service
+        rules overlap. It does not account for appointments already booked;
+        check appointment booking for open times.
       </p>
 
       {services.isError && serviceData ? <RefreshFailureNotice onRetry={() => void services.refetch()} retrying={services.isFetching} /> : null}
