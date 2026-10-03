@@ -276,7 +276,7 @@ function MarkdownEditorSurface({
     // The frame is the visible control, so it carries the same invalid treatment as Input.
     <div
       className={cn(
-        "rounded-md border border-border bg-surface-raised has-[.ProseMirror-focused]:border-focus has-[.ProseMirror-focused]:ring-2 has-[.ProseMirror-focused]:ring-focus/25",
+        "rounded-md border border-border-strong bg-surface-raised has-[.ProseMirror-focused]:border-focus has-[.ProseMirror-focused]:ring-2 has-[.ProseMirror-focused]:ring-focus/25",
         invalid &&
           "border-danger has-[.ProseMirror-focused]:border-danger has-[.ProseMirror-focused]:ring-danger/25",
       )}

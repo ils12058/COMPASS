@@ -8,6 +8,7 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import {
   referralErrorCode,
@@ -48,16 +49,19 @@ export function ReferralActionsSection({
   onRefresh: () => Promise<ReferralDetailResponse | undefined>;
 }) {
   return (
-    <section aria-labelledby="referral-actions-heading" className="border-t border-border py-6">
-      <h2 id="referral-actions-heading" className="font-heading text-xl font-semibold text-ink">Actions taken</h2>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Record actions already taken. Adding an entry here does not place a call, send a letter, or notify the student.</p>
-      <ol className="mt-4 divide-y divide-border border-y border-border">
+    <Panel aria-labelledby="referral-actions-heading">
+      <PanelHeader
+        title="Actions taken"
+        titleId="referral-actions-heading"
+        description="Record actions already taken. Adding an entry here does not place a call, send a letter, or notify the student."
+      />
+      <ol className="divide-y divide-border">
         {actionRows.map((row) => {
           const action = referral.actions.find((item) => item.action_type === row.type);
           const callSlipIssuanceHandledBelow =
             row.type === ReferralActionTypeValue.SEND_CALL_SLIP_INTERVIEW_PERMIT && canManageCallSlips;
           return (
-            <li key={row.type} className="py-4">
+            <li key={row.type} className="px-4 py-4 sm:px-5">
               <h3 className="font-semibold text-ink">{row.label}</h3>
               {action ? (
                 <RecordedAction action={action} />
@@ -79,7 +83,7 @@ export function ReferralActionsSection({
           );
         })}
       </ol>
-    </section>
+    </Panel>
   );
 }
 
@@ -226,7 +230,7 @@ export function ReferralActionEntry({
           {buttonLabel}
         </Button>
       ) : (
-        <form className="max-w-xl space-y-4 border-l-2 border-border pl-4" onSubmit={submit} aria-busy={recordPending}>
+        <form className="max-w-xl space-y-4 rounded-sm bg-surface-subtle px-4 py-4" onSubmit={submit} aria-busy={recordPending}>
           <div className="grid gap-2">
             <Label htmlFor={`action-occurred-${actionType}`}>Action occurred</Label>
             <Input

@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -226,36 +228,34 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
 
   if (!preset && !source) {
     return (
-      <section className="border-y border-border py-5" aria-labelledby="record-encounter-source-heading">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 id="record-encounter-source-heading" className="font-heading text-xl font-semibold text-ink">Record counseling encounter</h2>
-            <p className="mt-1 text-sm text-muted">Choose how the completed interaction originated.</p>
+      <Panel aria-labelledby="record-encounter-source-heading">
+        <PanelHeader
+          title="Record counseling encounter"
+          titleId="record-encounter-source-heading"
+          description="Choose how the completed interaction originated."
+          actions={onCancel && !uncertain ? <Button variant="quiet" onClick={onCancel}>Close</Button> : undefined}
+        />
+        <PanelBody>
+          <div role="group" aria-label="Counseling interaction source" className="flex flex-wrap gap-3">
+            <Button variant="secondary" onClick={() => changeSource("appointment")}>From Counseling appointment</Button>
+            <Button variant="secondary" onClick={() => changeSource("direct")}>Walk-in / called-in / referred</Button>
           </div>
-          {onCancel && !uncertain ? <Button variant="quiet" onClick={onCancel}>Close</Button> : null}
-        </div>
-        <div role="group" aria-label="Counseling interaction source" className="mt-5 flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={() => changeSource("appointment")}>From Counseling appointment</Button>
-          <Button variant="secondary" onClick={() => changeSource("direct")}>Walk-in / called-in / referred</Button>
-        </div>
-      </section>
+        </PanelBody>
+      </Panel>
     );
   }
 
   return (
-    <section className="border-y border-border py-5" aria-labelledby="record-encounter-heading">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 id="record-encounter-heading" className="font-heading text-xl font-semibold text-ink">Record counseling encounter</h2>
-          <p className="mt-1 text-sm text-muted">
-            {preset ? "Record the completed interaction connected to this Counseling context." : source === "appointment" ? "Select an eligible Counseling Appointment, then enter when the interaction actually occurred." : "Select a Student and record the completed direct interaction."}
-          </p>
-        </div>
-        {!preset && !uncertain ? <Button variant="quiet" disabled={create.isPending} onClick={() => source ? changeSource(source === "appointment" ? "direct" : "appointment") : onCancel?.()}>Change source</Button> : preset && onCancel && !uncertain ? <Button variant="quiet" disabled={create.isPending} onClick={onCancel}>Close</Button> : null}
-      </div>
+    <Panel aria-labelledby="record-encounter-heading">
+      <PanelHeader
+        title="Record counseling encounter"
+        titleId="record-encounter-heading"
+        description={preset ? "Record the completed interaction connected to this Counseling context." : source === "appointment" ? "Select an eligible Counseling Appointment, then enter when the interaction actually occurred." : "Select a Student and record the completed direct interaction."}
+        actions={!preset && !uncertain ? <Button variant="quiet" disabled={create.isPending} onClick={() => source ? changeSource(source === "appointment" ? "direct" : "appointment") : onCancel?.()}>Change source</Button> : preset && onCancel && !uncertain ? <Button variant="quiet" disabled={create.isPending} onClick={onCancel}>Close</Button> : undefined}
+      />
 
       {!preset && source === "appointment" ? (
-        <div className="mt-5 space-y-4">
+        <div className="space-y-4 px-4 py-4 sm:px-5">
           <form className="grid gap-2 sm:max-w-xl" onSubmit={(event) => { event.preventDefault(); setCandidateQuery(candidateSearch.trim()); setPage(1); setSelectedAppointmentId(""); setSelectedAppointmentRecord(null); setError(null); }}>
             <Label htmlFor="counseling-appointment-search">Search Counseling Appointments</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -263,12 +263,12 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
               <Button type="submit" variant="secondary">Search</Button>
             </div>
           </form>
-          {appointmentCandidates.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Counseling Appointment candidates…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : appointmentCandidates.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(appointmentCandidates.error, "Counseling Appointments could not be loaded.")}</p> : appointments.length === 0 ? <p className="border-y border-border py-4 text-sm text-muted">No eligible Counseling Appointments match this search.</p> : (
+          {appointmentCandidates.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Counseling Appointment candidates…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : appointmentCandidates.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(appointmentCandidates.error, "Counseling Appointments could not be loaded.")}</p> : appointments.length === 0 ? <p className="text-sm text-muted">No eligible Counseling Appointments match this search.</p> : (
             <>
-              <ul className="divide-y divide-border border-y border-border" aria-label="Counseling Appointment candidates">
+              <ul className="divide-y divide-border rounded-sm border border-border" aria-label="Counseling Appointment candidates">
                 {appointments.map((candidate) => (
                   <li key={candidate.id}>
-                    <button type="button" aria-pressed={selectedAppointmentId === candidate.id} onClick={() => { setSelectedAppointmentId(candidate.id); setSelectedAppointmentRecord(candidate); setStartedAt(""); setEndedAt(""); setError(null); }} className={`flex w-full flex-wrap items-start justify-between gap-3 px-3 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${selectedAppointmentId === candidate.id ? "bg-surface-muted" : "hover:bg-surface-muted/60"}`}>
+                    <button type="button" aria-pressed={selectedAppointmentId === candidate.id} onClick={() => { setSelectedAppointmentId(candidate.id); setSelectedAppointmentRecord(candidate); setStartedAt(""); setEndedAt(""); setError(null); }} className={`flex w-full flex-wrap items-start justify-between gap-3 px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${selectedAppointmentId === candidate.id ? "bg-brand-wash" : "hover:bg-surface-subtle"}`}>
                       <span>
                         <span className="block font-semibold text-ink">{candidate.reference_code} · {candidate.student.display_name}</span>
                         <span className="mt-1 block text-sm text-muted">{candidate.student.institutional_id ? `Institutional ID ${candidate.student.institutional_id} · ` : ""}{formatCounselingDateTime(candidate.starts_at)} – {formatCounselingDateTime(candidate.ends_at)}</span>
@@ -278,14 +278,14 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
                   </li>
                 ))}
               </ul>
-              <CanonicalPagination label="Appointment candidate pages" page={appointmentCandidates.data?.data.page ?? page} hasNext={appointmentCandidates.data?.data.has_next ?? false} onPageChange={setPage} />
+              <CanonicalPagination className="border-t-0 pb-0" label="Appointment candidate pages" page={appointmentCandidates.data?.data.page ?? page} hasNext={appointmentCandidates.data?.data.has_next ?? false} onPageChange={setPage} />
             </>
           )}
         </div>
       ) : null}
 
       {!preset && source === "direct" ? (
-        <div className="mt-5 space-y-5">
+        <div className="space-y-5 px-4 py-4 sm:px-5">
           {creationOptions.isPending ? <div aria-busy="true"><Skeleton className="h-12 w-full" /></div> : creationOptions.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(creationOptions.error, "Counseling recording options could not be loaded.")}</p> : options ? (
             <div><p className="text-sm text-muted">Service: <span className="font-medium text-ink">{options.service.name}</span></p>{options.delivery_modes.length === 0 ? <p role="status" className="mt-2 text-sm text-warning">No delivery mode is currently configured for this Counseling Service.</p> : null}</div>
           ) : null}
@@ -296,19 +296,19 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
               <Button type="submit" variant="secondary">Search</Button>
             </div>
           </form>
-          {students.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Student candidates…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : students.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(students.error, "Student candidates could not be loaded.")}</p> : studentItems.length === 0 ? <p className="border-y border-border py-4 text-sm text-muted">No students match this search.</p> : (
+          {students.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Student candidates…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : students.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(students.error, "Student candidates could not be loaded.")}</p> : studentItems.length === 0 ? <p className="text-sm text-muted">No students match this search.</p> : (
             <>
-              <ul className="divide-y divide-border border-y border-border" aria-label="Student candidates">
+              <ul className="divide-y divide-border rounded-sm border border-border" aria-label="Student candidates">
                 {studentItems.map((student) => (
                   <li key={student.id}>
-                    <button type="button" aria-pressed={selectedStudentId === student.id} onClick={() => { if (selectedStudentId !== student.id) { setStartedAt(""); setEndedAt(""); } setSelectedStudentId(student.id); setSelectedStudentRecord(student); setError(null); }} className={`w-full px-3 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${selectedStudentId === student.id ? "bg-surface-muted" : "hover:bg-surface-muted/60"}`}>
+                    <button type="button" aria-pressed={selectedStudentId === student.id} onClick={() => { if (selectedStudentId !== student.id) { setStartedAt(""); setEndedAt(""); } setSelectedStudentId(student.id); setSelectedStudentRecord(student); setError(null); }} className={`w-full px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${selectedStudentId === student.id ? "bg-brand-wash" : "hover:bg-surface-subtle"}`}>
                       <span className="block font-semibold text-ink">{student.display_name}</span>
                       <span className="mt-1 block text-sm text-muted">Institutional ID: {student.institutional_id ?? "Not provided"}</span>
                     </button>
                   </li>
                 ))}
               </ul>
-              <CanonicalPagination label="Student pages" page={students.data?.data.page ?? page} hasNext={students.data?.data.has_next ?? false} onPageChange={setPage} />
+              <CanonicalPagination className="border-t-0 pb-0" label="Student pages" page={students.data?.data.page ?? page} hasNext={students.data?.data.has_next ?? false} onPageChange={setPage} />
             </>
           )}
           {selectedStudent && options ? (
@@ -332,8 +332,8 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
       ) : null}
 
       {hasSelectedRecord && selectedOrigin ? (
-        <form onSubmit={submit} className="mt-6 border-t border-border pt-5">
-          <div className="grid gap-x-8 gap-y-4 border-b border-border pb-5 sm:grid-cols-2">
+        <form onSubmit={submit} className="border-t border-brand-line px-4 py-5 sm:px-5">
+          <div className="grid gap-x-8 gap-y-4 rounded-sm bg-surface-subtle px-4 py-3.5 sm:grid-cols-2">
             <div><p className="text-xs font-semibold text-muted">Student</p><p className="mt-1 text-sm font-semibold text-ink">{selectedOrigin.studentName}</p><p className="mt-1 text-xs text-muted">Institutional ID: {selectedOrigin.institutionalId ?? "Not provided"}</p></div>
             <div><p className="text-xs font-semibold text-muted">Origin and delivery</p><p className="mt-1 text-sm text-ink">{counselingEntryModeLabel(selectedOrigin.entryMode)} · {counselingDeliveryModeLabel(selectedOrigin.deliveryMode)}</p>{selectedOrigin.appointmentReference ? <p className="mt-1 text-xs text-muted">Appointment {selectedOrigin.appointmentReference}</p> : null}</div>
           </div>
@@ -347,16 +347,16 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
           {startedAt && endedAt && timeError ? <p id="counseling-time-error" className="mt-2 text-sm text-danger">The actual start must be before the end, and the end cannot be in the future.</p> : null}
           {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
           {uncertain ? (
-            <div role="alert" className="mt-4 border-y border-warning/40 py-4">
-              <p className="text-sm leading-6 text-ink">The result of this recording request could not be confirmed. Refresh My Counseling Encounters before recording the interaction again to avoid a duplicate record.</p>
+            <Notice role="alert" tone="warning" className="mt-4">
+              <p className="text-ink">The result of this recording request could not be confirmed. Refresh My Counseling Encounters before recording the interaction again to avoid a duplicate record.</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button type="button" variant="secondary" onClick={() => void Promise.all([
                   queryClient.invalidateQueries({ queryKey: getCounselingListMyEncountersQueryKey() }),
                   ...(selectedOrigin.entryMode === "APPOINTMENT" ? [queryClient.invalidateQueries({ queryKey: getCounselingListAppointmentCandidatesQueryKey() })] : []),
                 ])}>Refresh My Counseling Encounters</Button>
-                <Link href="/portal/counseling#encounters" className="inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">View My Counseling Encounters</Link>
+                <Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "secondary" })}>View My Counseling Encounters</Link>
               </div>
-            </div>
+            </Notice>
           ) : null}
           {!uncertain ? (
             <div className="mt-5 flex flex-wrap gap-2">
@@ -371,6 +371,6 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
       {preset && selectedContextStudent ? (
         <p className="sr-only">This encounter will be recorded for {selectedContextStudent.studentName}.</p>
       ) : null}
-    </section>
+    </Panel>
   );
 }

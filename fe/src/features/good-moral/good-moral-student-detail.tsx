@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { pageBackLinkClass } from "@/components/ui/page-header";
+import { Panel, PanelSection, RecordSummary, type RecordFact } from "@/components/ui/panel";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { GoodMoralCancelAction } from "@/features/good-moral/good-moral-cancellation-action";
@@ -10,6 +12,7 @@ import {
   GoodMoralDetailSkeleton,
   GoodMoralError,
   GoodMoralField,
+  GoodMoralHeading,
   GoodMoralSection,
   GoodMoralStatus,
   formatGoodMoralAmount,
@@ -19,6 +22,8 @@ import {
   goodMoralVariantLabel,
 } from "@/features/good-moral/good-moral-shared";
 import { useGoodMoralGetMyRequest } from "@/lib/api/generated/good-moral/good-moral";
+
+const factGrid = "grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3";
 
 export function GoodMoralStudentDetail({
   requestId,
@@ -37,8 +42,8 @@ export function GoodMoralStudentDetail({
     const notFound = goodMoralErrorCode(detail.error) === "good_moral_not_found";
     return (
       <section className="max-w-2xl space-y-5">
-        <Link href="/portal/good-moral" className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Good Moral</Link>
-        {notFound ? <div role="alert" className="border-y border-border py-6"><h1 className="font-heading text-2xl font-semibold text-ink">Good Moral request not found</h1></div> : <GoodMoralError error={detail.error} fallback="Your Good Moral request could not be loaded." onRetry={() => void detail.refetch()} />}
+        <Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>
+        {notFound ? <div role="alert" className="rounded-sm border border-brand-line bg-surface-raised px-4 py-5 sm:px-5"><h1 className="font-heading text-2xl font-semibold text-ink">Good Moral request not found</h1></div> : <GoodMoralError error={detail.error} fallback="Your Good Moral request could not be loaded." onRetry={() => void detail.refetch()} />}
       </section>
     );
   }
@@ -48,77 +53,85 @@ export function GoodMoralStudentDetail({
     const result = await detail.refetch();
     return result.isError ? undefined : result.data?.data;
   };
+  const keyFacts: RecordFact[] = [
+    { label: "Requested", value: formatGoodMoralDateTime(item.created_at) },
+    ...(item.issued_at ? [{ label: "Issued", value: formatGoodMoralDateTime(item.issued_at) }] : []),
+    ...(item.cancelled_at ? [{ label: "Cancelled", value: formatGoodMoralDateTime(item.cancelled_at) }] : []),
+  ];
+  const hasReceipt = Boolean(item.official_receipt_number || item.official_receipt_date || item.official_receipt_amount !== null);
 
   return (
-    <section className="space-y-6" aria-labelledby="good-moral-student-detail-heading">
+    <section className="space-y-5" aria-labelledby="good-moral-student-detail-heading">
       {detail.isError ? <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <Link href="/portal/good-moral" className="mb-3 inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Good Moral</Link>
-          <h1 id="good-moral-student-detail-heading" className="font-heading text-3xl font-bold text-ink">Good Moral request</h1>
-          <p className="mt-2 text-sm text-muted">{item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)} certificate` : `${goodMoralVariantLabel(item.variant)} request`}</p>
-        </div>
-        <GoodMoralStatus status={item.status} />
-      </div>
+      <GoodMoralHeading
+        headingId="good-moral-student-detail-heading"
+        title="Good Moral request"
+        description={item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)} certificate` : `${goodMoralVariantLabel(item.variant)} request`}
+        back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>}
+      />
 
-      <GoodMoralSection title="Request details" labelledBy="good-moral-student-request-details">
-        <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
-          <GoodMoralField label="Applicant name" value={item.applicant_name} />
-          <GoodMoralField label="Requested" value={formatGoodMoralDateTime(item.created_at)} />
-          {item.variant === "CURRENT_STUDENT" ? (
-            <>
-              <GoodMoralField label="Year level" value={item.year_level} />
-              <GoodMoralField label="College" value={item.college} />
-              <GoodMoralField label="Course" value={item.course} />
-              <GoodMoralField label="Major" value={item.major} />
-              <GoodMoralField label="Semester" value={item.semester} />
-              <GoodMoralField label="Academic Year" value={item.academic_year?.label} />
-            </>
-          ) : (
-            <>
-              <GoodMoralField label="Degree" value={item.degree} />
-              <GoodMoralField label="Major" value={item.major} />
-              <GoodMoralField label="Graduation date" value={formatGoodMoralDate(item.graduation_date)} />
-            </>
-          )}
-          {item.issued_at ? <GoodMoralField label="Issued" value={formatGoodMoralDateTime(item.issued_at)} /> : null}
-          {item.cancelled_at ? <GoodMoralField label="Cancelled" value={formatGoodMoralDateTime(item.cancelled_at)} /> : null}
-          {item.status === "ISSUED" ? <GoodMoralField label="Issued by" value={item.issued_by_name_snapshot} /> : null}
-        </dl>
-      </GoodMoralSection>
-
-      {item.official_receipt_number || item.official_receipt_date || item.official_receipt_amount !== null ? (
-        <GoodMoralSection title="Official Receipt">
-          <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
-            <GoodMoralField label="Receipt number" value={item.official_receipt_number} />
-            <GoodMoralField label="Receipt date" value={formatGoodMoralDate(item.official_receipt_date)} />
-            <GoodMoralField label="Receipt amount" value={formatGoodMoralAmount(item.official_receipt_amount)} />
+      <Panel aria-labelledby="good-moral-student-applicant">
+        <RecordSummary
+          label="Applicant name"
+          title={item.applicant_name?.trim() || "Not provided"}
+          titleId="good-moral-student-applicant"
+          status={<GoodMoralStatus status={item.status} />}
+          facts={keyFacts}
+        />
+        <PanelSection title="Request details" titleId="good-moral-student-request-details">
+          <dl className={factGrid}>
+            {item.variant === "CURRENT_STUDENT" ? (
+              <>
+                <GoodMoralField label="Year level" value={item.year_level} />
+                <GoodMoralField label="College" value={item.college} />
+                <GoodMoralField label="Course" value={item.course} />
+                <GoodMoralField label="Major" value={item.major} />
+                <GoodMoralField label="Semester" value={item.semester} />
+                <GoodMoralField label="Academic Year" value={item.academic_year?.label} />
+              </>
+            ) : (
+              <>
+                <GoodMoralField label="Degree" value={item.degree} />
+                <GoodMoralField label="Major" value={item.major} />
+                <GoodMoralField label="Graduation date" value={formatGoodMoralDate(item.graduation_date)} />
+              </>
+            )}
+            {item.status === "ISSUED" ? <GoodMoralField label="Issued by" value={item.issued_by_name_snapshot} /> : null}
           </dl>
-        </GoodMoralSection>
-      ) : null}
+        </PanelSection>
+        {hasReceipt ? (
+          <PanelSection title="Official Receipt" titleId="good-moral-student-receipt">
+            <dl className={factGrid}>
+              <GoodMoralField label="Receipt number" value={item.official_receipt_number} />
+              <GoodMoralField label="Receipt date" value={formatGoodMoralDate(item.official_receipt_date)} />
+              <GoodMoralField label="Receipt amount" value={formatGoodMoralAmount(item.official_receipt_amount)} />
+            </dl>
+          </PanelSection>
+        ) : null}
+        {item.status === "CANCELLED" ? (
+          <p role="status" className="border-t border-brand-line px-4 py-4 text-sm text-muted sm:px-5">This request was cancelled.</p>
+        ) : null}
+      </Panel>
 
       {item.status === "ISSUED" ? (
-        <>
-          <GoodMoralSection title="Certificate issuance">
-            <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
-              <GoodMoralField label="Issued at" value={formatGoodMoralDateTime(item.issued_at)} />
-              <GoodMoralField label="Issued by" value={item.issued_by_name_snapshot} />
-              <GoodMoralField label="Official form code" value={item.form_revision?.official_code} />
-              <GoodMoralField label="Official revision" value={item.form_revision?.official_revision ? `Revision ${item.form_revision.official_revision}` : null} />
-            </dl>
-          </GoodMoralSection>
-          <GoodMoralPdfDownload requestId={item.id} studentFacing />
-        </>
+        <GoodMoralSection title="Certificate issuance">
+          <dl className={factGrid}>
+            <GoodMoralField label="Issued at" value={formatGoodMoralDateTime(item.issued_at)} />
+            <GoodMoralField label="Issued by" value={item.issued_by_name_snapshot} />
+            <GoodMoralField label="Official form code" value={item.form_revision?.official_code} />
+            <GoodMoralField label="Official revision" value={item.form_revision?.official_revision ? `Revision ${item.form_revision.official_revision}` : null} />
+          </dl>
+          <div className="mt-5 border-t border-border pt-4">
+            <GoodMoralPdfDownload requestId={item.id} studentFacing />
+          </div>
+        </GoodMoralSection>
       ) : null}
 
       {item.status === "REQUESTED" && canCancel && !detail.isError ? (
-        <GoodMoralSection title="Request actions">
-          <p className="mb-4 text-sm leading-6 text-muted">You can cancel this request. It will remain in your request history.</p>
+        <GoodMoralSection title="Request actions" description="You can cancel this request. It will remain in your request history.">
           <GoodMoralCancelAction requestId={item.id} studentFacing onRefresh={refresh} />
         </GoodMoralSection>
       ) : null}
-
-      {item.status === "CANCELLED" ? <p role="status" className="border-y border-border py-4 text-sm text-muted">This request was cancelled.</p> : null}
     </section>
   );
 }

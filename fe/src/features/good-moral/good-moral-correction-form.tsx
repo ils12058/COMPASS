@@ -164,11 +164,11 @@ export function GoodMoralCorrectionForm({
 
   return (
     <>
-      <GoodMoralSection title="Correct certificate details">
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-          Changes apply only to this Good Moral request and do not update the Student&apos;s Account, Individual Inventory, or Organization records.
-        </p>
-        <form onSubmit={submit} aria-busy={update.isPending} className="mt-5 max-w-4xl space-y-6">
+      <GoodMoralSection
+        title="Correct certificate details"
+        description="Changes apply only to this Good Moral request and do not update the Student's Account, Individual Inventory, or Organization records."
+      >
+        <form onSubmit={submit} aria-busy={update.isPending} className="max-w-4xl space-y-6">
           <fieldset disabled={update.isPending || blockedUntilRefresh} className="space-y-5 disabled:opacity-80">
             <section aria-labelledby="good-moral-correction-certificate-heading">
               <h3 id="good-moral-correction-certificate-heading" className="text-sm font-semibold text-ink">Certificate details</h3>

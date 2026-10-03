@@ -61,7 +61,7 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
             })}
           />
           {draft.prior_counseling_experience === true ? (
-            <div className="grid gap-4 border-l-2 border-border pl-4 sm:grid-cols-2">
+            <div className="grid gap-4 rounded-sm bg-surface-subtle p-4 sm:grid-cols-2">
               <TextField
                 id="inventory-prior-counselor"
                 label="Counselor name"

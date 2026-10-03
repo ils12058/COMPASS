@@ -7,6 +7,10 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { reconcileNotificationAuth } from "@/features/notifications/notification-auth";
 import { cacheConfirmedAllRead } from "@/features/notifications/notification-cache";
 import { NotificationRow } from "@/features/notifications/notification-center/notification-row";
@@ -24,17 +28,16 @@ const PAGE_SIZE = 20;
 
 function NotificationSkeleton() {
   return (
-    <div role="status" className="mt-7 border-t border-border">
+    <LoadingRegion label="Loading notifications…" className="divide-y divide-border">
       {[0, 1, 2].map((item) => (
-        <div key={item} className="border-b border-border py-6">
+        <div key={item} className="px-4 py-5 sm:px-5">
           <Skeleton className="h-5 w-2/5" />
           <Skeleton className="mt-3 h-4 w-full" />
           <Skeleton className="mt-2 h-4 w-3/4" />
           <Skeleton className="mt-4 h-3 w-1/4" />
         </div>
       ))}
-      <span className="sr-only">Loading notifications…</span>
-    </div>
+    </LoadingRegion>
   );
 }
 
@@ -75,39 +78,45 @@ export function NotificationCenter({ page }: { page: number }) {
 
   return (
     <section aria-labelledby="notifications-heading">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 id="notifications-heading" className="font-heading text-3xl font-bold text-ink">Notifications</h1>
-        {hasUnread ? <Button variant="secondary" disabled={markAll.isPending || refreshingAfterMarkAll} onClick={() => void markAllRead()}>{markAll.isPending || refreshingAfterMarkAll ? "Marking as read…" : "Mark all as read"}</Button> : null}
-      </div>
-      {actionError ? <p role="alert" className="mt-4 text-sm text-danger">{actionError}</p> : null}
-      {!data && notifications.isPending ? <NotificationSkeleton /> : null}
-      {!data && notifications.isError ? (
-        <div role="alert" className="mt-7 border-t border-border pt-6">
-          <p className="text-sm text-danger">Notifications could not be loaded.</p>
-          <Button variant="secondary" className="mt-3" onClick={() => void notifications.refetch()}>Retry</Button>
-        </div>
-      ) : null}
-      {data ? (
-        <>
-          {notifications.isFetching ? <p role="status" className="mt-3 text-xs text-muted">Refreshing notifications…</p> : null}
-          {notifications.isError ? <div role="alert" className="mt-3 text-sm text-danger"><span>Notifications could not be refreshed. Showing the last loaded page.</span> <Button variant="quiet" className="min-h-0 px-1 py-0" onClick={() => void notifications.refetch()}>Retry</Button></div> : null}
-          {data.items.length ? (
-            <ol className="mt-7 border-t border-border">
-              {data.items.map((item) => <NotificationRow key={item.id} notification={item} currentUserId={user.id} />)}
-            </ol>
-          ) : <p className="mt-7 border-t border-border py-7 text-sm text-muted">{page === 1 ? "No notifications are available yet." : "No notifications are available on this page. Go back to a previous page."}</p>}
-          <CanonicalPagination
-            className="mt-6"
-            page={data.page}
-            hasNext={data.has_next}
-            label="Notification pages"
-            onPageChange={(nextPage) =>
-              router.push(nextPage === 1 ? "/portal/notifications" : `/portal/notifications?page=${nextPage}`)
-            }
-          />
-          <Link href="/portal/account/preferences" className="mt-8 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Manage email preference</Link>
-        </>
-      ) : null}
+      <PageHeader
+        title="Notifications"
+        headingId="notifications-heading"
+        actions={hasUnread ? <Button variant="secondary" disabled={markAll.isPending || refreshingAfterMarkAll} onClick={() => void markAllRead()}>{markAll.isPending || refreshingAfterMarkAll ? "Marking as read…" : "Mark all as read"}</Button> : null}
+      />
+      {actionError ? <p role="alert" className="mb-4 text-sm text-danger">{actionError}</p> : null}
+      {data && notifications.isError ? <Notice role="alert" tone="warning" className="mb-4" action={<Button variant="secondary" onClick={() => void notifications.refetch()}>Retry</Button>}>Notifications could not be refreshed. Showing the last loaded page.</Notice> : null}
+      <Panel aria-labelledby="notifications-list-heading">
+        <PanelHeader
+          title="Your notifications"
+          titleId="notifications-list-heading"
+          context={notifications.isFetching && data ? "Refreshing notifications…" : null}
+        />
+        {!data && notifications.isPending ? <NotificationSkeleton /> : null}
+        {!data && notifications.isError ? (
+          <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void notifications.refetch()}>Retry</Button>}>
+            Notifications could not be loaded.
+          </PanelMessage>
+        ) : null}
+        {data ? (
+          <>
+            {data.items.length ? (
+              <ol>
+                {data.items.map((item) => <NotificationRow key={item.id} notification={item} currentUserId={user.id} />)}
+              </ol>
+            ) : <PanelMessage>{page === 1 ? "No notifications are available yet." : "No notifications are available on this page. Go back to a previous page."}</PanelMessage>}
+            <CanonicalPagination
+              className="border-brand-line px-4 py-3 sm:px-5"
+              page={data.page}
+              hasNext={data.has_next}
+              label="Notification pages"
+              onPageChange={(nextPage) =>
+                router.push(nextPage === 1 ? "/portal/notifications" : `/portal/notifications?page=${nextPage}`)
+              }
+            />
+          </>
+        ) : null}
+      </Panel>
+      {data ? <Link href="/portal/account/preferences" className="mt-4 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Manage email preference</Link> : null}
     </section>
   );
 }

@@ -9,6 +9,7 @@ import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Panel, PanelFooter } from "@/components/ui/panel";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import {
   emptyNoticeRevisionValues,
@@ -88,7 +89,8 @@ export function NoticeCreatePage() {
         backLabel="Privacy Notices"
         description="Creating a notice also creates revision 1 as a draft. People see a notice only after a revision is published."
       />
-      <form className="max-w-3xl space-y-8" onSubmit={(event) => void submit(event)}>
+      <Panel as="div" className="max-w-3xl">
+      <form onSubmit={(event) => void submit(event)}>
         <FormSection title="Notice">
           <div className="grid gap-2">
             <Label htmlFor="notice-code">Internal code</Label>
@@ -137,17 +139,22 @@ export function NoticeCreatePage() {
           />
         </FormSection>
 
-        <ActionMessages error={action.error} notice={action.notice} />
+        <ActionMessages
+          error={action.error}
+          notice={action.notice}
+          className="border-t border-brand-line px-4 py-3 sm:px-5"
+        />
 
-        <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-6">
+        <PanelFooter className="justify-end">
           <GuardedPortalLink href="/portal/privacy/notices" className={secondaryLinkClass}>
             Cancel
           </GuardedPortalLink>
           <Button type="submit" disabled={create.isPending}>
             {create.isPending ? "Creating…" : "Create privacy notice"}
           </Button>
-        </div>
+        </PanelFooter>
       </form>
+      </Panel>
       {action.stepUpDialog}
     </section>
   );

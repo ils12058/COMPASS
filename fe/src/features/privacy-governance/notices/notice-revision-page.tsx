@@ -5,6 +5,8 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelBody, PanelFooter } from "@/components/ui/panel";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { useServerBoundary } from "@/features/freshness/use-server-boundary";
@@ -106,7 +108,9 @@ function DraftEditor({
 
   return (
     <>
-      <form className="grid max-w-3xl gap-5" onSubmit={(event) => void submit(event)}>
+      <Panel as="div" className="max-w-4xl">
+      <form onSubmit={(event) => void submit(event)}>
+        <PanelBody className="grid gap-5">
         <NoticeRevisionFields
           idPrefix="draft-revision"
           values={values}
@@ -117,15 +121,17 @@ function DraftEditor({
           }}
         />
         <ActionMessages error={action.error} notice={action.notice} className="" />
-        <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-6">
+        </PanelBody>
+        <PanelFooter className="justify-end">
           <Button variant="secondary" disabled={update.isPending} onClick={cancel}>
             Cancel
           </Button>
           <Button type="submit" disabled={update.isPending}>
             {update.isPending ? "Saving…" : "Save draft"}
           </Button>
-        </div>
+        </PanelFooter>
       </form>
+      </Panel>
       {action.stepUpDialog}
     </>
   );
@@ -136,17 +142,17 @@ function PublishReadiness({ revision }: { revision: RevisionResponse }) {
   const { blocker } = revision.publish_readiness;
   if (blocker === NoticePublishBlocker.EFFECTIVE_DATE_MISSING) {
     return (
-      <p className="text-sm text-muted">
+      <Notice className="mb-5 max-w-4xl">
         Set an effective date before publishing. It must be today or earlier.
-      </p>
+      </Notice>
     );
   }
   if (blocker === NoticePublishBlocker.EFFECTIVE_DATE_IN_FUTURE && revision.effective_on) {
     return (
-      <p className="text-sm text-muted">
+      <Notice className="mb-5 max-w-4xl">
         This draft is effective {formatLongDate(revision.effective_on)}. It can be
         published on or after that date.
-      </p>
+      </Notice>
     );
   }
   return null;
@@ -287,20 +293,16 @@ export function NoticeRevisionPage() {
         notice={action.notice}
         className="mb-4"
       />
-      {editable && !editing ? (
-        <div className="mb-4">
-          <PublishReadiness revision={revision} />
-        </div>
-      ) : null}
+      {editable && !editing ? <PublishReadiness revision={revision} /> : null}
       {!isDraft ? (
-        <p className="mb-5 max-w-3xl text-sm leading-6 text-muted">
+        <Notice className="mb-5 max-w-4xl">
           Published and historical revisions cannot be edited. Create a new revision
           instead.
-        </p>
+        </Notice>
       ) : family && !family.is_active ? (
-        <p className="mb-5 max-w-3xl text-sm leading-6 text-muted">
+        <Notice className="mb-5 max-w-4xl">
           This notice is retired, so this draft cannot be edited or published.
-        </p>
+        </Notice>
       ) : null}
 
       {editing ? (
@@ -313,7 +315,7 @@ export function NoticeRevisionPage() {
           }}
         />
       ) : (
-        <div className="max-w-4xl divide-y divide-border border-y border-border">
+        <Panel as="div" className="max-w-4xl">
           <DetailSection title="Notice title">
             <p className="break-words text-sm text-ink">{revision.title}</p>
           </DetailSection>
@@ -366,7 +368,7 @@ export function NoticeRevisionPage() {
               </div>
             </dl>
           </DetailSection>
-        </div>
+        </Panel>
       )}
 
       <PrivacyConfirmDialog

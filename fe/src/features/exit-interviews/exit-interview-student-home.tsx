@@ -6,6 +6,8 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ExitInterviewAccess } from "@/features/exit-interviews/exit-interviews-access";
 import {
@@ -51,9 +53,9 @@ export function ExitInterviewStudentHome({
     return (
       <section className="max-w-2xl space-y-5">
         <ExitInterviewHeading title="Exit Interview" />
-        <p role="alert" className="border-y border-border py-5 text-sm leading-6 text-muted">
+        <Notice role="alert">
           Your Exit Interview records are unavailable to this account.
-        </p>
+        </Notice>
       </section>
     );
   }
@@ -103,24 +105,22 @@ export function ExitInterviewStudentHome({
   }
 
   return (
-    <section className="space-y-2" aria-labelledby="exit-interview-home-heading">
+    <section className="space-y-5" aria-labelledby="exit-interview-home-heading">
       <ExitInterviewHeading
         id="exit-interview-home-heading"
         title="Exit Interview"
         description="Complete the Exit Interview for your current Academic Year and view earlier records."
       />
 
-      <section aria-labelledby="exit-interview-current-heading" className="py-6">
-        <h2 id="exit-interview-current-heading" className="font-heading text-xl font-semibold text-ink">
-          Current Academic Year
-        </h2>
+      <Panel aria-labelledby="exit-interview-current-heading" className="max-w-4xl">
+        <PanelHeader title="Current Academic Year" titleId="exit-interview-current-heading" />
         {current.isPending ? (
-          <div className="mt-4 space-y-3" aria-busy="true"><span className="sr-only">Loading current Exit Interview…</span>
+          <div className="space-y-3 px-4 py-4 sm:px-5" aria-busy="true"><span className="sr-only">Loading current Exit Interview…</span>
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-16 w-full max-w-2xl" />
           </div>
         ) : current.isError && !currentNotFound && (!current.data || suppressStaleCurrent) ? (
-          <div className="mt-4 max-w-2xl">
+          <div className="max-w-2xl px-4 py-4 sm:px-5">
             <ExitInterviewError
               error={current.error}
               fallback="The current Academic Year Exit Interview could not be loaded."
@@ -128,7 +128,7 @@ export function ExitInterviewStudentHome({
             />
           </div>
         ) : currentRecord ? (
-          <div className="mt-4 max-w-3xl border-y border-border py-5">
+          <div className="px-4 py-4 sm:px-5">
             {current.isError ? (
               <p role="alert" className="mb-4 text-sm text-danger">
                 The current status could not be refreshed. Showing the last confirmed record.
@@ -162,7 +162,7 @@ export function ExitInterviewStudentHome({
             </Link>
           </div>
         ) : currentNotFound ? (
-          <div className="mt-4 max-w-3xl border-y border-border py-5">
+          <div className="px-4 py-4 sm:px-5">
             <p className="text-sm leading-6 text-muted">
               No Exit Interview has been started for the current Academic Year.
               {access.canManageSelf
@@ -201,20 +201,18 @@ export function ExitInterviewStudentHome({
             ) : null}
           </div>
         ) : null}
-      </section>
+      </Panel>
 
-      <section aria-labelledby="exit-interview-history-heading" className="border-t border-border py-6">
-        <h2 id="exit-interview-history-heading" className="font-heading text-xl font-semibold text-ink">
-          Exit Interview history
-        </h2>
+      <Panel aria-labelledby="exit-interview-history-heading" className="max-w-4xl">
+        <PanelHeader title="Exit Interview history" titleId="exit-interview-history-heading" />
         {history.isPending ? (
-          <div className="mt-4 space-y-3" aria-busy="true"><span className="sr-only">Loading Exit Interview history…</span>
+          <div className="space-y-3 px-4 py-4 sm:px-5" aria-busy="true"><span className="sr-only">Loading Exit Interview history…</span>
             <Skeleton className="h-14 w-full max-w-3xl" />
             <Skeleton className="h-14 w-full max-w-3xl" />
           </div>
         ) : history.isError &&
           (!history.data || suppressStaleHistory) ? (
-          <div className="mt-4 max-w-2xl">
+          <div className="max-w-2xl px-4 py-4 sm:px-5">
             <ExitInterviewError
               error={history.error}
               fallback="Exit Interview history could not be loaded."
@@ -223,7 +221,7 @@ export function ExitInterviewStudentHome({
           </div>
         ) : historicalItems.length === 0 ? (
           history.isError ? (
-            <div className="mt-4 max-w-2xl">
+            <div className="max-w-2xl px-4 py-4 sm:px-5">
               <ExitInterviewError
                 error={history.error}
                 fallback="Exit Interview history could not be refreshed."
@@ -231,9 +229,9 @@ export function ExitInterviewStudentHome({
               />
             </div>
           ) : (
-            <p className="mt-4 max-w-3xl border-y border-border py-5 text-sm text-muted">
+            <PanelMessage>
               No earlier Exit Interviews are available.
-            </p>
+            </PanelMessage>
           )
         ) : (
           <>
@@ -246,9 +244,9 @@ export function ExitInterviewStudentHome({
                 />
               </div>
             ) : null}
-            <ul className="mt-3 max-w-3xl divide-y divide-border border-y border-border">
+            <ul className="divide-y divide-border">
               {historicalItems.map((item) => (
-                <li key={item.id} className="py-4">
+                <li key={item.id} className="px-4 py-4 sm:px-5">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <Link
@@ -271,7 +269,7 @@ export function ExitInterviewStudentHome({
             </ul>
           </>
         )}
-      </section>
+      </Panel>
     </section>
   );
 }

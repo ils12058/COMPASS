@@ -4,6 +4,7 @@ import { CalendarPlus } from "lucide-react";
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { OverviewAnnouncements } from "@/features/portal/home/overview-announcements";
 import { OverviewAttention } from "@/features/portal/home/overview-attention";
 import { OverviewSummary } from "@/features/portal/home/overview-summary";
@@ -44,23 +45,24 @@ export function PortalHome() {
   const primaryAction = getOverviewPrimaryAction(user);
   // Some roles have nothing to act on here; then the context column takes the full width.
   const hasActionColumn = attention.isVisible;
+  // OverviewSummary renders nothing for an account without counts; then Announcements is alone.
+  const hasSummary =
+    summaryQuery.isPending || summaryQuery.isError || metrics.length > 0 || emailStatus !== null;
   const greeting = getOverviewGreeting(user);
   const roleContext = getOverviewRoleContext(user);
 
   return (
     <section aria-labelledby="portal-overview-heading">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-        <div>
-          <h1
-            id="portal-overview-heading"
-            className="font-heading text-3xl font-bold tracking-tight text-ink"
-          >
-            Overview
-          </h1>
-          {greeting ? <p className="mt-3 text-lg text-ink">{greeting}</p> : null}
-          {roleContext ? <p className="mt-1 text-sm text-muted">{roleContext}</p> : null}
-        </div>
-        {primaryAction ? (
+      <PageHeader
+        title="Overview"
+        headingId="portal-overview-heading"
+        description={greeting || roleContext ? (
+          <>
+            {greeting ? <span className="block text-base text-ink">{greeting}</span> : null}
+            {roleContext ? <span className="block">{roleContext}</span> : null}
+          </>
+        ) : undefined}
+        actions={primaryAction ? (
           <Link
             href={primaryAction.href}
             className={buttonVariants({ variant: "primary" })}
@@ -68,22 +70,22 @@ export function PortalHome() {
             <CalendarPlus size={17} aria-hidden="true" />
             {primaryAction.label}
           </Link>
-        ) : null}
-      </div>
+        ) : undefined}
+      />
 
       {/* What needs doing comes first; counts and announcements are context. On wide screens they
           sit side by side. */}
       <div
         className={
-          hasActionColumn ? "grid gap-x-10 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]" : undefined
+          hasActionColumn
+            ? "grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]"
+            : hasSummary
+              ? "grid items-start gap-5 lg:grid-cols-2"
+              : "grid gap-5"
         }
       >
-        {hasActionColumn ? (
-          <div className="min-w-0">
-            <OverviewAttention data={attention} />
-          </div>
-        ) : null}
-        <div className="min-w-0">
+        {hasActionColumn ? <OverviewAttention data={attention} /> : null}
+        <div className={hasActionColumn ? "grid min-w-0 gap-5" : "contents"}>
           <OverviewSummary
             metrics={metrics}
             emailStatus={emailStatus}

@@ -9,6 +9,7 @@ import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Panel } from "@/components/ui/panel";
 import {
   publicationAudienceLabels,
   publicationAudienceReaders,
@@ -276,7 +277,9 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
 
   return (
     <>
-    <form className="mt-8 space-y-8" onSubmit={(event) => void submit(event)} noValidate>
+    <form className="mt-5" onSubmit={(event) => void submit(event)} noValidate>
+      <Panel as="div">
+      <div className="space-y-7 px-4 py-5 sm:px-5">
       <div className="grid gap-2">
         <Label htmlFor="resource-title">Title</Label>
         <Input
@@ -305,7 +308,7 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
                 key={kind}
                 htmlFor={id}
                 className={
-                  "flex gap-3 rounded-md border border-border bg-surface-raised px-3 py-3 has-[:checked]:border-brand has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus " +
+                  "flex gap-3 rounded-md border border-border-strong bg-surface-raised px-3 py-3 has-[:checked]:border-brand has-[:checked]:bg-brand-wash has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus " +
                   (disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer")
                 }
               >
@@ -357,7 +360,7 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
         </div>
       ) : null}
 
-      <div className="grid gap-6 border-t border-border pt-7 md:grid-cols-2">
+      <div className="grid gap-6 border-t border-border pt-6 md:grid-cols-2">
         <div className="grid content-start gap-2">
           <Label htmlFor="resource-category">Category</Label>
           <Select
@@ -406,7 +409,7 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
         onChange={(audience) => setField("audience", audience)}
       />
 
-      <div className="grid gap-2 border-t border-border pt-7">
+      <div className="grid gap-2 border-t border-border pt-6">
         <p id="resource-body-label" className="text-sm font-semibold text-ink">Body</p>
         <p id="resource-body-hint" className="text-xs leading-5 text-muted">
           {values.kind ? resourceBodyHints[values.kind] : "Readers see this text on the Resource page."}
@@ -427,7 +430,9 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
         {errors.body ? <p id="resource-body-error" className="text-sm text-danger">{errors.body}</p> : null}
       </div>
 
-      <div className="border-t border-border pt-6">
+      </div>
+
+      <div className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-4 sm:px-5">
         {formError ? <p role="alert" className="mb-4 text-sm leading-6 text-danger">{formError}</p> : null}
         {notice ? <p role="status" className="mb-4 text-sm text-success">{notice}</p> : null}
         <div className="flex flex-wrap items-center justify-end gap-3">
@@ -441,6 +446,7 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
           </Button>
         </div>
       </div>
+      </Panel>
     </form>
     <ContentConfirmDialog
       open={reviewOpen}

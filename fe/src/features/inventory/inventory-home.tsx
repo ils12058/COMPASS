@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { CounselorInventoryRoster } from "@/features/inventory/counselor/inventory-roster";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import {
@@ -91,20 +92,20 @@ function StudentInventoryHome() {
         description="Your annual record for the Guidance and Counseling Office."
       />
 
-      <section className="mt-7" aria-labelledby="inventory-current-heading">
-        <h2 id="inventory-current-heading" className="font-heading text-xl font-semibold text-ink">Current Academic Year</h2>
+      <Panel className="mt-5 max-w-4xl" aria-labelledby="inventory-current-heading">
+        <PanelHeader title="Current Academic Year" titleId="inventory-current-heading" />
         {status.isPending ? (
-          <div className="mt-4 space-y-3" aria-busy="true">
+          <div className="space-y-3 px-4 py-4 sm:px-5" aria-busy="true">
             <Skeleton className="h-5 w-48" />
             <Skeleton className="h-16" />
             <p className="sr-only">Loading current Individual Inventory status…</p>
           </div>
         ) : status.isError ? (
-          <div className="mt-4">
+          <div className="px-4 py-4 sm:px-5">
             <InventoryQueryError error={status.error} fallback="Current Individual Inventory status could not be loaded." onRetry={() => void status.refetch()} />
           </div>
         ) : current ? (
-          <div className="mt-4 border-y border-border py-5">
+          <div className="px-4 py-4 sm:px-5">
             <div className="flex flex-wrap items-center gap-3">
               <h3 className="font-heading text-lg font-semibold text-ink">{current.academic_year.label}</h3>
               <InventoryStatus status={current.status} correctionPending={current.correction_pending} missingLabel="Not started" />
@@ -168,35 +169,34 @@ function StudentInventoryHome() {
             )}
           </div>
         ) : null}
-      </section>
+      </Panel>
 
-      <section className="mt-9" aria-labelledby="inventory-history-heading">
-        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-3">
-          <div>
-            <h2 id="inventory-history-heading" className="font-heading text-xl font-semibold text-ink">Annual history</h2>
-            <p className="mt-1 text-sm text-muted">Earlier Academic Years remain available as read-only records.</p>
-          </div>
-        </div>
+      <Panel className="mt-5 max-w-4xl" aria-labelledby="inventory-history-heading">
+        <PanelHeader
+          title="Annual history"
+          titleId="inventory-history-heading"
+          description="Earlier Academic Years remain available as read-only records."
+        />
         {history.isPending ? (
-          <div className="mt-4 space-y-3" aria-busy="true">
+          <div className="space-y-3 px-4 py-4 sm:px-5" aria-busy="true">
             <Skeleton className="h-12" />
             <Skeleton className="h-12" />
             <p className="sr-only">Loading annual Individual Inventory history…</p>
           </div>
         ) : history.isError ? (
-          <div className="mt-4">
+          <div className="px-4 py-4 sm:px-5">
             <InventoryQueryError error={history.error} fallback="Annual Individual Inventory history could not be loaded." onRetry={() => void history.refetch()} />
           </div>
         ) : records.length === 0 ? (
-          <p className="py-6 text-sm text-muted">
+          <PanelMessage>
             {current?.status === InventoryStatusValue.MISSING
               ? "No Individual Inventory records yet."
               : "No earlier Individual Inventory records."}
-          </p>
+          </PanelMessage>
         ) : (
-          <ul className="divide-y divide-border border-b border-border">
+          <ul className="divide-y divide-border">
             {records.map((record) => (
-              <li key={record.id} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <li key={record.id} className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div className="min-w-0">
                   <Link
                     href={`/portal/inventory/history/${record.id}`}
@@ -216,7 +216,7 @@ function StudentInventoryHome() {
             ))}
           </ul>
         )}
-      </section>
+      </Panel>
     </section>
   );
 }

@@ -69,9 +69,9 @@ export function OrganizationsSection({ draft, onChange }: InventorySectionProps)
             return (
               <section key={scope} aria-labelledby={`inventory-membership-${scope.toLowerCase()}`}>
                 <h3 id={`inventory-membership-${scope.toLowerCase()}`} className="font-semibold text-ink">{label}</h3>
-                <div className="mt-3 divide-y divide-border border-y border-border">
+                <div className="mt-3 divide-y divide-border rounded-sm border border-border">
                   {rows.map((row, index) => (
-                    <div key={`${scope}-${index}`} className="grid gap-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+                    <div key={`${scope}-${index}`} className="grid gap-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
                       <TextField
                         id={`inventory-membership-${scope.toLowerCase()}-${index}-organization`}
                         label="Organization name"
@@ -138,12 +138,12 @@ export function OrganizationsSection({ draft, onChange }: InventorySectionProps)
             );
           })}
         </div>
-        <div className="mt-5 divide-y divide-border border-y border-border">
+        <div className="mt-5 divide-y divide-border rounded-sm border border-border">
           {transportationModes.flatMap(([mode, label]) => {
             const entry = transportation.find((item) => item.mode === mode);
             if (!entry) return [];
             return [
-              <section key={mode} className="grid gap-4 py-5 sm:grid-cols-2" aria-labelledby={`inventory-transport-${mode.toLowerCase()}`}>
+              <section key={mode} className="grid gap-4 px-4 py-5 sm:grid-cols-2" aria-labelledby={`inventory-transport-${mode.toLowerCase()}`}>
                 <h3 id={`inventory-transport-${mode.toLowerCase()}`} className="sm:col-span-2 font-semibold text-ink">{label}</h3>
                 <SelectField
                   id={`inventory-transport-${mode.toLowerCase()}-frequency-category`}

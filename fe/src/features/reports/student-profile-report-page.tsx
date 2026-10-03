@@ -4,6 +4,8 @@ import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Notice } from "@/components/ui/notice";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import {
@@ -14,6 +16,7 @@ import {
   isReportScopeDenied,
   ReportNavigation,
   ReportQueryError,
+  ReportsPageHeading,
   ReportStaleNotice,
 } from "@/features/reports/reports-shared";
 import {
@@ -186,15 +189,9 @@ function StudentProfileReportWorkspace() {
 
   if (scopeQuery.isPending) {
     return (
-      <section aria-busy="true" aria-label="Checking Student Profiling access">
-        <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-          Student Profiling
-        </h1>
-        <div className="mt-7 space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-28 w-full" />
-        </div>
-        <p className="sr-only">Checking your report access…</p>
+      <section aria-label="Checking Student Profiling access">
+        <ReportsPageHeading title="Student Profiling" />
+        <RowsSkeleton label="Checking your report access…" rows={2} framed />
       </section>
     );
   }
@@ -202,39 +199,31 @@ function StudentProfileReportWorkspace() {
     if (isReportScopeDenied(scopeQuery.error)) {
       return (
         <section>
-          <h1 className="font-heading text-3xl font-bold text-ink">
-            Student Profiling unavailable
-          </h1>
-          <p role="status" className="mt-5 border-y border-border py-5 text-sm text-muted">
-            No reporting area is currently assigned to your account.
-          </p>
+          <ReportsPageHeading title="Student Profiling unavailable" />
+         <Notice role="status">
+           No reporting area is currently assigned to your account.
+         </Notice>
         </section>
       );
     }
     return (
       <section>
-        <h1 className="font-heading text-3xl font-bold text-ink">
-          Student Profiling
-        </h1>
-        <div className="mt-5">
-          <ReportQueryError
-            error={scopeQuery.error}
-            fallback="Your report access could not be checked."
-            onRetry={() => void scopeQuery.refetch()}
-          />
-        </div>
+        <ReportsPageHeading title="Student Profiling" />
+        <ReportQueryError
+          error={scopeQuery.error}
+          fallback="Your report access could not be checked."
+          onRetry={() => void scopeQuery.refetch()}
+        />
       </section>
     );
   }
   if (!scope || (!scope.is_global && scope.colleges.length === 0)) {
     return (
       <section>
-        <h1 className="font-heading text-3xl font-bold text-ink">
-          Student Profiling unavailable
-        </h1>
-        <p role="status" className="mt-5 border-y border-border py-5 text-sm text-muted">
-          No reporting area is currently assigned to your account.
-        </p>
+        <ReportsPageHeading title="Student Profiling unavailable" />
+       <Notice role="status">
+         No reporting area is currently assigned to your account.
+       </Notice>
       </section>
     );
   }
@@ -246,14 +235,11 @@ function StudentProfileReportWorkspace() {
         current="student-profile"
         showGraduateTracer={scope.is_global}
       />
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <h1
-          id="student-profile-heading"
-          className="font-heading text-3xl font-bold text-ink sm:text-4xl"
-        >
-          Student Profiling
-        </h1>
-        {report ? (
+      <ReportsPageHeading
+        title="Student Profiling"
+        headingId="student-profile-heading"
+        actions={
+          report ? (
           <StudentProfileDownloads
             academicYearLabel={report.report_context.academic_year.label}
             key={JSON.stringify({
@@ -265,8 +251,9 @@ function StudentProfileReportWorkspace() {
               academic_year_id: report.report_context.academic_year.id,
             }}
           />
-        ) : null}
-      </div>
+          ) : null
+        }
+      />
 
       <StudentProfileFilters
         key={searchParams.toString()}
@@ -288,18 +275,23 @@ function StudentProfileReportWorkspace() {
       />
 
       {appliedFilterIssue ? (
-        <p role="alert" className="mt-5 border-y border-danger/30 py-4 text-sm leading-6 text-danger">
+        <Notice
+          role="alert"
+          tone="danger"
+          className="mt-5"
+          action={
+            appliedProgramsQuery.isError && !appliedProgramsQuery.data ? (
+              <Button
+                variant="secondary"
+                onClick={() => void appliedProgramsQuery.refetch()}
+              >
+                Retry Program choices
+              </Button>
+            ) : undefined
+          }
+        >
           {appliedFilterIssue}
-          {appliedProgramsQuery.isError && !appliedProgramsQuery.data ? (
-            <Button
-              className="ml-3 min-h-8 px-2 text-xs"
-              variant="secondary"
-              onClick={() => void appliedProgramsQuery.refetch()}
-            >
-              Retry Program choices
-            </Button>
-          ) : null}
-        </p>
+        </Notice>
       ) : appliedFilterPending ? (
         <p role="status" className="mt-5 text-sm text-muted">
           Validating the applied organization filters…
@@ -320,16 +312,16 @@ function StudentProfileReportWorkspace() {
       ) : null}
 
       {reportQuery.isPending && canQueryReport ? (
-        <div className="mt-7 space-y-5" aria-busy="true"><span className="sr-only">Loading Student Profiling report…</span>
-          <Skeleton className="h-28 w-full" />
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-52 w-full" />
+        <div className="mt-5 space-y-5" aria-busy="true"><span className="sr-only">Loading Student Profiling report…</span>
+          <Skeleton className="h-28 w-full rounded-sm" />
+          <Skeleton className="h-20 w-full rounded-sm" />
+          <Skeleton className="h-52 w-full rounded-sm" />
           <p className="sr-only">Loading aggregate report sections…</p>
         </div>
       ) : null}
 
       {canQueryReport && reportQuery.isError && !report ? (
-        <div className="mt-6">
+        <div className="mt-5">
           <ReportQueryError
             error={reportQuery.error}
             fallback="Student Profiling report could not be loaded."

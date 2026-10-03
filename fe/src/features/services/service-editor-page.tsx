@@ -9,6 +9,7 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
 import {
   ServicesDetailSkeleton,
   ServicesPageHeading,
@@ -133,14 +134,9 @@ function ServiceForm({
   }
 
   return (
-    <form className="mt-8 space-y-9" onSubmit={submit}>
-      <section aria-labelledby="service-identity-heading">
-        <h2
-          id="service-identity-heading"
-          className="font-heading text-xl font-semibold text-ink"
-        >
-          Service identity
-        </h2>
+    <form className="mt-5" onSubmit={submit}>
+      <Panel as="div">
+      <PanelSection title="Service identity" titleId="service-identity-heading">
         <div className="mt-4 grid gap-5 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="service-code">Service code</Label>
@@ -184,7 +180,7 @@ function ServiceForm({
             id="service-description"
             maxLength={2000}
             rows={5}
-            className="w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm leading-6 text-ink outline-none placeholder:text-muted focus:border-focus focus:ring-2 focus:ring-focus/25"
+            className="w-full rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-sm leading-6 text-ink outline-none placeholder:text-muted focus:border-focus focus:ring-2 focus:ring-focus/25"
             value={values.description}
             onChange={(event) =>
               setValues((current) => ({
@@ -194,18 +190,9 @@ function ServiceForm({
             }
           />
         </div>
-      </section>
+      </PanelSection>
 
-      <section
-        aria-labelledby="service-delivery-heading"
-        className="border-t border-border pt-8"
-      >
-        <h2
-          id="service-delivery-heading"
-          className="font-heading text-xl font-semibold text-ink"
-        >
-          Service delivery
-        </h2>
+      <PanelSection title="Service delivery" titleId="service-delivery-heading">
         <fieldset className="mt-4">
           <legend className="text-sm font-semibold text-ink">
             Supported delivery modes
@@ -250,18 +237,9 @@ function ServiceForm({
             </p>
           ) : null}
         </fieldset>
-      </section>
+      </PanelSection>
 
-      <section
-        aria-labelledby="service-appointment-heading"
-        className="border-t border-border pt-8"
-      >
-        <h2
-          id="service-appointment-heading"
-          className="font-heading text-xl font-semibold text-ink"
-        >
-          Appointment settings
-        </h2>
+      <PanelSection title="Appointment settings" titleId="service-appointment-heading">
         <div className="mt-4 grid gap-5 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="service-appointment-policy">
@@ -344,18 +322,9 @@ function ServiceForm({
           Scheduling changes apply to future Appointments; existing
           Appointments retain their saved timing and cancellation cutoff.
         </p>
-      </section>
+      </PanelSection>
 
-      <section
-        aria-labelledby="service-requirements-heading"
-        className="border-t border-border pt-8"
-      >
-        <h2
-          id="service-requirements-heading"
-          className="font-heading text-xl font-semibold text-ink"
-        >
-          Student requirements
-        </h2>
+      <PanelSection title="Student requirements" titleId="service-requirements-heading">
         <label className="mt-4 flex max-w-3xl items-start gap-3 text-sm leading-6 text-ink">
           <input
             type="checkbox"
@@ -377,18 +346,9 @@ function ServiceForm({
           When the appointment policy is No appointment, this setting is kept
           but has no booking effect.
         </p>
-      </section>
+      </PanelSection>
 
-      <section
-        aria-labelledby="service-provider-heading"
-        className="border-t border-border pt-8"
-      >
-        <h2
-          id="service-provider-heading"
-          className="font-heading text-xl font-semibold text-ink"
-        >
-          Provider eligibility
-        </h2>
+      <PanelSection title="Provider eligibility" titleId="service-provider-heading">
         <label className="mt-4 inline-flex min-h-10 items-center gap-3 text-sm text-ink">
           <input
             type="checkbox"
@@ -420,21 +380,23 @@ function ServiceForm({
           specific Counselors or define their availability.
         </p>
         {legacyProviderAssignment ? (
-          <p className="mt-3 max-w-3xl border-l-2 border-warning pl-3 text-xs leading-5 text-muted">
+          <p className="mt-3 max-w-3xl rounded-sm border border-warning/40 px-3 py-2 text-xs leading-5 text-muted">
             This Service has a historical Guidance Services Staff provider
             assignment. It can no longer be selected, and saving changes to
             other settings leaves it in place.
           </p>
         ) : null}
-      </section>
+      </PanelSection>
 
-      {messages}
+      {/* Messages render nothing until there is an error or a notice. */}
+      <div className="px-4 empty:hidden sm:px-5 [&>p:last-child]:mb-4">{messages}</div>
 
-      <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-6">
+      <PanelFooter className="justify-end">
         <Button type="submit" disabled={submitting}>
           {submitting ? pendingLabel : submitLabel}
         </Button>
-      </div>
+      </PanelFooter>
+      </Panel>
     </form>
   );
 }

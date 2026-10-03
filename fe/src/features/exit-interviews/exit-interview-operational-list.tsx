@@ -4,17 +4,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   ExitInterviewListSkeleton,
   ExitInterviewError,
   ExitInterviewHeading,
   ExitInterviewStatus,
+  exitInterviewErrorMessage,
   shouldHideExitInterviewCachedData,
 } from "@/features/exit-interviews/exit-interview-shared";
 import { formatExitInterviewDateTime } from "@/features/exit-interviews/exit-interview-presentation";
@@ -75,93 +80,86 @@ export function ExitInterviewOperationalList({
   const hideStaleQueue =
     queue.isError && shouldHideExitInterviewCachedData(queue.error);
 
+  const clearHref = pageHref({ ...filters, search: "", status: "", academicYearId: "" }, 1);
+
   return (
-    <section className="space-y-6" aria-labelledby="exit-interview-operational-heading">
+    <section className="space-y-5" aria-labelledby="exit-interview-operational-heading">
       <ExitInterviewHeading
         id="exit-interview-operational-heading"
         title="Exit Interviews"
         description="Review submitted Exit Interviews and monitor draft status without access to draft answers."
       />
       {notice === "reopened" ? (
-        <p role="status" className="border-l-4 border-success bg-success/5 px-4 py-3 text-sm text-ink">
-          The Exit Interview was reopened for Student correction.
-        </p>
+        <Notice role="status" tone="success">
+          <span className="text-ink">The Exit Interview was reopened for Student correction.</span>
+        </Notice>
       ) : null}
 
       <form
         action="/portal/exit-interviews"
         method="get"
-        className={`grid gap-4 border-b border-border pb-6 sm:grid-cols-2 ${canFilterYear ? "lg:grid-cols-[minmax(16rem,2fr)_minmax(10rem,1fr)_minmax(10rem,1fr)_auto]" : "lg:grid-cols-[minmax(16rem,2fr)_minmax(10rem,1fr)_auto]"}`}
+        role="search"
+        aria-label="Exit Interviews"
         key={JSON.stringify(filters)}
       >
-        <div className="min-w-0">
-          <Label htmlFor="exit-interview-search">Search Student name or Institutional ID</Label>
-          <Input
-            id="exit-interview-search"
-            className="mt-2"
-            name="search"
-            type="search"
-            placeholder="Search Student name or Institutional ID"
-            defaultValue={filters.search}
-          />
-        </div>
-        <div>
-          <Label htmlFor="exit-interview-status">Status</Label>
-          <Select
-            id="exit-interview-status"
-            name="status"
-            defaultValue={filters.status}
-            className="mt-2"
-          >
-            <option value="">All statuses</option>
-            <option value={ExitInterviewStatusValue.DRAFT}>Draft</option>
-            <option value={ExitInterviewStatusValue.SUBMITTED}>Submitted</option>
-          </Select>
-        </div>
-        {canFilterYear ? (
-          <div>
-            <Label htmlFor="exit-interview-year">Academic Year</Label>
-            <Select
-              id="exit-interview-year"
-              name="academic_year_id"
-              value={yearChoice}
-              onChange={(event) => setYearChoice(event.target.value)}
-              className="mt-2"
-            >
-              <option value="">All Academic Years</option>
-              {academicYearId && !selectedYearKnown ? (
-                <option value={academicYearId}>
-                  {academicYears.isPending ? "Loading Academic Year…" : "Selected Academic Year"}
-                </option>
-              ) : null}
-              {years.map((year) => (
-                <option key={year.id} value={year.id}>
-                  {year.label}{year.is_current ? " · Current" : ""}
-                </option>
-              ))}
+        <FilterToolbar
+          fieldsClassName={canFilterYear ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"}
+          actions={
+            <>
+              {hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
+              <Button type="submit">Apply filters</Button>
+            </>
+          }
+        >
+          <FilterField label="Search Student name or Institutional ID" htmlFor="exit-interview-search">
+            <Input
+              id="exit-interview-search"
+              name="search"
+              type="search"
+              placeholder="Search Student name or Institutional ID"
+              defaultValue={filters.search}
+            />
+          </FilterField>
+          <FilterField label="Status" htmlFor="exit-interview-status">
+            <Select id="exit-interview-status" name="status" defaultValue={filters.status}>
+              <option value="">All statuses</option>
+              <option value={ExitInterviewStatusValue.DRAFT}>Draft</option>
+              <option value={ExitInterviewStatusValue.SUBMITTED}>Submitted</option>
             </Select>
-            {academicYears.isError ? (
-              <p className="mt-2 text-xs text-warning">Academic Year choices could not be loaded.</p>
-            ) : null}
-          </div>
-        ) : null}
-        {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
-        <div className="flex flex-wrap items-end gap-3">
-          <Button type="submit">Apply filters</Button>
-          {hasFilters ? (
-            <Link
-              href={pageHref({ ...filters, search: "", status: "", academicYearId: "" }, 1)}
-              className="inline-flex min-h-10 items-center px-2 text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          </FilterField>
+          {canFilterYear ? (
+            <FilterField
+              label="Academic Year"
+              htmlFor="exit-interview-year"
+              hint={academicYears.isError ? (
+                <p id="exit-interview-year-error" className="text-xs text-warning">Academic Year choices could not be loaded.</p>
+              ) : null}
             >
-              Clear filters
-            </Link>
+              <Select
+                id="exit-interview-year"
+                name="academic_year_id"
+                value={yearChoice}
+                aria-describedby={academicYears.isError ? "exit-interview-year-error" : undefined}
+                onChange={(event) => setYearChoice(event.target.value)}
+              >
+                <option value="">All Academic Years</option>
+                {academicYearId && !selectedYearKnown ? (
+                  <option value={academicYearId}>
+                    {academicYears.isPending ? "Loading Academic Year…" : "Selected Academic Year"}
+                  </option>
+                ) : null}
+                {years.map((year) => (
+                  <option key={year.id} value={year.id}>
+                    {year.label}{year.is_current ? " · Current" : ""}
+                  </option>
+                ))}
+              </Select>
+            </FilterField>
           ) : null}
-        </div>
+          {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
+        </FilterToolbar>
       </form>
 
-      {queue.isFetching && !queue.isPending ? (
-        <p role="status" className="text-xs text-muted">Refreshing Exit Interview results…</p>
-      ) : null}
       {queue.isError && page && !hideStaleQueue ? (
         <ExitInterviewError
           error={queue.error}
@@ -169,85 +167,104 @@ export function ExitInterviewOperationalList({
           onRetry={() => void queue.refetch()}
         />
       ) : null}
-      {queue.isPending ? (
-        <ExitInterviewListSkeleton label="Loading Exit Interview queue…" />
-      ) : queue.isError && (!page || hideStaleQueue) ? (
-        <ExitInterviewError
-          error={queue.error}
-          fallback="The Exit Interview queue could not be loaded."
-          onRetry={() => void queue.refetch()}
+
+      <Panel aria-labelledby="exit-interview-queue-heading">
+        <PanelHeader
+          title="Exit Interview queue"
+          titleId="exit-interview-queue-heading"
+          context={queue.isFetching && !queue.isPending
+            ? "Refreshing Exit Interview results…"
+            : page && !queue.isError
+              ? describeResultPage({
+                  count: page.items.length,
+                  page: page.page,
+                  hasNext: page.has_next,
+                  noun: { one: "Exit Interview", other: "Exit Interviews" },
+                  filtered: hasFilters,
+                })
+              : null}
         />
-      ) : !page ? null : page.items.length === 0 && page.page > 1 ? (
-        <div className="border-y border-border py-6">
-          <p className="text-sm text-muted">No Exit Interviews are available on this page.</p>
-          <Button
-            variant="secondary"
-            className="mt-3"
-            onClick={() => router.push(pageHref({ ...filters, pageSize: page.page_size }, page.page - 1))}
+        {queue.isPending ? (
+          <ExitInterviewListSkeleton label="Loading Exit Interview queue…" framed={false} />
+        ) : queue.isError && (!page || hideStaleQueue) ? (
+          <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void queue.refetch()}>Retry</Button>}>
+            {exitInterviewErrorMessage(queue.error, "The Exit Interview queue could not be loaded.")}
+          </PanelMessage>
+        ) : !page ? null : page.items.length === 0 && page.page > 1 ? (
+          <PanelMessage
+            action={
+              <Button
+                variant="secondary"
+                onClick={() => router.push(pageHref({ ...filters, pageSize: page.page_size }, page.page - 1))}
+              >
+                Previous page
+              </Button>
+            }
           >
-            Previous page
-          </Button>
-        </div>
-      ) : page.items.length === 0 ? (
-        <p className="border-y border-border py-6 text-sm text-muted">
-          {hasFilters
-            ? "No Exit Interviews match the current search or filters."
-            : "No Exit Interviews have been started."}
-        </p>
-      ) : (
-        <>
-          <div className="overflow-x-auto rounded-md border border-border">
-            <table className="min-w-[700px] w-full border-collapse text-left text-sm">
-              <caption className="sr-only">Head Guidance Exit Interview review queue</caption>
-              <thead className="bg-surface-muted text-xs uppercase tracking-wide text-muted">
-                <tr>
-                  <th scope="col" className="sticky left-0 z-10 min-w-56 bg-surface-muted px-4 py-3 font-semibold">Student</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Academic Year</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Status</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Submitted</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Updated</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {page.items.map((item) => {
-                  const studentName = item.student_name || item.student.display_name;
-                  return (
-                    <tr key={item.id} className="align-top">
-                      <th scope="row" className="sticky left-0 z-10 bg-surface-raised px-4 py-4 font-semibold text-ink">
-                        {item.status === "SUBMITTED" ? (
-                          <Link
-                            href={`/portal/exit-interviews/${item.id}`}
-                            className="text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                          >
-                            {studentName}
-                          </Link>
-                        ) : (
-                          <span>{studentName}</span>
-                        )}
-                        {item.student.institutional_id ? (
-                          <span className="mt-1 block text-xs font-normal text-muted">{item.student.institutional_id}</span>
-                        ) : null}
-                      </th>
-                      <td className="whitespace-nowrap px-4 py-4 text-muted">{item.academic_year.label}</td>
-                      <td className="px-4 py-4"><ExitInterviewStatus status={item.status} /></td>
-                      <td className="whitespace-nowrap px-4 py-4 text-muted">
-                        {formatExitInterviewDateTime(item.last_submitted_at ?? item.first_submitted_at)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-muted">{formatExitInterviewDateTime(item.updated_at)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <CanonicalPagination
-            page={page.page}
-            hasNext={page.has_next}
-            label="Exit Interview queue pages"
-            onPageChange={(nextPage) => router.push(pageHref({ ...filters, pageSize: page.page_size }, nextPage))}
-          />
-        </>
-      )}
+            No Exit Interviews are available on this page.
+          </PanelMessage>
+        ) : page.items.length === 0 ? (
+          <PanelMessage action={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>
+            {hasFilters
+              ? "No Exit Interviews match the current search or filters."
+              : "No Exit Interviews have been started."}
+          </PanelMessage>
+        ) : (
+          <>
+            <div className={dataTable.scroll}>
+              <table className={`${dataTable.table} min-w-[700px]`}>
+                <caption className="sr-only">Head Guidance Exit Interview review queue</caption>
+                <thead className={dataTable.head}>
+                  <tr>
+                    <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell} min-w-56`}>Student</th>
+                    <th scope="col" className={dataTable.headerCell}>Academic Year</th>
+                    <th scope="col" className={dataTable.headerCell}>Status</th>
+                    <th scope="col" className={dataTable.headerCell}>Submitted</th>
+                    <th scope="col" className={dataTable.headerCell}>Updated</th>
+                  </tr>
+                </thead>
+                <tbody className={dataTable.body}>
+                  {page.items.map((item) => {
+                    const studentName = item.student_name || item.student.display_name;
+                    return (
+                      <tr key={item.id} className={dataTable.row}>
+                        <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-semibold text-ink`}>
+                          {item.status === "SUBMITTED" ? (
+                            <Link
+                              href={`/portal/exit-interviews/${item.id}`}
+                              className="text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                            >
+                              {studentName}
+                            </Link>
+                          ) : (
+                            <span>{studentName}</span>
+                          )}
+                          {item.student.institutional_id ? (
+                            <span className="mt-1 block text-xs font-normal text-muted">{item.student.institutional_id}</span>
+                          ) : null}
+                        </th>
+                        <td className={`${dataTable.cell} whitespace-nowrap text-muted`}>{item.academic_year.label}</td>
+                        <td className={dataTable.cell}><ExitInterviewStatus status={item.status} /></td>
+                        <td className={`${dataTable.cell} whitespace-nowrap text-muted`}>
+                          {formatExitInterviewDateTime(item.last_submitted_at ?? item.first_submitted_at)}
+                        </td>
+                        <td className={`${dataTable.cell} whitespace-nowrap text-muted`}>{formatExitInterviewDateTime(item.updated_at)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <CanonicalPagination
+              className="border-brand-line px-4 py-3 sm:px-5"
+              page={page.page}
+              hasNext={page.has_next}
+              label="Exit Interview queue pages"
+              onPageChange={(nextPage) => router.push(pageHref({ ...filters, pageSize: page.page_size }, nextPage))}
+            />
+          </>
+        )}
+      </Panel>
     </section>
   );
 }

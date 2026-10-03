@@ -11,9 +11,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LoadingRegion } from "@/components/ui/loading-region";
-import { Skeleton } from "@/components/ui/skeleton";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { organizationErrorMessage } from "@/features/organization/components/organization-action";
+import { PageHeader } from "@/components/ui/page-header";
+import { Notice } from "@/components/ui/notice";
+import { PanelMessage } from "@/components/ui/panel";
 
 export function StatusBadge({ active }: { active: boolean }) {
   return (
@@ -31,18 +33,23 @@ export function StatusBadge({ active }: { active: boolean }) {
 
 export function PageHeading({
   title,
+  headingId,
+  description,
   action,
 }: {
   title: string;
+  headingId?: string;
+  description?: ReactNode;
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-        {title}
-      </h1>
-      {action}
-    </div>
+    <PageHeader
+      title={title}
+      headingId={headingId}
+      description={description}
+      actions={action}
+      className="mb-0"
+    />
   );
 }
 
@@ -76,9 +83,9 @@ export function SearchField({
   }, [current, pathname, router, searchParams, value]);
 
   return (
-    <div className="min-w-0 flex-1">
+    <div className="grid min-w-0 content-start gap-1.5">
       <Label htmlFor="organization-search">{label}</Label>
-      <div className="relative mt-2">
+      <div className="relative">
         <Search
           size={18}
           aria-hidden="true"
@@ -107,24 +114,51 @@ export function QueryError({
   onRetry: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-border py-6">
-      <p className="text-sm text-danger">
-        {organizationErrorMessage(error, fallback)}
-      </p>
-      <Button variant="secondary" className="mt-4" onClick={onRetry}>
-        Retry
-      </Button>
-    </div>
+    <Notice
+      tone="danger"
+      role="alert"
+      action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
+    >
+      {organizationErrorMessage(error, fallback)}
+    </Notice>
   );
 }
 
-export function TableSkeleton({ label = "Loading Organization records…" }: { label?: string }) {
+// The same failure, inside the results Panel that would have held the records.
+export function PanelQueryError({
+  error,
+  fallback,
+  onRetry,
+}: {
+  error: unknown;
+  fallback: string;
+  onRetry: () => void;
+}) {
   return (
-    <LoadingRegion label={label} className="mt-6 space-y-3">
-      {Array.from({ length: 5 }, (_, index) => (
-        <Skeleton key={index} className="h-14 w-full" />
-      ))}
-    </LoadingRegion>
+    <PanelMessage
+      tone="danger"
+      role="alert"
+      action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
+    >
+      {organizationErrorMessage(error, fallback)}
+    </PanelMessage>
+  );
+}
+
+export function TableSkeleton({
+  label = "Loading Organization records…",
+  framed = false,
+}: {
+  label?: string;
+  framed?: boolean;
+}) {
+  return (
+    <RowsSkeleton
+      label={label}
+      rows={5}
+      framed={framed}
+      className={framed ? "mt-5" : undefined}
+    />
   );
 }
 

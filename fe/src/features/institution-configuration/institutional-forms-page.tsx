@@ -6,6 +6,10 @@ import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { canViewInstitutionalForms } from "@/features/institution-configuration/institution-access";
 import { institutionConfigurationErrorMessage } from "@/features/institution-configuration/institution-action";
 import { FormRevisionList } from "@/features/institution-configuration/form-revision-list";
@@ -73,57 +77,50 @@ function InstitutionalFormsWorkspace({
 
   return (
     <>
-      <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-        Institutional Forms
-      </h1>
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-        Read-only reference of controlled-form identities recognized by COMPASS. This is not
-        an inventory of every questionnaire, workflow, report, or downloadable PDF.
-      </p>
+      <PageHeader
+        title="Institutional Forms"
+        description="Read-only reference of controlled-form identities recognized by COMPASS. This is not an inventory of every questionnaire, workflow, report, or downloadable PDF."
+      >
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Official code and revision identify an institutional controlled document. Current means the revision selected for new records. COMPASS support means this deployed software understands that exact revision; it does not grant institutional approval. Supported revisions are synchronized with the deployed version after confirmed form changes.</p>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Some confirmed source revisions retain former CNSC/GTA codes. Current UCN branding does not rewrite their controlled-document identities.</p>
-      {invalidFamilyNotice ? <p role="status" className="mt-4 border-y border-warning/30 py-3 text-sm text-warning">The requested Form Family is unavailable. Choose an available family below.</p> : null}
+      </PageHeader>
+      {invalidFamilyNotice ? <Notice role="status" tone="warning" className="mb-5">The requested Form Family is unavailable. Choose an available family below.</Notice> : null}
 
       {families.isError && !families.data ? (
-        <div role="alert" className="mt-8 border-y border-danger/30 py-4">
-          <p className="text-sm leading-6 text-danger">
-            {institutionConfigurationErrorMessage(
-              families.error,
-              "Institutional Form Families could not be loaded.",
-            )}
-          </p>
-          <Button variant="secondary" className="mt-3" onClick={() => void families.refetch()}>
-            Retry
-          </Button>
-        </div>
-      ) : families.isPending && !families.data ? (
-        <div
-          className="mt-8 grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]"
-          aria-busy="true"
+        <Notice
+          role="alert"
+          tone="danger"
+          action={
+            <Button variant="secondary" onClick={() => void families.refetch()}>
+              Retry
+            </Button>
+          }
         >
-          <div className="space-y-3">
-            <Skeleton className="h-6 w-36" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <p className="sr-only">Loading Institutional Form Families…</p>
-          </div>
-          <div className="space-y-3">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
+          {institutionConfigurationErrorMessage(
+            families.error,
+            "Institutional Form Families could not be loaded.",
+          )}
+        </Notice>
+      ) : families.isPending && !families.data ? (
+        <div className="grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
+          <RowsSkeleton label="Loading Institutional Form Families…" rows={3} framed />
+          <div className="rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5" aria-hidden="true">
+            <Skeleton className="h-6 w-64" />
+            <Skeleton className="mt-4 h-16 w-full" />
+            <Skeleton className="mt-3 h-16 w-full" />
           </div>
         </div>
       ) : familyItems.length === 0 ? (
-        <p className="mt-8 border-y border-border py-5 text-sm text-muted">
+        <Notice>
           Institutional Form references are unavailable for this deployment. Supported Form Families have not been synchronized.
-        </p>
+        </Notice>
       ) : (
-        <div className="mt-8 grid min-w-0 gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
-          <nav aria-label="Form families" className="min-w-0">
-            <h2 className="font-heading text-lg font-semibold text-ink">
+        <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
+          <nav aria-labelledby="form-families-heading" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised">
+            <h2 id="form-families-heading" className="border-b border-brand-line px-4 py-3 font-heading text-base font-semibold text-ink">
               Form families
             </h2>
-            <ul className="mt-3 divide-y divide-border border-y border-border">
+            <ul className="divide-y divide-border">
               {familyItems.map((family) => {
                 const selected = family.id === selectedFamily?.id;
                 return (
@@ -132,10 +129,10 @@ function InstitutionalFormsWorkspace({
                       href={`/portal/institutional-forms?family=${encodeURIComponent(family.key)}`}
                       aria-current={selected ? "page" : undefined}
                       className={
-                        "block min-h-12 break-words px-3 py-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
+                        "block min-h-12 break-words px-4 py-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus " +
                         (selected
-                          ? "border-l-4 border-brand bg-surface-muted text-ink"
-                          : "text-muted hover:bg-surface-muted hover:text-ink")
+                          ? "bg-brand-wash text-brand-strong"
+                          : "text-muted hover:bg-surface-subtle hover:text-ink")
                       }
                     >
                       {family.title}
@@ -146,74 +143,64 @@ function InstitutionalFormsWorkspace({
             </ul>
           </nav>
 
-          {selectedFamily ? <section aria-labelledby="selected-form-family-heading" className="min-w-0">
-            <div className="min-w-0 border-b border-border pb-5">
-              <h2
-                id="selected-form-family-heading"
-                className="break-words font-heading text-2xl font-semibold text-ink"
-              >
-                {selectedFamily.title}
-              </h2>
-              <p className="mt-2 text-sm font-semibold text-ink">
-                {selectedFamily.configuration_state === FormFamilyConfigurationState.READY ? "Current supported revision ready" :
-                  selectedFamily.configuration_state === FormFamilyConfigurationState.REVISION_NOT_REQUIRED ? "Controlled revision not required" :
-                  selectedFamily.configuration_state === FormFamilyConfigurationState.ACTIVE_UNSUPPORTED ? "Configuration mismatch" :
-                  "Required revision missing"}
-              </p>
-              {selectedFamily.configuration_state === FormFamilyConfigurationState.ACTIVE_UNSUPPORTED ? <p role="alert" className="mt-2 max-w-2xl text-sm leading-6 text-danger">A revision is marked Current for new records, but this COMPASS version does not support its exact controlled-form identity.</p> : null}
-              {selectedFamily.configuration_state === FormFamilyConfigurationState.MISSING_REQUIRED_REVISION ? <p role="alert" className="mt-2 max-w-2xl text-sm leading-6 text-danger">This Form Family requires a current supported revision, but none is configured.</p> : null}
-            </div>
+          {selectedFamily ? <Panel aria-labelledby="selected-form-family-heading">
+            <PanelHeader
+              title={selectedFamily.title}
+              titleId="selected-form-family-heading"
+              description={
+                <span className="font-semibold text-ink">
+                  {selectedFamily.configuration_state === FormFamilyConfigurationState.READY ? "Current supported revision ready" :
+                    selectedFamily.configuration_state === FormFamilyConfigurationState.REVISION_NOT_REQUIRED ? "Controlled revision not required" :
+                    selectedFamily.configuration_state === FormFamilyConfigurationState.ACTIVE_UNSUPPORTED ? "Configuration mismatch" :
+                    "Required revision missing"}
+                </span>
+              }
+            />
+            {selectedFamily.configuration_state === FormFamilyConfigurationState.ACTIVE_UNSUPPORTED ? <p role="alert" className="border-b border-brand-line px-4 py-3 text-sm leading-6 text-danger sm:px-5">A revision is marked Current for new records, but this COMPASS version does not support its exact controlled-form identity.</p> : null}
+            {selectedFamily.configuration_state === FormFamilyConfigurationState.MISSING_REQUIRED_REVISION ? <p role="alert" className="border-b border-brand-line px-4 py-3 text-sm leading-6 text-danger sm:px-5">This Form Family requires a current supported revision, but none is configured.</p> : null}
 
-            <h3 className="mt-6 font-heading text-lg font-semibold text-ink">
+            <h3 className="px-4 pb-3 pt-4 font-heading text-base font-semibold text-ink sm:px-5">
               Form Revisions
             </h3>
             {revisions.isError && !revisions.data ? (
-              <div role="alert" className="mt-4 border-y border-danger/30 py-4">
-                <p className="text-sm leading-6 text-danger">
-                  {institutionConfigurationErrorMessage(
-                    revisions.error,
-                    "Form Revisions for this family could not be loaded.",
-                  )}
-                </p>
-                <Button
-                  variant="secondary"
-                  className="mt-3"
-                  onClick={() => void revisions.refetch()}
-                >
-                  Retry
-                </Button>
-              </div>
+              <PanelMessage
+                role="alert"
+                tone="danger"
+                className="pt-0"
+                action={
+                  <Button variant="secondary" onClick={() => void revisions.refetch()}>
+                    Retry
+                  </Button>
+                }
+              >
+                {institutionConfigurationErrorMessage(
+                  revisions.error,
+                  "Form Revisions for this family could not be loaded.",
+                )}
+              </PanelMessage>
             ) : revisions.isPending && !revisions.data ? (
-              <div className="mt-4 space-y-3" aria-busy="true">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <p className="sr-only">Loading Form Revisions…</p>
-              </div>
+              <RowsSkeleton label="Loading Form Revisions…" rows={2} className="border-t border-border" />
             ) : revisionItems.length === 0 ? (
-              <div className="mt-4 border-y border-border py-5">
-                <p className="text-sm leading-6 text-muted">
-                  {selectedFamily.configuration_state === FormFamilyConfigurationState.REVISION_NOT_REQUIRED
-                    ? "No official controlled-document revision is required for this form family in COMPASS."
-                    : "No Form Revision is recorded for this family."}
-                </p>
-              </div>
+              <PanelMessage className="pt-0">
+                {selectedFamily.configuration_state === FormFamilyConfigurationState.REVISION_NOT_REQUIRED
+                  ? "No official controlled-document revision is required for this form family in COMPASS."
+                  : "No Form Revision is recorded for this family."}
+              </PanelMessage>
             ) : (
               <>
                 {revisions.isError ? (
-                  <p role="alert" className="mt-4 text-sm leading-6 text-danger">
+                  <p role="alert" className="px-4 pb-3 text-sm leading-6 text-danger sm:px-5">
                     The revision list could not be refreshed. The displayed data may be out
                     of date.
                   </p>
                 ) : null}
-                <div className="mt-4">
-                  <FormRevisionList
-                    familyTitle={selectedFamily.title}
-                    revisions={revisionItems}
-                  />
-                </div>
+                <FormRevisionList
+                  familyTitle={selectedFamily.title}
+                  revisions={revisionItems}
+                />
               </>
             )}
-          </section> : <p className="text-sm text-muted">Choose a Form Family to view its revisions.</p>}
+          </Panel> : <Notice>Choose a Form Family to view its revisions.</Notice>}
         </div>
       )}
 

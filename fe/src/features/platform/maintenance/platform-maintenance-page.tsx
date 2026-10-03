@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { useServerBoundary } from "@/features/freshness/use-server-boundary";
@@ -338,7 +339,7 @@ export function PlatformMaintenancePage() {
     Boolean(result?.schedule_upcoming) || Boolean(result?.schedule_active);
 
   return (
-    <section>
+    <section aria-labelledby="platform-page-heading">
       <PlatformPageHeader
         title="Maintenance"
         description={`Review public status and administer manual or scheduled Maintenance Mode. Times use ${INSTITUTION_TIME_ZONE_LABEL}.`}
@@ -356,11 +357,13 @@ export function PlatformMaintenancePage() {
 
       {result ? (
         <>
-          <section aria-labelledby="maintenance-current-heading">
-            <h2 id="maintenance-current-heading" className="sr-only">
-              Current Maintenance Mode status
-            </h2>
-            <dl className="grid gap-4 border-y border-border py-5 sm:grid-cols-[minmax(9rem,0.35fr)_minmax(0,1fr)]">
+          <Panel aria-labelledby="maintenance-current-heading">
+            <PanelHeader
+              title="Current Maintenance Mode status"
+              titleId="maintenance-current-heading"
+            />
+            <PanelBody>
+            <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-[minmax(9rem,0.35fr)_minmax(0,1fr)]">
               <dt className="text-sm font-semibold text-muted">Effective state</dt>
               <dd>
                 <span
@@ -419,16 +422,17 @@ export function PlatformMaintenancePage() {
                 </>
               ) : null}
             </dl>
-          </section>
+            </PanelBody>
+          </Panel>
 
           {action.notice ? (
-            <p role="status" className="mt-5 text-sm text-success">
+            <p role="status" className="mt-4 text-sm text-success">
               {action.notice}
             </p>
           ) : null}
 
           {canManage && !maintenanceStale ? (
-            <section className="mt-8" aria-labelledby="maintenance-controls-heading">
+            <section className="mt-7 space-y-5" aria-labelledby="maintenance-controls-heading">
               <h2
                 id="maintenance-controls-heading"
                 className="font-heading text-xl font-semibold text-ink"
@@ -490,46 +494,52 @@ export function PlatformMaintenancePage() {
               ) : null}
 
               {result.state === MaintenanceState.MAINTENANCE && result.source === MaintenanceSource.MANUAL ? (
-                <section className="border-t border-border py-6">
-                  <h3 className="font-heading text-lg font-semibold text-ink">
-                    Manual Maintenance Mode is active
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted">
-                    It remains active until an operator explicitly ends it.
-                  </p>
-                  <Button
-                    className="mt-4"
-                    variant="danger"
-                    disabled={pending}
-                    onClick={() => {
-                      action.setError(null);
-                      setConfirmation("disable");
-                    }}
-                  >
-                    End Maintenance Mode
-                  </Button>
-                </section>
+                <Panel aria-labelledby="maintenance-manual-active-heading">
+                  <PanelHeader
+                    title="Manual Maintenance Mode is active"
+                    titleId="maintenance-manual-active-heading"
+                    level={3}
+                    description="It remains active until an operator explicitly ends it."
+                    actions={
+                      <Button
+                        variant="danger"
+                        disabled={pending}
+                        onClick={() => {
+                          action.setError(null);
+                          setConfirmation("disable");
+                        }}
+                      >
+                        End Maintenance Mode
+                      </Button>
+                    }
+                  />
+                </Panel>
               ) : null}
 
               {canCancelSchedule ? (
-                <section className="border-t border-border py-6">
-                  <h3 className="font-heading text-lg font-semibold text-ink">
-                    {result.schedule_active
-                      ? "Scheduled Maintenance Mode is active"
-                      : "Upcoming maintenance is scheduled"}
-                  </h3>
-                  <Button
-                    className="mt-4"
-                    variant="danger"
-                    disabled={pending}
-                    onClick={() => {
-                      action.setError(null);
-                      setConfirmation("cancel");
-                    }}
-                  >
-                    Cancel scheduled maintenance
-                  </Button>
-                </section>
+                <Panel aria-labelledby="maintenance-schedule-active-heading">
+                  <PanelHeader
+                    title={
+                      result.schedule_active
+                        ? "Scheduled Maintenance Mode is active"
+                        : "Upcoming maintenance is scheduled"
+                    }
+                    titleId="maintenance-schedule-active-heading"
+                    level={3}
+                    actions={
+                      <Button
+                        variant="danger"
+                        disabled={pending}
+                        onClick={() => {
+                          action.setError(null);
+                          setConfirmation("cancel");
+                        }}
+                      >
+                        Cancel scheduled maintenance
+                      </Button>
+                    }
+                  />
+                </Panel>
               ) : null}
 
             </section>

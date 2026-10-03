@@ -3,6 +3,8 @@
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
+import { pageBackLinkClass } from "@/components/ui/page-header";
+import { Panel, PanelSection } from "@/components/ui/panel";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -55,7 +57,7 @@ function DetailField({ label, children }: { label: string; children: React.React
 }
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="border-t border-border py-6"><h2 className="font-heading text-lg font-semibold text-ink">{title}</h2><dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">{children}</dl></section>;
+  return <PanelSection title={title} titleId={"feedback-detail-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}><dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">{children}</dl></PanelSection>;
 }
 
 function notFoundMessage(error: unknown, instrument: "Customer Feedback" | "CSM"): string | null {
@@ -74,7 +76,7 @@ export function CustomerFeedbackResponseDetail({ responseId }: { responseId: str
   if (detail.isPending) return <FeedbackDetailSkeleton label="Loading Customer Feedback response…" />;
   if (!confirmed) {
     const missing = notFoundMessage(detail.error, "Customer Feedback");
-    return <section><FeedbackPageHeading title={missing ?? "Customer Feedback response could not be loaded"} /><div className="mt-5">{missing ? <Link href="/portal/feedback/customer-feedback/responses" className="text-sm font-semibold text-brand underline">Back to responses</Link> : <FeedbackQueryError error={detail.error} fallback="Customer Feedback response could not be loaded." onRetry={() => void detail.refetch()} />}</div></section>;
+    return <section><FeedbackPageHeading title={missing ?? "Customer Feedback response could not be loaded"} /><div className="mt-5">{missing ? <Link href="/portal/feedback/customer-feedback/responses" className={pageBackLinkClass}>Back to responses</Link> : <FeedbackQueryError error={detail.error} fallback="Customer Feedback response could not be loaded." onRetry={() => void detail.refetch()} />}</div></section>;
   }
   const item = confirmed.data;
   const services = item.services_received.map((value) => serviceLabels[value] ?? value).join(", ");
@@ -83,6 +85,7 @@ export function CustomerFeedbackResponseDetail({ responseId }: { responseId: str
     <section aria-labelledby="customer-feedback-detail-heading">
       {detail.isError ? <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
       <FeedbackPageHeading headingId="customer-feedback-detail-heading" eyebrow="Customer Feedback response" title={item.respondent_name || "Customer Feedback response"} description={`Submitted ${formatInstitutionalDateTime(item.submitted_at)}.`} action={<Link href="/portal/feedback/customer-feedback/responses" className={buttonVariants({ variant: "secondary" })}>Back to responses</Link>} />
+      <Panel as="div" className="mt-5">
       <DetailSection title="I. Service/s received">
         <DetailField label="Services received">{services}</DetailField>
         {item.services_received.includes(CustomerFeedbackServiceValue.OTHER) ? <DetailField label="Other service specified">{item.other_service}</DetailField> : null}
@@ -107,6 +110,7 @@ export function CustomerFeedbackResponseDetail({ responseId }: { responseId: str
       <DetailSection title="Official form revision">
         <DetailField label="Official code">{item.form_revision.official_code}</DetailField><DetailField label="Official revision">{item.form_revision.official_revision}</DetailField>
       </DetailSection>
+      </Panel>
     </section>
   );
 }
@@ -141,7 +145,7 @@ export function CsmResponseDetail({ responseId }: { responseId: string }) {
   if (detail.isPending) return <FeedbackDetailSkeleton label="Loading CSM response…" />;
   if (!confirmed) {
     const missing = notFoundMessage(detail.error, "CSM");
-    return <section><FeedbackPageHeading title={missing ?? "CSM response could not be loaded"} /><div className="mt-5">{missing ? <Link href="/portal/feedback/csm/responses" className="text-sm font-semibold text-brand underline">Back to responses</Link> : <FeedbackQueryError error={detail.error} fallback="CSM response could not be loaded." onRetry={() => void detail.refetch()} />}</div></section>;
+    return <section><FeedbackPageHeading title={missing ?? "CSM response could not be loaded"} /><div className="mt-5">{missing ? <Link href="/portal/feedback/csm/responses" className={pageBackLinkClass}>Back to responses</Link> : <FeedbackQueryError error={detail.error} fallback="CSM response could not be loaded." onRetry={() => void detail.refetch()} />}</div></section>;
   }
   const item = confirmed.data;
   const clientLabel = item.client_type === CSMClientTypeValue.CITIZEN ? "Citizen" : item.client_type === CSMClientTypeValue.BUSINESS ? "Business" : "Government";
@@ -150,6 +154,7 @@ export function CsmResponseDetail({ responseId }: { responseId: string }) {
     <section aria-labelledby="csm-detail-heading">
       {detail.isError ? <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
       <FeedbackPageHeading headingId="csm-detail-heading" title="Client Satisfaction Measurement response" description={`Submitted ${formatInstitutionalDateTime(item.submitted_at)}.`} action={<Link href="/portal/feedback/csm/responses" className={buttonVariants({ variant: "secondary" })}>Back to responses</Link>} />
+      <Panel as="div" className="mt-5">
       <DetailSection title="Respondent and instrument data">
         <DetailField label="Client type">{clientLabel}</DetailField>
         <DetailField label="Sex">{item.sex === CSMSexValue.MALE ? "Male" : "Female"}</DetailField>
@@ -169,6 +174,7 @@ export function CsmResponseDetail({ responseId }: { responseId: string }) {
         <DetailField label="Suggestions on how we can further improve our services">{item.suggestions}</DetailField>
         <DetailField label="Email address">{item.email || "Not provided"}</DetailField>
       </DetailSection>
+      </Panel>
     </section>
   );
 }

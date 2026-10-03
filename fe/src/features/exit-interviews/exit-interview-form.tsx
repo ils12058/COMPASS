@@ -5,6 +5,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { pageBackLinkClass } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import type { ExitInterviewDetailResponse } from "@/lib/api/generated/model";
@@ -282,11 +284,9 @@ export function ExitInterviewForm({
 
 
   return (
-    <section className="space-y-2" aria-labelledby="exit-interview-form-heading">
-      <GuardedPortalLink
-        href="/portal/exit-interviews"
-        className="inline-flex min-h-9 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
+    <section className="space-y-5" aria-labelledby="exit-interview-form-heading">
+      <div>
+      <GuardedPortalLink href="/portal/exit-interviews" className={pageBackLinkClass}>
         Back to Exit Interviews
       </GuardedPortalLink>
       <ExitInterviewHeading
@@ -294,10 +294,12 @@ export function ExitInterviewForm({
         title="Exit Interview"
         description={`${detail.academic_year.label} · Draft response`}
       />
+      </div>
 
       <ExitInterviewCorrectionHistory events={detail.reopen_events} emphasizeLatest />
 
       <form onSubmit={handleSubmit} aria-busy={pending}>
+        <Panel as="div">
         <ExitInterviewFormSections
           form={form}
           disabled={pending || submissionUncertain}
@@ -319,13 +321,13 @@ export function ExitInterviewForm({
           invalidRatingTargetId={invalidRatingTargetId}
         />
 
-        <div className="border-t border-border py-6">
+        <div className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-5 sm:px-5">
           <div aria-live="polite" className="space-y-1 text-sm text-muted">
             <p>Self-Assessment: {selfAnswered} of {SELF_ASSESSMENT_ITEMS.length} answered</p>
             <p>College Feedback: {collegeAnswered} of {collegeItems.length} answered</p>
           </div>
           {missingRatings.length ? (
-            <details className="mt-3 max-w-3xl border-l-4 border-warning bg-warning/5 px-4 py-3">
+            <details className="mt-3 max-w-3xl rounded-sm border border-warning/40 bg-surface-raised px-4 py-3">
               <summary className="cursor-pointer text-sm font-semibold text-ink">
                 {missingRatings.length} required {missingRatings.length === 1 ? "rating still needs" : "ratings still need"} a response.
               </summary>
@@ -378,6 +380,7 @@ export function ExitInterviewForm({
             </Button>
           </div>
         </div>
+        </Panel>
       </form>
 
       <ConsequentialActionDialog

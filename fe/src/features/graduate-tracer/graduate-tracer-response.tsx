@@ -1,3 +1,4 @@
+import { Panel } from "@/components/ui/panel";
 import {
   ADVANCED_STUDY_REASON_CHOICES,
   BUSINESS_LINE_CHOICES,
@@ -40,10 +41,10 @@ function DataTable({
 }) {
   if (!rows.length) return <p className="text-sm text-muted">No entries provided.</p>;
   return (
-    <div className="overflow-x-auto rounded-md border border-border">
+    <div className="overflow-x-auto rounded-sm border border-border">
       <table className="min-w-[36rem] w-full border-collapse text-left text-sm">
         <caption className="sr-only">{caption}</caption>
-        <thead className="bg-surface-muted text-xs uppercase tracking-wide text-muted">
+        <thead className="bg-brand-wash text-xs uppercase tracking-wide text-brand-strong">
           <tr>{headers.map((header) => <th key={header} scope="col" className="px-3 py-3 font-semibold">{header}</th>)}</tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -78,8 +79,9 @@ export function GraduateTracerResponse({ detail }: { detail: GraduateTracerDetai
   const employed = detail.current_employment_state === "EMPLOYED";
   const unemployed = detail.current_employment_state === "NOT_EMPLOYED" || detail.current_employment_state === "NEVER_EMPLOYED";
 
+  // One sheet in the order of the official survey.
   return (
-    <div className="space-y-1">
+    <Panel as="div">
       <GraduateTracerSection id="graduate-tracer-general" title="A. General Information">
         <Answers>
           <GraduateTracerAnswer label="Name" value={detail.name} />
@@ -229,6 +231,6 @@ export function GraduateTracerResponse({ detail }: { detail: GraduateTracerDetai
       <GraduateTracerSection id="graduate-tracer-curriculum" title="Curriculum Suggestions">
         <GraduateTracerAnswer label="List down suggestions to further improve your course curriculum." value={detail.curriculum_improvement_suggestions} />
       </GraduateTracerSection>
-    </div>
+    </Panel>
   );
 }

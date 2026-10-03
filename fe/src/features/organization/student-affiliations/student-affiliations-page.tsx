@@ -12,14 +12,19 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import { useOrganizationAction } from "@/features/organization/components/organization-action";
 import { PeoplePicker } from "@/features/organization/components/people-picker";
 import {
   PageHeading,
-  QueryError,
+  PanelQueryError,
   SearchField,
   StatusBadge,
   TableSkeleton,
@@ -210,10 +215,19 @@ export function StudentAffiliationsPage() {
       (college) => college.is_active && college.campus.is_active,
     ) ?? [];
 
+  const hasFilters = Boolean(search || campusId || collegeId);
+  const listPage = list.data?.data;
+
   return (
-    <section>
+    <section aria-labelledby="student-affiliations-heading">
       <PageHeading
         title="Student affiliations"
+        headingId="student-affiliations-heading"
+        description={
+          !canViewStructure
+            ? "Organization structure is unavailable to this account, so College choices for new or changed affiliations are unavailable. Existing affiliations are still listed."
+            : undefined
+        }
         action={
           structureReady ? (
             <Button onClick={() => openSet()}>Set affiliation</Button>
@@ -221,110 +235,118 @@ export function StudentAffiliationsPage() {
         }
       />
 
-      {!canViewStructure ? (
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-          Organization structure is unavailable to this account, so
-          College choices for new or changed affiliations are unavailable.
-          Existing affiliations are still listed.
-        </p>
-      ) : null}
-
-      <div className="mt-8 flex flex-col gap-4 border-y border-border py-5 lg:flex-row lg:items-end">
+      {/* The search applies as you type and the structure choices apply on change. */}
+      <FilterToolbar
+        className="mt-5"
+        fieldsClassName="lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]"
+      >
         <SearchField
           label="Search student affiliations"
           placeholder="Search by student name or institutional ID"
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:w-[30rem]">
-          <div>
-            <Label htmlFor="affiliation-campus-filter">Campus</Label>
-            <Select
-              id="affiliation-campus-filter"
-              className="mt-2"
-              value={campusId}
-              disabled={!structureReady}
-              onChange={(event) =>
-                updateFilter("campus_id", event.target.value)
-              }
-            >
-              <option value="">All Campuses</option>
-              {campuses.data?.data.items.map((campus) => (
-                <option key={campus.id} value={campus.id}>
-                  {campus.code} — {campus.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="affiliation-college-filter">College</Label>
-            <Select
-              id="affiliation-college-filter"
-              className="mt-2"
-              value={collegeId}
-              disabled={!structureReady}
-              onChange={(event) =>
-                updateFilter("college_id", event.target.value)
-              }
-            >
-              <option value="">All Colleges</option>
-              {filterColleges.map((college) => (
-                <option key={college.id} value={college.id}>
-                  {college.code} — {college.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
-      </div>
+        <FilterField label="Campus" htmlFor="affiliation-campus-filter">
+          <Select
+            id="affiliation-campus-filter"
+            value={campusId}
+            disabled={!structureReady}
+            onChange={(event) =>
+              updateFilter("campus_id", event.target.value)
+            }
+          >
+            <option value="">All Campuses</option>
+            {campuses.data?.data.items.map((campus) => (
+              <option key={campus.id} value={campus.id}>
+                {campus.code} — {campus.name}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="College" htmlFor="affiliation-college-filter">
+          <Select
+            id="affiliation-college-filter"
+            value={collegeId}
+            disabled={!structureReady}
+            onChange={(event) =>
+              updateFilter("college_id", event.target.value)
+            }
+          >
+            <option value="">All Colleges</option>
+            {filterColleges.map((college) => (
+              <option key={college.id} value={college.id}>
+                {college.code} — {college.name}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+      </FilterToolbar>
 
       {canViewStructure && (campuses.isError || colleges.isError) ? (
-        <p role="alert" className="mt-3 text-xs text-danger">
+        <Notice role="alert" tone="warning" className="mt-3">
           Structure choices could not be loaded. The affiliation list remains
           available, but set/change controls are unavailable.
-        </p>
+        </Notice>
       ) : null}
       {action.notice && !dialog && !removal ? action.messages : null}
 
-      {list.isPending ? (
-        <TableSkeleton label="Loading Student affiliations…" />
-      ) : list.isError ? (
-        <div className="mt-6">
-          <QueryError
+      <Panel className="mt-5" aria-labelledby="student-affiliations-results-heading">
+        <PanelHeader
+          title="Current affiliations"
+          titleId="student-affiliations-results-heading"
+          context={
+            list.isFetching && !list.isPending
+              ? "Refreshing Student affiliations…"
+              : listPage && !list.isError
+                ? describeResultPage({
+                    count: listPage.items.length,
+                    page: listPage.page,
+                    hasNext: listPage.has_next,
+                    noun: { one: "Student affiliation", other: "Student affiliations" },
+                    filtered: hasFilters,
+                  })
+                : null
+          }
+        />
+        {list.isPending ? (
+          <TableSkeleton label="Loading Student affiliations…" />
+        ) : list.isError ? (
+          <PanelQueryError
             error={list.error}
             fallback="Student affiliations could not be loaded."
             onRetry={() => void list.refetch()}
           />
-        </div>
-      ) : list.data.data.items.length === 0 ? (
-        <p className="border-b border-border py-10 text-sm text-muted">
-          No Student affiliations match the current filters.
-        </p>
-      ) : (
-        <>
-          <div className="mt-5 overflow-x-auto border-y border-border">
-            <table className="w-full min-w-[42rem] border-collapse text-left text-sm">
-              <thead className="bg-surface-subtle text-xs font-semibold uppercase tracking-wide text-muted">
+        ) : list.data.data.items.length === 0 ? (
+          <PanelMessage>
+            {hasFilters
+              ? "No Student affiliations match the current filters."
+              : "No Student affiliations are recorded."}
+          </PanelMessage>
+        ) : (
+          <div className={dataTable.scroll}>
+            <table className={`${dataTable.table} min-w-[42rem]`}>
+              <caption className="sr-only">Student affiliations</caption>
+              <thead className={dataTable.head}>
                 <tr>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>
                     Student
                   </th>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Institutional ID
                   </th>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     College
                   </th>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Campus
                   </th>
-                  <th scope="col" className="px-4 py-3 text-right">
+                  <th scope="col" className={`${dataTable.headerCell} text-right`}>
                     Action
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className={dataTable.body}>
                 {list.data.data.items.map((item) => (
-                  <tr key={item.student.id} className="border-t border-border">
-                    <th scope="row" className="px-4 py-4">
+                  <tr key={item.student.id} className={dataTable.row}>
+                    <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-normal`}>
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-semibold text-ink">
@@ -335,12 +357,12 @@ export function StudentAffiliationsPage() {
                         <p className="text-xs text-muted">{item.student.email}</p>
                       </div>
                     </th>
-                    <td className="px-4 py-4 font-medium text-ink">
+                    <td className={`${dataTable.cell} font-medium text-ink`}>
                       {item.student.institutional_id ?? "—"}
                     </td>
-                    <td className="px-4 py-4">{item.college.name}</td>
-                    <td className="px-4 py-4">{item.college.campus.name}</td>
-                    <td className="px-4 py-2">
+                    <td className={dataTable.cell}>{item.college.name}</td>
+                    <td className={dataTable.cell}>{item.college.campus.name}</td>
+                    <td className={`${dataTable.cell} py-2`}>
                       <div className="flex justify-end gap-1">
                         {structureReady ? (
                           <Button
@@ -370,17 +392,17 @@ export function StudentAffiliationsPage() {
               </tbody>
             </table>
           </div>
-        </>
-      )}
-      {!list.isPending && !list.isError ? (
-        <CanonicalPagination
-          className="mt-5"
-          page={list.data.data.page}
-          hasNext={list.data.data.has_next}
-          label="Student affiliation pagination"
-          onPageChange={movePage}
-        />
-      ) : null}
+        )}
+        {!list.isPending && !list.isError ? (
+          <CanonicalPagination
+            className="border-brand-line px-4 py-3 sm:px-5"
+            page={list.data.data.page}
+            hasNext={list.data.data.has_next}
+            label="Student affiliation pagination"
+            onPageChange={movePage}
+          />
+        ) : null}
+      </Panel>
 
       <Dialog
         open={Boolean(dialog)}
@@ -401,7 +423,7 @@ export function StudentAffiliationsPage() {
             {dialog?.student ? (
               <div>
                 <p className="text-sm font-semibold text-ink">Student</p>
-                <div className="mt-2 border-l-2 border-support bg-support-soft/40 px-3 py-3 text-sm">
+                <div className="mt-2 rounded-sm border border-brand-line bg-brand-wash px-3 py-3 text-sm">
                   <p className="font-semibold text-ink">{dialog.student.full_name}</p>
                   <p className="mt-1 text-xs text-muted">
                     {dialog.student.institutional_id

@@ -8,6 +8,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
 import { Textarea } from "@/components/ui/textarea";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
@@ -132,13 +133,17 @@ export function ReferralCreatePage() {
   const studentPageData = eligibleStudents.data?.data;
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       <ReferralHeading title="Record referral" description="Record when the referral was made and when Guidance received it. COMPASS also records when you entered it." backHref="/portal/referrals" />
-      <form className="max-w-3xl space-y-8" onSubmit={submit} aria-busy={create.isPending}>
-        <section aria-labelledby="referral-student-heading" className="border-b border-border pb-7">
-          <h2 id="referral-student-heading" className="font-heading text-xl font-semibold text-ink">Student</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Find the student named on the referral. Their college is shown to help you choose the right person.</p>
-          <div className="mt-4">
+      {/* One sheet in the order of the paper referral: who was referred, the source details, then
+          the dates. The form's one action area closes the sheet. */}
+      <form className="max-w-3xl" onSubmit={submit} aria-busy={create.isPending}>
+        <Panel as="div">
+          <PanelSection
+            title="Student"
+            titleId="referral-student-heading"
+            description="Find the student named on the referral. Their college is shown to help you choose the right person."
+          >
             <EligibleStudentPicker
               label="Choose Student"
               search={studentSearch}
@@ -156,54 +161,52 @@ export function ReferralCreatePage() {
               onRetry={() => void eligibleStudents.refetch()}
               onPageChange={setStudentPage}
             />
-          </div>
-        </section>
+          </PanelSection>
 
-        <section aria-labelledby="referral-source-heading" className="border-b border-border pb-7">
-          <h2 id="referral-source-heading" className="font-heading text-xl font-semibold text-ink">Referral source</h2>
-          <div className="mt-5 grid gap-5">
-            <div className="grid gap-2">
-              <Label htmlFor="referral-course-year-block">Course / Year / Block</Label>
-              <Input id="referral-course-year-block" maxLength={255} required value={courseYearBlock} onChange={(event) => setCourseYearBlock(event.target.value)} />
-              <p className="text-xs text-muted">Enter the value shown on the source Referral. It will remain as entered on this referral.</p>
+          <PanelSection title="Referral source" titleId="referral-source-heading">
+            <div className="grid gap-5">
+              <div className="grid gap-2">
+                <Label htmlFor="referral-course-year-block">Course / Year / Block</Label>
+                <Input id="referral-course-year-block" maxLength={255} required value={courseYearBlock} onChange={(event) => setCourseYearBlock(event.target.value)} />
+                <p className="text-xs text-muted">Enter the value shown on the source Referral. It will remain as entered on this referral.</p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="referral-reason">Reason for referral</Label>
+                <Textarea id="referral-reason" required rows={6} maxLength={10_000} value={reason} onChange={(event) => setReason(event.target.value)} />
+                <p className="text-xs text-muted">Copy the reason as written on the referral. Do not add a diagnosis or risk assessment here.</p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="referral-referrer-name">Referrer name</Label>
+                <Input id="referral-referrer-name" maxLength={255} required value={referrerName} onChange={(event) => setReferrerName(event.target.value)} />
+                <p className="text-xs text-muted">Enter the name shown on the source Referral. This is not a digital signature.</p>
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="referral-reason">Reason for referral</Label>
-              <Textarea id="referral-reason" required rows={6} maxLength={10_000} value={reason} onChange={(event) => setReason(event.target.value)} />
-              <p className="text-xs text-muted">Copy the reason as written on the referral. Do not add a diagnosis or risk assessment here.</p>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="referral-referrer-name">Referrer name</Label>
-              <Input id="referral-referrer-name" maxLength={255} required value={referrerName} onChange={(event) => setReferrerName(event.target.value)} />
-              <p className="text-xs text-muted">Enter the name shown on the source Referral. This is not a digital signature.</p>
-            </div>
-          </div>
-        </section>
+          </PanelSection>
 
-        <section aria-labelledby="referral-chronology-heading" className="border-b border-border pb-7">
-          <h2 id="referral-chronology-heading" className="font-heading text-xl font-semibold text-ink">Chronology</h2>
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="referral-referred-on">Date referred</Label>
-              <Input id="referral-referred-on" type="date" required value={referredOn} onChange={(event) => setReferredOn(event.target.value)} />
-              <p className="text-xs leading-5 text-muted">The date the source Referral was made or signed. It is not the date entered into COMPASS.</p>
+          <PanelSection title="Chronology" titleId="referral-chronology-heading">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid content-start gap-2">
+                <Label htmlFor="referral-referred-on">Date referred</Label>
+                <Input id="referral-referred-on" type="date" required value={referredOn} onChange={(event) => setReferredOn(event.target.value)} />
+                <p className="text-xs leading-5 text-muted">The date the source Referral was made or signed. It is not the date entered into COMPASS.</p>
+              </div>
+              <div className="grid content-start gap-2">
+                <Label htmlFor="referral-received-at">Received by Guidance/GCO (optional)</Label>
+                <Input id="referral-received-at" type="datetime-local" step="60" value={receivedAt} onChange={(event) => setReceivedAt(event.target.value)} />
+                <p className="text-xs leading-5 text-muted">Enter only when the actual Guidance/GCO receipt date and time are known. Times use {INSTITUTION_TIME_ZONE_LABEL}.</p>
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="referral-received-at">Received by Guidance/GCO (optional)</Label>
-              <Input id="referral-received-at" type="datetime-local" step="60" value={receivedAt} onChange={(event) => setReceivedAt(event.target.value)} />
-              <p className="text-xs leading-5 text-muted">Enter only when the actual Guidance/GCO receipt date and time are known. Times use {INSTITUTION_TIME_ZONE_LABEL}.</p>
-            </div>
-          </div>
-        </section>
+          </PanelSection>
 
-        {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
-        {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
-        <div className="flex flex-wrap gap-3">
-          <Button type="submit" disabled={create.isPending || eligibleStudents.isPending}>
-            {create.isPending ? "Recording…" : "Record referral"}
-          </Button>
-          <Link href="/portal/referrals" className={buttonVariants({ variant: "secondary" })}>Cancel</Link>
-        </div>
+          <PanelFooter>
+            {error ? <p role="alert" className="w-full text-sm text-danger">{error}</p> : null}
+            {notice ? <p role="status" className="w-full text-sm text-muted">{notice}</p> : null}
+            <Button type="submit" disabled={create.isPending || eligibleStudents.isPending}>
+              {create.isPending ? "Recording…" : "Record referral"}
+            </Button>
+            <Link href="/portal/referrals" className={buttonVariants({ variant: "secondary" })}>Cancel</Link>
+          </PanelFooter>
+        </Panel>
       </form>
       <StepUpDialog
         open={stepUpOpen}

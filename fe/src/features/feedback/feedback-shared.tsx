@@ -6,6 +6,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
+import { PageHeader } from "@/components/ui/page-header";
+import { Notice } from "@/components/ui/notice";
+import { PanelSection } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 
 const feedbackOpportunityIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -56,18 +60,14 @@ export function FeedbackPageHeading({
   headingId?: string;
 }) {
   return (
-    <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        {eyebrow ? (
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">
-            {eyebrow}
-          </p>
-        ) : null}
-        <h1 id={headingId} className="mt-1 font-heading text-3xl font-bold text-ink">{title}</h1>
-        {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{description}</p> : null}
-      </div>
-      {action}
-    </header>
+    <PageHeader
+      title={title}
+      headingId={headingId}
+      context={eyebrow}
+      description={description}
+      actions={action}
+      className="mb-0"
+    />
   );
 }
 
@@ -80,12 +80,11 @@ export function FeedbackSection({
   description?: string;
   children: ReactNode;
 }) {
+  // One part of the instrument; the form renders the parts inside one Panel.
   return (
-    <section aria-label={title} className="border-t border-border py-6 sm:py-7">
-      <h2 className="font-heading text-xl font-semibold text-ink">{title}</h2>
-      {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{description}</p> : null}
-      <div className="mt-5 space-y-5">{children}</div>
-    </section>
+    <PanelSection title={title} titleId={"feedback-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-")} description={description}>
+      <div className="space-y-5">{children}</div>
+    </PanelSection>
   );
 }
 
@@ -105,13 +104,7 @@ export function FeedbackFormSkeleton({ label }: { label: string }) {
 }
 
 export function FeedbackListSkeleton({ label }: { label: string }) {
-  return (
-    <LoadingRegion label={label} className="mt-5 space-y-3">
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
-    </LoadingRegion>
-  );
+  return <RowsSkeleton label={label} />;
 }
 
 export function FeedbackDetailSkeleton({ label }: { label: string }) {
@@ -149,10 +142,13 @@ export function FeedbackQueryError({
   onRetry: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-danger/30 py-5">
-      <p className="text-sm text-danger">{feedbackErrorMessage(error, fallback)}</p>
-      <Button variant="secondary" className="mt-3" onClick={onRetry}>Retry</Button>
-    </div>
+    <Notice
+      tone="danger"
+      role="alert"
+      action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
+    >
+      {feedbackErrorMessage(error, fallback)}
+    </Notice>
   );
 }
 

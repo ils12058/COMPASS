@@ -12,6 +12,9 @@ import {
 } from "@/lib/api/errors";
 import type { ReportDisclosureWarning } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
+import { Notice } from "@/components/ui/notice";
+import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs";
+import { PageHeader } from "@/components/ui/page-header";
 
 const REPORT_ERROR_COPY: Record<string, string> = {
   permission_denied: "This report is unavailable for your assigned reporting area.",
@@ -66,26 +69,38 @@ export function ReportNavigation({
   ] as const;
 
   return (
-    <nav
-      aria-label="Reports navigation"
-      className="mb-7 flex flex-wrap gap-x-6 gap-y-2 border-b border-border text-sm"
-    >
+    <WorkspaceTabs label="Reports navigation">
       {links.map((link) => (
         <Link
           key={link.key}
           href={link.href}
           aria-current={current === link.key ? "page" : undefined}
-          className={
-            "inline-flex min-h-11 items-center font-semibold underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
-            (current === link.key
-              ? "text-ink"
-              : "text-brand hover:underline")
-          }
+          className={workspaceTabClass(current === link.key)}
         >
           {link.label}
         </Link>
       ))}
-    </nav>
+    </WorkspaceTabs>
+  );
+}
+
+export function ReportsPageHeading({
+  title,
+  headingId,
+  description,
+  actions,
+  children,
+}: {
+  title: string;
+  headingId?: string;
+  description?: ReactNode;
+  actions?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    <PageHeader title={title} headingId={headingId} description={description} actions={actions}>
+      {children}
+    </PageHeader>
   );
 }
 
@@ -98,12 +113,20 @@ export function ReportsLoading({
 }) {
   return (
     <LoadingRegion label={`Loading ${title}…`}>
-      <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-        {title}
-      </h1>
-      <div className="mt-7 space-y-4">
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-32 w-full" />
+      <ReportsPageHeading title={title} />
+      <div className="space-y-5">
+        <div className="rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5">
+          <Skeleton className="h-4 w-40" />
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
+        <div className="rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5">
+          <Skeleton className="h-28 w-full" />
+        </div>
         {children}
       </div>
     </LoadingRegion>
@@ -120,14 +143,13 @@ export function ReportQueryError({
   onRetry: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-danger/30 py-5">
-      <p className="text-sm leading-6 text-danger">
-        {reportErrorMessage(error, fallback)}
-      </p>
-      <Button className="mt-3" variant="secondary" onClick={onRetry}>
-        Retry
-      </Button>
-    </div>
+    <Notice
+      tone="danger"
+      role="alert"
+      action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
+    >
+      {reportErrorMessage(error, fallback)}
+    </Notice>
   );
 }
 
@@ -139,19 +161,17 @@ export function ReportStaleNotice({
   onRetry: () => void;
 }) {
   return (
-    <div
+    <Notice
+      tone="warning"
       role="status"
-      className="flex flex-wrap items-center justify-between gap-3 border-l-2 border-warning px-3 py-2 text-sm text-muted"
+      action={
+        <Button variant="secondary" onClick={onRetry}>
+          Retry report
+        </Button>
+      }
     >
-      <p>{children}</p>
-      <Button
-        className="min-h-8 px-2 text-xs"
-        variant="quiet"
-        onClick={onRetry}
-      >
-        Retry report
-      </Button>
-    </div>
+      {children}
+    </Notice>
   );
 }
 
@@ -167,24 +187,48 @@ export function ReportDisclosureNotice({
   if (messages.length === 0) return null;
 
   return (
-    <section
-      aria-labelledby="report-disclosure-warning-heading"
-      className="mt-5 border-l-2 border-warning pl-3"
-    >
-      <h2
-        id="report-disclosure-warning-heading"
-        className="text-sm font-semibold text-ink"
+    <section aria-labelledby="report-disclosure-warning-heading">
+      <Notice
+        tone="warning"
+        title={
+          <h2 id="report-disclosure-warning-heading" className="text-sm font-semibold text-ink">
+            Small-population privacy notice
+          </h2>
+        }
       >
-        Small-population privacy notice
-      </h2>
-      {messages.map((message) => (
-        <p key={message} className="mt-1 max-w-4xl text-sm leading-6 text-muted">
-          {message}
-        </p>
-      ))}
+        {messages.map((message) => (
+          <p key={message} className="max-w-4xl text-ink">
+            {message}
+          </p>
+        ))}
+      </Notice>
     </section>
   );
 }
+
+// One aggregate table inside a report group's Panel: a short heading band, then the table flush
+// with the panel's sides. Sections after the first are separated by the panel's line.
+// A report's parts (context, coverage, each group of tables, the methodology) stack with one gap.
+export const reportStack = "mt-5 space-y-5";
+
+// The methodology disclosure: framed like a panel, closed by default.
+export const reportDetails = {
+  root: "rounded-sm border border-brand-line bg-surface-raised",
+  summary:
+    "cursor-pointer rounded-sm px-4 py-3 font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-5",
+  body: "space-y-4 border-t border-brand-line px-4 py-4 text-sm leading-6 sm:px-5",
+} as const;
+
+export const reportSection = {
+  root: "border-t border-brand-line first:border-t-0 [[data-panel-header]+&]:border-t-0",
+  head: "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 pb-3 pt-4 sm:px-5",
+  title: "font-heading text-base font-semibold text-ink",
+  region:
+    "overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
+  // Program and category names keep their own capitalization in these heads.
+  tableHead: "bg-brand-wash text-xs text-brand-strong",
+  empty: "px-4 py-3 text-sm text-muted sm:px-5",
+} as const;
 
 export function formatReportPercentage(value: number | null): string {
   if (value === null) return "N/A";

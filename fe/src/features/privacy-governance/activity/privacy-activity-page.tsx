@@ -4,9 +4,12 @@ import { keepPreviousData } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import { activityCategoryLabels } from "@/features/privacy-governance/privacy-governance-presentation";
 import {
   EmptyListState,
@@ -14,7 +17,6 @@ import {
   PrivacyListSkeleton,
   PrivacyPageHeader,
   PrivacyQueryError,
-  RefreshingNotice,
   useListSearchParams,
 } from "@/features/privacy-governance/privacy-governance-shared";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
@@ -45,7 +47,7 @@ function categoryFrom(value: string | null): PrivacyActivityCategory | undefined
 // the backend suppresses it, rather than shown as an unknown person.
 function ActivityItem({ item }: { item: PrivacyActivityItemResponse }) {
   return (
-    <li className="py-4">
+    <li className="px-4 py-4 sm:px-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="font-semibold text-ink">{item.title}</p>
         <time dateTime={item.occurred_at} className="text-xs text-muted">
@@ -106,30 +108,26 @@ export function PrivacyActivityPage() {
         description="A curated record of privacy-relevant events. It is not the full audit trail."
       />
 
-      <div className="grid max-w-64 gap-2">
-        <label htmlFor="privacy-activity-category" className="text-sm font-medium text-ink">
-          Category
-        </label>
-        <Select
-          id="privacy-activity-category"
-          value={category ?? ""}
-          onChange={(event) => update({ category: categoryFrom(event.target.value) ?? null })}
-        >
-          <option value="">All activity</option>
-          {Object.values(PrivacyActivityCategory).map((option) => (
-            <option key={option} value={option}>
-              {activityCategoryLabels[option]}
-            </option>
-          ))}
-        </Select>
-      </div>
+      {/* One category choice, applied on change. */}
+      <FilterToolbar>
+        <FilterField label="Category" htmlFor="privacy-activity-category">
+          <Select
+            id="privacy-activity-category"
+            value={category ?? ""}
+            onChange={(event) => update({ category: categoryFrom(event.target.value) ?? null })}
+          >
+            <option value="">All activity</option>
+            {Object.values(PrivacyActivityCategory).map((option) => (
+              <option key={option} value={option}>
+                {activityCategoryLabels[option]}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+      </FilterToolbar>
       {query.isError && result ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
 
-      {query.isPending ? (
-        <div className="mt-5">
-          <PrivacyListSkeleton label="Loading privacy and security activity…" />
-        </div>
-      ) : query.isError && !result ? (
+      {query.isError && !result ? (
         <div className="mt-5">
           <PrivacyQueryError
             error={query.error}
@@ -137,43 +135,64 @@ export function PrivacyActivityPage() {
             onRetry={() => void query.refetch()}
           />
         </div>
-      ) : result && result.items.length === 0 ? (
-        category ? (
-          <EmptyListState
-            message={`No ${activityCategoryLabels[category].toLowerCase()} activity.`}
-            action={
-              <Button variant="secondary" onClick={() => update({ category: null })}>
-                Show all activity
-              </Button>
+      ) : (
+        <Panel className={query.isError && result ? undefined : "mt-5"} aria-labelledby="privacy-activity-results-heading">
+          <PanelHeader
+            title="Recorded events"
+            titleId="privacy-activity-results-heading"
+            context={
+              query.isFetching && !query.isPending
+                ? "Refreshing activity…"
+                : result && !query.isError
+                  ? describeResultPage({
+                      count: result.items.length,
+                      page: result.page,
+                      hasNext: result.has_next,
+                      noun: { one: "event", other: "events" },
+                      filtered: Boolean(category),
+                    })
+                  : null
             }
           />
-        ) : (
-          <EmptyListState
-            message={
-              page === 1
-                ? "No privacy or security activity has been recorded."
-                : "No activity on this page."
-            }
-          />
-        )
-      ) : result ? (
-        <>
-          <RefreshingNotice show={query.isFetching} label="Refreshing activity…" />
-          <ol className="mt-5 divide-y divide-border border-y border-border">
-            {result.items.map((item) => (
-              <ActivityItem key={item.id} item={item} />
-            ))}
-          </ol>
-        </>
-      ) : null}
-      {result ? (
-        <CanonicalPagination
-          page={result.page}
-          hasNext={result.has_next}
-          onPageChange={setPage}
-          label="Activity pages"
-        />
-      ) : null}
+          {query.isPending ? (
+            <PrivacyListSkeleton label="Loading privacy and security activity…" framed={false} />
+          ) : result && result.items.length === 0 ? (
+            category ? (
+              <EmptyListState
+                message={`No ${activityCategoryLabels[category].toLowerCase()} activity.`}
+                action={
+                  <Button variant="secondary" onClick={() => update({ category: null })}>
+                    Show all activity
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyListState
+                message={
+                  page === 1
+                    ? "No privacy or security activity has been recorded."
+                    : "No activity on this page."
+                }
+              />
+            )
+          ) : result ? (
+            <ol className="divide-y divide-border">
+              {result.items.map((item) => (
+                <ActivityItem key={item.id} item={item} />
+              ))}
+            </ol>
+          ) : null}
+          {result ? (
+            <CanonicalPagination
+              className="border-brand-line px-4 py-3 sm:px-5"
+              page={result.page}
+              hasNext={result.has_next}
+              onPageChange={setPage}
+              label="Activity pages"
+            />
+          ) : null}
+        </Panel>
+      )}
     </section>
   );
 }

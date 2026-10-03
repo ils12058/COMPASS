@@ -114,17 +114,17 @@ export function StudentConsentPanel({
   }
 
   return (
-    <section aria-labelledby="e-counseling-consent-heading" className="min-w-0 border-t border-border pt-5">
+    <section aria-labelledby="e-counseling-consent-heading" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5">
       <h2 id="e-counseling-consent-heading" className="font-heading text-lg font-semibold text-ink">Media consent</h2>
       <p className="mt-2 text-sm leading-6 text-muted">Your media-consent choice does not affect your ability to receive Counseling.</p>
       {access.canConsentSelf ? (
         consents.isPending ? <div aria-busy="true"><span className="sr-only">Loading your session consent…</span><Skeleton className="mt-4 h-16 w-full" /><Skeleton className="mt-3 h-16 w-full" /></div> :
-          consents.isError ? <div role="alert" className="mt-4 border-y border-danger/30 py-4"><p className="text-sm text-danger">Session consent could not be loaded.</p><Button className="mt-3" variant="secondary" onClick={() => void consents.refetch()}>Retry</Button></div> :
-            <ul className="mt-4 divide-y divide-border border-y border-border">{scopeRows.map(({ scope, row }) => {
+          consents.isError ? <div role="alert" className="mt-4 rounded-sm border border-danger/35 px-4 py-3"><p className="text-sm text-danger">Session consent could not be loaded.</p><Button className="mt-3" variant="secondary" onClick={() => void consents.refetch()}>Retry</Button></div> :
+            <ul className="mt-4 divide-y divide-border rounded-sm border border-border">{scopeRows.map(({ scope, row }) => {
               const withdrawn = Boolean(row?.withdrawn_at);
               const canWithdraw = row?.decision === ECounselingConsentDecision.APPROVED && row.effective && !withdrawn;
               return (
-                <li key={row?.id ?? scope} className="py-4">
+                <li key={row?.id ?? scope} className="px-4 py-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h3 className="font-semibold text-ink">{scopeLabel(scope)}</h3><span className="text-sm text-muted">{row ? consentStatusLabel(row) : "Not requested"}</span></div>
                   <p className="mt-1 text-sm leading-6 text-muted">{scopeDescription(scope)}</p>
                   {row ? <p className="mt-1 text-xs text-muted">Requested {formatECounselingDateTime(row.requested_at)}{row.decided_at ? ` · Decided ${formatECounselingDateTime(row.decided_at)}` : ""}</p> : null}
@@ -135,15 +135,15 @@ export function StudentConsentPanel({
                 </li>
               );
             })}</ul>
-      ) : <p className="mt-4 border-y border-border py-4 text-sm text-muted">Consent decisions are unavailable to this account.</p>}
+      ) : <p className="mt-4 text-sm text-muted">Consent decisions are unavailable to this account.</p>}
       {error && !rows.some((row) => row.scope === error.scope) ? <p role="alert" className="mt-3 text-sm text-danger">{error.message}</p> : null}
       {notice ? <p role="status" className="mt-3 text-sm text-success">{notice}</p> : null}
       {notice === "Consent has been withdrawn." && hasLiveOrTransitionalMedia(latestMedia) ? <p role="status" className="mt-2 text-sm text-muted">The provider is still reconciling the media state.</p> : null}
-      <section aria-labelledby="e-counseling-media-activity-heading" className="mt-6 border-t border-border pt-4">
+      <section aria-labelledby="e-counseling-media-activity-heading" className="mt-5 rounded-sm bg-surface-subtle px-4 py-3">
         <h3 id="e-counseling-media-activity-heading" className="text-sm font-semibold text-ink">Session media activity</h3>
         <dl className="mt-2 grid gap-3 sm:grid-cols-2"><div><dt className="text-xs font-semibold text-muted">Recording</dt><dd className="mt-1 text-sm text-ink">{captureStatusLabel(media.recording.capture_status)}</dd></div><div><dt className="text-xs font-semibold text-muted">Transcription</dt><dd className="mt-1 text-sm text-ink">{captureStatusLabel(media.transcription.capture_status)}</dd></div></dl>
-        {media.recording.capture_status === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-3 border-l-2 border-warning pl-3 text-sm font-semibold text-ink">Recording active</p> : null}
-        {media.transcription.capture_status === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-2 border-l-2 border-info pl-3 text-sm font-semibold text-ink">Session transcription active</p> : null}
+        {media.recording.capture_status === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-3 rounded-sm bg-warning/10 px-3 py-2 text-sm font-semibold text-ink">Recording active</p> : null}
+        {media.transcription.capture_status === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-2 rounded-sm bg-info/10 px-3 py-2 text-sm font-semibold text-ink">Session transcription active</p> : null}
       </section>
       <AlertDialog open={Boolean(action)} onOpenChange={(open) => { if (!open && !decide.isPending && !withdraw.isPending) setAction(null); }}>
         {action ? <AlertDialogContent>

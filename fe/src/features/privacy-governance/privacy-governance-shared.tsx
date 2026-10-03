@@ -24,6 +24,9 @@ import {
 } from "@/features/privacy-governance/privacy-governance-errors";
 import { revisionStatusLabels } from "@/features/privacy-governance/privacy-governance-presentation";
 import type { RevisionStatusValue } from "@/lib/api/generated/model";
+import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
+import { Notice } from "@/components/ui/notice";
+import { PanelMessage, PanelSection } from "@/components/ui/panel";
 
 export const PRIVACY_PAGE_SIZE = 20;
 
@@ -141,31 +144,23 @@ export function PrivacyPageHeader({
   meta?: ReactNode;
 }) {
   return (
-    <header className="mb-7">
-      {backHref ? (
-        <GuardedPortalLink
-          href={backHref}
-          className="mb-4 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        >
+    <PageHeader
+      title={title}
+      context={context}
+      description={description}
+      actions={action}
+      back={backHref ? (
+        <GuardedPortalLink href={backHref} className={pageBackLinkClass}>
           ← {backLabel}
         </GuardedPortalLink>
-      ) : null}
-      {context ? <p className="text-sm font-medium text-muted">{context}</p> : null}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <h1 className="min-w-0 break-words font-heading text-3xl font-bold text-ink">
-          {title}
-        </h1>
-        {action ? <div className="flex flex-wrap gap-2">{action}</div> : null}
-      </div>
+      ) : undefined}
+    >
       {meta ? (
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted">
           {meta}
         </div>
       ) : null}
-      {description ? (
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">{description}</p>
-      ) : null}
-    </header>
+    </PageHeader>
   );
 }
 
@@ -211,11 +206,26 @@ export function RevisionStatusBadge({ status }: { status: RevisionStatusValue })
   return <PrivacyBadge tone={tone}>{revisionStatusLabels[status]}</PrivacyBadge>;
 }
 
-export function PrivacyListSkeleton({ rows = 5, label }: { rows?: number; label: string }) {
+// Inside a results Panel the panel draws the frame; a route fallback frames itself.
+export function PrivacyListSkeleton({
+  rows = 5,
+  label,
+  framed = true,
+}: {
+  rows?: number;
+  label: string;
+  framed?: boolean;
+}) {
   return (
-    <LoadingRegion label={label} className="divide-y divide-border border-y border-border">
+    <LoadingRegion
+      label={label}
+      className={
+        "divide-y divide-border" +
+        (framed ? " rounded-sm border border-brand-line bg-surface-raised" : "")
+      }
+    >
       {Array.from({ length: rows }, (_, index) => (
-        <div key={index} className="grid gap-2 py-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_6rem] sm:items-center sm:gap-6">
+        <div key={index} className="grid gap-2 px-4 py-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_6rem] sm:items-center sm:gap-6 sm:px-5">
           <div>
             <Skeleton className="h-4 w-2/3 max-w-72" />
             <Skeleton className="mt-2 h-3 w-28" />
@@ -231,13 +241,13 @@ export function PrivacyListSkeleton({ rows = 5, label }: { rows?: number; label:
 export function PrivacyDetailSkeleton({ label }: { label: string }) {
   return (
     <LoadingRegion label={label} className="max-w-4xl">
-      <Skeleton className="h-10 w-72 max-w-full" />
-      <Skeleton className="mt-4 h-4 w-40" />
-      <div className="mt-10 space-y-8">
+      <Skeleton className="h-9 w-72 max-w-full" />
+      <Skeleton className="mt-3 h-4 w-40" />
+      <div className="mt-6 divide-y divide-brand-line rounded-sm border border-brand-line bg-surface-raised">
         {Array.from({ length: 4 }, (_, index) => (
-          <div key={index}>
-            <Skeleton className="h-5 w-48" />
-            <Skeleton className="mt-3 h-16 w-full" />
+          <div key={index} className="px-4 py-5 sm:px-5">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="mt-3 h-14 w-full" />
           </div>
         ))}
       </div>
@@ -255,12 +265,13 @@ export function PrivacyQueryError({
   onRetry: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-border py-6">
-      <p className="text-sm text-danger">{privacyErrorMessage(error, fallback)}</p>
-      <Button variant="secondary" className="mt-4" onClick={onRetry}>
-        Retry
-      </Button>
-    </div>
+    <Notice
+      tone="danger"
+      role="alert"
+      action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
+    >
+      {privacyErrorMessage(error, fallback)}
+    </Notice>
   );
 }
 
@@ -281,25 +292,24 @@ export function PrivacyRecordUnavailable({
 }) {
   return (
     <section aria-labelledby="privacy-record-unavailable" className="max-w-2xl">
-      <h1
-        id="privacy-record-unavailable"
-        className="font-heading text-3xl font-bold text-ink"
+      <PageHeader title={title} headingId="privacy-record-unavailable" className="mb-5" />
+      <Notice
+        role="alert"
+        action={
+          <>
+            {onRetry ? (
+              <Button variant="secondary" onClick={onRetry}>
+                Retry
+              </Button>
+            ) : null}
+            <Link href={backHref} className={textLinkClass}>
+              Back to {backLabel}
+            </Link>
+          </>
+        }
       >
-        {title}
-      </h1>
-      <p role="alert" className="mt-3 text-sm leading-6 text-muted">
         {privacyErrorMessage(error, fallback)}
-      </p>
-      <div className="mt-5 flex flex-wrap items-center gap-4">
-        {onRetry ? (
-          <Button variant="secondary" onClick={onRetry}>
-            Retry
-          </Button>
-        ) : null}
-        <Link href={backHref} className={textLinkClass}>
-          Back to {backLabel}
-        </Link>
-      </div>
+      </Notice>
     </section>
   );
 }
@@ -313,12 +323,9 @@ export function DetailSection({
 }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="py-6">
-      <h2 id={id} className="font-heading text-lg font-semibold text-ink">
-        {title}
-      </h2>
-      <div className="mt-2">{children}</div>
-    </section>
+    <PanelSection title={title} titleId={id}>
+      {children}
+    </PanelSection>
   );
 }
 
@@ -360,18 +367,9 @@ export function FormSection({
 }) {
   const id = useId();
   return (
-    <section
-      aria-labelledby={id}
-      className="border-t border-border pt-7 first:border-t-0 first:pt-0"
-    >
-      <h2 id={id} className="font-heading text-xl font-semibold text-ink">
-        {title}
-      </h2>
-      {description ? (
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">{description}</p>
-      ) : null}
-      <div className="mt-4 grid gap-5">{children}</div>
-    </section>
+    <PanelSection title={title} titleId={id} description={description}>
+      <div className="grid gap-5">{children}</div>
+    </PanelSection>
   );
 }
 
@@ -476,7 +474,7 @@ export function LifecycleFilter({
   onChange: (value: LifecycleFilterValue) => void;
 }) {
   return (
-    <div className="grid max-w-56 gap-2">
+    <div className="grid max-w-56 gap-1.5">
       <label htmlFor={id} className="text-sm font-medium text-ink">
         Status
       </label>
@@ -501,25 +499,10 @@ export function EmptyListState({
   action?: ReactNode;
 }) {
   return (
-    <div className="mt-5 border-y border-border py-8">
-      <p className="text-sm text-muted">{message}</p>
-      {action ? <div className="mt-4">{action}</div> : null}
-    </div>
+    <PanelMessage action={action ?? undefined}>{message}</PanelMessage>
   );
 }
 
-export function RefreshingNotice({ show, label }: { show: boolean; label: string }) {
-  return show ? (
-    <p role="status" className="mt-4 text-xs text-muted">
-      {label}
-    </p>
-  ) : null;
-}
-
-export const tableHeadClass = "bg-surface-muted text-xs text-muted";
-export const tableHeaderCellClass = "px-3 py-3 font-semibold";
-export const tableCellClass = "px-3 py-4 align-top";
-export const tableRowHeaderClass = "px-3 py-4 text-left align-top font-normal";
 export const recordLinkClass =
   "font-semibold text-ink hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 

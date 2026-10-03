@@ -12,6 +12,9 @@ import { getAppointmentAccess } from "@/features/appointments/appointments-acces
 import { AppointmentStatus, DeliveryMode } from "@/lib/api/generated/model";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { INSTITUTION_TIME_ZONE } from "@/lib/institutional-time";
+import { PageHeader } from "@/components/ui/page-header";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
+import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs";
 
 const statusLabels: Record<string, string> = {
   [AppointmentStatus.SCHEDULED]: "Scheduled",
@@ -202,7 +205,7 @@ export function AppointmentsLocalNavigation() {
 
   if (links.length === 0) return null;
   return (
-    <nav aria-label="Appointment navigation" className="mb-7 flex flex-wrap gap-x-5 gap-y-2 border-b border-border">
+    <WorkspaceTabs label="Appointment navigation">
       {links.map((link) => {
         const current = pathname === link.href;
         return (
@@ -210,29 +213,18 @@ export function AppointmentsLocalNavigation() {
             key={link.href}
             href={link.href}
             aria-current={current ? "page" : undefined}
-            className={
-              "inline-flex min-h-11 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
-              (current
-                ? "border-brand text-brand"
-                : "border-transparent text-muted hover:text-ink")
-            }
+            className={workspaceTabClass(current)}
           >
             {link.label}
           </Link>
         );
       })}
-    </nav>
+    </WorkspaceTabs>
   );
 }
 
-export function AppointmentListSkeleton() {
-  return (
-    <LoadingRegion label="Loading Appointments…" className="space-y-3 py-4">
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
-    </LoadingRegion>
-  );
+export function AppointmentListSkeleton({ framed = true }: { framed?: boolean }) {
+  return <RowsSkeleton label="Loading Appointments…" framed={framed} />;
 }
 
 export function AppointmentDetailSkeleton() {
@@ -259,19 +251,7 @@ export function AppointmentsPageHeading({
   action?: ReactNode;
   headingId?: string;
 }) {
-  return (
-    <div className="mb-7 flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 id={headingId} className="font-heading text-3xl font-bold text-ink">{title}</h1>
-        {description ? (
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            {description}
-          </p>
-        ) : null}
-      </div>
-      {action}
-    </div>
-  );
+  return <PageHeader title={title} headingId={headingId} description={description} actions={action} />;
 }
 
 // A list view rather than an Appointment status: Scheduled and not yet started by COMPASS

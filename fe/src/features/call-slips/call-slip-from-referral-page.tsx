@@ -10,6 +10,8 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelFooter, PanelHeader, PanelSection } from "@/components/ui/panel";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { CallSlipFormFields, type CallSlipDraft, toCallSlipRequestFields } from "@/features/call-slips/call-slip-form-fields";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
@@ -63,13 +65,15 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   const currentSlip = current.data.data.items[0];
   if (currentSlip) {
     return (
-      <div className="space-y-7">
+      <div className="space-y-5">
         <CallSlipHeading title={`Issue linked Call Slip · ${item.reference_code}`} description="This Referral already has a non-voided linked Call Slip." backHref={`/portal/referrals/${item.id}`} backLabel="Back to Referral" />
-        <section className="border-y border-border py-5">
-          <p className="font-semibold text-ink">{callSlipStateLabel(currentSlip.state)} linked permit</p>
-          <p className="mt-2 text-sm text-muted">{formatInstitutionalDateTime(currentSlip.report_at)} · {callSlipDestinationLabel(currentSlip.destination_type, currentSlip.other_destination)}</p>
-          <Link href={`/portal/call-slips/${currentSlip.id}`} className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open linked Call Slip</Link>
-        </section>
+        <Notice
+          className="max-w-3xl"
+          title={`${callSlipStateLabel(currentSlip.state)} linked permit`}
+          action={<Link href={`/portal/call-slips/${currentSlip.id}`} className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open linked Call Slip</Link>}
+        >
+          {formatInstitutionalDateTime(currentSlip.report_at)} · {callSlipDestinationLabel(currentSlip.destination_type, currentSlip.other_destination)}
+        </Notice>
       </div>
     );
   }
@@ -82,7 +86,7 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   }
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       <CallSlipHeading title={`Issue linked Call Slip · ${item.reference_code}`} description="Issuing this Call Slip also records the action on the Referral in the same step." backHref={`/portal/referrals/${item.id}`} backLabel="Back to Referral" />
       <LinkedCallSlipHistory items={history.data.data.items} />
       <LinkedCallSlipCreateForm referral={item} onRefresh={refreshContext} />
@@ -97,18 +101,18 @@ function LinkedCallSlipHistory({
 }) {
   if (items.length === 0) return null;
   return (
-    <section aria-labelledby="previous-call-slips-heading" className="border-y border-border py-5">
-      <h2 id="previous-call-slips-heading" className="font-heading text-lg font-semibold text-ink">Previous linked Call Slips</h2>
-      <ul className="mt-3 divide-y divide-border">
+    <Panel aria-labelledby="previous-call-slips-heading" className="max-w-3xl">
+      <PanelHeader title="Previous linked Call Slips" titleId="previous-call-slips-heading" />
+      <ul className="divide-y divide-border">
         {items.map((slip) => (
-          <li key={slip.id} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <li key={slip.id} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <span className="text-sm text-ink">{callSlipStateLabel(slip.state)} · {formatInstitutionalDateTime(slip.report_at)} · {callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</span>
             <Link href={`/portal/call-slips/${slip.id}`} className="min-h-9 self-start text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:self-auto">Open Call Slip</Link>
           </li>
         ))}
       </ul>
-      {items.some((slip) => slip.state === CallSlipLifecycleStateValue.VOIDED) ? <p className="mt-3 text-sm text-muted">A new linked Call Slip can be issued. The existing Referral source action remains recorded and will not be duplicated.</p> : null}
-    </section>
+      {items.some((slip) => slip.state === CallSlipLifecycleStateValue.VOIDED) ? <p className="border-t border-border px-4 py-3 text-sm text-muted sm:px-5">A new linked Call Slip can be issued. The existing Referral source action remains recorded and will not be duplicated.</p> : null}
+    </Panel>
   );
 }
 
@@ -211,33 +215,34 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
 
   return (
     <>
-      <form className="max-w-3xl space-y-8" onSubmit={prepare} aria-busy={create.isPending}>
-        <section aria-labelledby="linked-call-slip-source-heading" className="border-b border-border pb-7">
-          <h2 id="linked-call-slip-source-heading" className="font-heading text-xl font-semibold text-ink">Referral source</h2>
-          <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+      <form className="max-w-3xl" onSubmit={prepare} aria-busy={create.isPending}>
+        <Panel as="div">
+        <PanelSection title="Referral source" titleId="linked-call-slip-source-heading">
+          <dl className="grid gap-4 sm:grid-cols-2">
             <div><dt className="text-xs font-semibold text-muted">Referral</dt><dd className="mt-1 font-mono text-sm font-semibold text-ink">{referral.reference_code}</dd></div>
             <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 text-sm text-ink">{referral.student_name_snapshot}</dd></div>
             <div><dt className="text-xs font-semibold text-muted">Source Course / Year / Block</dt><dd className="mt-1 text-sm text-ink">{referral.course_year_block_snapshot}</dd></div>
           </dl>
-        </section>
+        </PanelSection>
 
-        <section aria-labelledby="linked-call-slip-details-heading" className="border-b border-border pb-7">
-          <h2 id="linked-call-slip-details-heading" className="font-heading text-xl font-semibold text-ink">Call Slip details</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Student and Referral are fixed. Course / Year is prefilled from the referral and can be changed to match the Call Slip.</p>
-          <div className="mt-5"><CallSlipFormFields draft={draft} onChange={setDraft} /></div>
-        </section>
+        <PanelSection
+          title="Call Slip details"
+          titleId="linked-call-slip-details-heading"
+          description="Student and Referral are fixed. Course / Year is prefilled from the referral and can be changed to match the Call Slip."
+        >
+          <CallSlipFormFields draft={draft} onChange={setDraft} />
+        </PanelSection>
 
-        <section aria-labelledby="linked-call-slip-action-heading" className="border-b border-border pb-7">
-          <h2 id="linked-call-slip-action-heading" className="font-heading text-xl font-semibold text-ink">Referral source action</h2>
+        <PanelSection title="Referral source action" titleId="linked-call-slip-action-heading">
           {action ? (
-            <div className="mt-3 border-l-2 border-border pl-4 text-sm text-muted">
+            <div className="rounded-sm bg-surface-subtle px-4 py-3.5 text-sm text-muted">
               <p>The source action is already recorded and will not be duplicated.</p>
               <p className="mt-2"><span className="font-semibold text-ink">Occurred:</span> {formatInstitutionalDateTime(action.occurred_at)}</p>
               {action.remarks ? <p className="mt-1 whitespace-pre-wrap"><span className="font-semibold text-ink">Remarks:</span> {action.remarks}</p> : null}
             </div>
           ) : (
             <>
-              <p className="mt-2 text-sm leading-6 text-muted">Issuing records this action on the Referral and creates the linked Call Slip in the same step.</p>
+              <p className="text-sm leading-6 text-muted">Issuing records this action on the Referral and creates the linked Call Slip in the same step.</p>
               <div className="mt-4 grid gap-5 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="linked-action-occurred">Action occurred</Label>
@@ -252,14 +257,15 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
               </div>
             </>
           )}
-        </section>
+        </PanelSection>
 
-        {error && !confirmOpen ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
-        {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
-        <div className="flex flex-wrap gap-3">
+        <PanelFooter>
+          {error && !confirmOpen ? <p role="alert" className="w-full text-sm text-danger">{error}</p> : null}
+          {notice ? <p role="status" className="w-full text-sm text-muted">{notice}</p> : null}
           <Button type="submit" disabled={create.isPending}>{create.isPending ? "Issuing…" : "Review linked issuance"}</Button>
           <Link href={`/portal/referrals/${referral.id}`} className={buttonVariants({ variant: "secondary" })}>Cancel</Link>
-        </div>
+        </PanelFooter>
+        </Panel>
       </form>
 
       <ConsequentialActionDialog

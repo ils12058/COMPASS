@@ -2,6 +2,10 @@
 
 import { keepPreviousData } from "@tanstack/react-query";
 import Link from "next/link";
+import type { ReactNode } from "react";
+
+import { buttonVariants } from "@/components/ui/button";
+import { Panel, PanelMessage } from "@/components/ui/panel";
 
 import { ResourceFilters } from "@/features/public/resources/resource-filters";
 import { ResourceIcon } from "@/features/public/resources/resource-icon";
@@ -12,7 +16,7 @@ import {
   resourceKindLabels,
 } from "@/features/public/shared/presentation";
 import { PublicPagination } from "@/features/public/shared/public-pagination";
-import { PublicSectionError, PublicTileSkeleton } from "@/features/public/shared/public-state";
+import { PublicRowsSkeleton, PublicSectionError } from "@/features/public/shared/public-state";
 import {
   isSignedOutError,
   useReaderAudience,
@@ -57,84 +61,100 @@ export function ResourceList(props: ResourceListProps) {
     return `/resources?${params.toString()}`;
   };
 
-  return (
-    <div>
-      {!isPreview ? <ResourceFilters category={category} kind={kind} /> : null}
+  const filtered = Boolean(category || kind);
+  let content: ReactNode = null;
 
-      {loading ? <PublicTileSkeleton tiles={isPreview ? 3 : 6} /> : null}
+  if (loading) {
+    content = <PublicRowsSkeleton rows={isPreview ? 3 : 6} label="Loading resources…" />;
+  } else if (query.isError) {
+    content = (
+      <PublicSectionError
+        message={readsAccount ? "Resources could not be loaded." : "Public resources could not be loaded."}
+        onRetry={() => void query.refetch()}
+      />
+    );
+  } else if (query.isSuccess && query.data.data.items.length === 0) {
+    content = (
+      <PanelMessage
+        action={filtered ? (
+          <Link className={buttonVariants({ variant: "secondary" })} href="/resources">
+            Clear filters
+          </Link>
+        ) : undefined}
+      >
+        {filtered
+          ? readsAccount
+            ? "No resources match the selected filters."
+            : "No public resources match the selected filters."
+          : readsAccount
+            ? "No resources are available right now."
+            : "No public resources are available right now."}
+      </PanelMessage>
+    );
+  } else if (query.isSuccess) {
+    content = (
+      <div aria-busy={query.isFetching}>
+        <ul className="divide-y divide-border">
+          {query.data.data.items.map((resource) => {
+            const preview = isPreview ? null : markdownPreview(resource.body_markdown);
 
-      {!loading && query.isError ? (
-        <PublicSectionError
-          message={readsAccount ? "Resources could not be loaded." : "Public resources could not be loaded."}
-          onRetry={() => void query.refetch()}
-        />
-      ) : null}
-
-      {!loading && query.isSuccess && query.data.data.items.length === 0 ? (
-        <div className="border-y border-border py-6">
-          <p className="text-sm leading-6 text-muted">
-            {category || kind
-              ? readsAccount
-                ? "No resources match the selected filters."
-                : "No public resources match the selected filters."
-              : readsAccount
-                ? "No resources are available right now."
-                : "No public resources are available right now."}
-          </p>
-          {category || kind ? (
-            <Link className="mt-3 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/resources">
-              Clear filters
-            </Link>
-          ) : null}
-        </div>
-      ) : null}
-
-      {!loading && query.isSuccess && query.data.data.items.length > 0 ? (
-        <div aria-busy={query.isFetching}>
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {query.data.data.items.map((resource) => {
-              const preview = markdownPreview(resource.body_markdown);
-
-              return (
-                <li key={resource.id} className="flex">
-                  <Link
-                    href={`/resources/${resource.id}`}
-                    className="group flex w-full flex-col rounded-md border border-border bg-surface-raised p-5 transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                  >
-                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-support-strong">
-                      <ResourceIcon kind={resource.kind} size={16} />
+            return (
+              <li key={resource.id}>
+                <Link
+                  href={`/resources/${resource.id}`}
+                  className="group grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-3 px-4 py-3.5 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:grid-cols-[1.5rem_minmax(0,1fr)_auto] sm:gap-x-4 sm:px-5"
+                >
+                  <span className="pt-0.5 text-support-strong">
+                    <ResourceIcon kind={resource.kind} size={18} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-semibold leading-6 text-ink transition-colors group-hover:text-brand">
+                      {resource.title}
+                    </span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs font-semibold text-support-strong">
                       <span>{resourceKindLabels[resource.kind]}</span>
                       <span aria-hidden="true" className="text-border-strong">·</span>
                       <span>{resourceCategoryLabels[resource.category]}</span>
                     </span>
-                    <span className="mt-3 font-heading text-lg font-semibold leading-6 text-ink transition-colors group-hover:text-brand">
-                      {resource.title}
-                    </span>
                     {preview ? (
-                      <span className="mt-2 line-clamp-3 text-sm leading-6 text-muted">{preview}</span>
+                      <span className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted">{preview}</span>
                     ) : null}
-                    <time dateTime={resource.published_at} className="mt-auto pt-4 text-xs text-muted">
-                      {formatPublicDate(resource.published_at)}
-                    </time>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                  </span>
+                  <time
+                    dateTime={resource.published_at}
+                    className="col-start-2 mt-1 text-xs text-muted sm:col-start-auto sm:mt-0.5 sm:whitespace-nowrap"
+                  >
+                    {formatPublicDate(resource.published_at)}
+                  </time>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
 
-          {query.isFetching && !query.isPending ? (
-            <p role="status" className="mt-3 text-xs text-muted">Refreshing resources…</p>
-          ) : null}
+        {query.isFetching && !query.isPending ? (
+          <p role="status" className="border-t border-border px-4 py-2 text-xs text-muted sm:px-5">Refreshing resources…</p>
+        ) : null}
 
-          {!isPreview ? (
-            <PublicPagination
-              page={query.data.data.page}
-              hasNext={query.data.data.has_next}
-              buildHref={buildPageHref}
-            />
-          ) : null}
-        </div>
-      ) : null}
+        {!isPreview ? (
+          <PublicPagination
+            page={query.data.data.page}
+            hasNext={query.data.data.has_next}
+            buildHref={buildPageHref}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
+  // The landing page's preview panel brings its own title band; the index page adds its filters
+  // and frames the list here.
+  if (isPreview) return content;
+
+  return (
+    <div className="grid gap-5">
+      <ResourceFilters category={category} kind={kind} />
+      <Panel as="div">{content}</Panel>
     </div>
   );
 }

@@ -2,25 +2,28 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
+import { Select } from "@/components/ui/select";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import {
   formatInventoryDate,
   InventoryHeading,
-  InventoryQueryError,
   InventoryStatus,
+  inventoryErrorMessage,
 } from "@/features/inventory/inventory-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useAcademicYearsList } from "@/lib/api/generated/academic-years/academic-years";
 import { useInventoryListStudents } from "@/lib/api/generated/inventory/inventory";
-import { InventoryStatusValue } from "@/lib/api/generated/model";
+import { InventoryStatusValue, type AcademicYearResponse } from "@/lib/api/generated/model";
 
 const pageSize = 20;
 
@@ -28,6 +31,132 @@ function validStatus(value: string | null): value is "MISSING" | "DRAFT" | "SUBM
   return value === InventoryStatusValue.MISSING ||
     value === InventoryStatusValue.DRAFT ||
     value === InventoryStatusValue.SUBMITTED;
+}
+
+type RosterFilterDraft = {
+  search: string;
+  academicYearId: string;
+  status: string;
+  yearLevel: string;
+};
+
+// Search and filters apply together through one Apply action. The parent remounts this form when
+// the URL changes, so the fields always start from the applied filters. Missing applies only to
+// the current Academic Year, so it is offered only while the chosen year is current.
+function RosterFilters({
+  applied,
+  hasFilters,
+  canFilterYear,
+  years,
+  yearsPending,
+  yearsFailed,
+  appliedYearKnown,
+  onApply,
+  onClear,
+  notes,
+}: {
+  applied: RosterFilterDraft;
+  hasFilters: boolean;
+  canFilterYear: boolean;
+  years: AcademicYearResponse[];
+  yearsPending: boolean;
+  yearsFailed: boolean;
+  appliedYearKnown: boolean;
+  onApply: (filters: RosterFilterDraft) => void;
+  onClear: () => void;
+  notes: ReactNode;
+}) {
+  const [draft, setDraft] = useState(applied);
+  const draftYear = years.find((year) => year.id === draft.academicYearId);
+  const draftHistorical = Boolean(draftYear && !draftYear.is_current);
+
+  return (
+    <form
+      role="search"
+      aria-label="Individual Inventory roster"
+      className="my-5"
+      onSubmit={(event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        onApply({ ...draft, search: draft.search.trim() });
+      }}
+    >
+      <FilterToolbar
+        fieldsClassName={canFilterYear ? "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]" : "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]"}
+        actions={
+          <>
+            {hasFilters ? <Button variant="quiet" onClick={onClear}>Clear filters</Button> : null}
+            <Button type="submit">Apply filters</Button>
+          </>
+        }
+      >
+        <FilterField label="Search" htmlFor="inventory-roster-search" className="sm:col-span-2 lg:col-span-1">
+          <Input
+            id="inventory-roster-search"
+            type="search"
+            value={draft.search}
+            onChange={(event) => setDraft((current) => ({ ...current, search: event.target.value }))}
+            placeholder="Search by Student name or Institutional ID"
+          />
+        </FilterField>
+
+        {canFilterYear ? (
+          <FilterField label="Academic Year" htmlFor="inventory-roster-year">
+            <Select
+              id="inventory-roster-year"
+              value={draft.academicYearId}
+              disabled={yearsPending || yearsFailed}
+              onChange={(event) => {
+                const academicYearId = event.target.value;
+                const year = years.find((item) => item.id === academicYearId);
+                setDraft((current) => ({
+                  ...current,
+                  academicYearId,
+                  status: year && !year.is_current && current.status === InventoryStatusValue.MISSING ? "" : current.status,
+                }));
+              }}
+            >
+              <option value="">Current Academic Year</option>
+              {applied.academicYearId && !appliedYearKnown ? (
+                <option value={applied.academicYearId}>
+                  {yearsFailed ? "Selected Academic Year" : "Loading Academic Year…"}
+                </option>
+              ) : null}
+              {years.map((year) => (
+                <option key={year.id} value={year.id}>{year.label}{year.is_current ? " · Current" : ""}</option>
+              ))}
+            </Select>
+          </FilterField>
+        ) : null}
+
+        <FilterField label="Status" htmlFor="inventory-roster-status">
+          <Select
+            id="inventory-roster-status"
+            value={draft.status}
+            onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}
+          >
+            <option value="">All statuses</option>
+            {!draftHistorical ? <option value={InventoryStatusValue.MISSING}>Missing</option> : null}
+            <option value={InventoryStatusValue.DRAFT}>Draft</option>
+            <option value={InventoryStatusValue.SUBMITTED}>Submitted</option>
+          </Select>
+        </FilterField>
+
+        <FilterField label="Year Level" htmlFor="inventory-roster-year-level">
+          <Select
+            id="inventory-roster-year-level"
+            value={draft.yearLevel}
+            onChange={(event) => setDraft((current) => ({ ...current, yearLevel: event.target.value }))}
+          >
+            <option value="">All Year Levels</option>
+            {Array.from({ length: 10 }, (_, index) => index + 1).map((year) => (
+              <option key={year} value={year}>{year}{year === 1 ? "st" : year === 2 ? "nd" : year === 3 ? "rd" : "th"} year</option>
+            ))}
+          </Select>
+        </FilterField>
+        {notes ? <div className="space-y-2 sm:col-span-2 lg:col-span-full">{notes}</div> : null}
+      </FilterToolbar>
+    </form>
+  );
 }
 
 export function CounselorInventoryRoster() {
@@ -93,19 +222,20 @@ export function CounselorInventoryRoster() {
     }
   }, [invalidYear, paramsString, pathname, router, suppressMissing]);
 
-  function updateFilter(name: string, value: string) {
-    const next = new URLSearchParams(paramsString);
-    if (value) next.set(name, value);
-    else next.delete(name);
-    next.delete("page");
-    router.replace(next.size ? `${pathname}?${next.toString()}` : pathname, { scroll: false });
-  }
-
-  function applySearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const value = form.get("search");
-    updateFilter("search", typeof value === "string" ? value.trim() : "");
+  function applyFilters(next: RosterFilterDraft) {
+    const query = new URLSearchParams(paramsString);
+    const values: Record<string, string> = {
+      search: next.search,
+      academic_year_id: canFilterYear ? next.academicYearId : "",
+      status: next.status,
+      year_level: next.yearLevel,
+    };
+    for (const [name, value] of Object.entries(values)) {
+      if (value) query.set(name, value);
+      else query.delete(name);
+    }
+    query.delete("page");
+    router.replace(query.size ? `${pathname}?${query.toString()}` : pathname, { scroll: false });
   }
 
   function movePage(nextPage: number) {
@@ -122,126 +252,76 @@ export function CounselorInventoryRoster() {
         description="Review students assigned to your guidance area."
       />
 
-      <div className="border-b border-border py-5">
-        <div className="grid gap-4 lg:grid-cols-[minmax(16rem,1.4fr)_minmax(12rem,1fr)_minmax(10rem,.7fr)_minmax(10rem,.7fr)] lg:items-end">
-          <form key={search} onSubmit={applySearch}>
-            <Label htmlFor="inventory-roster-search">Search</Label>
-            <div className="mt-2 flex gap-2">
-              <Input
-                id="inventory-roster-search"
-                name="search"
-                type="search"
-                defaultValue={search}
-                placeholder="Search by Student name or Institutional ID"
-              />
-              <Button type="submit" variant="secondary">Search</Button>
-            </div>
-          </form>
-
-          {canFilterYear ? (
-            <div>
-              <Label htmlFor="inventory-roster-year">Academic Year</Label>
-              <Select
-                id="inventory-roster-year"
-                className="mt-2"
-                value={selectedYear?.id ?? (academicYearId && !invalidYear ? academicYearId : "")}
-                disabled={academicYears.isPending || academicYears.isError}
-                onChange={(event) => updateFilter("academic_year_id", event.target.value)}
-              >
-                <option value="">Current Academic Year</option>
-                {academicYearId && !selectedYear && !invalidYear ? (
-                  <option value={academicYearId}>
-                    {academicYears.isError ? "Selected Academic Year" : "Loading Academic Year…"}
-                  </option>
-                ) : null}
-                {years.map((year) => (
-                  <option key={year.id} value={year.id}>{year.label}{year.is_current ? " · Current" : ""}</option>
-                ))}
-              </Select>
-            </div>
-          ) : null}
-
-          <div>
-            <Label htmlFor="inventory-roster-status">Status</Label>
-            <Select
-              id="inventory-roster-status"
-              className="mt-2"
-              value={suppressMissing ? "" : status ?? ""}
-              onChange={(event) => updateFilter("status", event.target.value)}
-            >
-              <option value="">All statuses</option>
-              {!historicalYear ? <option value={InventoryStatusValue.MISSING}>Missing</option> : null}
-              <option value={InventoryStatusValue.DRAFT}>Draft</option>
-              <option value={InventoryStatusValue.SUBMITTED}>Submitted</option>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="inventory-roster-year-level">Year Level</Label>
-            <Select
-              id="inventory-roster-year-level"
-              className="mt-2"
-              value={yearLevel ?? ""}
-              onChange={(event) => updateFilter("year_level", event.target.value)}
-            >
-              <option value="">All Year Levels</option>
-              {Array.from({ length: 10 }, (_, index) => index + 1).map((year) => (
-                <option key={year} value={year}>{year}{year === 1 ? "st" : year === 2 ? "nd" : year === 3 ? "rd" : "th"} year</option>
-              ))}
-            </Select>
-          </div>
-        </div>
-        {academicYears.isError && canFilterYear ? (
-          <p role="status" className="mt-3 text-sm text-warning">Academic Year choices could not be loaded. The roster still uses the selected Academic Year when one is present; otherwise, it uses the current Academic Year.</p>
+      <RosterFilters
+        key={paramsString}
+        applied={{
+          search,
+          academicYearId: selectedYear?.id ?? (academicYearId && !invalidYear ? academicYearId : ""),
+          status: suppressMissing ? "" : status ?? "",
+          yearLevel: yearLevel ? String(yearLevel) : "",
+        }}
+        hasFilters={hasFilters}
+        canFilterYear={canFilterYear}
+        years={years}
+        yearsPending={academicYears.isPending}
+        yearsFailed={academicYears.isError}
+        appliedYearKnown={Boolean(selectedYear)}
+        onApply={applyFilters}
+        onClear={() => router.replace(pathname, { scroll: false })}
+        notes={academicYears.isError && canFilterYear || missingYearUnresolved || suppressMissing ? (
+          <>
+            {academicYears.isError && canFilterYear ? (
+              <p role="status" className="text-sm text-warning">Academic Year choices could not be loaded. The roster still uses the selected Academic Year when one is present; otherwise, it uses the current Academic Year.</p>
+            ) : null}
+            {missingYearUnresolved ? (
+              <p role="status" className="text-sm text-warning">The Missing filter is paused until this Academic Year can be confirmed. Missing status applies only to the current Academic Year.</p>
+            ) : null}
+            {suppressMissing ? (
+              <p role="status" className="text-sm text-muted">The Missing filter applies only to the current Academic Year and was cleared for this selection.</p>
+            ) : null}
+          </>
         ) : null}
-        {missingYearUnresolved ? (
-          <p role="status" className="mt-3 text-sm text-warning">The Missing filter is paused until this Academic Year can be confirmed. Missing status applies only to the current Academic Year.</p>
-        ) : null}
-        {suppressMissing ? (
-          <p role="status" className="mt-3 text-sm text-muted">The Missing filter applies only to the current Academic Year and was cleared for this selection.</p>
-        ) : null}
-        {hasFilters ? (
-          <Button variant="quiet" className="mt-3" onClick={() => router.replace(pathname, { scroll: false })}>
-            Clear filters
-          </Button>
-        ) : null}
-      </div>
+      />
 
-      {roster.isPending ? (
-        <div className="mt-5 space-y-2" aria-busy="true">
-          <Skeleton className="h-12" />
-          <Skeleton className="h-12" />
-          <p className="sr-only">Loading scoped Student Individual Inventory roster…</p>
-        </div>
-      ) : roster.isError ? (
-        <div className="mt-5">
-          <InventoryQueryError error={roster.error} fallback="The scoped Student Inventory roster could not be loaded." onRetry={() => void roster.refetch()} />
-        </div>
-      ) : response && response.items.length === 0 ? (
-        <p className="border-b border-border py-8 text-sm text-muted">
-          {effectiveStatus === InventoryStatusValue.MISSING
-            ? "No Students are currently missing an Inventory under these filters."
-            : hasFilters
-              ? "No students match these filters."
-              : "No students are available."}
-        </p>
-      ) : response ? (
-        <>
-          {roster.isFetching ? <p role="status" className="mt-3 text-xs text-muted">Refreshing roster…</p> : null}
-          <div className="mt-5 overflow-x-auto border-y border-border">
-            <table className="w-full min-w-[62rem] border-collapse text-left text-sm">
+      <Panel aria-labelledby="inventory-roster-results-heading">
+        <PanelHeader
+          title="Students"
+          titleId="inventory-roster-results-heading"
+          context={roster.isFetching && !roster.isPending
+            ? "Refreshing roster…"
+            : response && !roster.isError
+              ? describeResultPage({ count: response.items.length, page: response.page, hasNext: response.has_next, noun: { one: "Student", other: "Students" }, filtered: hasFilters })
+              : null}
+        />
+        {roster.isPending ? (
+          <RowsSkeleton label="Loading scoped Student Individual Inventory roster…" rows={2} />
+        ) : roster.isError ? (
+          <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void roster.refetch()}>Try again</Button>}>
+            {inventoryErrorMessage(roster.error, "The scoped Student Inventory roster could not be loaded.")}
+          </PanelMessage>
+        ) : response && response.items.length === 0 ? (
+          <PanelMessage>
+            {effectiveStatus === InventoryStatusValue.MISSING
+              ? "No Students are currently missing an Inventory under these filters."
+              : hasFilters
+                ? "No students match these filters."
+                : "No students are available."}
+          </PanelMessage>
+        ) : response ? (
+          <div className={dataTable.scroll}>
+            <table className={`${dataTable.table} min-w-[62rem]`}>
               <caption className="sr-only">Counselor-scoped annual Student Individual Inventory roster</caption>
-              <thead>
-                <tr className="border-b border-border bg-surface-muted">
-                  <th scope="col" className="sticky left-0 z-10 min-w-64 bg-surface-muted px-3 py-3 font-semibold text-ink">Student</th>
-                  <th scope="col" className="min-w-32 px-3 py-3 font-semibold text-ink">Academic Year</th>
-                  <th scope="col" className="min-w-48 px-3 py-3 font-semibold text-ink">Program</th>
-                  <th scope="col" className="min-w-24 px-3 py-3 font-semibold text-ink">Year Level</th>
-                  <th scope="col" className="min-w-44 px-3 py-3 font-semibold text-ink">Status</th>
-                  <th scope="col" className="min-w-40 px-3 py-3 font-semibold text-ink">Submitted</th>
+              <thead className={dataTable.head}>
+                <tr>
+                  <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell} min-w-64`}>Student</th>
+                  <th scope="col" className={`${dataTable.headerCell} min-w-32`}>Academic Year</th>
+                  <th scope="col" className={`${dataTable.headerCell} min-w-48`}>Program</th>
+                  <th scope="col" className={`${dataTable.headerCell} min-w-24`}>Year Level</th>
+                  <th scope="col" className={`${dataTable.headerCell} min-w-44`}>Status</th>
+                  <th scope="col" className={`${dataTable.headerCell} min-w-40`}>Submitted</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className={dataTable.body}>
                 {response.items.map((row) => {
                   const submittedAt = row.last_submitted_at ?? row.submitted_at;
                   const canOpen = row.status === InventoryStatusValue.SUBMITTED && Boolean(row.inventory_id);
@@ -252,39 +332,39 @@ export function CounselorInventoryRoster() {
                     </>
                   );
                   return (
-                    <tr key={row.student.id} className="border-b border-border last:border-b-0">
-                      <th scope="row" className="sticky left-0 bg-surface-raised px-3 py-4 text-left align-top font-normal text-ink">
+                    <tr key={row.student.id} className={dataTable.row}>
+                      <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} text-left font-normal text-ink`}>
                         {canOpen && row.inventory_id ? (
-                          <Link href={`/portal/inventory/records/${row.inventory_id}`} aria-label={`View submitted Individual Inventory for ${row.student.display_name}`} className="rounded-sm hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                          <Link href={`/portal/inventory/records/${row.inventory_id}`} aria-label={`View submitted Individual Inventory for ${row.student.display_name}`} className="rounded-sm text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
                             {identity}
                           </Link>
                         ) : identity}
                       </th>
-                      <td className="px-3 py-4 align-top text-ink">{row.academic_year.label}</td>
-                      <td className="px-3 py-4 align-top text-ink">{row.program ? `${row.program.code} · ${row.program.name}` : "Not provided"}</td>
-                      <td className="px-3 py-4 align-top text-ink">{row.year_level ?? "Not provided"}</td>
-                      <td className="px-3 py-4 align-top">
+                      <td className={`${dataTable.cell} text-ink`}>{row.academic_year.label}</td>
+                      <td className={`${dataTable.cell} text-ink`}>{row.program ? `${row.program.code} · ${row.program.name}` : "Not provided"}</td>
+                      <td className={`${dataTable.cell} text-ink`}>{row.year_level ?? "Not provided"}</td>
+                      <td className={dataTable.cell}>
                         <InventoryStatus status={row.status} correctionPending={row.correction_pending} />
                       </td>
-                      <td className="px-3 py-4 align-top text-ink">{formatInventoryDate(submittedAt)}</td>
+                      <td className={`${dataTable.cell} text-ink`}>{formatInventoryDate(submittedAt)}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-        </>
-      ) : null}
-      {response && !roster.isError ? (
-        <CanonicalPagination
-          className="mt-5"
-          page={response.page}
-          hasNext={response.has_next}
-          disabled={roster.isFetching}
-          label="Inventory roster pagination"
-          onPageChange={movePage}
-        />
-      ) : null}
+        ) : null}
+        {response && !roster.isError ? (
+          <CanonicalPagination
+            className="border-brand-line px-4 py-3 sm:px-5"
+            page={response.page}
+            hasNext={response.has_next}
+            disabled={roster.isFetching}
+            label="Inventory roster pagination"
+            onPageChange={movePage}
+          />
+        ) : null}
+      </Panel>
     </section>
   );
 }

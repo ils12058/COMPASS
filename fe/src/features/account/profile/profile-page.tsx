@@ -6,6 +6,10 @@ import { useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { AccountAvatar, accountDisplayName } from "@/features/account/components/account-avatar";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { accountErrorMessage } from "@/features/account/components/account-errors";
@@ -71,10 +75,10 @@ function ProfilePhoto({ profile }: { profile: MyProfileResponse }) {
   }
 
   return (
-    <div className="flex flex-col gap-5 border-b border-border pb-8 sm:flex-row sm:items-center">
+    <div className="flex flex-col gap-5 border-b border-brand-line px-4 py-5 sm:flex-row sm:items-center sm:px-5">
       <AccountAvatar user={user} profile={profile} size="profile" />
       <div className="min-w-0 flex-1">
-        <p className="font-heading text-2xl font-semibold text-ink">{accountDisplayName(user, profile)}</p>
+        <p className="font-heading text-xl font-semibold text-ink">{accountDisplayName(user, profile)}</p>
         {profile.institutional_id ? <p className="mt-1 text-sm text-muted">{profile.institutional_id}</p> : null}
         <p className="mt-1 text-sm text-muted">{userRoleLabel(profile.role)}</p>
         <p className="mt-1 break-all text-sm text-muted">{profile.email}</p>
@@ -142,10 +146,9 @@ function ProfileEditor({ profile }: { profile: MyProfileResponse }) {
   }
 
   return (
-    <form className="mt-8 space-y-8" onSubmit={save}>
-      <section aria-labelledby="personal-heading">
-        <h2 id="personal-heading" className="font-heading text-xl font-semibold text-ink">Personal information</h2>
-        <div className="mt-4 grid gap-5 sm:grid-cols-2">
+    <form onSubmit={save}>
+      <PanelSection title="Personal information" titleId="personal-heading">
+        <div className="grid gap-5 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="date-of-birth">Date of birth</Label>
             <Input id="date-of-birth" type="date" value={values.date_of_birth ?? ""} onChange={(event) => setField("date_of_birth", event.target.value || null)} />
@@ -155,17 +158,15 @@ function ProfileEditor({ profile }: { profile: MyProfileResponse }) {
             <Input id="civil-status" value={values.civil_status} onChange={(event) => setField("civil_status", event.target.value)} />
           </div>
         </div>
-      </section>
-      <section aria-labelledby="contact-heading" className="border-t border-border pt-7">
-        <h2 id="contact-heading" className="font-heading text-xl font-semibold text-ink">Contact information</h2>
-        <div className="mt-4 grid max-w-md gap-2">
+      </PanelSection>
+      <PanelSection title="Contact information" titleId="contact-heading">
+        <div className="grid max-w-md gap-2">
           <Label htmlFor="contact-number">Contact number</Label>
           <Input id="contact-number" type="tel" value={values.contact_number} onChange={(event) => setField("contact_number", event.target.value)} />
         </div>
-      </section>
-      <section aria-labelledby="address-heading" className="border-t border-border pt-7">
-        <h2 id="address-heading" className="font-heading text-xl font-semibold text-ink">Address</h2>
-        <div className="mt-4 grid gap-5">
+      </PanelSection>
+      <PanelSection title="Address" titleId="address-heading">
+        <div className="grid gap-5">
           <div className="grid gap-2">
             <Label htmlFor="current-address">Current address</Label>
             <Input id="current-address" value={values.current_address} onChange={(event) => setField("current_address", event.target.value)} />
@@ -175,14 +176,14 @@ function ProfileEditor({ profile }: { profile: MyProfileResponse }) {
             <Input id="permanent-address" value={values.permanent_address} onChange={(event) => setField("permanent_address", event.target.value)} />
           </div>
         </div>
-      </section>
-      {error ? <p id="profile-error" role="alert" className="text-sm text-danger">{error}</p> : null}
-      {success ? <p role="status" className="text-sm text-success">Profile changes saved.</p> : null}
-      <div className="flex justify-end border-t border-border pt-6">
+      </PanelSection>
+      <PanelFooter className="justify-end">
+        {error ? <p id="profile-error" role="alert" className="mr-auto text-sm text-danger">{error}</p> : null}
+        {success ? <p role="status" className="mr-auto text-sm text-success">Profile changes saved.</p> : null}
         <Button type="submit" disabled={!dirty || update.isPending} aria-describedby={error ? "profile-error" : undefined}>
           {update.isPending ? "Saving…" : "Save changes"}
         </Button>
-      </div>
+      </PanelFooter>
     </form>
   );
 }
@@ -192,19 +193,22 @@ export function ProfilePage() {
 
   return (
     <section aria-labelledby="profile-heading">
-      <h1 id="profile-heading" className="font-heading text-3xl font-bold text-ink">Profile</h1>
-      {profile.isPending ? <p className="mt-8 text-sm text-muted" role="status">Loading profile…</p> : null}
+      <PageHeader title="Profile" headingId="profile-heading" />
+      {profile.isPending ? <RowsSkeleton label="Loading profile…" rows={4} framed /> : null}
       {profile.isError ? (
-        <div className="mt-8 border-t border-border pt-6" role="alert">
-          <p className="text-sm text-danger">Your profile could not be loaded.</p>
-          <Button variant="secondary" className="mt-4" onClick={() => void profile.refetch()}>Retry</Button>
-        </div>
+        <Notice
+          role="alert"
+          tone="danger"
+          action={<Button variant="secondary" onClick={() => void profile.refetch()}>Retry</Button>}
+        >
+          Your profile could not be loaded.
+        </Notice>
       ) : null}
       {profile.isSuccess ? (
-        <div className="mt-7">
+        <Panel as="div">
           <ProfilePhoto profile={profile.data.data} />
           <ProfileEditor profile={profile.data.data} />
-        </div>
+        </Panel>
       ) : null}
     </section>
   );

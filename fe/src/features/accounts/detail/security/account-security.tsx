@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import {
   ManagedActionFeedback,
   useInvalidateManagedAccount,
@@ -117,15 +118,10 @@ export function AccountSecurity() {
         : "Removing trusted browsers…";
 
   return (
-    <section aria-labelledby="managed-security-heading">
-      <h2
-        id="managed-security-heading"
-        className="font-heading text-xl font-semibold text-ink"
-      >
-        Managed account security
-      </h2>
+    <Panel aria-labelledby="managed-security-heading">
+      <PanelHeader title="Managed account security" titleId="managed-security-heading" />
       {self ? (
-        <p className="mt-4 text-sm text-muted">
+        <p className="px-4 py-5 text-sm text-muted sm:px-5">
           Use your{" "}
           <Link
             href="/portal/account/security"
@@ -136,8 +132,8 @@ export function AccountSecurity() {
           to manage your own authentication.
         </p>
       ) : (
-        <div className="mt-5 divide-y divide-border border-y border-border">
-          <div className="flex flex-wrap items-start justify-between gap-4 py-5">
+        <div className="divide-y divide-border">
+          <div className="flex flex-wrap items-start justify-between gap-4 px-4 py-4 sm:px-5">
             <div>
               <h3 className="font-semibold text-ink">
                 Multi-factor authentication
@@ -156,7 +152,7 @@ export function AccountSecurity() {
               </Button>
             ) : null}
           </div>
-          <div className="flex flex-wrap items-start justify-between gap-4 py-5">
+          <div className="flex flex-wrap items-start justify-between gap-4 px-4 py-4 sm:px-5">
             <div>
               <h3 className="font-semibold text-ink">
                 Authentication sessions
@@ -169,7 +165,7 @@ export function AccountSecurity() {
               Sign out all sessions
             </Button>
           </div>
-          <div className="flex flex-wrap items-start justify-between gap-4 py-5">
+          <div className="flex flex-wrap items-start justify-between gap-4 px-4 py-4 sm:px-5">
             <div>
               <h3 className="font-semibold text-ink">Trusted browsers</h3>
               <p className="mt-2 max-w-2xl text-sm text-muted">
@@ -183,7 +179,9 @@ export function AccountSecurity() {
           </div>
         </div>
       )}
-      <ManagedActionFeedback action={action} showMessages={confirm === null} />
+      <div className="px-4 empty:hidden sm:px-5 [&>*:last-child]:mb-4">
+        <ManagedActionFeedback action={action} showMessages={confirm === null} />
+      </div>
       <ConsequentialActionDialog
         open={confirm !== null}
         title={title}
@@ -199,6 +197,6 @@ export function AccountSecurity() {
       >
         <p>{description}</p>
       </ConsequentialActionDialog>
-    </section>
+    </Panel>
   );
 }

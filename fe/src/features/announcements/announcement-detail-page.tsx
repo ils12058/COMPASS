@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelSection } from "@/components/ui/panel";
 import { announcementErrorCode, announcementErrorMessage, shouldHideAnnouncementData } from "@/features/announcements/announcement-errors";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -35,16 +37,16 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 export function AnnouncementUnavailable({ error, onRetry }: { error: unknown; onRetry: () => void }) {
   const notFound = announcementErrorCode(error) === "announcement_not_found";
   return (
-    <section className="space-y-6">
+    <section className="space-y-5">
       <ContentPageHeading
         title={notFound ? "Announcement not found" : "Announcement unavailable"}
         backHref="/portal/announcements"
         backLabel="Announcements"
       />
       {notFound ? (
-        <p className="border-y border-border py-6 text-sm leading-6 text-muted">
+        <Notice>
           This Announcement does not exist or is no longer available.
-        </p>
+        </Notice>
       ) : (
         <ContentQueryError
           message={announcementErrorMessage(error, "This Announcement could not be loaded.")}
@@ -107,7 +109,7 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
         </div>
       </ContentPageHeading>
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-5 space-y-3 empty:hidden">
         {notice ? <ContentNotice tone="success">{notice}</ContentNotice> : null}
         {isDraft && missing.length > 0 ? (
           <ContentNotice tone="warning">Add {missing.join(" and ")} before publishing.</ContentNotice>
@@ -129,7 +131,9 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
         ) : null}
       </div>
 
-      <dl className="mt-6 grid gap-x-8 gap-y-4 border-y border-border py-5 sm:grid-cols-2 lg:grid-cols-3">
+      {/* The record sheet: publication facts, then the file and body as readers get them. */}
+      <Panel as="div" className="mt-5">
+      <dl className="grid gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-3">
         <Detail label="Audience">{publicationAudienceLabels[item.audience]}</Detail>
         <Detail label="Pinned">{item.is_pinned ? "Yes" : "No"}</Detail>
         <Detail label="Stop showing after">
@@ -149,7 +153,7 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
       </dl>
 
       {isPublished && item.audience === AnnouncementAudienceValue.PUBLIC && !expired ? (
-        <p className="mt-4 text-sm">
+        <p className="border-t border-brand-line px-4 py-3 text-sm sm:px-5">
           <Link
             href={`/announcements/${item.id}`}
             className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
@@ -159,19 +163,17 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
         </p>
       ) : null}
 
-      <section aria-labelledby="announcement-body-heading" className="mt-8">
-        <h2 id="announcement-body-heading" className="font-heading text-xl font-semibold text-ink">
-          Body
-        </h2>
-        <p className="mt-1 text-sm text-muted">As readers see it.</p>
-        <div className="mt-4 max-w-3xl rounded-md border border-border bg-surface-raised px-5 py-5 sm:px-6">
+      <PanelSection title="Body" titleId="announcement-body-heading">
+        <p className="text-sm text-muted">As readers see it.</p>
+        <div className="mt-4 max-w-3xl">
           {item.body_markdown.trim() ? (
             <PublicMarkdown>{item.body_markdown}</PublicMarkdown>
           ) : (
             <p className="text-sm text-muted">No body text yet.</p>
           )}
         </div>
-      </section>
+      </PanelSection>
+      </Panel>
     </article>
   );
 }

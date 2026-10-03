@@ -460,6 +460,16 @@ Strong border         #aeb3aa
 
 Define and consume these through semantic tokens.
 
+Two structural tokens are derived from Brand maroon with `color-mix` rather than added as new hues
+(§68):
+
+```text
+brand-line   maroon-tinted line that frames working surfaces
+brand-wash   pale maroon tint for table heads and action bands
+```
+
+Neither carries text contrast on its own.
+
 Do not scatter raw hex literals through components.
 
 Do not invent additional brand colors casually.
@@ -510,6 +520,10 @@ Do not default to:
 * motion added only to look premium.
 
 Prefer useful institutional software over visual spectacle.
+
+Restraint alone is not the goal either. A cream canvas, large whitespace, thin gray rules, minimal
+surface boundaries, and muted copy, repeated on every page, is its own generic AI/SaaS look. §68
+defines the institutional grammar COMPASS uses instead.
 
 ## Branded gradients
 
@@ -570,16 +584,20 @@ Do not use cards as the default wrapper for:
 
 Use:
 
-* whitespace;
 * hierarchy;
-* borders;
-* dividers;
+* a working surface (`Panel`, §68) around controls or records that belong together;
+* sections inside one surface;
 * tables;
 * lists;
-* sections;
-* tabs
+* borders and dividers that mark real divisions;
+* tabs;
+* whitespace
 
 when they communicate structure better.
+
+A `Panel` is not a card: it frames a functional region such as a filter's results, a record, or a
+form. Do not answer missing structure by putting every section in its own card, and do not nest
+panels.
 
 ---
 
@@ -650,6 +668,10 @@ Supporting text is appropriate only when it clarifies real:
 * consequences;
 * policy;
 * non-obvious workflow.
+
+Render page titles with `PageHeader` (`src/components/ui/page-header.tsx`); feature heading wrappers
+delegate to it. Keep the header compact so the page's own work starts in the first screen, and do
+not draw a rule under it: the working region that follows carries its own boundary.
 
 ---
 
@@ -746,6 +768,10 @@ You're all caught up! 🎉
 ```
 
 Do not use fake cheerfulness in administrative or sensitive workflows.
+
+An empty state belongs to the region it describes: inside the results or section panel
+(`PanelMessage`), not as lonely text between two rules. Do not add illustrations, giant icons, or
+celebratory copy.
 
 ---
 
@@ -1271,6 +1297,12 @@ Move secondary information to:
 
 Avoid tables wider than necessary.
 
+A results table sits flush inside a `Panel` whose `PanelHeader` names the results and gives their
+context (`describeResultPage`). Style it with the shared `dataTable` classes
+(`src/components/ui/data-table.ts`): the maroon-washed head is the table's emphasis, rows are
+separated by ordinary lines, and a sticky identity column keeps the row background. Do not add
+heavy full-color header chrome or zebra stripes.
+
 ## Row actions and selection
 
 Use a dedicated actions column only when rows genuinely have multiple contextual actions.
@@ -1375,6 +1407,24 @@ Preserve search and filter state while moving between pages.
 Reset to page 1 when a filter or search change invalidates the current page.
 
 Do not add filters merely because a field exists in a response.
+
+## Filter toolbar
+
+The search and filter controls for one list form one `FilterToolbar`
+(`src/components/ui/filter-toolbar.tsx`) between the page header and the results, so they read as
+one tool rather than inputs placed on the page. Label each control with `FilterField`. Do not add a
+large "Filters" heading when the controls already say what they do.
+
+Every control in a toolbar applies the same way:
+
+* explicit: one form, one `Apply filters` submit, and Enter in the search field submits the same
+  form. This is the default when a free-text search sits beside other filters.
+* immediate: each change applies. Use it for a toolbar of a few selects or dates without free-text
+  search, or for a lone debounced directory search.
+
+Do not give the search field its own Search button while neighboring filters apply on change. Show
+`Clear filters` in the toolbar's action area only while a filter is active. A toolbar that holds a
+text search sits in a form with `role="search"` and an accessible name.
 
 ---
 
@@ -1753,7 +1803,177 @@ Do not defer these as generic polish unless the feature specification explicitly
 
 ---
 
-# 68. Final principle
+# 68. Institutional visual grammar
+
+COMPASS should look like a modern university service and records system with clear institutional
+structure. It should not look like generic AI/SaaS minimalism, a card-heavy dashboard, a decorative
+marketing site, or a dated Bootstrap university portal.
+
+The approved formula: V1's structural clarity and useful density, plus V2's restrained maroon
+framing, plus the current frontend's accessibility, typography, responsiveness, and workflow
+semantics.
+
+## Canvas and working surfaces
+
+The warm canvas (`bg-body`) stays. It becomes generic only when every region sits directly on it,
+separated by whitespace and a thin gray rule.
+
+Areas where people work sit on a working surface, a `Panel`: white, framed evenly on every side by
+`border-brand-line`, `rounded-sm`, no shadow. Examples:
+
+* filter results;
+* record summaries and detail groups;
+* forms and workflow controls;
+* Overview regions;
+* the public landing's editorial regions.
+
+A page can still have flat regions: the page header, running text, and short notices stay on the
+canvas. Do not nest panels.
+
+## Whitespace and density
+
+Whitespace supports hierarchy; it does not replace it. Controls and information that belong
+together are visibly grouped.
+
+Prefer moderate density, as suits institutional software:
+
+* compact page introductions;
+* short gaps between related regions;
+* several related pieces of information visible at once;
+* no blank intervals without an information purpose.
+
+Density never shrinks accessibility. Keep content text at `text-sm` or larger, use `text-xs` only for
+labels and metadata, keep control targets at `min-h-10`/`min-h-11`, and keep readable line heights.
+Desktop may use two columns and multi-column facts; phones stack instead of shrinking.
+
+## Maroon as structure
+
+Maroon may mark structure, not only navigation and primary actions, with restraint:
+
+* `border-brand-line` frames working surfaces, evenly on every side.
+* `bg-brand-wash` with `text-brand-strong` marks table heads, and `PanelSection` headings use
+  `text-brand`.
+* Current and selected states.
+
+Do not surround everything with dark maroon, put maroon backgrounds behind body text, or use maroon
+or maroon-tinted text that fails contrast on the cream canvas. `brand-line` and `brand-wash` never
+carry text contrast.
+
+User decision: do not mark a panel, card, or region with a colored border on one side only — a
+maroon (or any accent) top stripe or left stripe on a rounded container. It reads as a generic
+AI-generated card. Emphasis comes from the content and its hierarchy, the panel's title band, and
+the maroon section headings, not from an accent edge.
+
+## Rules and dividers
+
+A rule marks a real division, such as table rows, a list, or a panel's own sections. Do not use
+heading → rule → content → rule as the default way to separate parts of a page; use a panel
+boundary, a `PanelSection`, or spacing.
+
+## Shared primitives
+
+* `PageHeader` (`src/components/ui/page-header.tsx`): title, short description, back link, meta,
+  and actions. Feature heading wrappers delegate to it.
+* `Panel`, `PanelHeader`, `PanelBody`, `PanelSection`, `PanelFooter`, `PanelMessage`, and
+  `RecordSummary` (`src/components/ui/panel.tsx`).
+* `FilterToolbar` and `FilterField` (`src/components/ui/filter-toolbar.tsx`, §47).
+* `dataTable` classes (`src/components/ui/data-table.ts`, §46).
+* `describeResultPage` (`src/features/portal/components/result-context.ts`) for result context built
+  only from canonical page facts.
+
+Use these instead of feature-local wrappers or literal colors, radii, and borders. Add a shared
+pattern only when it genuinely repeats.
+
+## Page anatomy
+
+List pages separate page purpose, tools, result context, and records:
+
+```text
+PageHeader
+FilterToolbar
+results Panel: PanelHeader with result context; table or list, and the
+               loading, empty, and error states, inside the same panel
+CanonicalPagination
+```
+
+Detail pages separate identity, status, facts, actions, and history:
+
+```text
+PageHeader
+record Panel: RecordSummary (identity, status, key facts), then a PanelSection per detail group
+separate Panels for actions and workflows
+history and supporting information
+```
+
+Consequential actions never sit inside the informational groups.
+
+Form pages present related fields as coherent task sections:
+
+```text
+PageHeader
+one form sheet (Panel): a PanelSection per group, following the real
+                        institutional form's grouping where one exists
+PanelFooter: the one submit area
+```
+
+Do not wrap every pair of inputs in its own card. Controlled institutional wording keeps its own
+approval; visual work adapts layout, not wording.
+
+Overview stays task-first: bounded regions for what needs attention, the summary, announcements,
+and upcoming work only when real records exist. No metric-card grids, large icon plus number tiles,
+or dashboard filler.
+
+## Public pages
+
+Public pages read like an active university information and service portal, not a startup landing
+page. They use:
+
+* a compact hero that introduces COMPASS rather than filling the first screen;
+* useful content early: announcements, resources, and real service entry points;
+* clearly bounded editorial regions.
+
+Show only the services, links, and office details the application actually supports for the reader's
+access state. Never invent contact details, office hours, or services. No feature grids or
+marketing copy.
+
+## Decoration
+
+* Containers (panels, toolbars, framed messages) use `rounded-sm`; controls keep their own
+  `rounded-md`. Keep `rounded-full` for compact statuses and tags.
+* No one-sided accent borders on containers (see Maroon as structure).
+* Shadows mark real layering only: dialogs, popovers, the skip link. Dialogs and menus float with
+  the dialog shadow and `rounded-md`; nothing on the page itself uses `rounded-lg` or larger.
+* No gradients outside §18's branded surfaces.
+* No glassmorphism, giant icons, colored icon circles, pills for everything, decorative metric
+  cards, or empty-state illustrations.
+
+## Typography
+
+This grammar does not change typography (§15). Distinctiveness comes from structure, density,
+institutional color, and hierarchy, not novelty fonts.
+
+## V1 and V2
+
+Archived frontends stay reference-only (§2). V1 informs information hierarchy, density, and service
+visibility. V2 informs restrained maroon framing and moderate radius. Do not copy their code,
+Bootstrap structures, navigation, yellow sign-in buttons, heavy shadows, tiny text, or accessibility
+patterns.
+
+## Review before handoff
+
+Ask of every changed screen:
+
+* Does it still look like generic AI/SaaS minimalism?
+* Did whitespace simply turn into cards?
+* Is maroon structural but restrained?
+* Are related controls visibly related?
+* Does useful information appear early?
+* Is it denser without being cramped?
+* Is it still accessible and responsive at phone width?
+
+---
+
+# 69. Final principle
 
 COMPASS should feel like carefully designed institutional software.
 

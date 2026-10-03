@@ -3,16 +3,18 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { buttonVariants } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import {
   replaceServicesQueryParam,
   ServicesListSkeleton,
   ServicesPageHeading,
-  ServicesQueryError,
+  servicesErrorMessage,
   ServicesSearchField,
   ServicesStatusBadge,
   ServicesSystemRequiredBadge,
@@ -131,14 +133,12 @@ export function ServicesListPage() {
         }
       />
 
-      <div className="mt-8 border-y border-border py-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+      {/* The search applies as you type and the other choices apply on change. */}
+      <FilterToolbar className="mt-5" fieldsClassName="lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto] lg:items-end">
           <ServicesSearchField />
-          <div className="lg:w-64">
-            <Label htmlFor="services-policy-filter">Appointment policy</Label>
+          <FilterField label="Appointment policy" htmlFor="services-policy-filter">
             <Select
               id="services-policy-filter"
-              className="mt-2"
               value={appointmentPolicy ?? ""}
               onChange={(event) => updatePolicy(event.target.value)}
             >
@@ -151,10 +151,9 @@ export function ServicesListPage() {
                 Appointment required
               </option>
             </Select>
-          </div>
-        </div>
+          </FilterField>
         {canManage ? (
-          <label className="mt-4 inline-flex min-h-10 items-center gap-3 text-sm font-medium text-ink">
+          <label className="inline-flex min-h-10 items-center gap-3 self-end text-sm font-medium text-ink">
             <input
               type="checkbox"
               className="h-4 w-4 accent-brand"
@@ -164,44 +163,44 @@ export function ServicesListPage() {
             Include inactive Services
           </label>
         ) : null}
-      </div>
+      </FilterToolbar>
 
+      <Panel className="mt-5" aria-labelledby="services-results-heading">
+        <PanelHeader
+          title="Service Catalog"
+          titleId="services-results-heading"
+          context={list.isFetching && !list.isPending
+            ? "Refreshing Services…"
+            : list.isSuccess
+              ? describeResultPage({ count: list.data.data.items.length, page: list.data.data.page, hasNext: list.data.data.has_next, noun: { one: "Service", other: "Services" }, filtered: hasFilters })
+              : null}
+        />
       {list.isPending ? (
-        <ServicesListSkeleton />
+        <ServicesListSkeleton framed={false} />
       ) : list.isError ? (
-        <div className="mt-6">
-          <ServicesQueryError
-            error={list.error}
-            fallback="Services could not be loaded."
-            onRetry={() => void list.refetch()}
-          />
-        </div>
+        <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>
+          {servicesErrorMessage(list.error, "Services could not be loaded.")}
+        </PanelMessage>
       ) : list.data.data.items.length === 0 ? (
-        <p className="border-b border-border py-10 text-sm text-muted">
+        <PanelMessage>
           {hasFilters
             ? "No services match the current search or filters."
             : canManage && includeInactive
               ? "No Services are configured yet."
               : "No active Services are currently available."}
-        </p>
+        </PanelMessage>
       ) : (
-        <>
-          {list.isFetching ? (
-            <p role="status" className="mt-4 text-xs text-muted">
-              Refreshing Services…
-            </p>
-          ) : null}
-          <ul className="mt-5 divide-y divide-border border-y border-border">
+          <ul className="divide-y divide-border">
             {list.data.data.items.map((service) => (
               <li
                 key={service.id}
-                className="grid gap-4 py-5 md:grid-cols-[minmax(0,1fr)_15rem] md:items-start"
+                className="grid gap-4 px-4 py-4 sm:px-5 md:grid-cols-[minmax(0,1fr)_15rem] md:items-start"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       href={"/portal/services/" + service.id}
-                      className="font-heading text-lg font-semibold text-ink hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                      className="font-heading text-lg font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
                       {service.name}
                     </Link>
@@ -261,17 +260,17 @@ export function ServicesListPage() {
               </li>
             ))}
           </ul>
-        </>
       )}
       {!list.isPending && !list.isError ? (
         <CanonicalPagination
-          className="mt-5"
+          className="border-brand-line px-4 py-3 sm:px-5"
           page={list.data.data.page}
           hasNext={list.data.data.has_next}
           label="Services pagination"
           onPageChange={movePage}
         />
       ) : null}
+      </Panel>
     </section>
   );
 }

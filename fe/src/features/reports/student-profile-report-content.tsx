@@ -1,8 +1,14 @@
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import type { StudentProfilingReportResponse } from "@/lib/api/generated/model";
 import { StudentProfileContext } from "@/features/reports/student-profile-context";
 import { StudentProfileCoverage } from "@/features/reports/student-profile-coverage";
 import { StudentProfileGeographySection } from "@/features/reports/student-profile-geography-section";
-import { ReportDisclosureNotice } from "@/features/reports/reports-shared";
+import {
+  ReportDisclosureNotice,
+  reportDetails,
+  reportStack,
+} from "@/features/reports/reports-shared";
 import {
   StudentProfileProgramLegend,
   StudentProfileSection,
@@ -67,13 +73,13 @@ export function StudentProfileReportContent({
   isFetching: boolean;
 }) {
   return (
-    <div aria-busy={isFetching}>
+    <div aria-busy={isFetching} className={reportStack}>
       <StudentProfileContext report={report} isGlobal={isGlobal} />
       <ReportDisclosureNotice warnings={report.disclosure_warnings} />
       {report.report_context.submitted_inventory_count === 0 ? (
-        <p className="mt-5 border-l-2 border-border pl-3 text-sm leading-6 text-muted">
+        <Notice>
           No submitted Individual Inventory records match the selected report filters.
-        </p>
+        </Notice>
       ) : null}
       <StudentProfileCoverage
         coverage={report.inventory_coverage}
@@ -82,17 +88,8 @@ export function StudentProfileReportContent({
       <StudentProfileProgramLegend columns={report.program_columns} />
 
       {PROFILE_SECTION_GROUPS.map((group) => (
-        <section
-          key={group.title}
-          aria-labelledby={groupId(group.title)}
-          className="mt-9"
-        >
-          <h2
-            id={groupId(group.title)}
-            className="font-heading text-xl font-semibold text-ink"
-          >
-            {group.title}
-          </h2>
+        <Panel key={group.title} aria-labelledby={groupId(group.title)}>
+          <PanelHeader title={group.title} titleId={groupId(group.title)} />
           {group.keys.map((key) => (
             <StudentProfileSection
               key={key}
@@ -100,30 +97,22 @@ export function StudentProfileReportContent({
               programColumns={report.program_columns}
             />
           ))}
-        </section>
+        </Panel>
       ))}
 
-      <section
-        aria-labelledby="student-profile-residence-heading"
-        className="mt-9"
-      >
-        <h2
-          id="student-profile-residence-heading"
-          className="font-heading text-xl font-semibold text-ink"
-        >
-          Residence
-        </h2>
+      <Panel aria-labelledby="student-profile-residence-heading">
+        <PanelHeader title="Residence" titleId="student-profile-residence-heading" />
         <StudentProfileGeographySection
           section={report.sections.city_municipality}
           programColumns={report.program_columns}
         />
-      </section>
+      </Panel>
 
-      <details className="mt-9 border-y border-border py-4">
-        <summary className="cursor-pointer font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+      <details className={reportDetails.root}>
+        <summary className={reportDetails.summary}>
           How this report is calculated
         </summary>
-        <dl className="mt-4 space-y-4 text-sm leading-6">
+        <dl className={reportDetails.body}>
           <div>
             <dt className="font-semibold text-ink">Profile population</dt>
             <dd className="mt-1 text-muted">
@@ -138,7 +127,7 @@ export function StudentProfileReportContent({
           </div>
         </dl>
       </details>
-      <p className="mt-4 text-xs leading-5 text-muted">
+      <p className="text-xs leading-5 text-muted">
         Each export uses the selected filters and the records available when you download it.
       </p>
     </div>

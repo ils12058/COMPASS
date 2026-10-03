@@ -67,11 +67,11 @@ export function HeroCopy() {
     >
       <p className="font-heading text-sm font-bold tracking-[0.2em] text-on-brand/80">COMPASS</p>
       {/* Both headlines share one grid cell, so the hero keeps the taller one's height. */}
-      <div className="mt-4 grid">
+      <div className="mt-3 grid">
         <h1
           className={cn(
             headlineLayer,
-            "font-heading text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl",
+            "font-heading text-3xl font-bold leading-[1.08] tracking-tight sm:text-4xl lg:text-5xl",
             showQuote ? hiddenLayer : shownLayer,
           )}
         >
@@ -80,7 +80,7 @@ export function HeroCopy() {
         <p
           className={cn(
             headlineLayer,
-            "self-center font-script text-5xl font-semibold leading-[1.05] sm:text-6xl lg:text-7xl",
+            "self-center font-script text-4xl font-semibold leading-[1.05] sm:text-5xl lg:text-6xl",
             showQuote ? shownLayer : hiddenLayer,
           )}
         >
@@ -91,10 +91,10 @@ export function HeroCopy() {
           alone.
         </p>
       </div>
-      <p className="mt-6 max-w-xl text-base leading-7 text-on-brand/85 sm:text-lg">
+      <p className="mt-4 max-w-xl text-base leading-7 text-on-brand/85 sm:text-lg">
         The online platform of the UCN Guidance and Counseling Office.
       </p>
-      <div className="mt-8 flex items-center gap-3">
+      <div className="mt-6 flex items-center gap-3">
         <Link
           href="/login"
           className="inline-flex min-h-11 items-center gap-2 rounded-md border border-on-brand bg-on-brand px-5 py-2.5 text-sm font-bold text-brand-strong transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand focus-visible:ring-offset-2 focus-visible:ring-offset-brand-strong"

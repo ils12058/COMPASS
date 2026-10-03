@@ -60,7 +60,7 @@ export function PeoplePicker({
     <fieldset className="min-w-0">
       <legend className="text-sm font-semibold text-ink">{label}</legend>
       {value && visibleSelected ? (
-        <div className="mt-3 border-l-2 border-support bg-support-soft/40 px-3 py-3 text-sm">
+        <div className="mt-3 rounded-sm border border-brand-line bg-brand-wash px-3 py-3 text-sm">
           <p className="font-semibold text-ink">{visibleSelected.full_name}</p>
           <p className="mt-1 break-words text-xs text-muted">
             {visibleSelected.institutional_id
@@ -96,9 +96,9 @@ export function PeoplePicker({
       </form>
 
       {people.isPending ? (
-        <LoadingRegion label="Loading eligible people…" className="mt-3 space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+        <LoadingRegion label="Loading eligible people…" className="mt-3 divide-y divide-border rounded-sm border border-border">
+          <div className="px-3 py-3"><Skeleton className="h-4 w-full max-w-xs" /></div>
+          <div className="px-3 py-3"><Skeleton className="h-4 w-full max-w-xs" /></div>
         </LoadingRegion>
       ) : people.isError ? (
         <div role="alert" className="mt-3 text-sm text-danger">
@@ -122,11 +122,11 @@ export function PeoplePicker({
         </p>
       ) : (
         <>
-          <div className="mt-3 max-h-56 overflow-y-auto border-y border-border">
+          <div className="mt-3 max-h-56 overflow-y-auto rounded-sm border border-border">
             {people.data.data.items.map((person) => (
               <label
                 key={person.id}
-                className="flex min-h-11 cursor-pointer items-center gap-3 border-t border-border px-2 py-2 first:border-t-0"
+                className="flex min-h-11 cursor-pointer items-center gap-3 border-t border-border px-3 py-2 first:border-t-0 has-checked:bg-brand-wash hover:bg-surface-subtle"
               >
                 <input
                   type="radio"

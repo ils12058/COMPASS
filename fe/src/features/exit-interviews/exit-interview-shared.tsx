@@ -6,6 +6,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import type { ExitInterviewStatusValue } from "@/lib/api/generated/model";
+import { PageHeader } from "@/components/ui/page-header";
+import { Notice } from "@/components/ui/notice";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
+import { PanelSection } from "@/components/ui/panel";
 
 export function exitInterviewErrorCode(error: unknown): string | undefined {
   return error instanceof CompassApiError
@@ -50,15 +54,8 @@ export function isUncertainExitInterviewMutation(error: unknown): boolean {
   return !(error instanceof CompassApiError) || error.status >= 500;
 }
 
-export function ExitInterviewListSkeleton({ label = "Loading Exit Interviews…" }: { label?: string }) {
-  return (
-    <LoadingRegion label={label} className="space-y-3">
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-16 w-full" />
-      <Skeleton className="h-16 w-full" />
-      <Skeleton className="h-16 w-full" />
-    </LoadingRegion>
-  );
+export function ExitInterviewListSkeleton({ label = "Loading Exit Interviews…", framed = true }: { label?: string; framed?: boolean }) {
+  return <RowsSkeleton label={label} rows={4} framed={framed} />;
 }
 
 export function ExitInterviewDetailSkeleton() {
@@ -83,23 +80,7 @@ export function ExitInterviewHeading({
   action?: ReactNode;
   id?: string;
 }) {
-  return (
-    <header className="border-b border-border pb-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 id={id} className="font-heading text-3xl font-bold text-ink">
-            {title}
-          </h1>
-          {description ? (
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-              {description}
-            </p>
-          ) : null}
-        </div>
-        {action}
-      </div>
-    </header>
-  );
+  return <PageHeader title={title} headingId={id} description={description} actions={action} className="mb-0" />;
 }
 
 export function ExitInterviewStatus({
@@ -128,13 +109,11 @@ export function ExitInterviewSection({
   id?: string;
 }) {
   const headingId = id ?? title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  // One part of the official form; the form or response renders the parts inside one Panel.
   return (
-    <section aria-labelledby={headingId} className="border-t border-border py-6">
-      <h2 id={headingId} className="font-heading text-xl font-semibold text-ink">
-        {title}
-      </h2>
+    <PanelSection title={title} titleId={headingId}>
       {children}
-    </section>
+    </PanelSection>
   );
 }
 
@@ -175,15 +154,12 @@ export function ExitInterviewError({
   onRetry?: () => void;
 }) {
   return (
-    <div role="alert" className="border-y border-danger/30 py-5">
-      <p className="text-sm text-danger">
-        {exitInterviewErrorMessage(error, fallback)}
-      </p>
-      {onRetry ? (
-        <Button variant="secondary" className="mt-3" onClick={onRetry}>
-          Retry
-        </Button>
-      ) : null}
-    </div>
+    <Notice
+      tone="danger"
+      role="alert"
+      action={onRetry ? <Button variant="secondary" onClick={onRetry}>Retry</Button> : undefined}
+    >
+      {exitInterviewErrorMessage(error, fallback)}
+    </Notice>
   );
 }

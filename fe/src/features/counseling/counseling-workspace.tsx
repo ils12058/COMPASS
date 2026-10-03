@@ -5,7 +5,10 @@ import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
+import { workspaceTabClass } from "@/components/ui/workspace-tabs";
 import { canShowLastKnownData, shouldHideProtectedData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { boundaryDelay, useServerBoundary } from "@/features/freshness/use-server-boundary";
@@ -103,7 +106,7 @@ function directEntryMode(value: string): CounselingEntryMode | undefined {
 }
 
 function Metadata({ label, children }: { label: string; children: ReactNode }) {
-  return <div className="border-b border-border/70 py-3"><dt className="text-xs font-semibold text-muted">{label}</dt><dd className="mt-1 break-words text-sm text-ink">{children}</dd></div>;
+  return <div className="min-w-0 py-2.5"><dt className="text-xs font-semibold text-muted">{label}</dt><dd className="mt-1 break-words text-sm text-ink">{children}</dd></div>;
 }
 
 export function CounselingWorkspace({
@@ -163,18 +166,26 @@ export function CounselingWorkspace({
 
   if (!allowed) return <CounselingUnavailable title="Counseling context unavailable" />;
   if (contextUnavailable || invalidBoundary || boundaryReached || shouldHideProtectedData(overview.error) || counselingErrorCode(overview.error) === "counseling_context_not_found") {
-    return <section role="alert" className="max-w-3xl border-y border-border py-7"><h1 className="font-heading text-2xl font-semibold text-ink">Counseling information unavailable</h1><p className="mt-3 text-sm leading-6 text-muted">We cannot show this information until your access is checked again.</p><Button className="mt-3" variant="secondary" onClick={() => void reauthorize()}>Check again</Button></section>;
+    return <Notice role="alert" className="max-w-3xl px-5 py-6 sm:px-6" title={<h1 className="font-heading text-2xl font-semibold text-ink">Counseling information unavailable</h1>} action={<Button variant="secondary" onClick={() => void reauthorize()}>Check again</Button>}>We cannot show this information until your access is checked again.</Notice>;
   }
   if (overview.isPending) return <CounselingWorkspaceSkeleton />;
   if ((overview.isError && !canShowLastKnownData(overview)) || !overview.data?.data) {
     const expired = counselingErrorCode(overview.error) === "counseling_context_not_found";
     return (
-      <section role="alert" className="max-w-3xl border-y border-border py-7">
-        <h1 className="font-heading text-2xl font-semibold text-ink">Counseling context</h1>
-        <p className="mt-3 text-sm leading-6 text-muted">{expired ? "This counseling view is no longer available." : counselingErrorMessage(overview.error, "Counseling information is not currently available.")}</p>
-        {expired ? <p className="mt-2 text-sm leading-6 text-muted">Return to your encounters to continue.</p> : <Button className="mt-3" variant="secondary" onClick={() => void overview.refetch()}>Retry</Button>}
-        <Link href="/portal/counseling" className="mt-4 inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">My Counseling Encounters</Link>
-      </section>
+      <Notice
+        role="alert"
+        className="max-w-3xl px-5 py-6 sm:px-6"
+        title={<h1 className="font-heading text-2xl font-semibold text-ink">Counseling context</h1>}
+        action={
+          <>
+            {expired ? null : <Button variant="secondary" onClick={() => void overview.refetch()}>Retry</Button>}
+            <Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My Counseling Encounters</Link>
+          </>
+        }
+      >
+        <p>{expired ? "This counseling view is no longer available." : counselingErrorMessage(overview.error, "Counseling information is not currently available.")}</p>
+        {expired ? <p className="mt-2">Return to your encounters to continue.</p> : null}
+      </Notice>
     );
   }
 
@@ -248,12 +259,12 @@ function CounselingWorkspaceContent({
     <div>
       <CounselingPageHeading title="Counseling workspace" action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My counseling encounters</Link>} />
       {contextExpired ? (
-        <section role="alert" className="border-y border-warning/40 py-5"><h2 className="font-heading text-xl font-semibold text-ink">Counseling workspace is no longer available</h2><p className="mt-2 text-sm leading-6 text-muted">These interaction details can no longer be reviewed here.</p>{expiredEncounterMessage ? <p className="mt-2 text-sm text-muted">{expiredEncounterMessage}</p> : null}</section>
+        <Notice role="alert" tone="warning" title={<h2 className="font-heading text-xl font-semibold text-ink">Counseling workspace is no longer available</h2>}><p className="text-muted">These interaction details can no longer be reviewed here.</p>{expiredEncounterMessage ? <p className="mt-2 text-muted">{expiredEncounterMessage}</p> : null}</Notice>
       ) : (
-        <div className="grid gap-8 xl:grid-cols-[minmax(15rem,0.8fr)_minmax(0,2fr)]">
-          <section aria-labelledby="counseling-interaction-heading" className="min-w-0 border-y border-border py-5">
-            <h2 id="counseling-interaction-heading" className="font-heading text-xl font-semibold text-ink">Interaction</h2>
-            <dl className="mt-3 divide-y divide-border">
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(15rem,0.8fr)_minmax(0,2fr)]">
+          <Panel aria-labelledby="counseling-interaction-heading">
+            <PanelHeader title="Interaction" titleId="counseling-interaction-heading" />
+            <dl className="divide-y divide-border px-4 sm:px-5">
               <Metadata label="Origin">{counselingEntryModeLabel(overview.entry_mode)}</Metadata>
               <Metadata label="Delivery">{counselingDeliveryModeLabel(overview.delivery_mode)}</Metadata>
               <Metadata label="Available until">{formatCounselingDateTime(overview.valid_until)}</Metadata>
@@ -261,11 +272,11 @@ function CounselingWorkspaceContent({
               <Metadata label="Counseling Encounter">{overview.matching_encounter ? "Recorded" : "Not yet recorded"}</Metadata>
             </dl>
             {overview.matching_encounter ? (
-              <div className="mt-4 border-t border-border pt-4"><p className="text-sm text-muted">Completed interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)}.</p><Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className="mt-3 inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">View encounter</Link></div>
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">Completed interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)}.</p><Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link></div>
             ) : access.canManageAssigned ? (
-              <div className="mt-4 border-t border-border pt-4"><p className="text-sm font-medium text-ink">Counseling Encounter not yet recorded</p><Button className="mt-3" disabled={recordUncertain} onClick={() => setRecordOpen((open) => !open)}>{recordUncertain ? "Recording result unconfirmed" : recordOpen ? "Close recording" : "Record completed encounter"}</Button>{recordOpen ? preset ? <div className="mt-4"><RecordEncounterForm preset={preset} onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} onCreated={() => void handleCreated()} /></div> : <p role="alert" className="mt-3 text-sm text-danger">This interaction cannot be recorded from this page. Review its visit type and delivery mode.</p> : null}</div>
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm font-medium text-ink">Counseling Encounter not yet recorded</p><Button className="mt-3" disabled={recordUncertain} onClick={() => setRecordOpen((open) => !open)}>{recordUncertain ? "Recording result unconfirmed" : recordOpen ? "Close recording" : "Record completed encounter"}</Button>{recordOpen ? preset ? <div className="mt-4"><RecordEncounterForm preset={preset} onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} onCreated={() => void handleCreated()} /></div> : <p role="alert" className="mt-3 text-sm text-danger">This interaction cannot be recorded from this page. Review its visit type and delivery mode.</p> : null}</div>
             ) : null}
-          </section>
+          </Panel>
 
           <CounselingContextPanel
             key={`${anchorType}-${anchorId}-${contextPanelRevision}`}
@@ -338,15 +349,16 @@ export function CounselingContextPanel({
 
   return (
     <section className="min-w-0" aria-label="Student Counseling context">
-      <h2 className="font-heading text-xl font-semibold text-ink">Student context</h2>
+      <h2 className="font-heading text-lg font-semibold text-ink">Student context</h2>
       {contextExpired ? (
-        <div role="status" className="mt-4 border-y border-border py-5"><p className="text-sm text-muted">Counseling context is not currently available.</p></div>
+        <Notice role="status" className="mt-3">Counseling context is not currently available.</Notice>
       ) : (
         <>
-          <div role="tablist" aria-label="Counseling context sections" onKeyDown={handleTabKeyDown} className="mt-4 flex max-w-full gap-1 overflow-x-auto border-b border-border">
-            {tabs.map((tab) => <button key={tab.id} id={`counseling-context-tab-${tab.id}`} type="button" role="tab" aria-selected={activeTab === tab.id} aria-controls="counseling-context-panel" tabIndex={activeTab === tab.id ? 0 : -1} onClick={() => setActiveTab(tab.id)} className={`min-h-10 shrink-0 border-b-2 px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${activeTab === tab.id ? "border-brand text-brand" : "border-transparent text-muted hover:text-ink"}`}>{tab.label}</button>)}
+          {/* Tabs sit on the canvas; each section brings its own surface. */}
+          <div role="tablist" aria-label="Counseling context sections" onKeyDown={handleTabKeyDown} className="mt-2 flex max-w-full gap-x-5 overflow-x-auto border-b border-brand-line">
+            {tabs.map((tab) => <button key={tab.id} id={`counseling-context-tab-${tab.id}`} type="button" role="tab" aria-selected={activeTab === tab.id} aria-controls="counseling-context-panel" tabIndex={activeTab === tab.id ? 0 : -1} onClick={() => setActiveTab(tab.id)} className={`shrink-0 ${workspaceTabClass(activeTab === tab.id)}`}>{tab.label}</button>)}
           </div>
-          <div id="counseling-context-panel" role="tabpanel" aria-labelledby={`counseling-context-tab-${activeTab}`} tabIndex={0} className="min-w-0 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <div id="counseling-context-panel" role="tabpanel" aria-labelledby={`counseling-context-tab-${activeTab}`} tabIndex={0} className="min-w-0 pt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
             {activeQuery && canShowLastKnownData(activeQuery) ? <RefreshFailureNotice onRetry={() => void activeQuery.refetch()} retrying={activeQuery.isFetching} /> : null}
             {activeQuery?.isFetching && activeQuery.data && !activeQuery.isError ? <p role="status" className="text-sm text-muted">Refreshing…</p> : null}
             {activeTab === "OVERVIEW" ? <ContextOverview overview={overview} /> : null}
@@ -364,8 +376,8 @@ export function CounselingContextPanel({
 
 function ContextOverview({ overview }: { overview: CounselingContextOverviewResponse }) {
   return (
-    <div>
-      <dl className="grid gap-x-8 sm:grid-cols-2">
+    <Panel as="div">
+      <dl className="grid gap-x-8 px-4 py-2 sm:grid-cols-2 sm:px-5">
         <Metadata label="Student">{overview.student.display_name}</Metadata>
         <Metadata label="Institutional ID">{overview.student.institutional_id ?? "Not provided"}</Metadata>
         <Metadata label="Campus">{overview.student.campus?.name ?? "Not provided"}</Metadata>
@@ -378,7 +390,7 @@ function ContextOverview({ overview }: { overview: CounselingContextOverviewResp
         <Metadata label="Routine Interview">{overview.routine_interview ? `${routineIntakeStatusLabel(overview.routine_interview.intake_status)} Intake · ${routineEvaluationStatusLabel(overview.routine_interview.evaluation_status)} Evaluation` : "No Routine Interview is linked to this Counseling context."}</Metadata>
         <Metadata label="Matching Encounter">{overview.matching_encounter ? "Counseling Encounter recorded" : "Counseling Encounter not yet recorded"}</Metadata>
       </dl>
-    </div>
+    </Panel>
   );
 }
 
@@ -387,10 +399,16 @@ function RoutineContext({ routine, canManage }: { routine: QueryResultWithData<C
   if ((routine.isError && !canShowLastKnownData(routine)) || !routine.data?.data) return <CounselingQueryError message={counselingErrorMessage(routine.error, "The Routine Interview could not be loaded for this account.")} onRetry={() => void routine.refetch()} />;
   const detail = routine.data.data;
   return (
-    <div>
-      <div className="mb-5 border-y border-border py-4"><p className="text-sm font-semibold text-ink">Student Intake · {routineIntakeStatusLabel(detail.intake_status)}</p><p className="mt-1 text-sm text-muted">{detail.intake_status === "SUBMITTED" ? "Submitted responses are read-only for counselors." : "Student responses remain private until submission."}</p></div>
-      {detail.intake_status === "SUBMITTED" && detail.intake ? <RoutineStudentIntakeReadOnly intake={detail.intake} /> : <p role="status" className="border-b border-border py-5 text-sm text-muted">Student Intake is still a draft. The Student’s answers become available after they submit their Intake.</p>}
-      {detail.intake_status !== "SUBMITTED" ? <section className="mt-8 border-t border-border pt-5"><h3 className="font-heading text-lg font-semibold text-ink">Counselor Evaluation</h3><p className="mt-2 text-sm text-muted">Counselor evaluation becomes available after the student submits the intake.</p></section> : detail.evaluation_status === "FINALIZED" ? <section className="mt-8 border-t border-border pt-5"><h3 className="font-heading text-lg font-semibold text-ink">Counselor Evaluation</h3><p className="mt-1 text-sm text-muted">Finalized {detail.evaluation_finalized_at ? formatCounselingDateTime(detail.evaluation_finalized_at) : ""} · Read-only</p><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></section> : canManage ? <RoutineCounselorEvaluationWorkspace key={detail.id} routineInterviewId={detail.id} entryMode={detail.entry_mode} initialEvaluation={detail.evaluation} evaluationFinalized={false} /> : <section className="mt-8 border-t border-border pt-5"><h3 className="font-heading text-lg font-semibold text-ink">Counselor Evaluation</h3><p className="mt-1 text-sm text-muted">Draft evaluation · Read-only for this account.</p><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></section>}
+    <div className="space-y-5">
+      <Panel as="div">
+        <PanelHeader
+          title={<>Student Intake · {routineIntakeStatusLabel(detail.intake_status)}</>}
+          level={3}
+          description={detail.intake_status === "SUBMITTED" ? "Submitted responses are read-only for counselors." : "Student responses remain private until submission."}
+        />
+        {detail.intake_status === "SUBMITTED" && detail.intake ? <div className="px-4 py-4 sm:px-5"><RoutineStudentIntakeReadOnly intake={detail.intake} /></div> : <PanelMessage role="status">Student Intake is still a draft. The Student’s answers become available after they submit their Intake.</PanelMessage>}
+      </Panel>
+      {detail.intake_status !== "SUBMITTED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} /><PanelMessage>Counselor evaluation becomes available after the student submits the intake.</PanelMessage></Panel> : detail.evaluation_status === "FINALIZED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description={`Finalized ${detail.evaluation_finalized_at ? formatCounselingDateTime(detail.evaluation_finalized_at) : ""} · Read-only`} /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel> : canManage ? <RoutineCounselorEvaluationWorkspace key={detail.id} routineInterviewId={detail.id} entryMode={detail.entry_mode} initialEvaluation={detail.evaluation} evaluationFinalized={false} /> : <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description="Draft evaluation · Read-only for this account." /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel>}
     </div>
   );
 }
@@ -405,9 +423,9 @@ function InventoryContext({ query, overview }: { query: QueryResultWithData<Coun
       [CounselingContextInventoryStatus.DRAFT]: "The current Individual Inventory is still a draft and is not available for counselor review.",
       [CounselingContextInventoryStatus.SUBMITTED]: "A submitted Individual Inventory is not available here.",
     };
-    return <p role="status" className="border-y border-border py-5 text-sm text-muted">{unavailable[result?.inventory_source_status ?? CounselingContextInventoryStatus.MISSING]}</p>;
+    return <Notice role="status">{unavailable[result?.inventory_source_status ?? CounselingContextInventoryStatus.MISSING]}</Notice>;
   }
-  if (!result.inventory || result.inventory.status !== "SUBMITTED") return <p role="status" className="border-y border-border py-5 text-sm text-muted">The current submitted Individual Inventory is not available here.</p>;
+  if (!result.inventory || result.inventory.status !== "SUBMITTED") return <Notice role="status">The current submitted Individual Inventory is not available here.</Notice>;
   return <InventoryReadOnly inventory={result.inventory} studentIdentity={{ display_name: overview.student.display_name, institutional_id: overview.student.institutional_id }} />;
 }
 
@@ -421,17 +439,17 @@ function SupportContext({ query }: { query: QueryResultWithData<CounselingContex
       : result?.inventory_source_status === CounselingContextInventoryStatus.SUBMITTED
         ? "Support indicators are unavailable here."
         : "Support indicators are unavailable because no current submitted Individual Inventory is available.";
-    return <p role="status" className="border-y border-border py-5 text-sm text-muted">{message}</p>;
+    return <Notice role="status">{message}</Notice>;
   }
-  return result.indicators.length ? <ul className="divide-y divide-border border-y border-border">{result.indicators.map((indicator) => <li key={indicator.code} className="py-3 text-sm text-ink">{indicator.label}</li>)}</ul> : <p className="border-y border-border py-5 text-sm text-muted">No support indicators are recorded.</p>;
+  return <Panel as="div">{result.indicators.length ? <ul className="divide-y divide-border">{result.indicators.map((indicator) => <li key={indicator.code} className="px-4 py-3 text-sm text-ink sm:px-5">{indicator.label}</li>)}</ul> : <PanelMessage>No support indicators are recorded.</PanelMessage>}</Panel>;
 }
 
 function HistoryContext({ query }: { query: QueryResultWithData<CounselingContextHistoryResponse> }) {
   if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading minimized Counseling history…</span><Skeleton className="h-14 w-full" /><Skeleton className="mt-2 h-14 w-full" /></div>;
   if (query.isError && !canShowLastKnownData(query)) return <CounselingQueryError message={counselingErrorMessage(query.error, "Counseling context history could not be loaded.")} onRetry={() => void query.refetch()} />;
   const items = query.data?.data.items ?? [];
-  if (!items.length) return <p className="border-y border-border py-5 text-sm text-muted">No contextual history is available.</p>;
-  return <ol className="divide-y divide-border border-y border-border">{items.map((item) => <li key={`${item.kind}-${item.id}`} className="py-4"><p className="font-semibold text-ink">{historyKindLabels[item.kind]} · {item.title}</p><p className="mt-1 text-sm text-muted">{formatCounselingDateTime(item.occurred_at)} · {historyStatusLabels[item.status]}{item.reference_code ? ` · ${item.reference_code}` : ""}{item.delivery_mode ? ` · ${counselingDeliveryModeLabel(item.delivery_mode)}` : ""}</p>{item.provider ? <p className="mt-1 text-sm text-muted">Provider: {item.provider.display_name}</p> : null}</li>)}</ol>;
+  if (!items.length) return <Panel as="div"><PanelMessage>No contextual history is available.</PanelMessage></Panel>;
+  return <Panel as="div"><ol className="divide-y divide-border">{items.map((item) => <li key={`${item.kind}-${item.id}`} className="px-4 py-3.5 sm:px-5"><p className="font-semibold text-ink">{historyKindLabels[item.kind]} · {item.title}</p><p className="mt-1 text-sm text-muted">{formatCounselingDateTime(item.occurred_at)} · {historyStatusLabels[item.status]}{item.reference_code ? ` · ${item.reference_code}` : ""}{item.delivery_mode ? ` · ${counselingDeliveryModeLabel(item.delivery_mode)}` : ""}</p>{item.provider ? <p className="mt-1 text-sm text-muted">Provider: {item.provider.display_name}</p> : null}</li>)}</ol></Panel>;
 }
 
 function SharedSummariesContext({
@@ -450,12 +468,12 @@ function SharedSummariesContext({
   const items = query.data?.data.items ?? [];
   const encounterId = overview.matching_encounter?.id;
   return (
-    <div className="space-y-8">
-      <section aria-labelledby="previous-shared-summaries-heading">
-        <h3 id="previous-shared-summaries-heading" className="font-heading text-lg font-semibold text-ink">Previous published summaries</h3>
-        {!access.canViewAssignedSummaries ? <p className="mt-3 text-sm text-muted">Published shared summaries are unavailable to this account.</p> : items.length ? <ul className="mt-3 divide-y divide-border border-y border-border">{items.map((item) => <li key={item.id} className="py-4"><p className="font-semibold text-ink">Counselor: {item.counselor.display_name}</p><p className="mt-1 text-sm text-muted">Counseling ended {formatCounselingDateTime(item.counseling_ended_at)} · Published {formatCounselingDateTime(item.published_at)}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-ink">{item.content}</p></li>)}</ul> : <p className="mt-3 border-y border-border py-5 text-sm text-muted">No previous published Shared Summaries are available.</p>}
-      </section>
-      {encounterId && access.canViewAssignedSummaries ? <section aria-labelledby="current-shared-summary-heading" className="border-t border-border pt-6"><h3 id="current-shared-summary-heading" className="sr-only">This encounter’s Shared Summary</h3><SharedSummarySection encounterId={encounterId} access={access} onPublished={onPublished} /></section> : null}
+    <div className="space-y-5">
+      <Panel aria-labelledby="previous-shared-summaries-heading">
+        <PanelHeader title="Previous published summaries" titleId="previous-shared-summaries-heading" level={3} />
+        {!access.canViewAssignedSummaries ? <PanelMessage>Published shared summaries are unavailable to this account.</PanelMessage> : items.length ? <ul className="divide-y divide-border">{items.map((item) => <li key={item.id} className="px-4 py-3.5 sm:px-5"><p className="font-semibold text-ink">Counselor: {item.counselor.display_name}</p><p className="mt-1 text-sm text-muted">Counseling ended {formatCounselingDateTime(item.counseling_ended_at)} · Published {formatCounselingDateTime(item.published_at)}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-ink">{item.content}</p></li>)}</ul> : <PanelMessage>No previous published Shared Summaries are available.</PanelMessage>}
+      </Panel>
+      {encounterId && access.canViewAssignedSummaries ? <section aria-labelledby="current-shared-summary-heading"><h3 id="current-shared-summary-heading" className="sr-only">This encounter’s Shared Summary</h3><SharedSummarySection encounterId={encounterId} access={access} onPublished={onPublished} /></section> : null}
     </div>
   );
 }

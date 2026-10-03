@@ -6,6 +6,10 @@ import { createContext, useContext, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
+import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { managedAccountError } from "@/features/accounts/components/account-action";
@@ -45,43 +49,51 @@ export function AccountDetailFrame({
 
   if (account.isPending)
     return (
-      <div aria-busy="true">
+      <LoadingRegion label="Loading account…">
         <Skeleton className="h-5 w-24" />
-        <Skeleton className="mt-6 h-9 w-64" />
-        <Skeleton className="mt-5 h-20 w-full" />
-        <Skeleton className="mt-8 h-36 w-full" />
-        <span className="sr-only">Loading account…</span>
-      </div>
+        <Skeleton className="mt-3 h-9 w-64" />
+        <Skeleton className="mt-3 h-4 w-80 max-w-full" />
+        <Skeleton className="mt-6 h-11 w-72 max-w-full" />
+        <div className="mt-6 rounded-sm border border-brand-line bg-surface-raised px-4 py-5 sm:px-5">
+          <Skeleton className="h-28 w-full" />
+        </div>
+      </LoadingRegion>
     );
   if (!confirmed) {
     const missing =
       account.error instanceof CompassApiError && account.error.status === 404;
     return (
-      <section role="alert" className="max-w-xl border-y border-border py-8">
-        <h1 className="font-heading text-3xl font-bold text-ink">
-          {missing ? "Account not found" : "Account unavailable"}
-        </h1>
-        <p className="mt-3 text-sm text-muted">
+      <section className="max-w-2xl">
+        <PageHeader
+          title={missing ? "Account not found" : "Account unavailable"}
+          className="mb-5"
+        />
+        <Notice
+          role="alert"
+          tone={missing ? "neutral" : "danger"}
+          action={
+            <>
+              <Link
+                href={listHref}
+                className="inline-flex min-h-10 items-center text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                Back to Accounts
+              </Link>
+              {!missing ? (
+                <Button variant="secondary" onClick={() => void account.refetch()}>
+                  Retry
+                </Button>
+              ) : null}
+            </>
+          }
+        >
           {missing
             ? "This managed account could not be found."
             : managedAccountError(
                 account.error,
                 "The managed account could not be loaded.",
               )}
-        </p>
-        <div className="mt-5 flex gap-3">
-          <Link
-            href={listHref}
-            className="inline-flex min-h-10 items-center text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            Back to Accounts
-          </Link>
-          {!missing ? (
-            <Button variant="secondary" onClick={() => void account.refetch()}>
-              Retry
-            </Button>
-          ) : null}
-        </div>
+        </Notice>
       </section>
     );
   }
@@ -96,47 +108,42 @@ export function AccountDetailFrame({
     <AccountContext.Provider value={data}>
       <section aria-labelledby="account-detail-heading">
         {account.isError ? <RefreshFailureNotice onRetry={() => void account.refetch()} retrying={account.isFetching} /> : null}
-        <Link
-          href={listHref}
-          className="text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        >
-          ← Accounts
-        </Link>
-        <div className="mt-5 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1
-              id="account-detail-heading"
-              className="font-heading text-3xl font-bold text-ink"
+        <PageHeader
+          title={accountName(data)}
+          headingId="account-detail-heading"
+          back={
+            <Link href={listHref} className={pageBackLinkClass}>
+              ← Accounts
+            </Link>
+          }
+          meta={
+            <span
+              className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${data.is_active ? "border-support text-support-strong" : "border-danger text-danger"}`}
             >
-              {accountName(data)}
-            </h1>
-            <p className="mt-2 text-sm text-muted">
+              {data.is_active ? "Active" : "Disabled"}
+            </span>
+          }
+          description={
+            <>
               {data.institutional_id || "No Institutional ID"} ·{" "}
               {roleLabels[data.role]} · {data.email}
-            </p>
-          </div>
-          <span
-            className={`rounded-full border px-3 py-1 text-xs font-semibold ${data.is_active ? "border-support text-support-strong" : "border-danger text-danger"}`}
-          >
-            {data.is_active ? "Active" : "Disabled"}
-          </span>
-        </div>
-        <nav
-          aria-label="Account sections"
-          className="mt-7 flex gap-5 overflow-x-auto border-b border-border"
-        >
+            </>
+          }
+          className="mb-5"
+        />
+        <WorkspaceTabs label="Account sections">
           {tabs.map(([label, href]) => (
             <Link
               key={label}
               href={`${href}${suffix}`}
               aria-current={pathname === href ? "page" : undefined}
-              className={`whitespace-nowrap border-b-2 px-1 py-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${pathname === href ? "border-brand text-brand" : "border-transparent text-muted hover:text-ink"}`}
+              className={workspaceTabClass(pathname === href)}
             >
               {label}
             </Link>
           ))}
-        </nav>
-        <div className="pt-7">{children}</div>
+        </WorkspaceTabs>
+        {children}
       </section>
     </AccountContext.Provider>
   );

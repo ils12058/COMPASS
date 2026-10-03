@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs";
+
 export function PlatformNavigation() {
   const pathname = usePathname();
   const links = [
@@ -14,26 +16,20 @@ export function PlatformNavigation() {
   ] as const;
 
   return (
-    <nav aria-label="Platform Operations navigation" className="mb-8 border-b border-border">
-      <div className="flex flex-wrap gap-x-5 gap-y-2">
-        {links.map(([href, label]) => {
-          const current = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={current ? "page" : undefined}
-              className={`inline-flex min-h-11 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
-                current
-                  ? "border-brand text-brand"
-                  : "border-transparent text-muted hover:text-ink"
-              }`}
-            >
-              {label}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+    <WorkspaceTabs label="Platform Operations navigation">
+      {links.map(([href, label]) => {
+        const current = pathname === href;
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={current ? "page" : undefined}
+            className={workspaceTabClass(current)}
+          >
+            {label}
+          </Link>
+        );
+      })}
+    </WorkspaceTabs>
   );
 }

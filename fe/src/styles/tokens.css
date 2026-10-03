@@ -25,6 +25,12 @@
 
   --compass-border: #d8d7cb;
   --compass-border-strong: #aeb3aa;
+
+  /* Structural maroon, derived from the brand color rather than new hues. The line frames
+     working surfaces (panels, filter toolbars, tables); the wash tints table heads. Neither carries
+     text contrast on its own. */
+  --compass-brand-line: color-mix(in srgb, var(--compass-brand) 24%, var(--compass-border));
+  --compass-brand-wash: color-mix(in srgb, var(--compass-brand) 6%, var(--compass-surface-raised));
   --compass-focus: #326676;
   --compass-overlay: rgb(34 42 45 / 55%);
 

@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type FormEvent } from "react";
+import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import {
   AppointmentListSkeleton,
   AppointmentStatusBadge,
@@ -50,6 +53,137 @@ function pageValue(value: string | null): number {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1;
 }
 
+type ManagedFilters = {
+  search: string;
+  service: string;
+  status: string;
+  mode: string;
+  from: string;
+  to: string;
+  ordering: string;
+};
+
+// Search and filters apply together through one Apply action. The parent remounts this form when
+// the URL changes, so the fields always start from the applied filters.
+function ManagedAppointmentFilters({
+  applied,
+  hasFilters,
+  canFilterService,
+  serviceOptions,
+  servicesPending,
+  servicesFailed,
+  onApply,
+  onClear,
+}: {
+  applied: ManagedFilters;
+  hasFilters: boolean;
+  canFilterService: boolean;
+  serviceOptions: { id: string; name: string }[];
+  servicesPending: boolean;
+  servicesFailed: boolean;
+  onApply: (filters: ManagedFilters) => void;
+  onClear: () => void;
+}) {
+  const [draft, setDraft] = useState(applied);
+  const appliedServiceKnown = serviceOptions.some((service) => service.id === applied.service);
+
+  function set(name: keyof ManagedFilters, value: string) {
+    setDraft((current) => ({ ...current, [name]: value }));
+  }
+
+  return (
+    <form
+      role="search"
+      aria-label="Managed appointments"
+      className="mb-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onApply({ ...draft, search: draft.search.trim() });
+      }}
+    >
+      <FilterToolbar
+        fieldsClassName="lg:grid-cols-3"
+        actions={
+          <>
+            {hasFilters ? (
+              <Button variant="quiet" onClick={onClear}>
+                Clear filters
+              </Button>
+            ) : null}
+            <Button type="submit">Apply filters</Button>
+          </>
+        }
+      >
+        <FilterField label="Search" htmlFor="managed-appointment-search" className="sm:col-span-2 lg:col-span-1">
+          <Input
+            id="managed-appointment-search"
+            type="search"
+            value={draft.search}
+            onChange={(event) => set("search", event.target.value)}
+            placeholder="Search by reference, Student name, or Institutional ID"
+          />
+        </FilterField>
+        {canFilterService ? (
+          <FilterField
+            label="Service"
+            htmlFor="managed-appointment-service"
+            hint={servicesFailed ? (
+              <p id="managed-appointment-service-error" className="text-xs text-warning">Service choices could not be loaded.</p>
+            ) : null}
+          >
+            <Select
+              id="managed-appointment-service"
+              value={draft.service}
+              disabled={servicesPending && !applied.service}
+              aria-describedby={servicesFailed ? "managed-appointment-service-error" : undefined}
+              onChange={(event) => set("service", event.target.value)}
+            >
+              <option value="">All Services</option>
+              {applied.service && !appliedServiceKnown ? (
+                <option value={applied.service}>
+                  {servicesPending ? "Loading Service…" : "Selected Service"}
+                </option>
+              ) : null}
+              {serviceOptions.map((service) => (
+                <option key={service.id} value={service.id}>{service.name}</option>
+              ))}
+            </Select>
+          </FilterField>
+        ) : null}
+        <FilterField label="Status" htmlFor="managed-appointment-status">
+          <Select id="managed-appointment-status" value={draft.status} onChange={(event) => set("status", event.target.value)}>
+            <option value={AppointmentStatus.SCHEDULED}>{appointmentStatusLabel(AppointmentStatus.SCHEDULED)}</option>
+            <option value={UPCOMING_APPOINTMENTS_VIEW}>Upcoming (not yet started)</option>
+            <option value="ALL">All statuses</option>
+            <option value={AppointmentStatus.CANCELLED}>{appointmentStatusLabel(AppointmentStatus.CANCELLED)}</option>
+            <option value={AppointmentStatus.COMPLETED}>{appointmentStatusLabel(AppointmentStatus.COMPLETED)}</option>
+            <option value={AppointmentStatus.NO_SHOW}>{appointmentStatusLabel(AppointmentStatus.NO_SHOW)}</option>
+          </Select>
+        </FilterField>
+        <FilterField label="Delivery" htmlFor="managed-appointment-mode">
+          <Select id="managed-appointment-mode" value={draft.mode} onChange={(event) => set("mode", event.target.value)}>
+            <option value="">All modes</option>
+            <option value={DeliveryMode.IN_PERSON}>In person</option>
+            <option value={DeliveryMode.ONLINE}>Online</option>
+          </Select>
+        </FilterField>
+        <FilterField label="From" htmlFor="managed-appointment-from">
+          <Input id="managed-appointment-from" type="date" value={draft.from} onChange={(event) => set("from", event.target.value)} />
+        </FilterField>
+        <FilterField label="To" htmlFor="managed-appointment-to">
+          <Input id="managed-appointment-to" type="date" value={draft.to} onChange={(event) => set("to", event.target.value)} />
+        </FilterField>
+        <FilterField label="Order" htmlFor="managed-appointment-order">
+          <Select id="managed-appointment-order" value={draft.ordering} onChange={(event) => set("ordering", event.target.value)}>
+            <option value={AppointmentListOrdering.START_ASC}>Earliest start first</option>
+            <option value={AppointmentListOrdering.START_DESC}>Latest start first</option>
+          </Select>
+        </FilterField>
+      </FilterToolbar>
+    </form>
+  );
+}
+
 function ManagedAppointmentsList() {
   const { user } = usePortalSession();
   const router = useRouter();
@@ -82,7 +216,6 @@ function ManagedAppointmentsList() {
     { query: { enabled: canFilterService, retry: false, staleTime: 5 * 60_000 } },
   );
   const serviceOptions = services.data?.data.items ?? [];
-  const selectedServiceKnown = serviceOptions.some((service) => service.id === serviceId);
 
   const list = useAppointmentsListManaged(
     {
@@ -100,21 +233,23 @@ function ManagedAppointmentsList() {
     { query: { retry: false } },
   );
 
-  function updateFilter(name: string, value: string) {
+  function applyFilters(next: ManagedFilters) {
     router.replace(
       updateAppointmentQuery(
         pathname,
         new URLSearchParams(searchParams.toString()),
-        { [name]: value },
+        {
+          search: next.search,
+          service: canFilterService ? next.service : "",
+          status: next.status,
+          mode: next.mode,
+          from: next.from,
+          to: next.to,
+          ordering: next.ordering,
+        },
       ),
       { scroll: false },
     );
-  }
-
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    updateFilter("search", String(form.get("search") ?? "").trim());
   }
 
   function movePage(nextPage: number) {
@@ -142,187 +277,152 @@ function ManagedAppointmentsList() {
         description="Review appointments assigned to the areas you manage."
       />
 
-      <div className="border-y border-border py-5">
-        <form onSubmit={submitSearch} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
-          <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="managed-appointment-search">Search</Label>
-            <Input
-              key={search}
-              id="managed-appointment-search"
-              name="search"
-              type="search"
-              defaultValue={search}
-              placeholder="Search by reference, Student name, or Institutional ID"
-            />
-          </div>
-          {canFilterService ? (
-            <div className="grid gap-2">
-              <Label htmlFor="managed-appointment-service">Service</Label>
-              <Select
-                id="managed-appointment-service"
-                value={serviceId ?? ""}
-                disabled={services.isPending && !serviceId}
-                onChange={(event) => updateFilter("service", event.target.value)}
-              >
-                <option value="">All Services</option>
-                {serviceId && !selectedServiceKnown ? (
-                  <option value={serviceId}>
-                    {services.isPending ? "Loading Service…" : "Selected Service"}
-                  </option>
-                ) : null}
-                {serviceOptions.map((service) => (
-                  <option key={service.id} value={service.id}>{service.name}</option>
-                ))}
-              </Select>
-              {services.isError ? (
-                <p className="text-xs text-warning">Service choices could not be loaded.</p>
-              ) : null}
-            </div>
-          ) : null}
-          <div className="grid gap-2">
-            <Label htmlFor="managed-appointment-status">Status</Label>
-            <Select id="managed-appointment-status" value={upcoming ? UPCOMING_APPOINTMENTS_VIEW : status ?? "ALL"} onChange={(event) => updateFilter("status", event.target.value)}>
-              <option value={AppointmentStatus.SCHEDULED}>{appointmentStatusLabel(AppointmentStatus.SCHEDULED)}</option>
-              <option value={UPCOMING_APPOINTMENTS_VIEW}>Upcoming (not yet started)</option>
-              <option value="ALL">All statuses</option>
-              <option value={AppointmentStatus.CANCELLED}>{appointmentStatusLabel(AppointmentStatus.CANCELLED)}</option>
-              <option value={AppointmentStatus.COMPLETED}>{appointmentStatusLabel(AppointmentStatus.COMPLETED)}</option>
-              <option value={AppointmentStatus.NO_SHOW}>{appointmentStatusLabel(AppointmentStatus.NO_SHOW)}</option>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="managed-appointment-mode">Delivery</Label>
-            <Select id="managed-appointment-mode" value={mode ?? ""} onChange={(event) => updateFilter("mode", event.target.value)}>
-              <option value="">All modes</option>
-              <option value={DeliveryMode.IN_PERSON}>In person</option>
-              <option value={DeliveryMode.ONLINE}>Online</option>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="managed-appointment-from">From</Label>
-            <Input id="managed-appointment-from" type="date" value={fromDate} onChange={(event) => updateFilter("from", event.target.value)} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="managed-appointment-to">To</Label>
-            <Input id="managed-appointment-to" type="date" value={toDate} onChange={(event) => updateFilter("to", event.target.value)} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="managed-appointment-order">Order</Label>
-            <Select id="managed-appointment-order" value={ordering} onChange={(event) => updateFilter("ordering", event.target.value)}>
-              <option value={AppointmentListOrdering.START_ASC}>Earliest start first</option>
-              <option value={AppointmentListOrdering.START_DESC}>Latest start first</option>
-            </Select>
-          </div>
-          <div className="flex items-end">
-            <Button type="submit" variant="secondary">Search</Button>
-          </div>
-        </form>
-      </div>
+      <ManagedAppointmentFilters
+        key={searchParams.toString()}
+        applied={{
+          search,
+          service: serviceId ?? "",
+          status: upcoming ? UPCOMING_APPOINTMENTS_VIEW : status ?? "ALL",
+          mode: mode ?? "",
+          from: fromDate,
+          to: toDate,
+          ordering,
+        }}
+        hasFilters={hasFilters}
+        canFilterService={canFilterService}
+        serviceOptions={serviceOptions}
+        servicesPending={services.isPending}
+        servicesFailed={services.isError}
+        onApply={applyFilters}
+        onClear={() => router.replace(
+          updateAppointmentQuery(
+            pathname,
+            new URLSearchParams(searchParams.toString()),
+            { search: "", service: "", status: "ALL", mode: "", from: "", to: "" },
+          ),
+          { scroll: false },
+        )}
+      />
 
-      {list.isPending ? (
-        <AppointmentListSkeleton />
-      ) : list.isError ? (
-        <div role="alert" className="border-y border-danger/30 py-6">
-          <p className="text-sm text-danger">
+      <Panel aria-labelledby="managed-appointments-results-heading">
+        <PanelHeader
+          title="Appointments"
+          titleId="managed-appointments-results-heading"
+          context={
+            list.isFetching && !list.isPending
+              ? "Refreshing Appointments…"
+              : pageData && !list.isError
+                ? describeResultPage({
+                    count: items.length,
+                    page: pageData.page,
+                    hasNext: pageData.has_next,
+                    noun: { one: "appointment", other: "appointments" },
+                    filtered: hasFilters,
+                  })
+                : null
+          }
+        />
+        {list.isPending ? (
+          <AppointmentListSkeleton framed={false} />
+        ) : list.isError ? (
+          <PanelMessage
+            role="alert"
+            tone="danger"
+            action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}
+          >
             {appointmentErrorMessage(list.error, "Managed appointments could not be loaded.")}
-          </p>
-          <Button className="mt-4" variant="secondary" onClick={() => void list.refetch()}>Retry</Button>
-        </div>
-      ) : items.length === 0 ? (
-        <div className="border-y border-border py-8">
-          <p className="text-sm text-muted">
+          </PanelMessage>
+        ) : items.length === 0 ? (
+          <PanelMessage
+            action={hasFilters || status !== undefined ? (
+              <Link
+                href={updateAppointmentQuery(
+                  pathname,
+                  new URLSearchParams(searchParams.toString()),
+                  { search: "", service: "", status: "ALL", mode: "", from: "", to: "" },
+                )}
+                className={buttonVariants({ variant: "secondary" })}
+              >
+                {hasFilters ? "Clear filters" : "Show all statuses"}
+              </Link>
+            ) : undefined}
+          >
             {hasFilters
               ? "No appointments match the selected filters."
               : status === AppointmentStatus.SCHEDULED
                 ? "No scheduled appointments are available."
                 : "No appointments are available."}
-          </p>
-          {hasFilters || status !== undefined ? (
-            <Link
-              href={updateAppointmentQuery(
-                pathname,
-                new URLSearchParams(searchParams.toString()),
-                { search: "", service: "", status: "ALL", mode: "", from: "", to: "" },
-              )}
-              className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              {hasFilters ? "Clear filters" : "Show all statuses"}
-            </Link>
-          ) : null}
-          <CanonicalPagination
-            page={pageData?.page ?? page}
-            hasNext={pageData?.has_next ?? false}
-            label="Appointment pages"
-            onPageChange={movePage}
-          />
-        </div>
-      ) : (
-        <>
-          {list.isFetching ? <p role="status" className="mt-4 text-xs text-muted">Refreshing Appointments…</p> : null}
-          <div className="mt-4 hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
-              <caption className="sr-only">Managed appointments</caption>
-              <thead className="border-y border-border bg-surface-muted text-xs text-muted">
-                <tr>
-                  <th scope="col" className="px-3 py-3 font-semibold">Appointment</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">Student</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">Service</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">Counselor</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">Date and time</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">Delivery</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {items.map((appointment) => (
-                  <tr key={appointment.id}>
-                    <th scope="row" className="px-3 py-4 font-normal">
-                      <Link href={`/portal/appointments/${appointment.id}`} className="font-mono text-xs font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{appointment.reference_code}</Link>
-                    </th>
-                    <td className="px-3 py-4">
-                      <p className="font-medium text-ink">{appointment.student.display_name}</p>
-                      {appointment.student.institutional_id ? <p className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</p> : null}
-                    </td>
-                    <td className="px-3 py-4 text-ink">{appointment.service.name}</td>
-                    <td className="px-3 py-4 text-ink">{appointment.provider.display_name}</td>
-                    <td className="px-3 py-4 text-ink">{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</td>
-                    <td className="px-3 py-4 text-ink">{deliveryModeLabel(appointment.delivery_mode)}</td>
-                    <td className="px-3 py-4"><AppointmentStatusBadge status={appointment.status} /></td>
+          </PanelMessage>
+        ) : (
+          <>
+            <div className={`${dataTable.scroll} hidden md:block`}>
+              <table className={`${dataTable.table} min-w-[1000px]`}>
+                <caption className="sr-only">Managed appointments</caption>
+                <thead className={dataTable.head}>
+                  <tr>
+                    <th scope="col" className={dataTable.headerCell}>Appointment</th>
+                    <th scope="col" className={dataTable.headerCell}>Student</th>
+                    <th scope="col" className={dataTable.headerCell}>Service</th>
+                    <th scope="col" className={dataTable.headerCell}>Counselor</th>
+                    <th scope="col" className={dataTable.headerCell}>Date and time</th>
+                    <th scope="col" className={dataTable.headerCell}>Delivery</th>
+                    <th scope="col" className={dataTable.headerCell}>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <ul className="mt-4 divide-y divide-border border-y border-border md:hidden">
-            {items.map((appointment) => (
-              <li key={appointment.id} className="py-4">
-                <article>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <Link href={`/portal/appointments/${appointment.id}`} className="break-all font-mono text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{appointment.reference_code}</Link>
-                      <p className="mt-1 break-words font-medium text-ink">{appointment.student.display_name}</p>
-                      {appointment.student.institutional_id ? <p className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</p> : null}
+                </thead>
+                <tbody className={dataTable.body}>
+                  {items.map((appointment) => (
+                    <tr key={appointment.id} className={dataTable.row}>
+                      <th scope="row" className={`${dataTable.cell} font-normal`}>
+                        <Link href={`/portal/appointments/${appointment.id}`} className="font-mono text-xs font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{appointment.reference_code}</Link>
+                      </th>
+                      <td className={dataTable.cell}>
+                        <p className="font-medium text-ink">{appointment.student.display_name}</p>
+                        {appointment.student.institutional_id ? <p className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</p> : null}
+                      </td>
+                      <td className={`${dataTable.cell} text-ink`}>{appointment.service.name}</td>
+                      <td className={`${dataTable.cell} text-ink`}>{appointment.provider.display_name}</td>
+                      <td className={`${dataTable.cell} text-ink`}>{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</td>
+                      <td className={`${dataTable.cell} text-ink`}>{deliveryModeLabel(appointment.delivery_mode)}</td>
+                      <td className={dataTable.cell}><AppointmentStatusBadge status={appointment.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <ul className="divide-y divide-border md:hidden">
+              {items.map((appointment) => (
+                <li key={appointment.id} className="px-4 py-4">
+                  <article>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <Link href={`/portal/appointments/${appointment.id}`} className="break-all font-mono text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{appointment.reference_code}</Link>
+                        <p className="mt-1 break-words font-medium text-ink">{appointment.student.display_name}</p>
+                        {appointment.student.institutional_id ? <p className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</p> : null}
+                      </div>
+                      <AppointmentStatusBadge status={appointment.status} />
                     </div>
-                    <AppointmentStatusBadge status={appointment.status} />
-                  </div>
-                  <dl className="mt-3 grid gap-x-5 gap-y-2 text-sm sm:grid-cols-2">
-                    <div><dt className="text-xs text-muted">Service</dt><dd className="mt-0.5 text-ink">{appointment.service.name}</dd></div>
-                    <div><dt className="text-xs text-muted">Counselor</dt><dd className="mt-0.5 text-ink">{appointment.provider.display_name}</dd></div>
-                    <div><dt className="text-xs text-muted">Date and time</dt><dd className="mt-0.5 text-ink">{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</dd></div>
-                    <div><dt className="text-xs text-muted">Delivery</dt><dd className="mt-0.5 text-ink">{deliveryModeLabel(appointment.delivery_mode)}</dd></div>
-                  </dl>
-                </article>
-              </li>
-            ))}
-          </ul>
+                    <dl className="mt-3 grid gap-x-5 gap-y-2 text-sm sm:grid-cols-2">
+                      <div><dt className="text-xs text-muted">Service</dt><dd className="mt-0.5 text-ink">{appointment.service.name}</dd></div>
+                      <div><dt className="text-xs text-muted">Counselor</dt><dd className="mt-0.5 text-ink">{appointment.provider.display_name}</dd></div>
+                      <div><dt className="text-xs text-muted">Date and time</dt><dd className="mt-0.5 text-ink">{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</dd></div>
+                      <div><dt className="text-xs text-muted">Delivery</dt><dd className="mt-0.5 text-ink">{deliveryModeLabel(appointment.delivery_mode)}</dd></div>
+                    </dl>
+                  </article>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {!list.isPending && !list.isError ? (
           <CanonicalPagination
+            className="border-brand-line px-4 py-3 sm:px-5"
             page={pageData?.page ?? page}
             hasNext={pageData?.has_next ?? false}
             label="Appointment pages"
             onPageChange={movePage}
           />
-        </>
-      )}
+        ) : null}
+      </Panel>
     </section>
   );
 }

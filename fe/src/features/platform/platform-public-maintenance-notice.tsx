@@ -25,10 +25,10 @@ export function PublicMaintenanceNotice() {
       role="status"
       aria-live="polite"
       aria-labelledby="public-maintenance-heading"
-      className={`mb-6 border-l-4 px-4 py-3 ${
+      className={`mb-6 rounded-sm border px-4 py-3 sm:px-5 ${
         scheduled
-          ? "border-info bg-info/5"
-          : "border-warning bg-warning/10"
+          ? "border-info/35 bg-surface-raised"
+          : "border-warning/40 bg-surface-raised"
       }`}
     >
       <h2

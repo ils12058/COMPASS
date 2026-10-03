@@ -10,6 +10,8 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelHeader, PanelSection } from "@/components/ui/panel";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { StepUpDialog } from "@/features/account/security/security-shared";
@@ -54,16 +56,17 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   const slip = useCallSlipsGetMy(callSlipId, { query: { retry: false } });
   const confirmed = safeQueryData(slip);
 
-  if (slip.isError && !confirmed) return <div className="space-y-7"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
+  if (slip.isError && !confirmed) return <div className="space-y-5"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
   if (slip.isPending) return <CallSlipDetailSkeleton />;
   if (!confirmed) return <CallSlipDetailSkeleton />;
 
   const item = confirmed.data;
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       {slip.isError ? <RefreshFailureNotice onRetry={() => void slip.refetch()} retrying={slip.isFetching} /> : null}
       <CallSlipHeading title="Call Slip / Interview Permit" description="Your Call Slip details" backHref="/portal/call-slips" backLabel="Back to My Call Slips" action={<CallSlipPdfDownload callSlipId={item.id} studentFacing />} />
-      {item.state === CallSlipLifecycleStateValue.VOIDED ? <div role="status" className="border-y border-warning/30 py-4"><p className="font-semibold text-warning">Withdrawn</p><p className="mt-1 text-sm text-ink">This Call Slip is no longer active.</p></div> : null}
+      {item.state === CallSlipLifecycleStateValue.VOIDED ? <Notice role="status" tone="warning" title={<span className="text-warning">Withdrawn</span>}><p className="text-ink">This Call Slip is no longer active.</p></Notice> : null}
+      <Panel as="div">
       <RecordSection title="Permit details">
         <Field label="Student identity" value={item.student.display_name} />
         <Field label="Name on Call Slip" value={item.student_name_snapshot} />
@@ -71,10 +74,9 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <Field label="Please report to" value={callSlipDestinationLabel(item.destination_type, item.other_destination)} />
         <Field label="Date and time to report" value={formatInstitutionalDateTime(item.report_at)} />
       </RecordSection>
-      <section aria-labelledby="student-call-slip-instruction" className="border-t border-border py-6">
-        <h2 id="student-call-slip-instruction" className="font-heading text-xl font-semibold text-ink">Instruction</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-ink">Please show this permit to your instructor/professor and proceed to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
-      </section>
+      <PanelSection title="Instruction" titleId="student-call-slip-instruction">
+        <p className="max-w-3xl text-sm leading-6 text-ink">Please show this permit to your instructor/professor and proceed to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
+      </PanelSection>
       <RecordSection title="Issuance and status">
         <Field label="Issuing Guidance Counselor" value={item.issued_by_name_snapshot} />
         <Field label="State" value={callSlipStateLabel(item.state, true)} />
@@ -83,6 +85,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <Field label="Recorded in COMPASS" value={formatInstitutionalDateTime(item.created_at)} />
       </RecordSection>
       <FormRevisionSection revision={item.form_revision} />
+      </Panel>
     </div>
   );
 }
@@ -93,23 +96,23 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   const slip = useCallSlipsGet(callSlipId, { query: { retry: false } });
   const confirmed = safeQueryData(slip);
 
-  if (slip.isError && !confirmed) return <div className="space-y-7"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
+  if (slip.isError && !confirmed) return <div className="space-y-5"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
   if (slip.isPending) return <CallSlipDetailSkeleton />;
   if (!confirmed) return <CallSlipDetailSkeleton />;
 
   const item = confirmed.data;
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       {slip.isError ? <RefreshFailureNotice onRetry={() => void slip.refetch()} retrying={slip.isFetching} /> : null}
       <CallSlipHeading title="Call Slip / Interview Permit" description="Recorded Call Slip details" backHref="/portal/call-slips" action={<CallSlipPdfDownload callSlipId={item.id} />} />
       {item.state === CallSlipLifecycleStateValue.VOIDED ? (
-        <div role="status" className="border-y border-warning/30 py-4">
-          <p className="font-semibold text-warning">Voided</p>
-          <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{item.void_reason}</p>
-          {item.voided_at ? <p className="mt-1 text-sm text-muted">Voided {formatInstitutionalDateTime(item.voided_at)}</p> : null}
-          {item.voided_by ? <p className="mt-1 text-sm text-muted">Voided by {item.voided_by.display_name}</p> : null}
-        </div>
+        <Notice role="status" tone="warning" title={<span className="text-warning">Voided</span>}>
+          <p className="whitespace-pre-wrap text-ink">{item.void_reason}</p>
+          {item.voided_at ? <p className="mt-1 text-muted">Voided {formatInstitutionalDateTime(item.voided_at)}</p> : null}
+          {item.voided_by ? <p className="mt-1 text-muted">Voided by {item.voided_by.display_name}</p> : null}
+        </Notice>
       ) : null}
+      <Panel as="div">
       <RecordSection title="Permit details">
         <Field label="Student on Call Slip" value={item.student_name_snapshot} />
         <Field label="Current Student identity" value={item.student.display_name} />
@@ -118,10 +121,9 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <Field label="Please report to" value={callSlipDestinationLabel(item.destination_type, item.other_destination)} />
         <Field label="Date and time to report" value={formatInstitutionalDateTime(item.report_at)} />
       </RecordSection>
-      <section aria-labelledby="operational-call-slip-instruction" className="border-t border-border py-6">
-        <h2 id="operational-call-slip-instruction" className="font-heading text-xl font-semibold text-ink">Source instruction</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-ink">The Student should show this permit to their instructor/professor and proceed to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
-      </section>
+      <PanelSection title="Source instruction" titleId="operational-call-slip-instruction">
+        <p className="max-w-3xl text-sm leading-6 text-ink">The Student should show this permit to their instructor/professor and proceed to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
+      </PanelSection>
       <RecordSection title="Issuance and recordkeeping">
         <Field label="Issuer name on Call Slip" value={item.issued_by_name_snapshot} />
         <Field label="Current issuer account" value={item.issued_by.display_name} />
@@ -134,13 +136,13 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
       </RecordSection>
       <FormRevisionSection revision={item.form_revision} />
       {item.referral ? (
-        <section aria-labelledby="linked-referral-heading" className="border-t border-border py-6">
-          <h2 id="linked-referral-heading" className="font-heading text-xl font-semibold text-ink">Linked Referral</h2>
+        <PanelSection title="Linked Referral" titleId="linked-referral-heading">
           {referralAccess.canView ? (
-            <Link href={`/portal/referrals/${item.referral.id}`} className="mt-3 inline-block font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open linked Referral {item.referral.reference_code}</Link>
-          ) : <p className="mt-3 text-sm text-muted">A linked referral exists, but its reference is unavailable to this account.</p>}
-        </section>
+            <Link href={`/portal/referrals/${item.referral.id}`} className="inline-block font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open linked Referral {item.referral.reference_code}</Link>
+          ) : <p className="text-sm text-muted">A linked referral exists, but its reference is unavailable to this account.</p>}
+        </PanelSection>
       ) : null}
+      </Panel>
       {!slip.isError ? <CallSlipLifecycleActions slip={item} onRefresh={async () => {
         const refreshed = await slip.refetch();
         return refreshed.isSuccess ? refreshed.data.data : undefined;
@@ -155,18 +157,18 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 function RecordSection({ title, children }: { title: string; children: ReactNode }) {
-  return <section aria-label={title} className="border-t border-border py-6"><h2 className="font-heading text-xl font-semibold text-ink">{title}</h2><dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">{children}</dl></section>;
+  const titleId = "call-slip-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return <PanelSection title={title} titleId={titleId}><dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">{children}</dl></PanelSection>;
 }
 
 function FormRevisionSection({ revision }: { revision: CallSlipStudentResponse["form_revision"] }) {
   return (
-    <section aria-labelledby="call-slip-form-revision-heading" className="border-t border-border py-6">
-      <h2 id="call-slip-form-revision-heading" className="font-heading text-xl font-semibold text-ink">Official form</h2>
-      <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+    <PanelSection title="Official form" titleId="call-slip-form-revision-heading">
+      <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Official form code" value={revision.official_code ?? "Official code not recorded"} />
         <Field label="Official revision" value={revision.official_revision ? `Revision ${revision.official_revision}` : "Official revision not recorded"} />
       </dl>
-    </section>
+    </PanelSection>
   );
 }
 
@@ -193,11 +195,11 @@ function CallSlipPdfDownload({ callSlipId, studentFacing = false }: { callSlipId
 function CallSlipLifecycleActions({ slip, onRefresh }: { slip: CallSlipOperationalResponse; onRefresh: () => Promise<CallSlipOperationalResponse | undefined> }) {
   if (slip.state !== CallSlipLifecycleStateValue.ACTIVE) return null;
   return (
-    <section aria-labelledby="call-slip-actions-heading" className="border-t border-border py-6">
-      <h2 id="call-slip-actions-heading" className="font-heading text-xl font-semibold text-ink">Operational actions</h2>
-      {!slip.interview_ended_at ? <RecordInterviewEnd slip={slip} onRefresh={onRefresh} /> : <p className="mt-3 text-sm text-muted">Interview end is recorded at {formatInstitutionalDateTime(slip.interview_ended_at)} and cannot be edited.</p>}
+    <Panel aria-labelledby="call-slip-actions-heading">
+      <PanelHeader title="Operational actions" titleId="call-slip-actions-heading" />
+      {!slip.interview_ended_at ? <RecordInterviewEnd slip={slip} onRefresh={onRefresh} /> : <p className="px-4 py-4 text-sm text-muted sm:px-5">Interview end is recorded at {formatInstitutionalDateTime(slip.interview_ended_at)} and cannot be edited.</p>}
       <VoidCallSlip slip={slip} onRefresh={onRefresh} />
-    </section>
+    </Panel>
   );
 }
 
@@ -280,10 +282,10 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
   }
 
   return (
-    <div className="mt-4 max-w-2xl border-b border-border pb-6">
+    <div className="px-4 py-4 sm:px-5">
       <h3 className="font-semibold text-ink">Record interview end</h3>
       <p className="mt-1 text-sm leading-6 text-muted">This records only the source Call Slip&apos;s interview-end time. Times use {INSTITUTION_TIME_ZONE_LABEL}. It does not complete an Appointment or Counseling record.</p>
-      <form className="mt-4 space-y-3" onSubmit={prepare} aria-busy={mutation.isPending}>
+      <form className="mt-4 max-w-2xl space-y-3" onSubmit={prepare} aria-busy={mutation.isPending}>
         <div className="grid gap-2 sm:max-w-sm">
           <Label htmlFor="call-slip-interview-ended">Interview ended</Label>
           <Input id="call-slip-interview-ended" type="datetime-local" step="60" required max={`${institutionalDateInputValue()}T23:59`} value={value} disabled={mutation.isPending || reconcileRequired} onChange={(event) => setValue(event.target.value)} />
@@ -388,7 +390,7 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
   }
 
   return (
-    <div className="mt-6 border-t border-border pt-6">
+    <div className="border-t border-brand-line px-4 py-4 sm:px-5">
       <Button variant="danger" onClick={() => { setError(null); setNotice(null); setOpen(true); }}>Void Call Slip</Button>
       {error && !open ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
       {notice ? <p role="status" className="mt-3 text-sm text-muted">{notice}</p> : null}

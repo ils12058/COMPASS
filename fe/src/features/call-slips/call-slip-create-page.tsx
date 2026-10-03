@@ -7,6 +7,7 @@ import { useRef, useState, type FormEvent } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { CallSlipFormFields, type CallSlipDraft, toCallSlipRequestFields } from "@/features/call-slips/call-slip-form-fields";
 import { CallSlipAccessUnavailable, CallSlipHeading, callSlipErrorCode, callSlipErrorMessage, callSlipDestinationLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
@@ -112,13 +113,15 @@ export function DirectCallSlipCreatePage() {
   const selectedDestination = callSlipDestinationLabel(draft.destinationType, draft.otherDestination);
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       <CallSlipHeading title="Issue Call Slip" description="Issue a Call Slip without linking it to a referral." backHref="/portal/call-slips" />
-      <form className="max-w-3xl space-y-8" onSubmit={prepare} aria-busy={create.isPending}>
-        <section aria-labelledby="direct-call-slip-student-heading" className="border-b border-border pb-7">
-          <h2 id="direct-call-slip-student-heading" className="font-heading text-xl font-semibold text-ink">Student</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Find the student who will receive the Call Slip. Your name will be recorded as the issuer.</p>
-          <div className="mt-4">
+      <form className="max-w-3xl" onSubmit={prepare} aria-busy={create.isPending}>
+        <Panel as="div">
+        <PanelSection
+          title="Student"
+          titleId="direct-call-slip-student-heading"
+          description="Find the student who will receive the Call Slip. Your name will be recorded as the issuer."
+        >
             <EligibleStudentPicker
               label="Choose Student"
               search={studentSearch}
@@ -136,23 +139,23 @@ export function DirectCallSlipCreatePage() {
               onRetry={() => void students.refetch()}
               onPageChange={setStudentPage}
             />
-          </div>
-        </section>
+        </PanelSection>
 
-        <section aria-labelledby="direct-call-slip-details-heading" className="border-b border-border pb-7">
-          <h2 id="direct-call-slip-details-heading" className="font-heading text-xl font-semibold text-ink">Call Slip details</h2>
-          <div className="mt-5">
-            <CallSlipFormFields draft={draft} onChange={setDraft} />
-          </div>
-          <p className="mt-5 text-sm leading-6 text-muted">Enter course/year and report time as shown on the source form. Choose below whether this issuance should notify the student.</p>
-        </section>
+        <PanelSection
+          title="Call Slip details"
+          titleId="direct-call-slip-details-heading"
+          description="Enter course/year and report time as shown on the source form. Choose below whether this issuance should notify the student."
+        >
+          <CallSlipFormFields draft={draft} onChange={setDraft} />
+        </PanelSection>
 
-        {error && !confirmOpen ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
-        {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
-        <div className="flex flex-wrap gap-3">
+        <PanelFooter>
+          {error && !confirmOpen ? <p role="alert" className="w-full text-sm text-danger">{error}</p> : null}
+          {notice ? <p role="status" className="w-full text-sm text-muted">{notice}</p> : null}
           <Button type="submit" disabled={create.isPending || students.isPending}>{create.isPending ? "Issuing…" : "Review issuance"}</Button>
           <Link href="/portal/call-slips" className={buttonVariants({ variant: "secondary" })}>Cancel</Link>
-        </div>
+        </PanelFooter>
+        </Panel>
       </form>
 
       <ConsequentialActionDialog

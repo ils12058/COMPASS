@@ -90,7 +90,7 @@ function LoginForm({ nextPath, emailChanged }: { nextPath: string; emailChanged:
   return (
     <section aria-labelledby="login-heading">
       {emailChanged ? (
-        <div role="status" className="mb-7 border-l-4 border-support bg-support-soft p-4 text-sm leading-6 text-ink">
+        <div role="status" className="mb-7 rounded-sm border border-support/40 bg-support-soft px-4 py-3.5 text-sm leading-6 text-ink">
           <p className="font-semibold">Your sign-in email has been changed.</p>
           <p>For security, sign in again using your new email.</p>
         </div>

@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Panel, PanelBody, PanelFooter, PanelHeader } from "@/components/ui/panel";
 import {
   isTurnstileConfigured,
   TurnstileWidget,
@@ -158,33 +159,32 @@ export function AccountOverview() {
   }
 
   return (
-    <div className="space-y-9">
-      <section aria-labelledby="identity-heading">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2
-            id="identity-heading"
-            className="font-heading text-xl font-semibold text-ink"
-          >
-            Identity
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={beginIdentity}>
-              Edit identity
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={!account.is_active}
-              onClick={() => {
-                setNewEmail("");
-                action.setError(null);
-                setEmailOpen(true);
-              }}
-            >
-              Change sign-in email
-            </Button>
-          </div>
-        </div>
-        <dl className="mt-4 grid gap-4 border-t border-border pt-5 text-sm sm:grid-cols-2">
+    <div className="space-y-5">
+      <Panel aria-labelledby="identity-heading">
+        <PanelHeader
+          title="Identity"
+          titleId="identity-heading"
+          actions={
+            <>
+              <Button variant="secondary" onClick={beginIdentity}>
+                Edit identity
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={!account.is_active}
+                onClick={() => {
+                  setNewEmail("");
+                  action.setError(null);
+                  setEmailOpen(true);
+                }}
+              >
+                Change sign-in email
+              </Button>
+            </>
+          }
+        />
+        <PanelBody>
+        <dl className="grid gap-4 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted">Institutional ID</dt>
             <dd className="mt-1 font-medium text-ink">
@@ -205,7 +205,7 @@ export function AccountOverview() {
         {stagedEmail ? (
           <p
             role="status"
-            className="mt-4 border-l-2 border-support px-3 text-sm leading-6 text-ink"
+            className="mt-4 rounded-sm bg-brand-wash px-3 py-2.5 text-sm leading-6 text-ink"
           >
             Verification required for {stagedEmail}. The current email remains
             unchanged until the account holder confirms the proposed address.
@@ -216,16 +216,13 @@ export function AccountOverview() {
             Enable this account before requesting a sign-in email change.
           </p>
         ) : null}
-      </section>
+        </PanelBody>
+      </Panel>
 
-      <section aria-labelledby="status-heading">
-        <h2
-          id="status-heading"
-          className="font-heading text-xl font-semibold text-ink"
-        >
-          Account status
-        </h2>
-        <dl className="mt-4 grid gap-4 border-t border-border pt-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
+      <Panel aria-labelledby="status-heading">
+        <PanelHeader title="Account status" titleId="status-heading" />
+        <PanelBody>
+        <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <dt className="text-muted">Access</dt>
             <dd className="mt-1 font-medium text-ink">
@@ -263,7 +260,8 @@ export function AccountOverview() {
             </dd>
           </div>
         </dl>
-        <div className="mt-5">
+        </PanelBody>
+        <PanelFooter>
           {account.is_active ? (
             self ? (
               <p className="text-sm text-muted">
@@ -280,34 +278,34 @@ export function AccountOverview() {
               Enable account
             </Button>
           )}
-        </div>
-      </section>
+        </PanelFooter>
+      </Panel>
 
       {account.role === RoleCode.STUDENT ? (
-        <section aria-labelledby="lifecycle-heading">
-          <h2
-            id="lifecycle-heading"
-            className="font-heading text-xl font-semibold text-ink"
-          >
-            Student status
-          </h2>
-          <p className="mt-3 text-sm text-muted">
-            Current status:{" "}
-            {account.student_lifecycle_status
-              ? lifecycleLabels[account.student_lifecycle_status]
-              : "Not set"}
-          </p>
+        <Panel aria-labelledby="lifecycle-heading">
+          <PanelHeader
+            title="Student status"
+            titleId="lifecycle-heading"
+            description={
+              <>
+                Current status:{" "}
+                {account.student_lifecycle_status
+                  ? lifecycleLabels[account.student_lifecycle_status]
+                  : "Not set"}
+              </>
+            }
+          />
+          <PanelBody>
           {self ? (
-            <p className="mt-3 text-sm text-muted">
+            <p className="text-sm text-muted">
               You cannot change your own student status here.
             </p>
           ) : (
-            <div className="mt-4 flex flex-wrap items-end gap-3">
-              <div>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="grid gap-1.5">
                 <Label htmlFor="student-lifecycle">New status</Label>
                 <Select
                   id="student-lifecycle"
-                  className="mt-2"
                   value={lifecycle ?? ""}
                   onChange={(event) =>
                     setLifecycle(
@@ -338,7 +336,8 @@ export function AccountOverview() {
               </Button>
             </div>
           )}
-        </section>
+          </PanelBody>
+        </Panel>
       ) : null}
 
       <ManagedActionFeedback action={action} showMessages={confirm === null} />

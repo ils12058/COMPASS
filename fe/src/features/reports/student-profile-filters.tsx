@@ -6,6 +6,8 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { FilterToolbar } from "@/components/ui/filter-toolbar";
+import { Notice } from "@/components/ui/notice";
 import type {
   AcademicYearResponse,
   CampusSummary,
@@ -199,30 +201,28 @@ export function StudentProfileFilters({
   }
 
   return (
-    <section
-      aria-labelledby="student-profile-filters-heading"
-      className="mt-6 border-y border-border py-5"
-    >
-      <h2
-        id="student-profile-filters-heading"
-        className="font-heading text-lg font-semibold text-ink"
-      >
-        Report filters
-      </h2>
+    <div>
       {initialErrors.length > 0 ? (
-        <p role="alert" className="mt-3 text-sm leading-6 text-danger">
+        <Notice role="alert" tone="danger" className="mb-3">
           The applied URL filters are invalid: {initialErrors.join(" ")} Reset or correct them, then apply the filters.
-        </p>
+        </Notice>
       ) : null}
-      <form
-        className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
-        onSubmit={submit}
-      >
-        <div className="min-w-0">
+      <form aria-label="Report filters" onSubmit={submit}>
+        <FilterToolbar
+          fieldsClassName="sm:grid-cols-2 lg:grid-cols-3"
+          actions={
+            <>
+              <Button type="button" variant="secondary" onClick={reset}>
+                Reset
+              </Button>
+              <Button type="submit">Apply filters</Button>
+            </>
+          }
+        >
+        <div className="grid min-w-0 content-start gap-1.5">
           <Label htmlFor="report-academic-year">Academic Year</Label>
           <Select
             id="report-academic-year"
-            className="mt-2"
             value={draft.academic_year_id}
             disabled={academicYearsLoading || academicYearsError}
             onChange={(event) =>
@@ -240,7 +240,7 @@ export function StudentProfileFilters({
               </option>
             ))}
           </Select>
-          <p id="report-academic-year-state" className="mt-1 text-xs text-muted">
+          <p id="report-academic-year-state" className="text-xs text-muted">
             {academicYearsLoading
               ? "Loading Academic Years…"
               : academicYearsError
@@ -249,7 +249,7 @@ export function StudentProfileFilters({
           </p>
           {academicYearsError ? (
             <Button
-              className="mt-2 min-h-8 px-2 text-xs"
+              className="min-h-8 w-fit px-2 text-xs"
               variant="secondary"
               type="button"
               onClick={retryAcademicYears}
@@ -258,11 +258,10 @@ export function StudentProfileFilters({
             </Button>
           ) : null}
         </div>
-        <div className="min-w-0">
+        <div className="grid min-w-0 content-start gap-1.5">
           <Label htmlFor="report-campus">Campus</Label>
           <Select
             id="report-campus"
-            className="mt-2"
             value={draft.campus_id}
             disabled={scope.is_global && (campusesLoading || campusesError)}
             onChange={(event) => updateDraft("campus_id", event.target.value)}
@@ -277,7 +276,7 @@ export function StudentProfileFilters({
             ))}
           </Select>
           {scope.is_global && campusesError ? (
-            <div id="report-campus-state" className="mt-1 text-xs text-danger">
+            <div id="report-campus-state" className="text-xs text-danger">
               Campus choices could not be loaded.
               <Button
                 className="ml-2 min-h-8 px-2 text-xs"
@@ -289,16 +288,15 @@ export function StudentProfileFilters({
               </Button>
             </div>
           ) : scope.is_global && campusesLoading ? (
-            <p id="report-campus-state" role="status" className="mt-1 text-xs text-muted">
+            <p id="report-campus-state" role="status" className="text-xs text-muted">
               Loading Campuses…
             </p>
           ) : null}
         </div>
-        <div className="min-w-0">
+        <div className="grid min-w-0 content-start gap-1.5">
           <Label htmlFor="report-college">College</Label>
           <Select
             id="report-college"
-            className="mt-2"
             value={draft.college_id}
             disabled={scope.is_global && (collegesLoading || collegesError)}
             onChange={(event) => updateDraft("college_id", event.target.value)}
@@ -319,7 +317,7 @@ export function StudentProfileFilters({
             ))}
           </Select>
           {scope.is_global && collegesError ? (
-            <div id="report-college-state" className="mt-1 text-xs text-danger">
+            <div id="report-college-state" className="text-xs text-danger">
               College choices could not be loaded.
               <Button
                 className="ml-2 min-h-8 px-2 text-xs"
@@ -331,16 +329,15 @@ export function StudentProfileFilters({
               </Button>
             </div>
           ) : scope.is_global && collegesLoading ? (
-            <p id="report-college-state" role="status" className="mt-1 text-xs text-muted">
+            <p id="report-college-state" role="status" className="text-xs text-muted">
               Loading Colleges…
             </p>
           ) : null}
         </div>
-        <div className="min-w-0">
+        <div className="grid min-w-0 content-start gap-1.5">
           <Label htmlFor="report-program">Program</Label>
           <Select
             id="report-program"
-            className="mt-2"
             value={draft.program_id}
             disabled={
               !selectedCollege ||
@@ -359,7 +356,7 @@ export function StudentProfileFilters({
               </option>
             ))}
           </Select>
-          <p id="report-program-state" className="mt-1 text-xs text-muted">
+          <p id="report-program-state" className="text-xs text-muted">
             {!draft.college_id
               ? "Select a College first."
               : programs.isPending
@@ -370,7 +367,7 @@ export function StudentProfileFilters({
           </p>
           {draft.college_id && programs.isError ? (
             <Button
-              className="mt-2 min-h-8 px-2 text-xs"
+              className="min-h-8 w-fit px-2 text-xs"
               variant="secondary"
               type="button"
               onClick={() => void programs.refetch()}
@@ -379,11 +376,10 @@ export function StudentProfileFilters({
             </Button>
           ) : null}
         </div>
-        <div className="min-w-0">
+        <div className="grid min-w-0 content-start gap-1.5">
           <Label htmlFor="report-year-level">Year Level</Label>
           <Select
             id="report-year-level"
-            className="mt-2"
             value={draft.year_level}
             onChange={(event) => updateDraft("year_level", event.target.value)}
           >
@@ -405,18 +401,13 @@ export function StudentProfileFilters({
             ))}
           </Select>
         </div>
-        <div className="flex flex-wrap items-end gap-3 sm:col-span-2 xl:col-span-5">
-          <Button type="submit">Apply filters</Button>
-          <Button type="button" variant="secondary" onClick={reset}>
-            Reset
-          </Button>
-        </div>
+        </FilterToolbar>
       </form>
       {draftError ? (
         <p role="alert" className="mt-3 text-sm leading-6 text-danger">
           {draftError}
         </p>
       ) : null}
-    </section>
+    </div>
   );
 }

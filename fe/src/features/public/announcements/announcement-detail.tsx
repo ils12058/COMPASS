@@ -4,9 +4,11 @@ import { Pin } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { Notice } from "@/components/ui/notice";
+import { Panel } from "@/components/ui/panel";
 import { PublicMarkdown } from "@/features/public/shared/public-markdown";
 import { formatPublicDate } from "@/features/public/shared/presentation";
-import { PublicListSkeleton, PublicSectionError } from "@/features/public/shared/public-state";
+import { PublicListSkeleton, PublicPageError } from "@/features/public/shared/public-state";
 import {
   isSignedOutError,
   useReaderAudience,
@@ -22,18 +24,13 @@ const MAX_TIMEOUT_MS = 2_147_000_000;
 
 function AnnouncementUnavailable({ readsAccount }: { readsAccount: boolean }) {
   return (
-    <div className="border-y border-border py-8">
-      <h1 className="font-heading text-3xl font-bold text-ink">Announcement not found</h1>
+    <Notice title={<h1 className="font-heading text-2xl font-bold text-ink">Announcement not found</h1>}>
       {readsAccount ? (
-        <p className="mt-3 leading-7 text-muted">
-          This announcement does not exist or is not available to your account.
-        </p>
+        <p>This announcement does not exist or is not available to your account.</p>
       ) : (
         <>
-          <p className="mt-3 leading-7 text-muted">
-            This announcement does not exist or is no longer publicly available.
-          </p>
-          <p className="mt-2 leading-7 text-muted">
+          <p>This announcement does not exist or is no longer publicly available.</p>
+          <p className="mt-2">
             If it was shared with COMPASS account holders,{" "}
             <Link href="/login" className="font-semibold text-brand underline">
               sign in
@@ -42,7 +39,7 @@ function AnnouncementUnavailable({ readsAccount }: { readsAccount: boolean }) {
           </p>
         </>
       )}
-    </div>
+    </Notice>
   );
 }
 
@@ -103,9 +100,9 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
   if (expiryReached) {
     if (query.isFetching) {
       return (
-        <div role="status" className="border-y border-border py-8 text-sm leading-6 text-muted">
+        <Notice role="status">
           This announcement has reached its expiry time. Checking availability…
-        </div>
+        </Notice>
       );
     }
 
@@ -114,7 +111,7 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
     }
 
     return (
-      <PublicSectionError
+      <PublicPageError
         message="This announcement has reached its expiry time and its availability could not be confirmed."
         onRetry={() => void refetchCurrent()}
       />
@@ -127,7 +124,7 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
     }
 
     return (
-      <PublicSectionError
+      <PublicPageError
         message="This announcement could not be loaded."
         onRetry={() => void query.refetch()}
       />
@@ -137,8 +134,8 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
   const announcement = query.data.data;
 
   return (
-    <article aria-busy={query.isFetching}>
-      <div className="border-b border-border pb-7">
+    <Panel as="article" aria-busy={query.isFetching}>
+      <header className="border-b border-brand-line px-5 py-5 sm:px-8 sm:py-6">
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
           <time dateTime={announcement.published_at}>{formatPublicDate(announcement.published_at)}</time>
           {announcement.is_pinned ? (
@@ -148,14 +145,14 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
             </span>
           ) : null}
         </div>
-        <h1 className="mt-4 font-heading text-4xl font-bold leading-tight tracking-tight text-ink sm:text-5xl">
+        <h1 className="mt-3 font-heading text-3xl font-bold leading-tight tracking-tight text-ink sm:text-4xl">
           {announcement.title}
         </h1>
-      </div>
-      <div className="mt-8">
+      </header>
+      <div className="px-5 py-6 sm:px-8 sm:py-7">
         <PublicMarkdown>{announcement.body_markdown}</PublicMarkdown>
       </div>
-      {query.isFetching ? <p role="status" className="mt-6 text-xs text-muted">Refreshing announcement…</p> : null}
-    </article>
+      {query.isFetching ? <p role="status" className="border-t border-border px-5 py-2 text-xs text-muted sm:px-8">Refreshing announcement…</p> : null}
+    </Panel>
   );
 }

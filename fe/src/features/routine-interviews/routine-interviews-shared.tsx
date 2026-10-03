@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
+import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import type {
@@ -20,6 +21,8 @@ import {
   formatInstitutionalDateTime,
   INSTITUTION_TIME_ZONE,
 } from "@/lib/institutional-time";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
+import { Panel } from "@/components/ui/panel";
 
 export function formatRoutineDateTime(value: string): string {
   return formatInstitutionalDateTime(value);
@@ -135,19 +138,7 @@ export function RoutinePageHeading({
   description?: string;
   action?: ReactNode;
 }) {
-  return (
-    <header className="mb-7 flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 className="font-heading text-3xl font-bold text-ink">{title}</h1>
-        {description ? (
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            {description}
-          </p>
-        ) : null}
-      </div>
-      {action}
-    </header>
-  );
+  return <PageHeader title={title} description={description} actions={action} />;
 }
 
 export function RoutineStatus({
@@ -179,7 +170,7 @@ function MetadataItem({
   value: ReactNode;
 }) {
   return (
-    <div className="min-w-0 py-3 sm:py-2">
+    <div className="min-w-0">
       <dt className="text-xs font-semibold text-muted">{label}</dt>
       <dd className="mt-1 break-words text-sm text-ink">{value}</dd>
     </div>
@@ -231,11 +222,8 @@ export function RoutineContextSummary({
   const major = inventoryContext.major.trim();
 
   return (
-    <section
-      aria-label="Routine Interview context"
-      className="mb-8 border-y border-border"
-    >
-      <dl className="grid gap-x-7 divide-y divide-border sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-3">
+    <Panel aria-label="Routine Interview context" className="mb-5">
+      <dl className="grid gap-x-7 gap-y-4 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-3">
         <MetadataItem label="Student" value={personName} />
         <MetadataItem label="Academic Year" value={inventoryContext.academic_year.label} />
         <MetadataItem
@@ -308,7 +296,7 @@ export function RoutineContextSummary({
         <MetadataItem label="Created" value={formatRoutineDateTime(createdAt)} />
         {revision ? <MetadataItem label="Form revision" value={revision} /> : null}
       </dl>
-    </section>
+    </Panel>
   );
 }
 
@@ -324,7 +312,7 @@ export function RoutineQueryError({
   children?: ReactNode;
 }) {
   return (
-    <section role="alert" className="border-y border-danger/30 py-6">
+    <section role="alert" className="rounded-sm border border-danger/30 bg-surface-raised px-4 py-5 sm:px-5">
       <h2 className="font-semibold text-ink">{title}</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{message}</p>
       {children}
@@ -337,14 +325,17 @@ export function RoutineQueryError({
   );
 }
 
-export function RoutineInterviewListSkeleton({ label }: { label: string }) {
-  return (
-    <LoadingRegion label={label} className="space-y-3 py-4">
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
-    </LoadingRegion>
-  );
+// Rows shaped like the queue table. Inside the results panel the panel draws the frame; the route
+// fallback has no panel yet, so it draws its own.
+// Inside the results panel the panel draws the frame; the route fallback has no panel yet.
+export function RoutineInterviewListSkeleton({
+  label,
+  framed = true,
+}: {
+  label: string;
+  framed?: boolean;
+}) {
+  return <RowsSkeleton label={label} framed={framed} />;
 }
 
 export function RoutineInterviewDetailSkeleton() {

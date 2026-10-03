@@ -162,21 +162,21 @@ export function CounselorMediaControls({
   }
 
   return (
-    <section aria-labelledby="e-counseling-media-controls-heading" className="min-w-0 border-t border-border pt-5">
+    <section aria-labelledby="e-counseling-media-controls-heading" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5">
       <h2 id="e-counseling-media-controls-heading" className="font-heading text-lg font-semibold text-ink">Media controls</h2>
       <p className="mt-2 text-sm leading-6 text-muted">Consent and provider capture are separate. Starting either option requires an explicit Counselor action after effective consent.</p>
-      {access.canManageMediaAssigned ? consentQuery.isPending ? <div aria-busy="true"><span className="sr-only">Loading session consent controls…</span><Skeleton className="mt-4 h-28 w-full" /></div> : consentQuery.isError ? <div role="alert" className="mt-4 border-y border-danger/30 py-4"><p className="text-sm text-danger">Consent state could not be loaded. New requests and starts are unavailable; an active capture can still be stopped.</p><Button className="mt-3" variant="secondary" onClick={() => void consentQuery.refetch()}>Retry consent state</Button></div> : null : <p className="mt-4 border-y border-border py-4 text-sm text-muted">Media controls and consent details are unavailable to this account.</p>}
-      <section aria-labelledby="counselor-session-media-status-heading" className="mt-4 border-y border-border py-4">
+      {access.canManageMediaAssigned ? consentQuery.isPending ? <div aria-busy="true"><span className="sr-only">Loading session consent controls…</span><Skeleton className="mt-4 h-28 w-full" /></div> : consentQuery.isError ? <div role="alert" className="mt-4 rounded-sm border border-danger/35 px-4 py-3"><p className="text-sm text-danger">Consent state could not be loaded. New requests and starts are unavailable; an active capture can still be stopped.</p><Button className="mt-3" variant="secondary" onClick={() => void consentQuery.refetch()}>Retry consent state</Button></div> : null : <p className="mt-4 text-sm text-muted">Media controls and consent details are unavailable to this account.</p>}
+      <section aria-labelledby="counselor-session-media-status-heading" className="mt-4 rounded-sm bg-surface-subtle px-4 py-3">
         <h3 id="counselor-session-media-status-heading" className="text-sm font-semibold text-ink">Session media activity</h3>
         <dl className="mt-2 grid gap-3 sm:grid-cols-2"><div><dt className="text-xs font-semibold text-muted">Recording</dt><dd className="mt-1 text-sm text-ink">{captureStatusLabel(workspace.media.recording.capture_status)}</dd></div><div><dt className="text-xs font-semibold text-muted">Transcription</dt><dd className="mt-1 text-sm text-ink">{captureStatusLabel(workspace.media.transcription.capture_status)}</dd></div></dl>
-        {recordingStatus === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-3 border-l-2 border-warning pl-3 text-sm font-semibold text-ink">Recording active</p> : null}
-        {transcriptionStatus === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-2 border-l-2 border-info pl-3 text-sm font-semibold text-ink">Session transcription active</p> : null}
+        {recordingStatus === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-3 rounded-sm bg-warning/10 px-3 py-2 text-sm font-semibold text-ink">Recording active</p> : null}
+        {transcriptionStatus === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-2 rounded-sm bg-info/10 px-3 py-2 text-sm font-semibold text-ink">Session transcription active</p> : null}
       </section>
       {access.canManageMediaAssigned ? <div className="mt-4 grid gap-5 lg:grid-cols-2">
-        <section className="min-w-0 border-y border-border py-4" aria-labelledby="recording-controls-heading">
+        <section className="min-w-0 rounded-sm border border-border px-4 py-4" aria-labelledby="recording-controls-heading">
           <h3 id="recording-controls-heading" className="font-semibold text-ink">Audio/video recording</h3>
           <dl className="mt-3 space-y-3"><div><dt className="text-xs font-semibold text-muted">Consent</dt><dd className="mt-1 text-sm text-ink">{canReadConsents ? consentRowsLabel(rows, ECounselingConsentScope.AUDIO_VIDEO_RECORDING) : consentProjectionLabels[workspace.media.recording.consent_status]}</dd></div><div><dt className="text-xs font-semibold text-muted">Capture</dt><dd className="mt-1 text-sm text-ink">{captureStatusLabel(recordingStatus)}</dd></div></dl>
-          {recordingStatus === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-3 border-l-2 border-warning pl-3 text-sm font-semibold text-ink">Recording active</p> : null}
+          {recordingStatus === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-3 rounded-sm bg-warning/10 px-3 py-2 text-sm font-semibold text-ink">Recording active</p> : null}
           <div className="mt-4 flex flex-wrap gap-2">
             {canReadConsents && noRecordingRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.AUDIO_VIDEO_RECORDING])}>Request recording consent</Button> : null}
             {recordingCanStart ? <Button disabled={busy} onClick={() => setPendingStart("recording")}>Start recording</Button> : null}
@@ -185,10 +185,10 @@ export function CounselorMediaControls({
             {recordingStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">Recording completed.</p> : null}
           </div>
         </section>
-        <section className="min-w-0 border-y border-border py-4" aria-labelledby="transcription-controls-heading">
+        <section className="min-w-0 rounded-sm border border-border px-4 py-4" aria-labelledby="transcription-controls-heading">
           <h3 id="transcription-controls-heading" className="font-semibold text-ink">Session transcription</h3>
           <dl className="mt-3 space-y-3"><div><dt className="text-xs font-semibold text-muted">Consent</dt><dd className="mt-1 text-sm text-ink">{canReadConsents ? consentRowsLabel(rows, ECounselingConsentScope.LIVE_TRANSCRIPTION) : consentProjectionLabels[workspace.media.transcription.consent_status]}</dd></div><div><dt className="text-xs font-semibold text-muted">Transcript storage consent</dt><dd className="mt-1 text-sm text-ink">{canReadConsents ? consentRowsLabel(rows, ECounselingConsentScope.TRANSCRIPT_STORAGE) : consentProjectionLabels[workspace.media.transcription.storage_consent_status]}</dd></div><div><dt className="text-xs font-semibold text-muted">Capture</dt><dd className="mt-1 text-sm text-ink">{captureStatusLabel(transcriptionStatus)}</dd></div><div><dt className="text-xs font-semibold text-muted">Storage</dt><dd className="mt-1 text-sm text-ink">{workspace.media.transcription.storage_enabled ? "Enabled for this capture" : "Not enabled"}</dd></div></dl>
-          {transcriptionStatus === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-3 border-l-2 border-info pl-3 text-sm font-semibold text-ink">Session transcription active</p> : null}
+          {transcriptionStatus === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-3 rounded-sm bg-info/10 px-3 py-2 text-sm font-semibold text-ink">Session transcription active</p> : null}
           <div className="mt-4 flex flex-wrap gap-2">
             {canReadConsents && noTranscriptionRequest ? <><Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.LIVE_TRANSCRIPTION])}>Request transcription consent</Button>{noStorageRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.LIVE_TRANSCRIPTION, ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request transcription + storage consent</Button> : null}</> : null}
             {canReadConsents && hasLiveTranscriptionRequest && noStorageRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request transcript-storage consent</Button> : null}
@@ -203,7 +203,7 @@ export function CounselorMediaControls({
       </div> : null}
       {error && !pendingStart ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
       {notice ? <p role="status" className="mt-4 text-sm text-success">{notice}</p> : null}
-      {!workspace.provider_readiness.daily_enabled ? <p className="mt-4 border-y border-border py-4 text-sm text-muted">Daily provider media controls are not enabled. Counseling access is unaffected.</p> : null}
+      {!workspace.provider_readiness.daily_enabled ? <p className="mt-4 text-sm text-muted">Daily provider media controls are not enabled. Counseling access is unaffected.</p> : null}
       {workspace.provider_readiness.daily_enabled && (!workspace.provider_readiness.room_provisioned || !workspace.provider_readiness.join_allowed) ? <p className="mt-4 text-sm text-muted">Provider controls are unavailable until the session is ready.</p> : null}
       <ConsequentialActionDialog
         open={Boolean(pendingStart)}

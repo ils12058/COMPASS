@@ -9,6 +9,8 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
+import { Panel, PanelBody, PanelFooter } from "@/components/ui/panel";
 import {
   ManagedActionFeedback,
   useInvalidateManagedAccount,
@@ -79,23 +81,19 @@ export function CreateAccount() {
 
   return (
     <section aria-labelledby="create-account-heading" className="max-w-2xl">
-      <Link
-        href="/portal/accounts"
-        className="text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        ← Accounts
-      </Link>
-      <h1
-        id="create-account-heading"
-        className="mt-5 font-heading text-3xl font-bold text-ink"
-      >
-        Create account
-      </h1>
-      <p className="mt-2 text-sm leading-6 text-muted">
-        The account holder can set up a COMPASS password using the registered
-        email address.
-      </p>
-      <form className="mt-8 space-y-6" onSubmit={(event) => void submit(event)}>
+      <PageHeader
+        title="Create account"
+        headingId="create-account-heading"
+        back={
+          <Link href="/portal/accounts" className={pageBackLinkClass}>
+            ← Accounts
+          </Link>
+        }
+        description="The account holder can set up a COMPASS password using the registered email address."
+      />
+      <Panel as="div">
+      <form onSubmit={(event) => void submit(event)}>
+        <PanelBody className="space-y-6 py-5">
         <div className="grid gap-5 sm:grid-cols-2">
           <div className={fieldClass}>
             <Label htmlFor="create-institutional-id">Institutional ID</Label>
@@ -180,7 +178,8 @@ export function CreateAccount() {
           Active account
         </label>
         <ManagedActionFeedback action={action} showMessages={!review} />
-        <div className="flex flex-wrap gap-3">
+        </PanelBody>
+        <PanelFooter>
           <Button type="submit" disabled={create.isPending}>
             Review account
           </Button>
@@ -190,8 +189,9 @@ export function CreateAccount() {
           >
             Cancel
           </Link>
-        </div>
+        </PanelFooter>
       </form>
+      </Panel>
       <ConsequentialActionDialog
         open={review !== null}
         title={review ? `Create account for ${reviewName}?` : "Create account?"}

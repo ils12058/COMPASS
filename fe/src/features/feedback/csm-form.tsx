@@ -10,6 +10,8 @@ import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelFooter } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { FeedbackFormSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
@@ -262,11 +264,15 @@ export function CsmForm() {
   if (success) {
     return (
       <section aria-labelledby="csm-success-heading" className="max-w-2xl">
-        <div role="status" className="border-y border-success/30 py-8">
-          <h1 id="csm-success-heading" className="font-heading text-3xl font-bold text-ink">Client Satisfaction Measurement submitted</h1>
-          <p className="mt-3 text-sm leading-6 text-muted">Your response was received{success.submittedAt ? <> on <FeedbackDate value={success.submittedAt} /></> : null}.</p>
-          <GuardedPortalLink href="/portal/feedback" className={buttonVariants({ variant: "primary", className: "mt-6" })}>Back to Feedback</GuardedPortalLink>
-        </div>
+        <Notice
+          role="status"
+          tone="success"
+          className="px-5 py-6 sm:px-6"
+          title={<h1 id="csm-success-heading" className="font-heading text-2xl font-bold text-ink">Client Satisfaction Measurement submitted</h1>}
+          action={<GuardedPortalLink href="/portal/feedback" className={buttonVariants({ variant: "primary" })}>Back to Feedback</GuardedPortalLink>}
+        >
+          <span className="text-muted">Your response was received{success.submittedAt ? <> on <FeedbackDate value={success.submittedAt} /></> : null}.</span>
+        </Notice>
       </section>
     );
   }
@@ -274,9 +280,10 @@ export function CsmForm() {
   return (
     <section aria-labelledby="csm-page-heading">
       <FeedbackPageHeading headingId="csm-page-heading" eyebrow="Client Satisfaction Measurement" title="HELP US SERVE YOU BETTER!" description={`Feedback for ${opportunityData.service_label}. Taking part is optional; if you choose to continue, please answer the required questions.`} />
-      <form className="mt-4" onSubmit={prepareSubmission} noValidate>
-        {error && !confirmationOpen ? <p role="alert" className="mb-5 border-y border-danger/30 py-3 text-sm text-danger">{error}</p> : null}
-        {isUncertain ? <div className="mb-6 border-y border-warning/40 bg-warning/10 px-4 py-4" role="status" aria-live="polite"><p className="text-sm font-semibold text-ink">Submission result not confirmed</p><p className="mt-1 text-sm leading-6 text-muted">Your response is still on this page. Retry the same submission to safely check whether it was received.</p><Button className="mt-3" disabled={create.isPending} onClick={() => void send(uncertainIntent.body)}>{create.isPending ? "Checking submission…" : "Retry same submission"}</Button></div> : null}
+      <form className="mt-5" onSubmit={prepareSubmission} noValidate>
+        {error && !confirmationOpen ? <Notice role="alert" tone="danger" className="mb-5">{error}</Notice> : null}
+        {isUncertain ? <div className="mb-5 rounded-sm border border-warning/40 bg-surface-raised px-4 py-4 sm:px-5" role="status" aria-live="polite"><p className="text-sm font-semibold text-ink">Submission result not confirmed</p><p className="mt-1 text-sm leading-6 text-muted">Your response is still on this page. Retry the same submission to safely check whether it was received.</p><Button className="mt-3" disabled={create.isPending} onClick={() => void send(uncertainIntent.body)}>{create.isPending ? "Checking submission…" : "Retry same submission"}</Button></div> : null}
+        <Panel as="div">
         <fieldset disabled={isUncertain || create.isPending} className="min-w-0 disabled:opacity-75">
           <legend className="sr-only">Client Satisfaction Measurement response fields</legend>
           <FeedbackSection title="Respondent information">
@@ -293,7 +300,7 @@ export function CsmForm() {
           <FeedbackSection title="Citizen's Charter" description="The Citizen's Charter is an official document that reflects the services of a government agency or office, including requirements, fees, and processing times, among others.">
             <FeedbackRadioGroup legend="CC1. Which of the following best describes your awareness of a CC?" name="csm-cc1" value={draft.cc1} choices={cc1Choices} onChange={(value) => changeCc1(value as CSMCC1Value)} required />
             {draft.cc1 === CSMCC1Value.NUMBER_4 ? (
-              <div className="space-y-5 rounded-md border border-border bg-surface-muted p-4" aria-live="polite">
+              <div className="space-y-5 rounded-sm bg-surface-subtle p-4" aria-live="polite">
                 <p className="text-sm text-muted">Because you answered that you do not know what a CC is and did not see one, CC2 and CC3 are recorded as Not Applicable.</p>
                 <p className="text-sm"><span className="font-semibold text-ink">CC2. Visibility of this office&apos;s CC:</span> <span className="text-muted">N/A</span></p>
                 <p className="text-sm"><span className="font-semibold text-ink">CC3. Helpfulness of the CC in your transaction:</span> <span className="text-muted">N/A</span></p>
@@ -317,11 +324,12 @@ export function CsmForm() {
             <div className="max-w-xl"><FeedbackFieldLabel htmlFor="csm-email">Email address (optional)</FeedbackFieldLabel><Input id="csm-email" className="mt-2" type="email" autoComplete="email" value={draft.email} onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))} /></div>
           </FeedbackSection>
         </fieldset>
-        {create.isPending ? <p role="status" aria-live="polite" className="mb-4 text-sm text-muted">Submitting Client Satisfaction Measurement…</p> : null}
-        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
+        <PanelFooter>
+          {create.isPending ? <p role="status" aria-live="polite" className="w-full text-sm text-muted">Submitting Client Satisfaction Measurement…</p> : null}
           <Button type="submit" disabled={create.isPending || isUncertain}>{create.isPending ? "Submitting…" : "Review and submit"}</Button>
-          <GuardedPortalLink href="/portal/feedback" className="inline-flex min-h-10 items-center rounded-md px-3 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Feedback</GuardedPortalLink>
-        </div>
+          <GuardedPortalLink href="/portal/feedback" className={buttonVariants({ variant: "quiet" })}>Back to Feedback</GuardedPortalLink>
+        </PanelFooter>
+        </Panel>
       </form>
       <ConsequentialActionDialog
         open={confirmationOpen}

@@ -5,6 +5,7 @@ import { FileDown, FileText } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PanelSection } from "@/components/ui/panel";
 import { displayTitle, formatFileSize } from "@/features/content/content-presentation";
 import { ContentConfirmDialog } from "@/features/content/content-shared";
 import { getSafeHttpUrl } from "@/features/public/shared/presentation";
@@ -96,8 +97,7 @@ export function ResourceFileSection({ resource }: { resource: ResourceManagement
   }
 
   return (
-    <section aria-labelledby="resource-file-heading" className="mt-8 border-t border-border pt-6">
-      <h2 id="resource-file-heading" className="font-heading text-xl font-semibold text-ink">File</h2>
+    <PanelSection title="File" titleId="resource-file-heading">
 
       {resource.has_file ? (
         <div className="mt-4 flex flex-wrap items-start gap-3">
@@ -184,6 +184,6 @@ export function ResourceFileSection({ resource }: { resource: ResourceManagement
         onOpenChange={setRemoveOpen}
         onConfirm={() => void confirmRemove()}
       />
-    </section>
+    </PanelSection>
   );
 }

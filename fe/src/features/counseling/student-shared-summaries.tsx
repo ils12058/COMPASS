@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
-import { buttonVariants } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Panel, PanelMessage } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import {
@@ -47,12 +48,13 @@ export function StudentSharedSummaries({ access }: { access: CounselingAccess })
   return (
     <div>
       <CounselingPageHeading title="Counseling summaries" description="View summaries that your Counselor has explicitly shared with you." />
-      {summaries.isPending ? <div aria-busy="true" className="space-y-4"><span className="sr-only">Loading published Counseling summaries…</span><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div> : summaries.isError ? <CounselingQueryError message={counselingErrorMessage(summaries.error, "Published Counseling summaries could not be loaded.")} onRetry={() => void summaries.refetch()} /> : items.length === 0 ? <p className="border-y border-border py-6 text-sm text-muted">No Counseling summaries have been shared with you yet.</p> : (
+      <Panel aria-label="Published Counseling summaries">
+      {summaries.isPending ? <RowsSkeleton label="Loading published Counseling summaries…" rows={2} /> : summaries.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void summaries.refetch()}>Retry</Button>}>{counselingErrorMessage(summaries.error, "Published Counseling summaries could not be loaded.")}</PanelMessage> : items.length === 0 ? <PanelMessage>No Counseling summaries have been shared with you yet.</PanelMessage> : (
         <>
-          <ul className="divide-y divide-border border-y border-border" aria-label="Published Counseling summaries">
+          <ul className="divide-y divide-border" aria-label="Published Counseling summaries">
             {items.map((summary) => (
-              <li key={summary.id} className="py-5">
-                <Link href={`/portal/counseling/summaries/${summary.id}`} className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+              <li key={summary.id}>
+                <Link href={`/portal/counseling/summaries/${summary.id}`} className="block px-4 py-4 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-5">
                   <span className="font-semibold text-brand underline-offset-2 hover:underline">Counseling on {formatCounselingDateTime(summary.counseling_ended_at)}</span>
                   <span className="mt-1 block text-sm text-muted">{counselingDeliveryModeLabel(summary.delivery_mode)} · Shared {formatCounselingDateTime(summary.published_at)}</span>
                   {summary.content.trim() ? <span className="mt-2 block max-w-4xl text-sm leading-6 text-ink">{excerpt(summary.content)}</span> : null}
@@ -60,7 +62,7 @@ export function StudentSharedSummaries({ access }: { access: CounselingAccess })
               </li>
             ))}
           </ul>
-          <CanonicalPagination label="Shared Summary pages" page={summaries.data?.data.page ?? page} hasNext={summaries.data?.data.has_next ?? false} onPageChange={(nextPage) => {
+          <CanonicalPagination className="border-brand-line px-4 py-3 sm:px-5" label="Shared Summary pages" page={summaries.data?.data.page ?? page} hasNext={summaries.data?.data.has_next ?? false} onPageChange={(nextPage) => {
             const next = new URLSearchParams(searchParams.toString());
             if (nextPage > 1) next.set("page", String(nextPage)); else next.delete("page");
             const query = next.toString();
@@ -68,6 +70,7 @@ export function StudentSharedSummaries({ access }: { access: CounselingAccess })
           }} />
         </>
       )}
+      </Panel>
     </div>
   );
 }
@@ -84,7 +87,9 @@ export function StudentSharedSummaryDetail({ summaryId }: { summaryId: string })
   return (
     <article className="max-w-4xl">
       <CounselingPageHeading title="Counseling summary" description={`Counseling ended ${formatCounselingDateTime(summary.counseling_ended_at)} · ${counselingDeliveryModeLabel(summary.delivery_mode)} · Shared ${formatCounselingDateTime(summary.published_at)}`} action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>Back to Counseling summaries</Link>} />
-      <div className="whitespace-pre-wrap break-words text-sm leading-7 text-ink">{summary.content}</div>
+      <Panel as="div" className="px-5 py-5 sm:px-6">
+        <div className="whitespace-pre-wrap break-words text-sm leading-7 text-ink">{summary.content}</div>
+      </Panel>
     </article>
   );
 }

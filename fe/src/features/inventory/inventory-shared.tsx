@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
+import { PageHeader } from "@/components/ui/page-header";
+import { Notice } from "@/components/ui/notice";
 
 export function InventoryHeading({
   title,
@@ -13,19 +15,7 @@ export function InventoryHeading({
   description?: string;
   action?: ReactNode;
 }) {
-  return (
-    <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 className="font-heading text-3xl font-semibold text-ink">{title}</h1>
-        {description ? (
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            {description}
-          </p>
-        ) : null}
-      </div>
-      {action}
-    </header>
-  );
+  return <PageHeader title={title} description={description} actions={action} className="mb-0" />;
 }
 
 export function InventorySectionHeading({
@@ -56,18 +46,10 @@ export function InventoryNotice({
   tone?: "neutral" | "warning" | "danger" | "success";
   role?: "status" | "alert";
 }) {
-  const toneClass = {
-    neutral: "border-border bg-surface-muted text-ink",
-    warning: "border-warning/40 bg-warning/5 text-ink",
-    danger: "border-danger/40 bg-danger/5 text-ink",
-    success: "border-success/40 bg-success/5 text-ink",
-  }[tone];
-
   return (
-    <div role={role} className={`border-l-4 px-4 py-3 text-sm leading-6 ${toneClass}`}>
-      {title ? <p className="font-semibold">{title}</p> : null}
-      <div className={title ? "mt-1" : undefined}>{children}</div>
-    </div>
+    <Notice tone={tone} role={role} title={title}>
+      {children}
+    </Notice>
   );
 }
 

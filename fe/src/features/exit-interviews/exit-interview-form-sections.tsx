@@ -208,12 +208,12 @@ function RatingMatrix({
     : scale;
 
   return (
-    <div className="mt-4 overflow-x-auto rounded-md border border-border">
+    <div className="mt-4 overflow-x-auto rounded-sm border border-border">
       <table className="min-w-[42rem] w-full border-collapse text-sm">
         <caption className="sr-only">{title} rating matrix</caption>
-        <thead className="bg-surface-muted text-xs text-muted">
+        <thead className="bg-brand-wash text-xs text-brand-strong">
           <tr>
-            <th scope="col" className="sticky left-0 z-10 min-w-64 bg-surface-muted px-3 py-3 text-left font-semibold">
+            <th scope="col" className="sticky left-0 z-10 min-w-64 bg-brand-wash px-3 py-3 text-left font-semibold">
               Item
             </th>
             {options.map((option) => (
@@ -347,7 +347,7 @@ export function ExitInterviewFormSections({
           </div>
         </fieldset>
         {delayed ? (
-          <div className="mt-4 max-w-2xl space-y-4 border-l-2 border-border pl-4">
+          <div className="mt-4 max-w-2xl space-y-4 rounded-sm bg-surface-subtle px-4 py-4">
             <FormField id="exit-extra-terms" label="Number of extra terms" type="number" min={1} value={form.extraTermsCount} required error={extraTermsError} disabled={disabled} onChange={(value) => onTextChange("extraTermsCount", value)} />
             <fieldset>
               <legend className="text-sm font-semibold text-ink">Reason for delay</legend>
@@ -402,7 +402,7 @@ export function ExitInterviewFormSections({
               <legend className="font-semibold text-ink">Work</legend>
               <ChoiceCheckbox id="exit-career-work" label="Work" checked={hasWork} disabled={disabled} onChange={() => onToggleCareerMode(CareerMode.WORK)} />
               {hasWork ? (
-                <div className="mt-2 border-l-2 border-border pl-4">
+                <div className="mt-2 pl-7">
                   {WORK_CHOICES.map((choice) => (
                     <ChoiceCheckbox
                       key={choice.value}
@@ -420,7 +420,7 @@ export function ExitInterviewFormSections({
               <legend className="font-semibold text-ink">Study</legend>
               <ChoiceCheckbox id="exit-career-study" label="Study" checked={hasStudy} disabled={disabled} onChange={() => onToggleCareerMode(CareerMode.STUDY)} />
               {hasStudy ? (
-                <div className="mt-2 border-l-2 border-border pl-4">
+                <div className="mt-2 pl-7">
                   {STUDY_CHOICES.map((choice) => (
                     <ChoiceCheckbox
                       key={choice.value}

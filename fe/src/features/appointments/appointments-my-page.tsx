@@ -3,10 +3,14 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { Input } from "@/components/ui/input";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import {
   AppointmentListSkeleton,
   AppointmentStatusBadge,
@@ -113,9 +117,9 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
         }
       />
 
-      <div className="mb-6 grid gap-4 border-y border-border py-5 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="grid gap-2">
-          <Label htmlFor="my-appointment-status">Status</Label>
+      {/* No free-text search here, so each choice applies as soon as it changes. */}
+      <FilterToolbar className="mb-5">
+        <FilterField label="Status" htmlFor="my-appointment-status">
           <Select
             id="my-appointment-status"
             value={upcoming ? UPCOMING_APPOINTMENTS_VIEW : status ?? "ALL"}
@@ -128,29 +132,24 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
             <option value={AppointmentStatus.COMPLETED}>Completed</option>
             <option value={AppointmentStatus.NO_SHOW}>No-show</option>
           </Select>
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="my-appointment-from">From date</Label>
-          <input
+        </FilterField>
+        <FilterField label="From date" htmlFor="my-appointment-from">
+          <Input
             id="my-appointment-from"
             type="date"
-            className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             value={fromDate}
             onChange={(event) => updateFilter("from", event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="my-appointment-to">To date</Label>
-          <input
+        </FilterField>
+        <FilterField label="To date" htmlFor="my-appointment-to">
+          <Input
             id="my-appointment-to"
             type="date"
-            className="min-h-10 rounded-md border border-border bg-surface-raised px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             value={toDate}
             onChange={(event) => updateFilter("to", event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="my-appointment-order">Order</Label>
+        </FilterField>
+        <FilterField label="Order" htmlFor="my-appointment-order">
           <Select
             id="my-appointment-order"
             value={ordering}
@@ -159,133 +158,146 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
             <option value={AppointmentListOrdering.START_ASC}>Earliest start first</option>
             <option value={AppointmentListOrdering.START_DESC}>Latest start first</option>
           </Select>
-        </div>
-      </div>
+        </FilterField>
+      </FilterToolbar>
 
-      {list.isPending ? (
-        <AppointmentListSkeleton />
-      ) : list.isError ? (
-        <div role="alert" className="border-y border-danger/30 py-6">
-          <p className="text-sm text-danger">
+      <Panel aria-labelledby="my-appointments-results-heading">
+        <PanelHeader
+          title="Appointments"
+          titleId="my-appointments-results-heading"
+          context={
+            list.isFetching && !list.isPending
+              ? "Refreshing Appointments…"
+              : pageData && !list.isError
+                ? describeResultPage({
+                    count: items.length,
+                    page: pageData.page,
+                    hasNext: pageData.has_next,
+                    noun: { one: "appointment", other: "appointments" },
+                    filtered: filtering,
+                  })
+                : null
+          }
+        />
+        {list.isPending ? (
+          <AppointmentListSkeleton framed={false} />
+        ) : list.isError ? (
+          <PanelMessage
+            role="alert"
+            tone="danger"
+            action={
+              <Button variant="secondary" onClick={() => void list.refetch()}>
+                Retry
+              </Button>
+            }
+          >
             {appointmentErrorMessage(list.error, "My Appointments could not be loaded.")}
-          </p>
-          <Button className="mt-4" variant="secondary" onClick={() => void list.refetch()}>
-            Retry
-          </Button>
-        </div>
-      ) : items.length === 0 ? (
-        <div className="border-y border-border py-8">
-          <p className="text-sm text-muted">
+          </PanelMessage>
+        ) : items.length === 0 ? (
+          <PanelMessage
+            action={status !== undefined || upcoming || fromDate || toDate ? (
+              <Link
+                href={updateAppointmentQuery(
+                  pathname,
+                  new URLSearchParams(searchParams.toString()),
+                  { status: "ALL", from: "", to: "" },
+                )}
+                className={buttonVariants({ variant: "secondary" })}
+              >
+                {filtering ? "Clear filters" : "Show all statuses"}
+              </Link>
+            ) : undefined}
+          >
             {filtering
               ? "No appointments match the selected filters."
               : status === AppointmentStatus.SCHEDULED
                 ? "No scheduled appointments match this view."
                 : "No appointments are available."}
-          </p>
-          {status !== undefined || upcoming || fromDate || toDate ? (
-            <Link
-              href={updateAppointmentQuery(
-                pathname,
-                new URLSearchParams(searchParams.toString()),
-                { status: "ALL", from: "", to: "" },
-              )}
-              className="mt-3 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              {filtering ? "Clear filters" : "Show all statuses"}
-            </Link>
-          ) : null}
-          <CanonicalPagination
-            page={pageData?.page ?? page}
-            hasNext={pageData?.has_next ?? false}
-            label="Appointment pages"
-            onPageChange={movePage}
-          />
-        </div>
-      ) : (
-        <>
-          {list.isFetching ? (
-            <p role="status" className="mb-3 text-xs text-muted">Refreshing Appointments…</p>
-          ) : null}
-
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-              <caption className="sr-only">My Appointments</caption>
-              <thead className="border-y border-border bg-surface-muted text-xs text-muted">
-                <tr>
-                  <th scope="col" className="px-3 py-3 font-semibold">{access.isStudent ? "Service" : "Student"}</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">{access.isStudent ? "Counselor" : "Service"}</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">Date and time</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">Delivery</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {items.map((appointment) => (
-                  <tr key={appointment.id}>
-                    <th scope="row" className="px-3 py-4 font-normal">
-                      <Link href={`/portal/appointments/${appointment.id}`} className="font-semibold text-ink hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                        {access.isStudent ? appointment.service.name : appointment.student.display_name}
-                      </Link>
-                      <p className="mt-1 font-mono text-xs text-muted">{appointment.reference_code}</p>
-                      {!access.isStudent && appointment.student.institutional_id ? (
-                        <p className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</p>
-                      ) : null}
-                    </th>
-                    <td className="px-3 py-4 text-ink">
-                      {access.isStudent ? appointment.provider.display_name : appointment.service.name}
-                    </td>
-                    <td className="px-3 py-4 text-ink">{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</td>
-                    <td className="px-3 py-4 text-ink">{deliveryModeLabel(appointment.delivery_mode)}</td>
-                    <td className="px-3 py-4"><AppointmentStatusBadge status={appointment.status} /></td>
+          </PanelMessage>
+        ) : (
+          <>
+            <div className={`${dataTable.scroll} hidden md:block`}>
+              <table className={`${dataTable.table} min-w-[760px]`}>
+                <caption className="sr-only">My Appointments</caption>
+                <thead className={dataTable.head}>
+                  <tr>
+                    <th scope="col" className={dataTable.headerCell}>{access.isStudent ? "Service" : "Student"}</th>
+                    <th scope="col" className={dataTable.headerCell}>{access.isStudent ? "Counselor" : "Service"}</th>
+                    <th scope="col" className={dataTable.headerCell}>Date and time</th>
+                    <th scope="col" className={dataTable.headerCell}>Delivery</th>
+                    <th scope="col" className={dataTable.headerCell}>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className={dataTable.body}>
+                  {items.map((appointment) => (
+                    <tr key={appointment.id} className={dataTable.row}>
+                      <th scope="row" className={`${dataTable.cell} font-normal`}>
+                        <Link href={`/portal/appointments/${appointment.id}`} className="font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                          {access.isStudent ? appointment.service.name : appointment.student.display_name}
+                        </Link>
+                        <p className="mt-1 font-mono text-xs text-muted">{appointment.reference_code}</p>
+                        {!access.isStudent && appointment.student.institutional_id ? (
+                          <p className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</p>
+                        ) : null}
+                      </th>
+                      <td className={`${dataTable.cell} text-ink`}>
+                        {access.isStudent ? appointment.provider.display_name : appointment.service.name}
+                      </td>
+                      <td className={`${dataTable.cell} text-ink`}>{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</td>
+                      <td className={`${dataTable.cell} text-ink`}>{deliveryModeLabel(appointment.delivery_mode)}</td>
+                      <td className={dataTable.cell}><AppointmentStatusBadge status={appointment.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          <ul className="divide-y divide-border border-y border-border md:hidden">
-            {items.map((appointment) => (
-              <li key={appointment.id} className="py-4">
-                <article>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <Link href={`/portal/appointments/${appointment.id}`} className="break-words font-semibold text-ink hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                        {access.isStudent ? appointment.service.name : appointment.student.display_name}
-                      </Link>
-                      <p className="mt-1 font-mono text-xs text-muted">{appointment.reference_code}</p>
-                      {!access.isStudent && appointment.student.institutional_id ? (
-                        <p className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</p>
-                      ) : null}
+            <ul className="divide-y divide-border md:hidden">
+              {items.map((appointment) => (
+                <li key={appointment.id} className="px-4 py-4">
+                  <article>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <Link href={`/portal/appointments/${appointment.id}`} className="break-words font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                          {access.isStudent ? appointment.service.name : appointment.student.display_name}
+                        </Link>
+                        <p className="mt-1 font-mono text-xs text-muted">{appointment.reference_code}</p>
+                        {!access.isStudent && appointment.student.institutional_id ? (
+                          <p className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</p>
+                        ) : null}
+                      </div>
+                      <AppointmentStatusBadge status={appointment.status} />
                     </div>
-                    <AppointmentStatusBadge status={appointment.status} />
-                  </div>
-                  <dl className="mt-3 grid gap-x-5 gap-y-2 text-sm sm:grid-cols-2">
-                    <div>
-                      <dt className="text-xs text-muted">{access.isStudent ? "Counselor" : "Service"}</dt>
-                      <dd className="mt-0.5 text-ink">{access.isStudent ? appointment.provider.display_name : appointment.service.name}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted">Date and time</dt>
-                      <dd className="mt-0.5 text-ink">{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted">Delivery</dt>
-                      <dd className="mt-0.5 text-ink">{deliveryModeLabel(appointment.delivery_mode)}</dd>
-                    </div>
-                  </dl>
-                </article>
-              </li>
-            ))}
-          </ul>
-
+                    <dl className="mt-3 grid gap-x-5 gap-y-2 text-sm sm:grid-cols-2">
+                      <div>
+                        <dt className="text-xs text-muted">{access.isStudent ? "Counselor" : "Service"}</dt>
+                        <dd className="mt-0.5 text-ink">{access.isStudent ? appointment.provider.display_name : appointment.service.name}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-muted">Date and time</dt>
+                        <dd className="mt-0.5 text-ink">{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-muted">Delivery</dt>
+                        <dd className="mt-0.5 text-ink">{deliveryModeLabel(appointment.delivery_mode)}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {!list.isPending && !list.isError ? (
           <CanonicalPagination
+            className="border-brand-line px-4 py-3 sm:px-5"
             page={pageData?.page ?? page}
             hasNext={pageData?.has_next ?? false}
             label="Appointment pages"
             onPageChange={movePage}
           />
-        </>
-      )}
+        ) : null}
+      </Panel>
     </section>
   );
 }

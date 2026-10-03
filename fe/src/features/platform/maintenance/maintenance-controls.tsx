@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Panel, PanelBody, PanelFooter, PanelHeader } from "@/components/ui/panel";
 import type { MaintenanceResponse } from "@/lib/api/generated/model";
 import {
   INSTITUTION_TIME_ZONE_LABEL,
@@ -38,16 +39,15 @@ export function ManualMaintenanceForm({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <section className="border-t border-border py-6">
-      <h2 className="font-heading text-xl font-semibold text-ink">
-        Enable Maintenance Mode
-      </h2>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-        The public message may be shown to COMPASS users. Do not include internal
-        or sensitive information. Manual Maintenance Mode remains active until
-        explicitly disabled.
-      </p>
-      <form className="mt-5 max-w-2xl space-y-5" onSubmit={onSubmit}>
+    <Panel aria-labelledby="manual-maintenance-heading">
+      <PanelHeader
+        title="Enable Maintenance Mode"
+        titleId="manual-maintenance-heading"
+        level={3}
+        description="The public message may be shown to COMPASS users. Do not include internal or sensitive information. Manual Maintenance Mode remains active until explicitly disabled."
+      />
+      <form onSubmit={onSubmit}>
+        <PanelBody className="max-w-2xl space-y-5">
         <div className="grid gap-2">
           <Label htmlFor="manual-maintenance-message">Public message</Label>
           <Textarea
@@ -86,11 +86,14 @@ export function ManualMaintenanceForm({
         {error ? (
           <p role="alert" className="text-sm text-danger">{error}</p>
         ) : null}
-        <Button type="submit" disabled={pending}>
-          Enable Maintenance Mode
-        </Button>
+        </PanelBody>
+        <PanelFooter>
+          <Button type="submit" disabled={pending}>
+            Enable Maintenance Mode
+          </Button>
+        </PanelFooter>
       </form>
-    </section>
+    </Panel>
   );
 }
 
@@ -117,33 +120,39 @@ export function MaintenanceScheduleForm({
 }) {
   if (existing && !open) {
     return (
-      <section className="border-t border-border py-6">
-        <h2 className="font-heading text-xl font-semibold text-ink">
-          Upcoming maintenance
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-muted">
-          Change the configured window or cancel it. The schedule uses
-          {INSTITUTION_TIME_ZONE_LABEL}.
-        </p>
-        <Button className="mt-4" variant="secondary" onClick={onOpen}>
-          Change schedule
-        </Button>
-      </section>
+      <Panel aria-labelledby="maintenance-schedule-heading">
+        <PanelHeader
+          title="Upcoming maintenance"
+          titleId="maintenance-schedule-heading"
+          level={3}
+          description={`Change the configured window or cancel it. The schedule uses ${INSTITUTION_TIME_ZONE_LABEL}.`}
+          actions={
+            <Button variant="secondary" onClick={onOpen}>
+              Change schedule
+            </Button>
+          }
+        />
+      </Panel>
     );
   }
 
   return (
-    <section className="border-t border-border py-6">
-      <h2 className="font-heading text-xl font-semibold text-ink">
-        {existing ? "Change maintenance schedule" : "Schedule maintenance"}
-      </h2>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-        The message may be shown publicly. Maintenance becomes effective during
-        the configured window in {INSTITUTION_TIME_ZONE_LABEL}; no browser action
-        is required.
-        {existing ? " Saving replaces the upcoming schedule." : ""}
-      </p>
-      <form className="mt-5 max-w-2xl space-y-5" onSubmit={onSubmit}>
+    <Panel aria-labelledby="maintenance-schedule-heading">
+      <PanelHeader
+        title={existing ? "Change maintenance schedule" : "Schedule maintenance"}
+        titleId="maintenance-schedule-heading"
+        level={3}
+        description={
+          <>
+            The message may be shown publicly. Maintenance becomes effective during
+            the configured window in {INSTITUTION_TIME_ZONE_LABEL}; no browser action
+            is required.
+            {existing ? " Saving replaces the upcoming schedule." : ""}
+          </>
+        }
+      />
+      <form onSubmit={onSubmit}>
+        <PanelBody className="max-w-2xl space-y-5">
         <div className="grid gap-2">
           <Label htmlFor="scheduled-maintenance-message">Public message</Label>
           <Textarea
@@ -199,7 +208,8 @@ export function MaintenanceScheduleForm({
         {error ? (
           <p role="alert" className="text-sm text-danger">{error}</p>
         ) : null}
-        <div className="flex flex-wrap gap-2">
+        </PanelBody>
+        <PanelFooter>
           <Button type="submit" disabled={pending}>
             {existing ? "Change schedule" : "Schedule maintenance"}
           </Button>
@@ -213,9 +223,9 @@ export function MaintenanceScheduleForm({
               Stop editing
             </Button>
           ) : null}
-        </div>
+        </PanelFooter>
       </form>
-    </section>
+    </Panel>
   );
 }
 

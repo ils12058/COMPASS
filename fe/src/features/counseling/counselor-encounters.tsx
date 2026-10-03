@@ -5,10 +5,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import type { CounselingAccess } from "@/features/counseling/counseling-access";
 import {
   counselingDeliveryModeLabel,
@@ -16,7 +19,6 @@ import {
   counselingErrorMessage,
   CounselingListSkeleton,
   CounselingPageHeading,
-  CounselingQueryError,
   formatCounselingDateTime,
 } from "@/features/counseling/counseling-shared";
 import { RecordEncounterForm } from "@/features/counseling/record-encounter-form";
@@ -25,8 +27,6 @@ import {
   DeliveryMode,
 } from "@/lib/api/generated/model";
 import { useCounselingListMyEncounters } from "@/lib/api/generated/counseling/counseling";
-
-const tableCell = "px-4 py-3 align-top text-sm";
 
 function positivePage(value: string | null): number {
   const parsed = Number.parseInt(value ?? "1", 10);
@@ -86,45 +86,60 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
 
       {recordOpen ? <RecordEncounterForm onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} /> : null}
 
-      <section id="encounters" aria-labelledby="my-counseling-encounters-heading" className="mt-7">
-          <h2 id="my-counseling-encounters-heading" className="font-heading text-xl font-semibold text-ink">My counseling encounters</h2>
-          <div className="mb-5 mt-4 grid gap-4 border-y border-border py-5 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="grid gap-2"><Label htmlFor="counseling-entry-filter">Origin</Label><Select id="counseling-entry-filter" value={entryMode ?? "ALL"} onChange={(event) => setFilter("entry_mode", event.target.value === "ALL" ? "" : event.target.value)}><option value="ALL">All origins</option><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></Select></div>
-            <div className="grid gap-2"><Label htmlFor="counseling-delivery-filter">Delivery mode</Label><Select id="counseling-delivery-filter" value={deliveryMode ?? "ALL"} onChange={(event) => setFilter("delivery_mode", event.target.value === "ALL" ? "" : event.target.value)}><option value="ALL">All delivery modes</option><option value="IN_PERSON">In person</option><option value="ONLINE">Online</option></Select></div>
-            <div className="grid gap-2"><Label htmlFor="counseling-from-date">From date</Label><Input id="counseling-from-date" type="date" value={fromDate} onChange={(event) => setFilter("from_date", event.target.value)} /></div>
-            <div className="grid gap-2"><Label htmlFor="counseling-to-date">To date</Label><Input id="counseling-to-date" type="date" value={toDate} onChange={(event) => setFilter("to_date", event.target.value)} /></div>
-            {hasFilters ? <div className="sm:col-span-2 lg:col-span-4"><Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>Clear filters</Button></div> : null}
-          </div>
+      <section id="encounters" aria-labelledby="my-counseling-encounters-heading" className="mt-5">
+          {/* Selects and dates only, so each choice applies as soon as it changes. */}
+          <FilterToolbar
+            className="mb-5"
+            actions={hasFilters ? <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>Clear filters</Button> : undefined}
+          >
+            <FilterField label="Origin" htmlFor="counseling-entry-filter"><Select id="counseling-entry-filter" value={entryMode ?? "ALL"} onChange={(event) => setFilter("entry_mode", event.target.value === "ALL" ? "" : event.target.value)}><option value="ALL">All origins</option><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></Select></FilterField>
+            <FilterField label="Delivery mode" htmlFor="counseling-delivery-filter"><Select id="counseling-delivery-filter" value={deliveryMode ?? "ALL"} onChange={(event) => setFilter("delivery_mode", event.target.value === "ALL" ? "" : event.target.value)}><option value="ALL">All delivery modes</option><option value="IN_PERSON">In person</option><option value="ONLINE">Online</option></Select></FilterField>
+            <FilterField label="From date" htmlFor="counseling-from-date"><Input id="counseling-from-date" type="date" value={fromDate} onChange={(event) => setFilter("from_date", event.target.value)} /></FilterField>
+            <FilterField label="To date" htmlFor="counseling-to-date"><Input id="counseling-to-date" type="date" value={toDate} onChange={(event) => setFilter("to_date", event.target.value)} /></FilterField>
+          </FilterToolbar>
 
+          <Panel as="div">
+          <PanelHeader
+            title="My counseling encounters"
+            titleId="my-counseling-encounters-heading"
+            context={encounters.data && !encounters.isError ? describeResultPage({
+              count: items.length,
+              page: encounters.data.data.page,
+              hasNext: encounters.data.data.has_next,
+              noun: { one: "encounter", other: "encounters" },
+              filtered: hasFilters,
+            }) : null}
+          />
           {encounters.isPending ? (
-            <CounselingListSkeleton label="Loading My Counseling Encounters…" />
+            <CounselingListSkeleton label="Loading My Counseling Encounters…" framed={false} />
           ) : encounters.isError ? (
-            <CounselingQueryError message={counselingErrorMessage(encounters.error, "My Counseling Encounters could not be loaded.")} onRetry={() => void encounters.refetch()} />
+            <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void encounters.refetch()}>Retry</Button>}>
+              {counselingErrorMessage(encounters.error, "My Counseling Encounters could not be loaded.")}
+            </PanelMessage>
           ) : items.length === 0 ? (
-            <p className="border-y border-border py-6 text-sm text-muted">{hasFilters ? "No counseling encounters match the current filters. Clear or adjust them to broaden the results." : "No counseling encounters are assigned to you yet."}</p>
+            <PanelMessage>{hasFilters ? "No counseling encounters match the current filters. Clear or adjust them to broaden the results." : "No counseling encounters are assigned to you yet."}</PanelMessage>
           ) : (
-            <>
-              <div className="overflow-x-auto border-y border-border">
-                <table className="w-full min-w-[850px] border-separate border-spacing-0 text-left">
+              <div className={dataTable.scroll}>
+                <table className={`${dataTable.table} min-w-[850px]`}>
                   <caption className="sr-only">Counseling Encounters assigned to you</caption>
-                  <thead className="bg-surface-muted text-xs font-semibold uppercase tracking-wide text-muted"><tr><th scope="col" className={`${tableCell} sticky left-0 z-20 bg-surface-muted`}>Student</th><th scope="col" className={tableCell}>Origin</th><th scope="col" className={tableCell}>Delivery</th><th scope="col" className={tableCell}>Actual start</th><th scope="col" className={tableCell}>Actual end</th><th scope="col" className={tableCell}>Appointment</th></tr></thead>
-                  <tbody className="divide-y divide-border">
+                  <thead className={dataTable.head}><tr><th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Student</th><th scope="col" className={dataTable.headerCell}>Origin</th><th scope="col" className={dataTable.headerCell}>Delivery</th><th scope="col" className={dataTable.headerCell}>Actual start</th><th scope="col" className={dataTable.headerCell}>Actual end</th><th scope="col" className={dataTable.headerCell}>Appointment</th></tr></thead>
+                  <tbody className={dataTable.body}>
                     {items.map((encounter) => (
-                      <tr key={encounter.id} className="group hover:bg-surface-muted/50">
-                        <th scope="row" className={`${tableCell} sticky left-0 z-10 min-w-48 bg-surface-raised font-normal group-hover:bg-surface-muted`}><Link href={`/portal/counseling/encounters/${encounter.id}`} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.student.display_name}</Link><span className="mt-1 block text-xs text-muted">View encounter</span></th>
-                        <td className={tableCell}>{counselingEntryModeLabel(encounter.entry_mode)}</td>
-                        <td className={tableCell}>{counselingDeliveryModeLabel(encounter.delivery_mode)}</td>
-                        <td className={tableCell}>{formatCounselingDateTime(encounter.started_at)}</td>
-                        <td className={tableCell}>{formatCounselingDateTime(encounter.ended_at)}</td>
-                        <td className={tableCell}>{encounter.appointment?.reference_code ?? "—"}</td>
+                      <tr key={encounter.id} className={dataTable.row}>
+                        <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} min-w-48 font-normal`}><Link href={`/portal/counseling/encounters/${encounter.id}`} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.student.display_name}</Link><span className="mt-1 block text-xs text-muted">View encounter</span></th>
+                        <td className={dataTable.cell}>{counselingEntryModeLabel(encounter.entry_mode)}</td>
+                        <td className={dataTable.cell}>{counselingDeliveryModeLabel(encounter.delivery_mode)}</td>
+                        <td className={dataTable.cell}>{formatCounselingDateTime(encounter.started_at)}</td>
+                        <td className={dataTable.cell}>{formatCounselingDateTime(encounter.ended_at)}</td>
+                        <td className={dataTable.cell}>{encounter.appointment?.reference_code ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </>
           )}
-          {!encounters.isPending && !encounters.isError ? <CanonicalPagination label="Counseling results pages" page={encounters.data?.data.page ?? page} hasNext={encounters.data?.data.has_next ?? false} onPageChange={(nextPage) => router.push(updateQuery(pathname, new URLSearchParams(searchParams.toString()), "page", String(nextPage)), { scroll: false })} /> : null}
+          {!encounters.isPending && !encounters.isError ? <CanonicalPagination className="border-brand-line px-4 py-3 sm:px-5" label="Counseling results pages" page={encounters.data?.data.page ?? page} hasNext={encounters.data?.data.has_next ?? false} onPageChange={(nextPage) => router.push(updateQuery(pathname, new URLSearchParams(searchParams.toString()), "page", String(nextPage)), { scroll: false })} /> : null}
+          </Panel>
       </section>
     </div>
   );

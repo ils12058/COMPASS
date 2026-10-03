@@ -3,7 +3,9 @@
 import { keepPreviousData } from "@tanstack/react-query";
 import { Pin } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
+import { Panel, PanelMessage } from "@/components/ui/panel";
 import {
   useAnnouncementsListPublic,
   useAnnouncementsListVisible,
@@ -12,10 +14,7 @@ import { cn } from "@/lib/utils/cn";
 import { AnnouncementDate } from "@/features/announcements/announcement-date";
 import { markdownPreview } from "@/features/public/shared/presentation";
 import { PublicPagination } from "@/features/public/shared/public-pagination";
-import {
-  PublicAnnouncementSkeleton,
-  PublicSectionError,
-} from "@/features/public/shared/public-state";
+import { PublicRowsSkeleton, PublicSectionError } from "@/features/public/shared/public-state";
 import {
   isSignedOutError,
   useReaderAudience,
@@ -41,35 +40,38 @@ export function AnnouncementList(props: AnnouncementListProps) {
     query: { enabled: audience === "public" || signedOut, placeholderData: keepPreviousData },
   });
   const query = readsAccount ? account : publicQuery;
+  // The landing page's preview panel brings its own title band; the index page frames the list here.
+  const frame = (content: ReactNode) =>
+    isPreview ? content : <Panel as="div">{content}</Panel>;
 
   if (audience === "pending" || query.isPending) {
-    return <PublicAnnouncementSkeleton rows={isPreview ? 3 : 5} />;
+    return frame(<PublicRowsSkeleton rows={isPreview ? 3 : 5} label="Loading announcements…" />);
   }
 
   if (query.isError) {
-    return (
+    return frame(
       <PublicSectionError
         message={readsAccount ? "Announcements could not be loaded." : "Public announcements could not be loaded."}
         onRetry={() => void query.refetch()}
-      />
+      />,
     );
   }
 
   const result = query.data.data;
 
   if (result.items.length === 0) {
-    return (
-      <p className="border-y border-border py-6 text-sm leading-6 text-muted">
+    return frame(
+      <PanelMessage>
         {readsAccount
           ? "No announcements are available right now."
           : "No public announcements are available right now."}
-      </p>
+      </PanelMessage>,
     );
   }
 
-  return (
+  return frame(
     <div aria-busy={query.isFetching}>
-      <ol className="divide-y divide-border border-y border-border">
+      <ol className="divide-y divide-border">
         {result.items.map((announcement) => {
           const preview = markdownPreview(announcement.body_markdown);
 
@@ -77,7 +79,7 @@ export function AnnouncementList(props: AnnouncementListProps) {
             <li key={announcement.id}>
               <Link
                 href={`/announcements/${announcement.id}`}
-                className="group grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-x-4 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:grid-cols-[4rem_minmax(0,1fr)_auto] sm:gap-x-6"
+                className="group grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-x-4 px-4 py-4 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:grid-cols-[4rem_minmax(0,1fr)_auto] sm:gap-x-5 sm:px-5"
               >
                 <AnnouncementDate value={announcement.published_at} />
                 <span className="min-w-0">
@@ -85,7 +87,7 @@ export function AnnouncementList(props: AnnouncementListProps) {
                     {announcement.title}
                   </span>
                   {preview ? (
-                    <span className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted">{preview}</span>
+                    <span className="mt-1 line-clamp-2 text-sm leading-6 text-muted">{preview}</span>
                   ) : null}
                   {announcement.is_pinned ? (
                     <PinnedLabel className="mt-2 sm:hidden" />
@@ -99,7 +101,7 @@ export function AnnouncementList(props: AnnouncementListProps) {
       </ol>
 
       {query.isFetching && !query.isPending ? (
-        <p role="status" className="mt-3 text-xs text-muted">Refreshing announcements…</p>
+        <p role="status" className="border-t border-border px-4 py-2 text-xs text-muted sm:px-5">Refreshing announcements…</p>
       ) : null}
 
       {!isPreview ? (
@@ -109,7 +111,7 @@ export function AnnouncementList(props: AnnouncementListProps) {
           buildHref={(nextPage) => `/announcements?page=${nextPage}`}
         />
       ) : null}
-    </div>
+    </div>,
   );
 }
 

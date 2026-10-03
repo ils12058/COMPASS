@@ -1,26 +1,29 @@
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Notice } from "@/components/ui/notice";
+import { PanelMessage } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// A reading surface still loading: a title and a few lines of text.
 export function PublicListSkeleton({ rows = 3 }: { rows?: number }) {
   return (
-    <div aria-busy="true" className="divide-y divide-border border-y border-border">
+    <LoadingRegion label="Loading…" className="rounded-sm border border-brand-line bg-surface-raised px-5 py-6 sm:px-8">
+      <Skeleton className="h-3 w-28 rounded-sm" />
+      <Skeleton className="mt-4 h-8 w-3/4 rounded-sm" />
       {Array.from({ length: rows }).map((_, index) => (
-        <div key={index} className="py-5">
-          <Skeleton className="h-3 w-28 rounded-sm" />
-          <Skeleton className="mt-3 h-5 w-3/4 rounded-sm" />
-        </div>
+        <Skeleton key={index} className="mt-4 h-3 w-full rounded-sm" />
       ))}
-      <p className="sr-only">Loading…</p>
-    </div>
+    </LoadingRegion>
   );
 }
 
-export function PublicAnnouncementSkeleton({ rows = 3 }: { rows?: number }) {
+// Rows inside an announcements or resources panel.
+export function PublicRowsSkeleton({ rows = 3, label = "Loading…" }: { rows?: number; label?: string }) {
   return (
-    <div aria-busy="true" className="divide-y divide-border border-y border-border">
+    <LoadingRegion label={label} className="divide-y divide-border">
       {Array.from({ length: rows }).map((_, index) => (
-        <div key={index} className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-x-4 py-5 sm:grid-cols-[4rem_minmax(0,1fr)] sm:gap-x-6">
-          <Skeleton className="h-[4.5rem] rounded-md" />
+        <div key={index} className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-x-4 px-4 py-4 sm:px-5">
+          <Skeleton className="h-16 rounded-sm" />
           <div>
             <Skeleton className="h-5 w-3/4 rounded-sm" />
             <Skeleton className="mt-3 h-3 w-full rounded-sm" />
@@ -28,35 +31,38 @@ export function PublicAnnouncementSkeleton({ rows = 3 }: { rows?: number }) {
           </div>
         </div>
       ))}
-      <p className="sr-only">Loading…</p>
-    </div>
+    </LoadingRegion>
   );
 }
 
-export function PublicTileSkeleton({ tiles = 3 }: { tiles?: number }) {
-  return (
-    <div aria-busy="true" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: tiles }).map((_, index) => (
-        <div key={index} className="rounded-md border border-border bg-surface-raised p-5">
-          <Skeleton className="h-3 w-32 rounded-sm" />
-          <Skeleton className="mt-4 h-5 w-4/5 rounded-sm" />
-          <Skeleton className="mt-3 h-3 w-full rounded-sm" />
-          <Skeleton className="mt-2 h-3 w-5/6 rounded-sm" />
-          <Skeleton className="mt-6 h-3 w-24 rounded-sm" />
-        </div>
-      ))}
-      <p className="sr-only">Loading…</p>
-    </div>
-  );
-}
-
+// A failure inside a panel.
 export function PublicSectionError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div role="alert" className="border-y border-border py-6">
-      <p className="text-sm leading-6 text-muted">{message}</p>
-      <Button className="mt-3" variant="secondary" onClick={onRetry}>
-        Try again
-      </Button>
-    </div>
+    <PanelMessage
+      role="alert"
+      action={
+        <Button variant="secondary" onClick={onRetry}>
+          Try again
+        </Button>
+      }
+    >
+      {message}
+    </PanelMessage>
+  );
+}
+
+// A failure that stands on the page by itself, such as a detail page that could not load.
+export function PublicPageError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <Notice
+      role="alert"
+      action={
+        <Button variant="secondary" onClick={onRetry}>
+          Try again
+        </Button>
+      }
+    >
+      {message}
+    </Notice>
   );
 }

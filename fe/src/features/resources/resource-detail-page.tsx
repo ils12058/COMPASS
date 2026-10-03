@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
+import { Notice } from "@/components/ui/notice";
+import { Panel, PanelSection } from "@/components/ui/panel";
 import { displayTitle, publicationAudienceLabels } from "@/features/content/content-presentation";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -41,16 +43,16 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 export function ResourceUnavailable({ error, onRetry }: { error: unknown; onRetry: () => void }) {
   const notFound = resourceErrorCode(error) === "resource_not_found";
   return (
-    <section className="space-y-6">
+    <section className="space-y-5">
       <ContentPageHeading
         title={notFound ? "Resource not found" : "Resource unavailable"}
         backHref="/portal/resources"
         backLabel="Resources"
       />
       {notFound ? (
-        <p className="border-y border-border py-6 text-sm leading-6 text-muted">
+        <Notice>
           This Resource does not exist or is no longer available.
-        </p>
+        </Notice>
       ) : (
         <ContentQueryError
           message={resourceErrorMessage(error, "This Resource could not be loaded.")}
@@ -104,7 +106,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
         </div>
       </ContentPageHeading>
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-5 space-y-3 empty:hidden">
         {notice ? <ContentNotice tone="success">{notice}</ContentNotice> : null}
         {missing.length > 0 ? (
           <ContentNotice tone="warning">
@@ -118,7 +120,9 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
         ) : null}
       </div>
 
-      <dl className="mt-6 grid gap-x-8 gap-y-4 border-y border-border py-5 sm:grid-cols-2 lg:grid-cols-3">
+      {/* The record sheet: publication facts, then the file and body as readers get them. */}
+      <Panel as="div" className="mt-5">
+      <dl className="grid gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-3">
         <Detail label="Type">{resourceKindLabels[item.kind]}</Detail>
         <Detail label="Category">{resourceCategoryLabels[item.category]}</Detail>
         <Detail label="Audience">{publicationAudienceLabels[item.audience]}</Detail>
@@ -154,7 +158,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
       </dl>
 
       {item.status === ResourceStatusValue.PUBLISHED && item.audience === ResourceAudienceValue.PUBLIC ? (
-        <p className="mt-4 text-sm">
+        <p className="border-t border-brand-line px-4 py-3 text-sm sm:px-5">
           <Link
             href={`/resources/${item.id}`}
             className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
@@ -166,17 +170,17 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
 
       {item.kind === ResourceKindValue.FILE ? <ResourceFileSection key={item.status} resource={item} /> : null}
 
-      <section aria-labelledby="resource-body-heading" className="mt-8 border-t border-border pt-6">
-        <h2 id="resource-body-heading" className="font-heading text-xl font-semibold text-ink">Body</h2>
-        <p className="mt-1 text-sm text-muted">As readers see it.</p>
-        <div className="mt-4 max-w-3xl rounded-md border border-border bg-surface-raised px-5 py-5 sm:px-6">
+      <PanelSection title="Body" titleId="resource-body-heading">
+        <p className="text-sm text-muted">As readers see it.</p>
+        <div className="mt-4 max-w-3xl">
           {item.body_markdown.trim() ? (
             <PublicMarkdown>{item.body_markdown}</PublicMarkdown>
           ) : (
             <p className="text-sm text-muted">No body text yet.</p>
           )}
         </div>
-      </section>
+      </PanelSection>
+      </Panel>
     </article>
   );
 }

@@ -6,6 +6,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
+import { dataTable } from "@/components/ui/data-table";
+import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
+import { Panel, PanelBody, PanelFooter, PanelHeader } from "@/components/ui/panel";
 import {
   ManagedActionFeedback,
   useInvalidateManagedAccount,
@@ -154,24 +157,18 @@ export function ImportAccounts() {
 
   return (
     <section aria-labelledby="import-accounts-heading">
-      <Link
-        href="/portal/accounts"
-        className="text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        ← Accounts
-      </Link>
-      <h1
-        id="import-accounts-heading"
-        className="mt-5 font-heading text-3xl font-bold text-ink"
-      >
-        Import accounts
-      </h1>
-      <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-        CSV import provisions new accounts. It does not update existing account
-        identity, roles, or status. Exact matching active accounts are skipped;
-        conflicting records are reported.
-      </p>
-      <div className="mt-7 border-y border-border py-6">
+      <PageHeader
+        title="Import accounts"
+        headingId="import-accounts-heading"
+        back={
+          <Link href="/portal/accounts" className={pageBackLinkClass}>
+            ← Accounts
+          </Link>
+        }
+        description="CSV import provisions new accounts. It does not update existing account identity, roles, or status. Exact matching active accounts are skipped; conflicting records are reported."
+      />
+      <Panel as="div">
+        <PanelBody className="py-5">
         <p className="text-sm text-muted">
           Required columns: institutional_id, email, first_name, last_name,
           role. Optional: middle_name, suffix. Limit: about 1 MiB and 1,000
@@ -184,11 +181,11 @@ export function ImportAccounts() {
         >
           Download headers-only template
         </a>
-        <div className="mt-5 max-w-lg">
+        <div className="mt-5 grid max-w-lg gap-1.5">
           <Label htmlFor="account-csv-file">CSV file</Label>
           <input
             id="account-csv-file"
-            className="mt-2 block w-full text-sm text-ink file:mr-4 file:rounded-md file:border file:border-border file:bg-surface-raised file:px-3 file:py-2 file:text-sm file:font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="block w-full text-sm text-ink file:mr-4 file:rounded-md file:border file:border-border file:bg-surface-raised file:px-3 file:py-2 file:text-sm file:font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             type="file"
             accept=".csv,text/csv"
             onChange={(event) => {
@@ -203,78 +200,78 @@ export function ImportAccounts() {
             }}
           />
         </div>
-        <Button
-          className="mt-5"
-          disabled={!file || importCsv.isPending}
-          onClick={() => void validate()}
-        >
-          {importCsv.isPending && !report ? "Validating CSV…" : "Validate CSV"}
-        </Button>
         <ManagedActionFeedback action={action} showMessages={!commitReview} />
         {conflict ? (
           <p role="status" className="mt-3 text-sm text-muted">
             Review the current CSV again before attempting another import.
           </p>
         ) : null}
+        </PanelBody>
         {issues.length ? (
           <div
-            className="mt-5 overflow-x-auto border-y border-border"
+            className={`${dataTable.scroll} border-t border-brand-line`}
             role="region"
             aria-label="CSV row issues"
           >
-            <table className="w-full min-w-[36rem] text-left text-sm">
-              <thead className="bg-surface-subtle text-xs uppercase tracking-wide text-muted">
+            <table className={`${dataTable.table} min-w-[36rem]`}>
+              <thead className={dataTable.head}>
                 <tr>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Row
                   </th>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Institutional ID
                   </th>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Email
                   </th>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Issue
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className={dataTable.body}>
                 {issues.map((issue, index) => (
                   <tr
                     key={`${issue.row ?? index}-${index}`}
-                    className="border-t border-border"
+                    className={dataTable.row}
                   >
-                    <td className="px-3 py-3">{issue.row ?? "—"}</td>
-                    <td className="px-3 py-3">
+                    <td className={dataTable.cell}>{issue.row ?? "—"}</td>
+                    <td className={dataTable.cell}>
                       {issue.institutionalId || "—"}
                     </td>
-                    <td className="px-3 py-3">{issue.email || "—"}</td>
-                    <td className="px-3 py-3">{issue.message}</td>
+                    <td className={dataTable.cell}>{issue.email || "—"}</td>
+                    <td className={dataTable.cell}>{issue.message}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : null}
-      </div>
+        <PanelFooter>
+          <Button
+            disabled={!file || importCsv.isPending}
+            onClick={() => void validate()}
+          >
+            {importCsv.isPending && !report ? "Validating CSV…" : "Validate CSV"}
+          </Button>
+        </PanelFooter>
+      </Panel>
 
       {report ? (
-        <section aria-labelledby="csv-report-heading" className="mt-8">
-          <h2
-            id="csv-report-heading"
-            className="font-heading text-2xl font-semibold text-ink"
-          >
-            {report.committed ? "Import result" : "Validation report"}
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            {report.valid
-              ? report.committed
-                ? "The import was completed."
-                : "The CSV is valid for import. Records may change before commit."
-              : "Resolve the conflicts or invalid rows, then validate the CSV again."}
-          </p>
-          <dl className="mt-6 grid grid-cols-2 gap-4 border-y border-border py-5 text-sm sm:grid-cols-5">
+        <Panel className="mt-5 overflow-hidden" aria-labelledby="csv-report-heading">
+          <PanelHeader
+            title={report.committed ? "Import result" : "Validation report"}
+            titleId="csv-report-heading"
+            description={
+              report.valid
+                ? report.committed
+                  ? "The import was completed."
+                  : "The CSV is valid for import. Records may change before commit."
+                : "Resolve the conflicts or invalid rows, then validate the CSV again."
+            }
+          />
+          <dl className="grid grid-cols-2 gap-px border-b border-brand-line bg-border text-sm sm:grid-cols-5">
             {[
               ["Total rows", report.total_rows],
               ["Create", report.create_count],
@@ -282,64 +279,65 @@ export function ImportAccounts() {
               ["Conflict", report.conflict_count],
               ["Invalid", report.invalid_count],
             ].map(([label, value]) => (
-              <div key={label}>
+              <div key={label} className="bg-surface-raised px-4 py-3 last:odd:col-span-2 sm:px-5 sm:last:odd:col-span-1">
                 <dt className="text-muted">{label}</dt>
-                <dd className="mt-1 font-heading text-xl font-semibold text-ink">
+                <dd className="mt-1 font-heading text-xl font-semibold tabular-nums text-ink">
                   {value}
                 </dd>
               </div>
             ))}
           </dl>
-          <div className="mt-5 overflow-x-auto border-y border-border">
-            <table className="w-full min-w-[42rem] text-left text-sm">
-              <thead className="bg-surface-subtle text-xs uppercase tracking-wide text-muted">
+          <div className={dataTable.scroll}>
+            <table className={`${dataTable.table} min-w-[42rem]`}>
+              <caption className="sr-only">CSV rows</caption>
+              <thead className={dataTable.head}>
                 <tr>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Row
                   </th>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Institutional ID
                   </th>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Email
                   </th>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Action
                   </th>
-                  <th scope="col" className="px-3 py-3">
+                  <th scope="col" className={dataTable.headerCell}>
                     Message
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className={dataTable.body}>
                 {report.rows.map((row) => (
                   <tr
                     key={`${row.row_number}-${row.institutional_id}`}
-                    className="border-t border-border"
+                    className={dataTable.row}
                   >
-                    <td className="px-3 py-3">{row.row_number}</td>
-                    <td className="px-3 py-3">{row.institutional_id || "—"}</td>
-                    <td className="px-3 py-3">{row.email || "—"}</td>
-                    <td className="px-3 py-3 font-semibold">
+                    <td className={dataTable.cell}>{row.row_number}</td>
+                    <td className={dataTable.cell}>{row.institutional_id || "—"}</td>
+                    <td className={dataTable.cell}>{row.email || "—"}</td>
+                    <td className={`${dataTable.cell} font-semibold`}>
                       {rowActionLabel(row.action, report.committed)}
                     </td>
-                    <td className="px-3 py-3">{row.message || "—"}</td>
+                    <td className={dataTable.cell}>{row.message || "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           {readyToCommit ? (
-            <div className="mt-6">
+            <PanelFooter>
               <Button
                 disabled={importCsv.isPending}
                 onClick={openCommitReview}
               >
                 Import accounts
               </Button>
-            </div>
+            </PanelFooter>
           ) : null}
-        </section>
+        </Panel>
       ) : null}
       <ConsequentialActionDialog
         open={commitReview !== null}

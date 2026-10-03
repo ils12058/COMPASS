@@ -12,6 +12,7 @@ import { useUnsavedNavigation } from "@/features/form-safety/unsaved-changes-pro
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Panel, PanelBody, PanelFooter, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   emptyNoticeRevisionValues,
@@ -85,28 +86,29 @@ function RenameNoticeForm({
 
   return (
     <>
-      <form
-        className="mb-6 grid max-w-xl gap-3 border-y border-border py-5"
-        onSubmit={(event) => void submit(event)}
-      >
-        <Label htmlFor="notice-rename">Notice name</Label>
-        <Input
-          id="notice-rename"
-          required
-          maxLength={160}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-        <ActionMessages error={action.error} notice={action.notice} className="" />
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="secondary" disabled={update.isPending} onClick={() => onDone(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={update.isPending}>
-            {update.isPending ? "Saving…" : "Save name"}
-          </Button>
-        </div>
-      </form>
+      <Panel as="div" className="mb-5 max-w-xl">
+        <form onSubmit={(event) => void submit(event)}>
+          <PanelBody className="grid gap-2">
+            <Label htmlFor="notice-rename">Notice name</Label>
+            <Input
+              id="notice-rename"
+              required
+              maxLength={160}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+            <ActionMessages error={action.error} notice={action.notice} className="" />
+          </PanelBody>
+          <PanelFooter className="justify-end">
+            <Button variant="secondary" disabled={update.isPending} onClick={() => onDone(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={update.isPending}>
+              {update.isPending ? "Saving…" : "Save name"}
+            </Button>
+          </PanelFooter>
+        </form>
+      </Panel>
       {action.stepUpDialog}
     </>
   );
@@ -173,21 +175,21 @@ function CreateRevisionForm({
 
   return (
     <>
+      <Panel as="div" className="mb-5 max-w-4xl">
       <form
         aria-labelledby="new-revision-heading"
-        className="mt-4 grid max-w-3xl gap-5 border-y border-border py-6"
         onSubmit={(event) => void submit(event)}
       >
-        <div>
-          <h3 id="new-revision-heading" className="font-heading text-lg font-semibold text-ink">
-            New draft revision
-          </h3>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            {source
+        <PanelHeader
+          title="New draft revision"
+          titleId="new-revision-heading"
+          description={
+            source
               ? `Starts from revision ${source.revision_number}. The draft is not shown to anyone until it is published.`
-              : "The draft is not shown to anyone until it is published."}
-          </p>
-        </div>
+              : "The draft is not shown to anyone until it is published."
+          }
+        />
+        <PanelBody className="grid gap-5">
         <NoticeRevisionFields
           idPrefix="new-revision"
           values={values}
@@ -198,15 +200,17 @@ function CreateRevisionForm({
           }}
         />
         <ActionMessages error={action.error} notice={action.notice} className="" />
-        <div className="flex flex-wrap justify-end gap-2">
+        </PanelBody>
+        <PanelFooter className="justify-end">
           <Button variant="secondary" disabled={create.isPending} onClick={cancel}>
             Cancel
           </Button>
           <Button type="submit" disabled={create.isPending}>
             {create.isPending ? "Creating…" : "Create draft revision"}
           </Button>
-        </div>
+        </PanelFooter>
       </form>
+      </Panel>
       {action.stepUpDialog}
     </>
   );
@@ -221,7 +225,7 @@ function RevisionRow({ revision }: { revision: RevisionResponse }) {
   ].filter((value): value is string => Boolean(value));
 
   return (
-    <li className="py-4">
+    <li className="px-4 py-4 sm:px-5">
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href={`/portal/privacy/notice-revisions/${revision.id}`}
@@ -361,97 +365,95 @@ export function NoticeDetailPage() {
         />
       ) : null}
 
-      <section aria-labelledby="notice-revisions-heading" className="max-w-4xl">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2
-            id="notice-revisions-heading"
-            className="font-heading text-xl font-semibold text-ink"
-          >
-            Revisions
-          </h2>
-          {manageable && !creatingRevision ? (
-            draft ? (
-              <Link
-                href={`/portal/privacy/notice-revisions/${draft.id}`}
-                className={secondaryLinkClass}
-              >
-                Open draft revision {draft.revision_number}
-              </Link>
-            ) : (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  action.reset();
-                  setCreatingRevision(true);
-                }}
-              >
-                Create new revision
-              </Button>
-            )
-          ) : null}
-        </div>
-
-        {creatingRevision && sourcePending ? (
+      {creatingRevision && sourcePending ? (
+        <div className="mb-5 max-w-4xl">
           <PrivacyListSkeleton rows={2} label="Loading the current revision…" />
-        ) : creatingRevision && currentRevisionId && source.isError ? (
+        </div>
+      ) : creatingRevision && currentRevisionId && source.isError ? (
+        <div className="mb-5 max-w-4xl">
           <PrivacyQueryError
             error={source.error}
             fallback="The current revision could not be loaded to start a new draft."
             onRetry={() => void source.refetch()}
           />
-        ) : creatingRevision ? (
-          <CreateRevisionForm
-            notice={family}
-            source={sourceRevision}
-            onCancel={() => setCreatingRevision(false)}
-            onDraftExists={(caught) => {
-              // Another draft exists: close the form and point to that draft.
-              setCreatingRevision(false);
-              action.setError(
-                privacyErrorMessage(caught, "The new revision could not be created."),
-              );
-              void invalidatePrivacyRecords(
-                queryClient,
-                privacyPaths.notices,
-                privacyPaths.noticeRevisions,
-              );
-            }}
+        </div>
+      ) : creatingRevision ? (
+        <CreateRevisionForm
+          notice={family}
+          source={sourceRevision}
+          onCancel={() => setCreatingRevision(false)}
+          onDraftExists={(caught) => {
+            // Another draft exists: close the form and point to that draft.
+            setCreatingRevision(false);
+            action.setError(
+              privacyErrorMessage(caught, "The new revision could not be created."),
+            );
+            void invalidatePrivacyRecords(
+              queryClient,
+              privacyPaths.notices,
+              privacyPaths.noticeRevisions,
+            );
+          }}
+        />
+      ) : null}
+
+      {revisions.isError && result ? <RefreshFailureNotice onRetry={() => void revisions.refetch()} retrying={revisions.isFetching} /> : null}
+      <Panel aria-labelledby="notice-revisions-heading" className="max-w-4xl">
+        <PanelHeader
+          title="Revisions"
+          titleId="notice-revisions-heading"
+          actions={
+            manageable && !creatingRevision ? (
+              draft ? (
+                <Link
+                  href={`/portal/privacy/notice-revisions/${draft.id}`}
+                  className={secondaryLinkClass}
+                >
+                  Open draft revision {draft.revision_number}
+                </Link>
+              ) : (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    action.reset();
+                    setCreatingRevision(true);
+                  }}
+                >
+                  Create new revision
+                </Button>
+              )
+            ) : null
+          }
+        />
+        {revisions.isPending ? (
+          <PrivacyListSkeleton rows={3} label="Loading revisions…" framed={false} />
+        ) : revisions.isError && !result ? (
+          <PanelMessage
+            role="alert"
+            tone="danger"
+            action={<Button variant="secondary" onClick={() => void revisions.refetch()}>Retry</Button>}
+          >
+            {privacyErrorMessage(revisions.error, "Revisions could not be loaded.")}
+          </PanelMessage>
+        ) : result && result.items.length === 0 ? (
+          <PanelMessage>No revisions on this page.</PanelMessage>
+        ) : result ? (
+          <ol className="divide-y divide-border">
+            {result.items.map((revision) => (
+              <RevisionRow key={revision.id} revision={revision} />
+            ))}
+          </ol>
+        ) : null}
+        {result ? (
+          <CanonicalPagination
+            className="border-brand-line px-4 py-3 sm:px-5"
+            page={result.page}
+            hasNext={result.has_next}
+            onPageChange={setPage}
+            label="Revision pages"
           />
         ) : null}
-
-        <div className="mt-4">
-          {revisions.isError && result ? <RefreshFailureNotice onRetry={() => void revisions.refetch()} retrying={revisions.isFetching} /> : null}
-          {revisions.isPending ? (
-            <PrivacyListSkeleton rows={3} label="Loading revisions…" />
-          ) : revisions.isError && !result ? (
-            <PrivacyQueryError
-              error={revisions.error}
-              fallback="Revisions could not be loaded."
-              onRetry={() => void revisions.refetch()}
-            />
-          ) : result && result.items.length === 0 ? (
-            <p className="border-y border-border py-6 text-sm text-muted">
-              No revisions on this page.
-            </p>
-          ) : result ? (
-            <>
-              <ol className="divide-y divide-border border-y border-border">
-                {result.items.map((revision) => (
-                  <RevisionRow key={revision.id} revision={revision} />
-                ))}
-              </ol>
-            </>
-          ) : null}
-          {result ? (
-            <CanonicalPagination
-              page={result.page}
-              hasNext={result.has_next}
-              onPageChange={setPage}
-              label="Revision pages"
-            />
-          ) : null}
-        </div>
-      </section>
+      </Panel>
 
       <PrivacyConfirmDialog
         open={retireOpen}

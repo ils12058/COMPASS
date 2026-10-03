@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
-import { GoodMoralListSkeleton, GoodMoralError, GoodMoralHeading, GoodMoralStatus, formatGoodMoralDateTime, goodMoralVariantLabel } from "@/features/good-moral/good-moral-shared";
+import { describeResultPage } from "@/features/portal/components/result-context";
+import { GoodMoralListSkeleton, GoodMoralHeading, GoodMoralStatus, formatGoodMoralDateTime, goodMoralErrorMessage, goodMoralVariantLabel } from "@/features/good-moral/good-moral-shared";
 import { useGoodMoralListRequests } from "@/lib/api/generated/good-moral/good-moral";
 import { GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
 
@@ -46,91 +49,114 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
   const page = safeQueryData(queue)?.data;
   const hasFilters = Boolean(filters.search || filters.variant || filters.status);
 
+  const resultContext = page
+    ? describeResultPage({
+        count: page.items.length,
+        page: page.page,
+        hasNext: page.has_next,
+        noun: { one: "request", other: "requests" },
+        filtered: hasFilters,
+      })
+    : null;
+  const clearHref = pageHref({ ...filters, search: "", variant: "", status: "" }, 1);
+
   return (
-    <section className="space-y-6" aria-labelledby="good-moral-operational-heading">
+    <section className="space-y-5" aria-labelledby="good-moral-operational-heading">
       <GoodMoralHeading headingId="good-moral-operational-heading" title="Good Moral" description="Review and issue Good Moral Character certificate requests." />
 
-      <form action="/portal/good-moral" method="get" className="grid gap-4 border-b border-border pb-6 sm:grid-cols-2 xl:grid-cols-[minmax(16rem,2fr)_minmax(10rem,1fr)_minmax(10rem,1fr)_auto]" key={JSON.stringify(filters)}>
-        <div className="min-w-0">
-          <Label htmlFor="good-moral-search">Search Student name or Institutional ID</Label>
-          <Input id="good-moral-search" className="mt-2" name="search" type="search" placeholder="Search Student name or Institutional ID" defaultValue={filters.search} />
-        </div>
-        <div>
-          <Label htmlFor="good-moral-variant">Variant</Label>
-          <Select id="good-moral-variant" name="variant" defaultValue={filters.variant} className="mt-2">
-            <option value="">All variants</option>
-            <option value={GoodMoralVariantValue.CURRENT_STUDENT}>Current Student</option>
-            <option value={GoodMoralVariantValue.GRADUATE}>Graduate</option>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="good-moral-status">Status</Label>
-          <Select id="good-moral-status" name="status" defaultValue={filters.status} className="mt-2">
-            <option value="">All statuses</option>
-            <option value={GoodMoralStatusValue.REQUESTED}>Requested</option>
-            <option value={GoodMoralStatusValue.ISSUED}>Issued</option>
-            <option value={GoodMoralStatusValue.CANCELLED}>Cancelled</option>
-          </Select>
-        </div>
-        {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
-        <div className="flex flex-wrap items-end gap-3">
-          <Button type="submit">Apply filters</Button>
-          {hasFilters ? <Link href={pageHref({ ...filters, search: "", variant: "", status: "" }, 1)} className="inline-flex min-h-10 items-center px-2 text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</Link> : null}
-        </div>
+      <form action="/portal/good-moral" method="get" role="search" aria-label="Good Moral requests" key={JSON.stringify(filters)}>
+        <FilterToolbar
+          fieldsClassName="lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]"
+          actions={
+            <>
+              {hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
+              <Button type="submit">Apply filters</Button>
+            </>
+          }
+        >
+          <FilterField label="Search Student name or Institutional ID" htmlFor="good-moral-search">
+            <Input id="good-moral-search" name="search" type="search" placeholder="Search Student name or Institutional ID" defaultValue={filters.search} />
+          </FilterField>
+          <FilterField label="Variant" htmlFor="good-moral-variant">
+            <Select id="good-moral-variant" name="variant" defaultValue={filters.variant}>
+              <option value="">All variants</option>
+              <option value={GoodMoralVariantValue.CURRENT_STUDENT}>Current Student</option>
+              <option value={GoodMoralVariantValue.GRADUATE}>Graduate</option>
+            </Select>
+          </FilterField>
+          <FilterField label="Status" htmlFor="good-moral-status">
+            <Select id="good-moral-status" name="status" defaultValue={filters.status}>
+              <option value="">All statuses</option>
+              <option value={GoodMoralStatusValue.REQUESTED}>Requested</option>
+              <option value={GoodMoralStatusValue.ISSUED}>Issued</option>
+              <option value={GoodMoralStatusValue.CANCELLED}>Cancelled</option>
+            </Select>
+          </FilterField>
+          {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
+        </FilterToolbar>
       </form>
       {queue.isError && page ? <RefreshFailureNotice onRetry={() => void queue.refetch()} retrying={queue.isFetching} /> : null}
 
-      {queue.isPending ? (
-        <GoodMoralListSkeleton />
-      ) : !page ? (
-        <GoodMoralError error={queue.error} fallback="Good Moral requests could not be loaded." onRetry={() => void queue.refetch()} />
-      ) : !page ? null : page.items.length === 0 ? (
-        <p className="border-y border-border py-6 text-sm text-muted">
-          {hasFilters ? "No Good Moral requests match these filters." : "No Good Moral requests have been recorded."}
-        </p>
-      ) : (
-        <>
-          <div className="overflow-x-auto rounded-md border border-border">
-            <table className="min-w-[680px] w-full border-collapse text-left text-sm">
+      <Panel aria-labelledby="good-moral-queue-heading">
+        <PanelHeader title="Good Moral requests" titleId="good-moral-queue-heading" context={resultContext} />
+        {queue.isPending ? (
+          <GoodMoralListSkeleton framed={false} />
+        ) : !page ? (
+          <PanelMessage
+            role="alert"
+            tone="danger"
+            action={<Button variant="secondary" onClick={() => void queue.refetch()}>Retry</Button>}
+          >
+            {goodMoralErrorMessage(queue.error, "Good Moral requests could not be loaded.")}
+          </PanelMessage>
+        ) : page.items.length === 0 ? (
+          <PanelMessage
+            action={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}
+          >
+            {hasFilters ? "No Good Moral requests match these filters." : "No Good Moral requests have been recorded."}
+          </PanelMessage>
+        ) : (
+          <div className={dataTable.scroll}>
+            <table className={`${dataTable.table} min-w-[680px]`}>
               <caption className="sr-only">Good Moral certificate request queue</caption>
-              <thead className="bg-surface-muted text-xs uppercase tracking-wide text-muted">
+              <thead className={dataTable.head}>
                 <tr>
-                  <th scope="col" className="sticky left-0 z-10 bg-surface-muted px-4 py-3 font-semibold">Applicant</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Variant</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Status</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Requested</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Issued</th>
+                  <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Applicant</th>
+                  <th scope="col" className={dataTable.headerCell}>Variant</th>
+                  <th scope="col" className={dataTable.headerCell}>Status</th>
+                  <th scope="col" className={dataTable.headerCell}>Requested</th>
+                  <th scope="col" className={dataTable.headerCell}>Issued</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className={dataTable.body}>
                 {page.items.map((item) => (
-                  <tr key={item.id} className="align-top">
-                    <th scope="row" className="sticky left-0 bg-surface-raised px-4 py-4 font-semibold text-ink">
+                  <tr key={item.id} className={dataTable.row}>
+                    <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-semibold text-ink`}>
                       <Link href={`/portal/good-moral/${item.id}`} className="text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
                         {item.applicant_name || "Applicant name not provided"}
                       </Link>
                       {item.student_institutional_id ? <span className="mt-1 block text-xs font-normal text-muted">{item.student_institutional_id}</span> : null}
                     </th>
-                    <td className="px-4 py-4 text-muted">{goodMoralVariantLabel(item.variant)}</td>
-                    <td className="px-4 py-4"><GoodMoralStatus status={item.status} /></td>
-                    <td className="whitespace-nowrap px-4 py-4 text-muted">{formatGoodMoralDateTime(item.created_at)}</td>
-                    <td className="whitespace-nowrap px-4 py-4 text-muted">{formatGoodMoralDateTime(item.issued_at)}</td>
+                    <td className={`${dataTable.cell} text-muted`}>{goodMoralVariantLabel(item.variant)}</td>
+                    <td className={dataTable.cell}><GoodMoralStatus status={item.status} /></td>
+                    <td className={`${dataTable.cell} whitespace-nowrap text-muted`}>{formatGoodMoralDateTime(item.created_at)}</td>
+                    <td className={`${dataTable.cell} whitespace-nowrap text-muted`}>{formatGoodMoralDateTime(item.issued_at)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </>
-      )}
-
-      {page ? (
-        <CanonicalPagination
-          page={page.page}
-          hasNext={page.has_next}
-          label="Good Moral request pages"
-          onPageChange={(nextPage) => router.push(pageHref({ ...filters, pageSize: page.page_size }, nextPage))}
-        />
-      ) : null}
+        )}
+        {page ? (
+          <CanonicalPagination
+            className="border-brand-line px-4 py-3 sm:px-5"
+            page={page.page}
+            hasNext={page.has_next}
+            label="Good Moral request pages"
+            onPageChange={(nextPage) => router.push(pageHref({ ...filters, pageSize: page.page_size }, nextPage))}
+          />
+        ) : null}
+      </Panel>
     </section>
   );
 }

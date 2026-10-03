@@ -8,6 +8,7 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import {
   RoutineConcernValue,
@@ -416,33 +417,25 @@ export function RoutineStudentIntakeEditor({
   }
 
   return (
-    <section aria-labelledby="routine-student-intake-heading">
-      <header className="border-b border-border pb-4">
-        <h2
-          id="routine-student-intake-heading"
-          className="font-heading text-2xl font-semibold text-ink"
-        >
-          Student Intake
-        </h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-          Answer what you would like to share. To submit, add at least one
-          written response or select a concern. You may save a draft and return
-          later.
-        </p>
-      </header>
+    <Panel aria-labelledby="routine-student-intake-heading">
+      <PanelHeader
+        title="Student Intake"
+        titleId="routine-student-intake-heading"
+        description="Answer what you would like to share. To submit, add at least one written response or select a concern. You may save a draft and return later."
+      />
 
       {saveError ? (
-        <p role="alert" className="mt-4 border-l-4 border-danger px-3 py-2 text-sm text-danger">
+        <p role="alert" className="border-b border-border px-4 py-3 text-sm text-danger sm:px-5">
           {saveError}
         </p>
       ) : null}
       {submitError && !confirmSubmit ? (
-        <p role="alert" className="mt-4 border-l-4 border-danger px-3 py-2 text-sm text-danger">
+        <p role="alert" className="border-b border-border px-4 py-3 text-sm text-danger sm:px-5">
           {submitError}
         </p>
       ) : null}
       {notice ? (
-        <p role="status" className="mt-4 text-sm text-success">
+        <p role="status" className="border-b border-border px-4 py-3 text-sm text-success sm:px-5">
           {notice}
         </p>
       ) : null}
@@ -454,7 +447,7 @@ export function RoutineStudentIntakeEditor({
         }}
       >
         <div className="divide-y divide-border">
-          <fieldset disabled={pending} className="min-w-0 py-5">
+          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
             <legend className="font-heading text-lg font-semibold text-ink">
               1. Coping with college
             </legend>
@@ -474,7 +467,7 @@ export function RoutineStudentIntakeEditor({
             />
           </fieldset>
 
-          <fieldset disabled={pending} className="min-w-0 py-5">
+          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
             <legend className="font-heading text-lg font-semibold text-ink">
               2. College experience
             </legend>
@@ -514,7 +507,7 @@ export function RoutineStudentIntakeEditor({
             />
           </fieldset>
 
-          <fieldset disabled={pending} className="min-w-0 py-5">
+          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
             <legend className="font-heading text-lg font-semibold text-ink">
               3. Family
             </legend>
@@ -526,7 +519,7 @@ export function RoutineStudentIntakeEditor({
             />
           </fieldset>
 
-          <fieldset disabled={pending} className="min-w-0 py-5">
+          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
             <legend className="font-heading text-lg font-semibold text-ink">
               4. Current concerns
             </legend>
@@ -589,7 +582,7 @@ export function RoutineStudentIntakeEditor({
             />
           </fieldset>
 
-          <fieldset disabled={pending} className="min-w-0 py-5">
+          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
             <legend className="font-heading text-lg font-semibold text-ink">
               5. College adjustment
             </legend>
@@ -603,7 +596,7 @@ export function RoutineStudentIntakeEditor({
             />
           </fieldset>
 
-          <fieldset disabled={pending} className="min-w-0 py-5">
+          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
             <legend className="font-heading text-lg font-semibold text-ink">
               6. Academic goals
             </legend>
@@ -615,7 +608,7 @@ export function RoutineStudentIntakeEditor({
             />
           </fieldset>
 
-          <fieldset disabled={pending} className="min-w-0 py-5">
+          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
             <legend className="font-heading text-lg font-semibold text-ink">
               7. Career goals
             </legend>
@@ -628,7 +621,7 @@ export function RoutineStudentIntakeEditor({
           </fieldset>
         </div>
 
-        <div className="border-t border-border py-5">
+        <div className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-5 sm:px-5">
           <h3 className="font-semibold text-ink">Review before submitting</h3>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
             Your answers will become read-only after submission and will be
@@ -682,7 +675,7 @@ export function RoutineStudentIntakeEditor({
           to your assigned Counselor.
         </p>
       </ConsequentialActionDialog>
-    </section>
+    </Panel>
   );
 }
 

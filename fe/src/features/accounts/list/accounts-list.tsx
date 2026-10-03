@@ -8,9 +8,12 @@ import { useEffect, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LoadingRegion } from "@/components/ui/loading-region";
 import { Select } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { dataTable } from "@/components/ui/data-table";
+import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
@@ -24,6 +27,7 @@ import {
 } from "@/features/accounts/presentation";
 import { managedAccountError } from "@/features/accounts/components/account-action";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { describeResultPage } from "@/features/portal/components/result-context";
 import { useAccountsList } from "@/lib/api/generated/accounts/accounts";
 import type { AccountsListParams } from "@/lib/api/generated/model";
 
@@ -49,9 +53,9 @@ function SearchField({
   }, [initial, onSearch, value]);
 
   return (
-    <div className="min-w-0 flex-1">
+    <div className="grid min-w-0 content-start gap-1.5">
       <Label htmlFor="accounts-search">Search accounts</Label>
-      <div className="relative mt-2">
+      <div className="relative">
         <Search
           className="pointer-events-none absolute left-3 top-3 text-muted"
           size={18}
@@ -72,11 +76,7 @@ function SearchField({
 
 export function AccountsListSkeleton() {
   return (
-    <LoadingRegion label="Loading accounts…" className="mt-6 space-y-3">
-      {Array.from({ length: 6 }, (_, index) => (
-        <Skeleton key={index} className="h-14 w-full" />
-      ))}
-    </LoadingRegion>
+    <RowsSkeleton label="Loading accounts…" rows={6} framed />
   );
 }
 
@@ -133,239 +133,232 @@ export function AccountsList() {
 
   return (
     <section aria-labelledby="accounts-heading">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1
-            id="accounts-heading"
-            className="font-heading text-3xl font-bold text-ink sm:text-4xl"
-          >
-            Accounts
-          </h1>
-          <p className="mt-2 text-sm text-muted">
-            Manage COMPASS accounts and access.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/portal/accounts/import"
-            className={buttonVariants({ variant: "secondary" })}
-          >
-            Import CSV
-          </Link>
-          <Link
-            href="/portal/accounts/new"
-            className={buttonVariants({ variant: "primary" })}
-          >
-            Create account
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Accounts"
+        headingId="accounts-heading"
+        description="Manage COMPASS accounts and access."
+        actions={
+          <>
+            <Link
+              href="/portal/accounts/import"
+              className={buttonVariants({ variant: "secondary" })}
+            >
+              Import CSV
+            </Link>
+            <Link
+              href="/portal/accounts/new"
+              className={buttonVariants({ variant: "primary" })}
+            >
+              Create account
+            </Link>
+          </>
+        }
+      />
 
-      <div className="mt-8 border-y border-border py-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+      {/* A directory search: the text search applies as you type and each choice on change. */}
+      <FilterToolbar
+        fieldsClassName="sm:grid-cols-2 lg:grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))]"
+        actions={
+          filtered ? (
+            <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>
+              Clear filters
+            </Button>
+          ) : undefined
+        }
+      >
+        <div className="sm:col-span-2 lg:col-span-1">
           <SearchField
             key={search}
             initial={search}
             onSearch={(value) => update("search", value)}
           />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-[35rem]">
-            <div>
-              <Label htmlFor="accounts-role">Role</Label>
-              <Select
-                id="accounts-role"
-                className="mt-2"
-                value={filters.role ?? ""}
-                onChange={(event) => update("role", event.target.value)}
-              >
-                <option value="">All</option>
-                {roles.map((value) => (
-                  <option key={value} value={value}>
-                    {roleLabels[value]}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="accounts-status">Status</Label>
-              <Select
-                id="accounts-status"
-                className="mt-2"
-                value={
-                  filters.is_active === undefined
-                    ? ""
-                    : String(filters.is_active)
-                }
-                onChange={(event) => update("is_active", event.target.value)}
-              >
-                <option value="">All</option>
-                <option value="true">Active</option>
-                <option value="false">Disabled</option>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="accounts-designation">Designation</Label>
-              <Select
-                id="accounts-designation"
-                className="mt-2"
-                value={filters.designation ?? ""}
-                onChange={(event) => update("designation", event.target.value)}
-              >
-                <option value="">All</option>
-                {designations.map((value) => (
-                  <option key={value} value={value}>
-                    {designationLabels[value]}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="accounts-email">Email</Label>
-              <Select
-                id="accounts-email"
-                className="mt-2"
-                value={
-                  filters.email_verified === undefined
-                    ? ""
-                    : String(filters.email_verified)
-                }
-                onChange={(event) =>
-                  update("email_verified", event.target.value)
-                }
-              >
-                <option value="">All</option>
-                <option value="true">Verified</option>
-                <option value="false">Not verified</option>
-              </Select>
-            </div>
-          </div>
         </div>
-        {filtered ? (
-          <button
-            type="button"
-            className="mt-4 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            onClick={() => router.replace(pathname, { scroll: false })}
+        <FilterField label="Role" htmlFor="accounts-role">
+          <Select
+            id="accounts-role"
+            value={filters.role ?? ""}
+            onChange={(event) => update("role", event.target.value)}
           >
-            Clear filters
-          </button>
-        ) : null}
-      </div>
+            <option value="">All</option>
+            {roles.map((value) => (
+              <option key={value} value={value}>
+                {roleLabels[value]}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="Status" htmlFor="accounts-status">
+          <Select
+            id="accounts-status"
+            value={
+              filters.is_active === undefined
+                ? ""
+                : String(filters.is_active)
+            }
+            onChange={(event) => update("is_active", event.target.value)}
+          >
+            <option value="">All</option>
+            <option value="true">Active</option>
+            <option value="false">Disabled</option>
+          </Select>
+        </FilterField>
+        <FilterField label="Designation" htmlFor="accounts-designation">
+          <Select
+            id="accounts-designation"
+            value={filters.designation ?? ""}
+            onChange={(event) => update("designation", event.target.value)}
+          >
+            <option value="">All</option>
+            {designations.map((value) => (
+              <option key={value} value={value}>
+                {designationLabels[value]}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="Email" htmlFor="accounts-email">
+          <Select
+            id="accounts-email"
+            value={
+              filters.email_verified === undefined
+                ? ""
+                : String(filters.email_verified)
+            }
+            onChange={(event) =>
+              update("email_verified", event.target.value)
+            }
+          >
+            <option value="">All</option>
+            <option value="true">Verified</option>
+            <option value="false">Not verified</option>
+          </Select>
+        </FilterField>
+      </FilterToolbar>
 
       {list.isError && confirmed ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
-      {list.isPending ? (
-        <AccountsListSkeleton />
-      ) : !confirmed ? (
-        <div role="alert" className="mt-6 border-y border-border py-6">
-          <p className="text-sm text-danger">
-            {managedAccountError(list.error, "Accounts could not be loaded.")}
-          </p>
-          <Button
-            variant="secondary"
-            className="mt-4"
-            onClick={() => void list.refetch()}
+      <Panel className={list.isError && confirmed ? undefined : "mt-5"} aria-labelledby="accounts-results-heading">
+        <PanelHeader
+          title="Managed accounts"
+          titleId="accounts-results-heading"
+          context={
+            list.isFetching && !list.isPending
+              ? "Refreshing accounts…"
+              : confirmed && !list.isError
+                ? describeResultPage({
+                    count: confirmed.data.items.length,
+                    page: confirmed.data.page,
+                    hasNext: confirmed.data.has_next,
+                    noun: { one: "account", other: "accounts" },
+                    filtered,
+                  })
+                : null
+          }
+        />
+        {list.isPending ? (
+          <RowsSkeleton label="Loading accounts…" rows={6} />
+        ) : !confirmed ? (
+          <PanelMessage
+            role="alert"
+            tone="danger"
+            action={
+              <Button variant="secondary" onClick={() => void list.refetch()}>
+                Retry
+              </Button>
+            }
           >
-            Retry
-          </Button>
-        </div>
-      ) : (
-        <>
-          {list.isFetching ? (
-            <p role="status" className="mt-4 text-xs text-muted">
-              Refreshing accounts…
-            </p>
-          ) : null}
-          {confirmed.data.items.length === 0 ? (
-            <div className="border-b border-border py-10 text-sm text-muted">
-              <p>
+            {managedAccountError(list.error, "Accounts could not be loaded.")}
+          </PanelMessage>
+        ) : (
+          <>
+            {confirmed.data.items.length === 0 ? (
+              <PanelMessage
+                action={
+                  filtered ? (
+                    <Button variant="secondary" onClick={() => router.replace(pathname, { scroll: false })}>
+                      Clear filters
+                    </Button>
+                  ) : undefined
+                }
+              >
                 {page > 1
                   ? "No accounts are available on this page."
                   : filtered
                     ? "No accounts match the current search or filters."
                     : "No managed accounts are available."}
-              </p>
-              {filtered ? (
-                <button
-                  type="button"
-                  className="mt-3 inline-flex min-h-10 items-center font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                  onClick={() => router.replace(pathname, { scroll: false })}
-                >
-                  Clear filters
-                </button>
-              ) : null}
-            </div>
-          ) : (
-            <div className="mt-5 overflow-x-auto border-y border-border">
-              <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
-                <thead className="bg-surface-subtle text-xs font-semibold uppercase tracking-wide text-muted">
-                  <tr>
-                    <th scope="col" className="px-4 py-3">
-                      Account
-                    </th>
-                    <th scope="col" className="px-4 py-3">
-                      Role
-                    </th>
-                    <th scope="col" className="px-4 py-3">
-                      Designation
-                    </th>
-                    <th scope="col" className="px-4 py-3">
-                      Status
-                    </th>
-                    <th scope="col" className="px-4 py-3">
-                      Email
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {confirmed.data.items.map((account) => (
-                    <tr
-                      key={account.id}
-                      className="border-t border-border align-top"
-                    >
-                      <th
-                        scope="row"
-                        className="px-4 py-4 text-left font-normal"
-                      >
-                        <Link
-                          href={`/portal/accounts/${encodeURIComponent(account.id)}${detailSuffix}`}
-                          className="font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                        >
-                          {accountName(account)}
-                        </Link>
-                        <span className="mt-1 block text-xs text-muted">
-                          {account.institutional_id || "No Institutional ID"} ·{" "}
-                          {account.email}
-                        </span>
+              </PanelMessage>
+            ) : (
+              <div className={dataTable.scroll}>
+                <table className={`${dataTable.table} min-w-[44rem]`}>
+                  <caption className="sr-only">Managed accounts</caption>
+                  <thead className={dataTable.head}>
+                    <tr>
+                      <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>
+                        Account
                       </th>
-                      <td className="px-4 py-4">{roleLabels[account.role]}</td>
-                      <td className="px-4 py-4">
-                        {account.designations.length
-                          ? account.designations
-                              .map((code) => designationLabels[code])
-                              .join(", ")
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-4">
-                        {account.is_active ? "Active" : "Disabled"}
-                      </td>
-                      <td className="px-4 py-4">
-                        {account.email_verified ? "Verified" : "Not verified"}
-                      </td>
+                      <th scope="col" className={dataTable.headerCell}>
+                        Role
+                      </th>
+                      <th scope="col" className={dataTable.headerCell}>
+                        Designation
+                      </th>
+                      <th scope="col" className={dataTable.headerCell}>
+                        Status
+                      </th>
+                      <th scope="col" className={dataTable.headerCell}>
+                        Email
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <CanonicalPagination
-            className="mt-5"
-            page={confirmed.data.page}
-            hasNext={confirmed.data.has_next}
-            label="Accounts pagination"
-            onPageChange={(nextPage) =>
-              router.push(hrefWith("page", String(nextPage), false))
-            }
-          />
-        </>
-      )}
+                  </thead>
+                  <tbody className={dataTable.body}>
+                {confirmed.data.items.map((account) => (
+                  <tr key={account.id} className={dataTable.row}>
+                    <th
+                      scope="row"
+                      className={`${dataTable.cell} ${dataTable.stickyCell} text-left font-normal`}
+                    >
+                      <Link
+                        href={`/portal/accounts/${encodeURIComponent(account.id)}${detailSuffix}`}
+                        className="font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                      >
+                        {accountName(account)}
+                      </Link>
+                      <span className="mt-1 block text-xs text-muted">
+                        {account.institutional_id || "No Institutional ID"} ·{" "}
+                        {account.email}
+                      </span>
+                    </th>
+                    <td className={dataTable.cell}>{roleLabels[account.role]}</td>
+                    <td className={dataTable.cell}>
+                      {account.designations.length
+                        ? account.designations
+                            .map((code) => designationLabels[code])
+                            .join(", ")
+                        : "—"}
+                    </td>
+                    <td className={dataTable.cell}>
+                      {account.is_active ? "Active" : "Disabled"}
+                    </td>
+                    <td className={dataTable.cell}>
+                      {account.email_verified ? "Verified" : "Not verified"}
+                    </td>
+                  </tr>
+                ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <CanonicalPagination
+              className="border-brand-line px-4 py-3 sm:px-5"
+              page={confirmed.data.page}
+              hasNext={confirmed.data.has_next}
+              label="Accounts pagination"
+              onPageChange={(nextPage) =>
+                router.push(hrefWith("page", String(nextPage), false))
+              }
+            />
+          </>
+        )}
+      </Panel>
     </section>
   );
 }

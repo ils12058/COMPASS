@@ -8,6 +8,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
+import { pageBackLinkClass } from "@/components/ui/page-header";
+import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import {
   GoodMoralHeading,
@@ -62,8 +65,9 @@ export function GoodMoralRequestPage() {
   return (
     <section className="max-w-2xl space-y-5">
       <GoodMoralHeading title="Good Moral request unavailable" description="A new request is available only to current students and graduates." />
-      <p className="text-sm leading-6 text-muted">You can still review your existing Good Moral requests.</p>
-      <Link href="/portal/good-moral" className={buttonVariants({ variant: "secondary" })}>Back to Good Moral</Link>
+      <Notice action={<Link href="/portal/good-moral" className={buttonVariants({ variant: "secondary" })}>Back to Good Moral</Link>}>
+        You can still review your existing Good Moral requests.
+      </Notice>
     </section>
   );
 }
@@ -170,11 +174,12 @@ function RequestFormFrame({
   children: ReactNode;
 }) {
   return (
-    <section className="max-w-3xl space-y-6">
-      <div className="flex flex-col gap-3">
-        <Link href="/portal/good-moral" className="inline-flex min-h-9 w-fit items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Back to Good Moral</Link>
-        <GoodMoralHeading title={title} description={description} />
-      </div>
+    <section className="max-w-3xl space-y-5">
+      <GoodMoralHeading
+        title={title}
+        description={description}
+        back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>}
+      />
       {children}
     </section>
   );
@@ -190,12 +195,15 @@ function CreateFeedback({
   return (
     <div className="space-y-3">
       {state.error ? (
-        <div role="alert" className="border-y border-danger/30 py-4 text-sm leading-6 text-danger">
-          <p>{state.error}</p>
-          {state.errorCode === "good_moral_inventory_required" ? (
-            <Link href="/portal/inventory/current" className="mt-2 inline-block font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open Individual Inventory</Link>
-          ) : null}
-        </div>
+        <Notice
+          role="alert"
+          tone="danger"
+          action={state.errorCode === "good_moral_inventory_required" ? (
+            <Link href="/portal/inventory/current" className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open Individual Inventory</Link>
+          ) : undefined}
+        >
+          {state.error}
+        </Notice>
       ) : null}
       {state.notice ? <GoodMoralNotice>{state.notice}</GoodMoralNotice> : null}
       {state.uncertainIntent ? (
@@ -224,12 +232,15 @@ function CurrentStudentRequestForm() {
       title="Request Good Moral Certificate"
       description="Enter the year level and semester to record on your request."
     >
-      <p className="text-sm leading-6 text-muted">
-        Your applicant name, College, course, major, and Academic Year are taken from your current COMPASS records when the request is created.
-      </p>
       <CreateFeedback state={create} busy={create.isPending} />
-      <form onSubmit={submit} aria-busy={create.isPending} className="max-w-2xl space-y-5">
-        <fieldset disabled={fieldsLocked} className="space-y-5 disabled:opacity-80">
+      <form onSubmit={submit} aria-busy={create.isPending}>
+        <Panel as="div">
+        <PanelSection
+          title="Request details"
+          titleId="good-moral-current-request-details"
+          description="Your applicant name, College, course, major, and Academic Year are taken from your current COMPASS records when the request is created."
+        >
+        <fieldset disabled={fieldsLocked} className="max-w-2xl space-y-5 disabled:opacity-80">
           <div>
             <Label htmlFor="good-moral-year-level">Year level <span aria-hidden="true">*</span></Label>
             <Input id="good-moral-year-level" className="mt-2" required maxLength={64} value={yearLevel} onChange={(event) => setYearLevel(event.target.value)} aria-describedby="good-moral-year-level-help" />
@@ -241,11 +252,15 @@ function CurrentStudentRequestForm() {
             <p id="good-moral-semester-help" className="mt-1 text-xs text-muted">Enter the term wording used for your current enrollment; up to 80 characters.</p>
           </div>
         </fieldset>
+        </PanelSection>
         {!create.uncertainIntent ? (
-          <Button type="submit" disabled={create.isPending}>
-            {create.isPending ? "Submitting request…" : "Submit request"}
-          </Button>
+          <PanelFooter>
+            <Button type="submit" disabled={create.isPending}>
+              {create.isPending ? "Submitting request…" : "Submit request"}
+            </Button>
+          </PanelFooter>
         ) : null}
+        </Panel>
       </form>
     </RequestFormFrame>
   );
@@ -265,10 +280,15 @@ function GraduateRequestForm() {
 
   return (
     <RequestFormFrame title="Request Good Moral Certificate" description="Enter your graduation details for the certificate.">
-      <p className="text-sm leading-6 text-muted">These details will be recorded on your request rather than taken from current enrollment records.</p>
       <CreateFeedback state={create} busy={create.isPending} />
-      <form onSubmit={submit} aria-busy={create.isPending} className="max-w-2xl space-y-5">
-        <fieldset disabled={fieldsLocked} className="space-y-5 disabled:opacity-80">
+      <form onSubmit={submit} aria-busy={create.isPending}>
+        <Panel as="div">
+        <PanelSection
+          title="Graduation details"
+          titleId="good-moral-graduate-request-details"
+          description="These details will be recorded on your request rather than taken from current enrollment records."
+        >
+        <fieldset disabled={fieldsLocked} className="max-w-2xl space-y-5 disabled:opacity-80">
           <div>
             <Label htmlFor="good-moral-degree">Degree <span aria-hidden="true">*</span></Label>
             <Input id="good-moral-degree" className="mt-2" required maxLength={255} value={degree} onChange={(event) => setDegree(event.target.value)} aria-describedby="good-moral-degree-help" />
@@ -284,11 +304,15 @@ function GraduateRequestForm() {
             <Input id="good-moral-graduation-date" className="mt-2" type="date" required value={graduationDate} onChange={(event) => setGraduationDate(event.target.value)} />
           </div>
         </fieldset>
+        </PanelSection>
         {!create.uncertainIntent ? (
-          <Button type="submit" disabled={create.isPending}>
-            {create.isPending ? "Submitting request…" : "Submit request"}
-          </Button>
+          <PanelFooter>
+            <Button type="submit" disabled={create.isPending}>
+              {create.isPending ? "Submitting request…" : "Submit request"}
+            </Button>
+          </PanelFooter>
         ) : null}
+        </Panel>
       </form>
     </RequestFormFrame>
   );

@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { Notice } from "@/components/ui/notice";
+import { Panel } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { canAttemptReports } from "@/features/reports/reports-access";
@@ -10,6 +12,7 @@ import {
   isReportScopeDenied,
   ReportNavigation,
   ReportQueryError,
+  ReportsPageHeading,
 } from "@/features/reports/reports-shared";
 import { useReportsGetScope } from "@/lib/api/generated/reports/reports";
 
@@ -33,14 +36,8 @@ function ReportsIndexWorkspace() {
   if (scopeQuery.isPending) {
     return (
       <section aria-busy="true" aria-label="Loading Reports">
-        <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-          Reports
-        </h1>
-        <div className="mt-7 space-y-4">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
-        <p className="sr-only">Checking your report access…</p>
+        <ReportsPageHeading title="Reports" />
+        <RowsSkeleton label="Checking your report access…" rows={2} framed />
       </section>
     );
   }
@@ -49,30 +46,21 @@ function ReportsIndexWorkspace() {
     if (isReportScopeDenied(scopeQuery.error)) {
       return (
         <section>
-          <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-            Reports
-          </h1>
-          <p
-            role="status"
-            className="mt-6 border-y border-border py-5 text-sm leading-6 text-muted"
-          >
+          <ReportsPageHeading title="Reports" />
+          <Notice role="status">
             No reporting area is currently assigned to your account.
-          </p>
+          </Notice>
         </section>
       );
     }
     return (
       <section>
-        <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-          Reports
-        </h1>
-        <div className="mt-6">
-          <ReportQueryError
-            error={scopeQuery.error}
-            fallback="Your report access could not be checked."
-            onRetry={() => void scopeQuery.refetch()}
-          />
-        </div>
+        <ReportsPageHeading title="Reports" />
+        <ReportQueryError
+          error={scopeQuery.error}
+          fallback="Your report access could not be checked."
+          onRetry={() => void scopeQuery.refetch()}
+        />
       </section>
     );
   }
@@ -80,15 +68,10 @@ function ReportsIndexWorkspace() {
   if (!scope || (!scope.is_global && scope.colleges.length === 0)) {
     return (
       <section>
-        <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-          Reports
-        </h1>
-        <p
-          role="status"
-          className="mt-6 border-y border-border py-5 text-sm leading-6 text-muted"
-        >
+        <ReportsPageHeading title="Reports" />
+        <Notice role="status">
           No reporting area is currently assigned to your account.
-        </p>
+        </Notice>
       </section>
     );
   }
@@ -115,18 +98,14 @@ function ReportsIndexWorkspace() {
   return (
     <section aria-labelledby="reports-heading">
       <ReportNavigation current="index" showGraduateTracer={scope.is_global} />
-      <h1
-        id="reports-heading"
-        className="font-heading text-3xl font-bold text-ink sm:text-4xl"
-      >
-        Reports
-      </h1>
-      <ul className="mt-7 divide-y divide-border border-y border-border">
+      <ReportsPageHeading title="Reports" headingId="reports-heading" />
+      <Panel as="div">
+      <ul className="divide-y divide-border">
         {reportRows.map((report) => (
           <li key={report.href}>
             <Link
               href={report.href}
-              className="group flex min-h-20 flex-wrap items-center justify-between gap-3 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="group flex min-h-20 flex-wrap items-center justify-between gap-3 px-4 py-4 transition-colors first:rounded-t-sm hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-5"
             >
               <span>
                 <span className="block font-semibold text-ink group-hover:underline">
@@ -146,6 +125,7 @@ function ReportsIndexWorkspace() {
           </li>
         ))}
       </ul>
+      </Panel>
     </section>
   );
 }

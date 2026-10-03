@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { Notice } from "@/components/ui/notice";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { canAttemptReports } from "@/features/reports/reports-access";
@@ -17,6 +19,7 @@ import {
   isReportScopeDenied,
   ReportNavigation,
   ReportQueryError,
+  ReportsPageHeading,
   ReportStaleNotice,
 } from "@/features/reports/reports-shared";
 import {
@@ -52,15 +55,9 @@ function GraduateTracerReportWorkspace() {
 
   if (scopeQuery.isPending) {
     return (
-      <section aria-busy="true" aria-label="Checking Graduate Tracer report access">
-        <h1 className="font-heading text-3xl font-bold text-ink sm:text-4xl">
-          Graduate Tracer
-        </h1>
-        <div className="mt-7 space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-28 w-full" />
-        </div>
-        <p className="sr-only">Checking your report access…</p>
+      <section aria-label="Checking Graduate Tracer report access">
+        <ReportsPageHeading title="Graduate Tracer" />
+        <RowsSkeleton label="Checking your report access…" rows={2} framed />
       </section>
     );
   }
@@ -68,39 +65,31 @@ function GraduateTracerReportWorkspace() {
     if (isReportScopeDenied(scopeQuery.error)) {
       return (
         <section>
-          <h1 className="font-heading text-3xl font-bold text-ink">
-            Graduate Tracer unavailable
-          </h1>
-          <p role="status" className="mt-5 border-y border-border py-5 text-sm text-muted">
-            No reporting area is currently assigned to your account.
-          </p>
+          <ReportsPageHeading title="Graduate Tracer unavailable" />
+         <Notice role="status">
+           No reporting area is currently assigned to your account.
+         </Notice>
         </section>
       );
     }
     return (
       <section>
-        <h1 className="font-heading text-3xl font-bold text-ink">
-          Graduate Tracer
-        </h1>
-        <div className="mt-5">
-          <ReportQueryError
-            error={scopeQuery.error}
-            fallback="Your report access could not be checked."
-            onRetry={() => void scopeQuery.refetch()}
-          />
-        </div>
+        <ReportsPageHeading title="Graduate Tracer" />
+        <ReportQueryError
+          error={scopeQuery.error}
+          fallback="Your report access could not be checked."
+          onRetry={() => void scopeQuery.refetch()}
+        />
       </section>
     );
   }
   if (!scope || (!scope.is_global && scope.colleges.length === 0)) {
     return (
       <section>
-        <h1 className="font-heading text-3xl font-bold text-ink">
-          Graduate Tracer unavailable
-        </h1>
-        <p role="status" className="mt-5 border-y border-border py-5 text-sm text-muted">
-          No reporting area is currently assigned to your account.
-        </p>
+        <ReportsPageHeading title="Graduate Tracer unavailable" />
+       <Notice role="status">
+         No reporting area is currently assigned to your account.
+       </Notice>
       </section>
     );
   }
@@ -108,18 +97,19 @@ function GraduateTracerReportWorkspace() {
     return (
       <section>
         <ReportNavigation current="graduate-tracer" showGraduateTracer={false} />
-        <h1 className="font-heading text-3xl font-bold text-ink">
-          Graduate Tracer unavailable
-        </h1>
-        <p className="mt-5 border-y border-border py-5 text-sm leading-6 text-muted">
-          Graduate Tracer reports are available only with institution-wide report access.
-        </p>
-        <Link
-          href="/portal/reports/student-profile"
-          className="mt-4 inline-flex min-h-10 items-center font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        <ReportsPageHeading title="Graduate Tracer unavailable" />
+        <Notice
+          action={
+            <Link
+              href="/portal/reports/student-profile"
+              className="inline-flex min-h-10 items-center font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              Open Student Profiling
+            </Link>
+          }
         >
-          Open Student Profiling
-        </Link>
+          Graduate Tracer reports are available only with institution-wide report access.
+        </Notice>
       </section>
     );
   }
@@ -127,20 +117,18 @@ function GraduateTracerReportWorkspace() {
   return (
     <section aria-labelledby="graduate-tracer-heading">
       <ReportNavigation current="graduate-tracer" showGraduateTracer />
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <h1
-          id="graduate-tracer-heading"
-          className="font-heading text-3xl font-bold text-ink sm:text-4xl"
-        >
-          Graduate Tracer
-        </h1>
-        {report ? (
-          <GraduateTracerDownload
-            key={JSON.stringify(applied.params)}
-            params={applied.params}
-          />
-        ) : null}
-      </div>
+      <ReportsPageHeading
+        title="Graduate Tracer"
+        headingId="graduate-tracer-heading"
+        actions={
+          report ? (
+            <GraduateTracerDownload
+              key={JSON.stringify(applied.params)}
+              params={applied.params}
+            />
+          ) : null
+        }
+      />
 
       <GraduateTracerFilters
         key={searchParams.toString()}
@@ -162,15 +150,15 @@ function GraduateTracerReportWorkspace() {
       ) : null}
 
       {reportQuery.isPending && applied.valid ? (
-        <div className="mt-7 space-y-5" aria-busy="true"><span className="sr-only">Loading Graduate Tracer report…</span>
-          <Skeleton className="h-28 w-full" />
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-52 w-full" />
+        <div className="mt-5 space-y-5" aria-busy="true"><span className="sr-only">Loading Graduate Tracer report…</span>
+          <Skeleton className="h-28 w-full rounded-sm" />
+          <Skeleton className="h-20 w-full rounded-sm" />
+          <Skeleton className="h-52 w-full rounded-sm" />
           <p className="sr-only">Loading aggregate report sections…</p>
         </div>
       ) : null}
       {canQueryReport && reportQuery.isError && !report ? (
-        <div className="mt-6">
+        <div className="mt-5">
           <ReportQueryError
             error={reportQuery.error}
             fallback="Graduate Tracer report could not be loaded."

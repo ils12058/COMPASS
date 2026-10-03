@@ -171,12 +171,12 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
           <Skeleton className="h-10 w-full" />
         </div>
       ) : options.isError ? (
-        <div role="alert" className="mt-5 border-y border-danger/30 py-4">
+        <div role="alert" className="mt-5">
           <p className="text-sm text-danger">{routineErrorMessage(options.error, "Routine Interview options could not be loaded.")}</p>
           <Button className="mt-3" variant="secondary" onClick={() => void options.refetch()}>Retry</Button>
         </div>
       ) : deliveryModes.length === 0 ? (
-        <p role="status" className="mt-5 border-y border-border py-4 text-sm text-muted">
+        <p role="status" className="mt-5 rounded-sm bg-surface-subtle px-4 py-3 text-sm text-muted">
           A delivery mode is not available for starting a Routine Interview.
         </p>
       ) : (
@@ -211,14 +211,14 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
                 <Skeleton className="h-16 w-full" />
               </LoadingRegion>
             ) : candidates.isError ? (
-              <div role="alert" className="border-y border-danger/30 py-4">
+              <div role="alert">
                 <p className="text-sm text-danger">{routineErrorMessage(candidates.error, "Student candidates could not be loaded.")}</p>
                 <Button type="button" className="mt-3" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>
               </div>
             ) : pageData?.items.length ? (
-              <div className="divide-y divide-border rounded-md border border-border">
+              <div className="divide-y divide-border rounded-sm border border-border">
                 {pageData.items.map((candidate) => (
-                  <label key={candidate.id} className="flex cursor-pointer items-start gap-3 p-3 hover:bg-surface-muted/60">
+                  <label key={candidate.id} className="flex cursor-pointer items-start gap-3 p-3 transition-colors hover:bg-surface-subtle has-[:checked]:bg-brand-wash">
                     <input
                       type="radio"
                       name="routine-student-candidate"
@@ -239,7 +239,7 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
                 ))}
               </div>
             ) : (
-              <p className="border-y border-border py-4 text-sm text-muted">
+              <p className="rounded-sm bg-surface-subtle px-4 py-3 text-sm text-muted">
                 {candidateSearch ? "No qualified students match this search." : "No qualified student candidates are available."}
               </p>
             )}
@@ -256,7 +256,7 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
           </fieldset>
 
           {selectedStudent && !pageData?.items.some((candidate) => candidate.id === selectedStudent.id) ? (
-            <p className="border-l-2 border-brand pl-3 text-sm text-ink">
+            <p className="rounded-sm bg-brand-wash px-3 py-2 text-sm text-ink">
               Selected Student: <span className="font-semibold">{selectedStudent.display_name}</span>
               {selectedStudent.institutional_id ? ` · ${selectedStudent.institutional_id}` : ""}
             </p>
