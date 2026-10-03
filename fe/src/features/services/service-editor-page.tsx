@@ -451,11 +451,8 @@ export function CreateServicePage() {
         title="Create Service"
         backHref="/portal/services"
         backLabel="Services"
+        description="New Services are created inactive. Review the configuration on the Service detail page, then enable it separately when ready."
       />
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-        New Services are created inactive. Review the configuration on the
-        Service detail page, then enable it separately when ready.
-      </p>
       <ServiceForm
         initial={emptyCreateState}
         active={false}
@@ -627,8 +624,9 @@ export function EditServicePage() {
         title={"Edit " + service.name}
         backHref={"/portal/services/" + serviceId}
         backLabel="Service detail"
-      />
-      <p className="mt-3 font-mono text-xs text-muted">{service.code}</p>
+      >
+        <p className="mt-1.5 font-mono text-xs text-muted">{service.code}</p>
+      </ServicesPageHeading>
       <ServiceForm
         initial={initial}
         active={service.is_active}

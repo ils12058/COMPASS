@@ -66,6 +66,8 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
     filters.search || filters.fromDate || filters.toDate || filters.includeVoided || filters.page > 1,
   );
 
+  const advancedCount = [filters.fromDate, filters.toDate, filters.includeVoided].filter(Boolean).length;
+
   function submitFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (draft.fromDate && draft.toDate && draft.fromDate > draft.toDate) return;
@@ -86,31 +88,23 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
 
       <form onSubmit={submitFilters} role="search" aria-label="Referrals">
         <FilterToolbar
-          fieldsClassName="lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]"
+          advancedCount={advancedCount}
+          advancedClassName="lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)]"
           actions={
             <>
               {filtered ? <Link href="/portal/referrals" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
               <Button type="submit">Apply filters</Button>
             </>
           }
-        >
-          <FilterField label="Search" htmlFor="referrals-search" className="sm:col-span-2 lg:col-span-1">
-            <Input
-              id="referrals-search"
-              type="search"
-              maxLength={160}
-              placeholder="Search reference, Student name, or Institutional ID"
-              value={draft.search}
-              onChange={(event) => setDraft({ ...draft, search: event.target.value })}
-            />
-          </FilterField>
+          advanced={
+            <>
           <FilterField label="From" htmlFor="referrals-from">
             <Input id="referrals-from" type="date" value={draft.fromDate} onChange={(event) => setDraft({ ...draft, fromDate: event.target.value })} />
           </FilterField>
           <FilterField label="To" htmlFor="referrals-to">
             <Input id="referrals-to" type="date" value={draft.toDate} onChange={(event) => setDraft({ ...draft, toDate: event.target.value })} />
           </FilterField>
-          <div className="flex min-h-11 items-center gap-3">
+          <div className="flex min-h-11 items-center gap-3 self-end">
             <input
               id="referrals-include-voided"
               className="h-4 w-4 accent-brand"
@@ -121,8 +115,21 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
             <Label htmlFor="referrals-include-voided">Include voided</Label>
           </div>
           {draft.fromDate && draft.toDate && draft.fromDate > draft.toDate ? (
-            <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-3">From date must not be after To date.</p>
+            <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-full">From date must not be after To date.</p>
           ) : null}
+            </>
+          }
+        >
+          <FilterField label="Search" htmlFor="referrals-search">
+            <Input
+              id="referrals-search"
+              type="search"
+              maxLength={160}
+              placeholder="Search reference, Student name, or Institutional ID"
+              value={draft.search}
+              onChange={(event) => setDraft({ ...draft, search: event.target.value })}
+            />
+          </FilterField>
         </FilterToolbar>
       </form>
 

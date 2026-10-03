@@ -157,7 +157,9 @@ export function AccountsList() {
 
       {/* A directory search: the text search applies as you type and each choice on change. */}
       <FilterToolbar
-        fieldsClassName="sm:grid-cols-2 lg:grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))]"
+        advancedCount={
+          [filters.role, filters.designation, filters.is_active !== undefined, filters.email_verified !== undefined].filter(Boolean).length
+        }
         actions={
           filtered ? (
             <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>
@@ -165,14 +167,8 @@ export function AccountsList() {
             </Button>
           ) : undefined
         }
-      >
-        <div className="sm:col-span-2 lg:col-span-1">
-          <SearchField
-            key={search}
-            initial={search}
-            onSearch={(value) => update("search", value)}
-          />
-        </div>
+        advanced={
+          <>
         <FilterField label="Role" htmlFor="accounts-role">
           <Select
             id="accounts-role"
@@ -233,6 +229,14 @@ export function AccountsList() {
             <option value="false">Not verified</option>
           </Select>
         </FilterField>
+          </>
+        }
+      >
+        <SearchField
+          key={search}
+          initial={search}
+          onSearch={(value) => update("search", value)}
+        />
       </FilterToolbar>
 
       {list.isError && confirmed ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}

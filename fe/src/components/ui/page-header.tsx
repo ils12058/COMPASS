@@ -8,7 +8,9 @@ export const pageBackLinkClass =
   "mb-2 inline-flex min-h-10 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 // The page title and what the page is for, kept compact so the page's own work starts quickly.
-// It draws no rule underneath: the working region that follows carries its own boundary.
+// It draws no rule underneath: the working region that follows carries its own boundary. The
+// header owns the one gap before that region, so feature wrappers do not remove it and the next
+// region does not add its own. Page actions line up with the title, not with the description.
 export function PageHeader({
   title,
   headingId,
@@ -37,7 +39,7 @@ export function PageHeader({
   return (
     <header className={cn("mb-6", className)}>
       {back}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           {context ? <p className="text-sm font-medium text-muted">{context}</p> : null}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">

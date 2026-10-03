@@ -101,6 +101,12 @@ function RoutineQueueFilters({
 }) {
   const [draft, setDraft] = useState(applied);
   const appliedYearKnown = years.some((year) => year.id === applied.academicYearId);
+  const advancedCount = [
+    canFilterYear ? applied.academicYearId : "",
+    applied.deliveryMode,
+    applied.intakeStatus,
+    applied.evaluationStatus,
+  ].filter(Boolean).length;
 
   function set(name: keyof QueueFilters, value: string) {
     setDraft((current) => ({ ...current, [name]: value }));
@@ -117,7 +123,8 @@ function RoutineQueueFilters({
       }}
     >
       <FilterToolbar
-        fieldsClassName={canFilterYear ? "lg:grid-cols-3" : "lg:grid-cols-2 xl:grid-cols-4"}
+        advancedCount={advancedCount}
+        advancedClassName={canFilterYear ? "lg:grid-cols-4" : "lg:grid-cols-3"}
         actions={
           <>
             {hasFilters ? (
@@ -128,16 +135,8 @@ function RoutineQueueFilters({
             <Button type="submit">Apply filters</Button>
           </>
         }
-      >
-        <FilterField label="Search Students" htmlFor="routine-queue-search">
-          <Input
-            id="routine-queue-search"
-            type="search"
-            value={draft.search}
-            onChange={(event) => set("search", event.target.value)}
-            placeholder="Name or Institutional ID"
-          />
-        </FilterField>
+        advanced={
+          <>
         {canFilterYear ? (
           <FilterField
             label="Academic Year"
@@ -203,6 +202,18 @@ function RoutineQueueFilters({
             <option value={RoutineEvaluationStatus.DRAFT}>Draft</option>
             <option value={RoutineEvaluationStatus.FINALIZED}>Finalized</option>
           </Select>
+        </FilterField>
+          </>
+        }
+      >
+        <FilterField label="Search Students" htmlFor="routine-queue-search">
+          <Input
+            id="routine-queue-search"
+            type="search"
+            value={draft.search}
+            onChange={(event) => set("search", event.target.value)}
+            placeholder="Name or Institutional ID"
+          />
         </FilterField>
       </FilterToolbar>
     </form>

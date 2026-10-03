@@ -86,6 +86,15 @@ function ManagedAppointmentFilters({
 }) {
   const [draft, setDraft] = useState(applied);
   const appliedServiceKnown = serviceOptions.some((service) => service.id === applied.service);
+  // Status and Order count only when they differ from the queue's defaults.
+  const advancedCount = [
+    canFilterService ? applied.service : "",
+    applied.status !== AppointmentStatus.SCHEDULED ? applied.status : "",
+    applied.mode,
+    applied.from,
+    applied.to,
+    applied.ordering !== AppointmentListOrdering.START_ASC ? applied.ordering : "",
+  ].filter(Boolean).length;
 
   function set(name: keyof ManagedFilters, value: string) {
     setDraft((current) => ({ ...current, [name]: value }));
@@ -102,7 +111,8 @@ function ManagedAppointmentFilters({
       }}
     >
       <FilterToolbar
-        fieldsClassName="lg:grid-cols-3"
+        advancedCount={advancedCount}
+        advancedClassName="lg:grid-cols-3"
         actions={
           <>
             {hasFilters ? (
@@ -113,16 +123,8 @@ function ManagedAppointmentFilters({
             <Button type="submit">Apply filters</Button>
           </>
         }
-      >
-        <FilterField label="Search" htmlFor="managed-appointment-search" className="sm:col-span-2 lg:col-span-1">
-          <Input
-            id="managed-appointment-search"
-            type="search"
-            value={draft.search}
-            onChange={(event) => set("search", event.target.value)}
-            placeholder="Search by reference, Student name, or Institutional ID"
-          />
-        </FilterField>
+        advanced={
+          <>
         {canFilterService ? (
           <FilterField
             label="Service"
@@ -178,6 +180,18 @@ function ManagedAppointmentFilters({
             <option value={AppointmentListOrdering.START_ASC}>Earliest start first</option>
             <option value={AppointmentListOrdering.START_DESC}>Latest start first</option>
           </Select>
+        </FilterField>
+          </>
+        }
+      >
+        <FilterField label="Search" htmlFor="managed-appointment-search">
+          <Input
+            id="managed-appointment-search"
+            type="search"
+            value={draft.search}
+            onChange={(event) => set("search", event.target.value)}
+            placeholder="Search by reference, Student name, or Institutional ID"
+          />
         </FilterField>
       </FilterToolbar>
     </form>

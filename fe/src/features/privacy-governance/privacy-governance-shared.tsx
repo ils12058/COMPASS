@@ -292,7 +292,7 @@ export function PrivacyRecordUnavailable({
 }) {
   return (
     <section aria-labelledby="privacy-record-unavailable" className="max-w-2xl">
-      <PageHeader title={title} headingId="privacy-record-unavailable" className="mb-5" />
+      <PageHeader title={title} headingId="privacy-record-unavailable" />
       <Notice
         role="alert"
         action={

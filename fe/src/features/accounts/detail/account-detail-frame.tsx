@@ -66,7 +66,6 @@ export function AccountDetailFrame({
       <section className="max-w-2xl">
         <PageHeader
           title={missing ? "Account not found" : "Account unavailable"}
-          className="mb-5"
         />
         <Notice
           role="alert"

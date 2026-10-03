@@ -7,7 +7,6 @@ import {
   ClipboardList,
   DoorOpen,
   GraduationCap,
-  LayoutDashboard,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -20,8 +19,9 @@ import { getExitInterviewAccess } from "@/features/exit-interviews/exit-intervie
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
+import { portalWorkspaceGroups } from "@/features/portal/components/portal-workspaces";
 import { useAuthGetSession } from "@/lib/api/generated/auth/auth";
-import type { UserSummary } from "@/lib/api/generated/model";
+import { RoleCode, type UserSummary } from "@/lib/api/generated/model";
 
 type Service = {
   href: string;
@@ -77,6 +77,52 @@ const services: Service[] = [
   },
 ];
 
+// Staff see the workspaces they can open, daily casework first, named as the portal sidebar names
+// them. Workspaces not listed here are still reachable from the portal itself.
+const staffPriority = [
+  "/portal/appointments",
+  "/portal/routine-interviews",
+  "/portal/counseling",
+  "/portal/referrals",
+  "/portal/call-slips",
+  "/portal/good-moral",
+  "/portal/inventory",
+  "/portal/exit-interviews",
+  "/portal/graduate-tracer",
+  "/portal/feedback",
+  "/portal/availability",
+  "/portal/announcements",
+  "/portal/resources",
+  "/portal/reports",
+  "/portal/accounts",
+  "/portal/platform/health",
+  "/portal/privacy",
+  "/portal/services",
+  "/portal/organization",
+  "/portal/academic-years",
+  "/portal/institutional-forms",
+];
+const STAFF_SHORTCUT_LIMIT = 5;
+
+type Shortcut = { href: string; label: string; detail?: string; icon: LucideIcon };
+
+function shortcutsFor(user: UserSummary | null): Shortcut[] {
+  if (!user) {
+    return services.map((service) => ({ href: service.href, label: service.label, detail: service.audience, icon: service.icon }));
+  }
+  if (user.role === RoleCode.STUDENT) {
+    return services
+      .filter((service) => service.available(user))
+      .map((service) => ({ href: service.href, label: service.label, icon: service.icon }));
+  }
+  const workspaces = portalWorkspaceGroups(user).flatMap((group) => group.links);
+  return staffPriority
+    .map((href) => workspaces.find((link) => link.href === href))
+    .filter((link): link is NonNullable<typeof link> => Boolean(link))
+    .slice(0, STAFF_SHORTCUT_LIMIT)
+    .map((link) => ({ href: link.href, label: link.label, icon: link.icon }));
+}
+
 const rowClass =
   "group flex min-h-14 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-5";
 
@@ -95,14 +141,20 @@ function ServiceRow({ href, label, detail, icon: Icon }: { href: string; label: 
   );
 }
 
+// Entry points beside the landing's announcements. Signed-out readers see the student services,
+// each behind sign-in. A signed-in Student sees the services their account can open; staff see
+// their own workspaces. The site header and hero already offer "Open COMPASS", so this panel does
+// not repeat it, and an account with no shortcuts gets no panel at all.
 export function QuickAccess({ className }: { className?: string }) {
   const session = useAuthGetSession({ query: { retry: false, staleTime: 60_000 } });
   const signedIn = session.isSuccess && session.data.data.authenticated;
   const user = signedIn ? session.data.data.user : null;
-  const shown = user ? services.filter((service) => service.available(user)) : services;
+  const shortcuts = shortcutsFor(user);
+
+  if (!session.isPending && shortcuts.length === 0) return null;
 
   return (
-    <Panel as="aside" aria-labelledby="quick-access-heading" className={className}>
+    <Panel as="aside" aria-labelledby="quick-access-heading" className={className} data-quick-access="">
       <PanelHeader title="Quick access" titleId="quick-access-heading" />
       {session.isPending ? (
         <LoadingRegion label="Loading quick access…" className="space-y-4 px-4 py-4 sm:px-5">
@@ -113,18 +165,15 @@ export function QuickAccess({ className }: { className?: string }) {
       ) : (
         <>
           <ul className="divide-y divide-border">
-            {shown.map((service) => (
+            {shortcuts.map((shortcut) => (
               <ServiceRow
-                key={service.href}
-                href={service.href}
-                label={service.label}
-                detail={user ? undefined : service.audience}
-                icon={service.icon}
+                key={shortcut.href}
+                href={shortcut.href}
+                label={shortcut.label}
+                detail={shortcut.detail}
+                icon={shortcut.icon}
               />
             ))}
-            {user ? (
-              <ServiceRow href="/portal" label="Open COMPASS" icon={LayoutDashboard} />
-            ) : null}
           </ul>
           {user ? null : (
             <p className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-3 text-xs leading-5 text-muted sm:px-5">

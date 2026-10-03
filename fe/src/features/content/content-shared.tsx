@@ -63,7 +63,6 @@ export function ContentPageHeading({
       title={title}
       headingId={headingId}
       actions={action}
-      className="mb-0"
       back={backHref ? (
         <Link href={backHref} className={pageBackLinkClass}>
           ← {backLabel}

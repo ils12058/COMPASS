@@ -80,7 +80,7 @@ export function ExitInterviewHeading({
   action?: ReactNode;
   id?: string;
 }) {
-  return <PageHeader title={title} headingId={id} description={description} actions={action} className="mb-0" />;
+  return <PageHeader title={title} headingId={id} description={description} actions={action} />;
 }
 
 export function ExitInterviewStatus({

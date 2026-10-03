@@ -69,6 +69,7 @@ function RosterFilters({
   const [draft, setDraft] = useState(applied);
   const draftYear = years.find((year) => year.id === draft.academicYearId);
   const draftHistorical = Boolean(draftYear && !draftYear.is_current);
+  const advancedCount = [canFilterYear ? applied.academicYearId : "", applied.status, applied.yearLevel].filter(Boolean).length;
 
   return (
     <form
@@ -81,24 +82,16 @@ function RosterFilters({
       }}
     >
       <FilterToolbar
-        fieldsClassName={canFilterYear ? "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]" : "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]"}
+        advancedCount={advancedCount}
+        advancedClassName={canFilterYear ? "lg:grid-cols-3" : "lg:grid-cols-2"}
         actions={
           <>
             {hasFilters ? <Button variant="quiet" onClick={onClear}>Clear filters</Button> : null}
             <Button type="submit">Apply filters</Button>
           </>
         }
-      >
-        <FilterField label="Search" htmlFor="inventory-roster-search" className="sm:col-span-2 lg:col-span-1">
-          <Input
-            id="inventory-roster-search"
-            type="search"
-            value={draft.search}
-            onChange={(event) => setDraft((current) => ({ ...current, search: event.target.value }))}
-            placeholder="Search by Student name or Institutional ID"
-          />
-        </FilterField>
-
+        advanced={
+          <>
         {canFilterYear ? (
           <FilterField label="Academic Year" htmlFor="inventory-roster-year">
             <Select
@@ -153,8 +146,21 @@ function RosterFilters({
             ))}
           </Select>
         </FilterField>
-        {notes ? <div className="space-y-2 sm:col-span-2 lg:col-span-full">{notes}</div> : null}
+          </>
+        }
+      >
+        <FilterField label="Search" htmlFor="inventory-roster-search">
+          <Input
+            id="inventory-roster-search"
+            type="search"
+            value={draft.search}
+            onChange={(event) => setDraft((current) => ({ ...current, search: event.target.value }))}
+            placeholder="Search by Student name or Institutional ID"
+          />
+        </FilterField>
       </FilterToolbar>
+      {/* Notes about how the filters were applied stay in view while the filters are folded. */}
+      {notes ? <div className="mt-3 space-y-2">{notes}</div> : null}
     </form>
   );
 }

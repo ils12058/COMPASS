@@ -60,6 +60,7 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
   const hasFilters = Boolean(filters.search || filters.submittedFrom || filters.submittedTo || filters.employmentState);
   const hideCached = queue.isError && hideCachedResults(queue.error);
   const clearHref = pageHref({ ...filters, search: "", submittedFrom: "", submittedTo: "", employmentState: "" }, 1);
+  const advancedCount = [filters.submittedFrom, filters.submittedTo, filters.employmentState].filter(Boolean).length;
 
   return (
     <section className="space-y-5" aria-labelledby="graduate-tracer-queue-heading">
@@ -71,17 +72,16 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
 
       <form action="/portal/graduate-tracer" method="get" role="search" aria-label="Graduate Tracer responses" key={JSON.stringify(filters)}>
         <FilterToolbar
-          fieldsClassName="lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]"
+          advancedCount={advancedCount}
+          advancedClassName="lg:grid-cols-3"
           actions={
             <>
               {hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
               <Button type="submit">Apply filters</Button>
             </>
           }
-        >
-          <FilterField label="Search Graduate name or Institutional ID" htmlFor="gts-queue-search" className="sm:col-span-2 lg:col-span-1">
-            <Input id="gts-queue-search" type="search" name="search" placeholder="Name or Institutional ID" defaultValue={filters.search} />
-          </FilterField>
+          advanced={
+            <>
           <FilterField label="Submitted from" htmlFor="gts-submitted-from">
             <Input id="gts-submitted-from" type="date" name="submitted_from" defaultValue={filters.submittedFrom} />
           </FilterField>
@@ -93,6 +93,12 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
               <option value="">All employment states</option>
               {EMPLOYMENT_STATE_CHOICES.map((choice) => <option key={choice.value} value={choice.value}>{choice.label === "Yes" ? "Employed" : choice.label === "No" ? "Not employed" : choice.label}</option>)}
             </Select>
+          </FilterField>
+            </>
+          }
+        >
+          <FilterField label="Search Graduate name or Institutional ID" htmlFor="gts-queue-search">
+            <Input id="gts-queue-search" type="search" name="search" placeholder="Name or Institutional ID" defaultValue={filters.search} />
           </FilterField>
           {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
         </FilterToolbar>

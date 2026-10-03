@@ -418,7 +418,6 @@ function ProviderWorkspace({
       <PageHeader
         title={provider.full_name || provider.email}
         meta={<AvailabilityStatusBadge active={provider.is_active} legacy={legacy} />}
-        className="mb-0"
         back={
           <Button variant="quiet" className="mb-2 px-1" onClick={onBack}>
             ← Counselors

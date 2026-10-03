@@ -137,7 +137,6 @@ export function GoodMoralHeading({
       description={description}
       back={back}
       actions={action}
-      className="mb-0"
     />
   );
 }

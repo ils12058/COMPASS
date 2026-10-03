@@ -144,20 +144,20 @@ export function ServiceDetailPage() {
             </Link>
           ) : null
         }
-      />
-
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <p className="font-mono text-xs text-muted">{service.code}</p>
-        {canManage ? <ServicesStatusBadge active={service.is_active} /> : null}
-        {systemRequired ? <ServicesSystemRequiredBadge /> : null}
-      </div>
-      {systemRequired ? (
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-          COMPASS uses this Service for Counseling, Routine Interviews, and
-          E-Counseling, so it must stay active and always allow Counselors. Its
-          other settings can be changed.
-        </p>
-      ) : null}
+      >
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <p className="font-mono text-xs text-muted">{service.code}</p>
+          {canManage ? <ServicesStatusBadge active={service.is_active} /> : null}
+          {systemRequired ? <ServicesSystemRequiredBadge /> : null}
+        </div>
+        {systemRequired ? (
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
+            COMPASS uses this Service for Counseling, Routine Interviews, and
+            E-Counseling, so it must stay active and always allow Counselors. Its
+            other settings can be changed.
+          </p>
+        ) : null}
+      </ServicesPageHeading>
 
       {createdNotice ? (
         <Notice role="status" tone="success" className="mt-5">

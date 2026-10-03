@@ -221,6 +221,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
     ? filters
     : { ...filters, includeVoided: false, state: effectiveState(filters, false) };
   const hasFilters = Boolean(effectiveFilters.search || effectiveFilters.destination || effectiveFilters.fromDate || effectiveFilters.toDate || effectiveFilters.includeVoided || effectiveFilters.state || effectiveFilters.page > 1);
+  const advancedCount = [effectiveFilters.destination, effectiveFilters.state, effectiveFilters.fromDate, effectiveFilters.toDate, effectiveFilters.includeVoided].filter(Boolean).length;
 
   return (
     <div className="space-y-5">
@@ -231,17 +232,16 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
       />
       <form onSubmit={submitFilters} role="search" aria-label="Call Slips">
         <FilterToolbar
-          fieldsClassName="lg:grid-cols-3"
+          advancedCount={advancedCount}
+          advancedClassName="lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]"
           actions={
             <>
               {hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
               <Button type="submit">Apply filters</Button>
             </>
           }
-        >
-          <FilterField label="Search" htmlFor="call-slips-search" className="sm:col-span-2 lg:col-span-1">
-            <Input id="call-slips-search" type="search" maxLength={160} placeholder="Search Student or Referral reference" value={draft.search} onChange={(event) => setDraft({ ...draft, search: event.target.value })} />
-          </FilterField>
+          advanced={
+            <>
           <FilterField label="Destination" htmlFor="call-slips-destination">
             <Select id="call-slips-destination" value={draft.destination} onChange={(event) => setDraft({ ...draft, destination: event.target.value as CallSlipListFilters["destination"] })}>
               <option value="">All destinations</option>
@@ -265,7 +265,13 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
               <Label htmlFor="call-slips-include-voided">Include voided</Label>
             </div>
           ) : null}
-          {draft.fromDate && draft.toDate && draft.fromDate > draft.toDate ? <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-3">From date must not be after To date.</p> : null}
+          {draft.fromDate && draft.toDate && draft.fromDate > draft.toDate ? <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-full">From date must not be after To date.</p> : null}
+            </>
+          }
+        >
+          <FilterField label="Search" htmlFor="call-slips-search">
+            <Input id="call-slips-search" type="search" maxLength={160} placeholder="Search Student or Referral reference" value={draft.search} onChange={(event) => setDraft({ ...draft, search: event.target.value })} />
+          </FilterField>
         </FilterToolbar>
       </form>
       {slips.isError && data ? <RefreshFailureNotice onRetry={() => void slips.refetch()} retrying={slips.isFetching} /> : null}

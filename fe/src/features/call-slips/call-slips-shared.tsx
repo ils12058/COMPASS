@@ -61,7 +61,6 @@ export function CallSlipHeading({
       title={title}
       description={description}
       actions={action}
-      className="mb-0"
       back={backHref ? (
         <Link href={backHref} className={pageBackLinkClass}>
           {backLabel ?? "Back to Call Slips"}

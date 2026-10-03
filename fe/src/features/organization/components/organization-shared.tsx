@@ -48,7 +48,6 @@ export function PageHeading({
       headingId={headingId}
       description={description}
       actions={action}
-      className="mb-0"
     />
   );
 }

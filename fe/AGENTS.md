@@ -673,6 +673,12 @@ Render page titles with `PageHeader` (`src/components/ui/page-header.tsx`); feat
 delegate to it. Keep the header compact so the page's own work starts in the first screen, and do
 not draw a rule under it: the working region that follows carries its own boundary.
 
+The header owns the one gap between the title and the page's first region, so every page starts
+its work at the same distance. Feature wrappers do not remove it (`mb-0`) and the next region does
+not add its own. Page actions line up with the title, not the description. Facts that describe
+the page's subject, such as a record code or status, go in the header (`meta`, `description`, or
+children), not in a separate row after it.
+
 ---
 
 # 23. Product copy
@@ -1425,6 +1431,15 @@ Every control in a toolbar applies the same way:
 Do not give the search field its own Search button while neighboring filters apply on change. Show
 `Clear filters` in the toolbar's action area only while a filter is active. A toolbar that holds a
 text search sits in a form with `role="search"` and an accessible name.
+
+A long toolbar folds its secondary filters away. When a text search sits beside more than two other
+filters, pass the others as `advanced`: the search, a `Filters` button, and the actions share one
+row, and the advanced filters open below it. The button counts the advanced filters in use
+(`advancedCount`, from the applied results, counting a filter only when it differs from its
+default), and the section starts open while any is in use so the reader can see what narrows the
+results. Folded fields stay in the form. Toolbars with no text search, or with one or two filters
+beside it, stay fully visible. Messages about how filters were applied stay outside the folded
+section.
 
 ---
 

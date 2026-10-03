@@ -69,7 +69,7 @@ function SessionPageHeader({ title, description }: { title: string; description:
 }
 
 function WorkspaceLoadError({ error, retry }: { error: unknown; retry: () => void }) {
-  return <section className="max-w-2xl"><PageHeader title="E-Counseling unavailable" className="mb-5" /><Notice role="alert" action={<><Button variant="secondary" onClick={retry}>Retry</Button><Link className="inline-flex min-h-10 items-center px-2 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/portal/appointments/my">Return to appointments</Link></>}>{ecounselingErrorMessage(error, "This E-Counseling session is not currently available.")}</Notice></section>;
+  return <section className="max-w-2xl"><PageHeader title="E-Counseling unavailable" /><Notice role="alert" action={<><Button variant="secondary" onClick={retry}>Retry</Button><Link className="inline-flex min-h-10 items-center px-2 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/portal/appointments/my">Return to appointments</Link></>}>{ecounselingErrorMessage(error, "This E-Counseling session is not currently available.")}</Notice></section>;
 }
 
 function joinAvailabilityMessage(readiness: ProviderReadiness): string | null {

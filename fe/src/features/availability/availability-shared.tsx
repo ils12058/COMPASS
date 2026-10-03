@@ -236,7 +236,7 @@ export function AvailabilityPageHeading({
   description?: string;
   action?: ReactNode;
 }) {
-  return <PageHeader title={title} description={description} actions={action} className="mb-0" />;
+  return <PageHeader title={title} description={description} actions={action} />;
 }
 
 export function AvailabilityStatusBadge({

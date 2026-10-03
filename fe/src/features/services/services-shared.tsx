@@ -184,26 +184,33 @@ export function useServicesAction() {
 
 export function ServicesPageHeading({
   title,
+  description,
   action,
   backHref,
   backLabel,
+  children,
 }: {
   title: string;
+  description?: ReactNode;
   action?: ReactNode;
   backHref?: string;
   backLabel?: string;
+  // Facts that belong under the title, such as the Service code and status.
+  children?: ReactNode;
 }) {
   return (
     <PageHeader
       title={title}
+      description={description}
       actions={action}
-      className="mb-0"
       back={backHref ? (
         <Link href={backHref} className={pageBackLinkClass}>
           ← {backLabel ?? "Services"}
         </Link>
       ) : undefined}
-    />
+    >
+      {children}
+    </PageHeader>
   );
 }
 

@@ -66,7 +66,6 @@ export function FeedbackPageHeading({
       context={eyebrow}
       description={description}
       actions={action}
-      className="mb-0"
     />
   );
 }
