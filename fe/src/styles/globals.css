@@ -90,18 +90,18 @@ h6 {
   mask-image: linear-gradient(to right, transparent 2%, black 42%, black 100%);
 }
 
-.auth-brand-panel {
+.auth-entry {
   background: var(--compass-entry-gradient);
 }
 
-.auth-campus {
+.auth-entry-campus {
   background-image: url("/brand/campus-bg.jpg");
-  background-position: 62% 68%;
+  background-position: center 68%;
   background-repeat: no-repeat;
   background-size: cover;
-  opacity: 0.34;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 4%, black 48%, black 100%);
-  mask-image: linear-gradient(to bottom, transparent 4%, black 48%, black 100%);
+  opacity: 0.2;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 60%, black 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 60%, black 100%);
 }
 
 .public-markdown {
