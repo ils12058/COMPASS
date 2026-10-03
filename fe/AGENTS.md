@@ -91,7 +91,7 @@ that background. This does not permit recoloring brand marks anywhere else.
 Character illustrations are appropriate primarily for public-facing, onboarding, empty-state, or friendly informational contexts where they genuinely support the message. They should normally not appear inside dense administrative workspaces.
 
 Current placements: the group image in the public landing hero; the waving character at sign-in;
-the pointing-up character in the public Announcements title band and on the not-found page; and
+the pointing-up character in the public Announcements title band; and
 the pointing-right character in the public Resources title band (`PublicPageHeader`
 `illustration`). A character repeats only on pages that never appear together. Do not add one to
 detail pages, the landing's lower regions, or portal screens.
