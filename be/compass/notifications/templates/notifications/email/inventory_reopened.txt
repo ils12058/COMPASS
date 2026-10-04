@@ -1,3 +1,4 @@
-Your annual Individual Inventory has been reopened for correction.
+{% extends "compass/email/base.txt" %}
+{% block content %}Your annual Individual Inventory has been reopened for correction.
 
-Sign in to COMPASS to review, edit, and resubmit it.
+Sign in to COMPASS to review, edit, and resubmit it.{% endblock %}

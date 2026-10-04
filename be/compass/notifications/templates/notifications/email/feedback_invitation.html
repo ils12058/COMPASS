@@ -1,5 +1,7 @@
-{% extends "notifications/email/base.html" %}
-{% block title %}COMPASS Feedback Invitation{% endblock %}
+{% extends "compass/email/base.html" %}
+{% block preheader %}Your recent GCO service has been completed.{% endblock %}
+{% block heading %}Feedback invitation{% endblock %}
 {% block content %}
-<p>Your recent GCO service has been completed. You may submit the appropriate Feedback/CSM form in COMPASS.</p>
+<p>Your recent GCO service has been completed.</p>
+<p>You may submit the appropriate Feedback/CSM form in COMPASS.</p>
 {% endblock %}

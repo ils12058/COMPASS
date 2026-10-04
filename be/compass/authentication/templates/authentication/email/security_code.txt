@@ -1,0 +1,8 @@
+{% extends "compass/email/base.txt" %}
+{% block content %}Use this COMPASS security code to continue:
+
+{{ code }}
+
+This code expires shortly and can be used once.
+
+Never share this code.{% endblock %}

@@ -93,8 +93,11 @@ def test_email_delivery_success_is_durable_and_duplicate_task_is_harmless():
     assert message.subject == "New COMPASS Call Slip"
     assert message.to == [user.email]
     assert "Sign in to COMPASS to review the details." in message.body
+    rendered = render_notification_email(NotificationEvent.CALL_SLIP_ISSUED)
+    assert message.body == rendered.text_body
     assert len(message.alternatives) == 1
     assert message.alternatives[0].mimetype == "text/html"
+    assert message.alternatives[0].content == rendered.html_body
 
     assert deliver_email_delivery(delivery.pk) == "skipped"
     assert len(mail.outbox) == 1

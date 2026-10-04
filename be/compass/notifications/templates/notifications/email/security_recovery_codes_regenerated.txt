@@ -1,1 +1,4 @@
-New MFA recovery codes were generated for your COMPASS account. If you did not perform this action, review your account security.
+{% extends "compass/email/security.txt" %}
+{% block content %}New MFA recovery codes were generated for your COMPASS account.
+
+If you did not perform this action, review your account security.{% endblock %}

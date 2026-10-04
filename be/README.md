@@ -90,6 +90,7 @@ python manage.py compass_doctor
 python manage.py compass_doctor --configuration-only
 python manage.py compass_doctor --worker-smoke
 python manage.py seed_demo_staging
+python manage.py render_email_previews --output-dir <directory>
 ```
 
 create_it_admin, sync_identity_policy, seed_demo_staging, and migrate change persisted state.
@@ -100,6 +101,8 @@ check, OpenAPI check, and normal/configuration-only diagnostics are read-only. -
 explicitly sends the existing harmless diagnostic task so an operator can verify broker/worker/result
 execution; it is not a persistent heartbeat. Browser-based shell, arbitrary command execution,
 backup/restore, Redis manipulation, and Celery purge remain unsupported.
+render_email_previews writes every transactional email to local `.html` and `.txt` files for
+visual review; it sends nothing and reads no records.
 
 ## Authentication and account security development
 
@@ -458,6 +461,18 @@ the Compose services when deployment automation is introduced.
   returns the generic 500. Error codes come from exception types, never from message text.
 - Eligibility projections such as Appointment `actions`, `counseling_context_available`, email
   `manual_retry_allowed`, and notice `publish_readiness` are advisory. Every mutation revalidates.
+
+## Transactional email
+
+Every COMPASS email is plain text plus a branded HTML alternative (ADR-074). Notification email
+and the authentication security email (Email OTP and the previous-address email-change alert) render
+`<name>.txt`/`<name>.html` pairs that extend the shared shells in
+`compass/common/templates/compass/email/`: `base` for ordinary messages and `security` for the
+"Security notice" variant. `compass.common.email.render_email` renders both bodies; `Mailer`
+remains the only SMTP transport. Templates are code-owned and receive no record data, so styling
+cannot widen what an email discloses. The shell uses no images, links, remote resources, or
+scripts; COMPASS has no verified public frontend URL, so messages say "Sign in to COMPASS" instead
+of linking. Preview changes with `render_email_previews`, or open them in local Mailpit.
 
 ## Decisions
 

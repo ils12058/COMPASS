@@ -1,5 +1,7 @@
-{% extends "notifications/email/base.html" %}
-{% block title %}COMPASS Good Moral Certificate Issued{% endblock %}
+{% extends "compass/email/base.html" %}
+{% block preheader %}Your Good Moral certificate has been issued in COMPASS.{% endblock %}
+{% block heading %}Good Moral certificate issued{% endblock %}
 {% block content %}
-<p>Your Good Moral certificate has been issued in COMPASS. Sign in to COMPASS to review it.</p>
+<p>Your Good Moral certificate has been issued in COMPASS.</p>
+<p>Sign in to COMPASS to review it.</p>
 {% endblock %}

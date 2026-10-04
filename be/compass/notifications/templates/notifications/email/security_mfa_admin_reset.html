@@ -1,5 +1,7 @@
-{% extends "notifications/email/base.html" %}
-{% block title %}COMPASS Multi-Factor Authentication Reset{% endblock %}
+{% extends "compass/email/security.html" %}
+{% block preheader %}Multi-factor authentication was reset for your COMPASS account by an administrator.{% endblock %}
+{% block heading %}Multi-factor authentication reset{% endblock %}
 {% block content %}
-<p>Multi-factor authentication was reset for your COMPASS account by an administrator. You may need to configure MFA again.</p>
+<p>Multi-factor authentication was reset for your COMPASS account by an administrator.</p>
+<p>You may need to configure MFA again.</p>
 {% endblock %}
