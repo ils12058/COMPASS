@@ -1,1 +1,4 @@
-A Counseling Shared Summary is now available in COMPASS. Sign in to review it.
+{% extends "compass/email/base.txt" %}
+{% block content %}A Counseling Shared Summary is now available in COMPASS.
+
+Sign in to review it.{% endblock %}

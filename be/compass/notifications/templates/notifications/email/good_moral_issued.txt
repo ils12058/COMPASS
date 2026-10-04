@@ -1,1 +1,4 @@
-Your Good Moral certificate has been issued in COMPASS. Sign in to COMPASS to review it.
+{% extends "compass/email/base.txt" %}
+{% block content %}Your Good Moral certificate has been issued in COMPASS.
+
+Sign in to COMPASS to review it.{% endblock %}

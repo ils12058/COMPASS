@@ -1,5 +1,7 @@
-{% extends "notifications/email/base.html" %}
-{% block title %}COMPASS Appointment Cancelled{% endblock %}
+{% extends "compass/email/base.html" %}
+{% block preheader %}A COMPASS Appointment has been cancelled.{% endblock %}
+{% block heading %}Appointment cancelled{% endblock %}
 {% block content %}
-<p>A COMPASS Appointment has been cancelled. Sign in to COMPASS to review the details.</p>
+<p>A COMPASS Appointment has been cancelled.</p>
+<p>Sign in to COMPASS to review the details.</p>
 {% endblock %}

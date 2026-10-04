@@ -371,6 +371,8 @@ def test_old_email_security_alert_uses_previous_destination_snapshot():
     assert delivered == 1
     assert send.call_args.kwargs["recipients"] == "alert-old@example.edu"
     assert "alert-new@example.edu" not in send.call_args.kwargs["body"]
+    assert "alert-new@example.edu" not in send.call_args.kwargs["html_body"]
+    assert "Sign-in email changed" in send.call_args.kwargs["html_body"]
     pending.refresh_from_db()
     assert pending.old_email_alert_sent_at is not None
     assert pending.old_email_alert_attempt_count == 1

@@ -1,1 +1,2 @@
-One or more E-Counseling consent decisions require your review in COMPASS.
+{% extends "compass/email/base.txt" %}
+{% block content %}One or more E-Counseling consent decisions require your review in COMPASS.{% endblock %}

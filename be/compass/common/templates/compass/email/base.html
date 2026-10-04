@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title>{{ subject|default:"COMPASS" }}</title>
+    <style>
+      body { margin: 0; padding: 0; background-color: #f7f3ea; }
+      table { border-collapse: collapse; }
+      p { margin: 0 0 16px; }
+      @media (max-width: 620px) {
+        .compass-email-frame { padding: 16px 8px !important; }
+        .compass-email-pad { padding-left: 20px !important; padding-right: 20px !important; }
+      }
+    </style>
+    <!--[if mso]>
+    <style>body, table, td, div, p, h1 { font-family: 'Segoe UI', Arial, sans-serif !important; }</style>
+    <![endif]-->
+  </head>
+  <body style="margin:0;padding:0;background-color:#f7f3ea;">
+    <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#f7f3ea;">{% block preheader %}{% endblock %}</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:#f7f3ea;">
+      <tr>
+        <td align="center" class="compass-email-frame" style="padding:32px 16px;">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+            <tr>
+              <td class="compass-email-pad" style="padding:22px 32px 20px;background-color:#6b1f2a;border-bottom:3px solid #936515;border-radius:6px 6px 0 0;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                <div style="margin:0;font-size:20px;line-height:28px;font-weight:700;letter-spacing:3px;color:#ffffff;">COMPASS</div>
+                <div style="margin:4px 0 0;font-size:14px;line-height:20px;color:#f7f3ea;">University of Camarines Norte</div>
+                <div style="margin:0;font-size:14px;line-height:20px;color:#f7f3ea;">Guidance and Counseling Office</div>
+              </td>
+            </tr>
+            <tr>
+              <td class="compass-email-pad" style="padding:32px 32px 16px;background-color:#ffffff;border:1px solid #e6dfd0;border-top:0;border-radius:0 0 6px 6px;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:16px;line-height:24px;color:#222a2d;">
+                {% block notice %}{% endblock %}
+                <h1 style="margin:0 0 16px;font-size:22px;line-height:30px;font-weight:700;color:#4d1520;">{% block heading %}{% endblock %}</h1>
+                {% block content %}{% endblock %}
+              </td>
+            </tr>
+            <tr>
+              <td class="compass-email-pad" style="padding:20px 32px 0;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:13px;line-height:20px;color:#555d60;">
+                <p style="margin:0 0 4px;">This is an automated COMPASS message.</p>
+                <p style="margin:0;">University of Camarines Norte &middot; Guidance and Counseling Office</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

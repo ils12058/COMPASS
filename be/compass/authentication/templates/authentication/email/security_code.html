@@ -1,0 +1,13 @@
+{% extends "compass/email/base.html" %}
+{% block preheader %}Use the code in this message to continue in COMPASS.{% endblock %}
+{% block heading %}Your COMPASS security code{% endblock %}
+{% block content %}
+<p>Use this COMPASS security code to continue:</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;">
+  <tr>
+    <td style="padding:12px 14px 12px 20px;background-color:#f7f3ea;border:1px solid #e6dfd0;border-radius:6px;font-family:'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', 'Courier New', monospace;font-size:30px;line-height:36px;font-weight:700;letter-spacing:6px;color:#222a2d;">{{ code }}</td>
+  </tr>
+</table>
+<p>This code expires shortly and can be used once.</p>
+<p>Never share this code.</p>
+{% endblock %}

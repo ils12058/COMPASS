@@ -9,6 +9,10 @@ from celery import shared_task
 from django.contrib.auth.hashers import check_password
 from django.utils import timezone
 
+from compass.authentication.security_email import (
+    render_email_changed_alert,
+    render_security_code_email,
+)
 from compass.integrations.mail import Mailer
 from compass.tasks import CorrelationTask
 
@@ -38,13 +42,20 @@ def deliver_email_otp(self, challenge_id: str, code: str) -> int:
         or not check_password(code, challenge.code_hash)
     ):
         return 0
+    try:
+        message = render_security_code_email(code)
+    except Exception:
+        # No exception detail: a rendering failure must not carry the code into worker logs.
+        logger.error(
+            "email OTP message could not be rendered",
+            extra={"event": "email_otp_render_failed", "challenge_id": challenge_id},
+        )
+        return 0
     return Mailer().send(
-        subject="Your COMPASS security code",
-        body=(
-            "Use this COMPASS security code to continue: "
-            f"{code}\n\nThis code expires shortly and can be used once."
-        ),
+        subject=message.subject,
+        body=message.text_body,
         recipients=challenge.email,
+        html_body=message.html_body,
     )
 
 
@@ -71,6 +82,7 @@ def deliver_email_change_security_alert(self, request_id: str) -> int:
 
     from compass.authentication.models import EmailChangeRequest
 
+    message = render_email_changed_alert()
     with transaction.atomic():
         pending = EmailChangeRequest.objects.select_for_update().filter(pk=request_id).first()
         if pending is None or pending.confirmed_at is None:
@@ -85,14 +97,10 @@ def deliver_email_change_security_alert(self, request_id: str) -> int:
         # Keep the row lock through the transport call. Recovery may publish the same durable row
         # more than once, but only one task may send before old_email_alert_sent_at is stamped.
         sent = Mailer().send(
-            subject="Your COMPASS sign-in email was changed",
-            body=(
-                "Your COMPASS sign-in email was changed. "
-                "If you did not expect this change, contact the UCN Guidance and Counseling "
-                "Office or your authorized COMPASS administrator immediately.\n\n"
-                "No action is required if you expected this change."
-            ),
+            subject=message.subject,
+            body=message.text_body,
             recipients=destination,
+            html_body=message.html_body,
         )
         if sent == 1:
             pending.old_email_alert_sent_at = timezone.now()

@@ -1,5 +1,7 @@
-{% extends "notifications/email/base.html" %}
-{% block title %}COMPASS MFA Recovery Codes Regenerated{% endblock %}
+{% extends "compass/email/security.html" %}
+{% block preheader %}New MFA recovery codes were generated for your COMPASS account.{% endblock %}
+{% block heading %}MFA recovery codes regenerated{% endblock %}
 {% block content %}
-<p>New MFA recovery codes were generated for your COMPASS account. If you did not perform this action, review your account security.</p>
+<p>New MFA recovery codes were generated for your COMPASS account.</p>
+<p>If you did not perform this action, review your account security.</p>
 {% endblock %}

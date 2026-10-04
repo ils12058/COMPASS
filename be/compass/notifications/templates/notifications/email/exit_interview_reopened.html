@@ -1,5 +1,7 @@
-{% extends "notifications/email/base.html" %}
-{% block title %}COMPASS Exit Interview Reopened{% endblock %}
+{% extends "compass/email/base.html" %}
+{% block preheader %}Your Exit Interview has been reopened for correction.{% endblock %}
+{% block heading %}Exit Interview reopened{% endblock %}
 {% block content %}
-<p>Your Exit Interview has been reopened for correction. Sign in to COMPASS to review it.</p>
+<p>Your Exit Interview has been reopened for correction.</p>
+<p>Sign in to COMPASS to review it.</p>
 {% endblock %}

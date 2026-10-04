@@ -131,7 +131,8 @@ ASGI_APPLICATION = "config.asgi.application"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        # Shared transactional-email shells (compass/email/*) used by more than one app.
+        "DIRS": [BASE_DIR / "compass" / "common" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

@@ -11,10 +11,10 @@ from uuid import UUID
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
-from django.template.loader import render_to_string
 from django.utils import timezone
 
 from compass.common.correlation import get_current_request_id
+from compass.common.email import RenderedEmail, render_email
 from compass.integrations.mail import Mailer
 
 from .models import EmailDelivery, EmailDeliveryStatus
@@ -32,13 +32,6 @@ class ClaimedEmailDelivery:
     recipient_email: str
     attempt_number: int
     claim_token: UUID
-
-
-@dataclass(frozen=True, slots=True)
-class RenderedEmail:
-    subject: str
-    text_body: str
-    html_body: str
 
 
 def _clear_claim(delivery: EmailDelivery) -> None:
@@ -131,12 +124,11 @@ def claim_email_delivery(
 
 
 def render_notification_email(event_code: str) -> RenderedEmail:
+    """Render an event's fixed wording; no Notification or source-domain data reaches templates."""
+
     definition = get_event_definition(event_code)
-    template_root = f"notifications/email/{definition.email_template}"
-    return RenderedEmail(
-        subject=definition.email_subject,
-        text_body=render_to_string(f"{template_root}.txt", {}).strip() + "\n",
-        html_body=render_to_string(f"{template_root}.html", {}),
+    return render_email(
+        definition.email_subject, f"notifications/email/{definition.email_template}"
     )
 
 
