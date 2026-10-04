@@ -241,6 +241,7 @@ def resources_list_managed(
     audience: ResourceAudienceValue | None = None,
     category: ResourceCategoryValue | None = None,
     kind: ResourceKindValue | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -251,6 +252,7 @@ def resources_list_managed(
             audience=audience.value if audience is not None else None,
             category=category.value if category is not None else None,
             kind=kind.value if kind is not None else None,
+            search=search,
             page=page,
             page_size=page_size,
         )
@@ -447,6 +449,7 @@ def resources_list_visible(
     request,
     category: ResourceCategoryValue | None = None,
     kind: ResourceKindValue | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -455,6 +458,7 @@ def resources_list_visible(
             actor=request.auth_user,
             category=category.value if category is not None else None,
             kind=kind.value if kind is not None else None,
+            search=search,
             page=page,
             page_size=page_size,
         )
@@ -508,6 +512,7 @@ def resources_list_public(
     request,
     category: ResourceCategoryValue | None = None,
     kind: ResourceKindValue | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -515,6 +520,7 @@ def resources_list_public(
         result = list_public_resources(
             category=category.value if category is not None else None,
             kind=kind.value if kind is not None else None,
+            search=search,
             page=page,
             page_size=page_size,
         )
