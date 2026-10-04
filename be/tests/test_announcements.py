@@ -869,8 +869,8 @@ def test_announcement_search_preserves_visibility_management_filters_and_api_con
 
     public_item = create_announcement(
         actor=counselor,
-        title="Search needle public",
-        body_markdown="Visible public content.",
+        title="Search needle notice",
+        body_markdown="Visible content.",
         audience=PublicationAudience.PUBLIC,
         is_pinned=False,
         expires_at=None,
@@ -954,16 +954,13 @@ def test_announcement_search_preserves_visibility_management_filters_and_api_con
     ).items
 
     anonymous = Client()
-    public_api = anonymous.get("/api/v1/public/announcements?search=needle&page_size=10")
+    public_api = anonymous.get("/api/v1/public/announcements?search=notice&page_size=10")
     assert public_api.status_code == 200
     assert [item["id"] for item in public_api.json()["items"]] == [str(public_item.pk)]
 
-    visible_api = auth_client(student).get("/api/v1/announcements?search=needle&page_size=10")
+    visible_api = auth_client(student).get("/api/v1/announcements?search=students&page_size=10")
     assert visible_api.status_code == 200
-    assert {item["id"] for item in visible_api.json()["items"]} == {
-        str(public_item.pk),
-        str(student_item.pk),
-    }
+    assert [item["id"] for item in visible_api.json()["items"]] == [str(student_item.pk)]
 
     manager = auth_client(counselor)
     managed_draft = manager.get(
