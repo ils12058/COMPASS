@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent } from "react";
 
+import { ActionStatus, useActionStatus } from "@/components/ui/action-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +36,17 @@ function formValues(profile: MyProfileResponse): Required<MyProfileUpdateRequest
   };
 }
 
-function ProfilePhoto({ profile }: { profile: MyProfileResponse }) {
+// The account's read-only identity and its photo controls. Beside the editable details on wide
+// layouts, above them on narrow ones.
+function ProfileIdentity({
+  profile,
+  onAttempt,
+  onSaved,
+}: {
+  profile: MyProfileResponse;
+  onAttempt: () => void;
+  onSaved: (message: string) => void;
+}) {
   const { user } = usePortalSession();
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -54,9 +65,11 @@ function ProfilePhoto({ profile }: { profile: MyProfileResponse }) {
 
   async function uploadPhoto(file: File) {
     setError(null);
+    onAttempt();
     try {
       const response = await upload.mutateAsync({ data: { photo: file } });
       updatePhoto(response.data);
+      onSaved("Profile photo updated.");
     } catch (caught) {
       setError(accountErrorMessage(caught, "The profile photo could not be updated. Please try again."));
     } finally {
@@ -66,22 +79,28 @@ function ProfilePhoto({ profile }: { profile: MyProfileResponse }) {
 
   async function removePhoto() {
     setError(null);
+    onAttempt();
     try {
       const response = await remove.mutateAsync();
       updatePhoto(response.data);
+      onSaved("Profile photo removed.");
     } catch (caught) {
       setError(accountErrorMessage(caught, "The profile photo could not be removed. Please try again."));
     }
   }
 
   return (
-    <div className="flex flex-col gap-5 border-b border-brand-line px-4 py-5 sm:flex-row sm:items-center sm:px-5">
+    <div className="flex items-start gap-4 border-b border-brand-line px-4 py-5 sm:px-5 @[48rem]/profile:flex-col @[48rem]/profile:border-b-0 @[48rem]/profile:border-r">
       <AccountAvatar user={user} profile={profile} size="profile" />
-      <div className="min-w-0 flex-1">
-        <p className="font-heading text-xl font-semibold text-ink">{accountDisplayName(user, profile)}</p>
-        {profile.institutional_id ? <p className="mt-1 text-sm text-muted">{profile.institutional_id}</p> : null}
-        <p className="mt-1 text-sm text-muted">{userRoleLabel(profile.role)}</p>
-        <p className="mt-1 break-all text-sm text-muted">{profile.email}</p>
+      <div className="min-w-0 flex-1 @[48rem]/profile:w-full">
+        <p className="break-words font-heading text-lg font-semibold leading-snug text-ink">{accountDisplayName(user, profile)}</p>
+        <dl className="mt-1 space-y-0.5 text-sm text-muted">
+          {profile.institutional_id ? (
+            <div><dt className="sr-only">Institutional ID</dt><dd>{profile.institutional_id}</dd></div>
+          ) : null}
+          <div><dt className="sr-only">Role</dt><dd>{userRoleLabel(profile.role)}</dd></div>
+          <div><dt className="sr-only">Sign-in email</dt><dd className="break-all">{profile.email}</dd></div>
+        </dl>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant="secondary" disabled={pending} onClick={() => fileInput.current?.click()}>
             {upload.isPending ? "Uploading…" : "Change photo"}
@@ -109,13 +128,20 @@ function ProfilePhoto({ profile }: { profile: MyProfileResponse }) {
   );
 }
 
-function ProfileEditor({ profile }: { profile: MyProfileResponse }) {
+function ProfileEditor({
+  profile,
+  onAttempt,
+  onSaved,
+}: {
+  profile: MyProfileResponse;
+  onAttempt: () => void;
+  onSaved: (message: string) => void;
+}) {
   const queryClient = useQueryClient();
   const update = useProfileUpdateMyProfile();
   const [values, setValues] = useState(() => formValues(profile));
   const [saved, setSaved] = useState(() => formValues(profile));
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const dirty = JSON.stringify(values) !== JSON.stringify(saved);
 
   useUnsavedChangesGuard({
@@ -126,27 +152,28 @@ function ProfileEditor({ profile }: { profile: MyProfileResponse }) {
 
   function setField<K extends keyof Required<MyProfileUpdateRequest>>(field: K, value: Required<MyProfileUpdateRequest>[K]) {
     setValues((current) => ({ ...current, [field]: value }));
-    setSuccess(false);
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!dirty) return;
     setError(null);
+    // A confirmation from an earlier save must not sit beside this attempt's outcome.
+    onAttempt();
     try {
       const response = await update.mutateAsync({ data: values });
       const next = formValues(response.data);
       queryClient.setQueryData(getProfileGetMyProfileQueryKey(), response);
       setValues(next);
       setSaved(next);
-      setSuccess(true);
+      onSaved("Profile changes saved.");
     } catch (caught) {
       setError(accountErrorMessage(caught, "Your profile could not be saved. Please try again."));
     }
   }
 
   return (
-    <form onSubmit={save}>
+    <form onSubmit={save} className="min-w-0">
       <PanelSection title="Personal information" titleId="personal-heading">
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="grid gap-2">
@@ -177,9 +204,8 @@ function ProfileEditor({ profile }: { profile: MyProfileResponse }) {
           </div>
         </div>
       </PanelSection>
-      <PanelFooter className="justify-end">
+      <PanelFooter className="justify-end @[48rem]/profile:rounded-bl-none">
         {error ? <p id="profile-error" role="alert" className="mr-auto text-sm text-danger">{error}</p> : null}
-        {success ? <p role="status" className="mr-auto text-sm text-success">Profile changes saved.</p> : null}
         <Button type="submit" disabled={!dirty || update.isPending} aria-describedby={error ? "profile-error" : undefined}>
           {update.isPending ? "Saving…" : "Save changes"}
         </Button>
@@ -190,9 +216,10 @@ function ProfileEditor({ profile }: { profile: MyProfileResponse }) {
 
 export function ProfilePage() {
   const profile = useProfileGetMyProfile({ query: { retry: false } });
+  const status = useActionStatus();
 
   return (
-    <section aria-labelledby="profile-heading">
+    <section aria-labelledby="profile-heading" className="@container/profile">
       <PageHeader title="Profile" headingId="profile-heading" />
       {profile.isPending ? <RowsSkeleton label="Loading profile…" rows={4} framed /> : null}
       {profile.isError ? (
@@ -205,11 +232,13 @@ export function ProfilePage() {
         </Notice>
       ) : null}
       {profile.isSuccess ? (
-        <Panel as="div">
-          <ProfilePhoto profile={profile.data.data} />
-          <ProfileEditor profile={profile.data.data} />
+        // One surface: the read-only identity beside the one form of editable details.
+        <Panel as="div" className="grid @[48rem]/profile:grid-cols-[minmax(14rem,18rem)_minmax(0,1fr)]">
+          <ProfileIdentity profile={profile.data.data} onAttempt={status.dismiss} onSaved={status.show} />
+          <ProfileEditor profile={profile.data.data} onAttempt={status.dismiss} onSaved={status.show} />
         </Panel>
       ) : null}
+      <ActionStatus status={status.status} onDismiss={status.dismiss} />
     </section>
   );
 }

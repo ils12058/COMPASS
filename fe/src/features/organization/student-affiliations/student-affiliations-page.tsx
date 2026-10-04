@@ -1,9 +1,12 @@
 "use client";
 
+import { Link2 } from "lucide-react";
+
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { PageAction } from "@/components/ui/page-action";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import {
@@ -231,7 +234,7 @@ export function StudentAffiliationsPage() {
         }
         action={
           structureReady ? (
-            <Button onClick={() => openSet()}>Set affiliation</Button>
+            <PageAction icon={Link2} label="Set" labelDetail="affiliation" onClick={() => openSet()} />
           ) : null
         }
       />

@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleAlert, NotebookPen, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -9,6 +10,7 @@ import { dataTable } from "@/components/ui/data-table";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
+import { PageAction } from "@/components/ui/page-action";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -82,12 +84,25 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
       <CounselingPageHeading
         title="Counseling"
         description="Record Counseling interactions after they take place."
-        action={access.canManageAssigned ? <Button disabled={recordOpen && recordUncertain} onClick={() => { if (recordUncertain) return; setRecordOpen((open) => !open); }}>{recordUncertain ? "Recording result unconfirmed" : recordOpen ? "Close recording" : "Record counseling encounter"}</Button> : undefined}
+        action={access.canManageAssigned ? (
+          recordUncertain ? (
+            <PageAction icon={CircleAlert} label="Unconfirmed" labelDetail="recording result" disabled />
+          ) : (
+            <PageAction
+              icon={recordOpen ? X : NotebookPen}
+              label={recordOpen ? "Close" : "Record"}
+              labelDetail={recordOpen ? "recording" : "counseling encounter"}
+              variant={recordOpen ? "secondary" : "primary"}
+              aria-expanded={recordOpen}
+              onClick={() => setRecordOpen((open) => !open)}
+            />
+          )
+        ) : undefined}
       />
 
       {recordOpen ? <RecordEncounterForm onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} /> : null}
 
-      <section id="encounters" aria-labelledby="my-counseling-encounters-heading" className="mt-5">
+      <section id="encounters" aria-labelledby="my-counseling-encounters-heading" className={recordOpen ? "mt-5" : undefined}>
           {/* Selects and dates only, so each choice applies as soon as it changes. The tools step
               aside while an encounter is being recorded, so they never sit over that form. */}
           {recordOpen ? null : (

@@ -1,9 +1,12 @@
 "use client";
 
+import { ClipboardPlus } from "lucide-react";
+
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { PageAction } from "@/components/ui/page-action";
 import { Button } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
 import { FilterField } from "@/components/ui/filter-toolbar";
@@ -288,7 +291,7 @@ export function CounselorRoutineWorkspace({
         title="Routine Interviews"
         description="A Counselor Evaluation opens after the Student submits their Intake."
         action={access.canManageAssigned ? (
-          <Button onClick={() => setCreateOpen(true)}>Start Routine Interview</Button>
+          <PageAction icon={ClipboardPlus} label="Start" labelDetail="Routine Interview" onClick={() => setCreateOpen(true)} />
         ) : undefined}
       />
 

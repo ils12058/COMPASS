@@ -1,8 +1,11 @@
 "use client";
 
+import { Plus } from "lucide-react";
+
 import { keepPreviousData } from "@tanstack/react-query";
 import Link from "next/link";
 
+import { PageActionLink } from "@/components/ui/page-action";
 import { dataTable } from "@/components/ui/data-table";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
@@ -16,7 +19,6 @@ import {
   PrivacyListSkeleton,
   PrivacyPageHeader,
   PrivacyQueryError,
-  primaryLinkClass,
   recordLinkClass,
   useListSearchParams,
   usePrivacyAccess,
@@ -35,9 +37,7 @@ export function NoticesPage() {
   );
   const result = query.isError && !canShowLastKnownData(query) ? undefined : query.data?.data;
   const createLink = canManage ? (
-    <Link href="/portal/privacy/notices/new" className={primaryLinkClass}>
-      Create privacy notice
-    </Link>
+    <PageActionLink href="/portal/privacy/notices/new" icon={Plus} label="Create" labelDetail="privacy notice" />
   ) : null;
 
   return (

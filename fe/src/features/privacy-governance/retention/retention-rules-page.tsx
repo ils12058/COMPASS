@@ -1,8 +1,11 @@
 "use client";
 
+import { Plus } from "lucide-react";
+
 import Link from "next/link";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { useState } from "react";
+import { PageActionLink } from "@/components/ui/page-action";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -12,7 +15,6 @@ import {
   PrivacyPageHeader,
   PrivacyListSkeleton,
   PrivacyQueryError,
-  primaryLinkClass,
   textLinkClass,
 } from "../privacy-governance-shared";
 import { categoryLabels, useRetentionAccess } from "./retention-shared";
@@ -39,12 +41,7 @@ export function RetentionRulesPage() {
         backLabel="Retention & Disposition"
         action={
           canManage ? (
-            <Link
-              href="/portal/privacy/retention/rules/new"
-              className={primaryLinkClass}
-            >
-              Create draft rule
-            </Link>
+            <PageActionLink href="/portal/privacy/retention/rules/new" icon={Plus} label="Create" labelDetail="draft rule" />
           ) : null
         }
       />

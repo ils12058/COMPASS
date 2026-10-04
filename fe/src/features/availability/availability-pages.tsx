@@ -1,12 +1,15 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { ActionStatus, useActionStatus } from "@/components/ui/action-status";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { dataTable } from "@/components/ui/data-table";
+import { focusHeading } from "@/lib/focus-heading";
+import { cn } from "@/lib/utils/cn";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
@@ -27,7 +30,7 @@ import {
 } from "@/features/availability/availability-shared";
 import { EffectiveAvailabilityPreview } from "@/features/availability/effective-availability-preview";
 import { UnavailabilitySection } from "@/features/availability/unavailability-section";
-import { WeeklyScheduleEditor } from "@/features/availability/weekly-schedule-editor";
+import { WeeklyScheduleCleanup, WeeklyScheduleEditor } from "@/features/availability/weekly-schedule-editor";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   type AvailabilityProviderSummary,
@@ -53,6 +56,30 @@ import {
   useAvailabilityReplaceProviderWeekly,
 } from "@/lib/api/generated/availability/availability";
 
+// The recurring schedule is the primary work and its dated exceptions are secondary, so they sit
+// side by side (about two to one) once the page itself is wide enough, and stack otherwise. The
+// decision uses the page's own width (a container query), so an expanded dock stacks them instead
+// of squeezing the schedule. The preview of the result supports both and spans below them.
+function AvailabilityLayout({
+  schedule,
+  exceptions,
+  preview,
+}: {
+  schedule: ReactNode;
+  exceptions: ReactNode;
+  preview?: ReactNode;
+}) {
+  return (
+    <div className="@container/availability">
+      <div className="grid items-start gap-5 @[68rem]/availability:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
+        <div className="min-w-0">{schedule}</div>
+        <div className="min-w-0">{exceptions}</div>
+      </div>
+      {preview ? <div className="mt-5">{preview}</div> : null}
+    </div>
+  );
+}
+
 export function MyAvailabilityPage() {
   const { user } = usePortalSession();
   const allowed = canUseSelfAvailability(user);
@@ -71,6 +98,7 @@ export function MyAvailabilityPage() {
   const removeException = useAvailabilityRemoveMyException();
   const weeklyAction = useAvailabilityAction();
   const exceptionAction = useAvailabilityAction();
+  const status = useActionStatus();
   const [previewRefresh, setPreviewRefresh] = useState(0);
   const weeklyData = safeQueryData(weekly);
   const exceptionData = safeQueryData(exceptions);
@@ -80,12 +108,13 @@ export function MyAvailabilityPage() {
   async function saveWeekly(
     windows: WeeklyWindowRequest[],
   ): Promise<boolean> {
+    status.dismiss();
     const response = await weeklyAction.run(
       () => replaceWeekly.mutateAsync({ data: { windows } }),
       "Your weekly Availability could not be saved.",
     );
     if (!response) return false;
-    weeklyAction.setNotice("Weekly Availability saved.");
+    status.show("Weekly schedule saved.");
     await weekly.refetch();
     setPreviewRefresh((value) => value + 1);
     return true;
@@ -94,12 +123,13 @@ export function MyAvailabilityPage() {
   async function addException(
     payload: ExceptionCreateRequest,
   ): Promise<boolean> {
+    status.dismiss();
     const response = await exceptionAction.run(
       () => createException.mutateAsync({ data: payload }),
       "Your unavailability could not be added.",
     );
     if (!response) return false;
-    exceptionAction.setNotice("Unavailability added.");
+    status.show("Unavailability added.");
     await exceptions.refetch();
     setPreviewRefresh((value) => value + 1);
     return true;
@@ -108,12 +138,12 @@ export function MyAvailabilityPage() {
   async function removeExceptionById(
     exceptionId: string,
   ): Promise<boolean> {
+    status.dismiss();
     const response = await exceptionAction.run(
       () => removeException.mutateAsync({ exceptionId }),
       "Your unavailability could not be removed.",
     );
     if (!response) return false;
-    exceptionAction.setNotice("Unavailability removed.");
     await exceptions.refetch();
     setPreviewRefresh((value) => value + 1);
     return true;
@@ -123,61 +153,60 @@ export function MyAvailabilityPage() {
     <section>
       <AvailabilityPageHeading title="My availability" />
 
-      <div className="mt-5">
-        {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
-        {weekly.isPending ? (
-          <AvailabilitySectionSkeleton label="Loading weekly Availability…" />
-        ) : !weeklyData ? (
-          <AvailabilityQueryError
-            error={weekly.error}
-            fallback="Your weekly Availability could not be loaded."
-            onRetry={() => void weekly.refetch()}
-          />
-        ) : (
-          <WeeklyScheduleEditor
-            key={weeklyData.data.windows.map((window) => window.id).join("|")}
-            windows={weeklyData.data.windows}
-            canMutate={canMutate}
-            pending={replaceWeekly.isPending}
-            error={weeklyAction.error}
-            notice={weeklyAction.notice}
-            onSave={saveWeekly}
-          />
-        )}
-      </div>
+      <AvailabilityLayout
+        schedule={
+          <>
+            {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
+            {weekly.isPending ? (
+              <AvailabilitySectionSkeleton label="Loading weekly Availability…" />
+            ) : !weeklyData ? (
+              <AvailabilityQueryError
+                error={weekly.error}
+                fallback="Your weekly Availability could not be loaded."
+                onRetry={() => void weekly.refetch()}
+              />
+            ) : (
+              <WeeklyScheduleEditor
+                key={weeklyData.data.windows.map((window) => window.id).join("|")}
+                windows={weeklyData.data.windows}
+                canMutate={canMutate}
+                pending={replaceWeekly.isPending}
+                error={weeklyAction.error}
+                onSave={saveWeekly}
+              />
+            )}
+          </>
+        }
+        exceptions={
+          <>
+            {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
+            {exceptions.isPending ? (
+              <AvailabilitySectionSkeleton label="Loading unavailability…" />
+            ) : !exceptionData ? (
+              <AvailabilityQueryError
+                error={exceptions.error}
+                fallback="Your unavailability could not be loaded."
+                onRetry={() => void exceptions.refetch()}
+              />
+            ) : (
+              <UnavailabilitySection
+                items={exceptionData.data.items}
+                canCreate={canMutate}
+                canRemove={canMutate}
+                createPending={createException.isPending}
+                removePending={removeException.isPending}
+                error={exceptionAction.error}
+                onCreate={addException}
+                onRemove={removeExceptionById}
+                onResetError={exceptionAction.resetError}
+              />
+            )}
+          </>
+        }
+        preview={<EffectiveAvailabilityPreview providerId={user.id} refreshToken={previewRefresh} />}
+      />
 
-      <div className="mt-5">
-        {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
-        {exceptions.isPending ? (
-          <AvailabilitySectionSkeleton label="Loading unavailability…" />
-        ) : !exceptionData ? (
-          <AvailabilityQueryError
-            error={exceptions.error}
-            fallback="Your unavailability could not be loaded."
-            onRetry={() => void exceptions.refetch()}
-          />
-        ) : (
-          <UnavailabilitySection
-            items={exceptionData.data.items}
-            canCreate={canMutate}
-            canRemove={canMutate}
-            createPending={createException.isPending}
-            removePending={removeException.isPending}
-            error={exceptionAction.error}
-            notice={exceptionAction.notice}
-            onCreate={addException}
-            onRemove={removeExceptionById}
-          />
-        )}
-      </div>
-
-      <div className="mt-5">
-        <EffectiveAvailabilityPreview
-          providerId={user.id}
-          refreshToken={previewRefresh}
-        />
-      </div>
-
+      <ActionStatus status={status.status} onDismiss={status.dismiss} />
     </section>
   );
 }
@@ -197,6 +226,7 @@ export function OfficeAvailabilityPage() {
   const removeException = useAvailabilityRemoveOfficeException();
   const weeklyAction = useAvailabilityAction();
   const exceptionAction = useAvailabilityAction();
+  const status = useActionStatus();
   const weeklyData = safeQueryData(weekly);
   const exceptionData = safeQueryData(exceptions);
 
@@ -205,12 +235,13 @@ export function OfficeAvailabilityPage() {
   async function saveWeekly(
     windows: WeeklyWindowRequest[],
   ): Promise<boolean> {
+    status.dismiss();
     const response = await weeklyAction.run(
       () => replaceWeekly.mutateAsync({ data: { windows } }),
       "Office weekly Availability could not be saved.",
     );
     if (!response) return false;
-    weeklyAction.setNotice("Office weekly Availability saved.");
+    status.show("Office weekly schedule saved.");
     await weekly.refetch();
     return true;
   }
@@ -218,12 +249,13 @@ export function OfficeAvailabilityPage() {
   async function addException(
     payload: ExceptionCreateRequest,
   ): Promise<boolean> {
+    status.dismiss();
     const response = await exceptionAction.run(
       () => createException.mutateAsync({ data: payload }),
       "Office unavailability could not be added.",
     );
     if (!response) return false;
-    exceptionAction.setNotice("Office unavailability added.");
+    status.show("Office unavailability added.");
     await exceptions.refetch();
     return true;
   }
@@ -231,12 +263,12 @@ export function OfficeAvailabilityPage() {
   async function removeExceptionById(
     exceptionId: string,
   ): Promise<boolean> {
+    status.dismiss();
     const response = await exceptionAction.run(
       () => removeException.mutateAsync({ exceptionId }),
       "Office unavailability could not be removed.",
     );
     if (!response) return false;
-    exceptionAction.setNotice("Office unavailability removed.");
     await exceptions.refetch();
     return true;
   }
@@ -248,54 +280,59 @@ export function OfficeAvailabilityPage() {
         description="New appointment times can be offered only when the office and a counselor are both available."
       />
 
-      <div className="mt-5">
-        {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
-        {weekly.isPending ? (
-          <AvailabilitySectionSkeleton label="Loading Office weekly Availability…" />
-        ) : !weeklyData ? (
-          <AvailabilityQueryError
-            error={weekly.error}
-            fallback="Office weekly Availability could not be loaded."
-            onRetry={() => void weekly.refetch()}
-          />
-        ) : (
-          <WeeklyScheduleEditor
-            key={weeklyData.data.windows.map((window) => window.id).join("|")}
-            windows={weeklyData.data.windows}
-            canMutate
-            pending={replaceWeekly.isPending}
-            error={weeklyAction.error}
-            notice={weeklyAction.notice}
-            onSave={saveWeekly}
-          />
-        )}
-      </div>
+      <AvailabilityLayout
+        schedule={
+          <>
+            {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
+            {weekly.isPending ? (
+              <AvailabilitySectionSkeleton label="Loading Office weekly Availability…" />
+            ) : !weeklyData ? (
+              <AvailabilityQueryError
+                error={weekly.error}
+                fallback="Office weekly Availability could not be loaded."
+                onRetry={() => void weekly.refetch()}
+              />
+            ) : (
+              <WeeklyScheduleEditor
+                key={weeklyData.data.windows.map((window) => window.id).join("|")}
+                windows={weeklyData.data.windows}
+                canMutate
+                pending={replaceWeekly.isPending}
+                error={weeklyAction.error}
+                onSave={saveWeekly}
+              />
+            )}
+          </>
+        }
+        exceptions={
+          <>
+            {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
+            {exceptions.isPending ? (
+              <AvailabilitySectionSkeleton label="Loading Office unavailability…" />
+            ) : !exceptionData ? (
+              <AvailabilityQueryError
+                error={exceptions.error}
+                fallback="Office unavailability could not be loaded."
+                onRetry={() => void exceptions.refetch()}
+              />
+            ) : (
+              <UnavailabilitySection
+                items={exceptionData.data.items}
+                canCreate
+                canRemove
+                createPending={createException.isPending}
+                removePending={removeException.isPending}
+                error={exceptionAction.error}
+                onCreate={addException}
+                onRemove={removeExceptionById}
+                onResetError={exceptionAction.resetError}
+              />
+            )}
+          </>
+        }
+      />
 
-      <div className="mt-5">
-        {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
-        {exceptions.isPending ? (
-          <AvailabilitySectionSkeleton label="Loading Office unavailability…" />
-        ) : !exceptionData ? (
-          <AvailabilityQueryError
-            error={exceptions.error}
-            fallback="Office unavailability could not be loaded."
-            onRetry={() => void exceptions.refetch()}
-          />
-        ) : (
-          <UnavailabilitySection
-            items={exceptionData.data.items}
-            canCreate
-            canRemove
-            createPending={createException.isPending}
-            removePending={removeException.isPending}
-            error={exceptionAction.error}
-            notice={exceptionAction.notice}
-            onCreate={addException}
-            onRemove={removeExceptionById}
-          />
-        )}
-      </div>
-
+      <ActionStatus status={status.status} onDismiss={status.dismiss} />
     </section>
   );
 }
@@ -325,13 +362,18 @@ function ProviderWorkspace({
   const removeException = useAvailabilityRemoveProviderException();
   const weeklyAction = useAvailabilityAction();
   const exceptionAction = useAvailabilityAction();
+  const status = useActionStatus();
   const [previewRefresh, setPreviewRefresh] = useState(0);
   const weeklyData = safeQueryData(weekly);
   const exceptionData = safeQueryData(exceptions);
 
-  async function saveWeekly(
-    windows: WeeklyWindowRequest[],
-  ): Promise<boolean> {
+  // The directory row that opened this workspace is gone; start the reader at the Counselor's name.
+  useEffect(() => {
+    focusHeading("provider-availability-heading");
+  }, []);
+
+  async function replaceProviderWeekly(windows: WeeklyWindowRequest[]): Promise<boolean> {
+    status.dismiss();
     const response = await weeklyAction.run(
       () =>
         replaceWeekly.mutateAsync({
@@ -341,19 +383,21 @@ function ProviderWorkspace({
       "The Counselor's weekly Availability could not be saved.",
     );
     if (!response) return false;
-    weeklyAction.setNotice(
-      windows.length === 0
-        ? "Recurring Availability cleared."
-        : "Counselor's weekly Availability saved.",
-    );
     await weekly.refetch();
     setPreviewRefresh((value) => value + 1);
     return true;
   }
 
+  async function saveWeekly(windows: WeeklyWindowRequest[]): Promise<boolean> {
+    const saved = await replaceProviderWeekly(windows);
+    if (saved) status.show("Weekly schedule saved.");
+    return saved;
+  }
+
   async function addException(
     payload: ExceptionCreateRequest,
   ): Promise<boolean> {
+    status.dismiss();
     const response = await exceptionAction.run(
       () =>
         createException.mutateAsync({
@@ -363,7 +407,7 @@ function ProviderWorkspace({
       "The Counselor's unavailability could not be added.",
     );
     if (!response) return false;
-    exceptionAction.setNotice("Counselor unavailability added.");
+    status.show("Unavailability added.");
     await exceptions.refetch();
     setPreviewRefresh((value) => value + 1);
     return true;
@@ -372,6 +416,7 @@ function ProviderWorkspace({
   async function removeExceptionById(
     exceptionId: string,
   ): Promise<boolean> {
+    status.dismiss();
     const response = await exceptionAction.run(
       () =>
         removeException.mutateAsync({
@@ -381,7 +426,6 @@ function ProviderWorkspace({
       "The Counselor's unavailability could not be removed.",
     );
     if (!response) return false;
-    exceptionAction.setNotice("Counselor unavailability removed.");
     await exceptions.refetch();
     setPreviewRefresh((value) => value + 1);
     return true;
@@ -391,6 +435,7 @@ function ProviderWorkspace({
     <section>
       <PageHeader
         title={provider.full_name || provider.email}
+        headingId="provider-availability-heading"
         meta={<AvailabilityStatusBadge active={provider.is_active} legacy={legacy} />}
         back={
           <Button variant="quiet" className="mb-2 px-1" onClick={onBack}>
@@ -402,7 +447,7 @@ function ProviderWorkspace({
       </PageHeader>
 
       {!operational ? (
-        <Notice tone="warning" className="mt-5 max-w-3xl">
+        <Notice tone="warning" className="mb-5 max-w-3xl">
           <span className="text-muted">
             {legacy
               ? "This is historical Guidance Services Staff Availability. Existing configuration can be reviewed or removed, but new operational Availability cannot be configured."
@@ -411,64 +456,68 @@ function ProviderWorkspace({
         </Notice>
       ) : null}
 
-      <div className="mt-5">
-        {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
-        {weekly.isPending ? (
-          <AvailabilitySectionSkeleton label="Loading the Counselor's weekly Availability…" />
-        ) : !weeklyData ? (
-          <AvailabilityQueryError
-            error={weekly.error}
-            fallback="The Counselor's weekly Availability could not be loaded."
-            onRetry={() => void weekly.refetch()}
-          />
-        ) : (
-          <WeeklyScheduleEditor
-            key={weeklyData.data.windows.map((window) => window.id).join("|")}
-            windows={weeklyData.data.windows}
-            canMutate
-            cleanupOnly={!operational}
-            pending={replaceWeekly.isPending}
-            error={weeklyAction.error}
-            notice={weeklyAction.notice}
-            onSave={saveWeekly}
-          />
-        )}
-      </div>
+      <AvailabilityLayout
+        schedule={
+          <>
+            {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
+            {weekly.isPending ? (
+              <AvailabilitySectionSkeleton label="Loading the Counselor's weekly Availability…" />
+            ) : !weeklyData ? (
+              <AvailabilityQueryError
+                error={weekly.error}
+                fallback="The Counselor's weekly Availability could not be loaded."
+                onRetry={() => void weekly.refetch()}
+              />
+            ) : operational ? (
+              <WeeklyScheduleEditor
+                key={weeklyData.data.windows.map((window) => window.id).join("|")}
+                windows={weeklyData.data.windows}
+                canMutate
+                pending={replaceWeekly.isPending}
+                error={weeklyAction.error}
+                onSave={saveWeekly}
+              />
+            ) : (
+              <WeeklyScheduleCleanup
+                windows={weeklyData.data.windows}
+                pending={replaceWeekly.isPending}
+                error={weeklyAction.error}
+                onClear={() => replaceProviderWeekly([])}
+                onResetError={weeklyAction.resetError}
+              />
+            )}
+          </>
+        }
+        exceptions={
+          <>
+            {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
+            {exceptions.isPending ? (
+              <AvailabilitySectionSkeleton label="Loading the Counselor's unavailability…" />
+            ) : !exceptionData ? (
+              <AvailabilityQueryError
+                error={exceptions.error}
+                fallback="The Counselor's unavailability could not be loaded."
+                onRetry={() => void exceptions.refetch()}
+              />
+            ) : (
+              <UnavailabilitySection
+                items={exceptionData.data.items}
+                canCreate={operational}
+                canRemove
+                createPending={createException.isPending}
+                removePending={removeException.isPending}
+                error={exceptionAction.error}
+                onCreate={addException}
+                onRemove={removeExceptionById}
+                onResetError={exceptionAction.resetError}
+              />
+            )}
+          </>
+        }
+        preview={canPreview ? <EffectiveAvailabilityPreview providerId={provider.id} refreshToken={previewRefresh} /> : undefined}
+      />
 
-      <div className="mt-5">
-        {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
-        {exceptions.isPending ? (
-          <AvailabilitySectionSkeleton label="Loading the Counselor's unavailability…" />
-        ) : !exceptionData ? (
-          <AvailabilityQueryError
-            error={exceptions.error}
-            fallback="The Counselor's unavailability could not be loaded."
-            onRetry={() => void exceptions.refetch()}
-          />
-        ) : (
-          <UnavailabilitySection
-            items={exceptionData.data.items}
-            canCreate={operational}
-            canRemove
-            createPending={createException.isPending}
-            removePending={removeException.isPending}
-            error={exceptionAction.error}
-            notice={exceptionAction.notice}
-            onCreate={addException}
-            onRemove={removeExceptionById}
-          />
-        )}
-      </div>
-
-      {canPreview ? (
-        <div className="mt-5">
-          <EffectiveAvailabilityPreview
-            providerId={provider.id}
-            refreshToken={previewRefresh}
-          />
-        </div>
-      ) : null}
-
+      <ActionStatus status={status.status} onDismiss={status.dismiss} />
     </section>
   );
 }
@@ -487,6 +536,13 @@ export function ProviderAvailabilityPage() {
   const [searchValue, setSearchValue] = useState(search);
   const [selected, setSelected] =
     useState<AvailabilityProviderSummary | null>(null);
+  // After Back, focus returns to the Counselor the reader opened.
+  const returnTo = useRef<string | null>(null);
+  useEffect(() => {
+    if (selected || !returnTo.current) return;
+    document.querySelector<HTMLButtonElement>(`[data-provider-id="${returnTo.current}"]`)?.focus();
+    returnTo.current = null;
+  }, [selected]);
 
   const providers = useAvailabilityListProviders(
     {
@@ -528,7 +584,10 @@ export function ProviderAvailabilityPage() {
     return (
       <ProviderWorkspace
         provider={selected}
-        onBack={() => setSelected(null)}
+        onBack={() => {
+          returnTo.current = selected.id;
+          setSelected(null);
+        }}
       />
     );
   }
@@ -573,13 +632,12 @@ export function ProviderAvailabilityPage() {
           </PanelMessage>
         ) : (
           <div className={dataTable.scroll}>
-            <table className={`${dataTable.table} min-w-[40rem]`}>
+            <table className={`${dataTable.table} min-w-[32rem]`}>
               <thead className={dataTable.head}>
                 <tr>
                   <th scope="col" className={dataTable.headerCell}>Name</th>
                   <th scope="col" className={dataTable.headerCell}>Email</th>
                   <th scope="col" className={dataTable.headerCell}>Status</th>
-                  <th scope="col" className={`${dataTable.headerCell} text-right`}>Action</th>
                 </tr>
               </thead>
               <tbody className={dataTable.body}>
@@ -588,25 +646,27 @@ export function ProviderAvailabilityPage() {
                     provider.role === "GUIDANCE_SERVICES_STAFF";
                   return (
                     <tr key={provider.id} className={dataTable.row}>
-                      <th scope="row" className={`${dataTable.cell} font-semibold text-ink`}>
-                        {provider.full_name || provider.email}
+                      <th scope="row" className={cn(dataTable.cell, "py-1.5 align-middle font-normal")}>
+                        {/* The Counselor's name opens their Availability; the workspace is held in
+                            this page, as no contract resolves a Counselor by ID for its own route. */}
+                        <button
+                          type="button"
+                          data-provider-id={provider.id}
+                          onClick={() => setSelected(provider)}
+                          className="inline-flex min-h-10 items-center rounded-sm text-left font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                        >
+                          <span className="sr-only">Manage availability for </span>
+                          {provider.full_name || provider.email}
+                        </button>
                       </th>
-                      <td className={`${dataTable.cell} text-muted`}>
+                      <td className={cn(dataTable.cell, "align-middle text-muted")}>
                         {provider.email}
                       </td>
-                      <td className={dataTable.cell}>
+                      <td className={cn(dataTable.cell, "align-middle")}>
                         <AvailabilityStatusBadge
                           active={provider.is_active}
                           legacy={legacy}
                         />
-                      </td>
-                      <td className={`${dataTable.cell} py-2 text-right`}>
-                        <Button
-                          variant="quiet"
-                          onClick={() => setSelected(provider)}
-                        >
-                          Manage
-                        </Button>
                       </td>
                     </tr>
                   );

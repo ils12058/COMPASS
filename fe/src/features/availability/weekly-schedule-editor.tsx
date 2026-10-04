@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -7,419 +8,361 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { Panel, PanelHeader } from "@/components/ui/panel";
+import { Panel, PanelFooter, PanelHeader } from "@/components/ui/panel";
+import { modeScopeLabel } from "@/features/availability/availability-shared";
+import { focusHeading } from "@/lib/focus-heading";
 import {
-  ActionFeedback,
-  modeScopeLabel,
-  weeklyWindowLabel,
-} from "@/features/availability/availability-shared";
+  draftFromWindows,
+  formatClockRange,
+  requestFromDraft,
+  validateDraft,
+  weekdayLabels,
+  weekdayOrder,
+  weekdayShortLabels,
+  windowsForDay,
+  type DraftProblem,
+  type DraftWindow,
+} from "@/features/availability/weekly-schedule";
 import {
   AvailabilityModeScope,
-  Weekday,
+  type Weekday,
   type WeeklyWindowRequest,
   type WeeklyWindowResponse,
 } from "@/lib/api/generated/model";
 
-type DraftWindow = {
-  key: string;
-  weekday: Weekday;
-  start_time: string;
-  end_time: string;
-  mode_scope: AvailabilityModeScope;
-};
-
-const weekdayOrder: Weekday[] = [
-  Weekday.MONDAY,
-  Weekday.TUESDAY,
-  Weekday.WEDNESDAY,
-  Weekday.THURSDAY,
-  Weekday.FRIDAY,
-  Weekday.SATURDAY,
-  Weekday.SUNDAY,
-];
-
-const weekdayLabels: Record<Weekday, string> = {
-  [Weekday.MONDAY]: "Monday",
-  [Weekday.TUESDAY]: "Tuesday",
-  [Weekday.WEDNESDAY]: "Wednesday",
-  [Weekday.THURSDAY]: "Thursday",
-  [Weekday.FRIDAY]: "Friday",
-  [Weekday.SATURDAY]: "Saturday",
-  [Weekday.SUNDAY]: "Sunday",
-};
-
 function createKey(): string {
+  return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9);
+}
+
+// One row per weekday: the short day name, its hours, and (when editable) Add. The board follows
+// the panel's own width (a container query), so it never squeezes when it shares the page with
+// Unavailability: wide, it is three columns; narrow, the day and Add share a line and the hours
+// take the full width beneath them.
+const editableDayRow =
+  "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 px-4 py-2 sm:px-5 @[30rem]/weekly:grid-cols-[3.5rem_minmax(0,1fr)_auto]";
+const editableHours = "col-span-2 row-start-2 min-w-0 @[30rem]/weekly:col-span-1 @[30rem]/weekly:col-start-2 @[30rem]/weekly:row-start-1";
+const editableAdd = "col-start-2 row-start-1 @[30rem]/weekly:col-start-3";
+// A day without hours ("No hours set") fits on one line at any width.
+const emptyDayRow = "grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-start gap-x-3 px-4 py-2 sm:px-5";
+const readOnlyDayRow = "grid grid-cols-[3.5rem_minmax(0,1fr)] gap-x-3 px-4 py-2 sm:px-5";
+
+function DayName({ weekday, id }: { weekday: Weekday; id: string }) {
   return (
-    Date.now().toString(36) +
-    "-" +
-    Math.random().toString(36).slice(2, 9)
+    <p id={id} className="col-start-1 row-start-1 pt-2.5 text-sm font-semibold text-ink">
+      <span aria-hidden="true">{weekdayShortLabels[weekday]}</span>
+      <span className="sr-only">{weekdayLabels[weekday]}</span>
+    </p>
   );
 }
 
-function draftFromWindows(windows: WeeklyWindowResponse[]): DraftWindow[] {
-  return windows.map((window) => ({
-    key: window.id,
-    weekday: window.weekday,
-    start_time: window.start_time.slice(0, 5),
-    end_time: window.end_time.slice(0, 5),
-    mode_scope: window.mode_scope,
-  }));
-}
-
-function scopesOverlap(
-  left: AvailabilityModeScope,
-  right: AvailabilityModeScope,
-): boolean {
+function ReadOnlyHours({ windows }: { windows: { start_time: string; end_time: string; mode_scope: AvailabilityModeScope }[] }) {
+  if (windows.length === 0) return <p className="py-2.5 text-sm text-muted">No hours set</p>;
   return (
-    left === right ||
-    left === AvailabilityModeScope.ALL ||
-    right === AvailabilityModeScope.ALL
+    <ul>
+      {windows.map((window) => (
+        <li key={window.start_time + window.end_time + window.mode_scope} className="py-2.5 text-sm text-ink">
+          {formatClockRange(window.start_time, window.end_time)}
+          <span className="text-muted"> · {modeScopeLabel(window.mode_scope)}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
-function validateDraft(draft: DraftWindow[]): string | null {
-  for (const window of draft) {
-    if (!window.start_time || !window.end_time) {
-      return "Each recurring window needs a start and end time.";
-    }
-    if (window.start_time >= window.end_time) {
-      return (
-        weekdayLabels[window.weekday] +
-        " contains a window whose start time is not earlier than its end time."
-      );
-    }
-  }
-
-  for (const weekday of weekdayOrder) {
-    const rows = draft.filter((window) => window.weekday === weekday);
-    for (let leftIndex = 0; leftIndex < rows.length; leftIndex += 1) {
-      for (
-        let rightIndex = leftIndex + 1;
-        rightIndex < rows.length;
-        rightIndex += 1
-      ) {
-        const left = rows[leftIndex];
-        const right = rows[rightIndex];
-        const timeOverlap =
-          left.start_time < right.end_time &&
-          right.start_time < left.end_time;
-        if (
-          timeOverlap &&
-          scopesOverlap(left.mode_scope, right.mode_scope)
-        ) {
-          return (
-            weekdayLabels[weekday] +
-            " has overlapping hours for the same delivery mode."
-          );
-        }
-      }
-    }
-  }
-
-  return null;
+function ModeOptions() {
+  return (
+    <>
+      <option value={AvailabilityModeScope.ALL}>{modeScopeLabel(AvailabilityModeScope.ALL)}</option>
+      <option value={AvailabilityModeScope.IN_PERSON}>{modeScopeLabel(AvailabilityModeScope.IN_PERSON)}</option>
+      <option value={AvailabilityModeScope.ONLINE}>{modeScopeLabel(AvailabilityModeScope.ONLINE)}</option>
+    </>
+  );
 }
 
-function requestFromDraft(draft: DraftWindow[]): WeeklyWindowRequest[] {
-  return draft.map((window) => ({
-    weekday: window.weekday,
-    start_time: window.start_time,
-    end_time: window.end_time,
-    mode_scope: window.mode_scope,
-  }));
+function EditableHours({
+  weekday,
+  rows,
+  pending,
+  invalid,
+  onUpdate,
+  onRemove,
+}: {
+  weekday: Weekday;
+  rows: DraftWindow[];
+  pending: boolean;
+  invalid: boolean;
+  onUpdate: (key: string, changes: Partial<Omit<DraftWindow, "key" | "weekday">>) => void;
+  onRemove: (key: string) => void;
+}) {
+  if (rows.length === 0) return <p className="py-2.5 text-sm text-muted">No hours set</p>;
+  const day = weekdayLabels[weekday];
+  return (
+    <ul className="space-y-2">
+      {rows.map((window, index) => {
+        const prefix = "weekly-" + weekday.toLowerCase() + "-" + index;
+        const position = rows.length > 1 ? ` ${index + 1}` : "";
+        return (
+          <li key={window.key} className="flex flex-wrap items-center gap-2">
+            {/* The times and the mode each wrap as a unit on narrow screens. */}
+            <span className="flex items-center gap-2">
+              <Label htmlFor={prefix + "-start"} className="sr-only">{`${day} hours${position} start time`}</Label>
+              <Input
+                id={prefix + "-start"}
+                type="time"
+                className="w-[8rem]"
+                disabled={pending}
+                aria-invalid={invalid || undefined}
+                value={window.start_time}
+                onChange={(event) => onUpdate(window.key, { start_time: event.target.value })}
+              />
+              <span aria-hidden="true" className="text-muted">–</span>
+              <Label htmlFor={prefix + "-end"} className="sr-only">{`${day} hours${position} end time`}</Label>
+              <Input
+                id={prefix + "-end"}
+                type="time"
+                className="w-[8rem]"
+                disabled={pending}
+                aria-invalid={invalid || undefined}
+                value={window.end_time}
+                onChange={(event) => onUpdate(window.key, { end_time: event.target.value })}
+              />
+            </span>
+            <span className="flex items-center gap-2">
+              <Label htmlFor={prefix + "-mode"} className="sr-only">{`${day} hours${position} apply to`}</Label>
+              <Select
+                id={prefix + "-mode"}
+                className="w-auto min-w-[10.5rem]"
+                disabled={pending}
+                aria-invalid={invalid || undefined}
+                value={window.mode_scope}
+                onChange={(event) => onUpdate(window.key, { mode_scope: event.target.value as AvailabilityModeScope })}
+              >
+                <ModeOptions />
+              </Select>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onRemove(window.key)}
+                aria-label={`Remove ${formatClockRange(window.start_time, window.end_time)} on ${day}`}
+                title="Remove these hours"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-muted hover:bg-surface-muted hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                <X size={17} aria-hidden="true" />
+              </button>
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
+// The recurring weekly hours. Editing changes a local draft; Save replaces the whole schedule.
+// A problem that stops saving is shown on the day it concerns; a failed save stays beside Save.
+// Success is announced by the page (ActionStatus), and the page remounts the editor with the
+// saved windows.
 export function WeeklyScheduleEditor({
   windows,
   canMutate,
-  cleanupOnly = false,
   pending,
   error,
-  notice,
   onSave,
 }: {
   windows: WeeklyWindowResponse[];
   canMutate: boolean;
-  cleanupOnly?: boolean;
   pending: boolean;
   error: string | null;
-  notice: string | null;
   onSave: (windows: WeeklyWindowRequest[]) => Promise<boolean>;
 }) {
-  const [draft, setDraft] = useState<DraftWindow[]>(() =>
-    draftFromWindows(windows),
-  );
+  const [draft, setDraft] = useState<DraftWindow[]>(() => draftFromWindows(windows));
   const [dirty, setDirty] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [clearOpen, setClearOpen] = useState(false);
+  const [problem, setProblem] = useState<DraftProblem | null>(null);
 
-  function updateWindow(
-    key: string,
-    changes: Partial<Omit<DraftWindow, "key" | "weekday">>,
-  ) {
-    setLocalError(null);
+  function edit(change: (current: DraftWindow[]) => DraftWindow[]) {
+    setProblem(null);
     setDirty(true);
-    setDraft((current) =>
-      current.map((window) =>
-        window.key === key ? { ...window, ...changes } : window,
-      ),
-    );
+    setDraft(change);
   }
 
   function addWindow(weekday: Weekday) {
-    setLocalError(null);
-    setDirty(true);
-    setDraft((current) => [
+    edit((current) => [
       ...current,
-      {
-        key: createKey(),
-        weekday,
-        start_time: "08:00",
-        end_time: "17:00",
-        mode_scope: AvailabilityModeScope.ALL,
-      },
+      { key: createKey(), weekday, start_time: "08:00", end_time: "17:00", mode_scope: AvailabilityModeScope.ALL },
     ]);
   }
 
-  function removeWindow(key: string) {
-    setLocalError(null);
-    setDirty(true);
-    setDraft((current) => current.filter((window) => window.key !== key));
-  }
-
   async function save() {
-    const validation = validateDraft(draft);
-    if (validation) {
-      setLocalError(validation);
+    const found = validateDraft(draft);
+    if (found) {
+      setProblem(found);
       return;
     }
-
     const saved = await onSave(requestFromDraft(draft));
     if (saved) {
       setDirty(false);
-      setLocalError(null);
+      setProblem(null);
     }
-  }
-
-  async function clearSchedule() {
-    const saved = await onSave([]);
-    if (saved) {
-      setClearOpen(false);
-      setDirty(false);
-      setLocalError(null);
-    }
-  }
-
-  if (cleanupOnly) {
-    return (
-      <Panel aria-labelledby="weekly-schedule-heading">
-        <PanelHeader
-          title="Weekly schedule"
-          titleId="weekly-schedule-heading"
-          description="You can review or clear these saved weekly hours. Existing appointments stay scheduled."
-          actions={canMutate && windows.length > 0 ? (
-            <Button variant="danger" onClick={() => setClearOpen(true)}>
-              Clear weekly schedule
-            </Button>
-          ) : undefined}
-        />
-        <div className="px-4 py-4 *:first:mt-0 sm:px-5">
-
-        {windows.length === 0 ? (
-          <p className="text-sm text-muted">
-            No weekly hours are set.
-          </p>
-        ) : (
-          <div className="divide-y divide-border rounded-sm border border-border">
-            {weekdayOrder.map((weekday) => {
-              const rows = windows.filter(
-                (window) => window.weekday === weekday,
-              );
-              if (rows.length === 0) return null;
-              return (
-                <section key={weekday} className="px-4 py-4">
-                  <h3 className="font-semibold text-ink">
-                    {weekdayLabels[weekday]}
-                  </h3>
-                  <ul className="mt-2 space-y-1 text-sm text-muted">
-                    {rows.map((window) => (
-                      <li key={window.id}>{weeklyWindowLabel(window)}</li>
-                    ))}
-                  </ul>
-                </section>
-              );
-            })}
-          </div>
-        )}
-
-        <ActionFeedback error={error} notice={notice} />
-
-        <ConsequentialActionDialog
-          open={clearOpen}
-          title="Clear the complete weekly schedule?"
-          confirmLabel="Clear weekly schedule"
-          pendingLabel="Clearing…"
-          pending={pending}
-          error={error}
-          variant="danger"
-          onOpenChange={setClearOpen}
-          onConfirm={() => void clearSchedule()}
-        >
-          <p>
-            This removes every recurring Availability window for this provider.
-            Existing Appointments remain scheduled. Historical unavailability
-            records are not removed.
-          </p>
-        </ConsequentialActionDialog>
-        </div>
-      </Panel>
-    );
   }
 
   return (
-    <Panel aria-labelledby="weekly-schedule-heading">
-      <PanelHeader
-        title="Weekly schedule"
-        titleId="weekly-schedule-heading"
-        description="Saving replaces all weekly hours shown below. Existing appointments stay scheduled; review them separately if the hours change."
-        actions={canMutate ? (
-          <Button
-            disabled={pending || !dirty}
-            onClick={() => void save()}
-          >
-            {pending ? "Saving…" : "Save weekly schedule"}
-          </Button>
-        ) : undefined}
-      />
-
-      <div className="divide-y divide-border">
+    <Panel aria-labelledby="weekly-schedule-heading" className="@container/weekly">
+      <PanelHeader title="Weekly schedule" titleId="weekly-schedule-heading" />
+      <ul className="divide-y divide-border">
         {weekdayOrder.map((weekday) => {
-          const rows = draft.filter((window) => window.weekday === weekday);
-
+          const dayId = "weekday-" + weekday.toLowerCase();
+          const dayProblem = problem?.weekday === weekday ? problem.message : null;
+          const empty = windowsForDay(draft, weekday).length === 0;
           return (
-            <section key={weekday} className="px-4 py-4 sm:px-5" aria-labelledby={"weekday-" + weekday}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3
-                  id={"weekday-" + weekday}
-                  className="font-semibold text-ink"
-                >
-                  {weekdayLabels[weekday]}
-                </h3>
+            <li
+              key={weekday}
+              aria-labelledby={dayId}
+              className={!canMutate ? readOnlyDayRow : empty ? emptyDayRow : editableDayRow}
+            >
+              <DayName weekday={weekday} id={dayId} />
+              <div className={canMutate && !empty ? editableHours : "min-w-0"}>
                 {canMutate ? (
+                  <EditableHours
+                    weekday={weekday}
+                    rows={windowsForDay(draft, weekday)}
+                    pending={pending}
+                    invalid={dayProblem !== null}
+                    onUpdate={(key, changes) =>
+                      edit((current) => current.map((window) => (window.key === key ? { ...window, ...changes } : window)))
+                    }
+                    onRemove={(key) => edit((current) => current.filter((window) => window.key !== key))}
+                  />
+                ) : (
+                  <ReadOnlyHours windows={windowsForDay(draft, weekday)} />
+                )}
+                {dayProblem ? (
+                  <p role="alert" className="pb-1 pt-1.5 text-sm text-danger">
+                    {dayProblem}
+                  </p>
+                ) : null}
+              </div>
+              {canMutate ? (
+                <div className={empty ? undefined : editableAdd}>
                   <Button
                     variant="quiet"
+                    className="px-2.5"
+                    disabled={pending}
                     onClick={() => addWindow(weekday)}
                     aria-label={"Add time on " + weekdayLabels[weekday]}
                   >
-                    Add time
+                    <Plus size={16} aria-hidden="true" />
+                    Add
                   </Button>
-                ) : null}
-              </div>
-
-              {rows.length === 0 ? (
-                <p className="mt-3 text-sm text-muted">
-                  No hours set
-                </p>
-              ) : (
-                <div className="mt-3 space-y-3">
-                  {rows.map((window, index) => {
-                    const prefix =
-                      "weekly-" + weekday.toLowerCase() + "-" + index;
-                    return (
-                      <div
-                        key={window.key}
-                        className="grid gap-3 md:grid-cols-[minmax(8rem,1fr)_minmax(8rem,1fr)_minmax(12rem,1.4fr)_auto] md:items-end"
-                      >
-                        <div className="grid gap-2">
-                          <Label htmlFor={prefix + "-start"}>Start time</Label>
-                          <Input
-                            id={prefix + "-start"}
-                            type="time"
-                            disabled={!canMutate || pending}
-                            value={window.start_time}
-                            onChange={(event) =>
-                              updateWindow(window.key, {
-                                start_time: event.target.value,
-                              })
-                            }
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor={prefix + "-end"}>End time</Label>
-                          <Input
-                            id={prefix + "-end"}
-                            type="time"
-                            disabled={!canMutate || pending}
-                            value={window.end_time}
-                            onChange={(event) =>
-                              updateWindow(window.key, {
-                                end_time: event.target.value,
-                              })
-                            }
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor={prefix + "-mode"}>Applies to</Label>
-                          <Select
-                            id={prefix + "-mode"}
-                            disabled={!canMutate || pending}
-                            value={window.mode_scope}
-                            onChange={(event) =>
-                              updateWindow(window.key, {
-                                mode_scope: event.target
-                                  .value as AvailabilityModeScope,
-                              })
-                            }
-                          >
-                            <option value={AvailabilityModeScope.ALL}>
-                              {modeScopeLabel(AvailabilityModeScope.ALL)}
-                            </option>
-                            <option value={AvailabilityModeScope.IN_PERSON}>
-                              {modeScopeLabel(
-                                AvailabilityModeScope.IN_PERSON,
-                              )}
-                            </option>
-                            <option value={AvailabilityModeScope.ONLINE}>
-                              {modeScopeLabel(AvailabilityModeScope.ONLINE)}
-                            </option>
-                          </Select>
-                        </div>
-                        {canMutate ? (
-                          <Button
-                            variant="quiet"
-                            disabled={pending}
-                            onClick={() => removeWindow(window.key)}
-                            aria-label={
-                              "Remove " +
-                              window.start_time +
-                              " to " +
-                              window.end_time +
-                              " on " +
-                              weekdayLabels[weekday]
-                            }
-                          >
-                            Remove
-                          </Button>
-                        ) : null}
-                      </div>
-                    );
-                  })}
                 </div>
-              )}
-            </section>
+              ) : null}
+            </li>
           );
         })}
-      </div>
-
-      {localError || error || notice ? (
-        <div className="border-t border-brand-line px-4 pb-4 sm:px-5">
-          {localError ? (
-            <p role="alert" className="mt-4 text-sm text-danger">
-              {localError}
+      </ul>
+      {canMutate ? (
+        <PanelFooter>
+          <Button disabled={pending || !dirty} aria-describedby={error ? "weekly-schedule-error" : undefined} onClick={() => void save()}>
+            {pending ? "Saving…" : "Save weekly schedule"}
+          </Button>
+          <p className="min-w-0 flex-1 text-sm leading-6 text-muted">
+            Saving replaces all weekly hours shown above. Existing appointments stay scheduled; review them
+            separately if the hours change.
+          </p>
+          {error ? (
+            <p id="weekly-schedule-error" role="alert" className="basis-full text-sm text-danger">
+              {error}
             </p>
           ) : null}
-          <ActionFeedback error={error} notice={notice} />
-        </div>
+        </PanelFooter>
       ) : null}
+    </Panel>
+  );
+}
+
+// Saved hours that can no longer be edited, such as an inactive Counselor's or historical Guidance
+// Services Staff hours: they can be reviewed or cleared. Not keyed on the windows, so the clearing
+// confirmation stays open to show its outcome after the schedule reloads empty.
+export function WeeklyScheduleCleanup({
+  windows,
+  pending,
+  error,
+  onClear,
+  onResetError,
+}: {
+  windows: WeeklyWindowResponse[];
+  pending: boolean;
+  error: string | null;
+  onClear: () => Promise<boolean>;
+  onResetError: () => void;
+}) {
+  const [clearOpen, setClearOpen] = useState(false);
+  const [cleared, setCleared] = useState(false);
+
+  async function clearSchedule() {
+    if (await onClear()) setCleared(true);
+  }
+
+  return (
+    <Panel aria-labelledby="weekly-schedule-heading" className="@container/weekly">
+      <PanelHeader
+        title="Weekly schedule"
+        titleId="weekly-schedule-heading"
+        description="You can review or clear these saved weekly hours. Existing appointments stay scheduled."
+        actions={windows.length > 0 ? (
+          <Button
+            variant="danger"
+            onClick={() => {
+              onResetError();
+              setCleared(false);
+              setClearOpen(true);
+            }}
+          >
+            Clear weekly schedule
+          </Button>
+        ) : undefined}
+      />
+      <ul className="divide-y divide-border">
+        {weekdayOrder.map((weekday) => {
+          const dayId = "weekday-" + weekday.toLowerCase();
+          return (
+            <li key={weekday} aria-labelledby={dayId} className={readOnlyDayRow}>
+              <DayName weekday={weekday} id={dayId} />
+              <ReadOnlyHours
+                windows={windowsForDay(windows, weekday).map((window) => ({
+                  ...window,
+                  start_time: window.start_time.slice(0, 5),
+                  end_time: window.end_time.slice(0, 5),
+                }))}
+              />
+            </li>
+          );
+        })}
+      </ul>
+      <ConsequentialActionDialog
+        open={clearOpen}
+        title="Clear the complete weekly schedule?"
+        confirmLabel="Clear weekly schedule"
+        pendingLabel="Clearing…"
+        pending={pending}
+        error={error}
+        variant="danger"
+        completed={cleared ? {
+          title: "Weekly schedule cleared",
+          children: <p>No recurring Availability windows remain for this provider. Existing Appointments remain scheduled.</p>,
+        } : null}
+        onOpenChange={setClearOpen}
+        onConfirm={() => void clearSchedule()}
+        onCloseAutoFocus={(event) => {
+          if (!cleared) return;
+          // The Clear button is gone with the hours; keep focus on this schedule.
+          event.preventDefault();
+          focusHeading("weekly-schedule-heading");
+        }}
+      >
+        <p>
+          This removes every recurring Availability window for this provider. Existing Appointments remain
+          scheduled. Historical unavailability records are not removed.
+        </p>
+      </ConsequentialActionDialog>
     </Panel>
   );
 }

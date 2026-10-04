@@ -1,9 +1,9 @@
 "use client";
 
+import { ClipboardList, GraduationCap, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 
 import { Notice } from "@/components/ui/notice";
-import { Panel } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
@@ -76,9 +76,10 @@ function ReportsIndexWorkspace() {
     );
   }
 
-  const reportRows = [
+  const reportRows: { href: string; title: string; description: string; icon: LucideIcon }[] = [
     {
       href: "/portal/reports/student-profile",
+      icon: ClipboardList,
       title: "Student Profiling",
       description:
         "Aggregate profile statistics from submitted Individual Inventories.",
@@ -87,6 +88,7 @@ function ReportsIndexWorkspace() {
       ? [
           {
             href: "/portal/reports/graduate-tracer",
+            icon: GraduationCap,
             title: "Graduate Tracer",
             description:
               "Aggregate graduate outcome statistics from submitted Graduate Tracer responses.",
@@ -99,33 +101,27 @@ function ReportsIndexWorkspace() {
     <section aria-labelledby="reports-heading">
       <ReportNavigation current="index" showGraduateTracer={scope.is_global} />
       <ReportsPageHeading title="Reports" headingId="reports-heading" />
-      <Panel as="div">
-      <ul className="divide-y divide-border">
-        {reportRows.map((report) => (
-          <li key={report.href}>
+      {/* Each report is its own product, so each is its own destination: side by side on wide
+          screens, stacked on narrow ones. No counts or previews; the report pages hold the data. */}
+      <ul className="grid max-w-4xl gap-4 md:grid-cols-2">
+        {reportRows.map(({ href, title, description, icon: Icon }) => (
+          <li key={href} className="flex">
             <Link
-              href={report.href}
-              className="group flex min-h-20 flex-wrap items-center justify-between gap-3 px-4 py-4 transition-colors first:rounded-t-sm hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-5"
+              href={href}
+              className="group flex w-full items-start gap-3 rounded-sm border border-brand-line bg-surface-raised px-4 py-4 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:px-5"
             >
-              <span>
-                <span className="block font-semibold text-ink group-hover:underline">
-                  {report.title}
+              <Icon size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-brand" />
+              <span className="min-w-0 flex-1">
+                <span className="block font-heading text-base font-semibold text-ink group-hover:underline">
+                  {title}
                 </span>
-                <span className="mt-1 block text-sm leading-6 text-muted">
-                  {report.description}
-                </span>
+                <span className="mt-1 block text-sm leading-6 text-muted">{description}</span>
               </span>
-              <span
-                className="text-sm font-semibold text-brand"
-                aria-hidden="true"
-              >
-                View report →
-              </span>
+              <span aria-hidden="true" className="mt-0.5 font-semibold text-brand">→</span>
             </Link>
           </li>
         ))}
       </ul>
-      </Panel>
     </section>
   );
 }

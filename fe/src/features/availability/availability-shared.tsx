@@ -13,8 +13,11 @@ import {
   AvailabilityModeScope,
   type CapabilityCode,
   type RoleCode,
-  type WeeklyWindowResponse,
 } from "@/lib/api/generated/model";
+import {
+  formatInstitutionalDateTime,
+  INSTITUTION_TIME_ZONE,
+} from "@/lib/institutional-time";
 import {
   CompassApiError,
   readApiErrorCode,
@@ -69,17 +72,16 @@ export function availabilityErrorMessage(
 }
 
 // Availability changes are routine scheduling work and need no step-up; the capability and the
-// backend's scheduling checks decide them.
+// backend's scheduling checks decide them. A failure stays beside the work it concerns; success is
+// announced by the page (ActionStatus) or shown in the confirming dialog.
 export function useAvailabilityAction() {
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   async function run<T>(
     operation: () => Promise<T>,
     fallback: string,
   ): Promise<T | undefined> {
     setError(null);
-    setNotice(null);
 
     try {
       return await operation();
@@ -91,9 +93,8 @@ export function useAvailabilityAction() {
 
   return {
     error,
-    notice,
     setError,
-    setNotice,
+    resetError: () => setError(null),
     run,
   };
 }
@@ -269,35 +270,20 @@ export function modeScopeLabel(scope: AvailabilityModeScope): string {
   return "All delivery modes";
 }
 
-export function weeklyWindowLabel(window: WeeklyWindowResponse): string {
-  return (
-    window.start_time.slice(0, 5) +
-    " – " +
-    window.end_time.slice(0, 5) +
-    " · " +
-    modeScopeLabel(window.mode_scope)
-  );
-}
-
-export function ActionFeedback({
-  error,
-  notice,
-}: {
-  error: string | null;
-  notice: string | null;
-}) {
-  return (
-    <>
-      {error ? (
-        <p role="alert" className="mt-4 text-sm text-danger">
-          {error}
-        </p>
-      ) : null}
-      {notice ? (
-        <p role="status" className="mt-4 text-sm text-success">
-          {notice}
-        </p>
-      ) : null}
-    </>
-  );
+// One dated period in the institution's time zone, shortened when it starts and ends on the same
+// day: "Mon, Oct 12, 2026 · 8:00 AM – 12:00 PM" or "Oct 20, 2026, 8:00 AM – Oct 21, 2026, 5:00 PM".
+export function formatUnavailabilityRange(startsAt: string, endsAt: string): string {
+  const start = new Date(startsAt);
+  const end = new Date(endsAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return formatInstitutionalDateTime(startsAt) + " – " + formatInstitutionalDateTime(endsAt);
+  }
+  const zone = { timeZone: INSTITUTION_TIME_ZONE } as const;
+  const day = new Intl.DateTimeFormat("en-US", { ...zone, year: "numeric", month: "short", day: "numeric" });
+  const weekday = new Intl.DateTimeFormat("en-US", { ...zone, weekday: "short" });
+  const time = new Intl.DateTimeFormat("en-US", { ...zone, hour: "numeric", minute: "2-digit" });
+  if (day.format(start) === day.format(end)) {
+    return `${weekday.format(start)}, ${day.format(start)} · ${time.format(start)} – ${time.format(end)}`;
+  }
+  return `${day.format(start)}, ${time.format(start)} – ${day.format(end)}, ${time.format(end)}`;
 }

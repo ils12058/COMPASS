@@ -1,8 +1,11 @@
 "use client";
 
+import { CalendarPlus } from "lucide-react";
+
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 
+import { PageAction } from "@/components/ui/page-action";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -122,7 +125,7 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
             actions={
               canManage ? (
                 <DialogTrigger asChild>
-                  <Button>Add Academic Year</Button>
+                  <PageAction icon={CalendarPlus} label="Add" labelDetail="Academic Year" />
                 </DialogTrigger>
               ) : null
             }

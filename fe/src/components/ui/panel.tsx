@@ -163,18 +163,30 @@ export function PanelFooter({ className, children }: { className?: string; child
 
 // An empty, error, or unavailable state that belongs to the panel it sits in. Pass role="alert" for
 // failures; empty states announce nothing.
+//
+// Its weight follows what it says. A short muted message with nothing to do ("No counseling
+// encounters are assigned to you yet.") is compact, so a sparse list stays shallow; a failure or
+// a message with an action keeps room for its Retry or next step. Pass `density` only to override
+// that for a reason.
 export function PanelMessage({
   tone = "muted",
   action,
+  density,
   className,
   children,
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
   tone?: "muted" | "danger";
   action?: ReactNode;
+  density?: "compact" | "regular";
 }) {
+  const compact = (density ?? (tone === "muted" && !action ? "compact" : "regular")) === "compact";
   return (
-    <div className={cn("px-4 py-6 sm:px-5", className)} {...props}>
+    <div
+      data-density={compact ? "compact" : "regular"}
+      className={cn("px-4 sm:px-5", compact ? "py-3.5" : "py-6", className)}
+      {...props}
+    >
       <p className={cn("max-w-3xl text-sm leading-6", tone === "danger" ? "text-danger" : "text-muted")}>
         {children}
       </p>

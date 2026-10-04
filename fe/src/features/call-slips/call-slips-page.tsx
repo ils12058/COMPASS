@@ -1,9 +1,12 @@
 "use client";
 
+import { FilePlus2 } from "lucide-react";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { PageActionLink } from "@/components/ui/page-action";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
 import { FilterField } from "@/components/ui/filter-toolbar";
@@ -229,7 +232,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
     <div className="space-y-5">
       <CallSlipHeading
         title="Call Slips"
-        action={access.canManageOperational ? <Link href="/portal/call-slips/new" className={buttonVariants({ variant: "primary" })}>Issue Call Slip</Link> : null}
+        action={access.canManageOperational ? <PageActionLink href="/portal/call-slips/new" icon={FilePlus2} label="Issue" labelDetail="Call Slip" /> : null}
       />
       <form onSubmit={submitFilters} role="search" aria-label="Call Slips">
         <FloatingListTools

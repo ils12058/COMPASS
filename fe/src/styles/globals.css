@@ -214,6 +214,21 @@ h6 {
   --list-tools-height: 3.5rem;
   --list-tools-offset: max(1rem, env(safe-area-inset-bottom));
   --list-tools-clearance: calc(var(--list-tools-height) + var(--list-tools-offset) + 1.5rem);
+  /* Action status (components/ui/action-status.tsx): bottom right of the workspace, lifted above a
+     collection's floating tools while they are on the page. */
+  --action-status-offset: max(1rem, env(safe-area-inset-bottom));
+}
+
+:root:has([data-floating-list-tools]) {
+  --action-status-offset: var(--list-tools-clearance);
+}
+
+/* A routine success message settles into place once; reduced-motion settings make it instant. */
+@keyframes action-status-in {
+  from {
+    opacity: 0;
+    translate: 0 0.375rem;
+  }
 }
 
 /* Portal navigation drawer on small screens. Radix keeps the drawer mounted until the closing
