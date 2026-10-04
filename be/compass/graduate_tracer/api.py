@@ -375,6 +375,10 @@ def _require_viewer(request) -> None:
 
 
 def _raise(exc: GraduateTracerError) -> NoReturn:
+    from .services import GraduateTracerDisposed
+
+    if isinstance(exc, GraduateTracerDisposed):
+        raise APIError(409, "graduate_tracer_disposed", str(exc)) from exc
     if isinstance(exc, GraduateTracerNotFound):
         raise APIError(404, "graduate_tracer_not_found", str(exc)) from exc
     if isinstance(exc, GraduateTracerNotPermitted):

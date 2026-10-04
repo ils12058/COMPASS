@@ -210,7 +210,7 @@ export function CounselorMediaControls({
             {recordingCanStart ? <Button disabled={busy} onClick={() => setPendingStart("recording")}>Start recording</Button> : null}
             {recordingCanStop ? <Button variant="secondary" disabled={busy} onClick={() => void runCommand(() => stopRecording.mutateAsync({ appointmentId }))}>Stop recording</Button> : null}
             {!recordingCanStart && recordingStatus === ECounselingCaptureStatus.NOT_STARTED && !recordingApproved ? <p className="basis-full text-sm text-muted">Recording can start only after the Student’s recording consent is effective.</p> : null}
-            {recordingStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">Recording completed.</p> : null}
+            {recordingStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">{workspace.media.recording.artifact_disposed_at ? "The provider recording was disposed under an approved retention rule." : "Recording completed."}</p> : null}
           </div>
         </PanelSection>
         <PanelSection title="Session transcription" titleId="transcription-controls-heading" level={3}>
@@ -228,7 +228,7 @@ export function CounselorMediaControls({
             {transcriptionCanStop ? <Button variant="secondary" disabled={busy} onClick={() => void runCommand(() => stopTranscription.mutateAsync({ appointmentId }))}>Stop transcription</Button> : null}
             {!transcriptionCanStart && transcriptionStatus === ECounselingCaptureStatus.NOT_STARTED && !transcriptionApproved ? <p className="basis-full text-sm text-muted">Transcription can start only after the Student’s transcription consent is effective.</p> : null}
             {transcriptionApproved && !storageApproved && transcriptionStatus === ECounselingCaptureStatus.NOT_STARTED ? <p className="basis-full text-sm text-muted">Transcription may run without storage consent. Transcript storage is optional.</p> : null}
-            {transcriptionStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">Transcription completed. Transcript text and playback are not available in COMPASS.</p> : null}
+            {transcriptionStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">{workspace.media.transcription.artifact_disposed_at ? "The stored transcript was disposed under an approved retention rule." : "Transcription completed. Transcript text and playback are not available in COMPASS."}</p> : null}
           </div>
         </PanelSection>
       </> : null}

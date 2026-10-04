@@ -72,6 +72,21 @@ DESIGNATION_DEFINITIONS = (
 
 CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
+        code="privacy_governance.retention.view",
+        name="View retention and disposition",
+        description="View minimized retention rules, cases, holds, and disposition outcomes.",
+    ),
+    CapabilityDefinition(
+        code="privacy_governance.retention.manage",
+        name="Manage retention rules and holds",
+        description=("Manage operational retention rules and holds without domain access."),
+    ),
+    CapabilityDefinition(
+        code="privacy_governance.retention.approve",
+        name="Approve disposition",
+        description="Authorize a reviewed frozen disposition case with recent MFA.",
+    ),
+    CapabilityDefinition(
         code="accounts.view",
         name="View account identity",
         description="View account identity fields through an authorized COMPASS workflow.",
@@ -563,6 +578,9 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     ),
     "DPO": frozenset(
         {
+            "privacy_governance.retention.view",
+            "privacy_governance.retention.manage",
+            "privacy_governance.retention.approve",
             "privacy_governance.view",
             "privacy_governance.manage",
         }
@@ -581,6 +599,8 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 # Dependencies constrain whether already-granted authority is effective. They never
 # create prerequisite authority or rewrite persisted grants/overrides.
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
+    "privacy_governance.retention.manage": frozenset({"privacy_governance.retention.view"}),
+    "privacy_governance.retention.approve": frozenset({"privacy_governance.retention.view"}),
     "routine_interviews.manage_self": frozenset({"routine_interviews.view_self"}),
     "routine_interviews.manage_assigned": frozenset({"routine_interviews.view_assigned"}),
     "exit_interviews.manage_self": frozenset({"exit_interviews.view_self"}),

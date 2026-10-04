@@ -237,6 +237,8 @@ links to authenticator setup. After either, the person submits again; nothing is
 
 Handle step-up only where the backend keeps it: account security and access, organization scope,
 academic years, the service catalog, maintenance, and Privacy Notice publication and retirement.
+Operational retention rule activation/retirement and disposition approval/retry also require
+backend step-up. Draft rules and holds do not require step-up (ADR-072).
 Routine work (Appointments, Availability, Good Moral issuance, email retry, name and ID corrections,
 Privacy Notice drafts) and Referrals and Call Slips have no step-up, so do not add authenticator
 prompts or MFA pre-checks to them.

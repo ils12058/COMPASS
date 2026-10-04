@@ -107,6 +107,77 @@ PRIVACY_PROCESSING_CREATED = "privacy.processing.created"
 PRIVACY_RETENTION_CREATED = "privacy.retention.created"
 PRIVACY_RETENTION_UPDATED = "privacy.retention.updated"
 PRIVACY_RETENTION_RETIRED = "privacy.retention.retired"
+
+# Operational workflow introduced after the removed descriptive registry. Legacy codes stay intact.
+RETENTION_RULE_CREATED = "privacy.retention.rule.created"
+RETENTION_RULE_UPDATED = "privacy.retention.rule.updated"
+RETENTION_RULE_ACTIVATED = "privacy.retention.rule.activated"
+RETENTION_RULE_RETIRED = "privacy.retention.rule.retired"
+RETENTION_HOLD_PLACED = "privacy.retention.hold.placed"
+RETENTION_HOLD_RELEASED = "privacy.retention.hold.released"
+DISPOSITION_APPROVED = "privacy.disposition.approved"
+DISPOSITION_STARTED = "privacy.disposition.started"
+DISPOSITION_COMPLETED = "privacy.disposition.completed"
+DISPOSITION_FAILED = "privacy.disposition.failed"
+DISPOSITION_RETRY_AUTHORIZED = "privacy.disposition.retry.authorized"
+
+RETENTION_PRESENTATIONS = {
+    RETENTION_RULE_CREATED: (
+        "Retention rule drafted",
+        "An operational retention rule was drafted.",
+        "privacy.retention.rule",
+    ),
+    RETENTION_RULE_UPDATED: (
+        "Retention draft updated",
+        "An operational retention draft was updated.",
+        "privacy.retention.rule",
+    ),
+    RETENTION_RULE_ACTIVATED: (
+        "Retention rule activated",
+        "An approved operational retention rule was activated.",
+        "privacy.retention.rule",
+    ),
+    RETENTION_RULE_RETIRED: (
+        "Retention rule retired",
+        "An operational retention rule was retired.",
+        "privacy.retention.rule",
+    ),
+    RETENTION_HOLD_PLACED: (
+        "Disposition hold placed",
+        "A hold prevents disposition of a reviewed case.",
+        "privacy.disposition.case",
+    ),
+    RETENTION_HOLD_RELEASED: (
+        "Disposition hold released",
+        "A hold was released. Disposition requires a new approval.",
+        "privacy.disposition.case",
+    ),
+    DISPOSITION_APPROVED: (
+        "Disposition approved",
+        "A frozen single-record disposition case was approved.",
+        "privacy.disposition.case",
+    ),
+    DISPOSITION_STARTED: (
+        "Disposition started",
+        "Background disposition processing started.",
+        "privacy.disposition.case",
+    ),
+    DISPOSITION_COMPLETED: (
+        "Disposition completed",
+        "The domain executor verified the approved treatment.",
+        "privacy.disposition.case",
+    ),
+    DISPOSITION_FAILED: (
+        "Disposition unresolved",
+        "Disposition requires retry or reconciliation.",
+        "privacy.disposition.case",
+    ),
+    DISPOSITION_RETRY_AUTHORIZED: (
+        "Disposition retry authorized",
+        "A bounded retry was authorized after review.",
+        "privacy.disposition.case",
+    ),
+}
 PRIVACY_NOTICE_CREATED = "privacy.notice.created"
 PRIVACY_NOTICE_UPDATED = "privacy.notice.updated"
 PRIVACY_NOTICE_RETIRED = "privacy.notice.retired"

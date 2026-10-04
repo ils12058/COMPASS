@@ -6,11 +6,11 @@ import { createElement } from "react";
 
 const require = createRequire(import.meta.url);
 const { AppRouterContext } = require("next/dist/shared/lib/app-router-context.shared-runtime.js");
-const { PathnameContext, SearchParamsContext } = require(
+const { PathnameContext, SearchParamsContext, PathParamsContext } = require(
   "next/dist/shared/lib/hooks-client-context.shared-runtime.js",
 );
 
-export function withNextRouter(element, { pathname = "/", search = "", navigations = [] } = {}) {
+export function withNextRouter(element, { pathname = "/", search = "", params = {}, navigations = [] } = {}) {
   const record = (method) => (href) => navigations.push({ method, href });
   const router = {
     back() {},
@@ -27,7 +27,7 @@ export function withNextRouter(element, { pathname = "/", search = "", navigatio
     createElement(
       PathnameContext.Provider,
       { value: pathname },
-      createElement(SearchParamsContext.Provider, { value: new URLSearchParams(search) }, element),
+      createElement(SearchParamsContext.Provider, { value: new URLSearchParams(search) }, createElement(PathParamsContext.Provider, { value: params }, element)),
     ),
   );
 }

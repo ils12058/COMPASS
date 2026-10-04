@@ -13,5 +13,17 @@ export function canManagePrivacyGovernance(user: CapabilityUser): boolean {
 }
 
 export function hasPrivacyGovernanceWorkspace(user: CapabilityUser): boolean {
-  return canViewPrivacyGovernance(user);
+  return canViewPrivacyGovernance(user) || canViewRetention(user);
+}
+
+export function canViewRetention(user: CapabilityUser): boolean {
+  return user.capabilities.includes("privacy_governance.retention.view");
+}
+
+export function canManageRetention(user: CapabilityUser): boolean {
+  return user.capabilities.includes("privacy_governance.retention.manage");
+}
+
+export function canApproveDisposition(user: CapabilityUser): boolean {
+  return user.capabilities.includes("privacy_governance.retention.approve");
 }

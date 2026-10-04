@@ -21,6 +21,20 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
+    "privacyGovernanceRetentionCategories",
+    "privacyGovernanceListRetentionRules",
+    "privacyGovernanceCreateRetentionRule",
+    "privacyGovernanceGetRetentionRule",
+    "privacyGovernanceUpdateRetentionRule",
+    "privacyGovernanceActivateRetentionRule",
+    "privacyGovernanceRetireRetentionRule",
+    "privacyGovernanceRetentionSummary",
+    "privacyGovernanceListDispositionCases",
+    "privacyGovernanceGetDispositionCase",
+    "privacyGovernancePlaceDispositionHold",
+    "privacyGovernanceReleaseDispositionHold",
+    "privacyGovernanceApproveDispositionCase",
+    "privacyGovernanceRetryDispositionCase",
     "healthLive",
     "systemMetadata",
     "healthReady",
@@ -1711,6 +1725,9 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "platform_operations.manage",
             "platform_operations.view",
             "privacy_governance.manage",
+            "privacy_governance.retention.view",
+            "privacy_governance.retention.manage",
+            "privacy_governance.retention.approve",
             "privacy_governance.view",
             "reports.view",
             "resources.manage",
@@ -2601,7 +2618,7 @@ def test_good_moral_request_creation_idempotency_openapi_contract() -> None:
             assert error_schema["$ref"].endswith("/APIErrorResponse")
 
 
-def test_privacy_expansion_contract_keeps_notice_boundaries_and_removes_retention() -> None:
+def test_privacy_expansion_contract_keeps_notice_boundaries_and_removes_legacy_retention() -> None:
     schema = _generated_schema()
     public = _operation(schema, "/api/v1/privacy/public-notices", "get")
     self_list = _operation(schema, "/api/v1/privacy/my-notices", "get")
@@ -2614,7 +2631,9 @@ def test_privacy_expansion_contract_keeps_notice_boundaries_and_removes_retentio
     schemas = schema["components"]["schemas"]
     assert schemas["AudienceValue"]["enum"] == ["PUBLIC", "STUDENT", "STAFF"]
     assert schemas["RevisionStatusValue"]["enum"] == ["DRAFT", "PUBLISHED", "SUPERSEDED"]
-    assert not any("Retention" in name for name in schemas)
+    assert "RetentionPolicyResponse" not in schemas
+    assert "RetentionRuleResponse" in schemas
+    assert "DispositionCaseResponse" in schemas
     assert not any("/privacy/retention-policies" in path for path in schema["paths"])
     for path in (
         "/api/v1/privacy/notices/{notice_id}",

@@ -147,7 +147,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
     assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
     assert RoleCapability.objects.count() == 77
-    assert DesignationCapability.objects.count() == 15
+    assert DesignationCapability.objects.count() == 18
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -158,9 +158,9 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 64
+    assert Capability.objects.count() == 67
     assert RoleCapability.objects.count() == 77
-    assert DesignationCapability.objects.count() == 15
+    assert DesignationCapability.objects.count() == 18
 
 
 @pytest.mark.django_db
@@ -583,6 +583,9 @@ def test_institutional_officer_is_neutral_and_dpo_adds_only_privacy_capabilities
         {
             "privacy_governance.view",
             "privacy_governance.manage",
+            "privacy_governance.retention.view",
+            "privacy_governance.retention.manage",
+            "privacy_governance.retention.approve",
         }
     )
     assert not officer.has_capability("accounts.manage")

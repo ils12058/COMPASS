@@ -145,6 +145,7 @@ class CounselingEncounterWorkspaceSummary(StrictSchema):
 class RecordingWorkspaceState(StrictSchema):
     consent_status: ECounselingConsentStatus
     capture_status: ECounselingCaptureStatus
+    artifact_disposed_at: datetime | None
 
 
 class TranscriptionWorkspaceState(StrictSchema):
@@ -152,6 +153,7 @@ class TranscriptionWorkspaceState(StrictSchema):
     storage_consent_status: ECounselingConsentStatus
     capture_status: ECounselingCaptureStatus
     storage_enabled: bool
+    artifact_disposed_at: datetime | None
 
 
 class MediaWorkspaceState(StrictSchema):

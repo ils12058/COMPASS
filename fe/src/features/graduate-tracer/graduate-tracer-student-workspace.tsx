@@ -69,6 +69,10 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
     return <section className="space-y-5"><GraduateTracerHeading title="Graduate Tracer Survey" /><GraduateTracerFormSkeleton /></section>;
   }
 
+  if (graduateTracerErrorCode(response.error) === "graduate_tracer_disposed") {
+    return <section><GraduateTracerHeading title="Graduate Tracer Survey" /><Notice role="status">{graduateTracerErrorMessage(response.error, "Your personal response is no longer available.")}</Notice></section>;
+  }
+
   if (hideCached) {
     return <section className="space-y-5"><GraduateTracerHeading title="Graduate Tracer Survey" /><GraduateTracerError error={response.error} fallback="Your Graduate Tracer response could not be loaded." onRetry={() => void response.refetch()} /></section>;
   }
