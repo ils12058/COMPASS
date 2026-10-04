@@ -760,3 +760,222 @@ def test_announcement_api_returns_structured_publication_consequence_review_requ
     assert accepted.status_code == 200
     assert accepted.json()["title"] == "Atomic title"
     assert accepted.json()["audience"] == "PUBLIC"
+
+@pytest.mark.django_db
+def test_announcement_search_matches_normalizes_filters_orders_and_paginates():
+    sync_policy()
+    counselor = make_user("announcement-search-publisher@example.edu", "COUNSELOR")
+    now = timezone.now()
+
+    pinned = create_announcement(
+        actor=counselor,
+        title="Mental Health Workshop",
+        body_markdown="Registration details.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=True,
+        expires_at=None,
+        context=context(counselor),
+    )
+    body_match = create_announcement(
+        actor=counselor,
+        title="Campus support",
+        body_markdown="Practical ANXIETY support is available.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+    later_title_match = create_announcement(
+        actor=counselor,
+        title="Mental health follow-up",
+        body_markdown="Additional guidance.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+    unrelated = create_announcement(
+        actor=counselor,
+        title="Enrollment reminder",
+        body_markdown="Bring your registration form.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+
+    for offset, item in enumerate((pinned, body_match, later_title_match, unrelated)):
+        publish_announcement(
+            actor=counselor,
+            announcement_id=item.pk,
+            context=context(counselor),
+            now=now + timedelta(seconds=offset),
+        )
+
+    title_rows = list_public_announcements(
+        search="  MENTAL health  ",
+        now=now + timedelta(minutes=1),
+    ).items
+    assert [item.pk for item in title_rows] == [pinned.pk, later_title_match.pk]
+
+    body_rows = list_public_announcements(
+        search="anxiety",
+        now=now + timedelta(minutes=1),
+    ).items
+    assert [item.pk for item in body_rows] == [body_match.pk]
+
+    blank_rows = list_public_announcements(
+        search="   ",
+        now=now + timedelta(minutes=1),
+    ).items
+    baseline_rows = list_public_announcements(now=now + timedelta(minutes=1)).items
+    assert [item.pk for item in blank_rows] == [item.pk for item in baseline_rows]
+    assert not list_public_announcements(
+        search="does-not-exist",
+        now=now + timedelta(minutes=1),
+    ).items
+
+    pinned_rows = list_public_announcements(
+        pinned=True,
+        search="mental",
+        now=now + timedelta(minutes=1),
+    ).items
+    assert [item.pk for item in pinned_rows] == [pinned.pk]
+
+    page_one = list_public_announcements(
+        search="mental",
+        page=1,
+        page_size=1,
+        now=now + timedelta(minutes=1),
+    )
+    page_two = list_public_announcements(
+        search="mental",
+        page=2,
+        page_size=1,
+        now=now + timedelta(minutes=1),
+    )
+    assert [item.pk for item in page_one.items] == [pinned.pk]
+    assert page_one.has_next is True
+    assert [item.pk for item in page_two.items] == [later_title_match.pk]
+    assert page_two.has_next is False
+
+
+@pytest.mark.django_db
+def test_announcement_search_preserves_visibility_management_filters_and_api_contract():
+    sync_policy()
+    counselor = make_user("announcement-search-manager@example.edu", "COUNSELOR")
+    student = make_user("announcement-search-student@example.edu", "STUDENT")
+    now = timezone.now()
+
+    public_item = create_announcement(
+        actor=counselor,
+        title="Search needle public",
+        body_markdown="Visible public content.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+    student_item = create_announcement(
+        actor=counselor,
+        title="Student notice",
+        body_markdown="Contains search NEEDLE for students.",
+        audience=PublicationAudience.STUDENTS,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+    gco_item = create_announcement(
+        actor=counselor,
+        title="Needle GCO operations",
+        body_markdown="Internal content.",
+        audience=PublicationAudience.GCO_PERSONNEL,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+    draft_public = create_announcement(
+        actor=counselor,
+        title="Needle draft",
+        body_markdown="Management only.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+    expired = create_announcement(
+        actor=counselor,
+        title="Needle expired",
+        body_markdown="Short lived.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=False,
+        expires_at=now + timedelta(minutes=2),
+        context=context(counselor),
+    )
+    archived = create_announcement(
+        actor=counselor,
+        title="Needle archived",
+        body_markdown="No longer visible.",
+        audience=PublicationAudience.PUBLIC,
+        is_pinned=False,
+        expires_at=None,
+        context=context(counselor),
+    )
+
+    for item in (public_item, student_item, gco_item, expired, archived):
+        publish_announcement(
+            actor=counselor,
+            announcement_id=item.pk,
+            context=context(counselor),
+            now=now,
+        )
+    archive_announcement(
+        actor=counselor,
+        announcement_id=archived.pk,
+        context=context(counselor),
+    )
+
+    public_rows = list_public_announcements(
+        search="needle",
+        now=now + timedelta(minutes=3),
+    ).items
+    assert [item.pk for item in public_rows] == [public_item.pk]
+
+    visible_rows = list_visible_announcements(
+        actor=student,
+        search="needle",
+        now=now + timedelta(minutes=3),
+    ).items
+    assert {item.pk for item in visible_rows} == {public_item.pk, student_item.pk}
+
+    assert not list_public_announcements(
+        search="PUBLIC",
+        now=now + timedelta(minutes=3),
+    ).items
+
+    anonymous = Client()
+    public_api = anonymous.get("/api/v1/public/announcements?search=needle&page_size=10")
+    assert public_api.status_code == 200
+    assert [item["id"] for item in public_api.json()["items"]] == [str(public_item.pk)]
+
+    visible_api = auth_client(student).get("/api/v1/announcements?search=needle&page_size=10")
+    assert visible_api.status_code == 200
+    assert {item["id"] for item in visible_api.json()["items"]} == {
+        str(public_item.pk),
+        str(student_item.pk),
+    }
+
+    manager = auth_client(counselor)
+    managed_draft = manager.get(
+        "/api/v1/announcements/management"
+        "?search=needle&status=DRAFT&audience=PUBLIC&page_size=10"
+    )
+    assert managed_draft.status_code == 200
+    assert [item["id"] for item in managed_draft.json()["items"]] == [str(draft_public.pk)]
+
+    managed_gco = manager.get(
+        "/api/v1/announcements/management"
+        "?search=needle&audience=GCO_PERSONNEL&page_size=10"
+    )
+    assert managed_gco.status_code == 200
+    assert [item["id"] for item in managed_gco.json()["items"]] == [str(gco_item.pk)]
