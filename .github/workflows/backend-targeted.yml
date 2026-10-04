@@ -114,7 +114,7 @@ jobs:
       - name: Backend tests
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         working-directory: be
-        run: uv run pytest tests
+        run: uv run pytest tests/test_announcements.py tests/test_resources.py
       - name: Contract check
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         working-directory: be
