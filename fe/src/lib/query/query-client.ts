@@ -3,22 +3,37 @@ import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { isAuthorityError, isMutationAuthorityError, isSessionEndedError } from "@/features/freshness/query-freshness";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { getAuthGetSessionQueryKey } from "@/lib/api/generated/auth/auth";
+import { getPlatformPublicStatusQueryKey } from "@/lib/api/generated/platform-operations/platform-operations";
 import { requestSessionRevalidation } from "@/lib/auth/session-revalidation";
 
 const NON_RETRYABLE_STATUSES = new Set([400, 401, 403, 404, 409, 422]);
 
+function isMaintenanceRefusal(error: unknown): boolean {
+  return error instanceof CompassApiError && readApiErrorCode(error.body) === "maintenance_mode";
+}
+
 export function createQueryClient() {
-  return new QueryClient({
+  // A request refused for Maintenance Mode means the public status may have changed: ask it again
+  // now rather than at the next poll. The status endpoint, not the refusal, decides what is shown.
+  const refreshMaintenanceStatus = () => {
+    void client.refetchQueries(
+      { queryKey: getPlatformPublicStatusQueryKey(), exact: true, type: "active" },
+      { cancelRefetch: false },
+    );
+  };
+  const client: QueryClient = new QueryClient({
     queryCache: new QueryCache({
       onError(error, query) {
         if (query.queryKey[0] === getAuthGetSessionQueryKey()[0]) return;
-        if (isSessionEndedError(error)) requestSessionRevalidation("session");
+        if (isMaintenanceRefusal(error)) refreshMaintenanceStatus();
+        else if (isSessionEndedError(error)) requestSessionRevalidation("session");
         else if (isAuthorityError(error)) requestSessionRevalidation("authority");
       },
     }),
     mutationCache: new MutationCache({
       onError(error) {
-        if (isSessionEndedError(error)) requestSessionRevalidation("session");
+        if (isMaintenanceRefusal(error)) refreshMaintenanceStatus();
+        else if (isSessionEndedError(error)) requestSessionRevalidation("session");
         else if (isMutationAuthorityError(error)) requestSessionRevalidation("authority");
       },
     }),
@@ -29,8 +44,7 @@ export function createQueryClient() {
         retry(failureCount, error) {
           if (
             error instanceof CompassApiError &&
-            (NON_RETRYABLE_STATUSES.has(error.status) ||
-              readApiErrorCode(error.body) === "maintenance_mode")
+            (NON_RETRYABLE_STATUSES.has(error.status) || isMaintenanceRefusal(error))
           ) {
             return false;
           }
@@ -43,4 +57,5 @@ export function createQueryClient() {
       },
     },
   });
+  return client;
 }

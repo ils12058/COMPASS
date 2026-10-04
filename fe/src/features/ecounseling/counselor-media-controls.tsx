@@ -128,7 +128,7 @@ export function CounselorMediaControls({
     ]);
   }
 
-  async function runCommand(command: () => Promise<unknown>, successMessage?: string, fallback = "The provider could not confirm this media control.") {
+  async function runCommand(command: () => Promise<unknown>, successMessage?: string, fallback = "The video service could not confirm this change.") {
     setError(null);
     setNotice(null);
     try {
@@ -144,7 +144,7 @@ export function CounselorMediaControls({
     await runCommand(
       () => request.mutateAsync({ appointmentId, data: { scopes } }),
       "Consent request sent to the Student.",
-      "The consent request could not be saved. The current session state has been refreshed.",
+      "The consent request could not be saved. The session has been refreshed.",
     );
   }
 
@@ -168,8 +168,8 @@ export function CounselorMediaControls({
         ecounselingErrorMessage(
           caught,
           selected === "recording"
-            ? "Recording could not be started. The current session state has been refreshed."
-            : "Transcription could not be started. The current session state has been refreshed.",
+            ? "Recording could not be started. The session has been refreshed."
+            : "Transcription could not be started. The session has been refreshed.",
         ),
       );
     }
@@ -179,9 +179,9 @@ export function CounselorMediaControls({
   const consentLabel = (scope: ECounselingConsentScope, projection: ECounselingConsentStatus) =>
     canReadConsents ? consentRowsLabel(rows, scope) : consentProjectionLabels[projection];
   const providerNote = !workspace.provider_readiness.daily_enabled
-    ? "Daily provider media controls are not enabled. Counseling access is unaffected."
+    ? "Video sessions are not enabled, so recording and transcription are unavailable. Counseling is unaffected."
     : !workspace.provider_readiness.room_provisioned || !workspace.provider_readiness.join_allowed
-      ? "Provider controls are unavailable until the session is ready."
+      ? "Recording and transcription become available when the session can be joined."
       : null;
 
   return (
@@ -203,7 +203,7 @@ export function CounselorMediaControls({
         <PanelSection title="Audio/video recording" titleId="recording-controls-heading" level={3}>
           <MediaFacts facts={[
             ["Consent", consentLabel(ECounselingConsentScope.AUDIO_VIDEO_RECORDING, workspace.media.recording.consent_status)],
-            ["Capture", <CaptureState key="capture" status={recordingStatus} live="recording" />],
+            ["Status", <CaptureState key="capture" status={recordingStatus} live="recording" />],
           ]} />
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {canReadConsents && noRecordingRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.AUDIO_VIDEO_RECORDING])}>Request recording consent</Button> : null}
@@ -217,8 +217,8 @@ export function CounselorMediaControls({
           <MediaFacts facts={[
             ["Consent", consentLabel(ECounselingConsentScope.LIVE_TRANSCRIPTION, workspace.media.transcription.consent_status)],
             ["Storage consent", consentLabel(ECounselingConsentScope.TRANSCRIPT_STORAGE, workspace.media.transcription.storage_consent_status)],
-            ["Capture", <CaptureState key="capture" status={transcriptionStatus} live="transcription" />],
-            ["Storage", workspace.media.transcription.storage_enabled ? "Enabled for this capture" : "Not enabled"],
+            ["Status", <CaptureState key="capture" status={transcriptionStatus} live="transcription" />],
+            ["Transcript storage", workspace.media.transcription.storage_enabled ? "On for this transcription" : "Off"],
           ]} />
           {transcriptionCanStart && storageApproved && transcriptionStatus === ECounselingCaptureStatus.NOT_STARTED ? <div className="mt-3 flex items-start gap-3"><input id="e-counseling-store-transcript" type="checkbox" checked={storeTranscript} disabled={busy} onChange={(event) => setStoreTranscript(event.target.checked)} className="mt-1 size-4 rounded border border-border accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /><div><Label htmlFor="e-counseling-store-transcript">Store transcript for this session</Label><p className="mt-1 text-sm text-muted">Optional and off by default. This choice must be made before transcription starts.</p></div></div> : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">

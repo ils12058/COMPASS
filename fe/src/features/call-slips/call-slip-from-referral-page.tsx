@@ -87,7 +87,7 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
 
   return (
     <div className="space-y-5">
-      <CallSlipHeading title={`Issue linked Call Slip · ${item.reference_code}`} description="Issuing this Call Slip also records the action on the Referral in the same step." backHref={`/portal/referrals/${item.id}`} backLabel="Back to Referral" />
+      <CallSlipHeading title={`Issue linked Call Slip · ${item.reference_code}`} backHref={`/portal/referrals/${item.id}`} backLabel="Back to Referral" />
       <LinkedCallSlipHistory items={history.data.data.items} />
       <LinkedCallSlipCreateForm referral={item} onRefresh={refreshContext} />
     </div>

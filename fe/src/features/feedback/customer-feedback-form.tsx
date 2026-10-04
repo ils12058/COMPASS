@@ -299,7 +299,7 @@ export function CustomerFeedbackForm() {
 
   return (
     <section aria-labelledby="customer-feedback-heading">
-      <FeedbackPageHeading headingId="customer-feedback-heading" title="Customer Feedback Form" description={`Feedback for ${opportunityData.service_label}. Check your answers before submitting.`} />
+      <FeedbackPageHeading headingId="customer-feedback-heading" title="Customer Feedback Form" description={`Feedback for ${opportunityData.service_label}.`} />
       <form className="mt-5" onSubmit={prepareSubmission} noValidate>
         {error && !confirmationOpen ? <Notice role="alert" tone="danger" className="mb-5">{error}</Notice> : null}
         {isUncertain ? (
@@ -377,7 +377,7 @@ export function CustomerFeedbackForm() {
             </div>
           </FeedbackSection>
 
-          <FeedbackSection title="IX. Respondent information" description="These details are part of this response and remain editable.">
+          <FeedbackSection title="IX. Respondent information">
             <p className="max-w-3xl text-sm leading-6 text-muted">Changes made here apply only to this feedback response and do not update your account profile.</p>
             {profile.isError ? <p role="status" className="text-sm text-muted">Your profile details could not be loaded. You can enter them manually.</p> : null}
             <div className="grid gap-5 sm:grid-cols-2">

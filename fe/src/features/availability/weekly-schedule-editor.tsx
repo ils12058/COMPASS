@@ -287,7 +287,7 @@ export function WeeklyScheduleEditor({
       <PanelHeader
         title="Weekly schedule"
         titleId="weekly-schedule-heading"
-        description="Saving replaces all weekly hours shown below. These hours help determine when new appointments can be offered. Existing appointments stay scheduled; review them separately if the hours change."
+        description="Saving replaces all weekly hours shown below. Existing appointments stay scheduled; review them separately if the hours change."
         actions={canMutate ? (
           <Button
             disabled={pending || !dirty}

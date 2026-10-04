@@ -499,7 +499,6 @@ export function PlatformMaintenancePage() {
                     title="Manual Maintenance Mode is active"
                     titleId="maintenance-manual-active-heading"
                     level={3}
-                    description="It remains active until an operator explicitly ends it."
                     actions={
                       <Button
                         variant="danger"

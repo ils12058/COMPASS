@@ -170,7 +170,7 @@ function RequestFormFrame({
   children,
 }: {
   title: string;
-  description: string;
+  description?: string;
   children: ReactNode;
 }) {
   return (
@@ -230,7 +230,6 @@ function CurrentStudentRequestForm() {
   return (
     <RequestFormFrame
       title="Request Good Moral Certificate"
-      description="Enter the year level and semester to record on your request."
     >
       <CreateFeedback state={create} busy={create.isPending} />
       <form onSubmit={submit} aria-busy={create.isPending}>
@@ -279,7 +278,7 @@ function GraduateRequestForm() {
   }
 
   return (
-    <RequestFormFrame title="Request Good Moral Certificate" description="Enter your graduation details for the certificate.">
+    <RequestFormFrame title="Request Good Moral Certificate">
       <CreateFeedback state={create} busy={create.isPending} />
       <form onSubmit={submit} aria-busy={create.isPending}>
         <Panel as="div">

@@ -145,7 +145,6 @@ export function AccountPrivacyPage() {
         <PanelHeader
           title="Privacy notices"
           titleId="privacy-notices-heading"
-          description="Current COMPASS privacy notices that apply to your account."
           context={notices.isFetching && !notices.isPending ? "Refreshing privacy notices…" : null}
         />
         {notices.isPending ? (

@@ -12,6 +12,10 @@ import { useServerBoundary } from "@/features/freshness/use-server-boundary";
 import { PortalSessionProvider } from "@/features/portal/components/portal-session";
 import { PortalSessionLoading } from "@/features/portal/components/portal-session-loading";
 import { PortalShell } from "@/features/portal/components/portal-shell";
+import { PortalUserMenu } from "@/features/portal/components/portal-user-menu";
+import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
+import { PortalMaintenanceGate } from "@/features/platform/maintenance-presentation";
+import { hasPlatformView } from "@/features/platform/platform-gate";
 import { CompassApiError } from "@/lib/api/errors";
 import { useAuthGetSession } from "@/lib/api/generated/auth/auth";
 import { requestSessionRevalidation, subscribeSessionRevalidation } from "@/lib/auth/session-revalidation";
@@ -88,10 +92,18 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
     );
   }
 
+  const user = session.data.data.user;
   return (
     <PortalSessionProvider value={session.data.data}>
       <UnsavedChangesProvider>
-        <PortalShell>{children}</PortalShell>
+        <PortalMaintenanceGate
+          pathname={pathname}
+          canOperate={hasPlatformView(user)}
+          workspace={<PortalShell>{children}</PortalShell>}
+          page={children}
+          controls={<><AccessibilityControl placement="header" /><PortalUserMenu /></>}
+          loading={<PortalSessionLoading />}
+        />
       </UnsavedChangesProvider>
     </PortalSessionProvider>
   );

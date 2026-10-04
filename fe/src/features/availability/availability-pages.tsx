@@ -358,14 +358,14 @@ function ProviderWorkspace({
           providerId: provider.id,
           data: { windows },
         }),
-      "The provider weekly Availability could not be saved.",
+      "The Counselor's weekly Availability could not be saved.",
       { administrative: true, ...hooks },
     );
     if (!response) return false;
     weeklyAction.setNotice(
       windows.length === 0
         ? "Recurring Availability cleared."
-        : "Provider weekly Availability saved.",
+        : "Counselor's weekly Availability saved.",
     );
     await weekly.refetch();
     setPreviewRefresh((value) => value + 1);
@@ -382,11 +382,11 @@ function ProviderWorkspace({
           providerId: provider.id,
           data: payload,
         }),
-      "The provider unavailability could not be added.",
+      "The Counselor's unavailability could not be added.",
       { administrative: true, ...hooks },
     );
     if (!response) return false;
-    exceptionAction.setNotice("Provider unavailability added.");
+    exceptionAction.setNotice("Counselor unavailability added.");
     await exceptions.refetch();
     setPreviewRefresh((value) => value + 1);
     return true;
@@ -402,11 +402,11 @@ function ProviderWorkspace({
           providerId: provider.id,
           exceptionId,
         }),
-      "The provider unavailability could not be removed.",
+      "The Counselor's unavailability could not be removed.",
       { administrative: true, ...hooks },
     );
     if (!response) return false;
-    exceptionAction.setNotice("Provider unavailability removed.");
+    exceptionAction.setNotice("Counselor unavailability removed.");
     await exceptions.refetch();
     setPreviewRefresh((value) => value + 1);
     return true;
@@ -431,7 +431,7 @@ function ProviderWorkspace({
           <span className="text-muted">
             {legacy
               ? "This is historical Guidance Services Staff Availability. Existing configuration can be reviewed or removed, but new operational Availability cannot be configured."
-              : "This provider is inactive. Existing Availability can be reviewed or removed, but new Availability cannot be configured."}
+              : "This Counselor is inactive. Existing Availability can be reviewed or removed, but new Availability cannot be added."}
           </span>
         </Notice>
       ) : null}
@@ -439,11 +439,11 @@ function ProviderWorkspace({
       <div className="mt-5">
         {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
         {weekly.isPending ? (
-          <AvailabilitySectionSkeleton label="Loading provider weekly Availability…" />
+          <AvailabilitySectionSkeleton label="Loading the Counselor's weekly Availability…" />
         ) : !weeklyData ? (
           <AvailabilityQueryError
             error={weekly.error}
-            fallback="Provider weekly Availability could not be loaded."
+            fallback="The Counselor's weekly Availability could not be loaded."
             onRetry={() => void weekly.refetch()}
           />
         ) : (
@@ -463,11 +463,11 @@ function ProviderWorkspace({
       <div className="mt-5">
         {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
         {exceptions.isPending ? (
-          <AvailabilitySectionSkeleton label="Loading provider unavailability…" />
+          <AvailabilitySectionSkeleton label="Loading the Counselor's unavailability…" />
         ) : !exceptionData ? (
           <AvailabilityQueryError
             error={exceptions.error}
-            fallback="Provider unavailability could not be loaded."
+            fallback="The Counselor's unavailability could not be loaded."
             onRetry={() => void exceptions.refetch()}
           />
         ) : (

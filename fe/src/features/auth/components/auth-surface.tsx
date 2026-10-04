@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { PublicMaintenanceNotice } from "@/features/platform/platform-public-maintenance-notice";
+import { MaintenanceNotice } from "@/features/platform/maintenance-presentation";
 
 export function AuthSurface({
   children,
@@ -22,7 +22,7 @@ export function AuthSurface({
         Back to public site
       </Link>
 
-      <PublicMaintenanceNotice />
+      <MaintenanceNotice surface="auth" />
 
       <div className="w-full rounded-sm border border-brand-line bg-surface-raised px-5 py-6 text-left sm:px-8 sm:py-7">
         <div className="mb-5 border-b border-border pb-5">

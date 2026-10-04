@@ -96,7 +96,6 @@ function StudentInventoryHome() {
     <section aria-label="Individual Inventory">
       <InventoryHeading
         title="Individual Inventory"
-        description="Your annual record for the Guidance and Counseling Office."
       />
 
       <Panel className="mt-5 max-w-4xl" aria-labelledby="inventory-current-heading">
@@ -120,9 +119,8 @@ function StudentInventoryHome() {
 
             {current.status === InventoryStatusValue.MISSING ? (
               <div className="mt-4 max-w-3xl">
-                <p className="text-sm leading-6 text-muted">Complete one Individual Inventory for the current Academic Year.</p>
                 {!access.isCurrentStudent ? (
-                  <p className="mt-3 text-sm leading-6 text-muted">
+                  <p className="text-sm leading-6 text-muted">
                     Only current students can start an Individual Inventory for this year. Your earlier records remain available below.
                   </p>
                 ) : access.canManageSelf ? (
@@ -148,14 +146,12 @@ function StudentInventoryHome() {
                     </InventoryNotice>
                   </div>
                 ) : null}
-                <p className="text-sm leading-6 text-muted">
-                  {access.canManageSelf
-                    ? "Your saved progress is a draft. You can continue editing and save it before submission."
-                    : "This annual record is a draft. You can view it, but can no longer change it."}
-                </p>
+                {access.canManageSelf ? null : (
+                  <p className="mb-4 text-sm leading-6 text-muted">This draft can be viewed but no longer changed.</p>
+                )}
                 <Link
                   href="/portal/inventory/current"
-                  className={buttonVariants({ variant: "quiet", className: "mt-4 border-brand" })}
+                  className={buttonVariants({ variant: access.canManageSelf ? "primary" : "secondary" })}
                 >
                   {access.canManageSelf ? "Continue Individual Inventory" : "View saved Individual Inventory"}
                 </Link>
@@ -168,7 +164,7 @@ function StudentInventoryHome() {
                 </p>
                 <Link
                   href="/portal/inventory/current"
-                  className={buttonVariants({ variant: "quiet", className: "mt-4 border-brand" })}
+                  className={buttonVariants({ variant: "secondary", className: "mt-4" })}
                 >
                   View submitted Inventory
                 </Link>
@@ -182,7 +178,6 @@ function StudentInventoryHome() {
         <PanelHeader
           title="Annual history"
           titleId="inventory-history-heading"
-          description="Earlier Academic Years remain available as read-only records."
         />
         {history.isPending ? (
           <div className="space-y-3 px-4 py-4 sm:px-5" aria-busy="true">

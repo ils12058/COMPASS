@@ -362,9 +362,6 @@ function BookingWorkspace() {
                     </option>
                   ))}
                 </Select>
-                {selectedCounselor?.is_default ? (
-                  <p className="text-xs text-muted">Assigned counselor is selected. You can choose another eligible Counselor.</p>
-                ) : null}
               </div>
             )}
           </PanelSection>

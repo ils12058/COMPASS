@@ -220,7 +220,7 @@ export function EffectiveAvailabilityPreview({
       <PanelHeader
         title="Schedule preview"
         titleId="effective-availability-heading"
-        description="This shows where office hours, counselor hours, time off, and service rules overlap. It does not account for appointments already booked; check appointment booking for open times."
+        description="Where office hours, counselor hours, time off, and service rules overlap. Appointments already booked are not reflected here."
       />
       <div className="px-4 py-4 *:first:mt-0 sm:px-5">
 

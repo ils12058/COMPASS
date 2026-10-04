@@ -183,7 +183,6 @@ function CounselorRoutineDetail({
     <div>
       <RoutinePageHeading
         title="Routine Interview"
-        description="Review the Student-authored Intake separately from the Counselor Evaluation."
         action={<div className="flex flex-wrap gap-2">{workspaceHref ? <GuardedPortalLink href={workspaceHref} className={buttonVariants({ variant: "secondary" })}>Open Counseling workspace</GuardedPortalLink> : null}<RoutineBackLink /></div>}
       />
       <RoutineContextSummary

@@ -35,7 +35,7 @@ const knownErrors: Record<string, string> = {
   invalid_availability_request:
     "The Availability request contains a value that is not accepted.",
   availability_not_applicable:
-    "Availability cannot be configured for the selected provider or Service.",
+    "Availability cannot be set for the selected Counselor or Service.",
   availability_conflict:
     "The Availability change conflicts with the current configuration.",
   permission_denied:
