@@ -188,10 +188,12 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         onRefresh={refreshDetail}
       />
 
+      {/* Accounts that can only read a Referral have no operational actions to look for. */}
+      {referralAccess.canManage ? (
       <Panel aria-labelledby="referral-operational-actions-heading">
         <PanelHeader title="Operational actions" titleId="referral-operational-actions-heading" />
         <PanelBody className="*:first:mt-0">
-        {referralAccess.canManage && !isVoided ? (
+        {!isVoided ? (
           canCheckCallSlips && linkedCurrent.isPending ? (
             <p role="status" className="mt-3 text-sm text-muted">Checking linked Call Slip state before enabling Referral void.</p>
           ) : canCheckCallSlips && linkedCurrent.isError ? (
@@ -211,13 +213,12 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
               onRefresh={refreshDetail}
             />
           )
-        ) : referralAccess.canManage && isVoided ? (
-          <p className="mt-3 text-sm text-muted">This Referral is voided. Its source content and PDF remain available for review.</p>
         ) : (
-          <p className="mt-3 text-sm text-muted">You can view this referral, but cannot change it.</p>
+          <p className="mt-3 text-sm text-muted">This Referral is voided. Its source content and PDF remain available for review.</p>
         )}
         </PanelBody>
       </Panel>
+      ) : null}
     </div>
   );
 

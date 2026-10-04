@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -141,8 +141,8 @@ export function ExitInterviewStudentHome({
             </div>
             <p className="mt-2 text-sm leading-6 text-muted">
               {currentRecord.status === "DRAFT"
-                ? "This is a saved working response. Its answers remain private from Head Guidance until you submit it."
-                : "This response has been submitted and is available to Head Guidance for review."}
+                ? "Your answers stay private until you submit."
+                : "Head Guidance can review your submitted answers."}
             </p>
             <p className="mt-2 text-xs text-muted">
               {currentRecord.status === "SUBMITTED"
@@ -151,7 +151,10 @@ export function ExitInterviewStudentHome({
             </p>
             <Link
               href={`/portal/exit-interviews/${currentRecord.id}`}
-              className="mt-4 inline-flex min-h-10 items-center font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className={buttonVariants({
+                variant: currentRecord.status === "DRAFT" && access.canManageSelf ? "primary" : "secondary",
+                className: "mt-4",
+              })}
             >
               {currentRecord.status === "SUBMITTED"
                 ? "View submitted Exit Interview"
@@ -164,9 +167,7 @@ export function ExitInterviewStudentHome({
           <div className="px-4 py-4 sm:px-5">
             <p className="text-sm leading-6 text-muted">
               No Exit Interview has been started for the current Academic Year.
-              {access.canManageSelf
-                ? " Start only when you are ready to work on the form."
-                : " Only current students can start an Exit Interview."}
+              {access.canManageSelf ? null : " Only current students can start an Exit Interview."}
             </p>
             {access.canManageSelf ? (
               <div className="mt-4 flex flex-wrap items-center gap-3">

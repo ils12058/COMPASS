@@ -154,7 +154,6 @@ export function PlatformHealthPage() {
               <p className="mt-2 text-sm leading-6 text-muted">
                 {visibleWorkerResult.summary}
               </p>
-              <p className="mt-2 text-xs text-muted">Run Check again for current evidence.</p>
             </>
           ) : (
             <>

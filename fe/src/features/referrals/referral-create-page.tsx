@@ -134,7 +134,7 @@ export function ReferralCreatePage() {
 
   return (
     <div className="space-y-5">
-      <ReferralHeading title="Record referral" description="Record when the referral was made and when Guidance received it. COMPASS also records when you entered it." backHref="/portal/referrals" />
+      <ReferralHeading title="Record referral" backHref="/portal/referrals" />
       {/* One sheet in the order of the paper referral: who was referred, the source details, then
           the dates. The form's one action area closes the sheet. */}
       <form className="max-w-3xl" onSubmit={submit} aria-busy={create.isPending}>
@@ -142,7 +142,7 @@ export function ReferralCreatePage() {
           <PanelSection
             title="Student"
             titleId="referral-student-heading"
-            description="Find the student named on the referral. Their college is shown to help you choose the right person."
+            description="Find the student named on the referral."
           >
             <EligibleStudentPicker
               label="Choose Student"

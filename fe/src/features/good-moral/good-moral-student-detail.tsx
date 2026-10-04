@@ -96,7 +96,6 @@ export function GoodMoralStudentDetail({
                 <GoodMoralField label="Graduation date" value={formatGoodMoralDate(item.graduation_date)} />
               </>
             )}
-            {item.status === "ISSUED" ? <GoodMoralField label="Issued by" value={item.issued_by_name_snapshot} /> : null}
           </dl>
         </PanelSection>
         {hasReceipt ? (
@@ -108,15 +107,11 @@ export function GoodMoralStudentDetail({
             </dl>
           </PanelSection>
         ) : null}
-        {item.status === "CANCELLED" ? (
-          <p role="status" className="border-t border-brand-line px-4 py-4 text-sm text-muted sm:px-5">This request was cancelled.</p>
-        ) : null}
       </Panel>
 
       {item.status === "ISSUED" ? (
         <GoodMoralSection title="Certificate issuance">
           <dl className={factGrid}>
-            <GoodMoralField label="Issued at" value={formatGoodMoralDateTime(item.issued_at)} />
             <GoodMoralField label="Issued by" value={item.issued_by_name_snapshot} />
             <GoodMoralField label="Official form code" value={item.form_revision?.official_code} />
             <GoodMoralField label="Official revision" value={item.form_revision?.official_revision ? `Revision ${item.form_revision.official_revision}` : null} />
@@ -128,7 +123,7 @@ export function GoodMoralStudentDetail({
       ) : null}
 
       {item.status === "REQUESTED" && canCancel && !detail.isError ? (
-        <GoodMoralSection title="Request actions" description="You can cancel this request. It will remain in your request history.">
+        <GoodMoralSection title="Request actions">
           <GoodMoralCancelAction requestId={item.id} studentFacing onRefresh={refresh} />
         </GoodMoralSection>
       ) : null}

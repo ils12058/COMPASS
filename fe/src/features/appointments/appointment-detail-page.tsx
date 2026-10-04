@@ -609,21 +609,16 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
 
       {(canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || unavailable.length > 0) ? (
         <Panel aria-labelledby="appointment-actions-heading">
-          <PanelHeader
-            title="Appointment actions"
-            titleId="appointment-actions-heading"
-            description={access.isStudent && canReschedule && appointment.cancellation_cutoff_minutes !== null
-              ? "Rescheduling is subject to the cutoff saved with this Appointment. COMPASS confirms whether a change is still allowed when you submit."
-              : undefined}
-          />
+          <PanelHeader title="Appointment actions" titleId="appointment-actions-heading" />
           <PanelBody className="*:first:mt-0">
           {canCancel || canReschedule || canReassign || canComplete || canMarkNoShow ? (
+            // The usual outcome leads; cancelling, the destructive one, comes last.
             <div className="mt-4 flex flex-wrap gap-2">
-              {canCancel ? <Button variant="danger" disabled={pending} onClick={() => { setError(null); setConfirmAction("cancel"); }}>Cancel appointment</Button> : null}
+              {canComplete ? <Button disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button> : null}
               {canReschedule ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setRescheduleSlotStart(""); setNotice(null); setRescheduleOpen((open) => !open); }}>{rescheduleOpen ? "Close reschedule" : "Reschedule appointment"}</Button> : null}
               {canReassign ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setNotice(null); setReassignmentOpen((open) => !open); }}>{reassignmentOpen ? "Close reassignment" : "Reassign counselor"}</Button> : null}
-              {canComplete ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button> : null}
               {canMarkNoShow ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setConfirmAction("no-show"); }}>Mark no-show</Button> : null}
+              {canCancel ? <Button variant="danger" disabled={pending} onClick={() => { setError(null); setConfirmAction("cancel"); }}>Cancel appointment</Button> : null}
             </div>
           ) : null}
           {error && ((error.scope === "reschedule" && !canReschedule) || (error.scope === "reassign" && !canReassign)) ? (
@@ -646,7 +641,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               title="Reschedule appointment"
               titleId="reschedule-appointment-heading"
               level={3}
-              description="Choose a date to load replacement times from the Appointment service."
+              description="Choose a date to see available times."
             >
             <form onSubmit={submitReschedule} className="max-w-3xl">
               <div className="grid gap-2 sm:max-w-xs">

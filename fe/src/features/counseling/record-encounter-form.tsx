@@ -232,7 +232,6 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
         <PanelHeader
           title="Record counseling encounter"
           titleId="record-encounter-source-heading"
-          description="Choose how the completed interaction originated."
           actions={onCancel && !uncertain ? <Button variant="quiet" onClick={onCancel}>Close</Button> : undefined}
         />
         <PanelBody>

@@ -120,7 +120,7 @@ export function DirectCallSlipCreatePage() {
         <PanelSection
           title="Student"
           titleId="direct-call-slip-student-heading"
-          description="Find the student who will receive the Call Slip. Your name will be recorded as the issuer."
+          description="Your name will be recorded as the issuer."
         >
             <EligibleStudentPicker
               label="Choose Student"
@@ -144,7 +144,7 @@ export function DirectCallSlipCreatePage() {
         <PanelSection
           title="Call Slip details"
           titleId="direct-call-slip-details-heading"
-          description="Enter course/year and report time as shown on the source form. Choose below whether this issuance should notify the student."
+          description="Enter course/year and report time as shown on the source form."
         >
           <CallSlipFormFields draft={draft} onChange={setDraft} />
         </PanelSection>

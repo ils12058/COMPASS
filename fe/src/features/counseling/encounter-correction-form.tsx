@@ -130,7 +130,7 @@ export function EncounterCorrectionForm({
   return (
     <form onSubmit={submit} className="border-t border-brand-line px-4 py-5 sm:px-5" aria-labelledby="correct-encounter-heading">
       <h3 id="correct-encounter-heading" className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-brand">Correct encounter details</h3>
-      <p className="mt-1 text-sm text-muted">Use this to correct how the completed interaction was recorded. Actual times use {INSTITUTION_TIME_ZONE_LABEL}. Student, Counselor, Service, creator, and creation time cannot be changed.</p>
+      <p className="mt-1 text-sm text-muted">Actual times use {INSTITUTION_TIME_ZONE_LABEL}. Student, Counselor, Service, creator, and creation time cannot be changed.</p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2"><Label htmlFor="correction-entry-mode">Interaction origin</Label><Select id="correction-entry-mode" value={entryMode} disabled={update.isPending} onChange={(event) => { setEntryMode(event.target.value as CounselingEntryMode); setError(null); }}><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></Select></div>

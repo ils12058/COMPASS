@@ -128,7 +128,7 @@ export function CaptureState({ status, live }: { status: ECounselingCaptureStatu
   );
 }
 
-// What the provider is capturing right now, from the canonical capture state. Consent alone never
+// What is being recorded or transcribed right now, from the backend's capture state. Consent alone never
 // shows here as activity.
 function SessionMediaStatus({ media }: { media: MediaWorkspaceState }) {
   return (
@@ -140,7 +140,7 @@ function SessionMediaStatus({ media }: { media: MediaWorkspaceState }) {
         <dd><CaptureState status={media.transcription.capture_status} live="transcription" /></dd>
       </dl>
       <p className="mt-2 text-xs leading-5 text-muted">
-        COMPASS shows media status only. Transcript text, playback, and downloads are not available here.
+        Recordings and transcripts can’t be viewed or downloaded in COMPASS.
       </p>
     </div>
   );
@@ -188,9 +188,7 @@ export function SessionStage({
         ) : open ? (
           // The join surface keeps the video's shape, so joining does not move the page.
           <div className="flex aspect-video min-h-48 flex-col items-center justify-center rounded-sm border border-brand-line bg-surface-muted px-5 text-center">
-            <p className="max-w-sm text-sm leading-6 text-muted">The secure video room opens when you join.</p>
             <Button
-              className="mt-3"
               disabled={!canJoin || join.joining || inCall}
               onClick={() => void join.requestJoin()}
             >

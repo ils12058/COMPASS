@@ -60,7 +60,7 @@ export function ManualMaintenanceForm({
             aria-describedby="manual-maintenance-message-help"
           />
           <p id="manual-maintenance-message-help" className="text-xs leading-5 text-muted">
-            This text is public and will be displayed as plain text.
+            Shown as plain text.
           </p>
         </div>
         <div className="grid max-w-sm gap-2">
@@ -125,7 +125,6 @@ export function MaintenanceScheduleForm({
           title="Upcoming maintenance"
           titleId="maintenance-schedule-heading"
           level={3}
-          description={`Change the configured window or cancel it. The schedule uses ${INSTITUTION_TIME_ZONE_LABEL}.`}
           actions={
             <Button variant="secondary" onClick={onOpen}>
               Change schedule

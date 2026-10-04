@@ -421,7 +421,7 @@ export function RoutineStudentIntakeEditor({
       <PanelHeader
         title="Student Intake"
         titleId="routine-student-intake-heading"
-        description="Answer what you would like to share. To submit, add at least one written response or select a concern. You may save a draft and return later."
+        description="Answer what you would like to share. To submit, add at least one written response or select a concern."
       />
 
       {saveError ? (

@@ -22,12 +22,12 @@ export function ecounselingErrorMessage(error: unknown, fallback: string): strin
     ecounseling_appointment_not_eligible: "This Appointment is no longer eligible for E-Counseling.",
     ecounseling_consent_not_found: "That consent is no longer available. Refresh the session state.",
     ecounseling_consent_not_approved: "The required consent is not currently effective.",
-    ecounseling_consent_conflict: "The consent state changed. The current session state has been refreshed.",
-    ecounseling_media_conflict: "The provider media state changed. The current session state has been refreshed.",
-    ecounseling_media_stop_pending: "Media stop is still being reconciled.",
-    ecounseling_provider_disabled: "Provider media controls are not enabled. Counseling access is unaffected.",
-    ecounseling_provider_unavailable: "The provider could not confirm this media control. Counseling access is unaffected.",
-    ecounseling_invalid_provider_response: "The provider could not confirm this media control. Counseling access is unaffected.",
+    ecounseling_consent_conflict: "The consent changed. The session has been refreshed.",
+    ecounseling_media_conflict: "Recording or transcription changed. The session has been refreshed.",
+    ecounseling_media_stop_pending: "Stopping is still being confirmed.",
+    ecounseling_provider_disabled: "Recording and transcription are not available for video sessions right now. Counseling is unaffected.",
+    ecounseling_provider_unavailable: "The video service could not confirm this change. Counseling is unaffected.",
+    ecounseling_invalid_provider_response: "The video service could not confirm this change. Counseling is unaffected.",
   };
   return (code && messages[code]) || fallback;
 }
@@ -59,7 +59,7 @@ const captureStatusLabels: Record<ECounselingCaptureStatus, string> = {
   [ECounselingCaptureStatus.STOP_REQUESTED]: "Stopping",
   [ECounselingCaptureStatus.STOPPED]: "Stopped",
   [ECounselingCaptureStatus.READY]: "Completed",
-  [ECounselingCaptureStatus.ERROR]: "Provider state requires attention",
+  [ECounselingCaptureStatus.ERROR]: "Needs attention",
 };
 
 export function captureStatusLabel(status: ECounselingCaptureStatus): string {

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
-import { PublicMaintenanceNotice } from "@/features/platform/platform-public-maintenance-notice";
+import { MaintenanceNotice } from "@/features/platform/maintenance-presentation";
 import { PortalNavigation } from "@/features/portal/components/portal-navigation";
 import { PortalUserMenu } from "@/features/portal/components/portal-user-menu";
 import { cn } from "@/lib/utils/cn";
@@ -112,7 +112,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
           tabIndex={-1}
           className="mx-auto max-w-[96rem] px-4 py-5 focus:outline-none has-[[data-floating-list-tools]]:pb-(--list-tools-clearance) sm:px-6 lg:px-8 lg:py-6"
         >
-          <PublicMaintenanceNotice />
+          <MaintenanceNotice />
           {children}
         </main>
       </div>

@@ -30,7 +30,7 @@ const scopeLabels: Record<ECounselingConsentScope, string> = {
 const scopeDescriptions: Record<ECounselingConsentScope, string> = {
   [ECounselingConsentScope.AUDIO_VIDEO_RECORDING]: "Allows audio and video from this Counseling session to be recorded.",
   [ECounselingConsentScope.LIVE_TRANSCRIPTION]: "Allows speech from this session to be processed as text while transcription is active.",
-  [ECounselingConsentScope.TRANSCRIPT_STORAGE]: "Allows the transcript produced for this session to be stored by the configured provider.",
+  [ECounselingConsentScope.TRANSCRIPT_STORAGE]: "Allows the transcript of this session to be stored by the video service.",
 };
 
 const withdrawalSubjects: Record<ECounselingConsentScope, string> = {
@@ -104,10 +104,10 @@ export function StudentConsentPanel({
       if (canonical?.withdrawn_at && !canonical.effective) {
         setNotice("Consent has been withdrawn.");
       } else {
-        setError({ scope: action.scope, message: ecounselingErrorMessage(mutationError, "Consent withdrawal could not be confirmed. The current session state has been refreshed.") });
+        setError({ scope: action.scope, message: ecounselingErrorMessage(mutationError, "Your withdrawal could not be confirmed. The session has been refreshed.") });
       }
     } else if (mutationError) {
-      setError({ scope: action.scope, message: ecounselingErrorMessage(mutationError, "The consent decision could not be saved. The current session state has been refreshed.") });
+      setError({ scope: action.scope, message: ecounselingErrorMessage(mutationError, "Your choice could not be saved. The session has been refreshed.") });
     } else {
       setNotice(action.decision === "APPROVED" ? "Your consent choice has been saved." : "Your choice has been saved. Counseling remains available.");
     }
@@ -148,7 +148,7 @@ export function StudentConsentPanel({
         <div className="border-t border-brand-line px-4 py-3 sm:px-5">
           {error && !rows.some((row) => row.scope === error.scope) ? <p role="alert" className="text-sm text-danger">{error.message}</p> : null}
           {notice ? <p role="status" className="text-sm text-success">{notice}</p> : null}
-          {notice === "Consent has been withdrawn." && hasLiveOrTransitionalMedia(latestMedia) ? <p role="status" className="mt-1 text-sm text-muted">The provider is still reconciling the media state.</p> : null}
+          {notice === "Consent has been withdrawn." && hasLiveOrTransitionalMedia(latestMedia) ? <p role="status" className="mt-1 text-sm text-muted">Recording or transcription is still stopping.</p> : null}
         </div>
       ) : null}
       <AlertDialog open={Boolean(action)} onOpenChange={(open) => { if (!open && !decide.isPending && !withdraw.isPending) setAction(null); }}>

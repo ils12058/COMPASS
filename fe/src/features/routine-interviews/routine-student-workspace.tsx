@@ -76,7 +76,6 @@ export function StudentRoutineWorkspace({
     <div>
       <RoutinePageHeading
         title="Routine Interviews"
-        description="Complete interview questions connected to your Guidance and Counseling interactions."
       />
 
       {access.canManageSelf ? (

@@ -726,6 +726,44 @@ Empower your institution with seamless user management.
 
 Do not narrate obvious controls.
 
+## Explain through structure
+
+COMPASS interfaces explain themselves through structure, labels, current state, and action
+hierarchy. Interface copy is not documentation: prefer information density over explanation
+density. A screen may carry a lot of useful information — identity, status, dates, context — without
+paragraphs about what the screen is for.
+
+Do not add copy merely because a page, panel, field, status, or control can be described. Text that
+stays on screen earns its place by helping the reader:
+
+* understand a non-obvious current state;
+* choose the correct next action;
+* avoid a meaningful mistake;
+* understand a real policy, privacy, security, or consent consequence.
+
+Ask of each sentence: if it were removed, would the reader be less able to complete the task
+correctly and safely? If not, remove or shorten it. If so, keep it next to the decision or state it
+concerns: the consequence of starting a recording belongs in its confirmation, not above the
+workspace.
+
+* Progressive disclosure: keep identity, current state, the primary action, and any warning that
+  applies now visible; show validation, unavailable-action reasons, and consequences when they
+  apply; keep rare actions and extended detail out of the way. Never put needed information in
+  hover-only UI.
+* State each fact once per view. Do not repeat the same status in a summary, a section, and a
+  banner.
+* Make the primary action obvious; destructive actions come last and are never the most prominent.
+  Hide an action the reader has no reason to expect; explain one they would expect but cannot use.
+* Student-facing screens answer "What is this? What is my status? What can I do next?" in plain,
+  task-focused words. Translate backend states and implementation terms (provider, projection,
+  reconciliation) through presentation helpers; administrative screens may keep operationally
+  meaningful technical detail.
+* Never delete safety-critical copy just to reduce text: confidentiality, consent, recording and
+  transcription, Privacy Notices, security, access changes, maintenance, publication, issuance,
+  and destructive or hard-to-reverse actions keep their explanation at the point of decision.
+* Do not rewrite controlled or user-provided content (Privacy Notices, maintenance messages,
+  institutional form wording, recorded content) to make a screen shorter.
+
 ---
 
 # 24. Button copy
@@ -2032,6 +2070,23 @@ ornamental motion around operational data.
   collection — a record, a form, an editor, a page of running text — bounds itself with
   `pageSheetWidth`, and pages that share workspace tabs share one width. The Account workspace keeps
   its own narrower width. Never let running text span the workspace.
+
+## Maintenance Mode presentation
+
+The public status (`/api/v1/platform/status`) decides what COMPASS shows, through
+`useMaintenanceStatus` (`src/features/platform/maintenance-status.ts`):
+
+* scheduled maintenance: a compact, non-blocking notice; COMPASS stays usable;
+* active maintenance, public pages: a dedicated maintenance screen replaces the page;
+* active maintenance, ordinary portal routes: the maintenance screen replaces the dock and
+  workspace, so pages are not shown failing behind it;
+* active maintenance, sign-in: stays usable, with a compact notice;
+* active maintenance, Platform Operations: stays reachable for accounts that can use it, in a frame
+  that depends only on APIs maintenance leaves available, so an operator can end maintenance.
+
+Only a confirmed `maintenance_active` status locks a page; a status that could not be read never
+does. A start or end time only prompts a fresh check — an expected end never unlocks COMPASS by
+itself. Render the operator's message as plain text.
 
 ## Public pages
 

@@ -39,6 +39,22 @@ registerHooks({
     }
   },
   load(url, context, nextLoad) {
+    // next/link and next/image re-export CommonJS modules whose component is `exports.default`; a
+    // bundler unwraps it for `import Link from "next/link"`, so the shim does the same here. It
+    // requires the implementation directly, since the entry file itself is what is being loaded.
+    const nextEntry = /\/node_modules\/next\/(link|image)\.js$/.exec(url);
+    if (nextEntry) {
+      const implementation = new URL(nextEntry[1] === "link" ? "./dist/client/link.js" : "./dist/shared/lib/image-external.js", url);
+      return {
+        format: "module",
+        source: [
+          'import { createRequire } from "node:module";',
+          `const loaded = createRequire(${JSON.stringify(url)})(${JSON.stringify(fileURLToPath(implementation))});`,
+          "export default loaded && loaded.__esModule && loaded.default ? loaded.default : loaded;",
+        ].join("\n"),
+        shortCircuit: true,
+      };
+    }
     if (url.startsWith("file:") && /\.tsx?$/.test(url)) {
       const fileName = fileURLToPath(url);
       const { outputText } = ts.transpileModule(readFileSync(fileName, "utf8"), {
