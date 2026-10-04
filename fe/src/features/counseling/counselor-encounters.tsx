@@ -6,7 +6,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
@@ -80,23 +81,28 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
     <div>
       <CounselingPageHeading
         title="Counseling"
-        description="Record completed Counseling interactions and review encounters assigned to you."
+        description="Record Counseling interactions after they take place."
         action={access.canManageAssigned ? <Button disabled={recordOpen && recordUncertain} onClick={() => { if (recordUncertain) return; setRecordOpen((open) => !open); }}>{recordUncertain ? "Recording result unconfirmed" : recordOpen ? "Close recording" : "Record counseling encounter"}</Button> : undefined}
       />
 
       {recordOpen ? <RecordEncounterForm onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} /> : null}
 
       <section id="encounters" aria-labelledby="my-counseling-encounters-heading" className="mt-5">
-          {/* Selects and dates only, so each choice applies as soon as it changes. */}
-          <FilterToolbar
-            className="mb-5"
-            actions={hasFilters ? <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>Clear filters</Button> : undefined}
-          >
+          {/* Selects and dates only, so each choice applies as soon as it changes. The tools step
+              aside while an encounter is being recorded, so they never sit over that form. */}
+          {recordOpen ? null : (
+          <FloatingListTools
+            label="Counseling encounter filters"
+            filterCount={[entryMode, deliveryMode, fromDate, toDate].filter(Boolean).length}
+            clear={hasFilters ? <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>Clear filters</Button> : undefined}
+            filters={<>
             <FilterField label="Origin" htmlFor="counseling-entry-filter"><Select id="counseling-entry-filter" value={entryMode ?? "ALL"} onChange={(event) => setFilter("entry_mode", event.target.value === "ALL" ? "" : event.target.value)}><option value="ALL">All origins</option><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></Select></FilterField>
             <FilterField label="Delivery mode" htmlFor="counseling-delivery-filter"><Select id="counseling-delivery-filter" value={deliveryMode ?? "ALL"} onChange={(event) => setFilter("delivery_mode", event.target.value === "ALL" ? "" : event.target.value)}><option value="ALL">All delivery modes</option><option value="IN_PERSON">In person</option><option value="ONLINE">Online</option></Select></FilterField>
             <FilterField label="From date" htmlFor="counseling-from-date"><Input id="counseling-from-date" type="date" value={fromDate} onChange={(event) => setFilter("from_date", event.target.value)} /></FilterField>
             <FilterField label="To date" htmlFor="counseling-to-date"><Input id="counseling-to-date" type="date" value={toDate} onChange={(event) => setFilter("to_date", event.target.value)} /></FilterField>
-          </FilterToolbar>
+            </>}
+          />
+          )}
 
           <Panel as="div">
           <PanelHeader

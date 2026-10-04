@@ -4,9 +4,9 @@ import { Pin } from "lucide-react";
 import Link from "next/link";
 
 import { Select } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import { safeQueryData } from "@/features/freshness/query-freshness";
@@ -73,7 +73,6 @@ export function AnnouncementsListPage() {
       />
 
       <form
-        className="mt-5"
         role="search"
         aria-label="Search managed announcements"
         key={searchParams.toString()}
@@ -87,53 +86,57 @@ export function AnnouncementsListPage() {
           });
         }}
       >
-      <FilterToolbar
-        fieldsClassName="lg:grid-cols-[minmax(0,1fr)_repeat(2,minmax(0,13rem))]"
-        actions={<>
-          {hasFilters ? (
+        <FloatingListTools
+          submits
+          filterCount={[status, audience].filter(Boolean).length}
+          clear={hasFilters ? (
             <Link href={hrefWith({ search: null, status: null, audience: null })} className={buttonVariants({ variant: "quiet" })} scroll={false}>
               Clear filters
             </Link>
-          ) : null}
-          <Button type="submit">Apply filters</Button>
-        </>}
-      >
-        <FilterField label="Search announcements" htmlFor="announcement-search-filter">
-          <Input id="announcement-search-filter" name="search" type="search" placeholder="Search announcements" defaultValue={search} />
-        </FilterField>
-        <FilterField label="Status" htmlFor="announcement-status-filter">
-          <Select
-            id="announcement-status-filter"
-            name="status"
-            defaultValue={status ?? ""}
-          >
-            <option value="">All statuses</option>
-            {publicationStatusOrder.map((value) => (
-              <option key={value} value={value}>
-                {publicationStatusLabels[value]}
-              </option>
-            ))}
-          </Select>
-        </FilterField>
-        <FilterField label="Audience" htmlFor="announcement-audience-filter">
-          <Select
-            id="announcement-audience-filter"
-            name="audience"
-            defaultValue={audience ?? ""}
-          >
-            <option value="">All audiences</option>
-            {publicationAudienceOrder.map((value) => (
-              <option key={value} value={value}>
-                {publicationAudienceLabels[value]}
-              </option>
-            ))}
-          </Select>
-        </FilterField>
-      </FilterToolbar>
+          ) : undefined}
+          filters={<>
+            <FilterField label="Status" htmlFor="announcement-status-filter">
+              <Select
+                id="announcement-status-filter"
+                name="status"
+                defaultValue={status ?? ""}
+              >
+                <option value="">All statuses</option>
+                {publicationStatusOrder.map((value) => (
+                  <option key={value} value={value}>
+                    {publicationStatusLabels[value]}
+                  </option>
+                ))}
+              </Select>
+            </FilterField>
+            <FilterField label="Audience" htmlFor="announcement-audience-filter">
+              <Select
+                id="announcement-audience-filter"
+                name="audience"
+                defaultValue={audience ?? ""}
+              >
+                <option value="">All audiences</option>
+                {publicationAudienceOrder.map((value) => (
+                  <option key={value} value={value}>
+                    {publicationAudienceLabels[value]}
+                  </option>
+                ))}
+              </Select>
+            </FilterField>
+          </>}
+        >
+          <ListSearchField
+            id="announcement-search-filter"
+            name="search"
+            label="Search announcements"
+            placeholder="Search announcements"
+            defaultValue={search}
+          />
+        </FloatingListTools>
       </form>
       {list.isError && result ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
 
-      <Panel className="mt-5" aria-labelledby="announcement-results-heading">
+      <Panel aria-labelledby="announcement-results-heading">
         <PanelHeader
           title="Announcement records"
           titleId="announcement-results-heading"

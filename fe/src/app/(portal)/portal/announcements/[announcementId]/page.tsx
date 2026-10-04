@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { ContentDetailSkeleton } from "@/features/content/content-shared";
 import { AnnouncementDetailPage } from "@/features/announcements/announcement-detail-page";
 
@@ -13,8 +14,10 @@ export default async function Page({
 }) {
   const { announcementId } = await params;
   return (
-    <Suspense fallback={<ContentDetailSkeleton label="Loading Announcement…" />}>
-      <AnnouncementDetailPage key={announcementId} announcementId={announcementId} />
-    </Suspense>
+    <div className={pageSheetWidth}>
+      <Suspense fallback={<ContentDetailSkeleton label="Loading Announcement…" />}>
+        <AnnouncementDetailPage key={announcementId} announcementId={announcementId} />
+      </Suspense>
+    </div>
   );
 }

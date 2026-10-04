@@ -103,7 +103,6 @@ function StudentRoutineDetail({
     <div>
       <RoutinePageHeading
         title="Routine Interview"
-        description="Your Routine Interview details and Student Intake."
         action={<RoutineBackLink />}
       />
       <RoutineContextSummary

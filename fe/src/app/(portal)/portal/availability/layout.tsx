@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import {
   AvailabilityGate,
   AvailabilityNavigation,
@@ -15,10 +16,14 @@ export default function AvailabilityLayout({
 }: {
   children: ReactNode;
 }) {
+  // The schedule editors need a bounded sheet, and the Counselors tab shares it so the tabs hold
+  // one width.
   return (
-    <AvailabilityGate>
-      <AvailabilityNavigation />
-      {children}
-    </AvailabilityGate>
+    <div className={pageSheetWidth}>
+      <AvailabilityGate>
+        <AvailabilityNavigation />
+        {children}
+      </AvailabilityGate>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { CounselorRoutineWorkspace } from "@/features/routine-interviews/routine-counselor-workspace";
@@ -11,7 +12,11 @@ export function RoutineInterviewsEntryPage() {
   const access = getRoutineInterviewAccess(user);
 
   if (access.isStudent && access.canViewSelf) {
-    return <StudentRoutineWorkspace access={access} />;
+    return (
+      <div className={pageSheetWidth}>
+        <StudentRoutineWorkspace access={access} />
+      </div>
+    );
   }
   if (access.isCounselor && access.canViewAssigned) {
     return <CounselorRoutineWorkspace access={access} />;

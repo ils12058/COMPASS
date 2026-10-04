@@ -16,24 +16,22 @@ const sections = [
 export function AccountNavigation() {
   const pathname = usePathname();
 
+  // No label above the tabs: the page title below names the section, as in the other workspaces.
   return (
-    <div className="mb-6">
-      <p className="font-heading text-sm font-semibold text-brand">Account</p>
-      <WorkspaceTabs label="Account navigation" className="mb-0 mt-2">
-        {sections.map(({ href, label }) => {
-          const current = pathname === href || pathname.startsWith(`${href}/`);
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={current ? "page" : undefined}
-              className={workspaceTabClass(current)}
-            >
-              {label}
-            </Link>
-          );
-        })}
-      </WorkspaceTabs>
-    </div>
+    <WorkspaceTabs label="Account navigation">
+      {sections.map(({ href, label }) => {
+        const current = pathname === href || pathname.startsWith(`${href}/`);
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={current ? "page" : undefined}
+            className={workspaceTabClass(current)}
+          >
+            {label}
+          </Link>
+        );
+      })}
+    </WorkspaceTabs>
   );
 }

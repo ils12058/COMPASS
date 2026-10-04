@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { AccountDetailFrame } from "@/features/accounts/detail/account-detail-frame";
 
 export default async function AccountLayout({
@@ -10,5 +11,9 @@ export default async function AccountLayout({
   params: Promise<{ userId: string }>;
 }) {
   const { userId } = await params;
-  return <AccountDetailFrame userId={userId}>{children}</AccountDetailFrame>;
+  return (
+    <div className={pageSheetWidth}>
+      <AccountDetailFrame userId={userId}>{children}</AccountDetailFrame>
+    </div>
+  );
 }

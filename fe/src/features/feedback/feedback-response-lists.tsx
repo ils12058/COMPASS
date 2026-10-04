@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -109,20 +110,24 @@ export function CustomerFeedbackResponseList() {
 
   return (
     <section aria-labelledby="customer-feedback-responses-heading">
-      <FeedbackPageHeading headingId="customer-feedback-responses-heading" title="Customer Feedback responses" description="Read-only access to submitted responses. Search is limited to respondent name." />
-      <form key={searchParams.toString()} role="search" aria-label="Customer Feedback responses" className="mt-5" onSubmit={applyFilters}>
-        <FilterToolbar
-          fieldsClassName="lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]"
-          actions={<>{hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : null}<Button type="submit">Apply filters</Button></>}
+      <FeedbackPageHeading headingId="customer-feedback-responses-heading" title="Customer Feedback responses" description="Responses are read-only. Search matches the respondent name only." />
+      <form key={searchParams.toString()} role="search" aria-label="Customer Feedback responses" onSubmit={applyFilters}>
+        <FloatingListTools
+          submits
+          invalid={Boolean(filterError)}
+          filterCount={[service, params.get("submitted_from"), params.get("submitted_to")].filter(Boolean).length}
+          clear={hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : undefined}
+          filters={<>
+            <FilterField label="Service" htmlFor="feedback-service-filter" className="sm:col-span-2"><Select id="feedback-service-filter" name="service" defaultValue={service ?? ""}><option value="">All services</option>{feedbackServices.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></FilterField>
+            <DateRangeFilters searchParams={params} />
+            {filterError ? <p role="alert" className="text-sm text-danger sm:col-span-full">{filterError}</p> : null}
+          </>}
         >
-          <FilterField label="Search respondent name" htmlFor="feedback-search" className="sm:col-span-2 lg:col-span-1"><Input id="feedback-search" name="search" type="search" placeholder="Search respondent name" defaultValue={search} /></FilterField>
-          <FilterField label="Service" htmlFor="feedback-service-filter"><Select id="feedback-service-filter" name="service" defaultValue={service ?? ""}><option value="">All services</option>{feedbackServices.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></FilterField>
-          <DateRangeFilters searchParams={params} />
-          {filterError ? <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-4">{filterError}</p> : null}
-        </FilterToolbar>
+          <ListSearchField id="feedback-search" name="search" label="Search respondent name" placeholder="Search respondent name" defaultValue={search} />
+        </FloatingListTools>
       </form>
       {list.isError && rows ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
-      <Panel aria-labelledby="customer-feedback-results-heading" className="mt-5">
+      <Panel aria-labelledby="customer-feedback-results-heading">
         <PanelHeader
           title="Responses"
           titleId="customer-feedback-results-heading"
@@ -184,20 +189,24 @@ export function CsmResponseList() {
 
   return (
     <section aria-labelledby="csm-responses-heading">
-      <FeedbackPageHeading headingId="csm-responses-heading" title="Client Satisfaction Measurement responses" description="Read-only access to submitted CSM responses. Service is a text filter against the service named in the response." />
-      <form key={searchParams.toString()} role="search" aria-label="CSM responses" className="mt-5" onSubmit={applyFilters}>
-        <FilterToolbar
-          fieldsClassName="lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]"
-          actions={<>{hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : null}<Button type="submit">Apply filters</Button></>}
+      <FeedbackPageHeading headingId="csm-responses-heading" title="Client Satisfaction Measurement responses" description="Responses are read-only. The service search matches the service named in each response." />
+      <form key={searchParams.toString()} role="search" aria-label="CSM responses" onSubmit={applyFilters}>
+        <FloatingListTools
+          submits
+          invalid={Boolean(filterError)}
+          filterCount={[clientType, params.get("submitted_from"), params.get("submitted_to")].filter(Boolean).length}
+          clear={hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : undefined}
+          filters={<>
+            <FilterField label="Client type" htmlFor="csm-client-filter" className="sm:col-span-2"><Select id="csm-client-filter" name="client_type" defaultValue={clientType ?? ""}><option value="">All client types</option>{clientTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></FilterField>
+            <DateRangeFilters searchParams={params} />
+            {filterError ? <p role="alert" className="text-sm text-danger sm:col-span-full">{filterError}</p> : null}
+          </>}
         >
-          <FilterField label="Client type" htmlFor="csm-client-filter"><Select id="csm-client-filter" name="client_type" defaultValue={clientType ?? ""}><option value="">All client types</option>{clientTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></FilterField>
-          <FilterField label="Filter service availed" htmlFor="csm-service-filter"><Input id="csm-service-filter" name="service" placeholder="Filter service availed" defaultValue={service} /></FilterField>
-          <DateRangeFilters searchParams={params} />
-          {filterError ? <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-4">{filterError}</p> : null}
-        </FilterToolbar>
+          <ListSearchField id="csm-service-filter" name="service" label="Filter by service availed" placeholder="Filter by service availed" defaultValue={service} />
+        </FloatingListTools>
       </form>
       {list.isError && rows ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
-      <Panel aria-labelledby="csm-results-heading" className="mt-5">
+      <Panel aria-labelledby="csm-results-heading">
         <PanelHeader
           title="Responses"
           titleId="csm-results-heading"

@@ -5,7 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
@@ -103,6 +104,18 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
   const pageData = list.data?.data;
   const items = pageData?.items ?? [];
   const filtering = Boolean(fromDate || toDate || (statusParam !== null && statusParam !== "ALL"));
+  // Status and Order count only when they differ from the list's defaults.
+  const filterCount = [
+    status !== AppointmentStatus.SCHEDULED,
+    fromDate,
+    toDate,
+    ordering !== AppointmentListOrdering.START_ASC,
+  ].filter(Boolean).length;
+  const clearHref = updateAppointmentQuery(
+    pathname,
+    new URLSearchParams(searchParams.toString()),
+    { status: "ALL", from: "", to: "" },
+  );
 
   return (
     <section aria-labelledby="my-appointments-heading">
@@ -112,13 +125,21 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
         title="My appointments"
         description={
           access.isStudent
-            ? "View scheduled appointments or use the status filter to see past appointments."
-            : "View appointments assigned to you as a counselor."
+            ? "Shows scheduled appointments first. Use Filters to see past appointments."
+            : undefined
         }
       />
 
       {/* No free-text search here, so each choice applies as soon as it changes. */}
-      <FilterToolbar className="mb-5">
+      <FloatingListTools
+        label="Appointment filters"
+        filterCount={filterCount}
+        clear={filtering ? (
+          <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>
+            Clear filters
+          </Link>
+        ) : undefined}
+        filters={<>
         <FilterField label="Status" htmlFor="my-appointment-status">
           <Select
             id="my-appointment-status"
@@ -159,7 +180,8 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
             <option value={AppointmentListOrdering.START_DESC}>Latest start first</option>
           </Select>
         </FilterField>
-      </FilterToolbar>
+        </>}
+      />
 
       <Panel aria-labelledby="my-appointments-results-heading">
         <PanelHeader
@@ -197,11 +219,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
           <PanelMessage
             action={status !== undefined || upcoming || fromDate || toDate ? (
               <Link
-                href={updateAppointmentQuery(
-                  pathname,
-                  new URLSearchParams(searchParams.toString()),
-                  { status: "ALL", from: "", to: "" },
-                )}
+                href={clearHref}
                 className={buttonVariants({ variant: "secondary" })}
               >
                 {filtering ? "Clear filters" : "Show all statuses"}

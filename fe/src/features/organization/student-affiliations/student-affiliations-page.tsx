@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools } from "@/components/ui/floating-list-tools";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -236,14 +237,15 @@ export function StudentAffiliationsPage() {
       />
 
       {/* The search applies as you type and the structure choices apply on change. */}
-      <FilterToolbar
-        className="mt-5"
-        fieldsClassName="lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]"
-      >
-        <SearchField
-          label="Search student affiliations"
-          placeholder="Search by student name or institutional ID"
-        />
+      <FloatingListTools
+        label="Student affiliation search and filters"
+        filterCount={[campusId, collegeId].filter(Boolean).length}
+        clear={hasFilters ? (
+          <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>
+            Clear filters
+          </Button>
+        ) : undefined}
+        filters={<>
         <FilterField label="Campus" htmlFor="affiliation-campus-filter">
           <Select
             id="affiliation-campus-filter"
@@ -278,17 +280,23 @@ export function StudentAffiliationsPage() {
             ))}
           </Select>
         </FilterField>
-      </FilterToolbar>
+        </>}
+      >
+        <SearchField
+          label="Search student affiliations"
+          placeholder="Search by student name or institutional ID"
+        />
+      </FloatingListTools>
 
       {canViewStructure && (campuses.isError || colleges.isError) ? (
-        <Notice role="alert" tone="warning" className="mt-3">
+        <Notice role="alert" tone="warning" className="mb-5">
           Structure choices could not be loaded. The affiliation list remains
           available, but set/change controls are unavailable.
         </Notice>
       ) : null}
       {action.notice && !dialog && !removal ? action.messages : null}
 
-      <Panel className="mt-5" aria-labelledby="student-affiliations-results-heading">
+      <Panel aria-labelledby="student-affiliations-results-heading">
         <PanelHeader
           title="Current affiliations"
           titleId="student-affiliations-results-heading"

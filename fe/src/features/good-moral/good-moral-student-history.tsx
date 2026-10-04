@@ -26,7 +26,6 @@ export function GoodMoralStudentHistory({
       <GoodMoralHeading
         headingId="good-moral-student-heading"
         title="Good Moral"
-        description="Request a Good Moral Certificate and review your requests."
         action={requestHref && requestLabel ? (
           <Link href={requestHref} className={buttonVariants({ variant: "primary" })}>
             {requestLabel}

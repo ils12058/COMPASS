@@ -36,6 +36,7 @@
   --radius-md: var(--compass-radius-md);
   --radius-lg: var(--compass-radius-lg);
   --shadow-dialog: var(--compass-shadow-dialog);
+  --shadow-float: var(--compass-shadow-float);
 }
 
 @layer base {
@@ -203,6 +204,14 @@ h6 {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* Floating list tools (components/ui/floating-list-tools.tsx). The portal shell reads the same
+   values to keep a collection's last records and pagination clear of the tools. */
+:root {
+  --list-tools-height: 3.5rem;
+  --list-tools-offset: max(1rem, env(safe-area-inset-bottom));
+  --list-tools-clearance: calc(var(--list-tools-height) + var(--list-tools-offset) + 1.5rem);
 }
 
 /* Portal navigation drawer on small screens. Radix keeps the drawer mounted until the closing

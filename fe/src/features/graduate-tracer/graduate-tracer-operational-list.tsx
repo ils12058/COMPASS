@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -67,20 +68,16 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
       <GraduateTracerHeading
         id="graduate-tracer-queue-heading"
         title="Graduate Tracer"
-        description="Review submitted Graduate Tracer responses. Draft answers are not available in this workspace."
+        description="Only submitted responses are shown. Draft answers are not available in this workspace."
       />
 
       <form action="/portal/graduate-tracer" method="get" role="search" aria-label="Graduate Tracer responses" key={JSON.stringify(filters)}>
-        <FilterToolbar
-          advancedCount={advancedCount}
-          advancedClassName="lg:grid-cols-3"
-          actions={
-            <>
-              {hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
-              <Button type="submit">Apply filters</Button>
-            </>
-          }
-          advanced={
+        {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
+        <FloatingListTools
+          submits
+          filterCount={advancedCount}
+          clear={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
+          filters={
             <>
           <FilterField label="Submitted from" htmlFor="gts-submitted-from">
             <Input id="gts-submitted-from" type="date" name="submitted_from" defaultValue={filters.submittedFrom} />
@@ -97,11 +94,8 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
             </>
           }
         >
-          <FilterField label="Search Graduate name or Institutional ID" htmlFor="gts-queue-search">
-            <Input id="gts-queue-search" type="search" name="search" placeholder="Name or Institutional ID" defaultValue={filters.search} />
-          </FilterField>
-          {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
-        </FilterToolbar>
+          <ListSearchField id="gts-queue-search" name="search" label="Search Graduate name or Institutional ID" placeholder="Search Graduate name or Institutional ID" defaultValue={filters.search} />
+        </FloatingListTools>
       </form>
 
       {dateRangeInvalid ? <Notice role="alert" tone="warning"><span className="text-ink">Submitted-from date must be on or before the submitted-to date.</span></Notice> : null}

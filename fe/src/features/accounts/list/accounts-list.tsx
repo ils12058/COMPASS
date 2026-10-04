@@ -1,16 +1,14 @@
 "use client";
 
-import { Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
@@ -53,24 +51,15 @@ function SearchField({
   }, [initial, onSearch, value]);
 
   return (
-    <div className="grid min-w-0 content-start gap-1.5">
-      <Label htmlFor="accounts-search">Search accounts</Label>
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute left-3 top-3 text-muted"
-          size={18}
-          aria-hidden="true"
-        />
-        <Input
-          id="accounts-search"
-          className="pl-10"
-          value={value}
-          maxLength={254}
-          placeholder="Search by name, Institutional ID, or email"
-          onChange={(event) => setValue(event.target.value)}
-        />
-      </div>
-    </div>
+    <ListSearchField
+      id="accounts-search"
+      name="search"
+      label="Search accounts"
+      value={value}
+      maxLength={254}
+      placeholder="Search by name, Institutional ID, or email"
+      onChange={(event) => setValue(event.target.value)}
+    />
   );
 }
 
@@ -136,7 +125,6 @@ export function AccountsList() {
       <PageHeader
         title="Accounts"
         headingId="accounts-heading"
-        description="Manage COMPASS accounts and access."
         actions={
           <>
             <Link
@@ -155,92 +143,103 @@ export function AccountsList() {
         }
       />
 
-      {/* A directory search: the text search applies as you type and each choice on change. */}
-      <FilterToolbar
-        advancedCount={
-          [filters.role, filters.designation, filters.is_active !== undefined, filters.email_verified !== undefined].filter(Boolean).length
-        }
-        actions={
-          filtered ? (
-            <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>
-              Clear filters
-            </Button>
-          ) : undefined
-        }
-        advanced={
-          <>
-        <FilterField label="Role" htmlFor="accounts-role">
-          <Select
-            id="accounts-role"
-            value={filters.role ?? ""}
-            onChange={(event) => update("role", event.target.value)}
-          >
-            <option value="">All</option>
-            {roles.map((value) => (
-              <option key={value} value={value}>
-                {roleLabels[value]}
-              </option>
-            ))}
-          </Select>
-        </FilterField>
-        <FilterField label="Status" htmlFor="accounts-status">
-          <Select
-            id="accounts-status"
-            value={
-              filters.is_active === undefined
-                ? ""
-                : String(filters.is_active)
-            }
-            onChange={(event) => update("is_active", event.target.value)}
-          >
-            <option value="">All</option>
-            <option value="true">Active</option>
-            <option value="false">Disabled</option>
-          </Select>
-        </FilterField>
-        <FilterField label="Designation" htmlFor="accounts-designation">
-          <Select
-            id="accounts-designation"
-            value={filters.designation ?? ""}
-            onChange={(event) => update("designation", event.target.value)}
-          >
-            <option value="">All</option>
-            {designations.map((value) => (
-              <option key={value} value={value}>
-                {designationLabels[value]}
-              </option>
-            ))}
-          </Select>
-        </FilterField>
-        <FilterField label="Email" htmlFor="accounts-email">
-          <Select
-            id="accounts-email"
-            value={
-              filters.email_verified === undefined
-                ? ""
-                : String(filters.email_verified)
-            }
-            onChange={(event) =>
-              update("email_verified", event.target.value)
-            }
-          >
-            <option value="">All</option>
-            <option value="true">Verified</option>
-            <option value="false">Not verified</option>
-          </Select>
-        </FilterField>
-          </>
-        }
+      {/* A directory search: the text search applies as you type (or on Enter), and each choice
+          applies on change. */}
+      <form
+        role="search"
+        aria-label="Accounts"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const value = new FormData(event.currentTarget).get("search");
+          update("search", typeof value === "string" ? value.trim().slice(0, 254) : "");
+        }}
       >
-        <SearchField
-          key={search}
-          initial={search}
-          onSearch={(value) => update("search", value)}
-        />
-      </FilterToolbar>
+        <FloatingListTools
+          filterCount={
+            [filters.role, filters.designation, filters.is_active !== undefined, filters.email_verified !== undefined].filter(Boolean).length
+          }
+          clear={
+            filtered ? (
+              <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>
+                Clear filters
+              </Button>
+            ) : undefined
+          }
+          filters={
+            <>
+              <FilterField label="Role" htmlFor="accounts-role">
+                <Select
+                  id="accounts-role"
+                  value={filters.role ?? ""}
+                  onChange={(event) => update("role", event.target.value)}
+                >
+                  <option value="">All</option>
+                  {roles.map((value) => (
+                    <option key={value} value={value}>
+                      {roleLabels[value]}
+                    </option>
+                  ))}
+                </Select>
+              </FilterField>
+              <FilterField label="Status" htmlFor="accounts-status">
+                <Select
+                  id="accounts-status"
+                  value={
+                    filters.is_active === undefined
+                      ? ""
+                      : String(filters.is_active)
+                  }
+                  onChange={(event) => update("is_active", event.target.value)}
+                >
+                  <option value="">All</option>
+                  <option value="true">Active</option>
+                  <option value="false">Disabled</option>
+                </Select>
+              </FilterField>
+              <FilterField label="Designation" htmlFor="accounts-designation">
+                <Select
+                  id="accounts-designation"
+                  value={filters.designation ?? ""}
+                  onChange={(event) => update("designation", event.target.value)}
+                >
+                  <option value="">All</option>
+                  {designations.map((value) => (
+                    <option key={value} value={value}>
+                      {designationLabels[value]}
+                    </option>
+                  ))}
+                </Select>
+              </FilterField>
+              <FilterField label="Email" htmlFor="accounts-email">
+                <Select
+                  id="accounts-email"
+                  value={
+                    filters.email_verified === undefined
+                      ? ""
+                      : String(filters.email_verified)
+                  }
+                  onChange={(event) =>
+                    update("email_verified", event.target.value)
+                  }
+                >
+                  <option value="">All</option>
+                  <option value="true">Verified</option>
+                  <option value="false">Not verified</option>
+                </Select>
+              </FilterField>
+            </>
+          }
+        >
+          <SearchField
+            key={search}
+            initial={search}
+            onSearch={(value) => update("search", value)}
+          />
+        </FloatingListTools>
+      </form>
 
       {list.isError && confirmed ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
-      <Panel className={list.isError && confirmed ? undefined : "mt-5"} aria-labelledby="accounts-results-heading">
+      <Panel aria-labelledby="accounts-results-heading">
         <PanelHeader
           title="Managed accounts"
           titleId="accounts-results-heading"

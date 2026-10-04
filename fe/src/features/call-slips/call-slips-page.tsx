@@ -6,7 +6,8 @@ import { useState, type FormEvent } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -106,20 +107,19 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
   const data = safeQueryData(slips)?.data;
   const items = data?.items ?? [];
   const hasFilters = Boolean(filters.fromDate || filters.toDate || filters.state || filters.page > 1);
+  const draftRangeInvalid = Boolean(draft.fromDate && draft.toDate && draft.fromDate > draft.toDate);
 
   return (
     <div className="space-y-5">
       <CallSlipHeading title="My Call Slips"  />
       <form onSubmit={submitFilters} aria-label="My Call Slips filters">
-        <FilterToolbar
-          fieldsClassName="lg:grid-cols-3"
-          actions={
-            <>
-              {hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
-              <Button type="submit">Apply filters</Button>
-            </>
-          }
-        >
+        <FloatingListTools
+          submits
+          invalid={draftRangeInvalid}
+          filterCount={[filters.state, filters.fromDate, filters.toDate].filter(Boolean).length}
+          filtersClassName="sm:grid-cols-3"
+          clear={hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
+          filters={<>
           <FilterField label="Status" htmlFor="my-call-slips-state">
             <Select id="my-call-slips-state" value={draft.state} onChange={(event) => setDraft({ ...draft, state: lifecycleStateFrom(event.target.value) })}>
               <option value="">All statuses</option>
@@ -134,10 +134,11 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
           <FilterField label="To" htmlFor="my-call-slips-to">
             <Input id="my-call-slips-to" type="date" value={draft.toDate} onChange={(event) => setDraft({ ...draft, toDate: event.target.value })} />
           </FilterField>
-          {draft.fromDate && draft.toDate && draft.fromDate > draft.toDate ? (
-            <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-3">From date must not be after To date.</p>
+          {draftRangeInvalid ? (
+            <p role="alert" className="text-sm text-danger sm:col-span-full">From date must not be after To date.</p>
           ) : null}
-        </FilterToolbar>
+          </>}
+        />
       </form>
       {slips.isError && data ? <RefreshFailureNotice onRetry={() => void slips.refetch()} retrying={slips.isFetching} /> : null}
 
@@ -222,25 +223,21 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
     : { ...filters, includeVoided: false, state: effectiveState(filters, false) };
   const hasFilters = Boolean(effectiveFilters.search || effectiveFilters.destination || effectiveFilters.fromDate || effectiveFilters.toDate || effectiveFilters.includeVoided || effectiveFilters.state || effectiveFilters.page > 1);
   const advancedCount = [effectiveFilters.destination, effectiveFilters.state, effectiveFilters.fromDate, effectiveFilters.toDate, effectiveFilters.includeVoided].filter(Boolean).length;
+  const draftRangeInvalid = Boolean(draft.fromDate && draft.toDate && draft.fromDate > draft.toDate);
 
   return (
     <div className="space-y-5">
       <CallSlipHeading
         title="Call Slips"
-        description={access.canManageOperational ? "Review and manage Call Slips assigned to your guidance area." : "Review Call Slips assigned to your guidance area."}
         action={access.canManageOperational ? <Link href="/portal/call-slips/new" className={buttonVariants({ variant: "primary" })}>Issue Call Slip</Link> : null}
       />
       <form onSubmit={submitFilters} role="search" aria-label="Call Slips">
-        <FilterToolbar
-          advancedCount={advancedCount}
-          advancedClassName="lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]"
-          actions={
-            <>
-              {hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
-              <Button type="submit">Apply filters</Button>
-            </>
-          }
-          advanced={
+        <FloatingListTools
+          submits
+          invalid={draftRangeInvalid}
+          filterCount={advancedCount}
+          clear={hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
+          filters={
             <>
           <FilterField label="Destination" htmlFor="call-slips-destination">
             <Select id="call-slips-destination" value={draft.destination} onChange={(event) => setDraft({ ...draft, destination: event.target.value as CallSlipListFilters["destination"] })}>
@@ -265,14 +262,12 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
               <Label htmlFor="call-slips-include-voided">Include voided</Label>
             </div>
           ) : null}
-          {draft.fromDate && draft.toDate && draft.fromDate > draft.toDate ? <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-full">From date must not be after To date.</p> : null}
+          {draftRangeInvalid ? <p role="alert" className="text-sm text-danger sm:col-span-full">From date must not be after To date.</p> : null}
             </>
           }
         >
-          <FilterField label="Search" htmlFor="call-slips-search">
-            <Input id="call-slips-search" type="search" maxLength={160} placeholder="Search Student or Referral reference" value={draft.search} onChange={(event) => setDraft({ ...draft, search: event.target.value })} />
-          </FilterField>
-        </FilterToolbar>
+          <ListSearchField id="call-slips-search" label="Search Call Slips" maxLength={160} placeholder="Search Student or Referral reference" value={draft.search} onChange={(event) => setDraft({ ...draft, search: event.target.value })} />
+        </FloatingListTools>
       </form>
       {slips.isError && data ? <RefreshFailureNotice onRetry={() => void slips.refetch()} retrying={slips.isFetching} /> : null}
 

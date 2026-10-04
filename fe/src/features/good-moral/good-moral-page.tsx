@@ -1,5 +1,6 @@
 "use client";
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import type { GoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import { GoodMoralOperationalFilters, GoodMoralOperationalList } from "@/features/good-moral/good-moral-operational-list";
@@ -18,11 +19,13 @@ export function GoodMoralWorkspacePage({ filters }: { filters: GoodMoralOperatio
         ? "/portal/good-moral/request"
         : null;
     return (
-      <GoodMoralStudentHistory
-        canView={access.canViewSelf}
-        requestHref={requestHref}
-        requestLabel={requestHref ? "Request Good Moral Certificate" : null}
-      />
+      <div className={pageSheetWidth}>
+        <GoodMoralStudentHistory
+          canView={access.canViewSelf}
+          requestHref={requestHref}
+          requestLabel={requestHref ? "Request Good Moral Certificate" : null}
+        />
+      </div>
     );
   }
 

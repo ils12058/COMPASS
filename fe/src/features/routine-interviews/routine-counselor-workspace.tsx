@@ -6,8 +6,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
-import { Input } from "@/components/ui/input";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -116,26 +116,20 @@ function RoutineQueueFilters({
     <form
       role="search"
       aria-label="Assigned Routine Interviews"
-      className="mb-5"
       onSubmit={(event) => {
         event.preventDefault();
         onApply({ ...draft, search: draft.search.trim() });
       }}
     >
-      <FilterToolbar
-        advancedCount={advancedCount}
-        advancedClassName={canFilterYear ? "lg:grid-cols-4" : "lg:grid-cols-3"}
-        actions={
-          <>
-            {hasFilters ? (
-              <Button variant="quiet" onClick={onClear}>
-                Clear filters
-              </Button>
-            ) : null}
-            <Button type="submit">Apply filters</Button>
-          </>
-        }
-        advanced={
+      <FloatingListTools
+        submits
+        filterCount={advancedCount}
+        clear={hasFilters ? (
+          <Button variant="quiet" onClick={onClear}>
+            Clear filters
+          </Button>
+        ) : undefined}
+        filters={
           <>
         {canFilterYear ? (
           <FilterField
@@ -206,16 +200,14 @@ function RoutineQueueFilters({
           </>
         }
       >
-        <FilterField label="Search Students" htmlFor="routine-queue-search">
-          <Input
-            id="routine-queue-search"
-            type="search"
-            value={draft.search}
-            onChange={(event) => set("search", event.target.value)}
-            placeholder="Name or Institutional ID"
-          />
-        </FilterField>
-      </FilterToolbar>
+        <ListSearchField
+          id="routine-queue-search"
+          label="Search Students"
+          value={draft.search}
+          onChange={(event) => set("search", event.target.value)}
+          placeholder="Search Student name or Institutional ID"
+        />
+      </FloatingListTools>
     </form>
   );
 }
@@ -294,7 +286,7 @@ export function CounselorRoutineWorkspace({
     <div>
       <RoutinePageHeading
         title="Routine Interviews"
-        description="View Routine Interviews assigned to you and manage Counselor Evaluations after Students submit their Intake."
+        description="A Counselor Evaluation opens after the Student submits their Intake."
         action={access.canManageAssigned ? (
           <Button onClick={() => setCreateOpen(true)}>Start Routine Interview</Button>
         ) : undefined}

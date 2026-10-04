@@ -10,9 +10,11 @@ import { cn } from "@/lib/utils/cn";
 const toolbarFrame = "rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5";
 const actionsClass = "flex shrink-0 flex-col-reverse gap-2 *:w-full sm:flex-row sm:justify-end sm:*:w-auto";
 
-// Search and filter controls for one list, grouped on a single working surface between the page
-// header and the results. The fields share one grid; `actions` is the toolbar's one action area
-// (Apply and Clear), which sits after the fields and fills the width on phones.
+// In-flow search and filter controls, grouped on a single working surface between the page header
+// and what they act on: the public Announcements and Resources lists, and parameter forms such as a
+// report's filters. Collections in the authenticated portal use FloatingListTools instead. The
+// fields share one grid; `actions` is the toolbar's one action area (Apply and Clear), which sits
+// after the fields and fills the width on phones.
 //
 // A long toolbar passes its secondary filters as `advanced`. The children (usually the search)
 // stay in view and the advanced filters fold away behind a Filters button that counts the ones

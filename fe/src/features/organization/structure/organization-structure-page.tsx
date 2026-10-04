@@ -60,7 +60,7 @@ export function OrganizationStructurePage() {
       <PageHeading
         title="Organization structure"
         headingId="organization-structure-heading"
-        description="UCN campus, college, and program records used across COMPASS. These records are read-only here."
+        description="Campus, college, and program records are read-only here."
       />
 
       {campusItems.length === 0 ? (

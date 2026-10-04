@@ -6,8 +6,8 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
-import { Input } from "@/components/ui/input";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { Select } from "@/components/ui/select";
@@ -75,22 +75,16 @@ function RosterFilters({
     <form
       role="search"
       aria-label="Individual Inventory roster"
-      className="my-5"
       onSubmit={(event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         onApply({ ...draft, search: draft.search.trim() });
       }}
     >
-      <FilterToolbar
-        advancedCount={advancedCount}
-        advancedClassName={canFilterYear ? "lg:grid-cols-3" : "lg:grid-cols-2"}
-        actions={
-          <>
-            {hasFilters ? <Button variant="quiet" onClick={onClear}>Clear filters</Button> : null}
-            <Button type="submit">Apply filters</Button>
-          </>
-        }
-        advanced={
+      <FloatingListTools
+        submits
+        filterCount={advancedCount}
+        clear={hasFilters ? <Button variant="quiet" onClick={onClear}>Clear filters</Button> : undefined}
+        filters={
           <>
         {canFilterYear ? (
           <FilterField label="Academic Year" htmlFor="inventory-roster-year">
@@ -149,18 +143,17 @@ function RosterFilters({
           </>
         }
       >
-        <FilterField label="Search" htmlFor="inventory-roster-search">
-          <Input
-            id="inventory-roster-search"
-            type="search"
-            value={draft.search}
-            onChange={(event) => setDraft((current) => ({ ...current, search: event.target.value }))}
-            placeholder="Search by Student name or Institutional ID"
-          />
-        </FilterField>
-      </FilterToolbar>
-      {/* Notes about how the filters were applied stay in view while the filters are folded. */}
-      {notes ? <div className="mt-3 space-y-2">{notes}</div> : null}
+        <ListSearchField
+          id="inventory-roster-search"
+          label="Search the roster"
+          value={draft.search}
+          onChange={(event) => setDraft((current) => ({ ...current, search: event.target.value }))}
+          placeholder="Search by Student name or Institutional ID"
+        />
+      </FloatingListTools>
+      {/* Notes about how the filters were applied stay on the page, above the results, while the
+          filters are closed. */}
+      {notes ? <div className="mb-5 space-y-2">{notes}</div> : null}
     </form>
   );
 }
@@ -255,7 +248,6 @@ export function CounselorInventoryRoster() {
     <section aria-label="Counselor Individual Inventory roster">
       <InventoryHeading
         title="Individual Inventory"
-        description="Review students assigned to your guidance area."
       />
 
       <RosterFilters

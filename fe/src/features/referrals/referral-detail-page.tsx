@@ -90,7 +90,6 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
     <div className="space-y-5">
       <ReferralHeading
         title={item.reference_code}
-        description="Recorded referral details"
         backHref="/portal/referrals"
         action={<ReferralPdfDownload referral={item} />}
       />

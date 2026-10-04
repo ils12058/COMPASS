@@ -3,10 +3,10 @@
 import Link from "next/link";
 
 import { Select } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import { safeQueryData } from "@/features/freshness/query-freshness";
@@ -92,7 +92,6 @@ export function ResourcesListPage() {
       />
 
       <form
-        className="mt-5"
         role="search"
         aria-label="Search managed resources"
         key={searchParams.toString()}
@@ -108,17 +107,15 @@ export function ResourcesListPage() {
           });
         }}
       >
-      <FilterToolbar
-        advancedCount={advancedCount}
-        actions={<>
-          {hasFilters ? (
-            <Link href={hrefWith(noFilters)} className={buttonVariants({ variant: "quiet" })} scroll={false}>
-              Clear filters
-            </Link>
-          ) : null}
-          <Button type="submit">Apply filters</Button>
-        </>}
-        advanced={<>
+      <FloatingListTools
+        submits
+        filterCount={advancedCount}
+        clear={hasFilters ? (
+          <Link href={hrefWith(noFilters)} className={buttonVariants({ variant: "quiet" })} scroll={false}>
+            Clear filters
+          </Link>
+        ) : undefined}
+        filters={<>
         <FilterField label="Status" htmlFor="resource-status-filter">
           <Select
             id="resource-status-filter"
@@ -169,14 +166,18 @@ export function ResourcesListPage() {
         </FilterField>
         </>}
       >
-        <FilterField label="Search resources" htmlFor="resource-search-filter">
-          <Input id="resource-search-filter" name="search" type="search" placeholder="Search resources" defaultValue={search} />
-        </FilterField>
-      </FilterToolbar>
+        <ListSearchField
+          id="resource-search-filter"
+          name="search"
+          label="Search resources"
+          placeholder="Search resources"
+          defaultValue={search}
+        />
+      </FloatingListTools>
       </form>
 
       {list.isError && result ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
-      <Panel className="mt-5" aria-labelledby="resource-results-heading">
+      <Panel aria-labelledby="resource-results-heading">
         <PanelHeader
           title="Resource records"
           titleId="resource-results-heading"

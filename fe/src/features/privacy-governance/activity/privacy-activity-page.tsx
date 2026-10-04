@@ -4,7 +4,7 @@ import { keepPreviousData } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListToolField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -109,8 +109,8 @@ export function PrivacyActivityPage() {
       />
 
       {/* One category choice, applied on change. */}
-      <FilterToolbar>
-        <FilterField label="Category" htmlFor="privacy-activity-category">
+      <FloatingListTools label="Activity filters" compact>
+        <ListToolField label="Category" htmlFor="privacy-activity-category">
           <Select
             id="privacy-activity-category"
             value={category ?? ""}
@@ -123,12 +123,12 @@ export function PrivacyActivityPage() {
               </option>
             ))}
           </Select>
-        </FilterField>
-      </FilterToolbar>
+        </ListToolField>
+      </FloatingListTools>
       {query.isError && result ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
 
       {query.isError && !result ? (
-        <div className="mt-5">
+        <div>
           <PrivacyQueryError
             error={query.error}
             fallback="Privacy and security activity could not be loaded."
@@ -136,7 +136,7 @@ export function PrivacyActivityPage() {
           />
         </div>
       ) : (
-        <Panel className={query.isError && result ? undefined : "mt-5"} aria-labelledby="privacy-activity-results-heading">
+        <Panel aria-labelledby="privacy-activity-results-heading">
           <PanelHeader
             title="Recorded events"
             titleId="privacy-activity-results-heading"

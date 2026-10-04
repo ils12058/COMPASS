@@ -1,6 +1,5 @@
 "use client";
 
-import { Search } from "lucide-react";
 import {
   useEffect,
   useState,
@@ -9,8 +8,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ListSearchField } from "@/components/ui/floating-list-tools";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { organizationErrorMessage } from "@/features/organization/components/organization-action";
 import { PageHeader } from "@/components/ui/page-header";
@@ -82,24 +80,14 @@ export function SearchField({
   }, [current, pathname, router, searchParams, value]);
 
   return (
-    <div className="grid min-w-0 content-start gap-1.5">
-      <Label htmlFor="organization-search">{label}</Label>
-      <div className="relative">
-        <Search
-          size={18}
-          aria-hidden="true"
-          className="pointer-events-none absolute left-3 top-3 text-muted"
-        />
-        <Input
-          id="organization-search"
-          className="pl-10"
-          maxLength={200}
-          placeholder={placeholder}
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-        />
-      </div>
-    </div>
+    <ListSearchField
+      id="organization-search"
+      label={label}
+      maxLength={200}
+      placeholder={placeholder}
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+    />
   );
 }
 

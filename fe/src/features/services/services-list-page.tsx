@@ -5,7 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -134,9 +135,16 @@ export function ServicesListPage() {
       />
 
       {/* The search applies as you type and the other choices apply on change. */}
-      <FilterToolbar className="mt-5" fieldsClassName="lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto] lg:items-end">
-          <ServicesSearchField />
-          <FilterField label="Appointment policy" htmlFor="services-policy-filter">
+      <FloatingListTools
+        label="Service search and filters"
+        filterCount={[appointmentPolicy, includeInactive].filter(Boolean).length}
+        clear={hasFilters || includeInactive ? (
+          <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>
+            Clear filters
+          </Button>
+        ) : undefined}
+        filters={<>
+          <FilterField label="Appointment policy" htmlFor="services-policy-filter" className="sm:col-span-2">
             <Select
               id="services-policy-filter"
               value={appointmentPolicy ?? ""}
@@ -153,7 +161,7 @@ export function ServicesListPage() {
             </Select>
           </FilterField>
         {canManage ? (
-          <label className="inline-flex min-h-10 items-center gap-3 self-end text-sm font-medium text-ink">
+          <label className="inline-flex min-h-10 items-center gap-3 text-sm font-medium text-ink sm:col-span-2">
             <input
               type="checkbox"
               className="h-4 w-4 accent-brand"
@@ -163,9 +171,12 @@ export function ServicesListPage() {
             Include inactive Services
           </label>
         ) : null}
-      </FilterToolbar>
+        </>}
+      >
+        <ServicesSearchField />
+      </FloatingListTools>
 
-      <Panel className="mt-5" aria-labelledby="services-results-heading">
+      <Panel aria-labelledby="services-results-heading">
         <PanelHeader
           title="Service Catalog"
           titleId="services-results-heading"
