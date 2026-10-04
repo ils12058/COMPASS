@@ -199,7 +199,7 @@ def deliver_push_delivery(delivery_id: uuid.UUID) -> str:
     now = timezone.now()
     with transaction.atomic():
         delivery = (
-            PushDelivery.objects.select_for_update()
+            PushDelivery.objects.select_for_update(of=("self",))
             .select_related("notification__recipient", "subscription__session")
             .filter(pk=delivery_id)
             .first()
