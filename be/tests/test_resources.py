@@ -850,6 +850,7 @@ def test_resource_api_returns_structured_publication_consequence_review_required
     assert accepted.json()["audience"] == "PUBLIC"
     assert accepted.json()["external_url"] == "https://example.edu/new"
 
+
 @pytest.mark.django_db
 def test_resource_search_matches_normalizes_filters_orders_and_paginates():
     sync_policy()
