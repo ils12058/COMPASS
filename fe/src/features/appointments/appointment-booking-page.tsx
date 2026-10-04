@@ -4,7 +4,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingRegion } from "@/components/ui/loading-region";
@@ -29,17 +36,20 @@ import {
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   appointmentSlotFreshness,
-  isSlotTakenError,
   slotIsOffered,
-  SLOT_JUST_TAKEN,
   SLOT_NO_LONGER_AVAILABLE,
   SLOTS_NOT_RECHECKED,
   useSlotSelection,
 } from "@/features/appointments/appointment-slot-freshness";
-import { appointmentErrorCode, appointmentErrorMessage, AppointmentsLocalNavigation, AppointmentsPageHeading, formatAppointmentDateTime, formatAppointmentTime, deliveryModeLabel } from "@/features/appointments/appointments-shared";
+import {
+  bookedAppointmentFromResponse,
+  classifyBookingFailure,
+  type BookedAppointment,
+} from "@/features/appointments/appointment-booking-outcome";
+import { AppointmentsLocalNavigation, AppointmentsPageHeading, formatAppointmentDateTime, formatAppointmentTime, deliveryModeLabel } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
-import { CompassApiError } from "@/lib/api/errors";
+import { focusHeading } from "@/lib/focus-heading";
 import { INSTITUTION_TIME_ZONE, INSTITUTION_TIME_ZONE_LABEL } from "@/lib/institutional-time";
 
 function BookingWorkspace() {
@@ -52,11 +62,11 @@ function BookingWorkspace() {
   const [date, setDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [inventoryAcknowledged, setInventoryAcknowledged] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [createdAppointment, setCreatedAppointment] = useState<{
-    id: string;
-    referenceCode: string;
-  } | null>(null);
+  // Each failure is held for the step that can resolve it.
+  const [serviceError, setServiceError] = useState<string | null>(null);
+  const [timeError, setTimeError] = useState<string | null>(null);
+  const [bookingError, setBookingError] = useState<{ message: string; uncertain: boolean } | null>(null);
+  const [booked, setBooked] = useState<BookedAppointment | null>(null);
   const intentRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
   const bookingServices = useAppointmentsListBookingServices(
@@ -130,6 +140,12 @@ function BookingWorkspace() {
       ),
   });
 
+  function clearStepErrors() {
+    setServiceError(null);
+    setTimeError(null);
+    setBookingError(null);
+  }
+
   function changeService(next: AppointmentBookingServiceSummary | null) {
     setService(next);
     setDeliveryMode(next?.delivery_modes.length === 1 ? next.delivery_modes[0] : "");
@@ -137,8 +153,7 @@ function BookingWorkspace() {
     setDate("");
     slotChoice.clear();
     setInventoryAcknowledged(false);
-    setError(null);
-    setCreatedAppointment(null);
+    clearStepErrors();
     intentRef.current = null;
   }
 
@@ -147,8 +162,7 @@ function BookingWorkspace() {
     setCounselorSelection(null);
     setDate("");
     slotChoice.clear();
-    setError(null);
-    setCreatedAppointment(null);
+    clearStepErrors();
     intentRef.current = null;
   }
 
@@ -156,47 +170,44 @@ function BookingWorkspace() {
     setCounselorSelection(next);
     setDate("");
     slotChoice.clear();
-    setError(null);
-    setCreatedAppointment(null);
+    clearStepErrors();
     intentRef.current = null;
   }
 
   function changeDate(next: string) {
     setDate(next);
     slotChoice.clear();
-    setError(null);
-    setCreatedAppointment(null);
+    clearStepErrors();
     intentRef.current = null;
   }
 
   function changeSlot(next: string) {
     slotChoice.select(next);
-    setError(null);
-    setCreatedAppointment(null);
+    clearStepErrors();
     intentRef.current = null;
   }
 
   async function bookAppointment() {
     if (!service || !deliveryMode || !selectedCounselor || !selectedSlot) return;
-    setError(null);
+    setBookingError(null);
+    setTimeError(null);
     if (!globalThis.crypto?.randomUUID) {
-      setError("This browser cannot create a secure booking request. Update the browser and try again.");
+      setBookingError({ message: "This browser cannot create a secure booking request. Update the browser and try again.", uncertain: false });
       return;
     }
     setSubmitting(true);
     try {
       // Check the time is still offered before asking the server to book it. The server decides;
-      // this only avoids sending a booking that is already known to be stale.
+      // this only avoids sending a booking that is already known to be stale. A failed recheck
+      // shows in the time step, which keeps the last times and holds booking.
       const recheck = await slots.refetch();
-      if (recheck.isError) {
-        setError(SLOTS_NOT_RECHECKED);
-        return;
-      }
+      if (recheck.isError) return;
       if (!slotIsOffered(recheck.data?.data.items, selectedSlot.starts_at)) {
         slotChoice.drop();
+        focusHeading("booking-time-heading");
         return;
       }
-      await submitBooking(service, deliveryMode, selectedCounselor.id, selectedSlot.starts_at);
+      await submitBooking(service, deliveryMode, selectedCounselor, selectedSlot.starts_at);
     } finally {
       setSubmitting(false);
     }
@@ -205,13 +216,13 @@ function BookingWorkspace() {
   async function submitBooking(
     bookedService: AppointmentBookingServiceSummary,
     mode: DeliveryMode,
-    providerId: string,
+    counselor: { id: string; is_default: boolean },
     startsAt: string,
   ) {
 
     const fingerprint = JSON.stringify({
       service_id: bookedService.id,
-      provider_id: providerId,
+      provider_id: counselor.id,
       delivery_mode: mode,
       starts_at: startsAt,
     });
@@ -224,42 +235,53 @@ function BookingWorkspace() {
     try {
       const response = await create.mutateAsync({
         serviceId: bookedService.id,
-        providerId,
+        providerId: counselor.id,
         mode,
         startsAt,
         key,
       });
       const appointment = response.data;
       intentRef.current = null;
+      // The acknowledgment reads the server's answer, so it states what was actually booked.
+      setBooked(bookedAppointmentFromResponse(appointment, {
+        assignedCounselor: counselor.is_default,
+        timeZone: slots.data?.data.timezone,
+      }));
+      // The booked time leaves the slot list on the next check; it is no longer a pending choice.
+      slotChoice.clear();
       await queryClient.invalidateQueries({
         queryKey: getAppointmentsListMyQueryKey(),
       });
       await queryClient.invalidateQueries({
         queryKey: getAppointmentsListBookableSlotsQueryKey(),
       });
-      setCreatedAppointment({ id: appointment.id, referenceCode: appointment.reference_code });
     } catch (caught) {
-      const code = appointmentErrorCode(caught);
-      if (isSlotTakenError(caught)) {
+      const failure = classifyBookingFailure(caught);
+      if (failure.step === "time") {
         // The time went between the last check and the booking; show the current times.
         slotChoice.clear();
-        setError(SLOT_JUST_TAKEN);
+        setTimeError(failure.message);
         void slots.refetch();
-      } else if (code === "appointment_not_schedulable") {
+        focusHeading("booking-time-heading");
+      } else if (failure.step === "service") {
         // The Service changed since it was chosen; reload the list so only bookable ones show.
         changeService(null);
-        setError(`${appointmentErrorMessage(caught, "This Service is not currently available for scheduling.")} Choose from the current Services.`);
+        setServiceError(failure.message);
         void bookingServices.refetch();
-      } else if (code === "idempotency_key_conflict") {
-        intentRef.current = null;
-        setError(appointmentErrorMessage(caught, "The booking attempt could not be verified. Review the details and submit again."));
-      } else if (caught instanceof CompassApiError) {
-        setError(appointmentErrorMessage(caught, "The Appointment could not be booked."));
+        focusHeading("booking-service-heading");
       } else {
-        // Keep the exact-intent key so a retry after an uncertain network response is replay-safe.
-        setError("The booking response could not be confirmed. Retry the same booking details to check the result safely.");
+        if (!failure.keepIntent) intentRef.current = null;
+        setBookingError({ message: failure.message, uncertain: failure.uncertain });
       }
     }
+  }
+
+  // Done: the booking is complete, so the sheet starts over rather than keeping a spent review.
+  function finishBooking() {
+    setBooked(null);
+    changeService(null);
+    setServiceSearch("");
+    setServicePage(1);
   }
 
   const servicePageData = bookingServices.data?.data;
@@ -282,6 +304,9 @@ function BookingWorkspace() {
           the booking action. */}
       <Panel as="div">
         <PanelSection title="1. Choose a Service" titleId="booking-service-heading">
+          {serviceError ? (
+            <p role="alert" className="mb-4 text-sm leading-6 text-danger">{serviceError}</p>
+          ) : null}
           <div className="grid gap-2 sm:max-w-xl">
             <Label htmlFor="booking-service-search">Search Appointment Services</Label>
             <Input
@@ -419,7 +444,9 @@ function BookingWorkspace() {
             </div>
             {date ? (
               <div className="mt-5">
-                {slotChoice.lost ? (
+                {timeError ? (
+                  <p role="alert" className="mb-3 text-sm text-danger">{timeError}</p>
+                ) : slotChoice.lost ? (
                   <p role="status" className="mb-3 text-sm text-warning">{SLOT_NO_LONGER_AVAILABLE}</p>
                 ) : null}
                 {slots.isPending ? (
@@ -497,40 +524,79 @@ function BookingWorkspace() {
                   <span>A submitted Individual Inventory for the current Academic Year is required to book this Service.</span>
                 </label>
               ) : null}
+              {bookingError ? (
+                <Notice
+                  role="alert"
+                  tone={bookingError.uncertain ? "warning" : "danger"}
+                  className="mt-5 max-w-3xl"
+                >
+                  {bookingError.message}
+                </Notice>
+              ) : null}
             </PanelSection>
             <PanelFooter>
               <Button
-                disabled={submitting || createdAppointment !== null || slotsUnconfirmed || (hasInventoryRequirement && !inventoryAcknowledged)}
+                disabled={submitting || booked !== null || slotsUnconfirmed || (hasInventoryRequirement && !inventoryAcknowledged)}
                 onClick={() => void bookAppointment()}
                 aria-busy={submitting}
               >
-                {submitting ? "Booking…" : "Book appointment"}
+                {submitting ? "Booking…" : bookingError?.uncertain ? "Retry booking" : "Book appointment"}
               </Button>
-              <p className="text-xs text-muted">This Appointment will be scheduled immediately after a successful booking.</p>
+              <p className="text-xs text-muted">
+                {slotsUnconfirmed
+                  ? "Booking is held until the available times are rechecked."
+                  : "This Appointment will be scheduled immediately after a successful booking."}
+              </p>
             </PanelFooter>
           </>
         ) : null}
       </Panel>
 
-      {error ? <Notice role="alert" tone="danger" className="mt-4">{error}</Notice> : null}
-      {createdAppointment ? (
-        <Notice
-          role="status"
-          tone="success"
-          className="mt-4"
-          action={
-            <Link
-              href={`/portal/appointments/${createdAppointment.id}`}
-              className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              View Appointment
-            </Link>
-          }
-        >
-          Appointment {createdAppointment.referenceCode} was scheduled.
-        </Notice>
-      ) : null}
+      <BookingCompletion booked={booked} onDone={finishBooking} />
     </section>
+  );
+}
+
+// A confirmed booking is acknowledged once, in a dialog: the Appointment now exists and has a
+// reference, and the natural next step is to open it. Done (or closing) starts a new booking, so a
+// spent review never lingers with a disabled Book button.
+function BookingCompletion({ booked, onDone }: { booked: BookedAppointment | null; onDone: () => void }) {
+  const viewLink = useRef<HTMLAnchorElement>(null);
+  return (
+    <Dialog open={booked !== null} onOpenChange={(open) => { if (!open) onDone(); }}>
+      {booked ? (
+        <DialogContent
+          closeLabel="Close and start a new booking"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            viewLink.current?.focus();
+          }}
+          onCloseAutoFocus={(event) => {
+            // The review that opened this is gone; a new booking starts at the Service search.
+            event.preventDefault();
+            document.getElementById("booking-service-search")?.focus();
+          }}
+        >
+          <DialogTitle>Appointment scheduled</DialogTitle>
+          <DialogDescription asChild>
+            <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+              {booked.facts.map((fact) => (
+                <div key={fact.label} className={fact.label === "Schedule" ? "sm:col-span-2" : undefined}>
+                  <dt className="text-xs font-semibold text-muted">{fact.label}</dt>
+                  <dd className="mt-0.5 break-words text-sm text-ink">{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </DialogDescription>
+          <div className="mt-6 flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={onDone}>Done</Button>
+            <Link ref={viewLink} href={`/portal/appointments/${booked.id}`} className={buttonVariants({ variant: "primary" })}>
+              View appointment
+            </Link>
+          </div>
+        </DialogContent>
+      ) : null}
+    </Dialog>
   );
 }
 

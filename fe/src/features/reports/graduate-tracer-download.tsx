@@ -1,8 +1,9 @@
 "use client";
 
+import { FileSpreadsheet } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { PageAction } from "@/components/ui/page-action";
 import { reportErrorMessage } from "@/features/reports/reports-shared";
 import { downloadBinaryResponse } from "@/lib/browser-download";
 import type { ReportsDownloadGraduateTracerXlsxParams } from "@/lib/api/generated/model";
@@ -36,16 +37,16 @@ export function GraduateTracerDownload({
   }
 
   return (
-    <div aria-busy={pending}>
-      <Button
+    <div aria-busy={pending} className="flex max-w-xs flex-col gap-2 sm:items-end">
+      <PageAction
+        icon={FileSpreadsheet}
         variant="secondary"
+        label={pending ? "Preparing XLSX…" : "Download XLSX"}
         disabled={pending}
         onClick={() => void download()}
-      >
-        {pending ? "Preparing XLSX…" : "Download XLSX"}
-      </Button>
+      />
       {error ? (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       ) : null}

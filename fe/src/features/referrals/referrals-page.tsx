@@ -1,9 +1,12 @@
 "use client";
 
+import { NotebookPen } from "lucide-react";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { PageActionLink } from "@/components/ui/page-action";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
 import { FilterField } from "@/components/ui/filter-toolbar";
@@ -81,9 +84,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
       <ReferralHeading
         title="Referrals"
         action={access.canManage ? (
-          <Link href="/portal/referrals/new" className={buttonVariants({ variant: "primary" })}>
-            Record referral
-          </Link>
+          <PageActionLink href="/portal/referrals/new" icon={NotebookPen} label="Record" labelDetail="referral" />
         ) : null}
       />
 

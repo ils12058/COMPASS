@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { createElement } from "react";
@@ -128,4 +129,49 @@ test("the danger variant reaches the action button", () => {
 
 test("a confirmation has no corner close button", () => {
   assert.doesNotMatch(confirmation().html, /aria-label="Close/);
+});
+
+// Completion: the same dialog can carry the confirmed outcome instead of closing on success.
+const removal = {
+  title: "Remove this unavailability?",
+  confirmLabel: "Remove unavailability",
+  pendingLabel: "Removing…",
+  children: createElement("p", null, "Oct 12 will no longer subtract time from Availability."),
+};
+const removed = {
+  title: "Unavailability removed",
+  children: createElement("p", null, "Oct 12 no longer subtracts time from Availability."),
+};
+
+test("confirm → pending → failure keeps the dialog open with retry available", () => {
+  const pending = confirmation({ ...removal, pending: true });
+  assert.equal(button(pending.html, "Removing…").disabled, true);
+
+  const failed = confirmation({ ...removal, error: "Your unavailability could not be removed." });
+  assert.match(failed.html, /role="alert"[^>]*>Your unavailability could not be removed\./);
+  assert.equal(button(failed.html, "Remove unavailability").disabled, false);
+  assert.doesNotMatch(failed.html, /Unavailability removed/);
+});
+
+test("confirm → pending → success shows the outcome in place, with no way to act twice", () => {
+  const { html, requestOpenChange, changes } = confirmation({ ...removal, completed: removed });
+
+  assert.match(html, /role="alertdialog"/);
+  assert.match(html, />Unavailability removed</);
+  assert.match(html, /no longer subtracts time from Availability\./);
+  assert.doesNotMatch(html, /Remove unavailability|Remove this unavailability\?|>Cancel</);
+  assert.equal(button(html, "Done").disabled, false);
+  // Done is described by the outcome, so moving focus to it also reads what happened.
+  const describedBy = html.match(/<button[^>]*aria-describedby="([^"]+)"[^>]*>Done<\/button>/)[1];
+  assert.match(html, new RegExp(`id="${describedBy}"[^>]*><p>Oct 12 no longer subtracts`));
+  // Done closes the dialog like any other dismissal.
+  requestOpenChange(false);
+  assert.deepEqual(changes, [false]);
+});
+
+test("the completed state places focus on Done and the opener can redirect focus on close", () => {
+  const source = readFileSync(new URL("../src/components/ui/consequential-action-dialog.tsx", import.meta.url), "utf8");
+  assert.match(source, /function CompletionDone[\s\S]*useEffect\(\(\) => \{\s*done\.current\?\.focus\(\);/);
+  const { content } = confirmation({ ...removal, completed: removed, onCloseAutoFocus() {} });
+  assert.equal(typeof content.onCloseAutoFocus, "function");
 });

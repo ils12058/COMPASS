@@ -1,9 +1,12 @@
 "use client";
 
+import { Plus } from "lucide-react";
+
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { PageActionLink } from "@/components/ui/page-action";
+import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools } from "@/components/ui/floating-list-tools";
@@ -124,12 +127,7 @@ export function ServicesListPage() {
         title="Services"
         action={
           canManage ? (
-            <Link
-              href="/portal/services/new"
-              className={buttonVariants({ variant: "primary" })}
-            >
-              Create Service
-            </Link>
+            <PageActionLink href="/portal/services/new" icon={Plus} label="Create" labelDetail="Service" />
           ) : null
         }
       />

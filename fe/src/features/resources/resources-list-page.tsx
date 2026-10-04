@@ -1,7 +1,10 @@
 "use client";
 
+import { Plus } from "lucide-react";
+
 import Link from "next/link";
 
+import { PageActionLink } from "@/components/ui/page-action";
 import { Select } from "@/components/ui/select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
@@ -24,7 +27,6 @@ import {
   ContentListSkeleton,
   ContentPageHeading,
   PublicationStatusBadge,
-  contentPrimaryLinkClass,
   contentRecordLinkClass,
 } from "@/features/content/content-shared";
 import { useContentListParams } from "@/features/content/use-content-list-params";
@@ -85,9 +87,7 @@ export function ResourcesListPage() {
         title="Resources"
         headingId="resources-heading"
         action={
-          <Link href="/portal/resources/new" className={contentPrimaryLinkClass}>
-            Create Resource
-          </Link>
+          <PageActionLink href="/portal/resources/new" icon={Plus} label="Create" labelDetail="Resource" />
         }
       />
 

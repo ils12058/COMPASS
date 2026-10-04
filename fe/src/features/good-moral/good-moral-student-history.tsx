@@ -1,8 +1,11 @@
 "use client";
 
+import { FileBadge } from "lucide-react";
+
 import Link from "next/link";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { PageActionLink } from "@/components/ui/page-action";
+import { Button } from "@/components/ui/button";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -27,9 +30,7 @@ export function GoodMoralStudentHistory({
         headingId="good-moral-student-heading"
         title="Good Moral"
         action={requestHref && requestLabel ? (
-          <Link href={requestHref} className={buttonVariants({ variant: "primary" })}>
-            {requestLabel}
-          </Link>
+          <PageActionLink href={requestHref} icon={FileBadge} label="Request" labelDetail="Good Moral Certificate" />
         ) : undefined}
       />
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { Pin } from "lucide-react";
+import { Pin, Plus } from "lucide-react";
 import Link from "next/link";
 
+import { PageActionLink } from "@/components/ui/page-action";
 import { Select } from "@/components/ui/select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FilterField } from "@/components/ui/filter-toolbar";
@@ -26,7 +27,6 @@ import {
   ContentListSkeleton,
   ContentPageHeading,
   PublicationStatusBadge,
-  contentPrimaryLinkClass,
   contentRecordLinkClass,
 } from "@/features/content/content-shared";
 import { useContentListParams } from "@/features/content/use-content-list-params";
@@ -66,9 +66,7 @@ export function AnnouncementsListPage() {
         title="Announcements"
         headingId="announcements-heading"
         action={
-          <Link href="/portal/announcements/new" className={contentPrimaryLinkClass}>
-            Create Announcement
-          </Link>
+          <PageActionLink href="/portal/announcements/new" icon={Plus} label="Create" labelDetail="Announcement" />
         }
       />
 

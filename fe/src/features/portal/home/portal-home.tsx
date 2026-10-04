@@ -1,10 +1,9 @@
 "use client";
 
 import { CalendarPlus } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 
-import { buttonVariants } from "@/components/ui/button";
+import { PageActionLink } from "@/components/ui/page-action";
 import { PageHeader } from "@/components/ui/page-header";
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { OverviewAnnouncements } from "@/features/portal/home/overview-announcements";
@@ -61,13 +60,12 @@ export function PortalHome() {
         headingId="portal-overview-heading"
         description={[formatOverviewDate(now), roleContext].filter(Boolean).join(" · ")}
         actions={primaryAction ? (
-          <Link
+          <PageActionLink
             href={primaryAction.href}
-            className={buttonVariants({ variant: "primary" })}
-          >
-            <CalendarPlus size={17} aria-hidden="true" />
-            {primaryAction.label}
-          </Link>
+            icon={CalendarPlus}
+            label={primaryAction.shortLabel}
+            labelDetail={primaryAction.labelDetail}
+          />
         ) : undefined}
       />
 

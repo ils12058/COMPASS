@@ -1,8 +1,11 @@
 "use client";
 
+import { RefreshCw } from "lucide-react";
+
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { PageAction } from "@/components/ui/page-action";
 import { Button } from "@/components/ui/button";
 import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
@@ -343,7 +346,7 @@ export function PlatformMaintenancePage() {
       <PlatformPageHeader
         title="Maintenance"
         description={`Times use ${INSTITUTION_TIME_ZONE_LABEL}.`}
-        action={<Button variant="secondary" disabled={maintenanceQuery.isFetching} onClick={() => void refreshStatus()}>{maintenanceQuery.isFetching ? "Refreshing…" : "Refresh status"}</Button>}
+        action={<PageAction icon={RefreshCw} variant="secondary" label={maintenanceQuery.isFetching ? "Refreshing…" : "Refresh"} labelDetail={maintenanceQuery.isFetching ? undefined : "status"} disabled={maintenanceQuery.isFetching} aria-busy={maintenanceQuery.isFetching} onClick={() => void refreshStatus()} />}
       />
 
       {maintenanceQuery.isPending ? <PlatformRowsSkeleton label="Loading maintenance status…" rows={3} /> : null}

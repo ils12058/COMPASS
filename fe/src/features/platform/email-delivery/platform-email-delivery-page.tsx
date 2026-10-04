@@ -1,8 +1,11 @@
 "use client";
 
+import { RefreshCw } from "lucide-react";
+
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { PageAction } from "@/components/ui/page-action";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { dataTable } from "@/components/ui/data-table";
@@ -164,7 +167,7 @@ export function PlatformEmailDeliveryPage() {
       <PlatformPageHeader
         title="Email delivery"
         description="Recipient details and message contents are not shown here."
-        action={<Button variant="secondary" disabled={summary.isFetching || deliveries.isFetching} onClick={() => void refreshEmailDelivery()}>{summary.isFetching || deliveries.isFetching ? "Refreshing…" : "Refresh email delivery"}</Button>}
+        action={<PageAction icon={RefreshCw} variant="secondary" label={summary.isFetching || deliveries.isFetching ? "Refreshing…" : "Refresh"} labelDetail={summary.isFetching || deliveries.isFetching ? undefined : "email delivery"} disabled={summary.isFetching || deliveries.isFetching} aria-busy={summary.isFetching || deliveries.isFetching} onClick={() => void refreshEmailDelivery()} />}
       />
 
       <Panel className="overflow-hidden" aria-labelledby="email-summary-heading">

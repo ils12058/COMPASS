@@ -1,14 +1,16 @@
 "use client";
 
+import { Upload, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { dataTable } from "@/components/ui/data-table";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
+import { PageActionGroup, PageActionLink } from "@/components/ui/page-action";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
@@ -126,20 +128,10 @@ export function AccountsList() {
         title="Accounts"
         headingId="accounts-heading"
         actions={
-          <>
-            <Link
-              href="/portal/accounts/import"
-              className={buttonVariants({ variant: "secondary" })}
-            >
-              Import CSV
-            </Link>
-            <Link
-              href="/portal/accounts/new"
-              className={buttonVariants({ variant: "primary" })}
-            >
-              Create account
-            </Link>
-          </>
+          <PageActionGroup>
+            <PageActionLink href="/portal/accounts/import" icon={Upload} label="Import" labelDetail="CSV" variant="secondary" />
+            <PageActionLink href="/portal/accounts/new" icon={UserPlus} label="Create" labelDetail="account" />
+          </PageActionGroup>
         }
       />
 

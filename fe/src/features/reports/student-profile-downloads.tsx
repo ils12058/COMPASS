@@ -1,8 +1,9 @@
 "use client";
 
+import { FileDown, FileSpreadsheet } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { PageAction, PageActionGroup } from "@/components/ui/page-action";
 import { reportErrorMessage } from "@/features/reports/reports-shared";
 import { downloadBinaryResponse } from "@/lib/browser-download";
 import { studentProfilingPdfFallbackFilename } from "@/lib/institutional-pdf-filenames";
@@ -70,31 +71,30 @@ export function StudentProfileDownloads({
   }
 
   return (
-    <div
-      aria-busy={pending.pdf || pending.xlsx}
-      className="flex flex-wrap gap-2"
-    >
-      <Button
-        variant="secondary"
-        disabled={pending.pdf}
-        onClick={() => void downloadPdf()}
-      >
-        {pending.pdf ? "Preparing PDF…" : "Download PDF"}
-      </Button>
-      <Button
-        variant="secondary"
-        disabled={pending.xlsx}
-        onClick={() => void downloadXlsx()}
-      >
-        {pending.xlsx ? "Preparing XLSX…" : "Download XLSX"}
-      </Button>
+    <div aria-busy={pending.pdf || pending.xlsx} className="flex max-w-xs flex-col gap-2 sm:items-end">
+      <PageActionGroup>
+        <PageAction
+          icon={FileDown}
+          variant="secondary"
+          label={pending.pdf ? "Preparing PDF…" : "Download PDF"}
+          disabled={pending.pdf}
+          onClick={() => void downloadPdf()}
+        />
+        <PageAction
+          icon={FileSpreadsheet}
+          variant="secondary"
+          label={pending.xlsx ? "Preparing XLSX…" : "Download XLSX"}
+          disabled={pending.xlsx}
+          onClick={() => void downloadXlsx()}
+        />
+      </PageActionGroup>
       {errors.pdf ? (
-        <p role="alert" className="basis-full text-sm text-danger">
+        <p role="alert" className="text-sm text-danger">
           {errors.pdf}
         </p>
       ) : null}
       {errors.xlsx ? (
-        <p role="alert" className="basis-full text-sm text-danger">
+        <p role="alert" className="text-sm text-danger">
           {errors.xlsx}
         </p>
       ) : null}

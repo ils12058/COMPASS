@@ -963,6 +963,13 @@ consequence, action and pending labels, primary or danger variant, and error map
 assemble a confirmation from `Dialog`, and keep data entry in a `Dialog` even when a review step
 follows it.
 
+When the outcome deserves acknowledgment where the reader acted, pass `completed` (a title, the
+outcome, and optionally a Done label) once the backend confirms: the same dialog moves from
+confirmation through pending and error to its outcome with a single Done, so the action cannot be
+submitted twice and nothing reopens as a second dialog. Done takes focus and is described by the
+outcome. When the opener no longer exists (the Remove button of a removed row), pass
+`onCloseAutoFocus` and place focus deliberately (`focusHeading`, `src/lib/focus-heading.ts`).
+
 ---
 
 # 29. Confirmation copy
@@ -1034,9 +1041,9 @@ Success:
 
 ```text
 mutation succeeds
-→ close
+→ close, or show the confirmed outcome in the same dialog (§28 `completed`)
 → invalidate/refresh affected data
-→ provide appropriate feedback
+→ provide appropriate feedback (§53)
 ```
 
 Failure:
@@ -1690,15 +1697,31 @@ Mandatory security and operational delivery remain backend policy.
 
 ---
 
-# 53. Toasts and transient feedback
+# 53. Action feedback
 
-Do not make toasts the only place where important failures are communicated.
+Each outcome is shown where the reader can use it:
 
-Use inline/contextual errors for forms and consequential workflows.
+```text
+field or form validation                → inline, at the field or the day/row it concerns
+query or page load failure              → Notice / PanelMessage
+refresh failure with last-known data    → RefreshFailureNotice, persistent
+an action inside a dialog fails         → the dialog stays open and shows the error
+routine change succeeds                 → ActionStatus, non-blocking and transient
+consequential change succeeds           → its confirmation dialog completes in place (§28)
+important change fails                  → persistent contextual error, never a disappearing message
+```
 
-Toasts may supplement clear state changes.
+`ActionStatus` and `useActionStatus` (`src/components/ui/action-status.tsx`) confirm routine success
+only after the backend confirms it ("Weekly schedule saved.", "Profile changes saved."). The page
+owns one status; a newer message replaces it. It floats at the bottom right of the workspace, above a
+collection's floating tools when they are on the page and below dialogs; it is announced politely,
+never takes focus, can be dismissed, pauses while pointed at or focused, and leaves after about five
+seconds. Clear it when a new attempt starts, so an old confirmation never sits beside a new failure.
 
-Do not produce a toast after every trivial action merely because a toast component exists.
+Never make it the only place for a failure, an uncertain result, a stale-state conflict, a security
+problem, or anything the reader must act on. Do not add a toast library, and do not announce every
+trivial action because a status component exists. Dialogs are for decisions, focused short entry,
+and outcomes that deserve acknowledgment (a completed booking), not for routine "Saved" messages.
 
 ---
 
@@ -2004,6 +2027,53 @@ Density never shrinks accessibility. Keep content text at `text-sm` or larger, u
 labels and metadata, keep control targets at `min-h-10`/`min-h-11`, and keep readable line heights.
 Desktop may use two columns and multi-column facts; phones stack instead of shrinking.
 
+## Variable density
+
+Regions do not all deserve equal weight. A working surface grows with its content, not with the
+space the layout offers. `PanelMessage` sizes itself by what it says: a short muted message with no
+action ("No counseling encounters are assigned to you yet.") is compact, so a sparse collection stays
+shallow; a failure or a message with a Retry or next step keeps room for it. Pass `density` only to
+override that for a reason. Do not shrink `Panel` padding globally or add page-specific padding
+overrides to make a page look denser.
+
+Flatten surfaces that are not separate regions: a bordered box inside a panel (Programs inside a
+College, exceptions inside Unavailability) becomes rows, indentation, or dividers. Keep a boundary
+where it marks a real separate thing: a selectable group, a form's scope, a table, a dialog, an
+independent workflow.
+
+## Asymmetric modular composition
+
+Unequal spans are allowed where workflow importance is unequal: a primary working region beside a
+narrower secondary one, with supporting regions below. Examples: the weekly schedule beside its
+Unavailability with the preview below; Profile's identity beside its editable details; Health's
+checks beside the background-worker check; Overview's work beside At a glance. Launcher pages
+(Reports, Privacy Governance) may set their destinations side by side as framed links with a
+restrained Lucide icon (about 20px), a title, and one factual line.
+
+The composition is structural, never decorative:
+
+* switch columns on at the region's own width (a container query), so an expanded dock stacks
+  them instead of squeezing the primary region; phones stack;
+* collections (record lists, queues, directories, Activity) stay dense tables and lists;
+* no metric tiles, icon-and-number cards, charts, counts, or scores, and no card mosaics;
+* no generic `BentoCard` or second card system: a `Panel` is still the working surface, and grid
+  or flex decides placement.
+
+## Page-level commands
+
+A page's one to three major commands (Create, Record, Issue, Import, Add, Set, Start, Request,
+Book, Refresh, report downloads) use `PageAction` in the `PageHeader`: a square icon surface
+(`size-12`) with the short label always visible below it. A command that navigates is a real link
+(`PageActionLink`); one that acts or opens a dialog is a real button (`PageAction`, which forwards
+its ref to a `DialogTrigger`). `labelDetail` completes the accessible name when the page makes the
+object obvious ("Create" + "account"). `primary` is the page's main command; `secondary` the rest.
+Commands wrap on narrow screens; they never collapse into unlabelled icons or a scrolling rail.
+
+Ordinary `Button`s remain for Save, Cancel, Submit, Retry, Apply filters, dialog confirmations,
+row actions, form navigation, destructive actions, and actions that belong to one region (Add
+unavailability, Check worker). Back stays a text link. Record pages' own actions (Edit, PDF,
+lifecycle actions) and Activity pages keep their current buttons.
+
 ## Maroon as structure
 
 Maroon may mark structure, not only navigation and primary actions, with restraint:
@@ -2039,6 +2109,9 @@ boundary, a `PanelSection`, or spacing.
   `FilterField` (`src/components/ui/filter-toolbar.tsx`, §47) for public and in-flow filters.
 * `pageSheetWidth` (`src/components/ui/page-width.ts`) for pages that are not collections (see
   Portal shell).
+* `PageAction`, `PageActionLink`, and `PageActionGroup` (`src/components/ui/page-action.tsx`) for a
+  page's major commands (see Page-level commands).
+* `ActionStatus` (`src/components/ui/action-status.tsx`) for routine success (§53).
 * `dataTable` classes (`src/components/ui/data-table.ts`, §46).
 * `describeResultPage` (`src/features/portal/components/result-context.ts`) for result context built
   only from canonical page facts.
@@ -2096,7 +2169,7 @@ Keep the media frame mounted at one place in the tree, so layout changes only re
 and tablets the stage scrolls with the page like any other region.
 
 Overview is the portal's home, not a dashboard. It greets the reader by name and gives today's date,
-then puts what needs attention first, the reader's primary action beside the greeting, and
+then puts what needs attention first, the reader's primary action (a `PageAction`) beside the greeting, and
 announcements after the work. The summary counts are secondary context: one compact "At a glance"
 list beside the work, never a row of metric tiles. It shows only what the Overview contract
 returns. No metric-card grids, large icon plus number tiles, charts, trends, or dashboard filler,
@@ -2127,7 +2200,9 @@ ornamental motion around operational data.
 * The shell gives every page the whole workspace, so collections can use it. A page that is not a
   collection — a record, a form, an editor, a page of running text — bounds itself with
   `pageSheetWidth`, and pages that share workspace tabs share one width. The Account workspace keeps
-  its own narrower width. Never let running text span the workspace.
+  its own narrower width. Never let running text span the workspace. Organization › Structure is
+  read-only hierarchical text and bounds itself (`max-w-4xl`) while its sibling tabs keep the
+  workspace for their tables.
 
 ## Maintenance Mode presentation
 

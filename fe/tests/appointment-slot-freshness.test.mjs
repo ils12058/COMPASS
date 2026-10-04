@@ -104,6 +104,11 @@ test("booking and rescheduling recheck the chosen time before submitting and rec
     const recheck = source.search(/await (slots|rescheduleSlots)\.refetch\(\)/);
     const mutation = source.search(/(create|reschedule)\.mutateAsync\(/);
     assert.ok(recheck > 0 && recheck < mutation, `${file} rechecks before submitting`);
-    assert.match(source, /isSlotTakenError\(caught\)[\s\S]{0,400}\.refetch\(\)/, `${file} reloads times after a taken time`);
+    // Booking classifies its failure first (appointment-booking-outcome.ts maps a taken time to
+    // the time step); rescheduling checks the error directly. Either way the times reload.
+    const takenTime = file === "appointment-booking-page.tsx"
+      ? /failure\.step === "time"[\s\S]{0,400}slots\.refetch\(\)/
+      : /isSlotTakenError\(caught\)[\s\S]{0,400}\.refetch\(\)/;
+    assert.match(source, takenTime, `${file} reloads times after a taken time`);
   }
 });

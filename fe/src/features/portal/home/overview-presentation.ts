@@ -137,12 +137,14 @@ export function getEmailDeliveryStatus(
   };
 }
 
-export type OverviewPrimaryAction = { label: string; href: string };
+// The reader's primary command beside the greeting: a short visible label, completed for
+// assistive technology by `labelDetail` ("Book" + "appointment").
+export type OverviewPrimaryAction = { shortLabel: string; labelDetail: string; href: string };
 
 // The one task worth a button above the fold. Everything else is already in the sidebar.
 export function getOverviewPrimaryAction(user: UserSummary): OverviewPrimaryAction | null {
   return getAppointmentAccess(user).canBook
-    ? { label: "Book appointment", href: "/portal/appointments/book" }
+    ? { shortLabel: "Book", labelDetail: "appointment", href: "/portal/appointments/book" }
     : null;
 }
 
