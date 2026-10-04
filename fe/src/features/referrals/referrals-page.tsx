@@ -6,7 +6,8 @@ import { useState, type FormEvent } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -67,6 +68,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
   );
 
   const advancedCount = [filters.fromDate, filters.toDate, filters.includeVoided].filter(Boolean).length;
+  const draftRangeInvalid = Boolean(draft.fromDate && draft.toDate && draft.fromDate > draft.toDate);
 
   function submitFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,7 +80,6 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
     <div className="space-y-5">
       <ReferralHeading
         title="Referrals"
-        description="Record and review student referrals for your guidance area."
         action={access.canManage ? (
           <Link href="/portal/referrals/new" className={buttonVariants({ variant: "primary" })}>
             Record referral
@@ -87,16 +88,12 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
       />
 
       <form onSubmit={submitFilters} role="search" aria-label="Referrals">
-        <FilterToolbar
-          advancedCount={advancedCount}
-          advancedClassName="lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)]"
-          actions={
-            <>
-              {filtered ? <Link href="/portal/referrals" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
-              <Button type="submit">Apply filters</Button>
-            </>
-          }
-          advanced={
+        <FloatingListTools
+          submits
+          invalid={draftRangeInvalid}
+          filterCount={advancedCount}
+          clear={filtered ? <Link href="/portal/referrals" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
+          filters={
             <>
           <FilterField label="From" htmlFor="referrals-from">
             <Input id="referrals-from" type="date" value={draft.fromDate} onChange={(event) => setDraft({ ...draft, fromDate: event.target.value })} />
@@ -114,23 +111,21 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
             />
             <Label htmlFor="referrals-include-voided">Include voided</Label>
           </div>
-          {draft.fromDate && draft.toDate && draft.fromDate > draft.toDate ? (
-            <p role="alert" className="text-sm text-danger sm:col-span-2 lg:col-span-full">From date must not be after To date.</p>
+          {draftRangeInvalid ? (
+            <p role="alert" className="text-sm text-danger sm:col-span-full">From date must not be after To date.</p>
           ) : null}
             </>
           }
         >
-          <FilterField label="Search" htmlFor="referrals-search">
-            <Input
-              id="referrals-search"
-              type="search"
-              maxLength={160}
-              placeholder="Search reference, Student name, or Institutional ID"
-              value={draft.search}
-              onChange={(event) => setDraft({ ...draft, search: event.target.value })}
-            />
-          </FilterField>
-        </FilterToolbar>
+          <ListSearchField
+            id="referrals-search"
+            label="Search referrals"
+            maxLength={160}
+            placeholder="Search reference, Student name, or Institutional ID"
+            value={draft.search}
+            onChange={(event) => setDraft({ ...draft, search: event.target.value })}
+          />
+        </FloatingListTools>
       </form>
 
       <Panel aria-labelledby="referrals-results-heading">

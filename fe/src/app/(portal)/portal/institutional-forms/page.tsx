@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { InstitutionalFormsPage } from "@/features/institution-configuration/institutional-forms-page";
 
 type InstitutionalFormsRouteProps = {
@@ -16,5 +17,13 @@ export default async function Page({
     ? params.family[0]
     : params.family;
 
-  return <InstitutionalFormsPage requestedFamily={family} />;
+  return (
+
+    <div className={pageSheetWidth}>
+
+      <InstitutionalFormsPage requestedFamily={family} />
+
+    </div>
+
+  );
 }

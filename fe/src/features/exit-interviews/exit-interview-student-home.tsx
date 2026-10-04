@@ -109,7 +109,6 @@ export function ExitInterviewStudentHome({
       <ExitInterviewHeading
         id="exit-interview-home-heading"
         title="Exit Interview"
-        description="Complete the Exit Interview for your current Academic Year and view earlier records."
       />
 
       <Panel aria-labelledby="exit-interview-current-heading" className="max-w-4xl">

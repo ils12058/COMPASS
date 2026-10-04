@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
-import { Input } from "@/components/ui/input";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { safeQueryData } from "@/features/freshness/query-freshness";
@@ -62,21 +62,15 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
 
   return (
     <section className="space-y-5" aria-labelledby="good-moral-operational-heading">
-      <GoodMoralHeading headingId="good-moral-operational-heading" title="Good Moral" description="Review and issue Good Moral Character certificate requests." />
+      <GoodMoralHeading headingId="good-moral-operational-heading" title="Good Moral" />
 
       <form action="/portal/good-moral" method="get" role="search" aria-label="Good Moral requests" key={JSON.stringify(filters)}>
-        <FilterToolbar
-          fieldsClassName="lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]"
-          actions={
-            <>
-              {hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
-              <Button type="submit">Apply filters</Button>
-            </>
-          }
-        >
-          <FilterField label="Search Student name or Institutional ID" htmlFor="good-moral-search">
-            <Input id="good-moral-search" name="search" type="search" placeholder="Search Student name or Institutional ID" defaultValue={filters.search} />
-          </FilterField>
+        {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
+        <FloatingListTools
+          submits
+          filterCount={[filters.variant, filters.status].filter(Boolean).length}
+          clear={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
+          filters={<>
           <FilterField label="Variant" htmlFor="good-moral-variant">
             <Select id="good-moral-variant" name="variant" defaultValue={filters.variant}>
               <option value="">All variants</option>
@@ -92,8 +86,10 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
               <option value={GoodMoralStatusValue.CANCELLED}>Cancelled</option>
             </Select>
           </FilterField>
-          {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
-        </FilterToolbar>
+          </>}
+        >
+          <ListSearchField id="good-moral-search" name="search" label="Search Student name or Institutional ID" placeholder="Search Student name or Institutional ID" defaultValue={filters.search} />
+        </FloatingListTools>
       </form>
       {queue.isError && page ? <RefreshFailureNotice onRetry={() => void queue.refetch()} retrying={queue.isFetching} /> : null}
 

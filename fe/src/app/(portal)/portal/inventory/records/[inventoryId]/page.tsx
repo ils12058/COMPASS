@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Inventory Record" };
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { InventoryRecordDetail } from "@/features/inventory/counselor/inventory-record-detail";
 
 export default async function InventoryRecordPage({
@@ -10,5 +11,9 @@ export default async function InventoryRecordPage({
   params: Promise<{ inventoryId: string }>;
 }) {
   const { inventoryId } = await params;
-  return <InventoryRecordDetail inventoryId={inventoryId} />;
+  return (
+    <div className={pageSheetWidth}>
+      <InventoryRecordDetail inventoryId={inventoryId} />
+    </div>
+  );
 }

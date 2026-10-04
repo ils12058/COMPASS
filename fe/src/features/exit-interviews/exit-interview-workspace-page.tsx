@@ -1,5 +1,6 @@
 "use client";
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import type { ExitInterviewOperationalFilters } from "@/features/exit-interviews/exit-interview-operational-list";
 import { ExitInterviewOperationalList } from "@/features/exit-interviews/exit-interview-operational-list";
 import { ExitInterviewStudentHome } from "@/features/exit-interviews/exit-interview-student-home";
@@ -18,7 +19,11 @@ export function ExitInterviewWorkspacePage({
   const access = getExitInterviewAccess(user);
 
   if (access.isStudent && access.hasStudentWorkspace) {
-    return <ExitInterviewStudentHome access={access} />;
+    return (
+      <div className={pageSheetWidth}>
+        <ExitInterviewStudentHome access={access} />
+      </div>
+    );
   }
 
   if (access.hasOperationalWorkspace) {

@@ -64,7 +64,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   return (
     <div className="space-y-5">
       {slip.isError ? <RefreshFailureNotice onRetry={() => void slip.refetch()} retrying={slip.isFetching} /> : null}
-      <CallSlipHeading title="Call Slip / Interview Permit" description="Your Call Slip details" backHref="/portal/call-slips" backLabel="Back to My Call Slips" action={<CallSlipPdfDownload callSlipId={item.id} studentFacing />} />
+      <CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" backLabel="Back to My Call Slips" action={<CallSlipPdfDownload callSlipId={item.id} studentFacing />} />
       {item.state === CallSlipLifecycleStateValue.VOIDED ? <Notice role="status" tone="warning" title={<span className="text-warning">Withdrawn</span>}><p className="text-ink">This Call Slip is no longer active.</p></Notice> : null}
       <Panel as="div">
       <RecordSection title="Permit details">
@@ -104,7 +104,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   return (
     <div className="space-y-5">
       {slip.isError ? <RefreshFailureNotice onRetry={() => void slip.refetch()} retrying={slip.isFetching} /> : null}
-      <CallSlipHeading title="Call Slip / Interview Permit" description="Recorded Call Slip details" backHref="/portal/call-slips" action={<CallSlipPdfDownload callSlipId={item.id} />} />
+      <CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" action={<CallSlipPdfDownload callSlipId={item.id} />} />
       {item.state === CallSlipLifecycleStateValue.VOIDED ? (
         <Notice role="status" tone="warning" title={<span className="text-warning">Voided</span>}>
           <p className="whitespace-pre-wrap text-ink">{item.void_reason}</p>

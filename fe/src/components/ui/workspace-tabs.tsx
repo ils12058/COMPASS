@@ -18,7 +18,7 @@ export function WorkspaceTabs({
   return (
     <nav
       aria-label={label}
-      className={cn("mb-6 flex flex-wrap gap-x-6 gap-y-1 border-b border-brand-line", className)}
+      className={cn("mb-5 flex flex-wrap gap-x-6 gap-y-1 border-b border-brand-line", className)}
     >
       {children}
     </nav>

@@ -7,6 +7,7 @@ import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine
 import { designationLabels, isDesignationCode } from "@/features/accounts/presentation";
 import { userRoleLabel } from "@/features/portal/components/portal-presentation";
 import { DesignationCode, type OverviewSummaryResponse, type UserSummary } from "@/lib/api/generated/model";
+import { INSTITUTION_TIME_ZONE } from "@/lib/institutional-time";
 
 export type OverviewMetric = {
   label: string;
@@ -145,11 +146,33 @@ export function getOverviewPrimaryAction(user: UserSummary): OverviewPrimaryActi
     : null;
 }
 
-export function getOverviewGreeting(user: UserSummary): string | null {
+function institutionalHour(now: Date): number {
+  const hour = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    hourCycle: "h23",
+    timeZone: INSTITUTION_TIME_ZONE,
+  }).formatToParts(now).find((part) => part.type === "hour");
+  return hour ? Number(hour.value) : now.getHours();
+}
+
+// A greeting for the time of day at the office, with the account's first name when it has one.
+export function getOverviewGreeting(user: UserSummary, now: Date): string {
+  const hour = institutionalHour(now);
+  const salutation = hour >= 5 && hour < 12 ? "Good morning" : hour >= 12 && hour < 18 ? "Good afternoon" : "Good evening";
   const firstName = user.first_name.trim();
-  if (firstName) return "Welcome, " + firstName + ".";
   const fullName = [user.first_name, user.last_name].map((part) => part.trim()).filter(Boolean).join(" ");
-  return fullName ? "Welcome, " + fullName + "." : null;
+  const name = firstName || fullName;
+  return name ? salutation + ", " + name : salutation;
+}
+
+// Today in the office's time zone, for example "Saturday, October 4".
+export function formatOverviewDate(now: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: INSTITUTION_TIME_ZONE,
+  }).format(now);
 }
 
 export function getOverviewRoleContext(user: UserSummary): string | null {

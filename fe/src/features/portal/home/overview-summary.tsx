@@ -10,7 +10,7 @@ import type {
 
 function EmailDeliveryLine({ status }: { status: EmailDeliveryStatus }) {
   return (
-    <div className="border-t border-brand-line px-4 py-3.5 sm:px-5">
+    <div className="border-t border-brand-line px-4 py-3.5 sm:px-5 [[data-panel-header]+&]:border-t-0">
       <p className="text-sm font-semibold text-ink">Email delivery</p>
       <p className="mt-1 text-sm leading-6 text-muted">
         <span className={status.failed > 0 ? "font-semibold text-danger" : undefined}>
@@ -34,8 +34,9 @@ function EmailDeliveryLine({ status }: { status: EmailDeliveryStatus }) {
   );
 }
 
-// Counts are a compact grid inside one surface: lines between them, no separate tiles or icons.
-const metricGrid = "grid grid-cols-2 gap-px bg-border";
+// Counts are context beside the work: one compact list with the number at the end of each line,
+// not a grid of tiles.
+const countRow = "relative flex items-baseline justify-between gap-4 px-4 py-2.5 sm:px-5";
 
 export function OverviewSummary({
   metrics,
@@ -57,17 +58,17 @@ export function OverviewSummary({
 
   return (
     <Panel className="overflow-hidden" aria-labelledby="overview-summary-heading">
-      <PanelHeader title="Summary" titleId="overview-summary-heading" />
+      <PanelHeader title="At a glance" titleId="overview-summary-heading" />
 
       {isPending ? (
-        <div className={metricGrid} aria-busy="true">
-          {[0, 1, 2, 3].map((item) => (
-            <div key={item} className="bg-surface-raised px-4 py-3.5 sm:px-5">
+        <div className="divide-y divide-border" aria-busy="true">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className={countRow}>
               <Skeleton className="h-4 w-2/3" />
-              <Skeleton className="mt-3 h-7 w-12" />
+              <Skeleton className="h-4 w-6" />
             </div>
           ))}
-          <p className="sr-only">Loading Overview summary metrics…</p>
+          <p className="sr-only">Loading Overview summary counts…</p>
         </div>
       ) : null}
 
@@ -92,14 +93,14 @@ export function OverviewSummary({
       ) : null}
 
       {!isPending && metrics.length > 0 ? (
-        <dl className={metricGrid}>
+        <dl className="divide-y divide-border">
           {metrics.map((metric, index) => (
-            // The label link stretches over the whole cell, so the count is clickable too.
+            // The label link stretches over the whole line, so the count is clickable too.
             <div
               key={metric.label + "-" + index}
-              className="relative min-w-0 bg-surface-raised px-4 py-3.5 transition-colors last:odd:col-span-2 has-[a:hover]:bg-surface-subtle sm:px-5"
+              className={`${countRow} transition-colors has-[a:hover]:bg-surface-subtle`}
             >
-              <dt className="text-sm font-medium leading-5 text-muted">
+              <dt className="min-w-0 text-sm leading-6 text-ink">
                 {metric.href ? (
                   <Link
                     href={metric.href}
@@ -111,7 +112,7 @@ export function OverviewSummary({
                   metric.label
                 )}
               </dt>
-              <dd className="mt-1 font-heading text-2xl font-semibold tabular-nums text-ink">
+              <dd className="shrink-0 font-heading text-lg font-semibold tabular-nums text-ink">
                 {metric.value}
               </dd>
             </div>

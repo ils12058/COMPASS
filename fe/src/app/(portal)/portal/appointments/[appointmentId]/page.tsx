@@ -4,6 +4,7 @@ export const metadata: Metadata = { title: "Appointment Details" };
 
 import { Suspense } from "react";
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { AppointmentDetailSkeleton } from "@/features/appointments/appointments-shared";
 import { AppointmentDetailPage } from "@/features/appointments/appointment-detail-page";
 
@@ -14,8 +15,10 @@ export default async function Page({
 }) {
   const { appointmentId } = await params;
   return (
-    <Suspense fallback={<AppointmentDetailSkeleton />}>
-      <AppointmentDetailPage appointmentId={appointmentId} />
-    </Suspense>
+    <div className={pageSheetWidth}>
+      <Suspense fallback={<AppointmentDetailSkeleton />}>
+        <AppointmentDetailPage appointmentId={appointmentId} />
+      </Suspense>
+    </div>
   );
 }

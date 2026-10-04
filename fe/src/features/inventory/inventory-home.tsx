@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { CounselorInventoryRoster } from "@/features/inventory/counselor/inventory-roster";
@@ -49,7 +50,13 @@ export function InventoryHome() {
       </div>
     );
   }
-  if (access.canViewSelf) return <StudentInventoryHome />;
+  if (access.canViewSelf) {
+    return (
+      <div className={pageSheetWidth}>
+        <StudentInventoryHome />
+      </div>
+    );
+  }
 
   return (
     <WorkspaceUnavailable title="Individual Inventory unavailable">

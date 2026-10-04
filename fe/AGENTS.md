@@ -1165,6 +1165,11 @@ setting scales them.
 The portal shell owns the one "Skip to main content" link and its `main#main-content` target. Do not
 add per-page skip links or a second `<main>`.
 
+Every dock destination keeps its label as its accessible name, even while the dock shows icons
+only; the visible tip on hover and keyboard focus repeats that name and is hidden from assistive
+technology. The control that expands and collapses the dock is an icon button at the start of the top
+bar, outside the list of destinations, with an accessible name and `aria-expanded`.
+
 Links between sections of one workspace sit in a `<nav>` named "<Workspace> navigation". Mark the
 current page with `aria-current="page"`, and keep each navigation link at least `min-h-11` tall.
 
@@ -1222,6 +1227,9 @@ JavaScript-driven motion must use `useReducedMotion()` from
 setting with the reader's COMPASS "Reduce motion" setting. CSS transitions are covered globally.
 
 Do not add bounce, spring, hover-lift, or continuous animation merely to make the interface feel modern.
+
+The portal dock's expansion and the floating list tools that follow it use one short width or
+position transition, which the reduced-motion settings shorten to an instant change.
 
 ---
 
@@ -1420,32 +1428,64 @@ Reset to page 1 when a filter or search change invalidates the current page.
 
 Do not add filters merely because a field exists in a response.
 
-## Filter toolbar
+## Floating list tools (authenticated portal collections)
 
-The search and filter controls for one list form one `FilterToolbar`
+In the authenticated portal, the search and filters of a collection — a record list, directory,
+administrative table, or work queue — are tools for that collection, not a region of the page. They
+float near the bottom of the workspace in `FloatingListTools`
+(`src/components/ui/floating-list-tools.tsx`), and the records start right after the page header.
+
+* The collection's text search leads the bar (`ListSearchField`). A collection whose only filter is
+  one short choice puts that choice in the bar instead (`ListToolField`, `compact`).
+* Structured filters open from a `Filters` button that counts the ones in use (`filterCount`, from
+  the applied results, counting a filter only when it differs from its default). They open above the
+  bar on wider screens and as a bottom sheet on phones. The panel is a native modal `<dialog>` that
+  stays inside the feature's form while closed, so filters keep applying while they are out of
+  view.
+* Messages about how filters were applied, such as a cleared Missing filter, stay on the page above
+  the results. A filter value the feature refuses to apply, such as a From date after the To date,
+  is shown in the panel; pass `invalid` so submitting opens the panel to show it.
+* `Clear filters` sits in the panel (or in the bar when there is no panel) only while a filter is
+  active.
+* The tools center on the workspace, not the window: the shell publishes where the workspace begins
+  (`--portal-content-inset`) and keeps the last records and pagination clear of the tools while they
+  are on the page (`--list-tools-clearance`). Features do not add their own offsets or bottom space.
+* Pagination stays with the results (`CanonicalPagination`). The floating tools find, filter, and
+  refine; they do not page.
+
+Use them only for a collection's own search and filters. Forms, report parameters, schedule
+editors, configuration pages, record details, creation and editing screens, and workflow selectors
+keep their controls in the page. A page that opens a form over its list, such as recording a
+Counseling encounter, hides the tools while that form is open.
+
+## Filter toolbar (public pages and in-flow filters)
+
+The public Announcements and Resources pages, and parameter forms that are not collection tools
+(such as a report's filters), keep their controls in the page in one `FilterToolbar`
 (`src/components/ui/filter-toolbar.tsx`) between the page header and the results, so they read as
-one tool rather than inputs placed on the page. Label each control with `FilterField`. Do not add a
+one tool rather than inputs placed on the page.
+
+## Both
+
+Label each control (`FilterField`, or the visually hidden label of `ListSearchField`). Do not add a
 large "Filters" heading when the controls already say what they do.
 
-Every control in a toolbar applies the same way:
+Every control in one set of filters applies the same way:
 
-* explicit: one form, one `Apply filters` submit, and Enter in the search field submits the same
-  form. This is the default when a free-text search sits beside other filters.
-* immediate: each change applies. Use it for a toolbar of a few selects or dates without free-text
-  search, or for a lone debounced directory search.
+* explicit: one form, one submit (`Apply filters`, or `Search` beside a search field in the bar),
+  and Enter in the search field submits the same form. This is the default when a free-text search
+  sits beside other filters.
+* immediate: each change applies. Use it for a few selects or dates without free-text search, or
+  for a lone debounced directory search.
 
 Do not give the search field its own Search button while neighboring filters apply on change. Show
-`Clear filters` in the toolbar's action area only while a filter is active. A toolbar that holds a
-text search sits in a form with `role="search"` and an accessible name.
+`Clear filters` only while a filter is active. Controls that hold a text search sit in a form with
+`role="search"` and an accessible name.
 
-A long toolbar folds its secondary filters away. When a text search sits beside more than two other
-filters, pass the others as `advanced`: the search, a `Filters` button, and the actions share one
-row, and the advanced filters open below it. The button counts the advanced filters in use
-(`advancedCount`, from the applied results, counting a filter only when it differs from its
-default), and the section starts open while any is in use so the reader can see what narrows the
-results. Folded fields stay in the form. Toolbars with no text search, or with one or two filters
-beside it, stay fully visible. Messages about how filters were applied stay outside the folded
-section.
+A long in-flow toolbar folds its secondary filters away. When a text search sits beside more than
+two other filters, pass the others as `advanced`: the search, a `Filters` button, and the actions
+share one row, and the advanced filters open below it, starting open while any is in use. Folded
+fields stay in the form. Messages about how filters were applied stay outside the folded section.
 
 ---
 
@@ -1775,11 +1815,11 @@ A page may coordinate multiple operations.
 
 Several operations may belong inside one record-detail workflow.
 
-Do not create sidebar pages merely because separate API endpoints exist.
+Do not create navigation destinations merely because separate API endpoints exist.
 
-The portal sidebar and the public landing's quick access read one access list,
+The portal dock and the public landing's quick access read one access list,
 `portalWorkspaceGroups` (`src/features/portal/components/portal-workspaces.ts`). It orders the
-sidebar by how often the work happens: scheduling, records, requests and surveys, content, and
+dock by how often the work happens: scheduling, records, requests and surveys, content, and
 reports first; institution setup, identity and access, privacy governance, and platform operations
 last. Add a workspace there, in the group where its daily use belongs.
 
@@ -1903,7 +1943,11 @@ boundary, a `PanelSection`, or spacing.
   and actions. Feature heading wrappers delegate to it.
 * `Panel`, `PanelHeader`, `PanelBody`, `PanelSection`, `PanelFooter`, `PanelMessage`, and
   `RecordSummary` (`src/components/ui/panel.tsx`).
-* `FilterToolbar` and `FilterField` (`src/components/ui/filter-toolbar.tsx`, §47).
+* `FloatingListTools`, `ListSearchField`, and `ListToolField`
+  (`src/components/ui/floating-list-tools.tsx`, §47) for portal collections; `FilterToolbar` and
+  `FilterField` (`src/components/ui/filter-toolbar.tsx`, §47) for public and in-flow filters.
+* `pageSheetWidth` (`src/components/ui/page-width.ts`) for pages that are not collections (see
+  Portal shell).
 * `dataTable` classes (`src/components/ui/data-table.ts`, §46).
 * `describeResultPage` (`src/features/portal/components/result-context.ts`) for result context built
   only from canonical page facts.
@@ -1913,15 +1957,21 @@ pattern only when it genuinely repeats.
 
 ## Page anatomy
 
-List pages separate page purpose, tools, result context, and records:
+Portal collection pages begin with their records. The page header is usually only the title and
+the primary action; the search and filters float as the collection's tools (§47):
 
 ```text
-PageHeader
-FilterToolbar
+PageHeader (title, primary action)
 results Panel: PanelHeader with result context; table or list, and the
                loading, empty, and error states, inside the same panel
-CanonicalPagination
+CanonicalPagination, with the results
+FloatingListTools (out of the flow)
 ```
+
+Public list pages keep `PageHeader`, then an in-flow `FilterToolbar`, then the results.
+
+Dense tables keep their useful columns: a compact shell is not a reason to drop identity, status,
+timestamps, or context, or to turn a table into cards.
 
 Detail pages separate identity, status, facts, actions, and history:
 
@@ -1946,9 +1996,34 @@ PanelFooter: the one submit area
 Do not wrap every pair of inputs in its own card. Controlled institutional wording keeps its own
 approval; visual work adapts layout, not wording.
 
-Overview stays task-first: bounded regions for what needs attention, the summary, announcements,
-and upcoming work only when real records exist. No metric-card grids, large icon plus number tiles,
-or dashboard filler.
+Overview is the portal's home, not a dashboard. It greets the reader by name and gives today's date,
+then puts what needs attention first, the reader's primary action beside the greeting, and
+announcements after the work. The summary counts are secondary context: one compact "At a glance"
+list beside the work, never a row of metric tiles. It shows only what the Overview contract
+returns. No metric-card grids, large icon plus number tiles, charts, trends, or dashboard filler,
+and no character illustrations.
+
+## Portal shell
+
+Friendly shell, serious workspace. The frame around the work may be approachable: a responsive
+dock, clear hover and focus feedback, a restrained expansion, a greeting on the Overview, and direct
+human copy. The work itself stays sober: clean tables, plain record details, explicit sensitive
+actions, no mascots, no playful wording around counseling, cases, privacy, or security, and no
+ornamental motion around operational data.
+
+* Navigation on wide screens is a dock in the brand color. It opens with its group and destination
+  labels showing, and the reader can collapse it to an icon rail for more room with the icon button at
+  the start of the top bar; the choice holds while they move between pages. In the rail, each icon
+  shows its label on hover and keyboard focus. The current destination is a lit tile in the dock, not a stripe on one edge. Groups are
+  separated by a line in the rail and named when expanded. On small screens the same destinations
+  open in a drawer.
+* The top bar is slim and holds the dock's collapse button, the account controls (Accessibility,
+  notifications, account menu), and, on small screens, the drawer button and the COMPASS mark. COMPASS identity belongs to the
+  dock; the top bar is not a second branded header.
+* The shell gives every page the whole workspace, so collections can use it. A page that is not a
+  collection — a record, a form, an editor, a page of running text — bounds itself with
+  `pageSheetWidth`, and pages that share workspace tabs share one width. The Account workspace keeps
+  its own narrower width. Never let running text span the workspace.
 
 ## Public pages
 
@@ -1968,8 +2043,10 @@ marketing copy.
 * Containers (panels, toolbars, framed messages) use `rounded-sm`; controls keep their own
   `rounded-md`. Keep `rounded-full` for compact statuses and tags.
 * No one-sided accent borders on containers (see Maroon as structure).
-* Shadows mark real layering only: dialogs, popovers, the skip link. Dialogs and menus float with
-  the dialog shadow and `rounded-md`; nothing on the page itself uses `rounded-lg` or larger.
+* Shadows mark real layering only: dialogs, popovers, the skip link, and controls that float over
+  the page. Dialogs and menus float with the dialog shadow and `rounded-md`; the floating list
+  tools and the dock's labels use the lighter float shadow and `rounded-md`. Nothing on the page
+  itself uses `rounded-lg` or larger.
 * No gradients outside §18's branded surfaces.
 * No glassmorphism, giant icons, colored icon circles, pills for everything, decorative metric
   cards, or empty-state illustrations.

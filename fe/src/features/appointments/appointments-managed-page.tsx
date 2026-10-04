@@ -6,7 +6,8 @@ import { useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
@@ -104,26 +105,20 @@ function ManagedAppointmentFilters({
     <form
       role="search"
       aria-label="Managed appointments"
-      className="mb-5"
       onSubmit={(event) => {
         event.preventDefault();
         onApply({ ...draft, search: draft.search.trim() });
       }}
     >
-      <FilterToolbar
-        advancedCount={advancedCount}
-        advancedClassName="lg:grid-cols-3"
-        actions={
-          <>
-            {hasFilters ? (
-              <Button variant="quiet" onClick={onClear}>
-                Clear filters
-              </Button>
-            ) : null}
-            <Button type="submit">Apply filters</Button>
-          </>
-        }
-        advanced={
+      <FloatingListTools
+        submits
+        filterCount={advancedCount}
+        clear={hasFilters ? (
+          <Button variant="quiet" onClick={onClear}>
+            Clear filters
+          </Button>
+        ) : undefined}
+        filters={
           <>
         {canFilterService ? (
           <FilterField
@@ -184,16 +179,14 @@ function ManagedAppointmentFilters({
           </>
         }
       >
-        <FilterField label="Search" htmlFor="managed-appointment-search">
-          <Input
-            id="managed-appointment-search"
-            type="search"
-            value={draft.search}
-            onChange={(event) => set("search", event.target.value)}
-            placeholder="Search by reference, Student name, or Institutional ID"
-          />
-        </FilterField>
-      </FilterToolbar>
+        <ListSearchField
+          id="managed-appointment-search"
+          label="Search appointments"
+          value={draft.search}
+          onChange={(event) => set("search", event.target.value)}
+          placeholder="Search by reference, Student name, or Institutional ID"
+        />
+      </FloatingListTools>
     </form>
   );
 }
@@ -288,7 +281,6 @@ function ManagedAppointmentsList() {
       <AppointmentsPageHeading
         headingId="manage-appointments-heading"
         title="Manage appointments"
-        description="Review appointments assigned to the areas you manage."
       />
 
       <ManagedAppointmentFilters

@@ -1,6 +1,5 @@
 "use client";
 
-import { Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -10,8 +9,7 @@ import {
 } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ListSearchField } from "@/components/ui/floating-list-tools";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
@@ -261,24 +259,14 @@ export function ServicesSearchField() {
   }, [current, pathname, router, searchParams, value]);
 
   return (
-    <div className="grid min-w-0 content-start gap-1.5">
-      <Label htmlFor="services-search">Search Services</Label>
-      <div className="relative">
-        <Search
-          size={18}
-          aria-hidden="true"
-          className="pointer-events-none absolute left-3 top-3 text-muted"
-        />
-        <Input
-          id="services-search"
-          className="pl-10"
-          maxLength={160}
-          placeholder="Search by Service name or code"
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-        />
-      </div>
-    </div>
+    <ListSearchField
+      id="services-search"
+      label="Search Services"
+      maxLength={160}
+      placeholder="Search by Service name or code"
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+    />
   );
 }
 

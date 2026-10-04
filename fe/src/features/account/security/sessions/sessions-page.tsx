@@ -138,7 +138,7 @@ export function SessionsPage() {
       <PageHeader
         title="Sessions and trusted browsers"
         headingId="sessions-heading"
-        description="Manage where you are signed in and which browsers are trusted. These are separate security settings."
+        description="Signed-in sessions and trusted browsers are separate security settings."
       />
       {notice ? <p role="status" className="mb-4 text-sm text-success">{notice}</p> : null}
 

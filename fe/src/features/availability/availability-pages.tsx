@@ -4,11 +4,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -262,7 +261,7 @@ export function OfficeAvailabilityPage() {
     <section>
       <AvailabilityPageHeading
         title="Office availability"
-        description="Set the office's regular days and hours. New appointment times can be offered only when the office and a counselor are both available."
+        description="New appointment times can be offered only when the office and a counselor are both available."
       />
 
       <div className="mt-5">
@@ -567,20 +566,18 @@ export function ProviderAvailabilityPage() {
       <AvailabilityPageHeading title="Counselor availability" />
 
       {/* A lone directory search that applies as you type. */}
-      <FilterToolbar className="mt-5" fieldsClassName="lg:grid-cols-[minmax(0,28rem)]">
-        <FilterField label="Search Counselors" htmlFor="provider-search">
-          <Input
-            id="provider-search"
-            type="search"
-            value={searchValue}
-            placeholder="Search Counselors by name or email"
-            onChange={(event) => setSearchValue(event.target.value)}
-          />
-        </FilterField>
-      </FilterToolbar>
+      <FloatingListTools label="Counselor search">
+        <ListSearchField
+          id="provider-search"
+          label="Search Counselors"
+          value={searchValue}
+          placeholder="Search Counselors by name or email"
+          onChange={(event) => setSearchValue(event.target.value)}
+        />
+      </FloatingListTools>
 
       {providers.isError && canShowLastKnownData(providers) ? <RefreshFailureNotice onRetry={() => void providers.refetch()} retrying={providers.isFetching} /> : null}
-      <Panel className="mt-5" aria-labelledby="provider-results-heading">
+      <Panel aria-labelledby="provider-results-heading">
         <PanelHeader
           title="Counselors"
           titleId="provider-results-heading"

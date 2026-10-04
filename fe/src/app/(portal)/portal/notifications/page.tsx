@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { NotificationCenter } from "@/features/notifications/notification-center/notification-center";
 
 export const metadata: Metadata = { title: "Notifications" };
@@ -11,5 +12,9 @@ function safePage(value: string | string[] | undefined): number {
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ page?: string | string[] }> }) {
   const { page } = await searchParams;
-  return <NotificationCenter page={safePage(page)} />;
+  return (
+    <div className={pageSheetWidth}>
+      <NotificationCenter page={safePage(page)} />
+    </div>
+  );
 }

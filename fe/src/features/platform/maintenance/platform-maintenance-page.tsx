@@ -342,7 +342,7 @@ export function PlatformMaintenancePage() {
     <section aria-labelledby="platform-page-heading">
       <PlatformPageHeader
         title="Maintenance"
-        description={`Review public status and administer manual or scheduled Maintenance Mode. Times use ${INSTITUTION_TIME_ZONE_LABEL}.`}
+        description={`Times use ${INSTITUTION_TIME_ZONE_LABEL}.`}
         action={<Button variant="secondary" disabled={maintenanceQuery.isFetching} onClick={() => void refreshStatus()}>{maintenanceQuery.isFetching ? "Refreshing…" : "Refresh status"}</Button>}
       />
 

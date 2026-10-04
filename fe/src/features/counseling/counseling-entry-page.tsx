@@ -1,5 +1,6 @@
 "use client";
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { CounselingUnavailable } from "@/features/counseling/counseling-shared";
 import { CounselorEncounters } from "@/features/counseling/counselor-encounters";
@@ -11,6 +12,12 @@ export function CounselingEntryPage() {
   const access = getCounselingAccess(user);
 
   if (access.isCounselor && access.hasCounselorWorkspace) return <CounselorEncounters access={access} />;
-  if (access.isStudent && access.hasStudentWorkspace) return <StudentSharedSummaries access={access} />;
+  if (access.isStudent && access.hasStudentWorkspace) {
+    return (
+      <div className={pageSheetWidth}>
+        <StudentSharedSummaries access={access} />
+      </div>
+    );
+  }
   return <CounselingUnavailable />;
 }

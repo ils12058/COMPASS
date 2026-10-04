@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Graduate Tracer Response" };
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { GraduateTracerDetailPage } from "@/features/graduate-tracer/graduate-tracer-detail-page";
 
 export default async function Page({
@@ -10,5 +11,9 @@ export default async function Page({
   params: Promise<{ responseId: string }>;
 }) {
   const { responseId } = await params;
-  return <GraduateTracerDetailPage responseId={responseId} />;
+  return (
+    <div className={pageSheetWidth}>
+      <GraduateTracerDetailPage responseId={responseId} />
+    </div>
+  );
 }

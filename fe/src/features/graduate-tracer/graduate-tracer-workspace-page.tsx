@@ -1,5 +1,6 @@
 "use client";
 
+import { pageSheetWidth } from "@/components/ui/page-width";
 import type { GraduateTracerOperationalFilters } from "@/features/graduate-tracer/graduate-tracer-operational-list";
 import { GraduateTracerOperationalList } from "@/features/graduate-tracer/graduate-tracer-operational-list";
 import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
@@ -11,7 +12,13 @@ export function GraduateTracerWorkspacePage({ filters }: { filters: GraduateTrac
   const { user } = usePortalSession();
   const access = getGraduateTracerAccess(user);
 
-  if (access.hasStudentWorkspace) return <GraduateTracerStudentWorkspace access={access} />;
+  if (access.hasStudentWorkspace) {
+    return (
+      <div className={pageSheetWidth}>
+        <GraduateTracerStudentWorkspace access={access} />
+      </div>
+    );
+  }
   if (access.hasOperationalWorkspace) return <GraduateTracerOperationalList filters={filters} />;
 
   if (access.isStudent && !access.isGraduatedStudent) {

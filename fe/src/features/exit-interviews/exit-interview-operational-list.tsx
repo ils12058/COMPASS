@@ -6,8 +6,8 @@ import { useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
-import { Input } from "@/components/ui/input";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
@@ -87,7 +87,7 @@ export function ExitInterviewOperationalList({
       <ExitInterviewHeading
         id="exit-interview-operational-heading"
         title="Exit Interviews"
-        description="Review submitted Exit Interviews and monitor draft status without access to draft answers."
+        description="Draft answers are not shown here. Answers can be read once the Student submits."
       />
       {notice === "reopened" ? (
         <Notice role="status" tone="success">
@@ -102,24 +102,12 @@ export function ExitInterviewOperationalList({
         aria-label="Exit Interviews"
         key={JSON.stringify(filters)}
       >
-        <FilterToolbar
-          fieldsClassName={canFilterYear ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"}
-          actions={
-            <>
-              {hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
-              <Button type="submit">Apply filters</Button>
-            </>
-          }
-        >
-          <FilterField label="Search Student name or Institutional ID" htmlFor="exit-interview-search">
-            <Input
-              id="exit-interview-search"
-              name="search"
-              type="search"
-              placeholder="Search Student name or Institutional ID"
-              defaultValue={filters.search}
-            />
-          </FilterField>
+        {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
+        <FloatingListTools
+          submits
+          filterCount={[filters.status, academicYearId].filter(Boolean).length}
+          clear={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
+          filters={<>
           <FilterField label="Status" htmlFor="exit-interview-status">
             <Select id="exit-interview-status" name="status" defaultValue={filters.status}>
               <option value="">All statuses</option>
@@ -156,8 +144,16 @@ export function ExitInterviewOperationalList({
               </Select>
             </FilterField>
           ) : null}
-          {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
-        </FilterToolbar>
+          </>}
+        >
+          <ListSearchField
+            id="exit-interview-search"
+            name="search"
+            label="Search Student name or Institutional ID"
+            placeholder="Search Student name or Institutional ID"
+            defaultValue={filters.search}
+          />
+        </FloatingListTools>
       </form>
 
       {queue.isError && page && !hideStaleQueue ? (

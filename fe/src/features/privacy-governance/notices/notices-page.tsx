@@ -44,7 +44,6 @@ export function NoticesPage() {
     <section>
       <PrivacyPageHeader
         title="Privacy Notices"
-        description="Manage notices shown to people using COMPASS."
         action={createLink}
       />
       {query.isError && result ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}

@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { dataTable } from "@/components/ui/data-table";
-import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
+import { FloatingListTools, ListToolField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -164,7 +164,7 @@ export function PlatformEmailDeliveryPage() {
     <section aria-labelledby="platform-page-heading">
       <PlatformPageHeader
         title="Email delivery"
-        description="Delivery status updates as queued messages are processed. Recipient details and message contents are not shown here."
+        description="Recipient details and message contents are not shown here."
         action={<Button variant="secondary" disabled={summary.isFetching || deliveries.isFetching} onClick={() => void refreshEmailDelivery()}>{summary.isFetching || deliveries.isFetching ? "Refreshing…" : "Refresh email delivery"}</Button>}
       />
 
@@ -234,8 +234,8 @@ export function PlatformEmailDeliveryPage() {
       </Panel>
 
       {/* One status choice, applied on change. */}
-      <FilterToolbar className="mt-5">
-        <FilterField label="Status" htmlFor="email-delivery-status">
+      <FloatingListTools label="Delivery filters" compact>
+        <ListToolField label="Status" htmlFor="email-delivery-status">
           <Select
             id="email-delivery-status"
             value={status}
@@ -251,8 +251,8 @@ export function PlatformEmailDeliveryPage() {
               </option>
             ))}
           </Select>
-        </FilterField>
-      </FilterToolbar>
+        </ListToolField>
+      </FloatingListTools>
 
       {action.error ? (
         <p role="alert" className="mt-3 text-sm text-danger">
