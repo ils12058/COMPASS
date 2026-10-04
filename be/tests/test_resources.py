@@ -849,3 +849,181 @@ def test_resource_api_returns_structured_publication_consequence_review_required
     assert accepted.json()["title"] == "Atomic resource"
     assert accepted.json()["audience"] == "PUBLIC"
     assert accepted.json()["external_url"] == "https://example.edu/new"
+
+
+@pytest.mark.django_db
+def test_resource_search_matches_normalizes_filters_orders_and_paginates():
+    sync_policy()
+    counselor = make_user("resource-search-publisher@example.edu", "COUNSELOR")
+
+    first = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.MENTAL_HEALTH,
+        title="Mental Health Starter Guide",
+        body="General orientation.",
+        display_order=10,
+    )
+    body_match = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.COUNSELING,
+        title="Campus support",
+        body="Practical ANXIETY coping guidance.",
+        display_order=20,
+    )
+    second = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.MENTAL_HEALTH,
+        title="Mental health follow-up",
+        body="Additional guidance.",
+        display_order=30,
+    )
+    unrelated = create_draft(
+        actor=counselor,
+        kind=ResourceKind.EXTERNAL_LINK,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.GENERAL,
+        title="University homepage",
+        body="Official campus website.",
+        external_url="https://example.edu",
+        display_order=40,
+    )
+
+    for item in (first, body_match, second, unrelated):
+        publish_resource(
+            actor=counselor,
+            resource_id=item.pk,
+            context=context(counselor),
+        )
+
+    title_rows = list_public_resources(search="  MENTAL health  ").items
+    assert [item.pk for item in title_rows] == [first.pk, second.pk]
+
+    body_rows = list_public_resources(search="anxiety").items
+    assert [item.pk for item in body_rows] == [body_match.pk]
+
+    blank_rows = list_public_resources(search="   ").items
+    baseline_rows = list_public_resources().items
+    assert [item.pk for item in blank_rows] == [item.pk for item in baseline_rows]
+    assert not list_public_resources(search="does-not-exist").items
+
+    combined = list_public_resources(
+        category=ResourceCategory.MENTAL_HEALTH,
+        kind=ResourceKind.ARTICLE,
+        search="mental",
+    ).items
+    assert [item.pk for item in combined] == [first.pk, second.pk]
+
+    page_one = list_public_resources(search="mental", page=1, page_size=1)
+    page_two = list_public_resources(search="mental", page=2, page_size=1)
+    assert [item.pk for item in page_one.items] == [first.pk]
+    assert page_one.has_next is True
+    assert [item.pk for item in page_two.items] == [second.pk]
+    assert page_two.has_next is False
+
+    assert not list_public_resources(search="MENTAL_HEALTH").items
+
+
+@pytest.mark.django_db
+def test_resource_search_preserves_visibility_management_filters_and_api_contract():
+    sync_policy()
+    counselor = make_user("resource-search-manager@example.edu", "COUNSELOR")
+    student = make_user("resource-search-student@example.edu", "STUDENT")
+
+    public_item = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.MENTAL_HEALTH,
+        title="Needle public guide",
+        body="Visible public content.",
+        display_order=10,
+    )
+    student_item = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.STUDENTS,
+        category=ResourceCategory.MENTAL_HEALTH,
+        title="Student guide",
+        body="Contains search NEEDLE for students.",
+        display_order=20,
+    )
+    gco_item = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.GCO_PERSONNEL,
+        category=ResourceCategory.COUNSELING,
+        title="Needle GCO guide",
+        body="Internal content.",
+        display_order=30,
+    )
+    draft_public = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.MENTAL_HEALTH,
+        title="Needle draft",
+        body="Management only.",
+        display_order=40,
+    )
+    archived = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.MENTAL_HEALTH,
+        title="Needle archived",
+        body="No longer visible.",
+        display_order=50,
+    )
+
+    for item in (public_item, student_item, gco_item, archived):
+        publish_resource(
+            actor=counselor,
+            resource_id=item.pk,
+            context=context(counselor),
+        )
+    archive_resource(
+        actor=counselor,
+        resource_id=archived.pk,
+        context=context(counselor),
+    )
+
+    public_rows = list_public_resources(search="needle").items
+    assert [item.pk for item in public_rows] == [public_item.pk]
+
+    visible_rows = list_visible_resources(actor=student, search="needle").items
+    assert {item.pk for item in visible_rows} == {public_item.pk, student_item.pk}
+
+    anonymous = Client()
+    public_api = anonymous.get("/api/v1/public/resources?search=needle&page_size=10")
+    assert public_api.status_code == 200
+    assert [item["id"] for item in public_api.json()["items"]] == [str(public_item.pk)]
+
+    visible_api = auth_client(student).get("/api/v1/resources?search=needle&page_size=10")
+    assert visible_api.status_code == 200
+    assert {item["id"] for item in visible_api.json()["items"]} == {
+        str(public_item.pk),
+        str(student_item.pk),
+    }
+
+    manager = auth_client(counselor)
+    managed_draft = manager.get(
+        "/api/v1/resources/management"
+        "?search=needle&status=DRAFT&audience=PUBLIC"
+        "&category=MENTAL_HEALTH&kind=ARTICLE&page_size=10"
+    )
+    assert managed_draft.status_code == 200
+    assert [item["id"] for item in managed_draft.json()["items"]] == [str(draft_public.pk)]
+
+    managed_gco = manager.get(
+        "/api/v1/resources/management"
+        "?search=needle&status=PUBLISHED&audience=GCO_PERSONNEL"
+        "&category=COUNSELING&kind=ARTICLE&page_size=10"
+    )
+    assert managed_gco.status_code == 200
+    assert [item["id"] for item in managed_gco.json()["items"]] == [str(gco_item.pk)]

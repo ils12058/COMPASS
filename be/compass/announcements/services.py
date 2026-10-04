@@ -119,6 +119,17 @@ def _clean_page(page: int, page_size: int) -> tuple[int, int]:
     return page, page_size
 
 
+def _normalize_search(search: str | None) -> str:
+    return search.strip() if search is not None else ""
+
+
+def _apply_search(queryset, search: str | None):
+    term = _normalize_search(search)
+    if not term:
+        return queryset
+    return queryset.filter(Q(title__icontains=term) | Q(body_markdown__icontains=term))
+
+
 def _page(queryset, *, page: int, page_size: int) -> AnnouncementPage:
     page, page_size = _clean_page(page, page_size)
     offset = (page - 1) * page_size
@@ -155,6 +166,7 @@ def _public_queryset(*, now: datetime | None = None):
 def list_public_announcements(
     *,
     pinned: bool | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     now: datetime | None = None,
@@ -162,6 +174,7 @@ def list_public_announcements(
     queryset = _public_queryset(now=now)
     if pinned is not None:
         queryset = queryset.filter(is_pinned=bool(pinned))
+    queryset = _apply_search(queryset, search)
     return _page(
         queryset.order_by("-is_pinned", "-published_at", "-id"),
         page=page,
@@ -184,6 +197,7 @@ def list_visible_announcements(
     *,
     actor: User,
     pinned: bool | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     now: datetime | None = None,
@@ -191,6 +205,7 @@ def list_visible_announcements(
     queryset = _visible_queryset(actor, now=now)
     if pinned is not None:
         queryset = queryset.filter(is_pinned=bool(pinned))
+    queryset = _apply_search(queryset, search)
     queryset = queryset.order_by("-is_pinned", "-published_at", "-id")
     return _page(queryset, page=page, page_size=page_size)
 
@@ -211,6 +226,7 @@ def list_managed_announcements(
     *,
     status: str | None = None,
     audience: str | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> AnnouncementPage:
@@ -221,6 +237,7 @@ def list_managed_announcements(
         queryset = queryset.filter(status=status)
     if audience is not None:
         queryset = queryset.filter(audience=_clean_audience(audience))
+    queryset = _apply_search(queryset, search)
     return _page(
         queryset.order_by("-updated_at", "-id"),
         page=page,
