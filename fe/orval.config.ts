@@ -1,3 +1,4 @@
+// Validation-only touch: exercise canonical Orval generation against the synced contract.
 import { defineConfig } from "orval";
 
 export default defineConfig({
