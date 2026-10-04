@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
+from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
@@ -283,6 +284,7 @@ def _graduate_tracer_released_counts(sections: dict[str, object]):
                 yield int(row["count"])
 
 
+@transaction.atomic
 def build_graduate_tracer_report(
     *,
     submitted_from: date | None = None,
@@ -292,10 +294,12 @@ def build_graduate_tracer_report(
         _base_queryset(
             submitted_from=submitted_from,
             submitted_to=submitted_to,
-        ).values_list("id", flat=True)
+        )
+        .select_for_update()
+        .values_list("id", flat=True)
     )
-    # Submitted responses are immutable. Materializing membership once prevents separate aggregate
-    # queries under READ COMMITTED from observing different submission populations.
+    # Freeze and lock membership until all distributions are calculated. A disposition cannot
+    # replace a contributing row between separate aggregate queries under READ COMMITTED.
     base = GraduateTracerResponse.objects.filter(pk__in=population_ids)
     all_label = "Submitted schema-v1 responses"
     employed = base.filter(current_employment_state=GTSEmploymentState.EMPLOYED)

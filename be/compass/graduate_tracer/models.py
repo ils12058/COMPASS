@@ -9,6 +9,8 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MinValueValidator
 from django.db import models
 
+from .participation import GraduateTracerDisposedParticipation  # noqa: F401
+
 GTS_SCHEMA_VERSION = 1
 
 
@@ -241,6 +243,8 @@ class GraduateTracerResponse(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="graduate_tracer_responses",
+        null=True,
+        blank=True,
     )
     instrument_schema_version = models.PositiveSmallIntegerField(
         default=GTS_SCHEMA_VERSION, editable=False
@@ -396,6 +400,7 @@ class GraduateTracerResponse(models.Model):
     curriculum_improvement_suggestions = models.TextField(blank=True, default="")
 
     submitted_at = models.DateTimeField(null=True, blank=True)
+    anonymized_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -403,6 +408,15 @@ class GraduateTracerResponse(models.Model):
         default_permissions = ()
         ordering = ("-created_at", "id")
         constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(student__isnull=False, anonymized_at__isnull=True)
+                    | models.Q(
+                        student__isnull=True, anonymized_at__isnull=False, status="SUBMITTED"
+                    )
+                ),
+                name="graduate_tracer_identity_shape",
+            ),
             models.UniqueConstraint(
                 fields=("student", "instrument_schema_version"),
                 name="graduate_tracer_student_schema_uniq",

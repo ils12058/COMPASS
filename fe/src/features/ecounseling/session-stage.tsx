@@ -135,9 +135,9 @@ function SessionMediaStatus({ media }: { media: MediaWorkspaceState }) {
     <div className="border-t border-brand-line px-4 py-3 sm:px-5">
       <dl aria-live="polite" className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-1.5 text-sm">
         <dt className="text-muted">Recording</dt>
-        <dd><CaptureState status={media.recording.capture_status} live="recording" /></dd>
+        <dd>{media.recording.artifact_disposed_at ? "Provider recording disposed" : <CaptureState status={media.recording.capture_status} live="recording" />}</dd>
         <dt className="text-muted">Transcription</dt>
-        <dd><CaptureState status={media.transcription.capture_status} live="transcription" /></dd>
+        <dd>{media.transcription.artifact_disposed_at ? "Stored transcript disposed" : <CaptureState status={media.transcription.capture_status} live="transcription" />}</dd>
       </dl>
       <p className="mt-2 text-xs leading-5 text-muted">
         Recordings and transcripts can’t be viewed or downloaded in COMPASS.

@@ -17,6 +17,8 @@ export function isUncertainGraduateTracerMutation(error: unknown): boolean {
 export function graduateTracerErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   switch (readApiErrorCode(error.body)) {
+    case "graduate_tracer_disposed":
+      return "Your personal response was anonymized under an approved retention rule. Its aggregate contribution remains; the personal response cannot be restored.";
     case "graduate_tracer_not_found":
       return "The Graduate Tracer response could not be found or is no longer available.";
     case "graduated_student_required":

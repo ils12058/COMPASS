@@ -8,6 +8,12 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q
 
+from .retention_models import (  # noqa: F401
+    DispositionCase,
+    DispositionHold,
+    OperationalRetentionRule,
+)
+
 
 class PrivacyNotice(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

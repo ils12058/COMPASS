@@ -169,12 +169,14 @@ def get_media_projection(room: ECounselingRoom | None) -> dict[str, object]:
     transcription = captures.get(MediaCaptureKind.TRANSCRIPTION)
     return {
         "recording": {
+            "artifact_disposed_at": recording.artifact_disposed_at if recording else None,
             "consent_status": _consent_status(consents.get(ConsentScope.AUDIO_VIDEO_RECORDING)),
             "capture_status": (
                 recording.status if recording is not None else MediaCaptureStatus.NOT_STARTED
             ),
         },
         "transcription": {
+            "artifact_disposed_at": transcription.artifact_disposed_at if transcription else None,
             "consent_status": _consent_status(consents.get(ConsentScope.LIVE_TRANSCRIPTION)),
             "storage_consent_status": _consent_status(
                 consents.get(ConsentScope.TRANSCRIPT_STORAGE)
@@ -1048,6 +1050,10 @@ def process_media_webhook_event(
         locked_room = ECounselingRoom.objects.select_for_update().get(pk=room.pk)
         capture = _get_or_create_capture_locked(room=locked_room, kind=kind)
         capture_id = capture.pk
+
+        if capture.artifact_disposed_at is not None:
+            # Late telemetry must never restore a disposed provider reference or regress evidence.
+            return WebhookProcessingResult(accepted=True, supported=True)
 
         if event_type == "recording.started":
             instance_id = payload.get("instance_id")

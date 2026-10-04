@@ -496,6 +496,14 @@ CELERY_WORKER_SEND_TASK_EVENTS = False
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_IMPORTS = ("compass.tasks",)
 CELERY_BEAT_SCHEDULE = {
+    "retention-eligibility-discovery": {
+        "task": "compass.privacy_governance.discover_retention",
+        "schedule": 300,
+    },
+    "retention-approved-dispatch-recovery": {
+        "task": "compass.privacy_governance.recover_disposition",
+        "schedule": 60,
+    },
     "notification-push-recovery": {
         "task": "compass.notifications.push.dispatch_due",
         "schedule": 60,

@@ -202,6 +202,18 @@ class DailyClient:
             raise DailyInvalidResponse("Daily did not return a meeting token.")
         return token
 
+    def get_recording(self, *, artifact_id: str) -> dict[str, object]:
+        return self._request("GET", f"/recordings/{quote(artifact_id, safe='')}")
+
+    def delete_recording(self, *, artifact_id: str) -> dict[str, object]:
+        return self._request("DELETE", f"/recordings/{quote(artifact_id, safe='')}")
+
+    def get_transcript(self, *, artifact_id: str) -> dict[str, object]:
+        return self._request("GET", f"/transcript/{quote(artifact_id, safe='')}")
+
+    def delete_transcript(self, *, artifact_id: str) -> dict[str, object]:
+        return self._request("DELETE", f"/transcript/{quote(artifact_id, safe='')}")
+
 
 def verify_daily_webhook(
     *,

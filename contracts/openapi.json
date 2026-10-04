@@ -3245,6 +3245,9 @@
           "platform_operations.manage",
           "platform_operations.view",
           "privacy_governance.manage",
+          "privacy_governance.retention.approve",
+          "privacy_governance.retention.manage",
+          "privacy_governance.retention.view",
           "privacy_governance.view",
           "referrals.manage",
           "referrals.view",
@@ -6951,6 +6954,267 @@
           "REFERRED"
         ],
         "title": "DirectRoutineEntryMode",
+        "type": "string"
+      },
+      "DispositionAction": {
+        "enum": [
+          "ANONYMIZE",
+          "DELETE_PROVIDER_ARTIFACT_KEEP_EVIDENCE"
+        ],
+        "title": "DispositionAction",
+        "type": "string"
+      },
+      "DispositionBlocker": {
+        "enum": [
+          "RULE_INACTIVE",
+          "SOURCE_CHANGED",
+          "SOURCE_UNAVAILABLE",
+          "MEDIA_NOT_TERMINAL",
+          "ARTIFACT_ID_MISSING",
+          "PROVIDER_UNAVAILABLE",
+          "PROVIDER_REJECTED",
+          "PROVIDER_UNVERIFIED",
+          "EXTERNAL_STORAGE",
+          "VERIFICATION_FAILED",
+          "WORKER_INTERRUPTED"
+        ],
+        "title": "DispositionBlocker",
+        "type": "string"
+      },
+      "DispositionCasePage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DispositionCaseResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "DispositionCasePage",
+        "type": "object"
+      },
+      "DispositionCaseResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/DispositionAction"
+          },
+          "affected_count": {
+            "title": "Affected Count",
+            "type": "integer"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "blocker": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DispositionBlocker"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "$ref": "#/components/schemas/RetentionCategory"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "eligible_at": {
+            "format": "date-time",
+            "title": "Eligible At",
+            "type": "string"
+          },
+          "holds": {
+            "items": {
+              "$ref": "#/components/schemas/DispositionHoldResponse"
+            },
+            "title": "Holds",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "manual_retries": {
+            "title": "Manual Retries",
+            "type": "integer"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "rule_code": {
+            "title": "Rule Code",
+            "type": "string"
+          },
+          "rule_id": {
+            "format": "uuid",
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "rule_revision": {
+            "title": "Rule Revision",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DispositionState"
+          }
+        },
+        "required": [
+          "id",
+          "rule_id",
+          "rule_code",
+          "rule_revision",
+          "category",
+          "action",
+          "affected_count",
+          "eligible_at",
+          "state",
+          "blocker",
+          "revision",
+          "approved_at",
+          "started_at",
+          "completed_at",
+          "attempts",
+          "manual_retries",
+          "holds"
+        ],
+        "title": "DispositionCaseResponse",
+        "type": "object"
+      },
+      "DispositionHoldRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "reason"
+        ],
+        "title": "DispositionHoldRequest",
+        "type": "object"
+      },
+      "DispositionHoldResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "placed_at": {
+            "format": "date-time",
+            "title": "Placed At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "released_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Released At"
+          }
+        },
+        "required": [
+          "id",
+          "reason",
+          "placed_at",
+          "released_at"
+        ],
+        "title": "DispositionHoldResponse",
+        "type": "object"
+      },
+      "DispositionState": {
+        "enum": [
+          "READY",
+          "ON_HOLD",
+          "BLOCKED",
+          "NO_LONGER_ELIGIBLE",
+          "APPROVED",
+          "QUEUED",
+          "PROCESSING",
+          "COMPLETED",
+          "FAILED",
+          "RECONCILIATION_REQUIRED"
+        ],
+        "title": "DispositionState",
         "type": "string"
       },
       "DistributionRow": {
@@ -15866,6 +16130,18 @@
       "RecordingWorkspaceState": {
         "additionalProperties": false,
         "properties": {
+          "artifact_disposed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Disposed At"
+          },
           "capture_status": {
             "$ref": "#/components/schemas/ECounselingCaptureStatus"
           },
@@ -15875,7 +16151,8 @@
         },
         "required": [
           "consent_status",
-          "capture_status"
+          "capture_status",
+          "artifact_disposed_at"
         ],
         "title": "RecordingWorkspaceState",
         "type": "object"
@@ -17147,6 +17424,400 @@
         },
         "title": "ResourceUpdateRequest",
         "type": "object"
+      },
+      "RetentionCategory": {
+        "enum": [
+          "GRADUATE_TRACER",
+          "ECOUNSELING_RECORDING",
+          "ECOUNSELING_TRANSCRIPT"
+        ],
+        "title": "RetentionCategory",
+        "type": "string"
+      },
+      "RetentionCategoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/DispositionAction"
+          },
+          "category": {
+            "$ref": "#/components/schemas/RetentionCategory"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RetentionTrigger"
+          }
+        },
+        "required": [
+          "category",
+          "label",
+          "trigger",
+          "action"
+        ],
+        "title": "RetentionCategoryResponse",
+        "type": "object"
+      },
+      "RetentionCategorySummary": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/DispositionAction"
+          },
+          "blocked_count": {
+            "title": "Blocked Count",
+            "type": "integer"
+          },
+          "category": {
+            "$ref": "#/components/schemas/RetentionCategory"
+          },
+          "held_count": {
+            "title": "Held Count",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "ready_count": {
+            "title": "Ready Count",
+            "type": "integer"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RetentionTrigger"
+          }
+        },
+        "required": [
+          "category",
+          "label",
+          "trigger",
+          "action",
+          "ready_count",
+          "held_count",
+          "blocked_count"
+        ],
+        "title": "RetentionCategorySummary",
+        "type": "object"
+      },
+      "RetentionRevisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_revision"
+        ],
+        "title": "RetentionRevisionRequest",
+        "type": "object"
+      },
+      "RetentionRuleCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/DispositionAction"
+          },
+          "category": {
+            "$ref": "#/components/schemas/RetentionCategory"
+          },
+          "code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "duration_days": {
+            "maximum": 365000,
+            "minimum": 1,
+            "title": "Duration Days",
+            "type": "integer"
+          },
+          "effective_on": {
+            "format": "date",
+            "title": "Effective On",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "policy_reference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Policy Reference",
+            "type": "string"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RetentionTrigger"
+          }
+        },
+        "required": [
+          "label",
+          "category",
+          "trigger",
+          "duration_days",
+          "action",
+          "policy_reference",
+          "effective_on",
+          "code"
+        ],
+        "title": "RetentionRuleCreate",
+        "type": "object"
+      },
+      "RetentionRulePage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RetentionRuleResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "RetentionRulePage",
+        "type": "object"
+      },
+      "RetentionRuleResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/DispositionAction"
+          },
+          "activated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activated At"
+          },
+          "category": {
+            "$ref": "#/components/schemas/RetentionCategory"
+          },
+          "code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_days": {
+            "maximum": 365000,
+            "minimum": 1,
+            "title": "Duration Days",
+            "type": "integer"
+          },
+          "effective_on": {
+            "format": "date",
+            "title": "Effective On",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "policy_reference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Policy Reference",
+            "type": "string"
+          },
+          "retired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired At"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RetentionRuleStatus"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RetentionTrigger"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "category",
+          "trigger",
+          "duration_days",
+          "action",
+          "policy_reference",
+          "effective_on",
+          "code",
+          "id",
+          "status",
+          "revision",
+          "created_at",
+          "updated_at",
+          "activated_at",
+          "retired_at"
+        ],
+        "title": "RetentionRuleResponse",
+        "type": "object"
+      },
+      "RetentionRuleStatus": {
+        "enum": [
+          "DRAFT",
+          "ACTIVE",
+          "RETIRED"
+        ],
+        "title": "RetentionRuleStatus",
+        "type": "string"
+      },
+      "RetentionRuleUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/DispositionAction"
+          },
+          "category": {
+            "$ref": "#/components/schemas/RetentionCategory"
+          },
+          "duration_days": {
+            "maximum": 365000,
+            "minimum": 1,
+            "title": "Duration Days",
+            "type": "integer"
+          },
+          "effective_on": {
+            "format": "date",
+            "title": "Effective On",
+            "type": "string"
+          },
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "label": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "policy_reference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Policy Reference",
+            "type": "string"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RetentionTrigger"
+          }
+        },
+        "required": [
+          "label",
+          "category",
+          "trigger",
+          "duration_days",
+          "action",
+          "policy_reference",
+          "effective_on",
+          "expected_revision"
+        ],
+        "title": "RetentionRuleUpdate",
+        "type": "object"
+      },
+      "RetentionSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/RetentionCategorySummary"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "needs_review": {
+            "title": "Needs Review",
+            "type": "integer"
+          },
+          "on_hold": {
+            "title": "On Hold",
+            "type": "integer"
+          },
+          "processing": {
+            "title": "Processing",
+            "type": "integer"
+          },
+          "recently_completed": {
+            "title": "Recently Completed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "needs_review",
+          "on_hold",
+          "processing",
+          "recently_completed",
+          "categories"
+        ],
+        "title": "RetentionSummaryResponse",
+        "type": "object"
+      },
+      "RetentionTrigger": {
+        "enum": [
+          "SUBMITTED_AT",
+          "MEDIA_READY_AT"
+        ],
+        "title": "RetentionTrigger",
+        "type": "string"
       },
       "RevisionCreate": {
         "additionalProperties": false,
@@ -19677,6 +20348,18 @@
       "TranscriptionWorkspaceState": {
         "additionalProperties": false,
         "properties": {
+          "artifact_disposed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Disposed At"
+          },
           "capture_status": {
             "$ref": "#/components/schemas/ECounselingCaptureStatus"
           },
@@ -19695,7 +20378,8 @@
           "consent_status",
           "storage_consent_status",
           "capture_status",
-          "storage_enabled"
+          "storage_enabled",
+          "artifact_disposed_at"
         ],
         "title": "TranscriptionWorkspaceState",
         "type": "object"
@@ -20968,6 +21652,9 @@
                 "platform_operations.manage",
                 "platform_operations.view",
                 "privacy_governance.manage",
+                "privacy_governance.retention.approve",
+                "privacy_governance.retention.manage",
+                "privacy_governance.retention.view",
                 "privacy_governance.view",
                 "referrals.manage",
                 "referrals.view",
@@ -21129,6 +21816,9 @@
                 "platform_operations.manage",
                 "platform_operations.view",
                 "privacy_governance.manage",
+                "privacy_governance.retention.approve",
+                "privacy_governance.retention.manage",
+                "privacy_governance.retention.view",
                 "privacy_governance.view",
                 "referrals.manage",
                 "referrals.view",
@@ -40836,6 +41526,1185 @@
           }
         },
         "summary": "Public Notices",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/retention/cases": {
+      "get": {
+        "operationId": "privacyGovernanceListDispositionCases",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/RetentionCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DispositionState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispositionCasePage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Cases",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/retention/cases/{case_id}": {
+      "get": {
+        "operationId": "privacyGovernanceGetDispositionCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispositionCaseResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Case",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/retention/cases/{case_id}/approve": {
+      "post": {
+        "operationId": "privacyGovernanceApproveDispositionCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionRevisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispositionCaseResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Approve",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/retention/cases/{case_id}/hold": {
+      "post": {
+        "operationId": "privacyGovernancePlaceDispositionHold",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispositionHoldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispositionCaseResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Hold",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/retention/cases/{case_id}/release-hold": {
+      "post": {
+        "operationId": "privacyGovernanceReleaseDispositionHold",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionRevisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispositionCaseResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Release Hold",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/retention/cases/{case_id}/retry": {
+      "post": {
+        "operationId": "privacyGovernanceRetryDispositionCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionRevisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispositionCaseResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Retry",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/retention/categories": {
+      "get": {
+        "operationId": "privacyGovernanceRetentionCategories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RetentionCategoryResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Categories",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/retention/rules": {
+      "get": {
+        "operationId": "privacyGovernanceListRetentionRules",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionRulePage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Rules",
+        "tags": [
+          "privacy-governance"
+        ]
+      },
+      "post": {
+        "operationId": "privacyGovernanceCreateRetentionRule",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionRuleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionRuleResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Create Rule",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/retention/rules/{rule_id}": {
+      "get": {
+        "operationId": "privacyGovernanceGetRetentionRule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionRuleResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Rule",
+        "tags": [
+          "privacy-governance"
+        ]
+      },
+      "patch": {
+        "operationId": "privacyGovernanceUpdateRetentionRule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionRuleUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionRuleResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Update Rule",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/retention/rules/{rule_id}/activate": {
+      "post": {
+        "operationId": "privacyGovernanceActivateRetentionRule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionRevisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionRuleResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Activate Rule",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/retention/rules/{rule_id}/retire": {
+      "post": {
+        "operationId": "privacyGovernanceRetireRetentionRule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionRevisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionRuleResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Retire Rule",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/retention/summary": {
+      "get": {
+        "operationId": "privacyGovernanceRetentionSummary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionSummaryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Summary",
         "tags": [
           "privacy-governance"
         ]

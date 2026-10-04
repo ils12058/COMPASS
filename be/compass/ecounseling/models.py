@@ -131,6 +131,7 @@ class ECounselingMediaCapture(models.Model):
     transcript_storage_enabled = models.BooleanField(default=False)
     provider_instance_id = models.CharField(max_length=160, null=True, blank=True)
     provider_artifact_id = models.CharField(max_length=160, null=True, blank=True)
+    artifact_disposed_at = models.DateTimeField(null=True, blank=True)
     provider_session_id = models.CharField(max_length=160, null=True, blank=True)
     started_at = models.DateTimeField(null=True, blank=True)
     stop_requested_at = models.DateTimeField(null=True, blank=True)

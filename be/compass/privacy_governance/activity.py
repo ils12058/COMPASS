@@ -39,6 +39,7 @@ from compass.audit.actions import (
     PRIVACY_REVIEW_RESOLVED,
     PRIVACY_REVIEW_UPDATED,
     REPORT_EXPORT_RELEASED,
+    RETENTION_PRESENTATIONS,
 )
 from compass.audit.models import AuditActorType, AuditEvent, AuditOutcome
 from compass.authentication.actions import (
@@ -400,6 +401,7 @@ def _account_security(event: AuditEvent) -> PrivacyActivityItem | None:
 
 
 _GOVERNANCE_PRESENTATION = {
+    **RETENTION_PRESENTATIONS,
     PRIVACY_RETENTION_CREATED: (
         "Retention policy created",
         "A retention policy governance record was created.",
