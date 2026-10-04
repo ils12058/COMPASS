@@ -192,6 +192,7 @@ def announcements_list_managed(
     request,
     status: AnnouncementStatusValue | None = None,
     audience: AnnouncementAudienceValue | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -200,6 +201,7 @@ def announcements_list_managed(
         result = list_managed_announcements(
             status=status.value if status is not None else None,
             audience=audience.value if audience is not None else None,
+            search=search,
             page=page,
             page_size=page_size,
         )
@@ -335,6 +337,7 @@ def announcements_archive(request, announcement_id: UUID):
 def announcements_list_visible(
     request,
     pinned: bool | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -342,6 +345,7 @@ def announcements_list_visible(
         result = list_visible_announcements(
             actor=request.auth_user,
             pinned=pinned,
+            search=search,
             page=page,
             page_size=page_size,
         )
@@ -380,12 +384,14 @@ def announcements_get_visible(request, announcement_id: UUID):
 def announcements_list_public(
     request,
     pinned: bool | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
     try:
         result = list_public_announcements(
             pinned=pinned,
+            search=search,
             page=page,
             page_size=page_size,
         )
