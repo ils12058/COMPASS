@@ -10,6 +10,13 @@ from uuid import UUID
 from django.db.models import Q
 
 from compass.accounts.policy import CAPABILITY_CODES, DESIGNATION_CODES, ROLE_CODES
+from compass.activity.retrieval import (
+    ActivityCriteria,
+    ActivityRetrievalError,
+    bounded_candidates,
+    matches_text,
+    page_items,
+)
 from compass.audit.actions import (
     ACCOUNT_CAPABILITY_OVERRIDE_REMOVED,
     ACCOUNT_CAPABILITY_OVERRIDE_SET,
@@ -20,6 +27,7 @@ from compass.audit.actions import (
     ACCOUNT_MFA_RESET,
     ACCOUNT_ROLE_CHANGED,
     DOCUMENT_DOWNLOAD_RELEASED,
+    PRIVACY_ACTIVITY_EXPORTED,
     PRIVACY_INCIDENT_CREATED,
     PRIVACY_INCIDENT_RESOLVED,
     PRIVACY_INCIDENT_UPDATED,
@@ -79,7 +87,7 @@ class PrivacyActivityArtifactFormat(StrEnum):
     XLSX = "XLSX"
 
 
-class PrivacyActivityPaginationError(ValueError):
+class PrivacyActivityPaginationError(ActivityRetrievalError):
     pass
 
 
@@ -402,6 +410,11 @@ def _account_security(event: AuditEvent) -> PrivacyActivityItem | None:
 
 _GOVERNANCE_PRESENTATION = {
     **RETENTION_PRESENTATIONS,
+    PRIVACY_ACTIVITY_EXPORTED: (
+        "Privacy activity exported",
+        "A curated Privacy & Security Activity CSV was prepared for download.",
+        "privacy.activityexport",
+    ),
     PRIVACY_RETENTION_CREATED: (
         "Retention policy created",
         "A retention policy governance record was created.",
@@ -496,6 +509,27 @@ _GOVERNANCE_PRESENTATION = {
 
 
 def _privacy_governance(event: AuditEvent) -> PrivacyActivityItem | None:
+    if event.action == PRIVACY_ACTIVITY_EXPORTED:
+        metadata = event.metadata
+        count = metadata.get("exported_row_count")
+        if type(count) is not int or not 0 <= count <= 10_000:
+            return None
+        if any(type(metadata.get(key)) is not bool for key in ("search_applied", "actor_applied")):
+            return None
+        if (
+            metadata.get("category") is not None
+            and metadata["category"] not in PrivacyActivityCategory
+        ):
+            return None
+        if metadata.get("event_type") is not None and metadata["event_type"] not in _ALL_ACTIONS:
+            return None
+        try:
+            start = _safe_iso_date(metadata.get("date_from"))
+            end = _safe_iso_date(metadata.get("date_to"))
+        except (ValueError, TypeError):
+            return None
+        if start and end and start > end:
+            return None
     presentation = _GOVERNANCE_PRESENTATION.get(event.action)
     if presentation is None:
         return None
@@ -546,29 +580,118 @@ _ALL_ACTIONS = (
 
 
 def _present(event: AuditEvent) -> PrivacyActivityItem | None:
-    if event.action == REPORT_EXPORT_RELEASED:
-        return _report_release(event)
-    if event.action == DOCUMENT_DOWNLOAD_RELEASED:
-        return _document_release(event)
-    if event.action in _ACCESS_CONTROL_ACTIONS:
-        return _access_control(event)
-    if event.action in _ACCOUNT_SECURITY_ACTIONS:
-        return _account_security(event)
-    if event.action in _PRIVACY_GOVERNANCE_ACTIONS:
-        return _privacy_governance(event)
+    if not isinstance(event.metadata, dict):
+        return None
+    try:
+        if event.action == REPORT_EXPORT_RELEASED:
+            return _report_release(event)
+        if event.action == DOCUMENT_DOWNLOAD_RELEASED:
+            return _document_release(event)
+        if event.action in _ACCESS_CONTROL_ACTIONS:
+            return _access_control(event)
+        if event.action in _ACCOUNT_SECURITY_ACTIONS:
+            return _account_security(event)
+        if event.action in _PRIVACY_GOVERNANCE_ACTIONS:
+            return _privacy_governance(event)
+    except (TypeError, ValueError, AttributeError):
+        # Malformed historical/externally written evidence is invisible, not a partial projection.
+        return None
     return None
 
 
-def _validate_page(*, page: int, page_size: int) -> tuple[int, int]:
-    if type(page) is not int or page < 1 or page > MAX_PAGE_NUMBER:
-        raise PrivacyActivityPaginationError(
-            f"page must be an integer between 1 and {MAX_PAGE_NUMBER}"
+PrivacyActivityType = StrEnum(
+    "PrivacyActivityType",
+    {action.replace(".", "_").upper(): action for action in sorted(_ALL_ACTIONS)},
+)
+
+
+@dataclass(frozen=True, slots=True)
+class PrivacyActivitySpec:
+    criteria: ActivityCriteria
+    category: PrivacyActivityCategory | None
+    event_type: PrivacyActivityType | None
+
+    @classmethod
+    def build(
+        cls,
+        *,
+        category=None,
+        event_type=None,
+        search=None,
+        actor=None,
+        date_from=None,
+        date_to=None,
+    ):
+        try:
+            return cls(
+                ActivityCriteria.build(
+                    search=search, actor=actor, date_from=date_from, date_to=date_to
+                ),
+                PrivacyActivityCategory(category) if category is not None else None,
+                PrivacyActivityType(event_type) if event_type is not None else None,
+            )
+        except ValueError as exc:
+            raise PrivacyActivityPaginationError(str(exc)) from exc
+
+    def queryset(self):
+        categories = {
+            PrivacyActivityCategory.DATA_RELEASE: _DATA_RELEASE_ACTIONS,
+            PrivacyActivityCategory.ACCESS_CONTROL: _ACCESS_CONTROL_ACTIONS,
+            PrivacyActivityCategory.ACCOUNT_SECURITY: _ACCOUNT_SECURITY_ACTIONS,
+            PrivacyActivityCategory.PRIVACY_GOVERNANCE: _PRIVACY_GOVERNANCE_ACTIONS,
+        }
+        actions = categories.get(self.category, _ALL_ACTIONS)
+        if self.event_type is not None:
+            actions = actions & {self.event_type}
+        queryset = (
+            AuditEvent.objects.select_related("actor_user")
+            .only(
+                "id",
+                "action",
+                "target_type",
+                "target_id",
+                "occurred_at",
+                "actor_type",
+                "metadata",
+                "actor_user_id",
+                "actor_user__id",
+                "actor_user__first_name",
+                "actor_user__middle_name",
+                "actor_user__last_name",
+                "actor_user__suffix",
+            )
+            .filter(action__in=actions)
+            .filter(
+                Q(outcome=AuditOutcome.SUCCESS)
+                | Q(
+                    action__in={AUTH_LOGIN_FAILED, AUTH_MFA_TOTP_FAILED},
+                    outcome=AuditOutcome.DENIED,
+                )
+            )
         )
-    if type(page_size) is not int or page_size < 1 or page_size > MAX_PAGE_SIZE:
-        raise PrivacyActivityPaginationError(
-            f"page_size must be an integer between 1 and {MAX_PAGE_SIZE}"
-        )
-    return page, page_size
+        return self.criteria.apply_dates(queryset).order_by("-occurred_at", "-id")
+
+    def items(self):
+        # Presenter validation and safe-field criteria happen before projected offset/limit.
+        # Failed-authentication actor names remain unsearchable because they are not projected.
+        for event in bounded_candidates(self.queryset()):
+            item = _present(event)
+            if item is None or not matches_text(self.criteria.actor, (item.actor_display_name,)):
+                continue
+            if matches_text(
+                self.criteria.search,
+                (
+                    item.type,
+                    item.title,
+                    item.description,
+                    item.actor_display_name,
+                    item.artifact_type,
+                    item.artifact_format,
+                    item.scope,
+                    item.resource_reference,
+                ),
+            ):
+                yield item
 
 
 def list_privacy_activity(
@@ -576,66 +699,33 @@ def list_privacy_activity(
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     category: PrivacyActivityCategory | str | None = None,
+    event_type: PrivacyActivityType | str | None = None,
+    search: str | None = None,
+    actor: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> PrivacyActivityPage:
-    page, page_size = _validate_page(page=page, page_size=page_size)
-    selected_category = None
-    if category is not None:
-        try:
-            selected_category = PrivacyActivityCategory(str(category))
-        except ValueError as exc:
-            raise PrivacyActivityPaginationError("privacy activity category is invalid") from exc
-
-    actions = _ALL_ACTIONS
-    if selected_category == PrivacyActivityCategory.DATA_RELEASE:
-        actions = _DATA_RELEASE_ACTIONS
-    elif selected_category == PrivacyActivityCategory.ACCESS_CONTROL:
-        actions = _ACCESS_CONTROL_ACTIONS
-    elif selected_category == PrivacyActivityCategory.ACCOUNT_SECURITY:
-        actions = _ACCOUNT_SECURITY_ACTIONS
-    elif selected_category == PrivacyActivityCategory.PRIVACY_GOVERNANCE:
-        actions = _PRIVACY_GOVERNANCE_ACTIONS
-
-    queryset = (
-        AuditEvent.objects.select_related("actor_user")
-        .filter(action__in=actions)
-        .filter(
-            Q(outcome=AuditOutcome.SUCCESS)
-            | Q(
-                action__in={AUTH_LOGIN_FAILED, AUTH_MFA_TOTP_FAILED},
-                outcome=AuditOutcome.DENIED,
-            )
-        )
-        .order_by("-occurred_at", "-id")
+    spec = PrivacyActivitySpec.build(
+        category=category,
+        event_type=event_type,
+        search=search,
+        actor=actor,
+        date_from=date_from,
+        date_to=date_to,
     )
-
-    offset = (page - 1) * page_size
-    # Pull a bounded overfetch because malformed allowlisted rows fail closed.
-    candidates = list(queryset[offset : offset + page_size * 2 + 1])
-    items: list[PrivacyActivityItem] = []
-    consumed = 0
-    for event in candidates:
-        consumed += 1
-        item = _present(event)
-        if item is not None:
-            items.append(item)
-        if len(items) >= page_size + 1:
-            break
-
-    has_next = len(items) > page_size or (
-        consumed == len(candidates) and len(candidates) > page_size * 2
-    )
-    return PrivacyActivityPage(
-        items=tuple(items[:page_size]),
-        page=page,
-        page_size=page_size,
-        has_next=has_next,
-    )
+    try:
+        items, has_next = page_items(spec.items(), page=page, page_size=page_size)
+    except ActivityRetrievalError as exc:
+        raise PrivacyActivityPaginationError(str(exc)) from exc
+    return PrivacyActivityPage(items=items, page=page, page_size=page_size, has_next=has_next)
 
 
 __all__ = [
     "DEFAULT_PAGE_SIZE",
     "PrivacyActivityCategory",
     "PrivacyActivityItem",
+    "PrivacyActivitySpec",
+    "PrivacyActivityType",
     "PrivacyActivityPage",
     "PrivacyActivityPaginationError",
     "list_privacy_activity",

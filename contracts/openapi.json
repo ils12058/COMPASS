@@ -3200,6 +3200,7 @@
           "academic_years.view",
           "accounts.manage",
           "accounts.view",
+          "activity.supervised_staff.view",
           "announcements.manage",
           "appointments.manage",
           "appointments.manage_self",
@@ -3244,6 +3245,7 @@
           "organization.structure.view",
           "platform_operations.manage",
           "platform_operations.view",
+          "privacy_governance.activity.export",
           "privacy_governance.manage",
           "privacy_governance.retention.approve",
           "privacy_governance.retention.manage",
@@ -15714,8 +15716,7 @@
             "type": "string"
           },
           "type": {
-            "title": "Type",
-            "type": "string"
+            "$ref": "#/components/schemas/PrivacyActivityType"
           }
         },
         "required": [
@@ -15765,6 +15766,57 @@
         ],
         "title": "PrivacyActivityPageResponse",
         "type": "object"
+      },
+      "PrivacyActivityType": {
+        "enum": [
+          "account.capability.override.removed",
+          "account.capability.override.set",
+          "account.designation.assigned",
+          "account.designation.removed",
+          "account.disabled",
+          "account.enabled",
+          "account.mfa.reset",
+          "account.role.changed",
+          "auth.login.failed",
+          "auth.mfa.recovery.code.used",
+          "auth.mfa.totp.disabled",
+          "auth.mfa.totp.failed",
+          "auth.password.reset",
+          "document.download_released",
+          "privacy.activity.exported",
+          "privacy.disposition.approved",
+          "privacy.disposition.completed",
+          "privacy.disposition.failed",
+          "privacy.disposition.retry.authorized",
+          "privacy.disposition.started",
+          "privacy.incident.created",
+          "privacy.incident.resolved",
+          "privacy.incident.updated",
+          "privacy.notice.created",
+          "privacy.notice.retired",
+          "privacy.notice.revision.created",
+          "privacy.notice.revision.published",
+          "privacy.notice.revision.updated",
+          "privacy.notice.updated",
+          "privacy.processing.created",
+          "privacy.processing.retired",
+          "privacy.processing.updated",
+          "privacy.retention.created",
+          "privacy.retention.hold.placed",
+          "privacy.retention.hold.released",
+          "privacy.retention.retired",
+          "privacy.retention.rule.activated",
+          "privacy.retention.rule.created",
+          "privacy.retention.rule.retired",
+          "privacy.retention.rule.updated",
+          "privacy.retention.updated",
+          "privacy.review.created",
+          "privacy.review.resolved",
+          "privacy.review.updated",
+          "report.export_released"
+        ],
+        "title": "PrivacyActivityType",
+        "type": "string"
       },
       "ProgramColumn": {
         "additionalProperties": false,
@@ -20054,6 +20106,153 @@
         "title": "StudyCareerChoiceValue",
         "type": "string"
       },
+      "SupervisedActivityItemResponse": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "staff": {
+            "$ref": "#/components/schemas/SupervisedStaffSummary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/SupervisedActivityType"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "description",
+          "occurred_at",
+          "staff"
+        ],
+        "title": "SupervisedActivityItemResponse",
+        "type": "object"
+      },
+      "SupervisedActivityPageResponse": {
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SupervisedActivityItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "SupervisedActivityPageResponse",
+        "type": "object"
+      },
+      "SupervisedActivityType": {
+        "enum": [
+          "appointment.cancelled",
+          "appointment.rescheduled",
+          "appointment.reassigned",
+          "appointment.completed",
+          "appointment.no_show",
+          "referral.created",
+          "referral.action_recorded",
+          "referral.status_updated",
+          "referral.voided",
+          "call_slip.created",
+          "call_slip.interview_ended",
+          "call_slip.voided",
+          "announcement.created",
+          "announcement.updated",
+          "announcement.published",
+          "announcement.archived",
+          "resource.created",
+          "resource.updated",
+          "resource.file_attached",
+          "resource.file_removed",
+          "resource.published",
+          "resource.archived"
+        ],
+        "title": "SupervisedActivityType",
+        "type": "string"
+      },
+      "SupervisedStaffPageResponse": {
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SupervisedStaffSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "SupervisedStaffPageResponse",
+        "type": "object"
+      },
+      "SupervisedStaffSummary": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "SupervisedStaffSummary",
+        "type": "object"
+      },
       "SupportIndicatorResponse": {
         "additionalProperties": false,
         "properties": {
@@ -20285,8 +20484,7 @@
             "type": "string"
           },
           "type": {
-            "title": "Type",
-            "type": "string"
+            "$ref": "#/components/schemas/TechnicalActivityType"
           }
         },
         "required": [
@@ -20332,6 +20530,17 @@
         ],
         "title": "TechnicalActivityPageResponse",
         "type": "object"
+      },
+      "TechnicalActivityType": {
+        "enum": [
+          "platform.maintenance.enabled",
+          "platform.maintenance.disabled",
+          "platform.maintenance.scheduled",
+          "platform.maintenance.schedule_cancelled",
+          "notification.email.retry_requested"
+        ],
+        "title": "TechnicalActivityType",
+        "type": "string"
       },
       "TranscriptionStartRequest": {
         "additionalProperties": false,
@@ -21607,6 +21816,7 @@
                 "academic_years.view",
                 "accounts.manage",
                 "accounts.view",
+                "activity.supervised_staff.view",
                 "announcements.manage",
                 "appointments.manage",
                 "appointments.manage_self",
@@ -21651,6 +21861,7 @@
                 "organization.structure.view",
                 "platform_operations.manage",
                 "platform_operations.view",
+                "privacy_governance.activity.export",
                 "privacy_governance.manage",
                 "privacy_governance.retention.approve",
                 "privacy_governance.retention.manage",
@@ -21771,6 +21982,7 @@
                 "academic_years.view",
                 "accounts.manage",
                 "accounts.view",
+                "activity.supervised_staff.view",
                 "announcements.manage",
                 "appointments.manage",
                 "appointments.manage_self",
@@ -21815,6 +22027,7 @@
                 "organization.structure.view",
                 "platform_operations.manage",
                 "platform_operations.view",
+                "privacy_governance.activity.export",
                 "privacy_governance.manage",
                 "privacy_governance.retention.approve",
                 "privacy_governance.retention.manage",
@@ -37503,6 +37716,244 @@
         ]
       }
     },
+    "/api/v1/me/supervised-staff": {
+      "get": {
+        "operationId": "meListSupervisedStaff",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisedStaffPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "List my directly supervised staff",
+        "tags": [
+          "activity"
+        ]
+      }
+    },
+    "/api/v1/me/supervised-staff-activity": {
+      "get": {
+        "operationId": "meListSupervisedStaffActivity",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "staff_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Staff Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "event_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SupervisedActivityType"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisedActivityPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "View current supervised staff operational activity",
+        "tags": [
+          "activity"
+        ]
+      }
+    },
     "/api/v1/meta": {
       "get": {
         "operationId": "systemMetadata",
@@ -39592,6 +40043,87 @@
               "title": "Page Size",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "event_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TechnicalActivityType"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "operator",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Operator"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
           }
         ],
         "responses": {
@@ -40389,6 +40921,87 @@
                 }
               ]
             }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "event_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PrivacyActivityType"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
           }
         ],
         "responses": {
@@ -40439,6 +41052,172 @@
           }
         ],
         "summary": "Privacy Activity",
+        "tags": [
+          "privacy-governance"
+        ]
+      }
+    },
+    "/api/v1/privacy/activity/export": {
+      "get": {
+        "description": "Export all matching safe projected events, at most 10,000 rows. Over-limit requests fail without truncation. Calendar dates use the institutional timezone.",
+        "operationId": "privacyGovernanceExportActivity",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PrivacyActivityCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "event_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PrivacyActivityType"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Export curated privacy and security activity CSV",
         "tags": [
           "privacy-governance"
         ]

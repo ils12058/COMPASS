@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import NoReturn
 from uuid import UUID
 
+from django.http import HttpResponse
 from ninja import Router, Schema
 from pydantic import ConfigDict
 
+from compass.activity.retrieval import ActivityRetrievalError
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.authentication.step_up import require_recent_mfa_for_request
@@ -21,8 +23,16 @@ from .activity import (
     PrivacyActivityArtifactType,
     PrivacyActivityCategory,
     PrivacyActivityPaginationError,
+    PrivacyActivitySpec,
+    PrivacyActivityType,
     list_privacy_activity,
 )
+from .activity_export import (
+    CSV_CONTENT_TYPE,
+    PrivacyActivityExportTooLarge,
+    export_privacy_activity,
+)
+from .releases import ReleaseAuditUnavailable
 from .services import (
     PrivacyConflict,
     PrivacyGovernanceError,
@@ -40,7 +50,7 @@ class StrictSchema(Schema):
 class PrivacyActivityItemResponse(StrictSchema):
     id: UUID
     category: PrivacyActivityCategory
-    type: str
+    type: PrivacyActivityType
     title: str
     description: str
     occurred_at: datetime
@@ -91,6 +101,11 @@ def privacy_activity(
     page: int = 1,
     page_size: int = ACTIVITY_DEFAULT_PAGE_SIZE,
     category: PrivacyActivityCategory | None = None,
+    search: str | None = None,
+    event_type: PrivacyActivityType | None = None,
+    actor: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ):
     _require(request, "privacy_governance.view")
     try:
@@ -98,6 +113,11 @@ def privacy_activity(
             page=page,
             page_size=page_size,
             category=category,
+            search=search,
+            event_type=event_type,
+            actor=actor,
+            date_from=date_from,
+            date_to=date_to,
         )
     except PrivacyActivityPaginationError as exc:
         raise APIError(422, "invalid_privacy_activity_request", str(exc)) from exc
@@ -125,3 +145,57 @@ def privacy_activity(
 
 
 __all__ = ["router"]
+
+
+@router.get(
+    "/activity/export",
+    auth=session_auth,
+    response=response_with_errors(None, 401, 403, 422, 503),
+    operation_id="privacyGovernanceExportActivity",
+    summary="Export curated privacy and security activity CSV",
+    description=(
+        "Export all matching safe projected events, at most 10,000 rows. "
+        "Over-limit requests fail without truncation. "
+        "Calendar dates use the institutional timezone."
+    ),
+    openapi_extra={
+        "responses": {
+            200: {"content": {"text/csv": {"schema": {"type": "string", "format": "binary"}}}}
+        }
+    },
+)
+def privacy_activity_export(
+    request,
+    category: PrivacyActivityCategory | None = None,
+    search: str | None = None,
+    event_type: PrivacyActivityType | None = None,
+    actor: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+):
+    _require(request, "privacy_governance.activity.export")
+    try:
+        spec = PrivacyActivitySpec.build(
+            category=category,
+            search=search,
+            event_type=event_type,
+            actor=actor,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        result = export_privacy_activity(spec=spec, context=_context(request))
+    except PrivacyActivityExportTooLarge as exc:
+        raise APIError(422, "privacy_activity_export_too_large", str(exc)) from exc
+    except ActivityRetrievalError as exc:
+        raise APIError(422, "invalid_privacy_activity_request", str(exc)) from exc
+    except ReleaseAuditUnavailable as exc:
+        raise APIError(
+            503,
+            "release_audit_unavailable",
+            "The required export audit could not be recorded. Try again.",
+        ) from exc
+    response = HttpResponse(result.content, content_type=CSV_CONTENT_TYPE)
+    response["Content-Disposition"] = f'attachment; filename="{result.filename}"'
+    response["Cache-Control"] = "no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response

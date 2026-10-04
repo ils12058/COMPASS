@@ -1,5 +1,7 @@
 """Stable audit action codes used by the current COMPASS foundation."""
 
+PRIVACY_ACTIVITY_EXPORTED = "privacy.activity.exported"
+
 ACCOUNT_CREATED = "account.created"
 ACCOUNT_CSV_IMPORTED = "account.csv_imported"
 ACCOUNT_UPDATED = "account.updated"
@@ -208,6 +210,7 @@ ECOUNSELING_TRANSCRIPTION_START_REQUESTED = "ecounseling.transcription_start_req
 ECOUNSELING_TRANSCRIPTION_STOP_REQUESTED = "ecounseling.transcription_stop_requested"
 
 __all__ = [
+    "PRIVACY_ACTIVITY_EXPORTED",
     "ACCOUNT_CREATED",
     "ACCOUNT_CSV_IMPORTED",
     "ACCOUNT_UPDATED",

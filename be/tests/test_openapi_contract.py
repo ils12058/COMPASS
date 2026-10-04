@@ -52,6 +52,7 @@ EXPECTED_OPERATION_IDS = {
     "platformOperationsRetryEmailDelivery",
     "platformOperationsListActivity",
     "privacyGovernanceListActivity",
+    "privacyGovernanceExportActivity",
     "privacyGovernanceListNotices",
     "privacyGovernanceCreateNotice",
     "privacyGovernanceGetNotice",
@@ -91,6 +92,8 @@ EXPECTED_OPERATION_IDS = {
     "authRevokeOtherTrustedSessions",
     "authRevokeTrustedSession",
     "meListActivity",
+    "meListSupervisedStaff",
+    "meListSupervisedStaffActivity",
     "meListSecurityActivity",
     "profileGetMyProfile",
     "profileUpdateMyProfile",
@@ -1680,6 +1683,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "accounts.view",
             "academic_years.manage",
             "academic_years.view",
+            "activity.supervised_staff.view",
             "announcements.manage",
             "appointments.manage",
             "appointments.manage_self",
@@ -1725,6 +1729,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "platform_operations.manage",
             "platform_operations.view",
             "privacy_governance.manage",
+            "privacy_governance.activity.export",
             "privacy_governance.retention.view",
             "privacy_governance.retention.manage",
             "privacy_governance.retention.approve",
@@ -1971,8 +1976,14 @@ def test_privacy_governance_openapi_is_reduced_to_retained_system_controls() -> 
     for removed_prefix in ("ProcessingActivity", "PrivacyReview", "PrivacyIncident"):
         assert not any(name.startswith(removed_prefix) for name in schemas)
 
+    # Closed event-type values legitimately name password/OTP security actions;
+    # sensitive payload fields must remain absent from the safe response schemas.
     serialized = json.dumps(
-        {name: value for name, value in schemas.items() if name.startswith("PrivacyActivity")}
+        {
+            name: value
+            for name, value in schemas.items()
+            if name.startswith("PrivacyActivity") and name != "PrivacyActivityType"
+        }
     ).lower()
     for forbidden in (
         "raw_metadata",
@@ -1985,6 +1996,8 @@ def test_privacy_governance_openapi_is_reduced_to_retained_system_controls() -> 
         "inventory_content",
     ):
         assert forbidden not in serialized
+    assert "auth.password.reset" in schemas["PrivacyActivityType"]["enum"]
+    assert "auth.mfa.totp.disabled" in schemas["PrivacyActivityType"]["enum"]
 
 
 def test_availability_provider_discovery_openapi_contract() -> None:

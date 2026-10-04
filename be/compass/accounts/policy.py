@@ -72,6 +72,16 @@ DESIGNATION_DEFINITIONS = (
 
 CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
+        code="activity.supervised_staff.view",
+        name="View supervised staff activity",
+        description="View selected operational activity within current direct StaffSupervision.",
+    ),
+    CapabilityDefinition(
+        code="privacy_governance.activity.export",
+        name="Export privacy and security activity",
+        description="Export the bounded curated privacy/security activity dataset as CSV.",
+    ),
+    CapabilityDefinition(
         code="privacy_governance.retention.view",
         name="View retention and disposition",
         description="View minimized retention rules, cases, holds, and disposition outcomes.",
@@ -477,6 +487,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     ),
     "COUNSELOR": frozenset(
         {
+            "activity.supervised_staff.view",
             "accounts.view",
             "organization.structure.view",
             "academic_years.view",
@@ -578,6 +589,7 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     ),
     "DPO": frozenset(
         {
+            "privacy_governance.activity.export",
             "privacy_governance.retention.view",
             "privacy_governance.retention.manage",
             "privacy_governance.retention.approve",
@@ -599,6 +611,7 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 # Dependencies constrain whether already-granted authority is effective. They never
 # create prerequisite authority or rewrite persisted grants/overrides.
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
+    "privacy_governance.activity.export": frozenset({"privacy_governance.view"}),
     "privacy_governance.retention.manage": frozenset({"privacy_governance.retention.view"}),
     "privacy_governance.retention.approve": frozenset({"privacy_governance.retention.view"}),
     "routine_interviews.manage_self": frozenset({"routine_interviews.view_self"}),
