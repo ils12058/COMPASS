@@ -12,7 +12,7 @@ from pydantic import ConfigDict
 from compass.accounts.api_codes import RoleCode
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
-from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
+from compass.authentication.step_up import require_recent_mfa_for_request
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.organization.models import CounselorResponsibility, StaffSupervision
@@ -162,10 +162,7 @@ def _require(request, capability: str, *, recent_mfa: bool = False) -> None:
     if not request.auth_user.has_capability(capability):
         raise APIError(403, "permission_denied", f"The {capability} capability is required.")
     if recent_mfa:
-        try:
-            require_recent_mfa(request.auth_session)
-        except RecentMFARequired as exc:
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        require_recent_mfa_for_request(request)
 
 
 def _raise(exc: OrganizationError) -> NoReturn:

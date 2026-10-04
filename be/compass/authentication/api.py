@@ -76,6 +76,7 @@ from compass.authentication.services import (
     start_login_totp_enrollment,
 )
 from compass.authentication.sessions import (
+    MFASetupRequired,
     RecentMFARequired,
     has_recent_mfa,
     resolve_trusted_session,
@@ -84,6 +85,7 @@ from compass.authentication.sessions import (
     revoke_other_auth_sessions,
     revoke_trusted_session,
 )
+from compass.authentication.step_up import step_up_api_error
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.rate_limit import client_ip
@@ -496,7 +498,7 @@ def _raise_password_policy(exc: PasswordPolicyRejected) -> None:
 
 def _raise_password_change_error(exc: Exception) -> None:
     if isinstance(exc, RecentMFARequired):
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     if isinstance(exc, PasswordChangeStrongAuthRequired):
         raise APIError(
             403,
@@ -518,7 +520,7 @@ def _raise_password_change_error(exc: Exception) -> None:
 
 def _raise_email_change_error(exc: Exception) -> None:
     if isinstance(exc, RecentMFARequired):
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     if isinstance(exc, EmailChangeStrongAuthRequired):
         raise APIError(
             403,
@@ -1190,12 +1192,11 @@ def totp_disable(request):
             context=AuditContext.from_request(request, actor=user),
         )
     except Exception as exc:
-        from compass.authentication.sessions import RecentMFARequired
-
-        if isinstance(exc, RecentMFARequired):
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
-        if isinstance(exc, TOTPNotConfigured):
+        # Without an authenticator there is nothing to disable or regenerate codes for.
+        if isinstance(exc, (TOTPNotConfigured, MFASetupRequired)):
             raise APIError(400, "mfa_not_configured", "TOTP is not enabled.") from exc
+        if isinstance(exc, RecentMFARequired):
+            raise step_up_api_error(exc) from exc
         _raise_security_unavailable(exc)
     return {"enabled": False, "recent": has_recent_mfa(request.auth_session)}
 
@@ -1216,12 +1217,11 @@ def recovery_codes_regenerate(request):
             context=AuditContext.from_request(request, actor=user),
         )
     except Exception as exc:
-        from compass.authentication.sessions import RecentMFARequired
-
-        if isinstance(exc, RecentMFARequired):
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
-        if isinstance(exc, TOTPNotConfigured):
+        # Without an authenticator there is nothing to disable or regenerate codes for.
+        if isinstance(exc, (TOTPNotConfigured, MFASetupRequired)):
             raise APIError(400, "mfa_not_configured", "TOTP is not enabled.") from exc
+        if isinstance(exc, RecentMFARequired):
+            raise step_up_api_error(exc) from exc
         _raise_security_unavailable(exc)
     return {"enabled": True, "recovery_codes": list(codes)}
 

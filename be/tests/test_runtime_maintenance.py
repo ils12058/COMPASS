@@ -114,7 +114,8 @@ def test_maintenance_read_and_mutations_use_view_manage_and_recent_mfa():
         {"message": "Planned database maintenance"},
     )
     assert denied.status_code == 403
-    assert denied.json()["error"]["code"] == "recent_mfa_required"
+    # This operator has no authenticator, so setup is required before maintenance can change.
+    assert denied.json()["error"]["code"] == "mfa_setup_required"
 
     counselor_client = auth_client(counselor, recent_mfa=True)
     denied_role = post_json(

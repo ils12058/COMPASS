@@ -354,13 +354,21 @@ def _assert_recent_mfa(*, actor: User, actor_session) -> None:
 
 
 @contextmanager
-def _admin_mutation(*, actor: User, actor_session, target_id=None, authority_change: bool = False):
+def _admin_mutation(
+    *,
+    actor: User,
+    actor_session,
+    target_id=None,
+    authority_change: bool = False,
+    recent_mfa: bool = True,
+):
     with transaction.atomic():
         if authority_change:
             _lock_management_mutex()
         locked_actor, locked_target = _lock_users(actor_id=actor.pk, target_id=target_id)
         _assert_manager(locked_actor)
-        _assert_recent_mfa(actor=locked_actor, actor_session=actor_session)
+        if recent_mfa:
+            _assert_recent_mfa(actor=locked_actor, actor_session=actor_session)
         yield locked_actor, locked_target
 
 
@@ -700,11 +708,14 @@ def update_identity(
     if not changes:
         raise InvalidManagementInput("at least one identity field is required")
 
+    # Name and institutional ID corrections are routine record keeping, not an access change, so
+    # they do not need step-up. Sign-in email, role, access, and security changes keep it.
     with _admin_mutation(
         actor=actor,
         actor_session=actor_session,
         target_id=target_id,
         authority_change=False,
+        recent_mfa=False,
     ) as (_locked_actor, target):
         assert target is not None
         normalized: dict[str, object] = {}

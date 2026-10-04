@@ -131,6 +131,8 @@ class RevisionUpdate(StrictSchema):
     body: str | None = None
     requires_acknowledgment: bool | None = None
     effective_on: date | None = None
+    # The draft's updated_at as last read by the editor; a later save elsewhere is a conflict.
+    expected_updated_at: datetime | None = None
 
 
 def _revision_summary(item):
@@ -207,7 +209,7 @@ def notice_list(
     operation_id="privacyGovernanceCreateNotice",
 )
 def notice_create(request, payload: NoticeCreate):
-    _require(request, "privacy_governance.manage", recent_mfa=True)
+    _require(request, "privacy_governance.manage")
     try:
         return Status(
             201,
@@ -242,7 +244,7 @@ def notice_get(request, notice_id: UUID):
     operation_id="privacyGovernanceUpdateNotice",
 )
 def notice_update(request, notice_id: UUID, payload: NoticeUpdate):
-    _require(request, "privacy_governance.manage", recent_mfa=True)
+    _require(request, "privacy_governance.manage")
     try:
         return _notice(
             service.update_notice(
@@ -295,7 +297,7 @@ def revision_list(
     operation_id="privacyGovernanceCreateNoticeRevision",
 )
 def revision_create(request, notice_id: UUID, payload: RevisionCreate):
-    _require(request, "privacy_governance.manage", recent_mfa=True)
+    _require(request, "privacy_governance.manage")
     try:
         return Status(
             201,
@@ -333,13 +335,16 @@ def revision_get(request, revision_id: UUID):
     operation_id="privacyGovernanceUpdateNoticeRevision",
 )
 def revision_update(request, revision_id: UUID, payload: RevisionUpdate):
-    _require(request, "privacy_governance.manage", recent_mfa=True)
+    _require(request, "privacy_governance.manage")
     try:
+        changes = payload.model_dump(exclude_unset=True)
+        expected_updated_at = changes.pop("expected_updated_at", None)
         return _revision(
             service.update_revision(
                 revision_id=revision_id,
                 context=_context(request),
-                changes=payload.model_dump(exclude_unset=True),
+                changes=changes,
+                expected_updated_at=expected_updated_at,
             )
         )
     except PrivacyGovernanceError as exc:
@@ -442,12 +447,28 @@ def public_notices(request, page: int = 1, page_size: int = service.DEFAULT_PAGE
     auth=session_auth,
     operation_id="privacyGovernanceListMyNotices",
 )
-def my_notices(request, page: int = 1, page_size: int = service.DEFAULT_PAGE_SIZE):
+def my_notices(
+    request,
+    page: int = 1,
+    page_size: int = service.DEFAULT_PAGE_SIZE,
+    pending_acknowledgment: bool = False,
+):
+    """Current notices for this account.
+
+    ``pending_acknowledgment=true`` narrows the list to notices that still ask this account for an
+    acknowledgment, so the portal can find the next one without reading the whole history.
+    """
+
     actor = request.auth_user
     if not actor.is_active:
         raise APIError(403, "permission_denied", "An active account is required.")
+    revisions = (
+        service.pending_acknowledgment_revisions(actor)
+        if pending_acknowledgment
+        else service.applicable_revisions(actor)
+    )
     try:
-        result = service.page(service.applicable_revisions(actor), page=page, page_size=page_size)
+        result = service.page(revisions, page=page, page_size=page_size)
     except PrivacyGovernanceError as exc:
         _raise(exc)
     ids = [item.pk for item in result["items"]]

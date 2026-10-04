@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Panel, PanelHeader } from "@/components/ui/panel";
-import { StepUpDialog } from "@/features/account/security/security-shared";
 import {
   referralErrorCode,
   referralErrorMessage,
@@ -116,14 +115,12 @@ export function ReferralActionEntry({
   const [remarks, setRemarks] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
   const [reconcileRequired, setReconcileRequired] = useState(false);
   const [review, setReview] = useState<{
     action_type: ReferralActionTypeValue;
     occurred_at: string;
     remarks: string;
   } | null>(null);
-  const [resumeReview, setResumeReview] = useState<typeof review>(null);
   // Covers the whole confirmation, including the refresh after the request succeeds.
   const [recording, setRecording] = useState(false);
   const record = useMutation({
@@ -144,7 +141,6 @@ export function ReferralActionEntry({
     const recorded = current.actions.some((item) => item.action_type === actionType);
     if (recorded) {
       setReview(null);
-      setResumeReview(null);
       setOpen(false);
       setNotice("This source action is already recorded on the Referral.");
       return "recorded";
@@ -189,18 +185,12 @@ export function ReferralActionEntry({
       await record.mutateAsync(reviewed);
       await queryClient.invalidateQueries({ queryKey: getReferralsGetQueryKey(referral.id) });
       setReview(null);
-      setResumeReview(null);
       setOpen(false);
       setNotice("Referral source action recorded.");
       setOccurredAt("");
       setRemarks("");
     } catch (caught) {
-      if (referralErrorCode(caught) === "recent_mfa_required") {
-        setReview(null);
-        setResumeReview(reviewed);
-        setNotice("Verify your authenticator, then review and confirm the source action again.");
-        setStepUpOpen(true);
-      } else if (referralErrorCode(caught) === "referral_conflict") {
+      if (referralErrorCode(caught) === "referral_conflict") {
         const result = await reconcile();
         if (result === "missing") {
           setError(referralErrorMessage(caught, "The Referral action conflicts with current source history."));
@@ -316,16 +306,6 @@ export function ReferralActionEntry({
           </>
         ) : null}
       </ConsequentialActionDialog>
-      <StepUpDialog
-        open={stepUpOpen}
-        onOpenChange={setStepUpOpen}
-        onVerified={() => {
-          const reviewed = resumeReview;
-          setResumeReview(null);
-          setNotice("Verification complete. Review and confirm the source action again to continue.");
-          if (reviewed) setReview(reviewed);
-        }}
-      />
     </div>
   );
 }

@@ -2,6 +2,24 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+// The list URL after applying changes to the current query. Unchanged parameters stay; a filter
+// change drops the page so the new results start on page 1.
+export function contentListHref(
+  pathname: string,
+  current: URLSearchParams,
+  changes: Record<string, string | null>,
+  resetPage = true,
+): string {
+  const next = new URLSearchParams(current.toString());
+  for (const [key, value] of Object.entries(changes)) {
+    if (value) next.set(key, value);
+    else next.delete(key);
+  }
+  if (resetPage) next.delete("page");
+  const query = next.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}
+
 // Keeps list filters and the page number in the URL so they survive opening a
 // record and returning. Filter changes reset to page 1.
 export function useContentListParams() {
@@ -15,14 +33,7 @@ export function useContentListParams() {
   })();
 
   function hrefWith(changes: Record<string, string | null>, resetPage = true): string {
-    const next = new URLSearchParams(searchParams.toString());
-    for (const [key, value] of Object.entries(changes)) {
-      if (value) next.set(key, value);
-      else next.delete(key);
-    }
-    if (resetPage) next.delete("page");
-    const query = next.toString();
-    return query ? `${pathname}?${query}` : pathname;
+    return contentListHref(pathname, new URLSearchParams(searchParams.toString()), changes, resetPage);
   }
 
   function update(changes: Record<string, string | null>) {

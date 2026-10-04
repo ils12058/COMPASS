@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelBody, PanelHeader, PanelSection } from "@/components/ui/panel";
-import { StepUpDialog } from "@/features/account/security/security-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { callSlipErrorMessage } from "@/features/call-slips/call-slips-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -266,7 +265,6 @@ function StatusNoteEditor({ referralId, statusNote }: { referralId: string; stat
   const [value, setValue] = useState(statusNote);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
   const update = useMutation({
     mutationFn: () => referralsUpdateStatus(referralId, { status_note: value }),
     retry: false,
@@ -285,12 +283,7 @@ function StatusNoteEditor({ referralId, statusNote }: { referralId: string; stat
       setEditing(false);
       setNotice("Status note updated.");
     } catch (caught) {
-      if (referralErrorCode(caught) === "recent_mfa_required") {
-        setNotice("Verify your authenticator, then submit the status note again.");
-        setStepUpOpen(true);
-      } else {
-        setError(referralErrorMessage(caught, "The status note could not be updated."));
-      }
+      setError(referralErrorMessage(caught, "The status note could not be updated."));
     }
   }
 
@@ -315,7 +308,6 @@ function StatusNoteEditor({ referralId, statusNote }: { referralId: string; stat
         </form>
       )}
       {notice ? <p role="status" className="mt-3 text-sm text-muted">{notice}</p> : null}
-      <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => setNotice("Verification complete. Submit the status note again to continue.")} />
     </div>
   );
 }
@@ -332,7 +324,6 @@ function VoidReferralButton({
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
   // Covers the whole confirmation, including the refresh after the request succeeds.
   const [voiding, setVoiding] = useState(false);
   const voidMutation = useMutation({
@@ -361,11 +352,7 @@ function VoidReferralButton({
       setReason("");
     } catch (caught) {
       const code = referralErrorCode(caught);
-      if (code === "recent_mfa_required") {
-        setOpen(false);
-        setNotice("Verify your authenticator, then review and confirm the void again.");
-        setStepUpOpen(true);
-      } else if (
+      if (
         code === "referral_conflict" ||
         code === "referral_active_call_slip_conflict" ||
         code === "referral_completed_call_slip_conflict" ||
@@ -375,16 +362,16 @@ function VoidReferralButton({
         if (refreshed?.voided_at) {
           setOpen(false);
           setNotice("The Referral is already voided.");
+        } else if (!refreshed) {
+          setError("The Referral could not be refreshed. Do not retry the void until the current record can be checked.");
         } else if (
           code === "referral_conflict" ||
           code === "referral_active_call_slip_conflict" ||
           code === "referral_completed_call_slip_conflict"
         ) {
           setError(referralErrorMessage(caught, "The Referral could not be voided."));
-        } else if (refreshed) {
-          setError("The Referral is not shown as voided after refreshing. Review the current record before confirming again.");
         } else {
-          setError("The Referral could not be refreshed. Do not retry the void until the current record can be checked.");
+          setError("The Referral is not shown as voided after refreshing. Review the current record before confirming again.");
         }
       } else {
         setError(referralErrorMessage(caught, "The Referral could not be voided."));
@@ -431,14 +418,6 @@ function VoidReferralButton({
           <p className="text-xs text-muted">{reason.length} / 1,000 characters</p>
         </div>
       </ConsequentialActionDialog>
-      <StepUpDialog
-        open={stepUpOpen}
-        onOpenChange={setStepUpOpen}
-        onVerified={() => {
-          setNotice("Verification complete. Review the reason and confirm the void again.");
-          setOpen(true);
-        }}
-      />
     </>
   );
 }

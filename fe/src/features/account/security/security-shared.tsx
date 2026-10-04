@@ -4,12 +4,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { accountErrorMessage } from "@/features/account/components/account-errors";
+import { AUTHENTICATOR_SETUP_HREF, type StepUpRequirement } from "@/features/account/security/step-up";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import {
   getAuthGetMfaStatusQueryKey,
   getAuthGetSessionQueryKey,
@@ -24,7 +26,52 @@ export function SecurityBackLink() {
   );
 }
 
+// Opens for a retained strong-auth action. With an authenticator ("verify") it asks for a current
+// code; without one ("setup") it never asks for a code and points to authenticator setup instead.
 export function StepUpDialog({
+  open,
+  onOpenChange,
+  onVerified,
+  requirement = "verify",
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onVerified?: () => void;
+  requirement?: StepUpRequirement;
+}) {
+  if (requirement === "setup") {
+    return <AuthenticatorSetupDialog open={open} onOpenChange={onOpenChange} />;
+  }
+  return <AuthenticatorCodeDialog open={open} onOpenChange={onOpenChange} onVerified={onVerified} />;
+}
+
+function AuthenticatorSetupDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogTitle>Set up an authenticator</DialogTitle>
+        <DialogDescription>
+          This action needs an authenticator app on your account. Set one up in Security, then try
+          the action again.
+        </DialogDescription>
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <GuardedPortalLink href={AUTHENTICATOR_SETUP_HREF} className={buttonVariants({ variant: "primary" })}>
+            Set up authenticator
+          </GuardedPortalLink>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AuthenticatorCodeDialog({
   open,
   onOpenChange,
   onVerified,

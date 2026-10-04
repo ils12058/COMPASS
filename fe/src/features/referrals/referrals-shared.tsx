@@ -19,11 +19,10 @@ const knownReferralErrors: Record<string, string> = {
   referral_document_unavailable: "The document could not be released right now. Try again later.",
   release_audit_unavailable: "The document could not be released right now. Try again later.",
   invalid_referral_request: "The Referral request contains a value that was not accepted. Review the details and try again.",
-  referral_conflict: "The Referral has changed or conflicts with another recorded source action. Refresh the record and review it before trying again.",
+  referral_conflict: "The Referral changed or conflicts with another recorded source action. The latest details are now shown; review them before trying again.",
   referral_active_call_slip_conflict: "This Referral cannot be voided while its linked Call Slip is active. Void the Call Slip first.",
   referral_completed_call_slip_conflict: "This Referral cannot be voided because its linked Call Slip records a completed interview.",
   idempotency_key_conflict: "This creation attempt no longer matches its original details. Review the form and submit again.",
-  recent_mfa_required: "Recent authenticator verification is required.",
 };
 
 export function referralErrorCode(error: unknown): string | undefined {

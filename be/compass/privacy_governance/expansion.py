@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
@@ -350,7 +350,21 @@ def create_revision(*, notice_id: UUID, actor: User, context: AuditContext, **va
     return revision
 
 
-def update_revision(*, revision_id: UUID, context: AuditContext, changes: dict[str, Any]):
+def _same_saved_version(saved: datetime, expected: datetime) -> bool:
+    """Compare at the millisecond precision API responses carry ``updated_at`` with."""
+
+    return saved.replace(microsecond=saved.microsecond // 1000 * 1000) == expected.replace(
+        microsecond=expected.microsecond // 1000 * 1000
+    )
+
+
+def update_revision(
+    *,
+    revision_id: UUID,
+    context: AuditContext,
+    changes: dict[str, Any],
+    expected_updated_at: datetime | None = None,
+):
     cleaned = _revision_values(changes)
     with transaction.atomic():
         candidate = get_revision(revision_id)
@@ -365,6 +379,15 @@ def update_revision(*, revision_id: UUID, context: AuditContext, changes: dict[s
             raise PrivacyConflict(
                 "only a draft of an active privacy notice can be edited",
                 code=PrivacyConflictCode.NOTICE_REVISION_IMMUTABLE,
+            )
+        # An editor that read the draft earlier says which saved version its changes build on, so
+        # a save made elsewhere in the meantime is reported instead of silently overwritten.
+        if expected_updated_at is not None and not _same_saved_version(
+            revision.updated_at, expected_updated_at
+        ):
+            raise PrivacyConflict(
+                "the draft was saved elsewhere after it was read",
+                code=PrivacyConflictCode.NOTICE_REVISION_CHANGED,
             )
         if not cleaned:
             return revision
@@ -454,6 +477,19 @@ def applicable_revisions(actor: User):
     audience = "STUDENT" if actor.role.code == "STUDENT" else "STAFF"
     return current_revisions().filter(
         Q(audiences__contains=["PUBLIC"]) | Q(audiences__contains=[audience])
+    )
+
+
+def pending_acknowledgment_revisions(actor: User):
+    """Current applicable revisions that ask this account for an acknowledgment it has not given.
+
+    Acknowledgment is a record that the notice was seen; it does not gate other workflows.
+    """
+
+    return (
+        applicable_revisions(actor)
+        .filter(requires_acknowledgment=True)
+        .exclude(acknowledgments__user=actor)
     )
 
 

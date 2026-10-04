@@ -11,6 +11,11 @@ import { LoadingRegion } from "@/components/ui/loading-region";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
+import {
+  stepUpNotice,
+  stepUpRequirement,
+  type StepUpRequirement,
+} from "@/features/account/security/step-up";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
@@ -18,7 +23,6 @@ import {
   canViewPrivacyGovernance,
 } from "@/features/privacy-governance/privacy-governance-access";
 import {
-  isRecentMfaRequired,
   privacyErrorMessage,
   type PrivacyFieldLabels,
 } from "@/features/privacy-governance/privacy-governance-errors";
@@ -47,13 +51,13 @@ export function usePrivacyAccess() {
   };
 }
 
-// Management mutations require recent MFA. Like other COMPASS workspaces, a
-// step-up opens the shared verification dialog and the person submits again;
-// the mutation is never replayed automatically.
+// Publishing and retiring a notice require recent MFA; drafting does not. A step-up opens the
+// shared dialog and the person submits again; the mutation is never replayed automatically.
 export function usePrivacyAction(labels?: PrivacyFieldLabels) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
 
   async function run<T>(
     operation: () => Promise<T>,
@@ -68,11 +72,11 @@ export function usePrivacyAction(labels?: PrivacyFieldLabels) {
     try {
       return await operation();
     } catch (caught) {
-      if (isRecentMfaRequired(caught)) {
+      const requirement = stepUpRequirement(caught);
+      if (requirement) {
         options?.onStepUpRequired?.();
-        setNotice(
-          "Recent authenticator verification is required. Verify, then submit the action again.",
-        );
+        setStepUp(requirement);
+        setNotice(stepUpNotice(requirement));
         setStepUpOpen(true);
       } else {
         setError(privacyErrorMessage(caught, fallback, labels));
@@ -90,6 +94,7 @@ export function usePrivacyAction(labels?: PrivacyFieldLabels) {
   const stepUpDialog = (
     <StepUpDialog
       open={stepUpOpen}
+      requirement={stepUp}
       onOpenChange={setStepUpOpen}
       onVerified={() =>
         setNotice("Verification complete. Submit the action again to continue.")

@@ -8,7 +8,6 @@ import { useRef, useState, type FormEvent } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
-import { StepUpDialog } from "@/features/account/security/security-shared";
 import { CallSlipFormFields, type CallSlipDraft, toCallSlipRequestFields } from "@/features/call-slips/call-slip-form-fields";
 import { CallSlipAccessUnavailable, CallSlipHeading, callSlipErrorCode, callSlipErrorMessage, callSlipDestinationLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
@@ -41,7 +40,6 @@ export function DirectCallSlipCreatePage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
   const intent = useRef<CreateIntent | null>(null);
 
   const students = useCallSlipsListEligibleStudents(
@@ -93,11 +91,7 @@ export function DirectCallSlipCreatePage() {
       await queryClient.invalidateQueries({ queryKey: getCallSlipsListQueryKey() });
       router.push(`/portal/call-slips/${callSlip.id}`);
     } catch (caught) {
-      if (callSlipErrorCode(caught) === "recent_mfa_required") {
-        setConfirmOpen(false);
-        setNotice("Verify your authenticator, then review and confirm this issuance again.");
-        setStepUpOpen(true);
-      } else if (callSlipErrorCode(caught) === "idempotency_key_conflict") {
+      if (callSlipErrorCode(caught) === "idempotency_key_conflict") {
         intent.current = null;
         setConfirmOpen(false);
         setError(callSlipErrorMessage(caught, "This issuance attempt no longer matches its original details. Review the form and try again."));
@@ -181,7 +175,6 @@ export function DirectCallSlipCreatePage() {
           <div className="sm:col-span-2"><dt className="text-xs font-semibold text-muted">Issuance mode</dt><dd className="mt-1 text-ink">{draft.notifyStudent ? "Live issuance — creates an in-app notification and queues required operational email." : "Historical / back-entry — no new issuance notification."}</dd></div>
         </dl>
       </ConsequentialActionDialog>
-      <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setNotice("Verification complete. Review and confirm the issuance again."); setConfirmOpen(true); }} />
     </div>
   );
 }

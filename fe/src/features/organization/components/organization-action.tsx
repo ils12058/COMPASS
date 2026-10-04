@@ -4,6 +4,11 @@ import { useState } from "react";
 
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import {
+  stepUpNotice,
+  stepUpRequirement,
+  type StepUpRequirement,
+} from "@/features/account/security/step-up";
+import {
   CompassApiError,
   readApiErrorCode,
 } from "@/lib/api/errors";
@@ -15,7 +20,6 @@ const knownErrors: Record<string, string> = {
     "This change conflicts with an existing Organization relationship or active structure.",
   invalid_organization_request:
     "The selected Organization value is no longer eligible for this action.",
-  recent_mfa_required: "Recent authenticator verification is required.",
 };
 
 export function organizationErrorMessage(
@@ -31,6 +35,7 @@ export function useOrganizationAction() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
   const [afterStepUp, setAfterStepUp] = useState<(() => void) | null>(null);
 
   async function run<T>(
@@ -46,14 +51,12 @@ export function useOrganizationAction() {
     try {
       return await operation();
     } catch (caught) {
-      const code =
-        caught instanceof CompassApiError
-          ? readApiErrorCode(caught.body)
-          : undefined;
-      if (code === "recent_mfa_required") {
+      const requirement = stepUpRequirement(caught);
+      if (requirement) {
+        setStepUp(requirement);
         options?.onStepUpRequired?.();
         setAfterStepUp(() => options?.onStepUpVerified ?? null);
-        setNotice("Verify your authenticator, then submit the action again.");
+        setNotice(stepUpNotice(requirement));
         setStepUpOpen(true);
       } else {
         setError(organizationErrorMessage(caught, fallback));
@@ -80,6 +83,7 @@ export function useOrganizationAction() {
   const stepUpDialog = (
     <StepUpDialog
       open={stepUpOpen}
+      requirement={stepUp}
       onOpenChange={setStepUpOpen}
       onVerified={() => {
         setNotice("Verification complete. Submit the action again to continue.");

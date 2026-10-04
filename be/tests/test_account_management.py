@@ -135,7 +135,7 @@ def test_account_management_requires_manage_not_accounts_view_and_requires_recen
         headers=csrf_headers(manager_client),
     )
     assert response.status_code == 403
-    assert response.json()["error"]["code"] == "recent_mfa_required"
+    assert response.json()["error"]["code"] == "mfa_setup_required"
 
 
 @pytest.mark.django_db
@@ -1085,7 +1085,7 @@ def test_student_lifecycle_authority_and_role_transition_preservation():
         **csrf_headers(stale_client),
     )
     assert stale_response.status_code == 403
-    assert stale_response.json()["error"]["code"] == "recent_mfa_required"
+    assert stale_response.json()["error"]["code"] == "mfa_setup_required"
 
     for role_code in ("STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF"):
         actor = make_user(
@@ -1242,7 +1242,7 @@ def test_designation_mutation_requires_dedicated_capability_recent_mfa_and_is_ne
         headers=csrf_headers(admin_client),
     )
     assert recent_required.status_code == 403
-    assert recent_required.json()["error"]["code"] == "recent_mfa_required"
+    assert recent_required.json()["error"]["code"] == "mfa_setup_required"
 
     admin_client, admin, _session = make_admin_client(email="self-designation-admin@example.edu")
     self_target = post_json(

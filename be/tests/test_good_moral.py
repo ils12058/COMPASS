@@ -702,7 +702,7 @@ def test_good_moral_issuance_requires_active_supported_variant_revision():
 
 
 @pytest.mark.django_db
-def test_issue_api_requires_counselor_capability_and_recent_mfa():
+def test_issue_api_requires_counselor_capability_but_not_step_up():
     sync_policy()
     student = make_user(
         "mfa.student@example.edu",
@@ -718,16 +718,6 @@ def test_issue_api_requires_counselor_capability_and_recent_mfa():
     )
     item = make_graduate_request(student)
 
-    stale = auth_client(counselor)
-    response = stale.post(
-        f"/api/v1/good-moral/requests/{item.pk}/issue",
-        data=json.dumps({}),
-        content_type="application/json",
-        **csrf(stale),
-    )
-    assert response.status_code == 403
-    assert response.json()["error"]["code"] == "recent_mfa_required"
-
     for user in (student, gss, admin, dpo):
         client = auth_client(user, recent_mfa=True)
         denied = client.post(
@@ -738,12 +728,14 @@ def test_issue_api_requires_counselor_capability_and_recent_mfa():
         )
         assert denied.status_code == 403
 
-    fresh = auth_client(counselor, recent_mfa=True)
-    issued = fresh.post(
+    # Issuance is routine Guidance Office work: the capability, confirmation, and issuer
+    # provenance protect it, so a session without a recent step-up can issue.
+    without_step_up = auth_client(counselor)
+    issued = without_step_up.post(
         f"/api/v1/good-moral/requests/{item.pk}/issue",
         data=json.dumps({}),
         content_type="application/json",
-        **csrf(fresh),
+        **csrf(without_step_up),
     )
     assert issued.status_code == 200
     assert issued.json()["status"] == "ISSUED"

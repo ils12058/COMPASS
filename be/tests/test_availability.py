@@ -596,7 +596,7 @@ def test_head_manage_capability_can_still_self_manage_when_manage_self_is_revoke
 
 
 @pytest.mark.django_db
-def test_administrative_mutation_requires_manage_and_recent_mfa():
+def test_administrative_mutation_requires_manage_but_not_step_up():
     sync_policy()
     provider = make_user("provider@example.edu", "COUNSELOR")
     counselor = make_user("ordinary@example.edu", "COUNSELOR")
@@ -610,22 +610,13 @@ def test_administrative_mutation_requires_manage_and_recent_mfa():
     assert denied.status_code == 403
 
     admin = make_user("admin@example.edu", "IT_ADMIN")
-    stale = auth_client(admin, recent_mfa=False)
-    stale_response = stale.put(
+    # Routine schedule administration needs the capability, not a recent step-up.
+    without_step_up = auth_client(admin, recent_mfa=False)
+    okay = without_step_up.put(
         "/api/v1/availability/office/weekly",
         data=json.dumps({"windows": []}),
         content_type="application/json",
-        **csrf(stale),
-    )
-    assert stale_response.status_code == 403
-    assert stale_response.json()["error"]["code"] == "recent_mfa_required"
-
-    recent = auth_client(admin, recent_mfa=True)
-    okay = recent.put(
-        "/api/v1/availability/office/weekly",
-        data=json.dumps({"windows": []}),
-        content_type="application/json",
-        **csrf(recent),
+        **csrf(without_step_up),
     )
     assert okay.status_code == 200
 

@@ -120,7 +120,7 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
     case "current_student_required":
       return "Only current students can start, edit, or submit this year’s Individual Inventory. Your saved history remains available.";
     case "inventory_conflict":
-      return "The Individual Inventory changed while you were working. Refresh it before continuing.";
+      return "This Individual Inventory changed before your action completed.";
     case "inventory_invalid":
       return "Some required Individual Inventory details need attention. Review the form and try submitting again.";
     case "psgc_reference_unavailable":

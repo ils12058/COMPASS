@@ -93,7 +93,7 @@ def test_notice_lifecycle_public_self_acknowledgment_and_new_revision():
 
 
 @pytest.mark.django_db
-def test_audiences_future_effective_date_and_recent_mfa():
+def test_audiences_future_effective_date_and_publication_step_up():
     sync_policy()
     dpo_user = make_dpo("notice-audience-dpo@example.edu")
     dpo = auth_client(dpo_user, recent_mfa=True)
@@ -101,16 +101,19 @@ def test_audiences_future_effective_date_and_recent_mfa():
     student = auth_client(make_user("audience-student@example.edu", role="STUDENT"))
     staff = auth_client(make_user("audience-staff@example.edu"))
     payload = notice_payload("STAFF-ONLY", ["STAFF"], timezone.localdate() + timedelta(days=1))
-    assert post_json(no_mfa, f"{ROOT}/notices", payload).status_code == 403
     assert (
         post_json(dpo, f"{ROOT}/notices", payload | {"audiences": ["STAFF", "STAFF"]}).status_code
         == 422
     )
-    notice = post_json(dpo, f"{ROOT}/notices", payload)
+    # Draft authoring needs no step-up; publishing the draft does.
+    notice = post_json(no_mfa, f"{ROOT}/notices", payload)
     assert notice.status_code == 201, notice.content
     revision_id = dpo.get(f"{ROOT}/notices/{notice.json()['id']}/revisions").json()["items"][0][
         "id"
     ]
+    assert (
+        post_json(no_mfa, f"{ROOT}/notice-revisions/{revision_id}/publish", {}).status_code == 403
+    )
     assert post_json(dpo, f"{ROOT}/notice-revisions/{revision_id}/publish", {}).status_code == 409
     assert (
         patch_json(

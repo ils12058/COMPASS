@@ -8,10 +8,14 @@ export function isAuthorityError(error: unknown): error is CompassApiError {
   return error instanceof CompassApiError && error.status === 403;
 }
 
+// A 403 that asks for a fresh CSRF token or a step-up is about this request, not a change to the
+// account's access, so it does not trigger a session recheck.
+const REQUEST_SCOPED_REFUSALS = new Set(["csrf_failed", "recent_mfa_required", "mfa_setup_required"]);
+
 export function isMutationAuthorityError(error: unknown): boolean {
   if (!isAuthorityError(error)) return false;
   const code = readApiErrorCode(error.body);
-  return code !== "csrf_failed" && code !== "recent_mfa_required";
+  return !code || !REQUEST_SCOPED_REFUSALS.has(code);
 }
 
 export function isTransientRefreshError(error: unknown): boolean {

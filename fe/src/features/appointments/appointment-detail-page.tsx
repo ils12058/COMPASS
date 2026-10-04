@@ -15,7 +15,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelBody, PanelHeader, PanelMessage, PanelSection, RecordSummary } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
-import { StepUpDialog } from "@/features/account/security/security-shared";
+import {
+  appointmentSlotFreshness,
+  isSlotTakenError,
+  slotIsOffered,
+  SLOT_JUST_TAKEN,
+  SLOT_NO_LONGER_AVAILABLE,
+  SLOTS_NOT_RECHECKED,
+  useSlotSelection,
+} from "@/features/appointments/appointment-slot-freshness";
+import { canShowLastKnownData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
   AppointmentDetailSkeleton,
   AppointmentStatusBadge,
@@ -71,7 +81,6 @@ import {
 } from "@/lib/api/generated/routine-interviews/routine-interviews";
 
 type ConfirmAction = "cancel" | "complete" | "no-show";
-type StepUpAction = "cancel" | "reschedule" | "reassign";
 type ActionError = { scope: "confirm" | "reschedule" | "reassign"; message: string };
 
 function occurredAt(value: string): string {
@@ -241,10 +250,8 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   // Covers the whole confirmation, including the refresh after the request succeeds.
   const [confirming, setConfirming] = useState(false);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
-  const [stepUpAction, setStepUpAction] = useState<StepUpAction | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
-  const [rescheduleSlotStart, setRescheduleSlotStart] = useState("");
+  const [rescheduling, setRescheduling] = useState(false);
   const [rescheduleReason, setRescheduleReason] = useState("");
   const [selectedProviderId, setSelectedProviderId] = useState("");
   const [reassignmentReason, setReassignmentReason] = useState("");
@@ -252,18 +259,26 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const [reassignmentOpen, setReassignmentOpen] = useState(false);
   const [error, setError] = useState<ActionError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Set when an action found the Appointment changed and the page reloaded it.
+  const [updatedNotice, setUpdatedNotice] = useState<string | null>(null);
 
   const appointment = appointmentQuery.data?.data;
-  const adminActor = access.canManage && !access.isStudent;
+  // A failed reload keeps the last confirmed details on screen, but actions wait for a fresh copy.
+  const detailsUnconfirmed = appointmentQuery.isError && appointment !== undefined;
   // COMPASS projects availability for this actor with server time and linked records.
-  // Every mutation still revalidates, so conflicts refresh the Appointment below.
-  const actions = appointment?.actions;
+  // Every mutation still revalidates, so conflicts reload the Appointment below.
+  const actions = detailsUnconfirmed ? undefined : appointment?.actions;
   const canCancel = actions?.cancel.allowed === true;
   const canReschedule = actions?.reschedule.allowed === true;
   const canReassign = actions?.reassign.allowed === true;
   const canComplete = actions?.complete.allowed === true;
   const canMarkNoShow = actions?.mark_no_show.allowed === true;
   const unavailable = actions ? unavailableActions(actions) : [];
+  // A confirmation is only offered while its action is still allowed for the latest details.
+  const confirmationAllowed =
+    (confirmAction === "cancel" && canCancel) ||
+    (confirmAction === "complete" && canComplete) ||
+    (confirmAction === "no-show" && canMarkNoShow);
 
   const rescheduleSlots = useAppointmentsListRescheduleSlots(
     appointmentId,
@@ -272,13 +287,16 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       query: {
         enabled: Boolean(appointment && canReschedule && rescheduleOpen && rescheduleDate),
         retry: false,
+        ...appointmentSlotFreshness,
       },
     },
   );
   const rescheduleSlotItems = rescheduleSlots.data?.data.items ?? [];
+  const rescheduleChoice = useSlotSelection(rescheduleSlots.data?.data.items, rescheduleSlots.dataUpdatedAt);
   const selectedRescheduleSlot = rescheduleSlotItems.find(
-    (slot) => slot.starts_at === rescheduleSlotStart,
+    (slot) => slot.starts_at === rescheduleChoice.selected,
   );
+  const rescheduleSlotsUnconfirmed = rescheduleSlots.isError && rescheduleSlots.data !== undefined;
 
   const candidates = useAppointmentsListReassignmentCandidates(appointmentId, {
     query: {
@@ -295,6 +313,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
 
   const pending =
     cancel.isPending ||
+    rescheduling ||
     reschedule.isPending ||
     reassign.isPending ||
     complete.isPending ||
@@ -345,28 +364,31 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
     await Promise.all(invalidations);
   }
 
-  function handleMutationError(
+  async function handleMutationError(
     caught: unknown,
     fallback: string,
     scope: ActionError["scope"],
-    stepUpFor?: StepUpAction,
   ) {
-    if (
-      stepUpFor &&
-      appointmentErrorCode(caught) === "recent_mfa_required" &&
-      adminActor
-    ) {
-      setError(null);
+    if (scope === "reassign" && isSlotTakenError(caught)) {
+      // The chosen Counselor is no longer free at this time; the reason stays as typed.
+      setSelectedProviderId("");
+      setError({ scope, message: "The selected Counselor is no longer available at this time. Choose another Counselor." });
+      void candidates.refetch();
+      return;
+    }
+    if (caught instanceof CompassApiError && caught.status === 409) {
+      // The Appointment changed after this page loaded. Close the stale confirmation, reload the
+      // Appointment so its actions are recalculated, and let the person review them again; the
+      // action is never resubmitted automatically.
       setConfirmAction(null);
-      setStepUpAction(stepUpFor);
-      setStepUpOpen(true);
+      setError(null);
+      await refreshAppointmentQueries();
+      const reloaded = queryClient.getQueryState(getAppointmentsGetQueryKey(appointmentId))?.status !== "error";
+      const reason = appointmentErrorMessage(caught, "This appointment was updated before your action completed.");
+      setUpdatedNotice(reloaded ? `${reason} The latest details are now shown.` : reason);
       return;
     }
     setError({ scope, message: appointmentErrorMessage(caught, fallback) });
-    if (caught instanceof CompassApiError && caught.status === 409) {
-      // Availability changed after this page loaded; show the current state and actions.
-      void refreshAppointmentQueries();
-    }
   }
 
   async function confirmMutation() {
@@ -383,6 +405,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           : undefined;
     setError(null);
     setNotice(null);
+    setUpdatedNotice(null);
     setConfirming(true);
     try {
       if (confirmAction === "cancel") {
@@ -409,12 +432,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       }
       setConfirmAction(null);
     } catch (caught) {
-      handleMutationError(
-        caught,
-        "The Appointment could not be updated.",
-        "confirm",
-        confirmAction === "cancel" && adminActor ? "cancel" : undefined,
-      );
+      await handleMutationError(caught, "The Appointment could not be updated.", "confirm");
     } finally {
       setConfirming(false);
     }
@@ -423,38 +441,45 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   async function submitReschedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedRescheduleSlot) return;
+    const startsAt = selectedRescheduleSlot.starts_at;
     setError(null);
     setNotice(null);
+    setUpdatedNotice(null);
+    setRescheduling(true);
     try {
+      // Advisory recheck before submitting; the server still decides.
+      const recheck = await rescheduleSlots.refetch();
+      if (recheck.isError) {
+        setError({ scope: "reschedule", message: SLOTS_NOT_RECHECKED });
+        return;
+      }
+      if (!slotIsOffered(recheck.data?.data.items, startsAt)) {
+        rescheduleChoice.drop();
+        return;
+      }
       await reschedule.mutateAsync({
         appointmentId,
         data: {
-          starts_at: selectedRescheduleSlot.starts_at,
+          starts_at: startsAt,
           ...(rescheduleReason.trim() ? { reason: rescheduleReason.trim() } : {}),
         },
       });
       await refreshAppointmentQueries(true);
       setRescheduleOpen(false);
-      setRescheduleSlotStart("");
+      rescheduleChoice.clear();
       setRescheduleReason("");
       setNotice("Appointment rescheduled.");
     } catch (caught) {
-      const code = appointmentErrorCode(caught);
-      if (code === "appointment_time_unavailable" || code === "appointment_time_conflict") {
-        setRescheduleSlotStart("");
-        setError({
-          scope: "reschedule",
-          message: "The selected time is no longer available. Available times have been refreshed; choose another time.",
-        });
+      if (isSlotTakenError(caught)) {
+        // The reason stays as typed; only the time needs choosing again.
+        rescheduleChoice.clear();
+        setError({ scope: "reschedule", message: SLOT_JUST_TAKEN });
         void rescheduleSlots.refetch();
         return;
       }
-      handleMutationError(
-        caught,
-        "The Appointment could not be rescheduled.",
-        "reschedule",
-        adminActor ? "reschedule" : undefined,
-      );
+      await handleMutationError(caught, "The Appointment could not be rescheduled.", "reschedule");
+    } finally {
+      setRescheduling(false);
     }
   }
 
@@ -463,6 +488,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
     if (!selectedProviderId || !reassignmentReason.trim()) return;
     setError(null);
     setNotice(null);
+    setUpdatedNotice(null);
     try {
       await reassign.mutateAsync({
         appointmentId,
@@ -477,32 +503,15 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       setReassignmentReason("");
       setNotice("Counselor reassigned.");
     } catch (caught) {
-      handleMutationError(
-        caught,
-        "The Counselor could not be reassigned.",
-        "reassign",
-        "reassign",
-      );
+      await handleMutationError(caught, "The Counselor could not be reassigned.", "reassign");
     }
-  }
-
-  function onStepUpVerified() {
-    if (stepUpAction === "cancel") {
-      setNotice("Verification complete. Review and confirm cancellation again.");
-      setConfirmAction("cancel");
-    } else if (stepUpAction === "reschedule") {
-      setNotice("Verification complete. Review the selected time and submit the reschedule again.");
-    } else if (stepUpAction === "reassign") {
-      setNotice("Verification complete. Review the selected Counselor and reason, then submit again.");
-    }
-    setStepUpAction(null);
   }
 
   if (!access.hasWorkspace) return <AppointmentsUnavailable />;
   if (appointmentQuery.isPending) {
     return <AppointmentDetailSkeleton />;
   }
-  if (appointmentQuery.isError || !appointment) {
+  if ((appointmentQuery.isError && !canShowLastKnownData(appointmentQuery)) || !appointment) {
     const notFound = appointmentErrorCode(appointmentQuery.error) === "appointment_not_found";
     return (
       <section>
@@ -568,6 +577,14 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       />
 
       {notice ? <Notice role="status" tone="success" className="mb-4">{notice}</Notice> : null}
+      {updatedNotice ? <Notice role="status" tone="info" className="mb-4">{updatedNotice}</Notice> : null}
+      {detailsUnconfirmed ? (
+        <RefreshFailureNotice
+          message="The latest appointment details could not be loaded. Showing the last confirmed details; actions are unavailable until they load."
+          onRetry={() => void appointmentQuery.refetch()}
+          retrying={appointmentQuery.isFetching}
+        />
+      ) : null}
 
       <div className="space-y-5">
       <Panel aria-labelledby="appointment-reference-heading">
@@ -615,7 +632,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
             // The usual outcome leads; cancelling, the destructive one, comes last.
             <div className="mt-4 flex flex-wrap gap-2">
               {canComplete ? <Button disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button> : null}
-              {canReschedule ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setRescheduleSlotStart(""); setNotice(null); setRescheduleOpen((open) => !open); }}>{rescheduleOpen ? "Close reschedule" : "Reschedule appointment"}</Button> : null}
+              {canReschedule ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); rescheduleChoice.clear(); setNotice(null); setRescheduleOpen((open) => !open); }}>{rescheduleOpen ? "Close reschedule" : "Reschedule appointment"}</Button> : null}
               {canReassign ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setNotice(null); setReassignmentOpen((open) => !open); }}>{reassignmentOpen ? "Close reassignment" : "Reassign counselor"}</Button> : null}
               {canMarkNoShow ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setConfirmAction("no-show"); }}>Mark no-show</Button> : null}
               {canCancel ? <Button variant="danger" disabled={pending} onClick={() => { setError(null); setConfirmAction("cancel"); }}>Cancel appointment</Button> : null}
@@ -650,36 +667,49 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                   id="reschedule-date"
                   type="date"
                   value={rescheduleDate}
-                  disabled={reschedule.isPending}
+                  disabled={rescheduling}
                   onChange={(event) => {
                     setRescheduleDate(event.target.value);
-                    setRescheduleSlotStart("");
+                    rescheduleChoice.clear();
                     setError(null);
                   }}
                 />
               </div>
               {rescheduleDate ? (
                 <div className="mt-4">
+                  {rescheduleChoice.lost ? (
+                    <p role="status" className="mb-3 text-sm text-warning">{SLOT_NO_LONGER_AVAILABLE}</p>
+                  ) : null}
                   {rescheduleSlots.isPending ? (
                     <LoadingRegion label="Loading replacement times…" className="flex flex-wrap gap-2"><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /></LoadingRegion>
-                  ) : rescheduleSlots.isError ? (
+                  ) : rescheduleSlots.isError && !rescheduleSlotsUnconfirmed ? (
                     <div role="alert"><p className="text-sm text-danger">Replacement times could not be loaded.</p><Button className="mt-2" variant="secondary" onClick={() => void rescheduleSlots.refetch()}>Retry</Button></div>
                   ) : rescheduleSlotItems.length === 0 ? (
                     <p role="status" className="text-sm text-muted">No available appointment times were found for this date. Choose another date.</p>
                   ) : (
                     <>
-                      <p role="status" className="mb-3 text-sm font-semibold text-ink">Available times · {rescheduleSlots.data?.data.timezone}</p>
+                      {rescheduleSlotsUnconfirmed ? (
+                        <Notice
+                          role="status"
+                          tone="warning"
+                          className="mb-3"
+                          action={<Button variant="secondary" disabled={rescheduleSlots.isFetching} onClick={() => void rescheduleSlots.refetch()}>{rescheduleSlots.isFetching ? "Retrying…" : "Retry"}</Button>}
+                        >
+                          {SLOTS_NOT_RECHECKED}
+                        </Notice>
+                      ) : null}
+                      <p className="mb-3 text-sm font-semibold text-ink">Available times · {rescheduleSlots.data?.data.timezone}</p>
                       <div role="group" aria-label="Available replacement times" className="flex flex-wrap gap-2">
                         {rescheduleSlotItems.map((slot: BookableSlotResponse) => (
                           <button
                             key={slot.starts_at}
                             type="button"
-                            disabled={reschedule.isPending}
-                            aria-pressed={rescheduleSlotStart === slot.starts_at}
-                            onClick={() => setRescheduleSlotStart(slot.starts_at)}
+                            disabled={rescheduling}
+                            aria-pressed={rescheduleChoice.selected === slot.starts_at}
+                            onClick={() => { rescheduleChoice.select(slot.starts_at); setError(null); }}
                             className={
                               "min-h-11 rounded-md border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
-                              (rescheduleSlotStart === slot.starts_at ? "border-brand bg-brand text-on-brand" : "border-border-strong bg-surface-raised text-ink hover:bg-surface-subtle")
+                              (rescheduleChoice.selected === slot.starts_at ? "border-brand bg-brand text-on-brand" : "border-border-strong bg-surface-raised text-ink hover:bg-surface-subtle")
                             }
                           >
                             {formatAppointmentTime(slot.starts_at, rescheduleSlots.data?.data.timezone)}
@@ -692,7 +722,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               ) : null}
               <div className="mt-4 grid gap-2">
                 <Label htmlFor="reschedule-reason">Reason (optional)</Label>
-                <Textarea id="reschedule-reason" disabled={reschedule.isPending} className="min-h-24" value={rescheduleReason} onChange={(event) => setRescheduleReason(event.target.value)} />
+                <Textarea id="reschedule-reason" disabled={rescheduling} className="min-h-24" value={rescheduleReason} onChange={(event) => setRescheduleReason(event.target.value)} />
               </div>
               {selectedRescheduleSlot ? (
                 <section aria-labelledby="reschedule-review-heading" className="mt-5 rounded-sm bg-surface-subtle px-4 py-3.5">
@@ -705,8 +735,8 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                 </section>
               ) : null}
               {error?.scope === "reschedule" ? <p role="alert" className="mt-4 text-sm text-danger">{error.message}</p> : null}
-              <Button className="mt-4" type="submit" disabled={!selectedRescheduleSlot || reschedule.isPending} aria-busy={reschedule.isPending}>
-                {reschedule.isPending ? "Rescheduling…" : "Reschedule appointment"}
+              <Button className="mt-4" type="submit" disabled={!selectedRescheduleSlot || rescheduling || rescheduleSlotsUnconfirmed} aria-busy={rescheduling}>
+                {rescheduling ? "Rescheduling…" : "Reschedule appointment"}
               </Button>
             </form>
             </PanelSection>
@@ -789,7 +819,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       </div>
 
       <ActionConfirmation
-        action={confirmAction}
+        action={confirmationAllowed || pending ? confirmAction : null}
         busy={pending}
         selfCancellation={access.isStudent}
         referenceCode={appointment.reference_code}
@@ -797,14 +827,6 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         routineInterviewWillClose={Boolean(confirmationRoutineConsequence)}
         onClose={() => setConfirmAction(null)}
         onConfirm={() => void confirmMutation()}
-      />
-      <StepUpDialog
-        open={stepUpOpen}
-        onOpenChange={(open) => {
-          setStepUpOpen(open);
-          if (!open) setStepUpAction(null);
-        }}
-        onVerified={onStepUpVerified}
       />
     </section>
   );

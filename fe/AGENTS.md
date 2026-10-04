@@ -219,6 +219,21 @@ They are not security enforcement.
 
 The backend remains authoritative.
 
+## Step-up (recent MFA)
+
+The backend decides which actions need a recent authenticator verification and reports the
+account's real state: `recent_mfa_required` when an authenticator is set up but was not verified
+recently, and `mfa_setup_required` when the account has no authenticator. Read it with
+`stepUpRequirement` (`src/features/account/security/step-up.ts`) and pass the result to
+`StepUpDialog` as `requirement`: "verify" asks for a current code, "setup" never asks for a code and
+links to authenticator setup. After either, the person submits again; nothing is replayed.
+
+Handle step-up only where the backend keeps it: account security and access, organization scope,
+academic years, the service catalog, maintenance, and Privacy Notice publication and retirement.
+Routine work (Appointments, Availability, Good Moral issuance, email retry, name and ID corrections,
+Privacy Notice drafts) and Referrals and Call Slips have no step-up, so do not add authenticator
+prompts or MFA pre-checks to them.
+
 ---
 
 # 7. CSRF
@@ -299,6 +314,35 @@ Use generated query keys where available.
 Invalidate or refresh only affected data after successful mutations.
 
 Do not invalidate the entire application cache after every write.
+
+## Freshness by domain
+
+The portal's defaults (30-second `staleTime`, no refetch on focus) suit most pages. Data that other
+people change within seconds sets its own policy on its own queries instead of changing the
+defaults. Appointment slot pickers use `appointmentSlotFreshness`
+(`src/features/appointments/appointment-slot-freshness.ts`): a recheck every 15 seconds while the
+page is visible, on window focus, and when the connection returns. A chosen time that a recheck no
+longer offers is dropped, booking and rescheduling recheck the time before submitting, and a time
+taken in between ("That time was just taken. Choose another available time.") reloads the times.
+The server still decides every booking.
+
+## Stale state
+
+When an action finds the record changed, recover by what is on screen:
+
+* selectable options (slots): reload them and drop a choice they no longer offer;
+* read-only details and available actions: reload them and say briefly what changed ("This
+  appointment was updated before your action completed. The latest details are now shown.");
+* an open confirmation: close it and reload, so the person reviews the current actions again;
+* a form with unsaved input: keep the input, load the saved version separately, say what changed,
+  and allow saving again only after a deliberate review (the Privacy Notice draft editor);
+* a reload that fails: keep the last confirmed data marked as not confirmed (`RefreshFailureNotice`),
+  keep actions that depend on it unavailable, and offer Retry.
+
+Never resubmit a consequential action automatically after a reload. Do not ask the person to
+refresh what COMPASS has already reloaded; keep Retry or Refresh only when the reload failed or
+COMPASS did not reload. Do not key an editor on a server timestamp: a background reload would
+replace what the person typed.
 
 ---
 
@@ -2066,6 +2110,11 @@ ornamental motion around operational data.
 * The top bar is slim and holds the dock's collapse button, the account controls (Accessibility,
   notifications, account menu), and, on small screens, the drawer button and the COMPASS mark.
   COMPASS identity belongs to the dock; the top bar is not a second branded header.
+* A current Privacy Notice that asks the reader for an acknowledgment opens one prompt over the
+  workspace (`PrivacyNoticePrompt`), read from `my-notices?pending_acknowledgment=true`, one notice
+  at a time. It never blocks work: "Not now" puts it off for the browser session, Account › Privacy
+  keeps every notice, and it stays out of the Privacy page and live E-Counseling sessions.
+  Acknowledgment is not consent, and the prompt says so.
 * The shell gives every page the whole workspace, so collections can use it. A page that is not a
   collection — a record, a form, an editor, a page of running text — bounds itself with
   `pageSheetWidth`, and pages that share workspace tabs share one width. The Account workspace keeps

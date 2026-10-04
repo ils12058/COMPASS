@@ -6,6 +6,11 @@ import { useCallback, useState } from "react";
 import { accountErrorCode } from "@/features/account/components/account-errors";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import {
+  stepUpNotice,
+  stepUpRequirement,
+  type StepUpRequirement,
+} from "@/features/account/security/step-up";
+import {
   getAccountsGetEffectiveAccessQueryKey,
   getAccountsGetQueryKey,
   getAccountsListCapabilityOverridesQueryKey,
@@ -27,7 +32,6 @@ const knownErrors: Record<string, string> = {
   rate_limited: "Too many attempts. Try again later.",
   security_unavailable:
     "This security action is temporarily unavailable. Try again later.",
-  recent_mfa_required: "Recent authenticator verification is required.",
 };
 
 export function managedAccountError(error: unknown, fallback: string): string {
@@ -41,6 +45,7 @@ export function useManagedAction() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
   const [afterStepUp, setAfterStepUp] = useState<(() => void) | null>(null);
 
   const run = useCallback(
@@ -56,11 +61,13 @@ export function useManagedAction() {
       try {
         return await operation();
       } catch (caught) {
-        if (accountErrorCode(caught) === "recent_mfa_required") {
+        const requirement = stepUpRequirement(caught);
+        if (requirement) {
           onStepUpRequired?.();
-          setAfterStepUp(() => onStepUpVerified ?? null);
+          setAfterStepUp(() => (requirement === "verify" ? onStepUpVerified ?? null : null));
+          setStepUp(requirement);
           setStepUpOpen(true);
-          setNotice("Verify your authenticator, then submit the action again.");
+          setNotice(stepUpNotice(requirement));
         } else {
           setError(managedAccountError(caught, fallback));
           onFailure?.(caught);
@@ -77,6 +84,7 @@ export function useManagedAction() {
     setError,
     setNotice,
     run,
+    stepUp,
     stepUpOpen,
     setStepUpOpen,
     afterStepUp,
@@ -105,6 +113,7 @@ export function ManagedActionFeedback({
       ) : null}
       <StepUpDialog
         open={action.stepUpOpen}
+        requirement={action.stepUp}
         onOpenChange={action.setStepUpOpen}
         onVerified={() => {
           action.setNotice(

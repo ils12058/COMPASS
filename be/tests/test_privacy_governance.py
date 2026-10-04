@@ -155,7 +155,7 @@ def test_inactive_or_removed_dpo_has_no_privacy_authority():
 
 
 @pytest.mark.django_db
-def test_dpo_reads_without_step_up_but_retained_mutations_require_recent_mfa():
+def test_dpo_reads_and_drafts_without_step_up_but_publication_requires_it():
     sync_policy()
     dpo = make_dpo("mfa-dpo@example.edu")
     client = auth_client(dpo, recent_mfa=False)
@@ -165,12 +165,17 @@ def test_dpo_reads_without_step_up_but_retained_mutations_require_recent_mfa():
 
     from tests.test_privacy_governance_expansion import notice_payload
 
-    denied = post_json(client, "/api/v1/privacy/notices", notice_payload())
+    created = post_json(client, "/api/v1/privacy/notices", notice_payload())
+    assert created.status_code == 201
+    revision_id = created.json()["draft_revision"]["id"]
+
+    denied = post_json(client, f"/api/v1/privacy/notice-revisions/{revision_id}/publish", {})
     assert denied.status_code == 403
-    assert denied.json()["error"]["code"] == "recent_mfa_required"
+    assert denied.json()["error"]["code"] == "mfa_setup_required"
 
     recent = auth_client(dpo, recent_mfa=True)
-    assert post_json(recent, "/api/v1/privacy/notices", notice_payload()).status_code == 201
+    published = post_json(recent, f"/api/v1/privacy/notice-revisions/{revision_id}/publish", {})
+    assert published.status_code == 200
 
 
 @pytest.mark.django_db

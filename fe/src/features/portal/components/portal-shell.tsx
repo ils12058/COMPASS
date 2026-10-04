@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
+import { PrivacyNoticePrompt } from "@/features/account/privacy/privacy-notice-prompt";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { NotificationFreshness } from "@/features/notifications/notification-freshness";
@@ -118,6 +119,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+      <PrivacyNoticePrompt />
     </div>
   );
 }

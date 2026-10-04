@@ -11,7 +11,6 @@ import { Panel, PanelHeader } from "@/components/ui/panel";
 import {
   ActionFeedback,
   modeScopeLabel,
-  type StepUpHooks,
   weeklyWindowLabel,
 } from "@/features/availability/availability-shared";
 import {
@@ -144,10 +143,7 @@ export function WeeklyScheduleEditor({
   pending: boolean;
   error: string | null;
   notice: string | null;
-  onSave: (
-    windows: WeeklyWindowRequest[],
-    hooks?: StepUpHooks,
-  ) => Promise<boolean>;
+  onSave: (windows: WeeklyWindowRequest[]) => Promise<boolean>;
 }) {
   const [draft, setDraft] = useState<DraftWindow[]>(() =>
     draftFromWindows(windows),
@@ -205,10 +201,7 @@ export function WeeklyScheduleEditor({
   }
 
   async function clearSchedule() {
-    const saved = await onSave([], {
-      onStepUpRequired: () => setClearOpen(false),
-      onStepUpVerified: () => setClearOpen(true),
-    });
+    const saved = await onSave([]);
     if (saved) {
       setClearOpen(false);
       setDirty(false);

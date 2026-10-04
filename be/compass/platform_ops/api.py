@@ -13,7 +13,7 @@ from pydantic import ConfigDict
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditActorType
 from compass.authentication.api import session_auth
-from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
+from compass.authentication.step_up import require_recent_mfa_for_request
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.notifications.models import EmailDeliveryStatus
@@ -204,10 +204,7 @@ def _require(request, capability: str, *, recent_mfa: bool = False) -> None:
     if not actor.is_active or not actor.has_capability(capability):
         raise APIError(403, "permission_denied", f"The {capability} capability is required.")
     if recent_mfa:
-        try:
-            require_recent_mfa(request.auth_session)
-        except RecentMFARequired as exc:
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        require_recent_mfa_for_request(request)
 
 
 def _context(request) -> AuditContext:
@@ -528,7 +525,7 @@ def platform_email_deliveries(
     summary="Request one eligible EmailDelivery retry",
 )
 def platform_email_delivery_retry(request, delivery_id: UUID):
-    _require(request, "platform_operations.manage", recent_mfa=True)
+    _require(request, "platform_operations.manage")
     try:
         item = retry_email_delivery(
             delivery_id=delivery_id,

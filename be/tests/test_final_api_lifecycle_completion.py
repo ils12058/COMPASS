@@ -213,7 +213,7 @@ def test_appointment_reschedule_history_terminal_outcomes_and_safe_notifications
 
 @pytest.mark.django_db
 @override_settings(TIME_ZONE="Asia/Manila")
-def test_admin_reschedule_reassign_step_up_and_downstream_binding_safety():
+def test_admin_reschedule_reassign_without_step_up_and_downstream_binding_safety():
     sync_policy()
     catalog_actor = make_appointment_user("admin-catalog@example.edu", "IT_ADMIN")
     student = make_appointment_user("admin-student@example.edu", "STUDENT")
@@ -238,17 +238,8 @@ def test_admin_reschedule_reassign_step_up_and_downstream_binding_safety():
         now=start - timedelta(days=1),
     )
 
-    stale = appointment_auth_client(manager)
-    denied = stale.post(
-        f"/api/v1/appointments/{item.pk}/reschedule",
-        data=json.dumps({"starts_at": (start + timedelta(hours=2)).isoformat(), "reason": ""}),
-        content_type="application/json",
-        **appointment_csrf(stale),
-    )
-    assert denied.status_code == 403
-    assert denied.json()["error"]["code"] == "recent_mfa_required"
-
-    fresh = appointment_auth_client(manager, recent_mfa=True)
+    # Rescheduling and reassigning are routine operational work: no step-up is required.
+    fresh = appointment_auth_client(manager)
     moved = fresh.post(
         f"/api/v1/appointments/{item.pk}/reschedule",
         data=json.dumps({"starts_at": (start + timedelta(hours=2)).isoformat(), "reason": ""}),

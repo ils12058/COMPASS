@@ -14,7 +14,6 @@ from pydantic import ConfigDict
 
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
-from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
@@ -198,15 +197,10 @@ def _require_student(request, capability: str) -> None:
         raise APIError(403, "permission_denied", "Student Good Moral access is required.")
 
 
-def _require_counselor(request, capability: str, *, recent_mfa: bool = False) -> None:
+def _require_counselor(request, capability: str) -> None:
     user = request.auth_user
     if not user.is_active or user.role.code != "COUNSELOR" or not user.has_capability(capability):
         raise APIError(403, "permission_denied", f"The {capability} capability is required.")
-    if recent_mfa:
-        try:
-            require_recent_mfa(request.auth_session)
-        except RecentMFARequired as exc:
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
 
 
 def _raise(exc: GoodMoralError) -> NoReturn:
@@ -594,7 +588,7 @@ def good_moral_cancel_request(
     operation_id="goodMoralIssueRequest",
 )
 def good_moral_issue(request, request_id: UUID):
-    _require_counselor(request, "good_moral.issue", recent_mfa=True)
+    _require_counselor(request, "good_moral.issue")
     try:
         item = issue_request(
             actor=request.auth_user,
