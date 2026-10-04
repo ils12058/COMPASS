@@ -965,15 +965,13 @@ def test_announcement_search_preserves_visibility_management_filters_and_api_con
 
     manager = auth_client(counselor)
     managed_draft = manager.get(
-        "/api/v1/announcements/management"
-        "?search=needle&status=DRAFT&audience=PUBLIC&page_size=10"
+        "/api/v1/announcements/management?search=needle&status=DRAFT&audience=PUBLIC&page_size=10"
     )
     assert managed_draft.status_code == 200
     assert [item["id"] for item in managed_draft.json()["items"]] == [str(draft_public.pk)]
 
     managed_gco = manager.get(
-        "/api/v1/announcements/management"
-        "?search=needle&audience=GCO_PERSONNEL&page_size=10"
+        "/api/v1/announcements/management?search=needle&audience=GCO_PERSONNEL&page_size=10"
     )
     assert managed_gco.status_code == 200
     assert [item["id"] for item in managed_gco.json()["items"]] == [str(gco_item.pk)]
