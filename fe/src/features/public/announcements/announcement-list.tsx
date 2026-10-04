@@ -6,6 +6,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Panel, PanelMessage } from "@/components/ui/panel";
+import { AnnouncementSearch } from "@/features/public/announcements/announcement-search";
+import { buttonVariants } from "@/components/ui/button";
 import {
   useAnnouncementsListPublic,
   useAnnouncementsListVisible,
@@ -23,12 +25,17 @@ import {
 
 type AnnouncementListProps =
   | { mode: "preview" }
-  | { mode: "index"; page: number };
+  | { mode: "index"; page: number; search?: string };
 
 export function AnnouncementList(props: AnnouncementListProps) {
   const isPreview = props.mode === "preview";
   const page = isPreview ? 1 : props.page;
-  const params = { page, page_size: isPreview ? 3 : 10 };
+  const search = isPreview ? undefined : props.search;
+  const detailParams = new URLSearchParams();
+  if (search) detailParams.set("search", search);
+  if (!isPreview && page > 1) detailParams.set("page", String(page));
+  const detailQuery = detailParams.toString();
+  const params = { page, page_size: isPreview ? 3 : 10, ...(search ? { search } : {}) };
   const audience = useReaderAudience();
   const account = useAnnouncementsListVisible(params, {
     query: { enabled: audience === "account", placeholderData: keepPreviousData, retry: false },
@@ -42,7 +49,12 @@ export function AnnouncementList(props: AnnouncementListProps) {
   const query = readsAccount ? account : publicQuery;
   // The landing page's preview panel brings its own title band; the index page frames the list here.
   const frame = (content: ReactNode) =>
-    isPreview ? content : <Panel as="div">{content}</Panel>;
+    isPreview ? content : (
+      <div className="grid gap-5">
+        <AnnouncementSearch search={search} />
+        <Panel as="div">{content}</Panel>
+      </div>
+    );
 
   if (audience === "pending" || query.isPending) {
     return frame(<PublicRowsSkeleton rows={isPreview ? 3 : 5} label="Loading announcements…" />);
@@ -61,8 +73,10 @@ export function AnnouncementList(props: AnnouncementListProps) {
 
   if (result.items.length === 0) {
     return frame(
-      <PanelMessage>
-        {readsAccount
+      <PanelMessage action={search ? (
+        <Link href="/announcements" className={buttonVariants({ variant: "secondary" })}>Clear search</Link>
+      ) : undefined}>
+        {search ? "No announcements match this search." : readsAccount
           ? "No announcements are available right now."
           : "No public announcements are available right now."}
       </PanelMessage>,
@@ -78,7 +92,7 @@ export function AnnouncementList(props: AnnouncementListProps) {
           return (
             <li key={announcement.id}>
               <Link
-                href={`/announcements/${announcement.id}`}
+                href={`/announcements/${announcement.id}${detailQuery ? `?${detailQuery}` : ""}`}
                 className="group grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-x-4 px-4 py-4 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:grid-cols-[4rem_minmax(0,1fr)_auto] sm:gap-x-5 sm:px-5"
               >
                 <AnnouncementDate value={announcement.published_at} />
@@ -108,7 +122,12 @@ export function AnnouncementList(props: AnnouncementListProps) {
         <PublicPagination
           page={result.page}
           hasNext={result.has_next}
-          buildHref={(nextPage) => `/announcements?page=${nextPage}`}
+          buildHref={(nextPage) => {
+            const query = new URLSearchParams();
+            if (search) query.set("search", search);
+            query.set("page", String(nextPage));
+            return `/announcements?${query.toString()}`;
+          }}
         />
       ) : null}
     </div>,

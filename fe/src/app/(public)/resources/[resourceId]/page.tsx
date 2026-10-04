@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { ResourceDetail } from "@/features/public/resources/resource-detail";
+import { listReturnHref } from "@/features/content/list-return-href";
 import {
   isReaderUuid,
   resolveResourceReader,
@@ -38,10 +39,19 @@ export async function generateMetadata({
 
 export default async function ResourceDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ resourceId: string }>;
+  searchParams: Promise<{ search?: string | string[]; category?: string | string[]; kind?: string | string[]; page?: string | string[] }>;
 }) {
   const { resourceId } = await params;
+  const listParams = await searchParams;
+  const backParams = new URLSearchParams();
+  for (const key of ["search", "category", "kind", "page"] as const) {
+    const value = listParams[key];
+    if (typeof value === "string") backParams.set(key, value);
+    else if (value?.[0]) backParams.set(key, value[0]);
+  }
   if (!isReaderUuid(resourceId)) notFound();
 
   const resolution = await resolveResourceReader(resourceId);
@@ -51,7 +61,7 @@ export default async function ResourceDetailPage({
     <main>
       <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8 sm:py-9">
         <div className="max-w-4xl">
-          <Link href="/resources" className={pageBackLinkClass}>
+          <Link href={listReturnHref("/resources", backParams, ["search", "category", "kind", "page"])} className={pageBackLinkClass}>
             Back to resources
           </Link>
           <ResourceDetail resourceId={resourceId} />

@@ -31,6 +31,7 @@ type ResourceListProps =
       mode: "index";
       category?: ResourceCategoryValue;
       kind?: ResourceKindValue;
+      search?: string;
       page: number;
     };
 
@@ -38,8 +39,15 @@ export function ResourceList(props: ResourceListProps) {
   const isPreview = props.mode === "preview";
   const category = isPreview ? undefined : props.category;
   const kind = isPreview ? undefined : props.kind;
+  const search = isPreview ? undefined : props.search;
   const page = isPreview ? 1 : props.page;
-  const params = { category, kind, page, page_size: isPreview ? 3 : 9 };
+  const detailParams = new URLSearchParams();
+  if (search) detailParams.set("search", search);
+  if (category) detailParams.set("category", category);
+  if (kind) detailParams.set("kind", kind);
+  if (!isPreview && page > 1) detailParams.set("page", String(page));
+  const detailQuery = detailParams.toString();
+  const params = { category, kind, ...(search ? { search } : {}), page, page_size: isPreview ? 3 : 9 };
   const audience = useReaderAudience();
   const account = useResourcesListVisible(params, {
     query: { enabled: audience === "account", placeholderData: keepPreviousData, retry: false },
@@ -55,13 +63,14 @@ export function ResourceList(props: ResourceListProps) {
 
   const buildPageHref = (nextPage: number) => {
     const params = new URLSearchParams();
+    if (search) params.set("search", search);
     if (category) params.set("category", category);
     if (kind) params.set("kind", kind);
     params.set("page", String(nextPage));
     return `/resources?${params.toString()}`;
   };
 
-  const filtered = Boolean(category || kind);
+  const filtered = Boolean(search || category || kind);
   let content: ReactNode = null;
 
   if (loading) {
@@ -83,7 +92,11 @@ export function ResourceList(props: ResourceListProps) {
         ) : undefined}
       >
         {filtered
-          ? readsAccount
+          ? search
+            ? category || kind
+              ? "No resources match this search and the selected filters."
+              : "No resources match this search."
+            : readsAccount
             ? "No resources match the selected filters."
             : "No public resources match the selected filters."
           : readsAccount
@@ -101,7 +114,7 @@ export function ResourceList(props: ResourceListProps) {
             return (
               <li key={resource.id}>
                 <Link
-                  href={`/resources/${resource.id}`}
+                  href={`/resources/${resource.id}${detailQuery ? `?${detailQuery}` : ""}`}
                   className="group grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-3 px-4 py-3.5 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:grid-cols-[1.5rem_minmax(0,1fr)_auto] sm:gap-x-4 sm:px-5"
                 >
                   <span className="pt-0.5 text-support-strong">
@@ -153,7 +166,7 @@ export function ResourceList(props: ResourceListProps) {
 
   return (
     <div className="grid gap-5">
-      <ResourceFilters category={category} kind={kind} />
+      <ResourceFilters search={search} category={category} kind={kind} />
       <Panel as="div">{content}</Panel>
     </div>
   );

@@ -12,6 +12,7 @@ import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notic
 import { AnnouncementLifecycleActions } from "@/features/announcements/announcement-lifecycle-actions";
 import { isAnnouncementExpired } from "@/features/announcements/announcement-presentation";
 import { displayTitle, publicationAudienceLabels } from "@/features/content/content-presentation";
+import { listReturnHref } from "@/features/content/list-return-href";
 import {
   ContentDetailSkeleton,
   ContentNotice,
@@ -34,13 +35,13 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function AnnouncementUnavailable({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+export function AnnouncementUnavailable({ error, onRetry, backHref = "/portal/announcements" }: { error: unknown; onRetry: () => void; backHref?: string }) {
   const notFound = announcementErrorCode(error) === "announcement_not_found";
   return (
     <section className="space-y-5">
       <ContentPageHeading
         title={notFound ? "Announcement not found" : "Announcement unavailable"}
-        backHref="/portal/announcements"
+        backHref={backHref}
         backLabel="Announcements"
       />
       {notFound ? (
@@ -59,6 +60,7 @@ export function AnnouncementUnavailable({ error, onRetry }: { error: unknown; on
 
 export function AnnouncementDetailPage({ announcementId }: { announcementId: string }) {
   const searchParams = useSearchParams();
+  const backHref = listReturnHref("/portal/announcements", new URLSearchParams(searchParams.toString()), ["search", "status", "audience", "page"]);
   const detail = useAnnouncementsGetManaged(announcementId, { query: { retry: false } });
   const [notice, setNotice] = useState<string | null>(() =>
     searchParams.get("notice") === "created"
@@ -68,7 +70,7 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
 
   if (detail.isPending) return <ContentDetailSkeleton label="Loading Announcement…" />;
   if (!detail.data || (detail.isError && !canShowLastKnownData(detail))) {
-    return <AnnouncementUnavailable error={detail.error} onRetry={() => void detail.refetch()} />;
+    return <AnnouncementUnavailable error={detail.error} onRetry={() => void detail.refetch()} backHref={backHref} />;
   }
 
   const item = detail.data.data;
@@ -85,7 +87,7 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
     <article aria-busy={detail.isFetching}>
       <ContentPageHeading
         title={title}
-        backHref="/portal/announcements"
+        backHref={backHref}
         backLabel="Announcements"
         action={!detail.isError ?
           <>
