@@ -1996,6 +1996,14 @@ PanelFooter: the one submit area
 Do not wrap every pair of inputs in its own card. Controlled institutional wording keeps its own
 approval; visual work adapts layout, not wording.
 
+Live session workspaces, such as E-Counseling, depart from detail-page anatomy. The session stage
+(the video or the way into it, whether it can be joined, and what is being captured) sits beside the
+working area and stays in view with CSS `sticky` while the work scrolls with the page. The two
+columns switch on at the workspace's own width (a container query), so an expanded dock stacks them
+instead of squeezing them. Keep one document scroll: no fixed overlays and no nested scroll panes.
+Keep the media frame mounted at one place in the tree, so layout changes only reflow it. On phones
+and tablets the stage scrolls with the page like any other region.
+
 Overview is the portal's home, not a dashboard. It greets the reader by name and gives today's date,
 then puts what needs attention first, the reader's primary action beside the greeting, and
 announcements after the work. The summary counts are secondary context: one compact "At a glance"
@@ -2014,12 +2022,12 @@ ornamental motion around operational data.
 * Navigation on wide screens is a dock in the brand color. It opens with its group and destination
   labels showing, and the reader can collapse it to an icon rail for more room with the icon button at
   the start of the top bar; the choice holds while they move between pages. In the rail, each icon
-  shows its label on hover and keyboard focus. The current destination is a lit tile in the dock, not a stripe on one edge. Groups are
-  separated by a line in the rail and named when expanded. On small screens the same destinations
-  open in a drawer.
+  shows its label on hover and keyboard focus. The current destination is a lit tile in the dock,
+  not a stripe on one edge. Groups are separated by a line in the rail and named when expanded. On
+  small screens the same destinations open in a drawer.
 * The top bar is slim and holds the dock's collapse button, the account controls (Accessibility,
-  notifications, account menu), and, on small screens, the drawer button and the COMPASS mark. COMPASS identity belongs to the
-  dock; the top bar is not a second branded header.
+  notifications, account menu), and, on small screens, the drawer button and the COMPASS mark.
+  COMPASS identity belongs to the dock; the top bar is not a second branded header.
 * The shell gives every page the whole workspace, so collections can use it. A page that is not a
   collection — a record, a form, an editor, a page of running text — bounds itself with
   `pageSheetWidth`, and pages that share workspace tabs share one width. The Account workspace keeps

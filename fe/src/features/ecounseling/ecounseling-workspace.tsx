@@ -4,23 +4,25 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Notice } from "@/components/ui/notice";
-import { PageHeader } from "@/components/ui/page-header";
-import { appointmentStatusLabel, deliveryModeLabel } from "@/features/appointments/appointments-shared";
+import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
+import { Panel, PanelBody, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { appointmentStatusLabel, deliveryModeLabel, formatAppointmentDateTime } from "@/features/appointments/appointments-shared";
 import { CounselingContextPanel } from "@/features/counseling/counseling-workspace";
 import { RecordEncounterForm, type EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { CounselorMediaControls } from "@/features/ecounseling/counselor-media-controls";
-import { DailySessionFrame } from "@/features/ecounseling/daily-session-frame";
 import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
-import { ecounselingErrorMessage, formatECounselingDateTime, hasLiveOrTransitionalMedia } from "@/features/ecounseling/ecounseling-shared";
+import { ecounselingErrorMessage, hasLiveOrTransitionalMedia } from "@/features/ecounseling/ecounseling-shared";
+import { SessionStage, useSessionJoin } from "@/features/ecounseling/session-stage";
 import { StudentConsentPanel } from "@/features/ecounseling/student-consent-panel";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { routineEvaluationStatusLabel, routineIntakeStatusLabel } from "@/features/routine-interviews/routine-interviews-shared";
-import type { CounselorWorkspaceResponse, JoinCredentialResponse, ProviderReadiness } from "@/lib/api/generated/model";
+import type { AppointmentWorkspaceSummary, CounselorWorkspaceResponse, ProviderReadiness } from "@/lib/api/generated/model";
 import { CounselingContextAnchorType, CounselingEntryMode, DeliveryMode, ECounselingJoinState } from "@/lib/api/generated/model";
 import {
   getCounselingContextGetOverviewQueryKey,
@@ -30,10 +32,20 @@ import {
 import { getRoutineInterviewsListEncounterCandidatesQueryKey } from "@/lib/api/generated/routine-interviews/routine-interviews";
 import {
   getECounselingGetAssignedWorkspaceQueryKey,
-  useECounselingCreateJoinCredential,
   useECounselingGetAssignedWorkspace,
   useECounselingGetMyWorkspace,
 } from "@/lib/api/generated/e-counseling/e-counseling";
+
+// The session workspace is a container: it becomes two columns, with the session stage kept in view,
+// only when the workspace itself (not the window) is wide enough for both the video and the work
+// beside it. The portal dock's width is already accounted for.
+// The Counselor's working area carries the Student context and the session's records, so it gets
+// the wider column; a Student's holds only media consent, so the video gets more room.
+const sessionLayout = {
+  counselor: "grid items-start gap-5 @5xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]",
+  student: "grid items-start gap-5 @5xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]",
+};
+const stickyStage = "@5xl:sticky @5xl:top-4";
 
 function RecordStatus({ workspace, canManage }: { workspace: CounselorWorkspaceResponse; canManage: boolean }) {
   const queryClient = useQueryClient();
@@ -58,40 +70,98 @@ function RecordStatus({ workspace, canManage }: { workspace: CounselorWorkspaceR
   }
 
   if (workspace.counseling_encounter?.recorded) {
-    return <section aria-labelledby="e-counseling-encounter-heading" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5"><h2 id="e-counseling-encounter-heading" className="font-heading text-lg font-semibold text-ink">Counseling Encounter</h2><p className="mt-2 text-sm text-ink">Encounter recorded.</p><Link className="mt-3 inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href={`/portal/counseling/encounters/${workspace.counseling_encounter.id}`}>View encounter</Link></section>;
+    return (
+      <Panel aria-labelledby="e-counseling-encounter-heading">
+        <PanelHeader title="Counseling Encounter" titleId="e-counseling-encounter-heading" />
+        <PanelMessage action={<Link className={buttonVariants({ variant: "secondary" })} href={`/portal/counseling/encounters/${workspace.counseling_encounter.id}`}>View encounter</Link>}>
+          Encounter recorded.
+        </PanelMessage>
+      </Panel>
+    );
   }
 
-  return <section aria-labelledby="e-counseling-encounter-heading" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5"><h2 id="e-counseling-encounter-heading" className="font-heading text-lg font-semibold text-ink">Counseling Encounter</h2><p className="mt-2 text-sm text-muted">No counseling encounter has been recorded for this session yet. Recording one is separate from media consent and capture.</p>{canManage ? open ? <div className="mt-4 border-t border-border pt-4"><RecordEncounterForm preset={preset} onCancel={() => setOpen(false)} onUncertain={() => setUncertain(true)} onCreated={() => void handleCreated()} /></div> : <Button className="mt-3" disabled={uncertain} onClick={() => setOpen(true)}>{uncertain ? "Recording result unconfirmed" : "Record completed encounter"}</Button> : null}</section>;
+  return (
+    <Panel aria-labelledby="e-counseling-encounter-heading">
+      <PanelHeader title="Counseling Encounter" titleId="e-counseling-encounter-heading" />
+      <PanelBody>
+        <p className="text-sm leading-6 text-muted">Not recorded yet. Recording the encounter is separate from media consent and capture.</p>
+        {canManage ? open ? (
+          <div className="mt-4 border-t border-border pt-4">
+            <RecordEncounterForm preset={preset} onCancel={() => setOpen(false)} onUncertain={() => setUncertain(true)} onCreated={() => void handleCreated()} />
+          </div>
+        ) : (
+          <Button className="mt-3" disabled={uncertain} onClick={() => setOpen(true)}>
+            {uncertain ? "Recording result unconfirmed" : "Record completed encounter"}
+          </Button>
+        ) : null}
+      </PanelBody>
+    </Panel>
+  );
 }
 
-function SessionPageHeader({ title, description }: { title: string; description: string }) {
-  return <PageHeader title={title} description={description} />;
+// Who the session is with, when it is, which Appointment it belongs to, and its linked Routine
+// Interview. Readiness to join sits with the session stage.
+function SessionHeader({
+  appointmentId,
+  participant,
+  appointment,
+  routine,
+}: {
+  appointmentId: string;
+  participant: string;
+  appointment: AppointmentWorkspaceSummary;
+  routine?: { id: string; status: string } | null;
+}) {
+  return (
+    <PageHeader
+      title="E-Counseling session"
+      back={(
+        <GuardedPortalLink href={`/portal/appointments/${appointmentId}`} className={pageBackLinkClass}>
+          ← Back to appointment
+        </GuardedPortalLink>
+      )}
+      actions={routine ? (
+        <Link className={buttonVariants({ variant: "secondary" })} href={`/portal/routine-interviews/${routine.id}`}>
+          Open Routine Interview
+        </Link>
+      ) : undefined}
+    >
+      <p className="mt-1 text-sm text-ink">
+        {participant}
+        <span aria-hidden="true"> · </span>
+        {formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}
+      </p>
+      <p className="mt-0.5 text-sm text-muted">
+        Appointment <span className="font-mono text-ink">{appointment.reference_code}</span>
+        <span aria-hidden="true"> · </span>
+        {deliveryModeLabel(appointment.delivery_mode)}
+        <span aria-hidden="true"> · </span>
+        {appointmentStatusLabel(appointment.status)}
+      </p>
+      {routine ? <p className="mt-0.5 text-sm text-muted">Routine Interview · {routine.status}</p> : null}
+    </PageHeader>
+  );
+}
+
+function WorkspaceSkeleton() {
+  return (
+    <div aria-busy="true" className="@container">
+      <span className="sr-only">Loading E-Counseling session…</span>
+      <Skeleton className="h-9 w-1/2" />
+      <Skeleton className="mt-2 h-5 w-2/3" />
+      <div className={`mt-5 ${sessionLayout.counselor}`}>
+        <Skeleton className="aspect-video w-full" />
+        <div className="space-y-4">
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-56 w-full" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function WorkspaceLoadError({ error, retry }: { error: unknown; retry: () => void }) {
   return <section className="max-w-2xl"><PageHeader title="E-Counseling unavailable" /><Notice role="alert" action={<><Button variant="secondary" onClick={retry}>Retry</Button><Link className="inline-flex min-h-10 items-center px-2 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/portal/appointments/my">Return to appointments</Link></>}>{ecounselingErrorMessage(error, "This E-Counseling session is not currently available.")}</Notice></section>;
-}
-
-function joinAvailabilityMessage(readiness: ProviderReadiness): string | null {
-  if (readiness.join_state === ECounselingJoinState.TOO_EARLY) {
-    return `You can join starting ${formatECounselingDateTime(readiness.join_available_from)}.`;
-  }
-  if (readiness.join_state === ECounselingJoinState.CLOSED) {
-    return "This session can no longer be joined.";
-  }
-  if (readiness.join_state === ECounselingJoinState.PROVIDER_DISABLED) {
-    return "Video sessions are not available right now. Your Counseling appointment is still available.";
-  }
-  return null;
-}
-
-function joinReadinessLabel(readiness: ProviderReadiness): string {
-  if (readiness.join_state === ECounselingJoinState.TOO_EARLY) {
-    return `Opens ${formatECounselingDateTime(readiness.join_available_from)}`;
-  }
-  if (readiness.join_state === ECounselingJoinState.OPEN) return "Ready to join";
-  if (readiness.join_state === ECounselingJoinState.CLOSED) return "Closed";
-  return "Unavailable right now";
 }
 
 const JOIN_BOUNDARY_REFRESH_BUFFER_MS = 500;
@@ -162,66 +232,40 @@ export function ECounselingWorkspace({ appointmentId }: { appointmentId: string 
 }
 
 function StudentWorkspace({ appointmentId, access }: { appointmentId: string; access: ReturnType<typeof getECounselingAccess> }) {
-  const [credential, setCredential] = useState<JoinCredentialResponse | null>(null);
-  const [showDailyFrame, setShowDailyFrame] = useState(false);
-  const [frameGeneration, setFrameGeneration] = useState(0);
   const [localCallJoined, setLocalCallJoined] = useState(false);
-  const [joinError, setJoinError] = useState<string | null>(null);
   const workspace = useECounselingGetMyWorkspace(appointmentId, { query: {
     retry: false,
     refetchInterval: (query) => localCallJoined || hasLiveOrTransitionalMedia(query.state.data?.data.media) ? 7000 : false,
   } });
-  const joinCredential = useECounselingCreateJoinCredential({ mutation: { retry: false } });
-  const joinMutationRef = useRef(joinCredential);
+  const join = useSessionJoin({ appointmentId, refetchWorkspace: workspace.refetch, onCallChange: setLocalCallJoined });
   const data = workspace.data?.data;
   const media = data?.media;
 
   useECounselingBoundaryRefresh(appointmentId, data?.provider_readiness, workspace.refetch);
-  useEffect(() => { joinMutationRef.current = joinCredential; }, [joinCredential]);
-  useEffect(() => () => joinMutationRef.current.reset(), []);
 
-  async function requestJoin() {
-    setJoinError(null);
-    try {
-      const result = await joinCredential.mutateAsync({ appointmentId });
-      setCredential(result.data);
-      setFrameGeneration((generation) => generation + 1);
-      setShowDailyFrame(true);
-    } catch (error) {
-      joinCredential.reset();
-      setJoinError(ecounselingErrorMessage(error, "A secure session could not be opened. Refresh the session state and try again."));
-      void workspace.refetch();
-    }
-  }
-
-  if (workspace.isPending) return <div aria-busy="true"><span className="sr-only">Loading E-Counseling session…</span><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-5 h-80 w-full" /><Skeleton className="mt-4 h-24 w-full" /></div>;
+  if (workspace.isPending) return <WorkspaceSkeleton />;
   if (workspace.isError || !data || !media) return <WorkspaceLoadError error={workspace.error} retry={() => void workspace.refetch()} />;
 
-  const joinAvailable = access.canJoinSelf && data.provider_readiness.join_state === ECounselingJoinState.OPEN;
-  const joinStatus = joinAvailabilityMessage(data.provider_readiness);
-
   return (
-    <div className="mx-auto max-w-screen-2xl">
-      <SessionPageHeader title="E-Counseling session" description="Your online Counseling Appointment, joining status, and media consent options. Media consent is optional and does not affect your access to Counseling." />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.8fr)_minmax(19rem,0.8fr)]">
-        <div className="min-w-0 space-y-5">
-          {showDailyFrame ? <DailySessionFrame key={frameGeneration} credential={credential} onJoined={() => { setCredential(null); joinCredential.reset(); setLocalCallJoined(true); }} onLeft={() => { setLocalCallJoined(false); setShowDailyFrame(false); setCredential(null); joinCredential.reset(); }} onFailed={() => { setJoinError("The video session could not be opened. Request a fresh join to try again."); setLocalCallJoined(false); setShowDailyFrame(false); setCredential(null); joinCredential.reset(); void workspace.refetch(); }} /> : <section aria-label="Session video" className="flex aspect-video min-h-60 flex-col items-center justify-center rounded-sm border border-brand-line bg-surface-muted px-5 text-center"><h2 className="font-heading text-xl font-semibold text-ink">Online session</h2><p className="mt-2 max-w-md text-sm leading-6 text-muted">A secure video room opens when an authorized participant joins.</p><Button className="mt-4" disabled={!joinAvailable || joinCredential.isPending || showDailyFrame || localCallJoined} onClick={() => void requestJoin()}>{joinCredential.isPending ? "Preparing secure session…" : "Join session"}</Button></section>}
-          {joinError ? <p role="alert" className="text-sm text-danger">{joinError}</p> : null}
-          {joinStatus ? <p role="status" className="rounded-sm border border-brand-line bg-surface-raised px-4 py-3 text-sm text-muted">{joinStatus}</p> : null}
-        </div>
-        <aside className="min-w-0 space-y-5">
-          <section aria-labelledby="student-session-details-heading" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5">
-            <h2 id="student-session-details-heading" className="font-heading text-lg font-semibold text-ink">My session</h2>
-            <dl className="mt-2 divide-y divide-border">
-              <div className="py-3"><dt className="text-xs font-semibold text-muted">Appointment</dt><dd className="mt-1 break-all font-mono text-sm text-ink">{data.appointment.reference_code}</dd><dd className="mt-1 text-xs text-muted">{appointmentStatusLabel(data.appointment.status)} · {deliveryModeLabel(data.appointment.delivery_mode)}</dd></div>
-              <div className="py-3"><dt className="text-xs font-semibold text-muted">Date and time</dt><dd className="mt-1 text-sm text-ink">{formatECounselingDateTime(data.appointment.starts_at)} – {formatECounselingDateTime(data.appointment.ends_at)}</dd></div>
-              <div className="py-3"><dt className="text-xs font-semibold text-muted">Counselor</dt><dd className="mt-1 text-sm text-ink">{data.counselor.display_name}</dd></div>
-              <div className="py-3"><dt className="text-xs font-semibold text-muted">Routine Interview</dt><dd className="mt-1 text-sm text-ink">{data.routine_interview ? `Intake · ${routineIntakeStatusLabel(data.routine_interview.intake_status)}` : "No linked Routine Interview"}</dd>{data.routine_interview ? <dd className="mt-2"><Link className="text-sm font-semibold text-brand underline" href={`/portal/routine-interviews/${data.routine_interview.id}`}>Open Routine Interview</Link></dd> : null}</div>
-              <div className="py-3"><dt className="text-xs font-semibold text-muted">Video session</dt><dd className="mt-1 text-sm text-ink">{joinReadinessLabel(data.provider_readiness)}</dd></div>
-            </dl>
-          </section>
+    <div className="@container">
+      <SessionHeader
+        appointmentId={appointmentId}
+        participant={`With ${data.counselor.display_name}`}
+        appointment={data.appointment}
+        routine={data.routine_interview ? { id: data.routine_interview.id, status: `${routineIntakeStatusLabel(data.routine_interview.intake_status)} Intake` } : null}
+      />
+      <div className={sessionLayout.student}>
+        <SessionStage
+          className={stickyStage}
+          readiness={data.provider_readiness}
+          media={media}
+          canJoin={access.canJoinSelf}
+          inCall={localCallJoined}
+          join={join}
+        />
+        <div className="min-w-0">
           <StudentConsentPanel appointmentId={appointmentId} access={access} media={media} />
-        </aside>
+        </div>
       </div>
     </div>
   );
@@ -230,18 +274,13 @@ function StudentWorkspace({ appointmentId, access }: { appointmentId: string; ac
 function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; access: ReturnType<typeof getECounselingAccess> }) {
   const { user } = usePortalSession();
   const counselingAccess = getCounselingAccess(user);
-  const [credential, setCredential] = useState<JoinCredentialResponse | null>(null);
-  const [showDailyFrame, setShowDailyFrame] = useState(false);
-  const [frameGeneration, setFrameGeneration] = useState(0);
   const [localCallJoined, setLocalCallJoined] = useState(false);
-  const [joinError, setJoinError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const workspace = useECounselingGetAssignedWorkspace(appointmentId, { query: {
     retry: false,
     refetchInterval: (query) => localCallJoined || hasLiveOrTransitionalMedia(query.state.data?.data.media) ? 7000 : false,
   } });
-  const joinCredential = useECounselingCreateJoinCredential({ mutation: { retry: false } });
-  const joinMutationRef = useRef(joinCredential);
+  const join = useSessionJoin({ appointmentId, refetchWorkspace: workspace.refetch, onCallChange: setLocalCallJoined });
   const data = workspace.data?.data;
   const media = data?.media;
 
@@ -250,49 +289,59 @@ function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; 
     query: { enabled: Boolean(data?.counseling_context_available), retry: false },
   });
 
-  useEffect(() => { joinMutationRef.current = joinCredential; }, [joinCredential]);
-  useEffect(() => () => joinMutationRef.current.reset(), []);
-
-  async function requestJoin() {
-    setJoinError(null);
-    try {
-      const result = await joinCredential.mutateAsync({ appointmentId });
-      setCredential(result.data);
-      setFrameGeneration((generation) => generation + 1);
-      setShowDailyFrame(true);
-    } catch (error) {
-      joinCredential.reset();
-      setJoinError(ecounselingErrorMessage(error, "A secure session could not be opened. Refresh the session state and try again."));
-      void workspace.refetch();
-    }
-  }
-
-  if (workspace.isPending) return <div aria-busy="true"><span className="sr-only">Loading E-Counseling session…</span><Skeleton className="h-10 w-2/3" /><Skeleton className="mt-5 h-80 w-full" /><Skeleton className="mt-4 h-24 w-full" /></div>;
+  if (workspace.isPending) return <WorkspaceSkeleton />;
   if (workspace.isError || !data || !media) return <WorkspaceLoadError error={workspace.error} retry={() => void workspace.refetch()} />;
 
-  const joinAvailable = access.canJoinAssigned && data.provider_readiness.join_state === ECounselingJoinState.OPEN;
-  const joinStatus = joinAvailabilityMessage(data.provider_readiness);
+  const routine = data.routine_interview;
 
   return (
-    <div className="mx-auto max-w-screen-2xl">
-      <SessionPageHeader title="E-Counseling session" description="Your assigned online Counseling Appointment, joining status, and the Student context available for this session." />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.8fr)_minmax(19rem,0.8fr)]">
+    <div className="@container">
+      <SessionHeader
+        appointmentId={appointmentId}
+        participant={data.student.display_name}
+        appointment={data.appointment}
+        routine={routine ? { id: routine.id, status: `${routineIntakeStatusLabel(routine.intake_status)} Intake · ${routineEvaluationStatusLabel(routine.evaluation_status)} Evaluation` } : null}
+      />
+      <div className={sessionLayout.counselor}>
+        <SessionStage
+          className={stickyStage}
+          readiness={data.provider_readiness}
+          media={media}
+          canJoin={access.canJoinAssigned}
+          inCall={localCallJoined}
+          join={join}
+        />
+        {/* The working area scrolls with the page beside the stage. Media controls come first so
+            consent and capture, including stopping a capture, are always at the same place. */}
         <div className="min-w-0 space-y-5">
-          {showDailyFrame ? <DailySessionFrame key={frameGeneration} credential={credential} onJoined={() => { setCredential(null); joinCredential.reset(); setLocalCallJoined(true); }} onLeft={() => { setLocalCallJoined(false); setShowDailyFrame(false); setCredential(null); joinCredential.reset(); }} onFailed={() => { setJoinError("The video session could not be opened. Request a fresh join to try again."); setLocalCallJoined(false); setShowDailyFrame(false); setCredential(null); joinCredential.reset(); void workspace.refetch(); }} /> : <section aria-label="Session video" className="flex aspect-video min-h-60 flex-col items-center justify-center rounded-sm border border-brand-line bg-surface-muted px-5 text-center"><h2 className="font-heading text-xl font-semibold text-ink">Online session</h2><p className="mt-2 max-w-md text-sm leading-6 text-muted">A secure video room opens when an authorized participant joins.</p><Button className="mt-4" disabled={!joinAvailable || joinCredential.isPending || showDailyFrame || localCallJoined} onClick={() => void requestJoin()}>{joinCredential.isPending ? "Preparing secure session…" : "Join session"}</Button></section>}
-          {joinError ? <p role="alert" className="text-sm text-danger">{joinError}</p> : null}
-          {joinStatus ? <p role="status" className="rounded-sm border border-brand-line bg-surface-raised px-4 py-3 text-sm text-muted">{joinStatus}</p> : null}
-          <section aria-labelledby="counselor-session-details-heading" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5">
-            <h2 id="counselor-session-details-heading" className="font-heading text-lg font-semibold text-ink">Session details</h2>
-            <dl className="mt-3 grid gap-4 sm:grid-cols-2"><div><dt className="text-xs font-semibold text-muted">Appointment</dt><dd className="mt-1 break-all font-mono text-sm text-ink">{data.appointment.reference_code}</dd></div><div><dt className="text-xs font-semibold text-muted">Date and time</dt><dd className="mt-1 text-sm text-ink">{formatECounselingDateTime(data.appointment.starts_at)} – {formatECounselingDateTime(data.appointment.ends_at)}</dd></div><div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 text-sm text-ink">{data.student.display_name}</dd></div><div><dt className="text-xs font-semibold text-muted">Routine Interview</dt><dd className="mt-1 text-sm text-ink">{data.routine_interview ? `Intake · ${routineIntakeStatusLabel(data.routine_interview.intake_status)} · Evaluation · ${routineEvaluationStatusLabel(data.routine_interview.evaluation_status)}` : "No linked Routine Interview"}</dd>{data.routine_interview ? <dd className="mt-2"><Link className="text-sm font-semibold text-brand underline" href={`/portal/routine-interviews/${data.routine_interview.id}`}>Open Routine Interview</Link></dd> : null}</div><div><dt className="text-xs font-semibold text-muted">Video session</dt><dd className="mt-1 text-sm text-ink">{joinReadinessLabel(data.provider_readiness)}</dd></div></dl>
-          </section>
           <CounselorMediaControls appointmentId={appointmentId} access={access} workspace={data} />
+          {!data.counseling_context_available ? (
+            <Panel aria-labelledby="e-counseling-context-heading">
+              <PanelHeader title="Student context" titleId="e-counseling-context-heading" />
+              <PanelMessage role="status">Student context is not available for this appointment right now.</PanelMessage>
+            </Panel>
+          ) : context.isPending ? (
+            <Panel aria-busy="true" aria-labelledby="e-counseling-context-heading">
+              <PanelHeader title="Student context" titleId="e-counseling-context-heading" />
+              <PanelBody>
+                <span className="sr-only">Loading Student context…</span>
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="mt-3 h-40 w-full" />
+              </PanelBody>
+            </Panel>
+          ) : context.isError || !context.data?.data ? (
+            <Panel aria-labelledby="e-counseling-context-heading">
+              <PanelHeader title="Student context" titleId="e-counseling-context-heading" />
+              <PanelMessage role="alert" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>
+                Student context could not be loaded.
+              </PanelMessage>
+            </Panel>
+          ) : (
+            <CounselingContextPanel anchorType={CounselingContextAnchorType.APPOINTMENT} anchorId={appointmentId} overview={context.data.data} access={counselingAccess} onPublished={() => void queryClient.invalidateQueries({ queryKey: getCounselingContextGetOverviewQueryKey(CounselingContextAnchorType.APPOINTMENT, appointmentId) })} />
+          )}
           <RecordStatus workspace={data} canManage={counselingAccess.canManageAssigned} />
         </div>
-        <aside className="min-w-0">
-          {!data.counseling_context_available ? <section role="status" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5"><h2 className="font-heading text-lg font-semibold text-ink">Student context</h2><p className="mt-3 text-sm leading-6 text-muted">Student context is not available for this appointment right now.</p></section> : context.isPending ? <section aria-busy="true" aria-label="Loading Counseling context" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5"><h2 className="font-heading text-lg font-semibold text-ink">Student context</h2><Skeleton className="mt-4 h-12 w-full" /><Skeleton className="mt-3 h-48 w-full" /></section> : context.isError || !context.data?.data ? <section role="alert" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5"><h2 className="font-heading text-lg font-semibold text-ink">Student context</h2><p className="mt-3 text-sm leading-6 text-muted">Student context could not be loaded.</p><Button className="mt-3" variant="secondary" onClick={() => void context.refetch()}>Retry</Button></section> : <CounselingContextPanel anchorType={CounselingContextAnchorType.APPOINTMENT} anchorId={appointmentId} overview={context.data.data} access={counselingAccess} onPublished={() => void queryClient.invalidateQueries({ queryKey: getCounselingContextGetOverviewQueryKey(CounselingContextAnchorType.APPOINTMENT, appointmentId) })} />}
-        </aside>
       </div>
-      <p className="mt-6 text-xs text-muted">Recording and live transcription status appears here when available. Transcript text, playback, and downloads are not available in this workspace.</p>
     </div>
   );
 }

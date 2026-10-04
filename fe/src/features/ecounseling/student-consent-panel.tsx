@@ -5,10 +5,11 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ECounselingAccess } from "@/features/ecounseling/ecounseling-access";
-import { captureStatusLabel, consentStatusLabel, ecounselingErrorMessage, formatECounselingDateTime, hasLiveOrTransitionalMedia } from "@/features/ecounseling/ecounseling-shared";
-import { ConsentDecisionRequestDecision, ECounselingCaptureStatus, ECounselingConsentDecision, ECounselingConsentScope, type ConsentResponse, type MediaWorkspaceState, type StudentWorkspaceResponse } from "@/lib/api/generated/model";
+import { consentStatusLabel, ecounselingErrorMessage, formatECounselingDateTime, hasLiveOrTransitionalMedia } from "@/features/ecounseling/ecounseling-shared";
+import { ConsentDecisionRequestDecision, ECounselingConsentDecision, ECounselingConsentScope, type ConsentResponse, type MediaWorkspaceState, type StudentWorkspaceResponse } from "@/lib/api/generated/model";
 import {
   getECounselingGetMyWorkspaceQueryKey,
   getECounselingListMyConsentsQueryKey,
@@ -114,37 +115,42 @@ export function StudentConsentPanel({
   }
 
   return (
-    <section aria-labelledby="e-counseling-consent-heading" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5">
-      <h2 id="e-counseling-consent-heading" className="font-heading text-lg font-semibold text-ink">Media consent</h2>
-      <p className="mt-2 text-sm leading-6 text-muted">Your media-consent choice does not affect your ability to receive Counseling.</p>
+    <Panel aria-labelledby="e-counseling-consent-heading">
+      <PanelHeader
+        title="Media consent"
+        titleId="e-counseling-consent-heading"
+        description="Your media-consent choice does not affect your ability to receive Counseling."
+      />
       {access.canConsentSelf ? (
-        consents.isPending ? <div aria-busy="true"><span className="sr-only">Loading your session consent…</span><Skeleton className="mt-4 h-16 w-full" /><Skeleton className="mt-3 h-16 w-full" /></div> :
-          consents.isError ? <div role="alert" className="mt-4 rounded-sm border border-danger/35 px-4 py-3"><p className="text-sm text-danger">Session consent could not be loaded.</p><Button className="mt-3" variant="secondary" onClick={() => void consents.refetch()}>Retry</Button></div> :
-            <ul className="mt-4 divide-y divide-border rounded-sm border border-border">{scopeRows.map(({ scope, row }) => {
+        consents.isPending ? <div aria-busy="true" className="px-4 py-4 sm:px-5"><span className="sr-only">Loading your session consent…</span><Skeleton className="h-14 w-full" /><Skeleton className="mt-3 h-14 w-full" /></div> :
+          consents.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void consents.refetch()}>Retry</Button>}>Session consent could not be loaded.</PanelMessage> :
+            <ul className="divide-y divide-border">{scopeRows.map(({ scope, row }) => {
               const withdrawn = Boolean(row?.withdrawn_at);
+              const pending = row?.decision === ECounselingConsentDecision.PENDING && !withdrawn;
               const canWithdraw = row?.decision === ECounselingConsentDecision.APPROVED && row.effective && !withdrawn;
               return (
-                <li key={row?.id ?? scope} className="px-4 py-4">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h3 className="font-semibold text-ink">{scopeLabel(scope)}</h3><span className="text-sm text-muted">{row ? consentStatusLabel(row) : "Not requested"}</span></div>
-                  <p className="mt-1 text-sm leading-6 text-muted">{scopeDescription(scope)}</p>
-                  {row ? <p className="mt-1 text-xs text-muted">Requested {formatECounselingDateTime(row.requested_at)}{row.decided_at ? ` · Decided ${formatECounselingDateTime(row.decided_at)}` : ""}</p> : null}
-                  {row?.decision === ECounselingConsentDecision.PENDING && !withdrawn ? <div className="mt-3 flex flex-wrap gap-2"><Button variant="primary" disabled={decide.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.APPROVED }); }}>Approve</Button><Button variant="secondary" disabled={decide.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.DENIED }); }}>Decline</Button></div> : null}
-                  {canWithdraw && row ? <Button className="mt-3" variant="secondary" disabled={withdraw.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, withdraw: true }); }}>Withdraw consent</Button> : null}
-                  {row?.decision === ECounselingConsentDecision.DENIED && !withdrawn ? <p className="mt-2 text-sm text-muted">This media option will not be requested again for this session.</p> : null}
-                  {error?.scope === scope ? <p role="alert" className="mt-3 text-sm text-danger">{scopeLabel(scope)}: {error.message}</p> : null}
+                <li key={row?.id ?? scope} className="px-4 py-3.5 sm:px-5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <h3 className="font-semibold text-ink">{scopeLabel(scope)}</h3>
+                    <span className={pending ? "text-sm font-semibold text-ink" : "text-sm text-muted"}>{row ? consentStatusLabel(row) : "Not requested"}</span>
+                  </div>
+                  <p className="mt-0.5 text-sm leading-6 text-muted">{scopeDescription(scope)}</p>
+                  {pending && row ? <div className="mt-2.5 flex flex-wrap gap-2"><Button variant="primary" disabled={decide.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.APPROVED }); }}>Approve</Button><Button variant="secondary" disabled={decide.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.DENIED }); }}>Decline</Button></div> : null}
+                  {canWithdraw && row ? <Button className="mt-2.5" variant="secondary" disabled={withdraw.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, withdraw: true }); }}>Withdraw consent</Button> : null}
+                  {row?.decision === ECounselingConsentDecision.DENIED && !withdrawn ? <p className="mt-1.5 text-sm text-muted">This media option will not be requested again for this session.</p> : null}
+                  {row ? <p className="mt-1.5 text-xs text-muted">Requested {formatECounselingDateTime(row.requested_at)}{row.decided_at ? ` · Decided ${formatECounselingDateTime(row.decided_at)}` : ""}</p> : null}
+                  {error?.scope === scope ? <p role="alert" className="mt-2 text-sm text-danger">{scopeLabel(scope)}: {error.message}</p> : null}
                 </li>
               );
             })}</ul>
-      ) : <p className="mt-4 text-sm text-muted">Consent decisions are unavailable to this account.</p>}
-      {error && !rows.some((row) => row.scope === error.scope) ? <p role="alert" className="mt-3 text-sm text-danger">{error.message}</p> : null}
-      {notice ? <p role="status" className="mt-3 text-sm text-success">{notice}</p> : null}
-      {notice === "Consent has been withdrawn." && hasLiveOrTransitionalMedia(latestMedia) ? <p role="status" className="mt-2 text-sm text-muted">The provider is still reconciling the media state.</p> : null}
-      <section aria-labelledby="e-counseling-media-activity-heading" className="mt-5 rounded-sm bg-surface-subtle px-4 py-3">
-        <h3 id="e-counseling-media-activity-heading" className="text-sm font-semibold text-ink">Session media activity</h3>
-        <dl className="mt-2 grid gap-3 sm:grid-cols-2"><div><dt className="text-xs font-semibold text-muted">Recording</dt><dd className="mt-1 text-sm text-ink">{captureStatusLabel(media.recording.capture_status)}</dd></div><div><dt className="text-xs font-semibold text-muted">Transcription</dt><dd className="mt-1 text-sm text-ink">{captureStatusLabel(media.transcription.capture_status)}</dd></div></dl>
-        {media.recording.capture_status === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-3 rounded-sm bg-warning/10 px-3 py-2 text-sm font-semibold text-ink">Recording active</p> : null}
-        {media.transcription.capture_status === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-2 rounded-sm bg-info/10 px-3 py-2 text-sm font-semibold text-ink">Session transcription active</p> : null}
-      </section>
+      ) : <PanelMessage>Consent decisions are unavailable to this account.</PanelMessage>}
+      {(error && !rows.some((row) => row.scope === error.scope)) || notice ? (
+        <div className="border-t border-brand-line px-4 py-3 sm:px-5">
+          {error && !rows.some((row) => row.scope === error.scope) ? <p role="alert" className="text-sm text-danger">{error.message}</p> : null}
+          {notice ? <p role="status" className="text-sm text-success">{notice}</p> : null}
+          {notice === "Consent has been withdrawn." && hasLiveOrTransitionalMedia(latestMedia) ? <p role="status" className="mt-1 text-sm text-muted">The provider is still reconciling the media state.</p> : null}
+        </div>
+      ) : null}
       <AlertDialog open={Boolean(action)} onOpenChange={(open) => { if (!open && !decide.isPending && !withdraw.isPending) setAction(null); }}>
         {action ? <AlertDialogContent>
           <AlertDialogTitle>{action.withdraw ? `Withdraw ${withdrawalSubjects[action.scope]} consent?` : `${action.decision === ConsentDecisionRequestDecision.APPROVED ? "Approve" : "Decline"} ${scopeLabel(action.scope).toLowerCase()}?`}</AlertDialogTitle>
@@ -152,6 +158,6 @@ export function StudentConsentPanel({
           <div className="mt-6 flex justify-end gap-2"><AlertDialogCancel asChild><Button variant="secondary" disabled={decide.isPending || withdraw.isPending}>Cancel</Button></AlertDialogCancel><AlertDialogAction asChild><Button variant="secondary" disabled={decide.isPending || withdraw.isPending} onClick={(event) => { event.preventDefault(); void confirmAction(); }}>{decide.isPending || withdraw.isPending ? "Saving…" : action.withdraw ? "Withdraw consent" : action.decision === ConsentDecisionRequestDecision.APPROVED ? "Approve" : "Decline"}</Button></AlertDialogAction></div>
         </AlertDialogContent> : null}
       </AlertDialog>
-    </section>
+    </Panel>
   );
 }
