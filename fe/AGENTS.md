@@ -84,6 +84,13 @@ Do not:
 
 Preserve the aspect ratio and visual integrity of brand assets.
 
+`public/brand/compass-mark.svg` was redrawn as a compass dial (user-approved, October 2026): a
+brand maroon tile, a cream face with four cardinal ticks, and a needle centered on the face with a
+maroon north half, a brand gold south half, and a pivot. Keep the needle centered and the colors
+from the palette below. The app icons `public/brand/compass-192.png` and `compass-512.png` are
+rendered from it as full-bleed squares, so regenerate them whenever the mark changes. The app's
+`themeColor` and manifest colors use brand maroon and the Body color.
+
 User-approved exception: on the maroon public footer, `public/brand/ucn-logo.png` may be
 rendered in solid white with a CSS filter (`brightness-0 invert`), because the maroon mark is not
 visible on that background. This does not permit recoloring brand marks anywhere else.

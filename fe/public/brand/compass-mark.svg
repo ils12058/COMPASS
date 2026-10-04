@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
   <title>COMPASS</title>
-  <rect width="64" height="64" rx="16" fill="#7f1d1d" />
-  <circle cx="32" cy="32" r="20" fill="none" stroke="#fff7ed" stroke-width="3" />
-  <path d="m38.8 25.2-5.1 10.5-10.5 5.1 5.1-10.5z" fill="#fff7ed" />
-  <circle cx="32" cy="32" r="3" fill="#fbbf24" />
+  <rect width="64" height="64" rx="16" fill="#6b1f2a" />
+  <circle cx="32" cy="32" r="23" fill="#fffdf8" />
+  <path d="M32 11v4M53 32h-4M32 53v-4M11 32h4" stroke="#6b1f2a" stroke-width="2.6" stroke-linecap="round" />
+  <path d="M42.61 21.39 34.97 34.97 29.03 29.03Z" fill="#6b1f2a" />
+  <path d="M21.39 42.61 29.03 29.03 34.97 34.97Z" fill="#936515" />
+  <circle cx="32" cy="32" r="2.3" fill="#fffdf8" stroke="#4d1520" stroke-width="1.2" />
 </svg>
