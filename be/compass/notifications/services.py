@@ -20,6 +20,7 @@ from .policy import (
     email_allowed_for_policy,
     get_event_definition,
 )
+from .push import create_push_deliveries
 
 logger = logging.getLogger("compass.notifications")
 DEFAULT_PAGE_SIZE = 20
@@ -62,6 +63,18 @@ def _safe_kick_email_delivery(delivery_id: str) -> None:
         )
 
 
+def _safe_kick_push_delivery(delivery_id: str) -> None:
+    try:
+        from .tasks import deliver_notification_push
+
+        deliver_notification_push.delay(delivery_id)
+    except Exception:
+        logger.warning(
+            "push enqueue failed; recovery will retry",
+            extra={"event": "push_enqueue_failed", "delivery_id": delivery_id},
+        )
+
+
 def optional_email_enabled_for(user: User) -> bool:
     stored = (
         NotificationPreference.objects.filter(user=user)
@@ -86,7 +99,7 @@ def create_notification_for_event(
     definition = get_event_definition(event)
     # Unknown destinations fail at the producer instead of breaking the recipient's list later.
     normalized_target = NotificationTargetType(target_type).value if target_type else ""
-    notification, _created = Notification.objects.get_or_create(
+    notification, created = Notification.objects.get_or_create(
         recipient=recipient,
         event_code=definition.event.value,
         source_type=source_type,
@@ -99,6 +112,19 @@ def create_notification_for_event(
             "target_id": target_id,
         },
     )
+
+    if created:
+        try:
+            # Optional transport setup is isolated from the authoritative transaction.
+            with transaction.atomic():
+                push_delivery_ids = create_push_deliveries(notification)
+            for delivery_id in push_delivery_ids:
+                transaction.on_commit(lambda value=delivery_id: _safe_kick_push_delivery(value))
+        except Exception:
+            logger.warning(
+                "push setup failed; notification remains durable",
+                extra={"event": "push_setup_failed", "notification_id": str(notification.pk)},
+            )
 
     if NotificationChannel.EMAIL not in definition.channels:
         return notification

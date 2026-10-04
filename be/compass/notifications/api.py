@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import NoReturn
 from uuid import UUID
 
+from django.conf import settings
 from ninja import Router, Schema
 from pydantic import ConfigDict, Field
 
@@ -15,6 +16,12 @@ from compass.common.errors import APIError
 
 from .models import Notification
 from .policy import NotificationPolicy, NotificationTargetType
+from .push import (
+    InvalidPushSubscription,
+    register_subscription,
+    remove_subscription,
+    subscription_enabled,
+)
 from .services import (
     DEFAULT_PAGE_SIZE,
     InvalidNotificationInput,
@@ -74,6 +81,37 @@ class NotificationPreferenceResponse(StrictSchema):
 
 class NotificationPreferenceUpdateRequest(StrictSchema):
     optional_email_enabled: bool
+
+
+class PushConfigResponse(StrictSchema):
+    enabled: bool
+    public_key: str
+
+
+class PushEndpointRequest(StrictSchema):
+    endpoint: str = Field(max_length=2048)
+
+
+class PushKeysRequest(StrictSchema):
+    p256dh: str = Field(max_length=180)
+    auth: str = Field(max_length=180)
+
+
+class PushRegisterRequest(PushEndpointRequest):
+    keys: PushKeysRequest
+
+
+class PushStatusResponse(StrictSchema):
+    enabled_on_this_device: bool
+
+
+def _require_push_enabled() -> None:
+    if not settings.WEB_PUSH_ENABLED:
+        raise APIError(503, "push_unavailable", "Browser notifications are unavailable.")
+
+
+def _push_invalid(exc: InvalidPushSubscription) -> NoReturn:
+    raise APIError(422, "invalid_push_subscription", str(exc)) from exc
 
 
 def _raise(exc: NotificationError) -> NoReturn:
@@ -187,3 +225,69 @@ def notifications_update_preferences(request, payload: NotificationPreferenceUpd
         optional_email_enabled=payload.optional_email_enabled,
     )
     return NotificationPreferenceResponse(optional_email_enabled=enabled)
+
+
+@router.get(
+    "/push/config",
+    response=response_with_errors(PushConfigResponse, 401),
+    auth=session_auth,
+    operation_id="notificationsGetPushConfig",
+)
+def notifications_get_push_config(request):
+    return PushConfigResponse(
+        enabled=settings.WEB_PUSH_ENABLED,
+        public_key=settings.WEB_PUSH_PUBLIC_KEY if settings.WEB_PUSH_ENABLED else "",
+    )
+
+
+@router.post(
+    "/push/status",
+    response=response_with_errors(PushStatusResponse, 401, 422, 503),
+    auth=session_auth,
+    operation_id="notificationsGetPushStatus",
+)
+def notifications_get_push_status(request, payload: PushEndpointRequest):
+    _require_push_enabled()
+    try:
+        enabled = subscription_enabled(
+            user=request.auth_user, session=request.auth_session, endpoint=payload.endpoint
+        )
+    except InvalidPushSubscription as exc:
+        _push_invalid(exc)
+    return PushStatusResponse(enabled_on_this_device=enabled)
+
+
+@router.post(
+    "/push/subscription",
+    response=response_with_errors(PushStatusResponse, 401, 422, 503),
+    auth=session_auth,
+    operation_id="notificationsRegisterPushSubscription",
+)
+def notifications_register_push_subscription(request, payload: PushRegisterRequest):
+    _require_push_enabled()
+    try:
+        register_subscription(
+            user=request.auth_user,
+            session=request.auth_session,
+            endpoint=payload.endpoint,
+            p256dh=payload.keys.p256dh,
+            auth=payload.keys.auth,
+        )
+    except InvalidPushSubscription as exc:
+        _push_invalid(exc)
+    return PushStatusResponse(enabled_on_this_device=True)
+
+
+@router.delete(
+    "/push/subscription",
+    response=response_with_errors(PushStatusResponse, 401, 422, 503),
+    auth=session_auth,
+    operation_id="notificationsRemovePushSubscription",
+)
+def notifications_remove_push_subscription(request, payload: PushEndpointRequest):
+    _require_push_enabled()
+    try:
+        remove_subscription(user=request.auth_user, endpoint=payload.endpoint)
+    except InvalidPushSubscription as exc:
+        _push_invalid(exc)
+    return PushStatusResponse(enabled_on_this_device=False)

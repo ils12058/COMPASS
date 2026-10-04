@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import { Providers } from "@/app/providers";
@@ -11,6 +11,8 @@ const shouldPreventIndexing =
   process.env.VERCEL_ENV === "preview";
 
 export const metadata: Metadata = {
+  applicationName: "COMPASS",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "COMPASS" },
   metadataBase: new URL(process.env.COMPASS_SITE_URL ?? "http://localhost:3000"),
   title: {
     default: "COMPASS | UCN Guidance and Counseling Office",
@@ -40,6 +42,8 @@ export const metadata: Metadata = {
     ],
   },
 };
+
+export const viewport: Viewport = { themeColor: "#7f1d1d", viewportFit: "cover" };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (

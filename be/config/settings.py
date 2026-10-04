@@ -1,7 +1,12 @@
 """Environment-driven Django settings for local-staging and live-staging."""
 
+import base64
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from py_vapid import Vapid
 
 from compass.common.build_metadata import read_project_version, validate_runtime_build_identity
 from compass.common.config import env, env_bool, env_csv, env_float, env_int, required_env
@@ -388,6 +393,34 @@ NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS = env_int(
     "NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS", 60
 )
 NOTIFICATION_EMAIL_CLAIM_TTL_SECONDS = env_int("NOTIFICATION_EMAIL_CLAIM_TTL_SECONDS", 300)
+WEB_PUSH_ENABLED = env_bool("WEB_PUSH_ENABLED", False)
+WEB_PUSH_PUBLIC_KEY = env("WEB_PUSH_PUBLIC_KEY", "")
+WEB_PUSH_PRIVATE_KEY = env("WEB_PUSH_PRIVATE_KEY", "")
+WEB_PUSH_CONTACT = env("WEB_PUSH_CONTACT", "")
+WEB_PUSH_STORAGE_KEY = env("WEB_PUSH_STORAGE_KEY", "")
+if WEB_PUSH_ENABLED and not all(
+    (WEB_PUSH_PUBLIC_KEY, WEB_PUSH_PRIVATE_KEY, WEB_PUSH_CONTACT, WEB_PUSH_STORAGE_KEY)
+):
+    raise ValueError("Web Push requires public/private VAPID keys, contact, and storage key")
+if WEB_PUSH_ENABLED and not WEB_PUSH_CONTACT.startswith("mailto:"):
+    raise ValueError("WEB_PUSH_CONTACT must be a mailto: address")
+if WEB_PUSH_ENABLED:
+    try:
+        Fernet(WEB_PUSH_STORAGE_KEY.encode("ascii"))
+    except (ValueError, TypeError) as exc:
+        raise ValueError("WEB_PUSH_STORAGE_KEY must be a valid Fernet key") from exc
+    try:
+        public = base64.urlsafe_b64decode(
+            WEB_PUSH_PUBLIC_KEY + "=" * (-len(WEB_PUSH_PUBLIC_KEY) % 4)
+        )
+        private = Vapid.from_string(private_key=WEB_PUSH_PRIVATE_KEY)
+        expected_public = private.public_key.public_bytes(
+            Encoding.X962, PublicFormat.UncompressedPoint
+        )
+        if len(public) != 65 or public != expected_public:
+            raise ValueError("VAPID key mismatch")
+    except Exception as exc:
+        raise ValueError("WEB_PUSH_PUBLIC_KEY and WEB_PUSH_PRIVATE_KEY must match") from exc
 if not 1 <= NOTIFICATION_EMAIL_MAX_ATTEMPTS <= 20:
     raise ValueError("NOTIFICATION_EMAIL_MAX_ATTEMPTS must be between 1 and 20")
 if not 1 <= NOTIFICATION_EMAIL_RETRY_BASE_SECONDS <= 3_600:
@@ -463,6 +496,10 @@ CELERY_WORKER_SEND_TASK_EVENTS = False
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_IMPORTS = ("compass.tasks",)
 CELERY_BEAT_SCHEDULE = {
+    "notification-push-recovery": {
+        "task": "compass.notifications.push.dispatch_due",
+        "schedule": 60,
+    },
     "notification-email-recovery": {
         "task": "compass.notifications.email.dispatch_due",
         "schedule": NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS,

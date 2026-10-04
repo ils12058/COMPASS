@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
+import { NotificationFreshness } from "@/features/notifications/notification-freshness";
 import { MaintenanceNotice } from "@/features/platform/maintenance-presentation";
 import { PortalNavigation } from "@/features/portal/components/portal-navigation";
 import { PortalUserMenu } from "@/features/portal/components/portal-user-menu";
@@ -36,6 +37,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
         "[--portal-content-inset:0px] [--portal-dock-width:4.75rem] data-[dock=expanded]:[--portal-dock-width:16rem] lg:[--portal-content-inset:var(--portal-dock-width)]",
       )}
     >
+      <NotificationFreshness />
       {/* The first Tab stop on every portal page. It stays out of the layout while hidden, and
           following it moves focus past the navigation to the page content. */}
       <a
@@ -76,7 +78,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
                 </button>
               </DialogTrigger>
               <DialogContent
-                className="left-0 top-0 h-dvh max-h-dvh w-[18rem] max-w-[85vw] translate-x-0 translate-y-0 rounded-none border-y-0 border-l-0 p-0 data-[state=closed]:animate-[portal-drawer-out_150ms_ease-in] data-[state=open]:animate-[portal-drawer-in_200ms_ease-out]"
+                className="left-0 top-[env(safe-area-inset-top)] h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-dvh w-[18rem] max-w-[85vw] translate-x-0 translate-y-0 rounded-none border-y-0 border-l-0 p-0 data-[state=closed]:animate-[portal-drawer-out_150ms_ease-in] data-[state=open]:animate-[portal-drawer-in_200ms_ease-out]"
                 closeLabel="Close navigation"
                 closeClassName="top-1.5 text-on-brand/80 hover:bg-on-brand/10 hover:text-on-brand focus-visible:ring-on-brand"
               >
