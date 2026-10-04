@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
@@ -23,6 +23,7 @@ from .activity import (
 )
 from .activity import (
     TechnicalActivityPaginationError,
+    TechnicalActivityType,
     list_technical_activity,
 )
 from .diagnostics import (
@@ -184,7 +185,7 @@ class EmailDeliveryPageResponse(StrictSchema):
 
 class TechnicalActivityItemResponse(StrictSchema):
     id: UUID
-    type: str
+    type: TechnicalActivityType
     title: str
     description: str
     occurred_at: datetime
@@ -547,10 +548,23 @@ def platform_activity(
     request,
     page: int = 1,
     page_size: int = ACTIVITY_DEFAULT_PAGE_SIZE,
+    search: str | None = None,
+    event_type: TechnicalActivityType | None = None,
+    operator: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ):
     _require(request, "platform_operations.view")
     try:
-        result = list_technical_activity(page=page, page_size=page_size)
+        result = list_technical_activity(
+            page=page,
+            page_size=page_size,
+            search=search,
+            event_type=event_type,
+            operator=operator,
+            date_from=date_from,
+            date_to=date_to,
+        )
     except TechnicalActivityPaginationError as exc:
         raise APIError(422, "invalid_pagination", str(exc)) from exc
     return TechnicalActivityPageResponse(

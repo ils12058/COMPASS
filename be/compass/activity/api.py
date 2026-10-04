@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from ninja import Router, Schema
@@ -16,6 +16,13 @@ from .projections import (
     ActivityPaginationError,
     get_my_activity,
     get_security_activity,
+)
+from .retrieval import ActivityRetrievalError
+from .supervised import (
+    SupervisedActivityPermissionDenied,
+    SupervisedActivityType,
+    list_supervised_activity,
+    list_supervised_staff,
 )
 
 router = Router(tags=["activity"])
@@ -79,3 +86,83 @@ def security_activity(request, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE
 
 
 __all__ = ["ActivityItemResponse", "ActivityPageResponse", "router"]
+
+
+class SupervisedStaffSummary(Schema):
+    id: UUID
+    display_name: str
+
+
+class SupervisedStaffPageResponse(Schema):
+    items: list[SupervisedStaffSummary]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class SupervisedActivityItemResponse(Schema):
+    id: UUID
+    type: SupervisedActivityType
+    title: str
+    description: str
+    occurred_at: datetime
+    staff: SupervisedStaffSummary
+
+
+class SupervisedActivityPageResponse(Schema):
+    items: list[SupervisedActivityItemResponse]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+def _supervised_error(exc):
+    if isinstance(exc, SupervisedActivityPermissionDenied):
+        raise APIError(403, "permission_denied", str(exc)) from exc
+    raise APIError(422, "invalid_supervised_activity_request", str(exc)) from exc
+
+
+@router.get(
+    "/supervised-staff",
+    auth=session_auth,
+    response=response_with_errors(SupervisedStaffPageResponse, 401, 403, 422),
+    operation_id="meListSupervisedStaff",
+    summary="List my directly supervised staff",
+)
+def supervised_staff(request, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE):
+    try:
+        return list_supervised_staff(actor=request.auth_user, page=page, page_size=page_size)
+    except (SupervisedActivityPermissionDenied, ActivityRetrievalError) as exc:
+        _supervised_error(exc)
+
+
+@router.get(
+    "/supervised-staff-activity",
+    auth=session_auth,
+    response=response_with_errors(SupervisedActivityPageResponse, 401, 403, 422),
+    operation_id="meListSupervisedStaffActivity",
+    summary="View current supervised staff operational activity",
+)
+def supervised_staff_activity(
+    request,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    search: str | None = None,
+    staff_id: UUID | None = None,
+    event_type: SupervisedActivityType | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+):
+    try:
+        return list_supervised_activity(
+            actor=request.auth_user,
+            page=page,
+            page_size=page_size,
+            search=search,
+            staff_id=staff_id,
+            event_type=event_type,
+            date_from=date_from,
+            date_to=date_to,
+        )
+    except (SupervisedActivityPermissionDenied, ActivityRetrievalError) as exc:
+        _supervised_error(exc)

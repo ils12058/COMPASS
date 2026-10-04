@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { ActivityFilterTools, activityTypeLabel, enumValue, useActivitySearchParams } from "@/features/activity/activity-filters";
+import { activityErrorMessage } from "@/features/activity/activity-errors";
 
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
@@ -13,7 +16,7 @@ import {
   PlatformRowsSkeleton,
   PlatformTimestamp,
 } from "@/features/platform/platform-presentation";
-import { TechnicalActivityActorType } from "@/lib/api/generated/model";
+import { TechnicalActivityActorType, TechnicalActivityType } from "@/lib/api/generated/model";
 import { usePlatformOperationsListActivity } from "@/lib/api/generated/platform-operations/platform-operations";
 
 const PAGE_SIZE = 20;
@@ -29,10 +32,18 @@ function actorLabel(name: string | null, type: TechnicalActivityActorType): stri
 }
 
 export function PlatformActivityPage() {
-  const [page, setPage] = useState(1);
+  const { searchParams, page, update, setPage } = useActivitySearchParams();
+  const search = searchParams.get("search") || undefined;
+  const event_type = enumValue(searchParams.get("event_type"), Object.values(TechnicalActivityType));
+  const operator = searchParams.get("operator") || undefined;
+  const date_from = searchParams.get("date_from") || undefined;
+  const date_to = searchParams.get("date_to") || undefined;
+  const criteria = { search, event_type, operator, date_from, date_to };
+  const filtered = Object.values(criteria).some(Boolean);
+  const clear = () => update(Object.fromEntries(Object.keys(criteria).map((key) => [key, null])));
   const activity = usePlatformOperationsListActivity(
-    { page, page_size: PAGE_SIZE },
-    { query: { retry: false, staleTime: 30_000 } },
+    { ...criteria, page, page_size: PAGE_SIZE },
+    { query: { retry: false, staleTime: 30_000, placeholderData: keepPreviousData } },
   );
   const result = activity.isError && !canShowLastKnownData(activity) ? undefined : activity.data?.data;
 
@@ -47,7 +58,7 @@ export function PlatformActivityPage() {
 
       {activity.isError && !result ? (
         <PlatformQueryError
-          message="Technical activity could not be loaded."
+          message={activityErrorMessage(activity.error, "Technical activity could not be loaded.")}
           onRetry={() => void activity.refetch()}
         />
       ) : (
@@ -64,7 +75,7 @@ export function PlatformActivityPage() {
                       page: result.page,
                       hasNext: result.has_next,
                       noun: { one: "event", other: "events" },
-                      filtered: false,
+                      filtered,
                     })
                   : null
             }
@@ -95,7 +106,7 @@ export function PlatformActivityPage() {
               ))}
             </ol>
           ) : result ? (
-            <PanelMessage>No technical activity is available yet.</PanelMessage>
+            <PanelMessage action={filtered ? <Button variant="secondary" onClick={clear}>Clear filters</Button> : undefined}>{filtered ? "No matching activity." : "No activity has been recorded yet."}</PanelMessage>
           ) : null}
           {result ? (
             <CanonicalPagination
@@ -109,6 +120,11 @@ export function PlatformActivityPage() {
           ) : null}
         </Panel>
       )}
+      <ActivityFilterTools key={JSON.stringify(criteria)} applied={criteria} onApply={update} fields={[
+        { name: "event_type", label: "Event type", options: Object.values(TechnicalActivityType).map((type) => ({ value: type, label: activityTypeLabel(type) })) },
+        { name: "operator", label: "Operator" },
+        { name: "date_from", label: "Date from", type: "date" }, { name: "date_to", label: "Date to", type: "date" },
+      ]} />
     </section>
   );
 }

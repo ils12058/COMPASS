@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
+from enum import StrEnum
 from uuid import UUID
 
 from django.db.models import Q
 
+from compass.activity.retrieval import (
+    ActivityCriteria,
+    ActivityRetrievalError,
+    bounded_candidates,
+    matches_text,
+    page_items,
+)
 from compass.audit.actions import (
     NOTIFICATION_EMAIL_RETRY_REQUESTED,
     PLATFORM_MAINTENANCE_DISABLED,
@@ -25,7 +33,7 @@ MAX_PAGE_SIZE = 50
 MAX_PAGE_NUMBER = 100_000
 
 
-class TechnicalActivityPaginationError(ValueError):
+class TechnicalActivityPaginationError(ActivityRetrievalError):
     """The requested technical activity page is outside supported bounds."""
 
 
@@ -125,16 +133,10 @@ TECHNICAL_ACTIVITY_PRESENTERS = {
 }
 
 
-def _validate_pagination(*, page: int, page_size: int) -> tuple[int, int]:
-    if type(page) is not int or page < 1 or page > MAX_PAGE_NUMBER:
-        raise TechnicalActivityPaginationError(
-            f"page must be an integer between 1 and {MAX_PAGE_NUMBER}"
-        )
-    if type(page_size) is not int or page_size < 1 or page_size > MAX_PAGE_SIZE:
-        raise TechnicalActivityPaginationError(
-            f"page_size must be an integer between 1 and {MAX_PAGE_SIZE}"
-        )
-    return page, page_size
+TechnicalActivityType = StrEnum(
+    "TechnicalActivityType",
+    {action.replace(".", "_").upper(): action for action in TECHNICAL_ACTIVITY_PRESENTERS},
+)
 
 
 def _selection_filter() -> Q:
@@ -157,31 +159,57 @@ def list_technical_activity(
     *,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
+    search: str | None = None,
+    operator: str | None = None,
+    event_type: TechnicalActivityType | str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> TechnicalActivityPage:
-    page, page_size = _validate_pagination(page=page, page_size=page_size)
-    offset = (page - 1) * page_size
-    records = list(
-        AuditEvent.objects.select_related("actor_user")
-        .filter(_selection_filter())
-        .order_by("-occurred_at", "-id")[offset : offset + page_size + 1]
-    )
-    has_next = len(records) > page_size
+    try:
+        criteria = ActivityCriteria.build(
+            search=search, actor=operator, date_from=date_from, date_to=date_to
+        )
+        if event_type is not None:
+            event_type = TechnicalActivityType(event_type)
+        queryset = (
+            AuditEvent.objects.select_related("actor_user")
+            .only(
+                "id",
+                "action",
+                "target_type",
+                "target_id",
+                "occurred_at",
+                "actor_type",
+                "actor_user_id",
+                "actor_user__id",
+                "actor_user__first_name",
+                "actor_user__middle_name",
+                "actor_user__last_name",
+                "actor_user__suffix",
+            )
+            .filter(_selection_filter())
+        )
+        if event_type is not None:
+            queryset = queryset.filter(action=event_type)
+        queryset = criteria.apply_dates(queryset).order_by("-occurred_at", "-id")
 
-    items: list[TechnicalActivityItem] = []
-    for event in records[:page_size]:
-        presenter = TECHNICAL_ACTIVITY_PRESENTERS.get(event.action)
-        if presenter is None:
-            continue
-        item = presenter.present(event)
-        if item is not None:
-            items.append(item)
+        def matching_items():
+            for event in bounded_candidates(queryset):
+                item = TECHNICAL_ACTIVITY_PRESENTERS[event.action].present(event)
+                if item is None:
+                    continue
+                if not matches_text(criteria.actor, (item.actor_display_name,)):
+                    continue
+                if matches_text(
+                    criteria.search,
+                    (item.type, item.title, item.description, item.actor_display_name),
+                ):
+                    yield item
 
-    return TechnicalActivityPage(
-        items=tuple(items),
-        page=page,
-        page_size=page_size,
-        has_next=has_next,
-    )
+        items, has_next = page_items(matching_items(), page=page, page_size=page_size)
+    except ValueError as exc:
+        raise TechnicalActivityPaginationError(str(exc)) from exc
+    return TechnicalActivityPage(items=items, page=page, page_size=page_size, has_next=has_next)
 
 
 __all__ = [
@@ -190,6 +218,7 @@ __all__ = [
     "MAX_PAGE_SIZE",
     "TECHNICAL_ACTIVITY_PRESENTERS",
     "TechnicalActivityItem",
+    "TechnicalActivityType",
     "TechnicalActivityPage",
     "TechnicalActivityPaginationError",
     "list_technical_activity",

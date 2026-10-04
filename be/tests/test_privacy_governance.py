@@ -108,6 +108,7 @@ def test_dpo_privacy_authority_is_designation_derived_and_separate_from_roles():
             "capability__code", flat=True
         )
     ) == {
+        "privacy_governance.activity.export",
         "privacy_governance.view",
         "privacy_governance.manage",
         "privacy_governance.retention.view",
@@ -117,6 +118,7 @@ def test_dpo_privacy_authority_is_designation_derived_and_separate_from_roles():
 
     assert effective_capabilities(dpo) == frozenset(
         {
+            "privacy_governance.activity.export",
             "privacy_governance.view",
             "privacy_governance.manage",
             "privacy_governance.retention.view",

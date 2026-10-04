@@ -146,8 +146,8 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
     assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
     assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 77
-    assert DesignationCapability.objects.count() == 18
+    assert RoleCapability.objects.count() == 78
+    assert DesignationCapability.objects.count() == 19
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -158,9 +158,9 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 67
-    assert RoleCapability.objects.count() == 77
-    assert DesignationCapability.objects.count() == 18
+    assert Capability.objects.count() == 69
+    assert RoleCapability.objects.count() == 78
+    assert DesignationCapability.objects.count() == 19
 
 
 @pytest.mark.django_db
@@ -298,6 +298,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     DesignationCapability.objects.create(designation=head, capability=manage)
 
     assert effective_capabilities(user) == {
+        "activity.supervised_staff.view",
         "accounts.view",
         "accounts.manage",
         "organization.structure.view",
@@ -582,6 +583,7 @@ def test_institutional_officer_is_neutral_and_dpo_adds_only_privacy_capabilities
     assert effective_capabilities(officer) == frozenset(
         {
             "privacy_governance.view",
+            "privacy_governance.activity.export",
             "privacy_governance.manage",
             "privacy_governance.retention.view",
             "privacy_governance.retention.manage",

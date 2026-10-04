@@ -10,6 +10,8 @@ export async function parseResponseBody(response: Response): Promise<unknown> {
     return text.length > 0 ? JSON.parse(text) : undefined;
   }
 
+  if (mimeType === "text/csv") return response.blob();
+
   if (
     mimeType.startsWith("text/") ||
     mimeType === "application/xml" ||
