@@ -22,7 +22,7 @@ import { ReviewSection } from "@/features/inventory/editor/review-section";
 import { getInventorySubmissionIssues, normalizeInventoryPayload, toInventoryPayload, type InventorySubmissionIssue } from "@/features/inventory/inventory-payload";
 import { inventorySections, type InventorySectionId } from "@/features/inventory/inventory-presentation";
 import { formatInventoryDate, InventoryHeading, InventoryNotice, inventoryErrorMessage } from "@/features/inventory/inventory-shared";
-import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 import type { InventoryPayload, InventoryResponse } from "@/lib/api/generated/model";
 import {
   getInventoryGetMyCurrentQueryKey,
@@ -112,9 +112,13 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
       void queryClient.invalidateQueries({ queryKey: getInventoryGetMyStatusQueryKey() });
     }
     if (code === "inventory_conflict") {
+      // Reload the annual status and history, but not the record this editor started from: a
+      // reload could replace the editor and lose answers that were not saved. The reason comes
+      // from COMPASS, such as an Inventory that was already submitted elsewhere.
       void queryClient.invalidateQueries({ queryKey: getInventoryGetMyStatusQueryKey() });
-      void queryClient.invalidateQueries({ queryKey: getInventoryGetMyCurrentQueryKey() });
       void queryClient.invalidateQueries({ queryKey: getInventoryListMyHistoryQueryKey() });
+      const reason = error instanceof CompassApiError ? readApiErrorMessage(error.body) : undefined;
+      return `${reason ?? message} Your answers are kept on this page.`;
     }
     return message;
   }

@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
 import { Textarea } from "@/components/ui/textarea";
-import { StepUpDialog } from "@/features/account/security/security-shared";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import {
   ReferralAccessUnavailable,
@@ -48,7 +47,6 @@ export function ReferralCreatePage() {
   const [receivedAt, setReceivedAt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
   const intent = useRef<CreationIntent | null>(null);
 
   const eligibleStudents = useReferralsListEligibleStudents(
@@ -116,10 +114,7 @@ export function ReferralCreatePage() {
       await queryClient.invalidateQueries({ queryKey: getReferralsListQueryKey() });
       router.push(`/portal/referrals/${referral.id}`);
     } catch (caught) {
-      if (referralErrorCode(caught) === "recent_mfa_required") {
-        setNotice("Verify your authenticator, then submit the same Referral details again.");
-        setStepUpOpen(true);
-      } else if (referralErrorCode(caught) === "idempotency_key_conflict") {
+      if (referralErrorCode(caught) === "idempotency_key_conflict") {
         intent.current = null;
         setError(referralErrorMessage(caught, "The Referral could not be created."));
       } else if (uncertainReferralMutation(caught)) {
@@ -208,11 +203,6 @@ export function ReferralCreatePage() {
           </PanelFooter>
         </Panel>
       </form>
-      <StepUpDialog
-        open={stepUpOpen}
-        onOpenChange={setStepUpOpen}
-        onVerified={() => setNotice("Verification complete. Submit the same Referral details again to continue.")}
-      />
     </div>
   );
 }

@@ -24,9 +24,8 @@ const knownCallSlipErrors: Record<string, string> = {
   call_slip_document_unavailable: "The document could not be released right now. Try again later.",
   release_audit_unavailable: "The document could not be released right now. Try again later.",
   invalid_call_slip_request: "The Call Slip request contains a value that was not accepted. Review the details and try again.",
-  call_slip_conflict: "The Call Slip conflicts with the current record state. Refresh the record and review it before trying again.",
+  call_slip_conflict: "The Call Slip changed or conflicts with its current record. The latest details are now shown; review them before trying again.",
   idempotency_key_conflict: "This issuance attempt no longer matches its original details. Review the form and submit again.",
-  recent_mfa_required: "Recent authenticator verification is required.",
 };
 
 export function callSlipErrorCode(error: unknown): string | undefined {

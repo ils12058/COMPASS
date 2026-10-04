@@ -8,15 +8,19 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
 import { Input } from "@/components/ui/input";
 
+// The canonical list URL for a submitted search: trimmed, without a page, and without the
+// parameter when the search is blank.
+export function announcementSearchHref(term: string): string {
+  const value = term.trim();
+  return value ? `/announcements?${new URLSearchParams({ search: value }).toString()}` : "/announcements";
+}
+
 export function AnnouncementSearch({ search }: { search?: string }) {
   const router = useRouter();
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const value = String(new FormData(event.currentTarget).get("search") ?? "").trim();
-    const params = new URLSearchParams();
-    if (value) params.set("search", value);
-    router.push(params.size ? `/announcements?${params.toString()}` : "/announcements");
+    router.push(announcementSearchHref(String(new FormData(event.currentTarget).get("search") ?? "")));
   }
 
   return (

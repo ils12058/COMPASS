@@ -24,7 +24,6 @@ import {
   canManageAvailability,
   canUseSelfAvailability,
   useAvailabilityAction,
-  type StepUpHooks,
 } from "@/features/availability/availability-shared";
 import { EffectiveAvailabilityPreview } from "@/features/availability/effective-availability-preview";
 import { UnavailabilitySection } from "@/features/availability/unavailability-section";
@@ -80,12 +79,10 @@ export function MyAvailabilityPage() {
 
   async function saveWeekly(
     windows: WeeklyWindowRequest[],
-    hooks?: StepUpHooks,
   ): Promise<boolean> {
     const response = await weeklyAction.run(
       () => replaceWeekly.mutateAsync({ data: { windows } }),
       "Your weekly Availability could not be saved.",
-      hooks,
     );
     if (!response) return false;
     weeklyAction.setNotice("Weekly Availability saved.");
@@ -96,12 +93,10 @@ export function MyAvailabilityPage() {
 
   async function addException(
     payload: ExceptionCreateRequest,
-    hooks?: StepUpHooks,
   ): Promise<boolean> {
     const response = await exceptionAction.run(
       () => createException.mutateAsync({ data: payload }),
       "Your unavailability could not be added.",
-      hooks,
     );
     if (!response) return false;
     exceptionAction.setNotice("Unavailability added.");
@@ -112,12 +107,10 @@ export function MyAvailabilityPage() {
 
   async function removeExceptionById(
     exceptionId: string,
-    hooks?: StepUpHooks,
   ): Promise<boolean> {
     const response = await exceptionAction.run(
       () => removeException.mutateAsync({ exceptionId }),
       "Your unavailability could not be removed.",
-      hooks,
     );
     if (!response) return false;
     exceptionAction.setNotice("Unavailability removed.");
@@ -168,7 +161,6 @@ export function MyAvailabilityPage() {
             items={exceptionData.data.items}
             canCreate={canMutate}
             canRemove={canMutate}
-            administrative={false}
             createPending={createException.isPending}
             removePending={removeException.isPending}
             error={exceptionAction.error}
@@ -186,8 +178,6 @@ export function MyAvailabilityPage() {
         />
       </div>
 
-      {weeklyAction.stepUpDialog}
-      {exceptionAction.stepUpDialog}
     </section>
   );
 }
@@ -214,12 +204,10 @@ export function OfficeAvailabilityPage() {
 
   async function saveWeekly(
     windows: WeeklyWindowRequest[],
-    hooks?: StepUpHooks,
   ): Promise<boolean> {
     const response = await weeklyAction.run(
       () => replaceWeekly.mutateAsync({ data: { windows } }),
       "Office weekly Availability could not be saved.",
-      { administrative: true, ...hooks },
     );
     if (!response) return false;
     weeklyAction.setNotice("Office weekly Availability saved.");
@@ -229,12 +217,10 @@ export function OfficeAvailabilityPage() {
 
   async function addException(
     payload: ExceptionCreateRequest,
-    hooks?: StepUpHooks,
   ): Promise<boolean> {
     const response = await exceptionAction.run(
       () => createException.mutateAsync({ data: payload }),
       "Office unavailability could not be added.",
-      { administrative: true, ...hooks },
     );
     if (!response) return false;
     exceptionAction.setNotice("Office unavailability added.");
@@ -244,12 +230,10 @@ export function OfficeAvailabilityPage() {
 
   async function removeExceptionById(
     exceptionId: string,
-    hooks?: StepUpHooks,
   ): Promise<boolean> {
     const response = await exceptionAction.run(
       () => removeException.mutateAsync({ exceptionId }),
       "Office unavailability could not be removed.",
-      { administrative: true, ...hooks },
     );
     if (!response) return false;
     exceptionAction.setNotice("Office unavailability removed.");
@@ -302,7 +286,6 @@ export function OfficeAvailabilityPage() {
             items={exceptionData.data.items}
             canCreate
             canRemove
-            administrative
             createPending={createException.isPending}
             removePending={removeException.isPending}
             error={exceptionAction.error}
@@ -313,8 +296,6 @@ export function OfficeAvailabilityPage() {
         )}
       </div>
 
-      {weeklyAction.stepUpDialog}
-      {exceptionAction.stepUpDialog}
     </section>
   );
 }
@@ -350,7 +331,6 @@ function ProviderWorkspace({
 
   async function saveWeekly(
     windows: WeeklyWindowRequest[],
-    hooks?: StepUpHooks,
   ): Promise<boolean> {
     const response = await weeklyAction.run(
       () =>
@@ -359,7 +339,6 @@ function ProviderWorkspace({
           data: { windows },
         }),
       "The Counselor's weekly Availability could not be saved.",
-      { administrative: true, ...hooks },
     );
     if (!response) return false;
     weeklyAction.setNotice(
@@ -374,7 +353,6 @@ function ProviderWorkspace({
 
   async function addException(
     payload: ExceptionCreateRequest,
-    hooks?: StepUpHooks,
   ): Promise<boolean> {
     const response = await exceptionAction.run(
       () =>
@@ -383,7 +361,6 @@ function ProviderWorkspace({
           data: payload,
         }),
       "The Counselor's unavailability could not be added.",
-      { administrative: true, ...hooks },
     );
     if (!response) return false;
     exceptionAction.setNotice("Counselor unavailability added.");
@@ -394,7 +371,6 @@ function ProviderWorkspace({
 
   async function removeExceptionById(
     exceptionId: string,
-    hooks?: StepUpHooks,
   ): Promise<boolean> {
     const response = await exceptionAction.run(
       () =>
@@ -403,7 +379,6 @@ function ProviderWorkspace({
           exceptionId,
         }),
       "The Counselor's unavailability could not be removed.",
-      { administrative: true, ...hooks },
     );
     if (!response) return false;
     exceptionAction.setNotice("Counselor unavailability removed.");
@@ -475,7 +450,6 @@ function ProviderWorkspace({
             items={exceptionData.data.items}
             canCreate={operational}
             canRemove
-            administrative
             createPending={createException.isPending}
             removePending={removeException.isPending}
             error={exceptionAction.error}
@@ -495,8 +469,6 @@ function ProviderWorkspace({
         </div>
       ) : null}
 
-      {weeklyAction.stepUpDialog}
-      {exceptionAction.stepUpDialog}
     </section>
   );
 }

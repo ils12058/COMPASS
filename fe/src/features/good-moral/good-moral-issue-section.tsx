@@ -1,19 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { TotpStepUpPanel } from "@/features/auth/mfa/totp-step-up-panel";
 import { GoodMoralField, GoodMoralSection, formatGoodMoralDate, goodMoralErrorCode, goodMoralErrorMessage, uncertainGoodMoralMutation } from "@/features/good-moral/good-moral-shared";
 import { goodMoralIssueRequest, getGoodMoralGetRequestQueryKey, getGoodMoralListRequestsQueryKey } from "@/lib/api/generated/good-moral/good-moral";
 import type { GoodMoralDetailResponse } from "@/lib/api/generated/model";
-import { authGetMfaStatus } from "@/lib/api/generated/auth/auth";
-
-type IssueDialogMode = "verify" | null;
 
 export function GoodMoralIssueSection({
   item,
@@ -23,11 +17,7 @@ export function GoodMoralIssueSection({
   onRefresh: () => Promise<GoodMoralDetailResponse | undefined>;
 }) {
   const queryClient = useQueryClient();
-  const [mode, setMode] = useState<IssueDialogMode>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [checkingMfa, setCheckingMfa] = useState(false);
-  const [verificationPending, setVerificationPending] = useState(false);
-  const [mfaDisabled, setMfaDisabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [blockedUntilRefresh, setBlockedUntilRefresh] = useState(false);
@@ -43,45 +33,12 @@ export function GoodMoralIssueSection({
     ]);
   }
 
-  async function beginIssue() {
+  // Issuance is protected by the good_moral.issue capability, this confirmation, and the recorded
+  // issuer; it does not need an authenticator step-up.
+  function beginIssue() {
     setError(null);
     setNotice(null);
-    setMfaDisabled(false);
-    setCheckingMfa(true);
-    try {
-      const status = (await authGetMfaStatus()).data;
-      if (!status.enabled) {
-        setMfaDisabled(true);
-        setError("Multi-factor authentication must be enabled before this certificate can be issued.");
-      } else if (status.recent) {
-        setMode(null);
-        setConfirmOpen(true);
-      } else {
-        setMode("verify");
-      }
-    } catch (caught) {
-      setError(goodMoralErrorMessage(caught, "MFA status could not be verified. Issuance is unavailable until the security check succeeds."));
-    } finally {
-      setCheckingMfa(false);
-    }
-  }
-
-  async function handleRecentMfaRequired() {
-    setConfirmOpen(false);
-    setMode(null);
-    setError("Recent MFA is required. Verify again before confirming issuance.");
-    try {
-      const status = (await authGetMfaStatus()).data;
-      if (!status.enabled) {
-        setMfaDisabled(true);
-        setError("Multi-factor authentication must be enabled before this certificate can be issued.");
-      } else {
-        setError(null);
-        setMode("verify");
-      }
-    } catch (caught) {
-      setError(goodMoralErrorMessage(caught, "MFA status could not be verified. Issuance is unavailable until the security check succeeds."));
-    }
+    setConfirmOpen(true);
   }
 
   async function confirmIssue() {
@@ -93,24 +50,17 @@ export function GoodMoralIssueSection({
       await invalidate();
       await onRefresh();
       setConfirmOpen(false);
-      setMode(null);
       setNotice("Good Moral certificate issued.");
     } catch (caught) {
       const code = goodMoralErrorCode(caught);
-      if (code === "recent_mfa_required") {
-        await handleRecentMfaRequired();
-        return;
-      }
       if (code === "current_student_required") {
         await onRefresh();
         setConfirmOpen(false);
-        setMode(null);
         setError("This certificate can no longer be issued because the applicant is no longer a current student.");
         return;
       }
       if (uncertainGoodMoralMutation(caught)) {
         setConfirmOpen(false);
-        setMode(null);
         const refreshed = await onRefresh();
         if (refreshed?.status === "ISSUED") {
           setBlockedUntilRefresh(false);
@@ -181,36 +131,14 @@ export function GoodMoralIssueSection({
           <GoodMoralField label="Official Receipt amount" value={item.official_receipt_amount} />
         </dl>
         <div className="mt-5 flex flex-col items-start gap-3 border-t border-border pt-4">
-          <Button onClick={() => void beginIssue()} disabled={checkingMfa || issuePending || blockedUntilRefresh}>
-            {checkingMfa ? "Checking MFA…" : "Issue certificate"}
+          <Button onClick={beginIssue} disabled={issuePending || blockedUntilRefresh}>
+            Issue certificate
           </Button>
           {blockedUntilRefresh ? <Button variant="secondary" onClick={() => void refreshRequestState()}>Refresh request state</Button> : null}
-          {mfaDisabled ? (
-            <p className="max-w-2xl text-sm leading-6 text-muted">
-              <Link href="/portal/account/security" className="font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open account security</Link> to enable an authenticator before issuing a certificate.
-            </p>
-          ) : null}
           {error && !confirmOpen ? <p role="alert" className="max-w-2xl text-sm leading-6 text-danger">{error}</p> : null}
           {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
         </div>
       </GoodMoralSection>
-
-      <Dialog open={mode === "verify"} onOpenChange={(nextOpen) => setMode(nextOpen ? "verify" : null)}>
-        <DialogContent aria-describedby="good-moral-issue-dialog-description" dismissible={!verificationPending}>
-          <DialogTitle>Verify your identity</DialogTitle>
-          <DialogDescription id="good-moral-issue-dialog-description">
-            Enter the current code from your authenticator app to continue issuing this certificate.
-          </DialogDescription>
-          <TotpStepUpPanel
-            onVerified={() => {
-              setMode(null);
-              setConfirmOpen(true);
-            }}
-            onCancel={() => setMode(null)}
-            onPendingChange={setVerificationPending}
-          />
-        </DialogContent>
-      </Dialog>
 
       <ConsequentialActionDialog
         open={confirmOpen}

@@ -7,7 +7,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StepUpDialog } from "@/features/account/security/security-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import {
@@ -24,11 +23,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs";
 
-export type StepUpHooks = {
-  onStepUpRequired?: () => void;
-  onStepUpVerified?: () => void;
-};
-
 const knownErrors: Record<string, string> = {
   availability_resource_not_found:
     "The requested Availability record is no longer available.",
@@ -40,7 +34,6 @@ const knownErrors: Record<string, string> = {
     "The Availability change conflicts with the current configuration.",
   permission_denied:
     "You do not have permission to use this Availability action.",
-  recent_mfa_required: "Recent authenticator verification is required.",
 };
 
 export function canUseSelfAvailability(user: {
@@ -75,16 +68,15 @@ export function availabilityErrorMessage(
   return (code && knownErrors[code]) || fallback;
 }
 
+// Availability changes are routine scheduling work and need no step-up; the capability and the
+// backend's scheduling checks decide them.
 export function useAvailabilityAction() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
-  const [afterStepUp, setAfterStepUp] = useState<(() => void) | null>(null);
 
   async function run<T>(
     operation: () => Promise<T>,
     fallback: string,
-    options?: StepUpHooks & { administrative?: boolean },
   ): Promise<T | undefined> {
     setError(null);
     setNotice(null);
@@ -92,36 +84,10 @@ export function useAvailabilityAction() {
     try {
       return await operation();
     } catch (caught) {
-      const code =
-        caught instanceof CompassApiError
-          ? readApiErrorCode(caught.body)
-          : undefined;
-
-      if (code === "recent_mfa_required" && options?.administrative) {
-        options.onStepUpRequired?.();
-        setAfterStepUp(() => options.onStepUpVerified ?? null);
-        setNotice("Verify your authenticator, then submit the action again.");
-        setStepUpOpen(true);
-      } else {
-        setError(availabilityErrorMessage(caught, fallback));
-      }
-
+      setError(availabilityErrorMessage(caught, fallback));
       return undefined;
     }
   }
-
-  const stepUpDialog = (
-    <StepUpDialog
-      open={stepUpOpen}
-      onOpenChange={setStepUpOpen}
-      onVerified={() => {
-        setNotice("Verification complete. Submit the action again to continue.");
-        const resume = afterStepUp;
-        setAfterStepUp(null);
-        resume?.();
-      }}
-    />
-  );
 
   return {
     error,
@@ -129,7 +95,6 @@ export function useAvailabilityAction() {
     setError,
     setNotice,
     run,
-    stepUpDialog,
   };
 }
 

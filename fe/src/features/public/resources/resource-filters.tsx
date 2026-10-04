@@ -16,6 +16,17 @@ import {
   type ResourceKindValue as ResourceKind,
 } from "@/lib/api/generated/model";
 
+// The canonical list URL for submitted filters: every applied filter together, a trimmed search,
+// and no page, so a new set of filters starts on page 1.
+export function resourceFiltersHref(values: { search: string; category: string; kind: string }): string {
+  const params = new URLSearchParams();
+  const term = values.search.trim();
+  if (term) params.set("search", term);
+  if (values.category) params.set("category", values.category);
+  if (values.kind) params.set("kind", values.kind);
+  return params.size ? `/resources?${params.toString()}` : "/resources";
+}
+
 export function ResourceFilters({ search, category, kind }: { search?: string; category?: ResourceCategory; kind?: ResourceKind }) {
   const router = useRouter();
   const filtered = Boolean(search || category || kind);
@@ -23,14 +34,11 @@ export function ResourceFilters({ search, category, kind }: { search?: string; c
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const params = new URLSearchParams();
-    const term = String(form.get("search") ?? "").trim();
-    const categoryValue = String(form.get("category") ?? "");
-    const kindValue = String(form.get("kind") ?? "");
-    if (term) params.set("search", term);
-    if (categoryValue) params.set("category", categoryValue);
-    if (kindValue) params.set("kind", kindValue);
-    router.push(params.size ? `/resources?${params.toString()}` : "/resources");
+    router.push(resourceFiltersHref({
+      search: String(form.get("search") ?? ""),
+      category: String(form.get("category") ?? ""),
+      kind: String(form.get("kind") ?? ""),
+    }));
   }
 
   return (

@@ -10,6 +10,8 @@ import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { useUnsavedNavigation } from "@/features/form-safety/unsaved-changes-provider";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
+import { Notice } from "@/components/ui/notice";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Panel, PanelBody, PanelFooter, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -43,6 +45,7 @@ import {
   recordLinkClass,
   RevisionStatusBadge,
   secondaryLinkClass,
+  textLinkClass,
   usePrivacyAccess,
   usePrivacyAction,
 } from "@/features/privacy-governance/privacy-governance-shared";
@@ -134,8 +137,11 @@ function CreateRevisionForm({
   );
   const [values, setValues] = useState<NoticeRevisionValues>(baseline);
   const [audienceError, setAudienceError] = useState<string | null>(null);
+  // Another draft was started while this one was being written; the typed text stays here.
+  const [draftExists, setDraftExists] = useState(false);
   const dirty = JSON.stringify(values) !== JSON.stringify(baseline);
   const { confirmDiscard } = useUnsavedNavigation();
+  const existingDraft = notice.draft_revision;
 
   useUnsavedChangesGuard({
     dirty,
@@ -163,6 +169,8 @@ function CreateRevisionForm({
       {
         onError: (caught) => {
           if (hasPrivacyConflictCode(caught, PrivacyConflictCode.noticeDraftExists)) {
+            action.setError(null);
+            setDraftExists(true);
             onDraftExists(caught);
           }
         },
@@ -190,6 +198,20 @@ function CreateRevisionForm({
           }
         />
         <PanelBody className="grid gap-5">
+        {draftExists ? (
+          <Notice
+            role="status"
+            tone="warning"
+            action={existingDraft ? (
+              <GuardedPortalLink href={`/portal/privacy/notice-revisions/${existingDraft.id}`} className={textLinkClass}>
+                Open revision {existingDraft.revision_number}
+              </GuardedPortalLink>
+            ) : undefined}
+          >
+            Another draft revision was started while you were writing this one, and a notice can
+            have only one draft. Your text is kept here so you can copy it into that draft.
+          </Notice>
+        ) : null}
         <NoticeRevisionFields
           idPrefix="new-revision"
           values={values}
@@ -205,7 +227,7 @@ function CreateRevisionForm({
           <Button variant="secondary" disabled={create.isPending} onClick={cancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={create.isPending}>
+          <Button type="submit" disabled={create.isPending || draftExists}>
             {create.isPending ? "Creating…" : "Create draft revision"}
           </Button>
         </PanelFooter>
@@ -382,12 +404,9 @@ export function NoticeDetailPage() {
           notice={family}
           source={sourceRevision}
           onCancel={() => setCreatingRevision(false)}
-          onDraftExists={(caught) => {
-            // Another draft exists: close the form and point to that draft.
-            setCreatingRevision(false);
-            action.setError(
-              privacyErrorMessage(caught, "The new revision could not be created."),
-            );
+          onDraftExists={() => {
+            // Another draft exists. The form stays open with the typed text; reload the notice so
+            // the form can link to that draft.
             void invalidatePrivacyRecords(
               queryClient,
               privacyPaths.notices,

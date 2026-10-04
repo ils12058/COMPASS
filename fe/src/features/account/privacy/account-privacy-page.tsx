@@ -13,12 +13,15 @@ import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { PlainTextBlock } from "@/features/privacy-governance/plain-text-block";
 import {
+  ACKNOWLEDGMENT_HELP,
+  acknowledgeErrorMessage,
+} from "@/features/account/privacy/privacy-acknowledgment";
+import {
   hasPrivacyConflictCode,
   PrivacyConflictCode,
   privacyErrorMessage,
 } from "@/features/privacy-governance/privacy-governance-errors";
 import { audienceSummary } from "@/features/privacy-governance/privacy-governance-presentation";
-import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 import type { MyNoticeResponse } from "@/lib/api/generated/model";
 import {
@@ -26,19 +29,6 @@ import {
   usePrivacyGovernanceAcknowledgeMyNotice,
   usePrivacyGovernanceListMyNotices,
 } from "@/lib/api/generated/privacy-governance/privacy-governance";
-
-const ACKNOWLEDGMENT_HELP =
-  "Acknowledgment records that you have seen this notice. It is not consent to all data processing.";
-
-function acknowledgeErrorMessage(caught: unknown): string {
-  if (
-    caught instanceof CompassApiError &&
-    readApiErrorCode(caught.body) === "permission_denied"
-  ) {
-    return "Your account cannot acknowledge notices right now.";
-  }
-  return privacyErrorMessage(caught, "The notice could not be acknowledged.");
-}
 
 function NoticeArticle({
   notice,

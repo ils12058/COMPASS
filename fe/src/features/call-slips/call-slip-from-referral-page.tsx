@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelFooter, PanelHeader, PanelSection } from "@/components/ui/panel";
-import { StepUpDialog } from "@/features/account/security/security-shared";
 import { CallSlipFormFields, type CallSlipDraft, toCallSlipRequestFields } from "@/features/call-slips/call-slip-form-fields";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipQueryError, LinkedCallSlipCheckLoading, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipStateLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
@@ -130,7 +129,6 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
   const [occurredAt, setOccurredAt] = useState("");
   const [remarks, setRemarks] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const intent = useRef<LinkedCreateIntent | null>(null);
@@ -192,11 +190,7 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
       ]);
       router.push(`/portal/call-slips/${slip.id}`);
     } catch (caught) {
-      if (callSlipErrorCode(caught) === "recent_mfa_required") {
-        setConfirmOpen(false);
-        setNotice("Verify your authenticator, then review and confirm this linked issuance again.");
-        setStepUpOpen(true);
-      } else if (callSlipErrorCode(caught) === "idempotency_key_conflict") {
+      if (callSlipErrorCode(caught) === "idempotency_key_conflict") {
         intent.current = null;
         setConfirmOpen(false);
         setError(callSlipErrorMessage(caught, "This issuance attempt no longer matches its original details. Review the form and try again."));
@@ -293,7 +287,6 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
           <div className="sm:col-span-2"><dt className="text-xs font-semibold text-muted">Referral action</dt><dd className="mt-1 text-ink">{action ? "Reuse existing action; no new timestamp" : `Record at ${formatInstitutionalDateTime(institutionalDateTimeInputToISO(occurredAt))} ${INSTITUTION_TIME_ZONE_LABEL}`}</dd></div>
         </dl>
       </ConsequentialActionDialog>
-      <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setNotice("Verification complete. Review and confirm the linked issuance again."); setConfirmOpen(true); }} />
     </>
   );
 }

@@ -40,10 +40,10 @@ const knownErrors: Record<string, string> = {
   invalid_appointment_request: "The Appointment request contains a value that is not accepted.",
   appointment_default_provider_unresolved:
     "A Counselor could not be resolved. Choose an eligible Counselor and try again.",
-  appointment_time_unavailable: "That time is no longer available. Choose another available time.",
-  appointment_time_conflict: "That time conflicts with another Appointment. Choose another available time.",
+  appointment_time_unavailable: "That time was just taken. Choose another available time.",
+  appointment_time_conflict: "That time was just taken. Choose another available time.",
   appointment_lifecycle_conflict:
-    "This appointment can no longer be changed. Refresh it to review its current status.",
+    "This appointment was updated before your action completed.",
   appointment_cancellation_cutoff_passed:
     "The deadline to cancel or reschedule this appointment has passed.",
   appointment_cancellation_conflict:
@@ -55,13 +55,12 @@ const knownErrors: Record<string, string> = {
   ecounseling_room_linked:
     "This Appointment cannot be cancelled because an E-Counseling room is already linked.",
   appointment_not_schedulable:
-    "This Service cannot currently be scheduled. Refresh the Service selection and try again.",
+    "This Service is not currently available for scheduling.",
   idempotency_unavailable:
     "Booking could not be safely verified. Keep the same booking details and try again.",
   idempotency_key_conflict:
     "This booking attempt no longer matches its original request. Review the details and submit again.",
   permission_denied: "You do not have permission to use this Appointment action.",
-  recent_mfa_required: "Recent authenticator verification is required.",
 };
 
 export function appointmentErrorCode(error: unknown): string | undefined {

@@ -3,6 +3,11 @@
 import { useRef, useState } from "react";
 
 import { StepUpDialog } from "@/features/account/security/security-shared";
+import {
+  stepUpNotice,
+  stepUpRequirement,
+  type StepUpRequirement,
+} from "@/features/account/security/step-up";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 
 const knownErrors: Record<string, string> = {
@@ -36,6 +41,7 @@ export function useInstitutionConfigurationAction() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
   const restoreInteraction = useRef<(() => void) | null>(null);
 
   function resetFeedback() {
@@ -52,16 +58,12 @@ export function useInstitutionConfigurationAction() {
     try {
       return await operation();
     } catch (caught) {
-      const code =
-        caught instanceof CompassApiError
-          ? readApiErrorCode(caught.body)
-          : undefined;
-      if (code === "recent_mfa_required") {
+      const requirement = stepUpRequirement(caught);
+      if (requirement) {
+        setStepUp(requirement);
         options?.onStepUpRequired?.();
         restoreInteraction.current = options?.onStepUpVerified ?? null;
-        setNotice(
-          "Verify your authenticator. The action will not be submitted automatically.",
-        );
+        setNotice(stepUpNotice(requirement));
         setStepUpOpen(true);
       } else {
         setError(institutionConfigurationErrorMessage(caught, fallback));
@@ -73,6 +75,7 @@ export function useInstitutionConfigurationAction() {
   const stepUpDialog = (
     <StepUpDialog
       open={stepUpOpen}
+      requirement={stepUp}
       onOpenChange={setStepUpOpen}
       onVerified={() => {
         setNotice("Verification complete. Submit or confirm the action again.");

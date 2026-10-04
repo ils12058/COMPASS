@@ -42,6 +42,10 @@ import {
   hasPrivacyConflictCode,
   PrivacyConflictCode,
 } from "@/features/privacy-governance/privacy-governance-errors";
+import {
+  draftConflict,
+  draftConflictMessages,
+} from "@/features/privacy-governance/notices/draft-conflict";
 import { formatDateOnly, formatInstitutionalDateTime, institutionalDateTimeInputToISO } from "@/lib/institutional-time";
 import {
   NoticePublishBlocker,
@@ -55,21 +59,34 @@ import {
   usePrivacyGovernanceUpdateNoticeRevision,
 } from "@/lib/api/generated/privacy-governance/privacy-governance";
 
+// The editor keeps its own copy of the draft. A save made elsewhere, a publication, or a
+// retirement never replaces what the person typed: the editor says what changed, can show the
+// latest saved version beside the unsaved one, and saves again only after a deliberate review.
 function DraftEditor({
   revision,
+  noticeActive,
   onDone,
+  onCheckLatest,
 }: {
   revision: RevisionResponse;
+  noticeActive: boolean | undefined;
   onDone: (saved: boolean) => void;
+  onCheckLatest: () => void;
 }) {
   const queryClient = useQueryClient();
   const update = usePrivacyGovernanceUpdateNoticeRevision();
   const action = usePrivacyAction(noticeFieldLabels);
-  const [baseline] = useState(() => noticeRevisionValues(revision));
+  const [baseline, setBaseline] = useState(() => noticeRevisionValues(revision));
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState(revision.updated_at);
   const [values, setValues] = useState<NoticeRevisionValues>(baseline);
   const [audienceError, setAudienceError] = useState<string | null>(null);
+  // Set when a save was refused before the newer saved version has loaded here.
+  const [refusedSave, setRefusedSave] = useState(false);
+  const [showLatest, setShowLatest] = useState(false);
   const dirty = Object.keys(noticeRevisionChanges(baseline, values)).length > 0;
   const { confirmDiscard } = useUnsavedNavigation();
+  const conflict = draftConflict({ baseUpdatedAt, latest: revision, noticeActive });
+  const blocked = conflict !== null || refusedSave;
 
   useUnsavedChangesGuard({
     dirty,
@@ -80,8 +97,18 @@ function DraftEditor({
     if (!dirty || confirmDiscard()) onDone(false);
   }
 
+  // Build on the latest saved version: unsaved edits stay, and saving sends what differs from it.
+  function keepChanges() {
+    setBaseline(noticeRevisionValues(revision));
+    setBaseUpdatedAt(revision.updated_at);
+    setRefusedSave(false);
+    setShowLatest(false);
+    action.reset();
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (blocked) return;
     if (values.audiences.length === 0) {
       setAudienceError("Select at least one audience.");
       return;
@@ -94,10 +121,30 @@ function DraftEditor({
       return;
     }
     const result = await action.run(
-      () => update.mutateAsync({ revisionId: revision.id, data: changes }),
+      () =>
+        update.mutateAsync({
+          revisionId: revision.id,
+          data: { ...changes, expected_updated_at: baseUpdatedAt },
+        }),
       "The draft could not be saved.",
+      {
+        onError: (caught) => {
+          if (
+            hasPrivacyConflictCode(caught, PrivacyConflictCode.noticeRevisionChanged) ||
+            hasPrivacyConflictCode(caught, PrivacyConflictCode.noticeRevisionImmutable) ||
+            hasPrivacyConflictCode(caught, PrivacyConflictCode.noticeRetired)
+          ) {
+            // The draft changed elsewhere: keep the typed values and load the saved version.
+            setRefusedSave(true);
+            onCheckLatest();
+          }
+        },
+      },
     );
     if (!result) return;
+    // This save is now the version the editor builds on, so its own reload is not a conflict.
+    setBaseUpdatedAt(result.data.updated_at);
+    setBaseline(values);
     await invalidatePrivacyRecords(
       queryClient,
       privacyPaths.noticeRevisions,
@@ -111,6 +158,42 @@ function DraftEditor({
       <Panel as="div" className="max-w-4xl">
       <form onSubmit={(event) => void submit(event)}>
         <PanelBody className="grid gap-5">
+        {conflict ? (
+          <Notice
+            role="status"
+            tone="warning"
+            action={conflict === "saved-elsewhere" ? (
+              <>
+                <Button variant="secondary" aria-expanded={showLatest} onClick={() => setShowLatest((open) => !open)}>
+                  {showLatest ? "Hide latest saved version" : "Review latest saved version"}
+                </Button>
+                <Button variant="secondary" onClick={keepChanges}>Keep my changes</Button>
+              </>
+            ) : undefined}
+          >
+            {draftConflictMessages[conflict]}
+          </Notice>
+        ) : refusedSave ? (
+          <Notice role="status" tone="warning">
+            This draft changed elsewhere. Your unsaved changes are kept here while the latest saved
+            version loads.
+          </Notice>
+        ) : null}
+        {conflict === "saved-elsewhere" && showLatest ? (
+          <section aria-labelledby="latest-saved-heading" className="rounded-sm bg-surface-subtle px-4 py-3.5">
+            <h3 id="latest-saved-heading" className="font-semibold text-ink">
+              Latest saved version · {formatInstitutionalDateTime(revision.updated_at)}
+            </h3>
+            <dl className="mt-3 grid gap-3 text-sm">
+              <div><dt className="text-xs font-semibold text-muted">Notice title</dt><dd className="mt-1 break-words text-ink">{revision.title}</dd></div>
+              <div><dt className="text-xs font-semibold text-muted">Who should see this?</dt><dd className="mt-1 text-ink">{audienceSummary(revision.audiences)}</dd></div>
+              <div><dt className="text-xs font-semibold text-muted">Short explanation</dt><dd className="mt-1"><PlainTextBlock text={revision.summary} /></dd></div>
+              <div><dt className="text-xs font-semibold text-muted">Notice text</dt><dd className="mt-1"><PlainTextBlock text={revision.body} /></dd></div>
+              <div><dt className="text-xs font-semibold text-muted">Acknowledgment</dt><dd className="mt-1 text-ink">{revision.requires_acknowledgment ? "Requested" : "Not requested"}</dd></div>
+              <div><dt className="text-xs font-semibold text-muted">Effective date</dt><dd className="mt-1 text-ink">{revision.effective_on ? formatDateOnly(revision.effective_on) : "Not set"}</dd></div>
+            </dl>
+          </section>
+        ) : null}
         <NoticeRevisionFields
           idPrefix="draft-revision"
           values={values}
@@ -126,7 +209,7 @@ function DraftEditor({
           <Button variant="secondary" disabled={update.isPending} onClick={cancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={update.isPending}>
+          <Button type="submit" disabled={update.isPending || blocked}>
             {update.isPending ? "Saving…" : "Save draft"}
           </Button>
         </PanelFooter>
@@ -307,8 +390,12 @@ export function NoticeRevisionPage() {
 
       {editing ? (
         <DraftEditor
-          key={revision.updated_at}
           revision={revision}
+          noticeActive={family?.is_active}
+          onCheckLatest={() => {
+            void detail.refetch();
+            void notice.refetch();
+          }}
           onDone={(saved) => {
             setEditing(false);
             if (saved) action.setNotice("Draft saved.");

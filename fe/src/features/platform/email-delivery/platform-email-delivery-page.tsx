@@ -135,7 +135,6 @@ export function PlatformEmailDeliveryPage() {
         }
       },
       "The retry request could not be completed.",
-      () => setSelectedDelivery(null),
     );
     if (!success) {
       // Eligibility can change between reading the list and retrying; show current state.
@@ -404,7 +403,6 @@ export function PlatformEmailDeliveryPage() {
         ) : null}
       </Panel>
 
-      {action.stepUpDialog}
       {canManage ? (
         <PlatformConfirmation
           open={selectedDelivery !== null && !deliveries.isError && selectedDeliveryAt === deliveries.dataUpdatedAt}

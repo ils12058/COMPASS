@@ -27,6 +27,15 @@ import {
   useAppointmentsListEligibleCounselors,
 } from "@/lib/api/generated/appointments/appointments";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import {
+  appointmentSlotFreshness,
+  isSlotTakenError,
+  slotIsOffered,
+  SLOT_JUST_TAKEN,
+  SLOT_NO_LONGER_AVAILABLE,
+  SLOTS_NOT_RECHECKED,
+  useSlotSelection,
+} from "@/features/appointments/appointment-slot-freshness";
 import { appointmentErrorCode, appointmentErrorMessage, AppointmentsLocalNavigation, AppointmentsPageHeading, formatAppointmentDateTime, formatAppointmentTime, deliveryModeLabel } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -41,7 +50,7 @@ function BookingWorkspace() {
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode | "">("");
   const [counselorSelection, setCounselorSelection] = useState<string | null>(null);
   const [date, setDate] = useState("");
-  const [selectedSlotStart, setSelectedSlotStart] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [inventoryAcknowledged, setInventoryAcknowledged] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdAppointment, setCreatedAppointment] = useState<{
@@ -86,11 +95,15 @@ function BookingWorkspace() {
       query: {
         enabled: Boolean(service && deliveryMode && counselorId && date),
         retry: false,
+        ...appointmentSlotFreshness,
       },
     },
   );
   const slotItems = slots.data?.data.items ?? [];
-  const selectedSlot = slotItems.find((slot) => slot.starts_at === selectedSlotStart);
+  const slotChoice = useSlotSelection(slots.data?.data.items, slots.dataUpdatedAt);
+  const selectedSlot = slotItems.find((slot) => slot.starts_at === slotChoice.selected);
+  // A failed recheck keeps the last times visible but does not let them be booked.
+  const slotsUnconfirmed = slots.isError && slots.data !== undefined;
   const create = useMutation({
     mutationKey: getAppointmentsCreateMyMutationKey(),
     mutationFn: ({
@@ -117,12 +130,12 @@ function BookingWorkspace() {
       ),
   });
 
-  function changeService(next: AppointmentBookingServiceSummary) {
+  function changeService(next: AppointmentBookingServiceSummary | null) {
     setService(next);
-    setDeliveryMode(next.delivery_modes.length === 1 ? next.delivery_modes[0] : "");
+    setDeliveryMode(next?.delivery_modes.length === 1 ? next.delivery_modes[0] : "");
     setCounselorSelection(null);
     setDate("");
-    setSelectedSlotStart("");
+    slotChoice.clear();
     setInventoryAcknowledged(false);
     setError(null);
     setCreatedAppointment(null);
@@ -133,7 +146,7 @@ function BookingWorkspace() {
     setDeliveryMode(next);
     setCounselorSelection(null);
     setDate("");
-    setSelectedSlotStart("");
+    slotChoice.clear();
     setError(null);
     setCreatedAppointment(null);
     intentRef.current = null;
@@ -142,7 +155,7 @@ function BookingWorkspace() {
   function changeCounselor(next: string) {
     setCounselorSelection(next);
     setDate("");
-    setSelectedSlotStart("");
+    slotChoice.clear();
     setError(null);
     setCreatedAppointment(null);
     intentRef.current = null;
@@ -150,14 +163,14 @@ function BookingWorkspace() {
 
   function changeDate(next: string) {
     setDate(next);
-    setSelectedSlotStart("");
+    slotChoice.clear();
     setError(null);
     setCreatedAppointment(null);
     intentRef.current = null;
   }
 
   function changeSlot(next: string) {
-    setSelectedSlotStart(next);
+    slotChoice.select(next);
     setError(null);
     setCreatedAppointment(null);
     intentRef.current = null;
@@ -170,12 +183,37 @@ function BookingWorkspace() {
       setError("This browser cannot create a secure booking request. Update the browser and try again.");
       return;
     }
+    setSubmitting(true);
+    try {
+      // Check the time is still offered before asking the server to book it. The server decides;
+      // this only avoids sending a booking that is already known to be stale.
+      const recheck = await slots.refetch();
+      if (recheck.isError) {
+        setError(SLOTS_NOT_RECHECKED);
+        return;
+      }
+      if (!slotIsOffered(recheck.data?.data.items, selectedSlot.starts_at)) {
+        slotChoice.drop();
+        return;
+      }
+      await submitBooking(service, deliveryMode, selectedCounselor.id, selectedSlot.starts_at);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function submitBooking(
+    bookedService: AppointmentBookingServiceSummary,
+    mode: DeliveryMode,
+    providerId: string,
+    startsAt: string,
+  ) {
 
     const fingerprint = JSON.stringify({
-      service_id: service.id,
-      provider_id: selectedCounselor.id,
-      delivery_mode: deliveryMode,
-      starts_at: selectedSlot.starts_at,
+      service_id: bookedService.id,
+      provider_id: providerId,
+      delivery_mode: mode,
+      starts_at: startsAt,
     });
     const key =
       intentRef.current?.fingerprint === fingerprint
@@ -185,10 +223,10 @@ function BookingWorkspace() {
 
     try {
       const response = await create.mutateAsync({
-        serviceId: service.id,
-        providerId: selectedCounselor.id,
-        mode: deliveryMode,
-        startsAt: selectedSlot.starts_at,
+        serviceId: bookedService.id,
+        providerId,
+        mode,
+        startsAt,
         key,
       });
       const appointment = response.data;
@@ -202,10 +240,16 @@ function BookingWorkspace() {
       setCreatedAppointment({ id: appointment.id, referenceCode: appointment.reference_code });
     } catch (caught) {
       const code = appointmentErrorCode(caught);
-      if (code === "appointment_time_unavailable" || code === "appointment_time_conflict") {
-        setSelectedSlotStart("");
-        setError("That time is no longer available. Available times have been refreshed; choose another time to continue.");
+      if (isSlotTakenError(caught)) {
+        // The time went between the last check and the booking; show the current times.
+        slotChoice.clear();
+        setError(SLOT_JUST_TAKEN);
         void slots.refetch();
+      } else if (code === "appointment_not_schedulable") {
+        // The Service changed since it was chosen; reload the list so only bookable ones show.
+        changeService(null);
+        setError(`${appointmentErrorMessage(caught, "This Service is not currently available for scheduling.")} Choose from the current Services.`);
+        void bookingServices.refetch();
       } else if (code === "idempotency_key_conflict") {
         intentRef.current = null;
         setError(appointmentErrorMessage(caught, "The booking attempt could not be verified. Review the details and submit again."));
@@ -375,11 +419,14 @@ function BookingWorkspace() {
             </div>
             {date ? (
               <div className="mt-5">
+                {slotChoice.lost ? (
+                  <p role="status" className="mb-3 text-sm text-warning">{SLOT_NO_LONGER_AVAILABLE}</p>
+                ) : null}
                 {slots.isPending ? (
                   <LoadingRegion label="Loading available times…" className="flex flex-wrap gap-2">
                     <Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" />
                   </LoadingRegion>
-                ) : slots.isError ? (
+                ) : slots.isError && !slotsUnconfirmed ? (
                   <div role="alert">
                     <p className="text-sm text-danger">Available times could not be loaded.</p>
                     <Button className="mt-3" variant="secondary" onClick={() => void slots.refetch()}>Retry</Button>
@@ -388,10 +435,20 @@ function BookingWorkspace() {
                   <p role="status" className="text-sm text-muted">No available appointment times were found for this date. Choose another date.</p>
                 ) : (
                   <>
-                    <p role="status" className="mb-3 text-sm font-semibold text-ink">Available times · {slots.data?.data.timezone === INSTITUTION_TIME_ZONE ? INSTITUTION_TIME_ZONE_LABEL : slots.data?.data.timezone}</p>
+                    {slotsUnconfirmed ? (
+                      <Notice
+                        role="status"
+                        tone="warning"
+                        className="mb-3"
+                        action={<Button variant="secondary" disabled={slots.isFetching} onClick={() => void slots.refetch()}>{slots.isFetching ? "Retrying…" : "Retry"}</Button>}
+                      >
+                        {SLOTS_NOT_RECHECKED}
+                      </Notice>
+                    ) : null}
+                    <p className="mb-3 text-sm font-semibold text-ink">Available times · {slots.data?.data.timezone === INSTITUTION_TIME_ZONE ? INSTITUTION_TIME_ZONE_LABEL : slots.data?.data.timezone}</p>
                     <div role="group" aria-label="Available appointment times" className="flex flex-wrap gap-2">
                       {slotItems.map((slot) => {
-                        const selected = slot.starts_at === selectedSlotStart;
+                        const selected = slot.starts_at === slotChoice.selected;
                         return (
                           <button
                             key={slot.starts_at}
@@ -408,7 +465,7 @@ function BookingWorkspace() {
                         );
                       })}
                     </div>
-                    {slots.isFetching ? <p role="status" className="mt-3 text-xs text-muted">Refreshing available times…</p> : null}
+
                   </>
                 )}
               </div>
@@ -443,11 +500,11 @@ function BookingWorkspace() {
             </PanelSection>
             <PanelFooter>
               <Button
-                disabled={create.isPending || createdAppointment !== null || (hasInventoryRequirement && !inventoryAcknowledged)}
+                disabled={submitting || createdAppointment !== null || slotsUnconfirmed || (hasInventoryRequirement && !inventoryAcknowledged)}
                 onClick={() => void bookAppointment()}
-                aria-busy={create.isPending}
+                aria-busy={submitting}
               >
-                {create.isPending ? "Booking…" : "Book appointment"}
+                {submitting ? "Booking…" : "Book appointment"}
               </Button>
               <p className="text-xs text-muted">This Appointment will be scheduled immediately after a successful booking.</p>
             </PanelFooter>

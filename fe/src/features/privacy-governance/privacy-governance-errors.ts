@@ -12,6 +12,7 @@ export const PrivacyConflictCode = {
   noticeRevisionImmutable: "privacy_notice_revision_immutable",
   noticeNotYetEffective: "privacy_notice_not_yet_effective",
   noticeRevisionNotCurrent: "privacy_notice_revision_not_current",
+  noticeRevisionChanged: "privacy_notice_revision_changed",
   acknowledgmentNotApplicable: "privacy_notice_acknowledgment_not_applicable",
 } as const;
 
@@ -28,7 +29,9 @@ const conflictCopy: Record<PrivacyConflictCode, string> = {
   [PrivacyConflictCode.noticeNotYetEffective]:
     "This revision cannot be published before its effective date. Set an effective date of today or earlier to publish it.",
   [PrivacyConflictCode.noticeRevisionNotCurrent]:
-    "This notice changed while you were viewing it. Refresh to review the current revision.",
+    "This notice was updated while you were viewing it. The current version is now shown.",
+  [PrivacyConflictCode.noticeRevisionChanged]:
+    "This draft was saved elsewhere while you were editing. Review the latest saved version before saving again.",
   [PrivacyConflictCode.acknowledgmentNotApplicable]:
     "This notice does not ask for your acknowledgment.",
 };
@@ -79,8 +82,6 @@ export function privacyErrorMessage(
 
   if (isPrivacyConflictCode(code)) return conflictCopy[code];
   switch (code) {
-    case "recent_mfa_required":
-      return "Recent authenticator verification is required.";
     case "permission_denied":
       return "You cannot complete this privacy action with this account.";
     case "privacy_record_not_found":
@@ -105,13 +106,6 @@ export function privacyErrorMessage(
 
 export function hasPrivacyConflictCode(error: unknown, code: PrivacyConflictCode): boolean {
   return error instanceof CompassApiError && readApiErrorCode(error.body) === code;
-}
-
-export function isRecentMfaRequired(error: unknown): boolean {
-  return (
-    error instanceof CompassApiError &&
-    readApiErrorCode(error.body) === "recent_mfa_required"
-  );
 }
 
 export function isNotFound(error: unknown): boolean {

@@ -13,6 +13,11 @@ import { ListSearchField } from "@/components/ui/floating-list-tools";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
+import {
+  stepUpNotice,
+  stepUpRequirement,
+  type StepUpRequirement,
+} from "@/features/account/security/step-up";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { hasServicesWorkspace } from "@/features/services/services-access";
@@ -37,7 +42,6 @@ const knownErrors: Record<string, string> = {
     "Counseling is required by COMPASS. It must stay active and allow Counselors.",
   service_scheduling_consequence_review_required:
     "Review the scheduling consequences before saving this Service change.",
-  recent_mfa_required: "Recent authenticator verification is required.",
 };
 
 export type ServiceSchedulingConsequenceDetails = {
@@ -109,6 +113,7 @@ export function useServicesAction() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
   const [afterStepUp, setAfterStepUp] = useState<(() => void) | null>(null);
 
   async function run<T>(
@@ -129,10 +134,12 @@ export function useServicesAction() {
         caught instanceof CompassApiError
           ? readApiErrorCode(caught.body)
           : undefined;
-      if (code === "recent_mfa_required") {
+      const requirement = stepUpRequirement(caught);
+      if (requirement) {
+        setStepUp(requirement);
         options?.onStepUpRequired?.();
         setAfterStepUp(() => options?.onStepUpVerified ?? null);
-        setNotice("Verify your authenticator, then submit the action again.");
+        setNotice(stepUpNotice(requirement));
         setStepUpOpen(true);
       } else if (!options?.onError?.(caught, code)) {
         setError(servicesErrorMessage(caught, fallback));
@@ -159,6 +166,7 @@ export function useServicesAction() {
   const stepUpDialog = (
     <StepUpDialog
       open={stepUpOpen}
+      requirement={stepUp}
       onOpenChange={setStepUpOpen}
       onVerified={() => {
         setNotice("Verification complete. Submit the action again to continue.");

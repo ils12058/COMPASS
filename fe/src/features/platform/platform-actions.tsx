@@ -6,6 +6,11 @@ import { useState } from "react";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import {
+  stepUpNotice,
+  stepUpRequirement,
+  type StepUpRequirement,
+} from "@/features/account/security/step-up";
+import {
   CompassApiError,
   readApiErrorCode,
 } from "@/lib/api/errors";
@@ -27,7 +32,6 @@ const knownErrors: Record<string, string> = {
   maintenance_schedule_not_found:
     "The maintenance schedule is no longer available. Refresh the page and try again.",
   permission_denied: "You do not have permission to perform this Platform action.",
-  recent_mfa_required: "Recent authenticator verification is required.",
 };
 
 export function platformErrorMessage(error: unknown, fallback: string): string {
@@ -40,7 +44,9 @@ export function usePlatformAction() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
 
+  // Maintenance changes keep step-up; email retry does not need it.
   async function run<T>(
     operation: () => Promise<T>,
     fallback: string,
@@ -52,14 +58,11 @@ export function usePlatformAction() {
       await operation();
       return true;
     } catch (caught) {
-      if (
-        caught instanceof CompassApiError &&
-        readApiErrorCode(caught.body) === "recent_mfa_required"
-      ) {
+      const requirement = stepUpRequirement(caught);
+      if (requirement) {
         onStepUpRequired?.();
-        setNotice(
-          "Recent authenticator verification is required. Verify, then submit and confirm the action again.",
-        );
+        setStepUp(requirement);
+        setNotice(stepUpNotice(requirement));
         setStepUpOpen(true);
       } else {
         setError(platformErrorMessage(caught, fallback));
@@ -71,6 +74,7 @@ export function usePlatformAction() {
   const stepUpDialog = (
     <StepUpDialog
       open={stepUpOpen}
+      requirement={stepUp}
       onOpenChange={setStepUpOpen}
       onVerified={() =>
         setNotice(

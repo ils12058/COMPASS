@@ -17,7 +17,6 @@ import { Panel, PanelHeader } from "@/components/ui/panel";
 import {
   ActionFeedback,
   modeScopeLabel,
-  type StepUpHooks,
 } from "@/features/availability/availability-shared";
 import {
   AvailabilityModeScope,
@@ -83,7 +82,6 @@ export function UnavailabilitySection({
   items,
   canCreate,
   canRemove,
-  administrative,
   createPending,
   removePending,
   error,
@@ -94,16 +92,12 @@ export function UnavailabilitySection({
   items: ExceptionResponse[];
   canCreate: boolean;
   canRemove: boolean;
-  administrative: boolean;
   createPending: boolean;
   removePending: boolean;
   error: string | null;
   notice: string | null;
-  onCreate: (
-    payload: ExceptionCreateRequest,
-    hooks?: StepUpHooks,
-  ) => Promise<boolean>;
-  onRemove: (id: string, hooks?: StepUpHooks) => Promise<boolean>;
+  onCreate: (payload: ExceptionCreateRequest) => Promise<boolean>;
+  onRemove: (id: string) => Promise<boolean>;
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [removal, setRemoval] = useState<ExceptionResponse | null>(null);
@@ -159,20 +153,12 @@ export function UnavailabilitySection({
       return;
     }
 
-    const saved = await onCreate(
-      {
-        starts_at: startsIso,
-        ends_at: endsIso,
-        mode_scope: modeScope,
-        reason,
-      },
-      administrative
-        ? {
-            onStepUpRequired: () => setAddOpen(false),
-            onStepUpVerified: () => setAddOpen(true),
-          }
-        : undefined,
-    );
+    const saved = await onCreate({
+      starts_at: startsIso,
+      ends_at: endsIso,
+      mode_scope: modeScope,
+      reason,
+    });
 
     if (saved) {
       setAddOpen(false);
@@ -184,15 +170,7 @@ export function UnavailabilitySection({
     if (!removal) return;
     const target = removal;
 
-    const removed = await onRemove(
-      target.id,
-      administrative
-        ? {
-            onStepUpRequired: () => setRemoval(null),
-            onStepUpVerified: () => setRemoval(target),
-          }
-        : undefined,
-    );
+    const removed = await onRemove(target.id);
 
     if (removed) setRemoval(null);
   }
@@ -267,7 +245,7 @@ export function UnavailabilitySection({
         open={addOpen}
         onOpenChange={(open) => {
           setAddOpen(open);
-          if (!open && !administrative) setLocalError(null);
+          if (!open) setLocalError(null);
         }}
       >
         <DialogContent dismissible={!createPending}>

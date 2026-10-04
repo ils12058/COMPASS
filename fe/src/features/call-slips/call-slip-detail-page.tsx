@@ -14,7 +14,6 @@ import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelSection } from "@/components/ui/panel";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
-import { StepUpDialog } from "@/features/account/security/security-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { CallSlipAccessUnavailable, CallSlipDetailSkeleton, CallSlipHeading, CallSlipQueryError, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipIssuanceModeLabels, callSlipStateLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -207,7 +206,6 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
   const queryClient = useQueryClient();
   const [value, setValue] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [reconcileRequired, setReconcileRequired] = useState(false);
@@ -257,11 +255,7 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
       setValue("");
       await invalidate();
     } catch (caught) {
-      if (callSlipErrorCode(caught) === "recent_mfa_required") {
-        setConfirmOpen(false);
-        setNotice("Verify your authenticator, then review and record the interview end again.");
-        setStepUpOpen(true);
-      } else if (callSlipErrorCode(caught) === "call_slip_conflict" || uncertainCallSlipMutation(caught)) {
+      if (callSlipErrorCode(caught) === "call_slip_conflict" || uncertainCallSlipMutation(caught)) {
         const refreshed = await onRefresh();
         if (refreshed?.interview_ended_at) {
           setConfirmOpen(false);
@@ -312,7 +306,6 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
           {INSTITUTION_TIME_ZONE_LABEL}
         </p>
       </ConsequentialActionDialog>
-      <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setNotice("Verification complete. Review and record the interview end again."); setConfirmOpen(true); }} />
     </div>
   );
 }
@@ -323,7 +316,6 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
   const [reconcileRequired, setReconcileRequired] = useState(false);
   const mutation = useMutation({ mutationFn: () => callSlipsVoid(slip.id, { reason: reason.trim() }), retry: false });
 
@@ -365,11 +357,7 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
       );
       await invalidate();
     } catch (caught) {
-      if (callSlipErrorCode(caught) === "recent_mfa_required") {
-        setOpen(false);
-        setNotice("Verify your authenticator, then review and confirm the void again.");
-        setStepUpOpen(true);
-      } else if (callSlipErrorCode(caught) === "call_slip_conflict" || uncertainCallSlipMutation(caught)) {
+      if (callSlipErrorCode(caught) === "call_slip_conflict" || uncertainCallSlipMutation(caught)) {
         const refreshed = await onRefresh();
         if (refreshed?.state === CallSlipLifecycleStateValue.VOIDED) {
           setOpen(false);
@@ -426,7 +414,6 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
           <p className="text-xs text-muted">{reason.length} / 1,000 characters</p>
         </div>
       </ConsequentialActionDialog>
-      <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setNotice("Verification complete. Review the reason and confirm the void again."); setOpen(true); }} />
     </div>
   );
 }
