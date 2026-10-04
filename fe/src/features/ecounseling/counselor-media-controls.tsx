@@ -1,22 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
+import { Panel, PanelHeader, PanelMessage, PanelSection } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ECounselingCaptureStatus,
   ECounselingConsentDecision,
   ECounselingConsentScope,
+  type ECounselingConsentStatus,
   type ConsentResponse,
   type CounselorWorkspaceResponse,
 } from "@/lib/api/generated/model";
 import type { ECounselingAccess } from "@/features/ecounseling/ecounseling-access";
+import { CaptureState } from "@/features/ecounseling/session-stage";
 import {
-  captureStatusLabel,
   consentProjectionLabels,
   consentStatusLabel,
   ecounselingErrorMessage,
@@ -60,6 +62,19 @@ function isViable(row: ConsentResponse | undefined): boolean {
 function isEffectivelyApproved(row: ConsentResponse | undefined): boolean {
   return Boolean(
     row?.effective && row.decision === ECounselingConsentDecision.APPROVED && !row.withdrawn_at,
+  );
+}
+
+function MediaFacts({ facts }: { facts: Array<[string, ReactNode]> }) {
+  return (
+    <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+      {facts.map(([label, value]) => (
+        <div key={label} className="min-w-0">
+          <dt className="text-xs font-semibold text-muted">{label}</dt>
+          <dd className="mt-0.5 text-sm text-ink">{value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -161,35 +176,52 @@ export function CounselorMediaControls({
     await refreshCanonicalState();
   }
 
+  const consentLabel = (scope: ECounselingConsentScope, projection: ECounselingConsentStatus) =>
+    canReadConsents ? consentRowsLabel(rows, scope) : consentProjectionLabels[projection];
+  const providerNote = !workspace.provider_readiness.daily_enabled
+    ? "Daily provider media controls are not enabled. Counseling access is unaffected."
+    : !workspace.provider_readiness.room_provisioned || !workspace.provider_readiness.join_allowed
+      ? "Provider controls are unavailable until the session is ready."
+      : null;
+
   return (
-    <section aria-labelledby="e-counseling-media-controls-heading" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5">
-      <h2 id="e-counseling-media-controls-heading" className="font-heading text-lg font-semibold text-ink">Media controls</h2>
-      <p className="mt-2 text-sm leading-6 text-muted">Consent and provider capture are separate. Starting either option requires an explicit Counselor action after effective consent.</p>
-      {access.canManageMediaAssigned ? consentQuery.isPending ? <div aria-busy="true"><span className="sr-only">Loading session consent controls…</span><Skeleton className="mt-4 h-28 w-full" /></div> : consentQuery.isError ? <div role="alert" className="mt-4 rounded-sm border border-danger/35 px-4 py-3"><p className="text-sm text-danger">Consent state could not be loaded. New requests and starts are unavailable; an active capture can still be stopped.</p><Button className="mt-3" variant="secondary" onClick={() => void consentQuery.refetch()}>Retry consent state</Button></div> : null : <p className="mt-4 text-sm text-muted">Media controls and consent details are unavailable to this account.</p>}
-      <section aria-labelledby="counselor-session-media-status-heading" className="mt-4 rounded-sm bg-surface-subtle px-4 py-3">
-        <h3 id="counselor-session-media-status-heading" className="text-sm font-semibold text-ink">Session media activity</h3>
-        <dl className="mt-2 grid gap-3 sm:grid-cols-2"><div><dt className="text-xs font-semibold text-muted">Recording</dt><dd className="mt-1 text-sm text-ink">{captureStatusLabel(workspace.media.recording.capture_status)}</dd></div><div><dt className="text-xs font-semibold text-muted">Transcription</dt><dd className="mt-1 text-sm text-ink">{captureStatusLabel(workspace.media.transcription.capture_status)}</dd></div></dl>
-        {recordingStatus === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-3 rounded-sm bg-warning/10 px-3 py-2 text-sm font-semibold text-ink">Recording active</p> : null}
-        {transcriptionStatus === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-2 rounded-sm bg-info/10 px-3 py-2 text-sm font-semibold text-ink">Session transcription active</p> : null}
-      </section>
-      {access.canManageMediaAssigned ? <div className="mt-4 grid gap-5 lg:grid-cols-2">
-        <section className="min-w-0 rounded-sm border border-border px-4 py-4" aria-labelledby="recording-controls-heading">
-          <h3 id="recording-controls-heading" className="font-semibold text-ink">Audio/video recording</h3>
-          <dl className="mt-3 space-y-3"><div><dt className="text-xs font-semibold text-muted">Consent</dt><dd className="mt-1 text-sm text-ink">{canReadConsents ? consentRowsLabel(rows, ECounselingConsentScope.AUDIO_VIDEO_RECORDING) : consentProjectionLabels[workspace.media.recording.consent_status]}</dd></div><div><dt className="text-xs font-semibold text-muted">Capture</dt><dd className="mt-1 text-sm text-ink">{captureStatusLabel(recordingStatus)}</dd></div></dl>
-          {recordingStatus === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-3 rounded-sm bg-warning/10 px-3 py-2 text-sm font-semibold text-ink">Recording active</p> : null}
-          <div className="mt-4 flex flex-wrap gap-2">
+    <Panel aria-labelledby="e-counseling-media-controls-heading">
+      <PanelHeader
+        title="Media controls"
+        titleId="e-counseling-media-controls-heading"
+        description="Consent and capture are separate. Recording or transcription starts only when you start it, after the Student’s consent for it is effective."
+      />
+      {providerNote ? <p className="border-b border-brand-line px-4 py-3 text-sm text-muted sm:px-5">{providerNote}</p> : null}
+      {access.canManageMediaAssigned ? consentQuery.isPending ? (
+        <div aria-busy="true" className="px-4 pt-4 sm:px-5"><span className="sr-only">Loading session consent controls…</span><Skeleton className="h-16 w-full" /></div>
+      ) : consentQuery.isError ? (
+        <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void consentQuery.refetch()}>Retry consent state</Button>}>
+          Consent state could not be loaded. New requests and starts are unavailable; an active capture can still be stopped.
+        </PanelMessage>
+      ) : null : <PanelMessage>Media controls and consent details are unavailable to this account.</PanelMessage>}
+      {access.canManageMediaAssigned ? <>
+        <PanelSection title="Audio/video recording" titleId="recording-controls-heading" level={3}>
+          <MediaFacts facts={[
+            ["Consent", consentLabel(ECounselingConsentScope.AUDIO_VIDEO_RECORDING, workspace.media.recording.consent_status)],
+            ["Capture", <CaptureState key="capture" status={recordingStatus} live="recording" />],
+          ]} />
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             {canReadConsents && noRecordingRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.AUDIO_VIDEO_RECORDING])}>Request recording consent</Button> : null}
             {recordingCanStart ? <Button disabled={busy} onClick={() => setPendingStart("recording")}>Start recording</Button> : null}
             {recordingCanStop ? <Button variant="secondary" disabled={busy} onClick={() => void runCommand(() => stopRecording.mutateAsync({ appointmentId }))}>Stop recording</Button> : null}
             {!recordingCanStart && recordingStatus === ECounselingCaptureStatus.NOT_STARTED && !recordingApproved ? <p className="basis-full text-sm text-muted">Recording can start only after the Student’s recording consent is effective.</p> : null}
             {recordingStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">Recording completed.</p> : null}
           </div>
-        </section>
-        <section className="min-w-0 rounded-sm border border-border px-4 py-4" aria-labelledby="transcription-controls-heading">
-          <h3 id="transcription-controls-heading" className="font-semibold text-ink">Session transcription</h3>
-          <dl className="mt-3 space-y-3"><div><dt className="text-xs font-semibold text-muted">Consent</dt><dd className="mt-1 text-sm text-ink">{canReadConsents ? consentRowsLabel(rows, ECounselingConsentScope.LIVE_TRANSCRIPTION) : consentProjectionLabels[workspace.media.transcription.consent_status]}</dd></div><div><dt className="text-xs font-semibold text-muted">Transcript storage consent</dt><dd className="mt-1 text-sm text-ink">{canReadConsents ? consentRowsLabel(rows, ECounselingConsentScope.TRANSCRIPT_STORAGE) : consentProjectionLabels[workspace.media.transcription.storage_consent_status]}</dd></div><div><dt className="text-xs font-semibold text-muted">Capture</dt><dd className="mt-1 text-sm text-ink">{captureStatusLabel(transcriptionStatus)}</dd></div><div><dt className="text-xs font-semibold text-muted">Storage</dt><dd className="mt-1 text-sm text-ink">{workspace.media.transcription.storage_enabled ? "Enabled for this capture" : "Not enabled"}</dd></div></dl>
-          {transcriptionStatus === ECounselingCaptureStatus.ACTIVE ? <p role="status" className="mt-3 rounded-sm bg-info/10 px-3 py-2 text-sm font-semibold text-ink">Session transcription active</p> : null}
-          <div className="mt-4 flex flex-wrap gap-2">
+        </PanelSection>
+        <PanelSection title="Session transcription" titleId="transcription-controls-heading" level={3}>
+          <MediaFacts facts={[
+            ["Consent", consentLabel(ECounselingConsentScope.LIVE_TRANSCRIPTION, workspace.media.transcription.consent_status)],
+            ["Storage consent", consentLabel(ECounselingConsentScope.TRANSCRIPT_STORAGE, workspace.media.transcription.storage_consent_status)],
+            ["Capture", <CaptureState key="capture" status={transcriptionStatus} live="transcription" />],
+            ["Storage", workspace.media.transcription.storage_enabled ? "Enabled for this capture" : "Not enabled"],
+          ]} />
+          {transcriptionCanStart && storageApproved && transcriptionStatus === ECounselingCaptureStatus.NOT_STARTED ? <div className="mt-3 flex items-start gap-3"><input id="e-counseling-store-transcript" type="checkbox" checked={storeTranscript} disabled={busy} onChange={(event) => setStoreTranscript(event.target.checked)} className="mt-1 size-4 rounded border border-border accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /><div><Label htmlFor="e-counseling-store-transcript">Store transcript for this session</Label><p className="mt-1 text-sm text-muted">Optional and off by default. This choice must be made before transcription starts.</p></div></div> : null}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             {canReadConsents && noTranscriptionRequest ? <><Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.LIVE_TRANSCRIPTION])}>Request transcription consent</Button>{noStorageRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.LIVE_TRANSCRIPTION, ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request transcription + storage consent</Button> : null}</> : null}
             {canReadConsents && hasLiveTranscriptionRequest && noStorageRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request transcript-storage consent</Button> : null}
             {transcriptionCanStart ? <Button disabled={busy} onClick={() => setPendingStart("transcription")}>Start transcription</Button> : null}
@@ -198,13 +230,14 @@ export function CounselorMediaControls({
             {transcriptionApproved && !storageApproved && transcriptionStatus === ECounselingCaptureStatus.NOT_STARTED ? <p className="basis-full text-sm text-muted">Transcription may run without storage consent. Transcript storage is optional.</p> : null}
             {transcriptionStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">Transcription completed. Transcript text and playback are not available in COMPASS.</p> : null}
           </div>
-          {transcriptionCanStart && storageApproved && transcriptionStatus === ECounselingCaptureStatus.NOT_STARTED ? <div className="mt-4 flex items-start gap-3 border-t border-border pt-4"><input id="e-counseling-store-transcript" type="checkbox" checked={storeTranscript} disabled={busy} onChange={(event) => setStoreTranscript(event.target.checked)} className="mt-1 size-4 rounded border border-border accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /><div><Label htmlFor="e-counseling-store-transcript">Store transcript for this session</Label><p className="mt-1 text-sm text-muted">Optional and off by default. This choice must be made before transcription starts.</p></div></div> : null}
-        </section>
-      </div> : null}
-      {error && !pendingStart ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
-      {notice ? <p role="status" className="mt-4 text-sm text-success">{notice}</p> : null}
-      {!workspace.provider_readiness.daily_enabled ? <p className="mt-4 text-sm text-muted">Daily provider media controls are not enabled. Counseling access is unaffected.</p> : null}
-      {workspace.provider_readiness.daily_enabled && (!workspace.provider_readiness.room_provisioned || !workspace.provider_readiness.join_allowed) ? <p className="mt-4 text-sm text-muted">Provider controls are unavailable until the session is ready.</p> : null}
+        </PanelSection>
+      </> : null}
+      {(error && !pendingStart) || notice ? (
+        <div className="border-t border-brand-line px-4 py-3 sm:px-5">
+          {error && !pendingStart ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+          {notice ? <p role="status" className="text-sm text-success">{notice}</p> : null}
+        </div>
+      ) : null}
       <ConsequentialActionDialog
         open={Boolean(pendingStart)}
         title={
@@ -233,6 +266,6 @@ export function CounselorMediaControls({
               : "Speech will be processed as text while transcription is active. COMPASS does not display or provide transcript text."}
         </p>
       </ConsequentialActionDialog>
-    </section>
+    </Panel>
   );
 }
