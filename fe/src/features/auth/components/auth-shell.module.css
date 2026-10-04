@@ -1,0 +1,23 @@
+.campus {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: min(72vw, 72rem);
+  height: min(85vh, 52rem);
+  pointer-events: none;
+  background-image: url("/brand/campus-bg.jpg");
+  background-position: center 68%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.12;
+  -webkit-mask-image: radial-gradient(ellipse at 75% 75%, black 12%, transparent 74%);
+  mask-image: radial-gradient(ellipse at 75% 75%, black 12%, transparent 74%);
+}
+
+@media (max-width: 639px) {
+  .campus {
+    width: 100%;
+    height: 65vh;
+    opacity: 0.06;
+  }
+}
