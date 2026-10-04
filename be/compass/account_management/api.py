@@ -30,7 +30,8 @@ from compass.authentication.email_change import (
     request_administrative_email_change,
 )
 from compass.authentication.email_otp import EmailOTPInvalid, EmailOTPSecurityUnavailable
-from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
+from compass.authentication.sessions import RecentMFARequired
+from compass.authentication.step_up import require_recent_mfa_for_request, step_up_api_error
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
@@ -276,10 +277,7 @@ def _require_management(request, *, recent_mfa: bool) -> None:
             "The accounts.manage capability is required.",
         )
     if recent_mfa:
-        try:
-            require_recent_mfa(request.auth_session)
-        except RecentMFARequired as exc:
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        require_recent_mfa_for_request(request)
 
 
 def _require_designation_management(request) -> None:
@@ -471,7 +469,7 @@ def account_csv_import(
             dry_run=dry_run,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except CsvImportTooLarge as exc:
         raise APIError(422, "csv_import_too_large", str(exc)) from exc
     except CsvImportUnsupportedHeaders as exc:
@@ -543,7 +541,7 @@ def account_create(request, payload: AccountCreateRequest):
             is_active=payload.is_active,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return Status(201, _detail(user.pk))
@@ -557,7 +555,7 @@ def account_create(request, payload: AccountCreateRequest):
     summary="Update managed account identity",
 )
 def account_identity(request, user_id: UUID, payload: IdentityUpdateRequest):
-    _require_management(request, recent_mfa=True)
+    _require_management(request, recent_mfa=False)
     try:
         update_identity(
             actor=request.auth_user,
@@ -566,8 +564,6 @@ def account_identity(request, user_id: UUID, payload: IdentityUpdateRequest):
             context=_context(request),
             changes=payload.model_dump(exclude_unset=True),
         )
-    except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
@@ -602,7 +598,7 @@ def account_email_change(request, user_id: UUID, payload: ManagedEmailChangeRequ
             turnstile_token=payload.turnstile_token,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AuthenticationRateLimited as exc:
         raise APIError(
             429,
@@ -661,7 +657,7 @@ def account_disable(request, user_id: UUID):
             is_active=False,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
@@ -685,7 +681,7 @@ def account_enable(request, user_id: UUID):
             is_active=True,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
@@ -709,7 +705,7 @@ def account_role(request, user_id: UUID, payload: RoleUpdateRequest):
             role=payload.role.value,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
@@ -737,7 +733,7 @@ def account_student_lifecycle(
             status=payload.status.value,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
@@ -792,7 +788,7 @@ def account_designation_assign(request, user_id: UUID, designation_code: Designa
             designation=designation_code.value,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
@@ -816,7 +812,7 @@ def account_designation_remove(request, user_id: UUID, designation_code: Designa
             designation=designation_code.value,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
@@ -864,7 +860,7 @@ def account_capability_override_set(
             expires_at=payload.expires_at,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     assert result.override is not None
@@ -902,7 +898,7 @@ def account_capability_override_remove(request, user_id: UUID, capability_code: 
             capability=capability_code.value,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return {"removed": result.changed}
@@ -925,7 +921,7 @@ def account_revoke_sessions(request, user_id: UUID):
             context=_context(request),
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return {"revoked_count": result.revoked_count}
@@ -948,7 +944,7 @@ def account_revoke_trusted_sessions(request, user_id: UUID):
             context=_context(request),
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return {"revoked_count": result.revoked_count}
@@ -971,7 +967,7 @@ def account_reset_mfa(request, user_id: UUID):
             context=_context(request),
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return {

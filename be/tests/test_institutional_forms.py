@@ -433,7 +433,7 @@ def test_academic_year_mutations_still_require_head_capability_and_recent_mfa():
         **csrf(stale),
     )
     assert denied_mfa.status_code == 403
-    assert denied_mfa.json()["error"]["code"] == "recent_mfa_required"
+    assert denied_mfa.json()["error"]["code"] == "mfa_setup_required"
 
     admin_client = auth_client(admin, recent_mfa=True)
     denied_role = admin_client.post(

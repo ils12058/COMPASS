@@ -292,7 +292,7 @@ def test_manual_retry_rejects_ineligible_delivery_states(status, failure_code):
 
 
 @pytest.mark.django_db
-def test_manual_retry_requires_manage_recent_mfa_and_known_delivery():
+def test_manual_retry_requires_manage_and_known_delivery_but_not_step_up():
     sync_policy()
     counselor = make_user("retry-counselor@example.edu", "COUNSELOR")
     admin = make_user("retry-no-mfa@example.edu", "IT_ADMIN")
@@ -311,18 +311,11 @@ def test_manual_retry_requires_manage_recent_mfa_and_known_delivery():
     assert denied.status_code == 403
     assert denied.json()["error"]["code"] == "permission_denied"
 
-    no_mfa = auth_client(admin)
-    step_up = no_mfa.post(
-        f"/api/v1/platform/email-deliveries/{delivery.pk}/retry",
-        **csrf(no_mfa),
-    )
-    assert step_up.status_code == 403
-    assert step_up.json()["error"]["code"] == "recent_mfa_required"
-
-    recent = auth_client(admin, recent_mfa=True)
-    unknown = recent.post(
+    # Retrying a failed delivery is operational recovery, not an access change: no step-up.
+    without_step_up = auth_client(admin)
+    unknown = without_step_up.post(
         f"/api/v1/platform/email-deliveries/{uuid4()}/retry",
-        **csrf(recent),
+        **csrf(without_step_up),
     )
     assert unknown.status_code == 404
     assert unknown.json()["error"]["code"] == "email_delivery_not_found"

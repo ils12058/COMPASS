@@ -389,7 +389,7 @@ def test_csv_requires_accounts_manage_and_recent_mfa():
     manager_client, _admin = admin_client(recent_mfa=False)
     step_up = upload(manager_client, VALID_CSV, dry_run=True)
     assert step_up.status_code == 403
-    assert step_up.json()["error"]["code"] == "recent_mfa_required"
+    assert step_up.json()["error"]["code"] == "mfa_setup_required"
 
 
 @pytest.mark.django_db

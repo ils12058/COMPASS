@@ -32,6 +32,14 @@ class RecentMFARequired(RuntimeError):
     """Raised when a sensitive action needs a recent MFA assertion."""
 
 
+class MFASetupRequired(RecentMFARequired):
+    """Raised when a sensitive action needs recent MFA but the account has no active TOTP factor.
+
+    A step-up challenge cannot be completed without an authenticator, so callers report that the
+    authenticator must be set up rather than asking for a code that does not exist.
+    """
+
+
 @dataclass(frozen=True, slots=True)
 class IssuedSession:
     token: str
@@ -494,14 +502,20 @@ def has_recent_mfa(session: AuthSession, *, now: datetime | None = None) -> bool
 
 
 def require_recent_mfa(session: AuthSession, *, now: datetime | None = None) -> None:
-    if not has_recent_mfa(session, now=now):
-        raise RecentMFARequired("recent MFA is required")
+    if has_recent_mfa(session, now=now):
+        return
+    from compass.authentication.mfa import has_active_totp_factor
+
+    if not has_active_totp_factor(session.user_id):
+        raise MFASetupRequired("an active TOTP factor is required before recent MFA")
+    raise RecentMFARequired("recent MFA is required")
 
 
 __all__ = [
     "IssuedLoginChallenge",
     "IssuedSession",
     "IssuedTrustedSession",
+    "MFASetupRequired",
     "RecentMFARequired",
     "create_auth_session",
     "create_login_challenge",

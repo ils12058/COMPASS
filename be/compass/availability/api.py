@@ -13,7 +13,6 @@ from pydantic import ConfigDict, Field
 from compass.accounts.api_codes import RoleCode
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
-from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.service_catalog.api import DeliveryMode
@@ -154,14 +153,9 @@ def _context(request) -> AuditContext:
     return AuditContext.from_request(request, actor=request.auth_user)
 
 
-def _require(request, capability: str, *, recent_mfa: bool = False) -> None:
+def _require(request, capability: str) -> None:
     if not request.auth_user.has_capability(capability):
         raise APIError(403, "permission_denied", f"The {capability} capability is required.")
-    if recent_mfa:
-        try:
-            require_recent_mfa(request.auth_session)
-        except RecentMFARequired as exc:
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
 
 
 def _require_self_read(request) -> None:
@@ -262,7 +256,7 @@ def office_weekly_get(request):
     operation_id="availabilityReplaceOfficeWeekly",
 )
 def office_weekly_replace(request, payload: WeeklyReplacementRequest):
-    _require(request, "availability.manage", recent_mfa=True)
+    _require(request, "availability.manage")
     try:
         rows = replace_office_weekly(windows=_window_values(payload), context=_context(request))
     except AvailabilityError as exc:
@@ -288,7 +282,7 @@ def office_exceptions_list(request):
     operation_id="availabilityCreateOfficeException",
 )
 def office_exception_create(request, payload: ExceptionCreateRequest):
-    _require(request, "availability.manage", recent_mfa=True)
+    _require(request, "availability.manage")
     try:
         item = create_office_exception(
             starts_at=payload.starts_at,
@@ -309,7 +303,7 @@ def office_exception_create(request, payload: ExceptionCreateRequest):
     operation_id="availabilityRemoveOfficeException",
 )
 def office_exception_remove(request, exception_id: UUID):
-    _require(request, "availability.manage", recent_mfa=True)
+    _require(request, "availability.manage")
     try:
         removed = remove_office_exception(exception_id=exception_id, context=_context(request))
     except AvailabilityError as exc:
@@ -456,7 +450,7 @@ def provider_weekly_get(request, provider_id: UUID):
     operation_id="availabilityReplaceProviderWeekly",
 )
 def provider_weekly_replace(request, provider_id: UUID, payload: WeeklyReplacementRequest):
-    _require(request, "availability.manage", recent_mfa=True)
+    _require(request, "availability.manage")
     try:
         rows = replace_provider_weekly(
             provider_id=provider_id,
@@ -490,7 +484,7 @@ def provider_exceptions_list(request, provider_id: UUID):
     operation_id="availabilityCreateProviderException",
 )
 def provider_exception_create(request, provider_id: UUID, payload: ExceptionCreateRequest):
-    _require(request, "availability.manage", recent_mfa=True)
+    _require(request, "availability.manage")
     try:
         item = create_provider_exception(
             provider_id=provider_id,
@@ -512,7 +506,7 @@ def provider_exception_create(request, provider_id: UUID, payload: ExceptionCrea
     operation_id="availabilityRemoveProviderException",
 )
 def provider_exception_remove(request, provider_id: UUID, exception_id: UUID):
-    _require(request, "availability.manage", recent_mfa=True)
+    _require(request, "availability.manage")
     try:
         removed = remove_provider_exception(
             exception_id=exception_id,

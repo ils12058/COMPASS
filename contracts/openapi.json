@@ -17378,6 +17378,18 @@
             ],
             "title": "Effective On"
           },
+          "expected_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Updated At"
+          },
           "requires_acknowledgment": {
             "anyOf": [
               {
@@ -39744,6 +39756,7 @@
     },
     "/api/v1/privacy/my-notices": {
       "get": {
+        "description": "Current notices for this account.\n\n``pending_acknowledgment=true`` narrows the list to notices that still ask this account for an\nacknowledgment, so the portal can find the next one without reading the whole history.",
         "operationId": "privacyGovernanceListMyNotices",
         "parameters": [
           {
@@ -39764,6 +39777,16 @@
               "default": 20,
               "title": "Page Size",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pending_acknowledgment",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Pending Acknowledgment",
+              "type": "boolean"
             }
           }
         ],

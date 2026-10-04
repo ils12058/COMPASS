@@ -954,7 +954,7 @@ def test_self_provider_manager_views_and_cancel_authorization_are_resource_scope
     student_client = auth_client(student)
     provider_client = auth_client(provider)
     outsider_client = auth_client(outsider)
-    head_client = auth_client(head, recent_mfa=True)
+    head_client = auth_client(head)
     assert student_client.get("/api/v1/appointments/me").status_code == 200
     assert provider_client.get("/api/v1/appointments/me").status_code == 200
     assert student_client.get(f"/api/v1/appointments/{item.pk}").status_code == 200
@@ -962,16 +962,7 @@ def test_self_provider_manager_views_and_cancel_authorization_are_resource_scope
     assert outsider_client.get(f"/api/v1/appointments/{item.pk}").status_code == 404
     assert head_client.get("/api/v1/appointments").status_code == 200
 
-    stale_head = auth_client(head, recent_mfa=False)
-    denied = stale_head.post(
-        f"/api/v1/appointments/{item.pk}/cancel",
-        data=json.dumps({}),
-        content_type="application/json",
-        **csrf(stale_head),
-    )
-    assert denied.status_code == 403
-    assert denied.json()["error"]["code"] == "recent_mfa_required"
-
+    # Cancelling is routine operational work: capability and scope decide it, not step-up.
     cancelled = head_client.post(
         f"/api/v1/appointments/{item.pk}/cancel",
         data=json.dumps({}),

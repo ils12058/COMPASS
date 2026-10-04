@@ -473,7 +473,7 @@ def test_admin_and_head_can_manage_with_recent_mfa_but_revoke_and_stale_mfa_win(
         **csrf(stale),
     )
     assert stale_response.status_code == 403
-    assert stale_response.json()["error"]["code"] == "recent_mfa_required"
+    assert stale_response.json()["error"]["code"] == "mfa_setup_required"
 
     admin_client = auth_client(admin)
     created = admin_client.post(

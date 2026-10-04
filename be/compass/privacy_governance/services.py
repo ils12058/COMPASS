@@ -33,6 +33,7 @@ class PrivacyConflictCode(StrEnum):
     NOTICE_REVISION_IMMUTABLE = "privacy_notice_revision_immutable"
     NOTICE_NOT_YET_EFFECTIVE = "privacy_notice_not_yet_effective"
     NOTICE_REVISION_NOT_CURRENT = "privacy_notice_revision_not_current"
+    NOTICE_REVISION_CHANGED = "privacy_notice_revision_changed"
     NOTICE_ACKNOWLEDGMENT_NOT_APPLICABLE = "privacy_notice_acknowledgment_not_applicable"
 
 

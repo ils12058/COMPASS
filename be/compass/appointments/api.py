@@ -14,7 +14,6 @@ from pydantic import ConfigDict
 
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
-from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import (
@@ -252,14 +251,9 @@ def _context(request) -> AuditContext:
     return AuditContext.from_request(request, actor=request.auth_user)
 
 
-def _require(request, capability: str, *, recent_mfa: bool = False) -> None:
+def _require(request, capability: str) -> None:
     if not request.auth_user.has_capability(capability):
         raise APIError(403, "permission_denied", f"The {capability} capability is required.")
-    if recent_mfa:
-        try:
-            require_recent_mfa(request.auth_session)
-        except RecentMFARequired as exc:
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
 
 
 def _require_student_self_management(request) -> None:
@@ -737,7 +731,7 @@ def appointments_cancel(request, appointment_id: UUID):
     self_mode = actor.role.code == "STUDENT" and actor.has_capability("appointments.manage_self")
     administrative = False
     if not self_mode:
-        _require(request, "appointments.manage", recent_mfa=True)
+        _require(request, "appointments.manage")
         administrative = True
     try:
         item = cancel_appointment(
@@ -813,7 +807,7 @@ def appointments_reschedule(
     self_mode = actor.role.code == "STUDENT" and actor.has_capability("appointments.manage_self")
     administrative = False
     if not self_mode:
-        _require(request, "appointments.manage", recent_mfa=True)
+        _require(request, "appointments.manage")
         administrative = True
     try:
         item = reschedule_appointment(
@@ -873,7 +867,7 @@ def appointments_reassign(
     appointment_id: UUID,
     payload: AppointmentReassignRequest,
 ):
-    _require(request, "appointments.manage", recent_mfa=True)
+    _require(request, "appointments.manage")
     try:
         item = reassign_appointment(
             appointment_id=appointment_id,
