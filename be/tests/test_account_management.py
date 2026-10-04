@@ -751,6 +751,10 @@ def test_effective_access_inspector_uses_canonical_truth_and_explains_provenance
     for code, row in rows.items():
         assert row["effective"] is (code in effective_capabilities(target))
 
+    supervised = rows["activity.supervised_staff.view"]
+    assert supervised["effective"] is True
+    assert supervised["baseline_sources"] == [{"type": "ROLE", "code": "COUNSELOR"}]
+
     reopen = rows["inventory.reopen"]
     structure = rows["organization.structure.view"]
     assert structure["effective"] is False
@@ -798,7 +802,8 @@ def test_effective_access_inspector_uses_canonical_truth_and_explains_provenance
         "responsibility_colleges",
         "supervised_staff",
     ):
-        assert forbidden_key not in serialized
+        # Scope data stays absent; canonical capability codes may name that purpose.
+        assert json.dumps(forbidden_key) + ":" not in serialized
 
 
 @pytest.mark.django_db

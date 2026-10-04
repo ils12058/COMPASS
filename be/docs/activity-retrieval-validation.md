@@ -41,6 +41,14 @@ the only failures were the two independently reproduced baseline assertions abov
 OpenAPI drift check passed. A clean isolated database applied all existing migrations successfully;
 this feature adds none. `git diff --check` passed.
 
+Merge follow-up on 2026-10-05: repository CI at the initial PR head reported 19 failed,
+1408 passed and 17 errors. Three capability assertions in account access inspection,
+authentication and Privacy Governance were updated for the two new codes; the scope-data guard
+still forbids JSON keys rather than substrings inside legitimate capability names. The affected
+assertions, DPO/disabled-account inspection and all 91 retrieval cases passed together:
+**95 passed in 45.02s**. Ruff format/check and whitespace checks passed. This focused result
+does not establish that all remaining repository-wide failures are resolved.
+
 ## Frontend and browser checks
 
 Canonical backend OpenAPI export and Orval generation completed. Generated clients are not
