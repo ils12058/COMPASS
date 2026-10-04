@@ -761,6 +761,7 @@ def test_announcement_api_returns_structured_publication_consequence_review_requ
     assert accepted.json()["title"] == "Atomic title"
     assert accepted.json()["audience"] == "PUBLIC"
 
+
 @pytest.mark.django_db
 def test_announcement_search_matches_normalizes_filters_orders_and_paginates():
     sync_policy()
