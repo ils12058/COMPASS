@@ -12,6 +12,7 @@ from uuid import UUID
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -146,6 +147,17 @@ def _clean_page(page: int, page_size: int) -> tuple[int, int]:
     return page, page_size
 
 
+def _normalize_search(search: str | None) -> str:
+    return search.strip() if search is not None else ""
+
+
+def _apply_search(queryset, search: str | None):
+    term = _normalize_search(search)
+    if not term:
+        return queryset
+    return queryset.filter(Q(title__icontains=term) | Q(body_markdown__icontains=term))
+
+
 def _page(queryset, *, page: int, page_size: int) -> ResourcePage:
     page, page_size = _clean_page(page, page_size)
     offset = (page - 1) * page_size
@@ -181,6 +193,7 @@ def list_public_resources(
     *,
     category: str | None = None,
     kind: str | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ResourcePage:
@@ -189,6 +202,7 @@ def list_public_resources(
         queryset = queryset.filter(category=_choice(category, ResourceCategory, "category"))
     if kind is not None:
         queryset = queryset.filter(kind=_choice(kind, ResourceKind, "kind"))
+    queryset = _apply_search(queryset, search)
     return _page(
         queryset.order_by("display_order", "-published_at", "-id"),
         page=page,
@@ -208,6 +222,7 @@ def list_visible_resources(
     actor: User,
     category: str | None = None,
     kind: str | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ResourcePage:
@@ -216,6 +231,7 @@ def list_visible_resources(
         queryset = queryset.filter(category=_choice(category, ResourceCategory, "category"))
     if kind is not None:
         queryset = queryset.filter(kind=_choice(kind, ResourceKind, "kind"))
+    queryset = _apply_search(queryset, search)
     return _page(
         queryset.order_by("display_order", "-published_at", "-id"),
         page=page,
@@ -236,6 +252,7 @@ def list_managed_resources(
     audience: str | None = None,
     category: str | None = None,
     kind: str | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ResourcePage:
@@ -248,6 +265,7 @@ def list_managed_resources(
         queryset = queryset.filter(category=_choice(category, ResourceCategory, "category"))
     if kind is not None:
         queryset = queryset.filter(kind=_choice(kind, ResourceKind, "kind"))
+    queryset = _apply_search(queryset, search)
     return _page(
         queryset.order_by("-updated_at", "-id"),
         page=page,
