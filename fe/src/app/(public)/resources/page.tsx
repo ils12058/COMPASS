@@ -22,6 +22,7 @@ export default async function ResourcesPage({
     category?: string | string[];
     kind?: string | string[];
     page?: string | string[];
+    search?: string | string[];
   }>;
 }) {
   const params = await searchParams;
@@ -38,7 +39,7 @@ export default async function ResourcesPage({
         <h1 className="font-heading text-3xl font-bold tracking-tight text-ink sm:text-4xl">Resources</h1>
       </PublicPageHeader>
       <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8 sm:py-9">
-        <ResourceList mode="index" category={category} kind={kind} page={readPage(params.page)} />
+        <ResourceList mode="index" category={category} kind={kind} search={first(params.search)?.trim() || undefined} page={readPage(params.page)} />
       </div>
     </main>
   );

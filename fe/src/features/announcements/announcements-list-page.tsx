@@ -4,6 +4,7 @@ import { Pin } from "lucide-react";
 import Link from "next/link";
 
 import { Select } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -36,14 +37,22 @@ export function AnnouncementsListPage() {
   const { searchParams, page, hrefWith, update, setPage } = useContentListParams();
   const statusParam = searchParams.get("status");
   const audienceParam = searchParams.get("audience");
+  const search = searchParams.get("search")?.trim() || undefined;
   const status = isPublicationStatus(statusParam) ? statusParam : undefined;
   const audience = isPublicationAudience(audienceParam) ? audienceParam : undefined;
-  const hasFilters = Boolean(status || audience);
+  const hasFilters = Boolean(search || status || audience);
+  const detailParams = new URLSearchParams();
+  if (search) detailParams.set("search", search);
+  if (status) detailParams.set("status", status);
+  if (audience) detailParams.set("audience", audience);
+  if (page > 1) detailParams.set("page", String(page));
+  const detailQuery = detailParams.toString();
 
   const list = useAnnouncementsListManaged(
     {
       ...(status ? { status } : {}),
       ...(audience ? { audience } : {}),
+      ...(search ? { search } : {}),
       page,
       page_size: 20,
     },
@@ -63,21 +72,40 @@ export function AnnouncementsListPage() {
         }
       />
 
-      {/* Two selects, so each choice applies as soon as it changes. */}
-      <FilterToolbar
+      <form
         className="mt-5"
-        fieldsClassName="lg:grid-cols-[repeat(2,minmax(0,16rem))]"
-        actions={hasFilters ? (
-          <Link href={hrefWith({ status: null, audience: null })} className={buttonVariants({ variant: "quiet" })} scroll={false}>
-            Clear filters
-          </Link>
-        ) : undefined}
+        role="search"
+        aria-label="Search managed announcements"
+        key={searchParams.toString()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          const fields = new FormData(event.currentTarget);
+          update({
+            search: String(fields.get("search") ?? "").trim() || null,
+            status: String(fields.get("status") ?? "") || null,
+            audience: String(fields.get("audience") ?? "") || null,
+          });
+        }}
       >
+      <FilterToolbar
+        fieldsClassName="lg:grid-cols-[minmax(0,1fr)_repeat(2,minmax(0,13rem))]"
+        actions={<>
+          {hasFilters ? (
+            <Link href={hrefWith({ search: null, status: null, audience: null })} className={buttonVariants({ variant: "quiet" })} scroll={false}>
+              Clear filters
+            </Link>
+          ) : null}
+          <Button type="submit">Apply filters</Button>
+        </>}
+      >
+        <FilterField label="Search announcements" htmlFor="announcement-search-filter">
+          <Input id="announcement-search-filter" name="search" type="search" placeholder="Search announcements" defaultValue={search} />
+        </FilterField>
         <FilterField label="Status" htmlFor="announcement-status-filter">
           <Select
             id="announcement-status-filter"
-            value={status ?? ""}
-            onChange={(event) => update({ status: event.target.value || null })}
+            name="status"
+            defaultValue={status ?? ""}
           >
             <option value="">All statuses</option>
             {publicationStatusOrder.map((value) => (
@@ -90,8 +118,8 @@ export function AnnouncementsListPage() {
         <FilterField label="Audience" htmlFor="announcement-audience-filter">
           <Select
             id="announcement-audience-filter"
-            value={audience ?? ""}
-            onChange={(event) => update({ audience: event.target.value || null })}
+            name="audience"
+            defaultValue={audience ?? ""}
           >
             <option value="">All audiences</option>
             {publicationAudienceOrder.map((value) => (
@@ -102,6 +130,7 @@ export function AnnouncementsListPage() {
           </Select>
         </FilterField>
       </FilterToolbar>
+      </form>
       {list.isError && result ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
 
       <Panel className="mt-5" aria-labelledby="announcement-results-heading">
@@ -127,7 +156,7 @@ export function AnnouncementsListPage() {
               Go to the first page
             </Link>
           ) : hasFilters ? (
-            <Link href={hrefWith({ status: null, audience: null })} className={buttonVariants({ variant: "secondary" })} scroll={false}>
+            <Link href={hrefWith({ search: null, status: null, audience: null })} className={buttonVariants({ variant: "secondary" })} scroll={false}>
               Clear filters
             </Link>
           ) : undefined}
@@ -135,7 +164,11 @@ export function AnnouncementsListPage() {
           {page > 1
             ? "No Announcements are on this page."
             : hasFilters
-              ? "No Announcements match the selected filters."
+              ? search
+                ? status || audience
+                  ? "No Announcements match this search and the selected filters."
+                  : "No Announcements match this search."
+                : "No Announcements match the selected filters."
               : "No Announcements have been created yet."}
         </PanelMessage>
       ) : result ? (
@@ -144,7 +177,7 @@ export function AnnouncementsListPage() {
               <li key={item.id} className="px-4 py-4 sm:px-5">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <Link
-                    href={`/portal/announcements/${item.id}`}
+                    href={`/portal/announcements/${item.id}${detailQuery ? `?${detailQuery}` : ""}`}
                     className={`${contentRecordLinkClass} break-words font-heading text-lg`}
                   >
                     {displayTitle(item.title, "Untitled Announcement")}

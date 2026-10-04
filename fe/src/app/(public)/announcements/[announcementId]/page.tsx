@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { AnnouncementDetail } from "@/features/public/announcements/announcement-detail";
+import { listReturnHref } from "@/features/content/list-return-href";
 import {
   isReaderUuid,
   resolveAnnouncementReader,
@@ -38,10 +39,19 @@ export async function generateMetadata({
 
 export default async function AnnouncementDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ announcementId: string }>;
+  searchParams: Promise<{ search?: string | string[]; page?: string | string[] }>;
 }) {
   const { announcementId } = await params;
+  const listParams = await searchParams;
+  const backParams = new URLSearchParams();
+  for (const key of ["search", "page"] as const) {
+    const value = listParams[key];
+    if (typeof value === "string") backParams.set(key, value);
+    else if (value?.[0]) backParams.set(key, value[0]);
+  }
   if (!isReaderUuid(announcementId)) notFound();
 
   const resolution = await resolveAnnouncementReader(announcementId);
@@ -51,7 +61,7 @@ export default async function AnnouncementDetailPage({
     <main>
       <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8 sm:py-9">
         <div className="max-w-4xl">
-          <Link href="/announcements" className={pageBackLinkClass}>
+          <Link href={listReturnHref("/announcements", backParams, ["search", "page"])} className={pageBackLinkClass}>
             Back to announcements
           </Link>
           <AnnouncementDetail announcementId={announcementId} />

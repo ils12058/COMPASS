@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { Select } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
 import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
@@ -40,7 +41,7 @@ import { ResourceCategoryValue, ResourceKindValue } from "@/lib/api/generated/mo
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 
-const noFilters = { status: null, audience: null, category: null, kind: null };
+const noFilters = { search: null, status: null, audience: null, category: null, kind: null };
 
 export function ResourcesListPage() {
   const { searchParams, page, hrefWith, update, setPage } = useContentListParams();
@@ -48,11 +49,21 @@ export function ResourcesListPage() {
   const audienceParam = searchParams.get("audience");
   const categoryParam = searchParams.get("category") ?? undefined;
   const kindParam = searchParams.get("kind") ?? undefined;
+  const search = searchParams.get("search")?.trim() || undefined;
   const status = isPublicationStatus(statusParam) ? statusParam : undefined;
   const audience = isPublicationAudience(audienceParam) ? audienceParam : undefined;
   const category = isResourceCategory(categoryParam) ? categoryParam : undefined;
   const kind = isResourceKind(kindParam) ? kindParam : undefined;
-  const hasFilters = Boolean(status || audience || category || kind);
+  const hasFilters = Boolean(search || status || audience || category || kind);
+  const advancedCount = [status, audience, category, kind].filter(Boolean).length;
+  const detailParams = new URLSearchParams();
+  if (search) detailParams.set("search", search);
+  if (status) detailParams.set("status", status);
+  if (audience) detailParams.set("audience", audience);
+  if (category) detailParams.set("category", category);
+  if (kind) detailParams.set("kind", kind);
+  if (page > 1) detailParams.set("page", String(page));
+  const detailQuery = detailParams.toString();
 
   const list = useResourcesListManaged(
     {
@@ -60,6 +71,7 @@ export function ResourcesListPage() {
       ...(audience ? { audience } : {}),
       ...(category ? { category } : {}),
       ...(kind ? { kind } : {}),
+      ...(search ? { search } : {}),
       page,
       page_size: 20,
     },
@@ -79,20 +91,39 @@ export function ResourcesListPage() {
         }
       />
 
-      {/* Selects only, so each choice applies as soon as it changes. */}
-      <FilterToolbar
+      <form
         className="mt-5"
-        actions={hasFilters ? (
-          <Link href={hrefWith(noFilters)} className={buttonVariants({ variant: "quiet" })} scroll={false}>
-            Clear filters
-          </Link>
-        ) : undefined}
+        role="search"
+        aria-label="Search managed resources"
+        key={searchParams.toString()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          const fields = new FormData(event.currentTarget);
+          update({
+            search: String(fields.get("search") ?? "").trim() || null,
+            status: String(fields.get("status") ?? "") || null,
+            audience: String(fields.get("audience") ?? "") || null,
+            category: String(fields.get("category") ?? "") || null,
+            kind: String(fields.get("kind") ?? "") || null,
+          });
+        }}
       >
+      <FilterToolbar
+        advancedCount={advancedCount}
+        actions={<>
+          {hasFilters ? (
+            <Link href={hrefWith(noFilters)} className={buttonVariants({ variant: "quiet" })} scroll={false}>
+              Clear filters
+            </Link>
+          ) : null}
+          <Button type="submit">Apply filters</Button>
+        </>}
+        advanced={<>
         <FilterField label="Status" htmlFor="resource-status-filter">
           <Select
             id="resource-status-filter"
-            value={status ?? ""}
-            onChange={(event) => update({ status: event.target.value || null })}
+            name="status"
+            defaultValue={status ?? ""}
           >
             <option value="">All statuses</option>
             {publicationStatusOrder.map((value) => (
@@ -103,8 +134,8 @@ export function ResourcesListPage() {
         <FilterField label="Audience" htmlFor="resource-audience-filter">
           <Select
             id="resource-audience-filter"
-            value={audience ?? ""}
-            onChange={(event) => update({ audience: event.target.value || null })}
+            name="audience"
+            defaultValue={audience ?? ""}
           >
             <option value="">All audiences</option>
             {publicationAudienceOrder.map((value) => (
@@ -115,8 +146,8 @@ export function ResourcesListPage() {
         <FilterField label="Category" htmlFor="resource-category-filter">
           <Select
             id="resource-category-filter"
-            value={category ?? ""}
-            onChange={(event) => update({ category: event.target.value || null })}
+            name="category"
+            defaultValue={category ?? ""}
           >
             <option value="">All categories</option>
             {Object.values(ResourceCategoryValue).map((value) => (
@@ -127,8 +158,8 @@ export function ResourcesListPage() {
         <FilterField label="Type" htmlFor="resource-kind-filter">
           <Select
             id="resource-kind-filter"
-            value={kind ?? ""}
-            onChange={(event) => update({ kind: event.target.value || null })}
+            name="kind"
+            defaultValue={kind ?? ""}
           >
             <option value="">All types</option>
             {Object.values(ResourceKindValue).map((value) => (
@@ -136,7 +167,13 @@ export function ResourcesListPage() {
             ))}
           </Select>
         </FilterField>
+        </>}
+      >
+        <FilterField label="Search resources" htmlFor="resource-search-filter">
+          <Input id="resource-search-filter" name="search" type="search" placeholder="Search resources" defaultValue={search} />
+        </FilterField>
       </FilterToolbar>
+      </form>
 
       {list.isError && result ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
       <Panel className="mt-5" aria-labelledby="resource-results-heading">
@@ -170,7 +207,11 @@ export function ResourcesListPage() {
           {page > 1
             ? "No Resources are on this page."
             : hasFilters
-              ? "No Resources match the selected filters."
+              ? search
+                ? advancedCount > 0
+                  ? "No Resources match this search and the selected filters."
+                  : "No Resources match this search."
+                : "No Resources match the selected filters."
               : "No Resources have been created yet."}
         </PanelMessage>
       ) : result ? (
@@ -191,7 +232,7 @@ export function ResourcesListPage() {
                 {result.items.map((item) => (
                   <tr key={item.id} className={dataTable.row}>
                     <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} min-w-64 max-w-sm text-left font-normal`}>
-                      <Link href={`/portal/resources/${item.id}`} className={`${contentRecordLinkClass} break-words`}>
+                      <Link href={`/portal/resources/${item.id}${detailQuery ? `?${detailQuery}` : ""}`} className={`${contentRecordLinkClass} break-words`}>
                         {displayTitle(item.title, "Untitled Resource")}
                       </Link>
                       <span className="mt-1 block text-xs text-muted">{resourceKindLabels[item.kind]}</span>

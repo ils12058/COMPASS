@@ -7,6 +7,7 @@ import { useState, type ReactNode } from "react";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelSection } from "@/components/ui/panel";
 import { displayTitle, publicationAudienceLabels } from "@/features/content/content-presentation";
+import { listReturnHref } from "@/features/content/list-return-href";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
@@ -40,13 +41,13 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function ResourceUnavailable({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+export function ResourceUnavailable({ error, onRetry, backHref = "/portal/resources" }: { error: unknown; onRetry: () => void; backHref?: string }) {
   const notFound = resourceErrorCode(error) === "resource_not_found";
   return (
     <section className="space-y-5">
       <ContentPageHeading
         title={notFound ? "Resource not found" : "Resource unavailable"}
-        backHref="/portal/resources"
+        backHref={backHref}
         backLabel="Resources"
       />
       {notFound ? (
@@ -65,6 +66,7 @@ export function ResourceUnavailable({ error, onRetry }: { error: unknown; onRetr
 
 export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
   const searchParams = useSearchParams();
+  const backHref = listReturnHref("/portal/resources", new URLSearchParams(searchParams.toString()), ["search", "status", "audience", "category", "kind", "page"]);
   const detail = useResourcesGetManaged(resourceId, { query: { retry: false } });
   const [notice, setNotice] = useState<string | null>(() =>
     searchParams.get("notice") === "created" ? "Draft saved." : null,
@@ -72,7 +74,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
 
   if (detail.isPending) return <ContentDetailSkeleton label="Loading Resource…" />;
   if (!detail.data || (detail.isError && !canShowLastKnownData(detail))) {
-    return <ResourceUnavailable error={detail.error} onRetry={() => void detail.refetch()} />;
+    return <ResourceUnavailable error={detail.error} onRetry={() => void detail.refetch()} backHref={backHref} />;
   }
 
   const item = detail.data.data;
@@ -85,7 +87,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
     <article aria-busy={detail.isFetching}>
       <ContentPageHeading
         title={title}
-        backHref="/portal/resources"
+        backHref={backHref}
         backLabel="Resources"
         action={!detail.isError ?
           <>

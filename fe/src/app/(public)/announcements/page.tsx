@@ -10,12 +10,16 @@ function readPage(value: string | string[] | undefined): number {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
 
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export default async function AnnouncementsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string | string[] }>;
+  searchParams: Promise<{ page?: string | string[]; search?: string | string[] }>;
 }) {
-  const { page } = await searchParams;
+  const { page, search } = await searchParams;
 
   return (
     <main>
@@ -27,7 +31,7 @@ export default async function AnnouncementsPage({
       {/* Same left edge as the page title; the list keeps a readable width. */}
       <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8 sm:py-9">
         <div className="max-w-4xl">
-          <AnnouncementList mode="index" page={readPage(page)} />
+          <AnnouncementList mode="index" page={readPage(page)} search={first(search)?.trim() || undefined} />
         </div>
       </div>
     </main>
