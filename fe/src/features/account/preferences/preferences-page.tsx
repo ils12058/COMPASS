@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { accountErrorMessage } from "@/features/account/components/account-errors";
+import { BrowserPushControls } from "@/features/notifications/browser-push";
 import {
   getNotificationsGetPreferencesQueryKey,
   useNotificationsGetPreferences,
@@ -71,6 +72,7 @@ export function PreferencesPage() {
           </PanelBody>
         </Panel>
       ) : null}
+      <div className="mt-5"><BrowserPushControls /></div>
     </section>
   );
 }

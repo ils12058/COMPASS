@@ -11,6 +11,7 @@ from compass.common.correlation import get_current_request_id
 from compass.tasks import CorrelationTask
 
 from .delivery import deliver_email_delivery, due_email_delivery_ids
+from .push import deliver_push_delivery, due_push_delivery_ids
 
 logger = logging.getLogger("compass.notifications")
 
@@ -53,3 +54,29 @@ def dispatch_due_notification_emails(self) -> int:
 
 
 __all__ = ["deliver_notification_email", "dispatch_due_notification_emails"]
+
+
+@shared_task(bind=True, base=CorrelationTask, name="compass.notifications.push.deliver")
+def deliver_notification_push(self, push_delivery_id: str) -> str:
+    try:
+        return deliver_push_delivery(UUID(push_delivery_id))
+    except (TypeError, ValueError):
+        return "skipped"
+
+
+@shared_task(bind=True, base=CorrelationTask, name="compass.notifications.push.dispatch_due")
+def dispatch_due_notification_pushes(self) -> int:
+    queued = 0
+    for delivery_id in due_push_delivery_ids():
+        try:
+            deliver_notification_push.delay(str(delivery_id))
+            queued += 1
+        except Exception:
+            logger.warning(
+                "push recovery enqueue failed",
+                extra={"event": "push_recovery_enqueue_failed", "delivery_id": str(delivery_id)},
+            )
+    return queued
+
+
+__all__ += ["deliver_notification_push", "dispatch_due_notification_pushes"]

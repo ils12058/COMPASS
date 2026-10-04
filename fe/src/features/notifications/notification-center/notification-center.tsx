@@ -116,7 +116,7 @@ export function NotificationCenter({ page }: { page: number }) {
           </>
         ) : null}
       </Panel>
-      {data ? <Link href="/portal/account/preferences" className="mt-4 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Manage email preference</Link> : null}
+      {data ? <Link href="/portal/account/preferences" className="mt-4 inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Manage notification preferences</Link> : null}
     </section>
   );
 }

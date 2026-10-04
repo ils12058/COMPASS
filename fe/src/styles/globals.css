@@ -53,6 +53,8 @@ html {
 body {
   min-height: 100dvh;
   margin: 0;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
   background: var(--compass-body);
   color: var(--compass-ink);
   font-family: var(--font-plus-jakarta), sans-serif;

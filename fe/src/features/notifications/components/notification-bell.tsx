@@ -13,7 +13,7 @@ export function NotificationBell() {
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const unread = useNotificationsGetUnreadCount({
-    query: { retry: false, refetchInterval: 60_000, staleTime: 30_000 },
+    query: { retry: false, staleTime: 8_000 },
   });
   const count = unread.data?.data.unread_count;
   const label = count && count > 0 ? `Notifications, ${count} unread` : "Notifications";

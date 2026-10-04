@@ -108,9 +108,64 @@ class NotificationPreference(models.Model):
         default_permissions = ()
 
 
+class PushSubscription(models.Model):
+    """One browser push endpoint, bound to the session that enabled it."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    session = models.ForeignKey("authentication.AuthSession", on_delete=models.CASCADE)
+    endpoint_digest = models.CharField(max_length=64, unique=True)
+    encrypted_endpoint = models.TextField()
+    encrypted_p256dh = models.TextField()
+    encrypted_auth = models.TextField()
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        indexes = [models.Index(fields=("user", "active"), name="push_sub_user_active_idx")]
+
+
+class PushDeliveryStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    PROCESSING = "PROCESSING", "Processing"
+    SENT = "SENT", "Sent"
+    FAILED = "FAILED", "Failed"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class PushDelivery(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    notification = models.ForeignKey(Notification, on_delete=models.CASCADE)
+    subscription = models.ForeignKey(PushSubscription, on_delete=models.CASCADE)
+    status = models.CharField(
+        max_length=16, choices=PushDeliveryStatus.choices, default=PushDeliveryStatus.PENDING
+    )
+    attempt_count = models.PositiveSmallIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(default=timezone.now, null=True, blank=True)
+    claim_token = models.UUIDField(null=True, blank=True, editable=False)
+    claim_expires_at = models.DateTimeField(null=True, blank=True)
+    failure_code = models.CharField(max_length=32, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=("notification", "subscription"), name="push_delivery_once_uniq"
+            )
+        ]
+        indexes = [models.Index(fields=("status", "next_attempt_at"), name="push_delivery_due_idx")]
+
+
 __all__ = [
     "EmailDelivery",
     "EmailDeliveryStatus",
     "Notification",
     "NotificationPreference",
+    "PushSubscription",
+    "PushDelivery",
+    "PushDeliveryStatus",
 ]
