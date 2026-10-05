@@ -205,10 +205,11 @@ function RoutineQueueFilters({
       >
         <ListSearchField
           id="routine-queue-search"
-          label="Search Students"
+          maxLength={160}
+          label="Search Student name, Institutional ID, or Appointment reference"
           value={draft.search}
           onChange={(event) => set("search", event.target.value)}
-          placeholder="Search Student name or Institutional ID"
+          placeholder="Search Student name, Institutional ID, or Appointment reference"
         />
       </FloatingListTools>
     </form>

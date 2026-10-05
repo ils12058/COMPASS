@@ -2661,6 +2661,9 @@
       "CallSlipOperationalPageResponse": {
         "additionalProperties": false,
         "properties": {
+          "filter_options": {
+            "$ref": "#/components/schemas/CollectionFilterOptions"
+          },
           "has_next": {
             "title": "Has Next",
             "type": "boolean"
@@ -2685,7 +2688,8 @@
           "items",
           "page",
           "page_size",
-          "has_next"
+          "has_next",
+          "filter_options"
         ],
         "title": "CallSlipOperationalPageResponse",
         "type": "object"
@@ -3411,6 +3415,23 @@
         ],
         "title": "CivilStatusCategoryValue",
         "type": "string"
+      },
+      "CollectionFilterOptions": {
+        "additionalProperties": false,
+        "properties": {
+          "form_revisions": {
+            "items": {
+              "$ref": "#/components/schemas/FormRevisionFilterOption"
+            },
+            "title": "Form Revisions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "form_revisions"
+        ],
+        "title": "CollectionFilterOptions",
+        "type": "object"
       },
       "CollegeFeedbackItemValue": {
         "enum": [
@@ -4530,6 +4551,76 @@
         "title": "CounselingEncounterAppointmentCandidatePage",
         "type": "object"
       },
+      "CounselingEncounterCollectionItem": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AppointmentLinkResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "counselor": {
+            "$ref": "#/components/schemas/IdentitySummaryResponse"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "entry_mode": {
+            "$ref": "#/components/schemas/CounselingEntryMode"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "service": {
+            "$ref": "#/components/schemas/ServiceSummaryResponse"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "student": {
+            "$ref": "#/components/schemas/EncounterCollectionStudent"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "student",
+          "counselor",
+          "service",
+          "appointment",
+          "entry_mode",
+          "delivery_mode",
+          "started_at",
+          "ended_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CounselingEncounterCollectionItem",
+        "type": "object"
+      },
       "CounselingEncounterCreationOptions": {
         "additionalProperties": false,
         "properties": {
@@ -4560,7 +4651,7 @@
           },
           "items": {
             "items": {
-              "$ref": "#/components/schemas/CounselingEncounterResponse"
+              "$ref": "#/components/schemas/CounselingEncounterCollectionItem"
             },
             "title": "Items",
             "type": "array"
@@ -5849,6 +5940,9 @@
       "CounselorInventoryRosterPage": {
         "additionalProperties": false,
         "properties": {
+          "filter_options": {
+            "$ref": "#/components/schemas/CollectionFilterOptions"
+          },
           "has_next": {
             "title": "Has Next",
             "type": "boolean"
@@ -5873,7 +5967,8 @@
           "items",
           "page",
           "page_size",
-          "has_next"
+          "has_next",
+          "filter_options"
         ],
         "title": "CounselorInventoryRosterPage",
         "type": "object"
@@ -6676,6 +6771,9 @@
       "CustomerFeedbackPageResponse": {
         "additionalProperties": false,
         "properties": {
+          "filter_options": {
+            "$ref": "#/components/schemas/CollectionFilterOptions"
+          },
           "has_next": {
             "title": "Has Next",
             "type": "boolean"
@@ -6700,7 +6798,8 @@
           "items",
           "page",
           "page_size",
-          "has_next"
+          "has_next",
+          "filter_options"
         ],
         "title": "CustomerFeedbackPageResponse",
         "type": "object"
@@ -7922,6 +8021,38 @@
         "title": "EmptyRequest",
         "type": "object"
       },
+      "EncounterCollectionStudent": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "institutional_id"
+        ],
+        "title": "EncounterCollectionStudent",
+        "type": "object"
+      },
       "EnvironmentCategoryResponse": {
         "additionalProperties": false,
         "properties": {
@@ -8890,6 +9021,45 @@
           "configuration_state"
         ],
         "title": "FormFamilyResponse",
+        "type": "object"
+      },
+      "FormRevisionFilterOption": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "official_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Code"
+          },
+          "official_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Revision"
+          }
+        },
+        "required": [
+          "id",
+          "official_code",
+          "official_revision"
+        ],
+        "title": "FormRevisionFilterOption",
         "type": "object"
       },
       "FormRevisionListResponse": {
@@ -10142,6 +10312,10 @@
             ],
             "title": "Issued At"
           },
+          "official_receipt_number": {
+            "title": "Official Receipt Number",
+            "type": "string"
+          },
           "status": {
             "$ref": "#/components/schemas/GoodMoralStatusValue"
           },
@@ -10174,7 +10348,8 @@
           "cancelled_at",
           "created_at",
           "updated_at",
-          "student_institutional_id"
+          "student_institutional_id",
+          "official_receipt_number"
         ],
         "title": "GoodMoralOperationalSummaryResponse",
         "type": "object"
@@ -10182,6 +10357,9 @@
       "GoodMoralPageResponse": {
         "additionalProperties": false,
         "properties": {
+          "filter_options": {
+            "$ref": "#/components/schemas/CollectionFilterOptions"
+          },
           "has_next": {
             "title": "Has Next",
             "type": "boolean"
@@ -10206,7 +10384,8 @@
           "items",
           "page",
           "page_size",
-          "has_next"
+          "has_next",
+          "filter_options"
         ],
         "title": "GoodMoralPageResponse",
         "type": "object"
@@ -16536,6 +16715,9 @@
       "ReferralPageResponse": {
         "additionalProperties": false,
         "properties": {
+          "filter_options": {
+            "$ref": "#/components/schemas/CollectionFilterOptions"
+          },
           "has_next": {
             "title": "Has Next",
             "type": "boolean"
@@ -16560,7 +16742,8 @@
           "items",
           "page",
           "page_size",
-          "has_next"
+          "has_next",
+          "filter_options"
         ],
         "title": "ReferralPageResponse",
         "type": "object"
@@ -24606,6 +24789,22 @@
           },
           {
             "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
             "name": "upcoming",
             "required": false,
             "schema": {
@@ -28042,6 +28241,84 @@
         ]
       }
     },
+    "/api/v1/availability/providers/{provider_id}": {
+      "get": {
+        "operationId": "availabilityGetProvider",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilityProviderSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Provider Get",
+        "tags": [
+          "availability"
+        ]
+      }
+    },
     "/api/v1/availability/providers/{provider_id}/effective": {
       "get": {
         "operationId": "availabilityGetProviderEffective",
@@ -28742,6 +29019,23 @@
                   "type": "null"
                 }
               ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "form_revision_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Form Revision Id"
             }
           },
           {
@@ -31091,6 +31385,22 @@
                 }
               ],
               "title": "Student Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
             }
           },
           {
@@ -34147,6 +34457,23 @@
           },
           {
             "in": "query",
+            "name": "form_revision_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Form Revision Id"
+            }
+          },
+          {
+            "in": "query",
             "name": "page",
             "required": false,
             "schema": {
@@ -34957,6 +35284,23 @@
                 }
               ],
               "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "form_revision_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Form Revision Id"
             }
           },
           {
@@ -37171,6 +37515,23 @@
                 }
               ],
               "title": "Student Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "form_revision_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Form Revision Id"
             }
           },
           {
@@ -44175,6 +44536,23 @@
               "default": false,
               "title": "Include Voided",
               "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "form_revision_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Form Revision Id"
             }
           },
           {

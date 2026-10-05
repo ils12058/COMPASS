@@ -6,6 +6,8 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
+import { FormRevisionFilter } from "@/features/institutional-forms/form-revision-filter";
+import type { FormRevisionFilterOption } from "@/lib/api/generated/model";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -35,6 +37,7 @@ function validStatus(value: string | null): value is "MISSING" | "DRAFT" | "SUBM
 
 type RosterFilterDraft = {
   search: string;
+  formRevisionId: string;
   academicYearId: string;
   status: string;
   yearLevel: string;
@@ -45,6 +48,7 @@ type RosterFilterDraft = {
 // the current Academic Year, so it is offered only while the chosen year is current.
 function RosterFilters({
   applied,
+  revisions,
   hasFilters,
   canFilterYear,
   years,
@@ -56,6 +60,7 @@ function RosterFilters({
   notes,
 }: {
   applied: RosterFilterDraft;
+  revisions?: FormRevisionFilterOption[];
   hasFilters: boolean;
   canFilterYear: boolean;
   years: AcademicYearResponse[];
@@ -69,7 +74,7 @@ function RosterFilters({
   const [draft, setDraft] = useState(applied);
   const draftYear = years.find((year) => year.id === draft.academicYearId);
   const draftHistorical = Boolean(draftYear && !draftYear.is_current);
-  const advancedCount = [canFilterYear ? applied.academicYearId : "", applied.status, applied.yearLevel].filter(Boolean).length;
+  const advancedCount = [applied.formRevisionId, canFilterYear ? applied.academicYearId : "", applied.status, applied.yearLevel].filter(Boolean).length;
 
   return (
     <form
@@ -115,6 +120,7 @@ function RosterFilters({
           </FilterField>
         ) : null}
 
+        <FormRevisionFilter id="inventory-roster-revision" selectedId={draft.formRevisionId} value={draft.formRevisionId} options={revisions} onChange={(event) => setDraft((current) => ({ ...current, formRevisionId: event.target.value }))} />
         <FilterField label="Status" htmlFor="inventory-roster-status">
           <Select
             id="inventory-roster-status"
@@ -174,6 +180,7 @@ export function CounselorInventoryRoster() {
     ? yearLevelValue
     : undefined;
   const search = (params.get("search") ?? "").trim();
+  const formRevisionId = params.get("form_revision_id") ?? "";
   const requestedPage = Number.parseInt(params.get("page") ?? "1", 10);
   const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const canFilterYear = user.capabilities.includes("academic_years.view");
@@ -196,13 +203,14 @@ export function CounselorInventoryRoster() {
       ...(effectiveStatus ? { status: effectiveStatus } : {}),
       ...(yearLevel ? { year_level: yearLevel } : {}),
       ...(search ? { search } : {}),
+      ...(formRevisionId ? { form_revision_id: formRevisionId } : {}),
       page,
       page_size: pageSize,
     },
     { query: { enabled: access.canViewRoster, retry: false } },
   );
   const response = roster.data?.data;
-  const hasFilters = Boolean(validAcademicYearId || status || yearLevel || search);
+  const hasFilters = Boolean(formRevisionId || validAcademicYearId || status || yearLevel || search);
 
   useEffect(() => {
     const next = new URLSearchParams(paramsString);
@@ -225,6 +233,7 @@ export function CounselorInventoryRoster() {
     const query = new URLSearchParams(paramsString);
     const values: Record<string, string> = {
       search: next.search,
+      form_revision_id: next.formRevisionId,
       academic_year_id: canFilterYear ? next.academicYearId : "",
       status: next.status,
       year_level: next.yearLevel,
@@ -252,8 +261,10 @@ export function CounselorInventoryRoster() {
 
       <RosterFilters
         key={paramsString}
+        revisions={response?.filter_options.form_revisions}
         applied={{
           search,
+          formRevisionId,
           academicYearId: selectedYear?.id ?? (academicYearId && !invalidYear ? academicYearId : ""),
           status: suppressMissing ? "" : status ?? "",
           yearLevel: yearLevel ? String(yearLevel) : "",

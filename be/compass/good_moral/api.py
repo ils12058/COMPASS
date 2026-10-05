@@ -18,6 +18,10 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
 from compass.documents.filenames import institutional_pdf_content_disposition
+from compass.institutional_forms.filter_options import (
+    CollectionFilterOptions,
+    project_filter_options,
+)
 from compass.privacy_governance.releases import (
     ReleaseAuditUnavailable,
     record_good_moral_release,
@@ -143,6 +147,7 @@ class GoodMoralSummaryResponse(StrictSchema):
 
 class GoodMoralOperationalSummaryResponse(GoodMoralSummaryResponse):
     student_institutional_id: str | None
+    official_receipt_number: str
 
 
 class GoodMoralDetailResponse(GoodMoralSummaryResponse):
@@ -185,6 +190,7 @@ class GoodMoralPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    filter_options: CollectionFilterOptions
 
 
 def _context(request) -> AuditContext:
@@ -250,7 +256,11 @@ def _summary(item) -> dict[str, object]:
 
 
 def _operational_summary(item) -> dict[str, object]:
-    return {**_summary(item), "student_institutional_id": item.student.institutional_id}
+    return {
+        **_summary(item),
+        "student_institutional_id": item.student.institutional_id,
+        "official_receipt_number": item.official_receipt_number,
+    }
 
 
 def _operational_detail(item) -> dict[str, object]:
@@ -516,6 +526,7 @@ def good_moral_list_requests(
     status: GoodMoralStatusValue | None = None,
     student_id: UUID | None = None,
     search: str | None = None,
+    form_revision_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -527,6 +538,7 @@ def good_moral_list_requests(
             status=status.value if status is not None else None,
             student_id=student_id,
             search=search,
+            form_revision_id=form_revision_id,
             page=page,
             page_size=page_size,
         )
@@ -537,6 +549,7 @@ def good_moral_list_requests(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "filter_options": project_filter_options(result.form_revisions),
     }
 
 

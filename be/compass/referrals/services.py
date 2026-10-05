@@ -24,6 +24,8 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
+from compass.institutional_forms.filter_options import represented_form_revisions
+from compass.institutional_forms.models import FormRevision
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     UnsupportedInstitutionalFormRevision,
@@ -105,6 +107,7 @@ class ReferralPage:
     page: int
     page_size: int
     has_next: bool
+    form_revisions: tuple[FormRevision, ...] = ()
 
 
 def _institution_zone() -> ZoneInfo:
@@ -445,6 +448,7 @@ def list_referrals(
     from_date: date | None = None,
     to_date: date | None = None,
     include_voided: bool = False,
+    form_revision_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ReferralPage:
@@ -459,6 +463,9 @@ def list_referrals(
     term = _clean_search(search)
 
     qs = _scope_queryset(_queryset(), actor)
+    revisions = represented_form_revisions(qs, family_keys=("referral_slip",))
+    if form_revision_id is not None:
+        qs = qs.filter(form_revision_id=form_revision_id)
     if not include_voided:
         qs = qs.filter(voided_at__isnull=True)
     if term:
@@ -479,7 +486,7 @@ def list_referrals(
     qs = qs.order_by("-created_at", "reference_code", "id")
     offset = (page - 1) * page_size
     rows = list(qs[offset : offset + page_size + 1])
-    return ReferralPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
+    return ReferralPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size, revisions)
 
 
 def list_eligible_students(

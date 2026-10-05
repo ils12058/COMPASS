@@ -836,12 +836,13 @@ def list_assigned(
             if evaluation_status == "DRAFT"
             else queryset.filter(evaluation_finalized_at__isnull=False)
         )
-    if term:
+    for token in term.split():
         queryset = queryset.filter(
-            Q(student__institutional_id__icontains=term)
-            | Q(student__first_name__icontains=term)
-            | Q(student__middle_name__icontains=term)
-            | Q(student__last_name__icontains=term)
+            Q(student__institutional_id__icontains=token)
+            | Q(student__first_name__icontains=token)
+            | Q(student__middle_name__icontains=token)
+            | Q(student__last_name__icontains=token)
+            | Q(appointment__reference_code__icontains=token)
         )
     queryset = queryset.order_by("-created_at", "id")
     offset = (page - 1) * page_size

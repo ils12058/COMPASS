@@ -27,6 +27,7 @@ from .services import (
     compute_base_availability,
     create_office_exception,
     create_provider_exception,
+    get_availability_provider,
     list_availability_providers,
     list_office_exceptions,
     list_office_weekly,
@@ -426,6 +427,21 @@ def providers_list(
         "page_size": result.page_size,
         "has_next": result.has_next,
     }
+
+
+@router.get(
+    "/providers/{provider_id}",
+    response=response_with_errors(AvailabilityProviderSummary, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="availabilityGetProvider",
+)
+def provider_get(request, provider_id: UUID):
+    _require(request, "availability.manage")
+    try:
+        provider = get_availability_provider(provider_id)
+    except AvailabilityError as exc:
+        _raise(exc)
+    return _provider_summary(provider)
 
 
 @router.get(

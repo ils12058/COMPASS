@@ -152,6 +152,7 @@ EXPECTED_OPERATION_IDS = {
     "availabilityCreateMyException",
     "availabilityRemoveMyException",
     "availabilityListProviders",
+    "availabilityGetProvider",
     "availabilityGetProviderWeekly",
     "availabilityReplaceProviderWeekly",
     "availabilityListProviderExceptions",
@@ -670,6 +671,7 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
     schema = _generated_schema()
     expected = {
         "/api/v1/inventory/students": {
+            "form_revision_id",
             "academic_year_id",
             "status",
             "college_id",
@@ -698,6 +700,7 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
             "page_size",
         },
         "/api/v1/referrals": {
+            "form_revision_id",
             "search",
             "student_id",
             "from_date",
@@ -707,6 +710,7 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
             "page_size",
         },
         "/api/v1/feedback/customer-feedback/responses": {
+            "form_revision_id",
             "search",
             "service",
             "submitted_from",
@@ -2653,3 +2657,52 @@ def test_privacy_expansion_contract_keeps_notice_boundaries_and_removes_legacy_r
         "/api/v1/privacy/notice-revisions/{revision_id}",
     ):
         assert "delete" not in schema["paths"][path]
+
+
+def test_record_retrieval_contracts_are_narrow_and_historical_filters_are_domain_owned():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    for path in ("/api/v1/appointments/me", "/api/v1/counseling/me/encounters"):
+        assert "search" in {p["name"] for p in _operation(schema, path, "get")["parameters"]}
+    provider = _operation(schema, "/api/v1/availability/providers/{provider_id}", "get")
+    assert provider["operationId"] == "availabilityGetProvider"
+    assert {"401", "403", "404", "422"} <= set(provider["responses"])
+    for path, page_schema in (
+        ("/api/v1/referrals", "ReferralPageResponse"),
+        ("/api/v1/call-slips", "CallSlipOperationalPageResponse"),
+        ("/api/v1/inventory/students", "CounselorInventoryRosterPage"),
+        ("/api/v1/feedback/customer-feedback/responses", "CustomerFeedbackPageResponse"),
+        ("/api/v1/good-moral/requests", "GoodMoralPageResponse"),
+    ):
+        param = next(
+            p
+            for p in _operation(schema, path, "get")["parameters"]
+            if p["name"] == "form_revision_id"
+        )
+        assert {"type": "string", "format": "uuid"} in param["schema"]["anyOf"]
+        assert schemas[page_schema]["properties"]["filter_options"]["$ref"].endswith(
+            "/CollectionFilterOptions"
+        )
+    assert set(schemas["FormRevisionFilterOption"]["properties"]) == {
+        "id",
+        "official_code",
+        "official_revision",
+    }
+    assert "institutional_id" in schemas["EncounterCollectionStudent"]["properties"]
+    assert "institutional_id" not in schemas["IdentitySummaryResponse"]["properties"]
+    assert "official_receipt_number" in schemas["GoodMoralOperationalSummaryResponse"]["properties"]
+    assert (
+        "official_receipt_amount"
+        not in schemas["GoodMoralOperationalSummaryResponse"]["properties"]
+    )
+    assert "official_receipt_number" not in schemas["GoodMoralSummaryResponse"]["properties"]
+    for path in (
+        "/api/v1/routine-interviews",
+        "/api/v1/exit-interviews",
+        "/api/v1/feedback/csm/responses",
+        "/api/v1/graduate-tracer/responses",
+        "/api/v1/call-slips/me",
+    ):
+        assert "form_revision_id" not in {
+            p["name"] for p in _operation(schema, path, "get").get("parameters", [])
+        }

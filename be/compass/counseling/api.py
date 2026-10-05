@@ -116,8 +116,16 @@ class CounselingEncounterResponse(StrictSchema):
     updated_at: datetime
 
 
+class EncounterCollectionStudent(IdentitySummaryResponse):
+    institutional_id: str | None
+
+
+class CounselingEncounterCollectionItem(CounselingEncounterResponse):
+    student: EncounterCollectionStudent
+
+
 class CounselingEncounterPageResponse(StrictSchema):
-    items: list[CounselingEncounterResponse]
+    items: list[CounselingEncounterCollectionItem]
     page: int
     page_size: int
     has_next: bool
@@ -438,6 +446,7 @@ def counseling_list_my_encounters(
     from_date: date | None = None,
     to_date: date | None = None,
     student_id: UUID | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -450,13 +459,24 @@ def counseling_list_my_encounters(
             from_date=from_date,
             to_date=to_date,
             student_id=student_id,
+            search=search,
             page=page,
             page_size=page_size,
         )
     except CounselingError as exc:
         _raise(exc)
     return {
-        "items": [_encounter(item) for item in result.items],
+        "items": [
+            {
+                **_encounter(item),
+                "student": {
+                    "id": item.student_id,
+                    "display_name": item.student.get_full_name(),
+                    "institutional_id": item.student.institutional_id,
+                },
+            }
+            for item in result.items
+        ],
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,

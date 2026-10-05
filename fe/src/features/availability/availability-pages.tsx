@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -43,6 +45,7 @@ import {
   useAvailabilityCreateProviderException,
   useAvailabilityGetMyWeekly,
   useAvailabilityGetOfficeWeekly,
+  useAvailabilityGetProvider,
   useAvailabilityGetProviderWeekly,
   useAvailabilityListMyExceptions,
   useAvailabilityListOfficeExceptions,
@@ -339,10 +342,8 @@ export function OfficeAvailabilityPage() {
 
 function ProviderWorkspace({
   provider,
-  onBack,
 }: {
   provider: AvailabilityProviderSummary;
-  onBack: () => void;
 }) {
   const { user } = usePortalSession();
   const operational =
@@ -367,7 +368,7 @@ function ProviderWorkspace({
   const weeklyData = safeQueryData(weekly);
   const exceptionData = safeQueryData(exceptions);
 
-  // The directory row that opened this workspace is gone; start the reader at the Counselor's name.
+  // Place focus at the resource identity after its summary loads.
   useEffect(() => {
     focusHeading("provider-availability-heading");
   }, []);
@@ -438,9 +439,9 @@ function ProviderWorkspace({
         headingId="provider-availability-heading"
         meta={<AvailabilityStatusBadge active={provider.is_active} legacy={legacy} />}
         back={
-          <Button variant="quiet" className="mb-2 px-1" onClick={onBack}>
+          <GuardedPortalLink href="/portal/availability/providers" className="text-sm text-brand hover:underline">
             ← Counselors
-          </Button>
+          </GuardedPortalLink>
         }
       >
         <p className="mt-1.5 break-all text-sm text-muted">{provider.email}</p>
@@ -533,17 +534,10 @@ export function ProviderAvailabilityPage() {
   const requestedPage = Number.parseInt(searchParams.get("page") ?? "1", 10);
   const page =
     Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const [searchValue, setSearchValue] = useState(search);
-  const [selected, setSelected] =
-    useState<AvailabilityProviderSummary | null>(null);
-  // After Back, focus returns to the Counselor the reader opened.
-  const returnTo = useRef<string | null>(null);
-  useEffect(() => {
-    if (selected || !returnTo.current) return;
-    document.querySelector<HTMLButtonElement>(`[data-provider-id="${returnTo.current}"]`)?.focus();
-    returnTo.current = null;
-  }, [selected]);
-
+  const [searchDraft, setSearchDraft] = useState({ applied: search, value: search });
+  if (searchDraft.applied !== search) setSearchDraft({ applied: search, value: search });
+  const searchValue = searchDraft.applied === search ? searchDraft.value : search;
+  const searchTimer = useRef<number | null>(null);
   const providers = useAvailabilityListProviders(
     {
       ...(search ? { search } : {}),
@@ -556,7 +550,8 @@ export function ProviderAvailabilityPage() {
 
   useEffect(() => {
     if (searchValue === search) return;
-    const timer = window.setTimeout(() => {
+    searchTimer.current = window.setTimeout(() => {
+      searchTimer.current = null;
       const next = new URLSearchParams(searchParams.toString());
       const trimmed = searchValue.trim();
       if (trimmed) next.set("search", trimmed);
@@ -567,29 +562,26 @@ export function ProviderAvailabilityPage() {
         scroll: false,
       });
     }, 350);
-    return () => window.clearTimeout(timer);
+    return () => {
+      if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+    };
   }, [pathname, router, search, searchParams, searchValue]);
 
   if (!allowed) return <AvailabilityRouteUnavailable management />;
 
+  function cancelPendingSearch() {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+  }
+
   function movePage(nextPage: number) {
+    cancelPendingSearch();
     const next = new URLSearchParams(searchParams.toString());
     if (nextPage <= 1) next.delete("page");
     else next.set("page", String(nextPage));
     const query = next.toString();
     router.push(query ? pathname + "?" + query : pathname);
-  }
-
-  if (selected) {
-    return (
-      <ProviderWorkspace
-        provider={selected}
-        onBack={() => {
-          returnTo.current = selected.id;
-          setSelected(null);
-        }}
-      />
-    );
   }
 
   return (
@@ -603,7 +595,8 @@ export function ProviderAvailabilityPage() {
           label="Search Counselors"
           value={searchValue}
           placeholder="Search Counselors by name or email"
-          onChange={(event) => setSearchValue(event.target.value)}
+          maxLength={254}
+          onChange={(event) => setSearchDraft({ applied: search, value: event.target.value })}
         />
       </FloatingListTools>
 
@@ -647,17 +640,14 @@ export function ProviderAvailabilityPage() {
                   return (
                     <tr key={provider.id} className={dataTable.row}>
                       <th scope="row" className={cn(dataTable.cell, "py-1.5 align-middle font-normal")}>
-                        {/* The Counselor's name opens their Availability; the workspace is held in
-                            this page, as no contract resolves a Counselor by ID for its own route. */}
-                        <button
-                          type="button"
-                          data-provider-id={provider.id}
-                          onClick={() => setSelected(provider)}
+                        <Link
+                          href={`/portal/availability/providers/${provider.id}`}
+                          onClick={cancelPendingSearch}
                           className="inline-flex min-h-10 items-center rounded-sm text-left font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                           <span className="sr-only">Manage availability for </span>
                           {provider.full_name || provider.email}
-                        </button>
+                        </Link>
                       </th>
                       <td className={cn(dataTable.cell, "align-middle text-muted")}>
                         {provider.email}
@@ -687,4 +677,23 @@ export function ProviderAvailabilityPage() {
       </Panel>
     </section>
   );
+}
+
+export function ProviderAvailabilityDetailPage({ providerId }: { providerId: string }) {
+  const { user } = usePortalSession();
+  const allowed = canManageAvailability(user);
+  const summary = useAvailabilityGetProvider(providerId, {
+    query: { enabled: allowed, retry: false },
+  });
+  // An unconfirmed eligibility summary cannot enable configuration mutations.
+  if (!allowed) return <AvailabilityRouteUnavailable management />;
+  if (summary.isPending) return <AvailabilitySectionSkeleton label="Loading Counselor Availability…" />;
+  if (summary.isError || !summary.data) return (
+    <section>
+      <AvailabilityPageHeading title="Counselor availability" />
+      <AvailabilityQueryError error={summary.error} fallback="The Counselor could not be loaded." onRetry={() => void summary.refetch()} />
+      <Link href="/portal/availability/providers" className="mt-4 inline-block text-sm text-brand hover:underline">← Counselors</Link>
+    </section>
+  );
+  return <ProviderWorkspace key={providerId} provider={summary.data.data} />;
 }

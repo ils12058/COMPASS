@@ -592,6 +592,7 @@ def list_my_encounters(
     from_date: date | None = None,
     to_date: date | None = None,
     student_id: UUID | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> CounselingPage:
@@ -608,6 +609,14 @@ def list_my_encounters(
         qs = qs.filter(started_at__gte=start)
     if end is not None:
         qs = qs.filter(started_at__lt=end)
+    for token in _clean_search(search).split():
+        qs = qs.filter(
+            Q(student__institutional_id__icontains=token)
+            | Q(student__first_name__icontains=token)
+            | Q(student__middle_name__icontains=token)
+            | Q(student__last_name__icontains=token)
+            | Q(appointment__reference_code__icontains=token)
+        )
     offset = (page - 1) * page_size
     rows = list(qs.order_by("-started_at", "id")[offset : offset + page_size + 1])
     return CounselingPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)

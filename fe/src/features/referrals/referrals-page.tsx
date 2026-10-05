@@ -9,6 +9,7 @@ import { useState, type FormEvent } from "react";
 import { PageActionLink } from "@/components/ui/page-action";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
+import { FormRevisionFilter } from "@/features/institutional-forms/form-revision-filter";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional
 
 export type ReferralListFilters = {
   search: string;
+  formRevisionId: string;
   fromDate: string;
   toDate: string;
   includeVoided: boolean;
@@ -36,6 +38,7 @@ export type ReferralListFilters = {
 
 function filtersToUrl(filters: ReferralListFilters): string {
   const params = new URLSearchParams();
+  if (filters.formRevisionId) params.set("form_revision_id", filters.formRevisionId);
   if (filters.search.trim()) params.set("search", filters.search.trim());
   if (filters.fromDate) params.set("from_date", filters.fromDate);
   if (filters.toDate) params.set("to_date", filters.toDate);
@@ -53,6 +56,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
   const referrals = useReferralsList(
     {
       ...(filters.search ? { search: filters.search } : {}),
+      ...(filters.formRevisionId ? { form_revision_id: filters.formRevisionId } : {}),
       ...(filters.fromDate ? { from_date: filters.fromDate } : {}),
       ...(filters.toDate ? { to_date: filters.toDate } : {}),
       ...(filters.includeVoided ? { include_voided: true } : {}),
@@ -67,10 +71,10 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
   const data = referrals.data?.data;
   const items = data?.items ?? [];
   const filtered = Boolean(
-    filters.search || filters.fromDate || filters.toDate || filters.includeVoided || filters.page > 1,
+    filters.formRevisionId || filters.search || filters.fromDate || filters.toDate || filters.includeVoided || filters.page > 1,
   );
 
-  const advancedCount = [filters.fromDate, filters.toDate, filters.includeVoided].filter(Boolean).length;
+  const advancedCount = [filters.formRevisionId, filters.fromDate, filters.toDate, filters.includeVoided].filter(Boolean).length;
   const draftRangeInvalid = Boolean(draft.fromDate && draft.toDate && draft.fromDate > draft.toDate);
 
   function submitFilters(event: FormEvent<HTMLFormElement>) {
@@ -96,6 +100,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
           clear={filtered ? <Link href="/portal/referrals" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
           filters={
             <>
+          <FormRevisionFilter id="referrals-revision" selectedId={draft.formRevisionId} value={draft.formRevisionId} options={data?.filter_options.form_revisions} onChange={(event) => setDraft({ ...draft, formRevisionId: event.target.value })} />
           <FilterField label="From" htmlFor="referrals-from">
             <Input id="referrals-from" type="date" value={draft.fromDate} onChange={(event) => setDraft({ ...draft, fromDate: event.target.value })} />
           </FilterField>

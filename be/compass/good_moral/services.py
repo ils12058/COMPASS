@@ -33,6 +33,8 @@ from compass.documents.template_specs import (
 )
 from compass.feedback.models import CustomerFeedbackService, FeedbackOpportunitySourceType
 from compass.feedback.services import ensure_feedback_opportunity
+from compass.institutional_forms.filter_options import represented_form_revisions
+from compass.institutional_forms.models import FormRevision
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
@@ -114,6 +116,7 @@ class GoodMoralPage:
     page: int
     page_size: int
     has_next: bool
+    form_revisions: tuple[FormRevision, ...] = ()
 
 
 def _queryset():
@@ -501,12 +504,18 @@ def list_requests(
     status: str | None = None,
     student_id: UUID | None = None,
     search: str | None = None,
+    form_revision_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> GoodMoralPage:
     _validate_counselor(actor, "good_moral.view")
     page, page_size = _pagination(page, page_size)
     queryset = _queryset()
+    revisions = represented_form_revisions(
+        queryset, family_keys=("good_moral_current_student", "good_moral_graduate")
+    )
+    if form_revision_id is not None:
+        queryset = queryset.filter(form_revision_id=form_revision_id)
     if variant is not None:
         if variant not in GoodMoralVariant.values:
             raise InvalidGoodMoralInput("variant is not supported.")
@@ -524,17 +533,20 @@ def list_requests(
         if len(term) > MAX_SEARCH_LENGTH:
             raise InvalidGoodMoralInput(f"search must be at most {MAX_SEARCH_LENGTH} characters.")
         if term:
-            queryset = queryset.filter(
-                Q(student__institutional_id__icontains=term)
-                | Q(student__first_name__icontains=term)
-                | Q(student__middle_name__icontains=term)
-                | Q(student__last_name__icontains=term)
-                | Q(applicant_name_snapshot__icontains=term)
-            )
+            identity = Q()
+            for token in term.split():
+                identity &= (
+                    Q(student__institutional_id__icontains=token)
+                    | Q(student__first_name__icontains=token)
+                    | Q(student__middle_name__icontains=token)
+                    | Q(student__last_name__icontains=token)
+                    | Q(applicant_name_snapshot__icontains=token)
+                )
+            queryset = queryset.filter(identity | Q(official_receipt_number__icontains=term))
     queryset = queryset.order_by("-created_at", "id")
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
-    return GoodMoralPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
+    return GoodMoralPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size, revisions)
 
 
 def get_request(*, actor: User, request_id: UUID) -> GoodMoralRequest:

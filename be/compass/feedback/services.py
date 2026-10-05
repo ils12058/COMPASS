@@ -18,6 +18,8 @@ from compass.audit.actions import CSM_SUBMITTED, CUSTOMER_FEEDBACK_SUBMITTED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.institutional_forms.filter_options import represented_form_revisions
+from compass.institutional_forms.models import FormRevision
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
@@ -89,6 +91,7 @@ class FeedbackPage:
     page: int
     page_size: int
     has_next: bool
+    form_revisions: tuple[FormRevision, ...] = ()
 
 
 def _validate_student_account(actor: User) -> None:
@@ -609,6 +612,7 @@ def list_customer_feedback(
     service: str | None = None,
     submitted_from: date | None = None,
     submitted_to: date | None = None,
+    form_revision_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> FeedbackPage:
@@ -617,6 +621,9 @@ def list_customer_feedback(
     term = _optional_text(search, "search", MAX_SEARCH_LENGTH)
     _validate_submission_range(submitted_from, submitted_to)
     queryset = _customer_queryset()
+    revisions = represented_form_revisions(queryset, family_keys=("customer_feedback",))
+    if form_revision_id is not None:
+        queryset = queryset.filter(form_revision_id=form_revision_id)
     if term:
         queryset = queryset.filter(respondent_name_snapshot__icontains=term)
     if service is not None:
@@ -635,7 +642,7 @@ def list_customer_feedback(
     queryset = queryset.order_by("-submitted_at", "id")
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
-    return FeedbackPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
+    return FeedbackPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size, revisions)
 
 
 def get_customer_feedback(*, actor: User, response_id: UUID) -> CustomerFeedbackResponse:
