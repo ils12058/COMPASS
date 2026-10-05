@@ -20,6 +20,12 @@ protect content from a compromised running application host that also holds the 
 
 ## Decision
 
+The reusable Fernet/keyring and bound-JSON mechanics now live in the shared confidential-data
+primitive ([ADR-079](ADR-079-shared-confidential-data-cryptographic-primitive.md)). Routine's
+`crypto.py` remains its thin policy adapter; this ADR continues to govern the dedicated keyring,
+exact v1 envelope, section schemas, authorization, and domain rotation. The extraction changes
+neither ciphertext nor frozen migration semantics.
+
 ### Encrypted content and plaintext metadata
 
 Each section is stored as one authenticated token:
