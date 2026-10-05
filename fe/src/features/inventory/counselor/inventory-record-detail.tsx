@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { pageBackLinkClass } from "@/components/ui/page-header";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
@@ -82,11 +83,8 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
   if (record.isError) {
     return (
       <section className="space-y-5">
-        <InventoryHeading title="Submitted Individual Inventory" />
+        <InventoryHeading title="Submitted Individual Inventory" back={<Link href="/portal/inventory" className={pageBackLinkClass}>Back to roster</Link>} />
         <InventoryQueryError error={record.error} fallback="This Individual Inventory could not be found or is not available within your authorized scope." />
-        <Link href="/portal/inventory" className="inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-          Return to roster
-        </Link>
       </section>
     );
   }
@@ -145,11 +143,7 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
       <InventoryHeading
         title="Submitted Individual Inventory"
         description={`${inventory.academic_year.label} · ${inventory.form_revision.official_code} · Revision ${inventory.form_revision.official_revision}`}
-        action={(
-          <Link href="/portal/inventory" className={buttonVariants({ variant: "secondary" })}>
-            Roster
-          </Link>
-        )}
+        back={<Link href="/portal/inventory" className={pageBackLinkClass}>Back to roster</Link>}
       />
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <InventoryStatus status={inventory.status} correctionPending={inventory.correction_pending} />

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelMessage } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -75,6 +76,8 @@ export function StudentSharedSummaries({ access }: { access: CounselingAccess })
   );
 }
 
+const summariesBackLink = <Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling summaries</Link>;
+
 export function StudentSharedSummaryDetail({ summaryId }: { summaryId: string }) {
   const { user } = usePortalSession();
   const access = getCounselingAccess(user);
@@ -82,11 +85,11 @@ export function StudentSharedSummaryDetail({ summaryId }: { summaryId: string })
   const summary = query.data?.data;
   if (!access.canViewOwnSummaries) return <CounselingUnavailable title="Counseling summary unavailable">This shared summary is unavailable to this account.</CounselingUnavailable>;
   if (query.isPending) return <SharedSummaryDetailSkeleton />;
-  if (query.isError || !summary) return <div><CounselingPageHeading title="Counseling summary" /><CounselingQueryError message={counselingErrorMessage(query.error, "This shared summary is unavailable to this account.")} onRetry={() => void query.refetch()} /></div>;
+  if (query.isError || !summary) return <div><CounselingPageHeading title="Counseling summary" back={summariesBackLink} /><CounselingQueryError message={counselingErrorMessage(query.error, "This shared summary is unavailable to this account.")} onRetry={() => void query.refetch()} /></div>;
 
   return (
     <article className="max-w-4xl">
-      <CounselingPageHeading title="Counseling summary" description={`Counseling ended ${formatCounselingDateTime(summary.counseling_ended_at)} · ${counselingDeliveryModeLabel(summary.delivery_mode)} · Shared ${formatCounselingDateTime(summary.published_at)}`} action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>Back to Counseling summaries</Link>} />
+      <CounselingPageHeading title="Counseling summary" description={`Counseling ended ${formatCounselingDateTime(summary.counseling_ended_at)} · ${counselingDeliveryModeLabel(summary.delivery_mode)} · Shared ${formatCounselingDateTime(summary.published_at)}`} back={summariesBackLink} />
       <Panel as="div" className="px-5 py-5 sm:px-6">
         <div className="whitespace-pre-wrap break-words text-sm leading-7 text-ink">{summary.content}</div>
       </Panel>

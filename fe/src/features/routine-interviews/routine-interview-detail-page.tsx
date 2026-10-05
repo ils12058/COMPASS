@@ -1,6 +1,7 @@
 "use client";
 
 import { buttonVariants } from "@/components/ui/button";
+import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
@@ -50,7 +51,7 @@ function RoutineLifecycleNotice({ message }: { message: string | null }) {
 
 function RoutineBackLink() {
   return (
-    <GuardedPortalLink href="/portal/routine-interviews" className={buttonVariants({ variant: "secondary" })}>
+    <GuardedPortalLink href="/portal/routine-interviews" className={pageBackLinkClass}>
       Back to Routine Interviews
     </GuardedPortalLink>
   );
@@ -93,7 +94,7 @@ function StudentRoutineDetail({
   if (query.isError || !detail) {
     return (
       <div>
-        <RoutinePageHeading title="Routine Interview" action={<RoutineBackLink />} />
+        <RoutinePageHeading title="Routine Interview" back={<RoutineBackLink />} />
         <RoutineQueryError message={routineErrorMessage(query.error, "This Routine Interview could not be loaded for this account.")} onRetry={() => void query.refetch()} />
       </div>
     );
@@ -103,7 +104,7 @@ function StudentRoutineDetail({
     <div>
       <RoutinePageHeading
         title="Routine Interview"
-        action={<RoutineBackLink />}
+        back={<RoutineBackLink />}
       />
       <RoutineContextSummary
         personName={detail.inventory_context.full_name}
@@ -166,7 +167,7 @@ function CounselorRoutineDetail({
   if (query.isError || !detail) {
     return (
       <div>
-        <RoutinePageHeading title="Routine Interview" action={<RoutineBackLink />} />
+        <RoutinePageHeading title="Routine Interview" back={<RoutineBackLink />} />
         <RoutineQueryError message={routineErrorMessage(query.error, "This Routine Interview could not be loaded for this account.")} onRetry={() => void query.refetch()} />
       </div>
     );
@@ -183,7 +184,8 @@ function CounselorRoutineDetail({
     <div>
       <RoutinePageHeading
         title="Routine Interview"
-        action={<div className="flex flex-wrap gap-2">{workspaceHref ? <GuardedPortalLink href={workspaceHref} className={buttonVariants({ variant: "secondary" })}>Open Counseling workspace</GuardedPortalLink> : null}<RoutineBackLink /></div>}
+        back={<RoutineBackLink />}
+        action={workspaceHref ? <GuardedPortalLink href={workspaceHref} className={buttonVariants({ variant: "secondary" })}>Open Counseling workspace</GuardedPortalLink> : undefined}
       />
       <RoutineContextSummary
         personName={detail.inventory_context.full_name}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { CheckCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Notice } from "@/components/ui/notice";
+import { PageAction } from "@/components/ui/page-action";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { reconcileNotificationAuth } from "@/features/notifications/notification-auth";
@@ -52,6 +54,7 @@ export function NotificationCenter({ page }: { page: number }) {
   const [refreshingAfterMarkAll, setRefreshingAfterMarkAll] = useState(false);
   const data = notifications.data?.data;
   const hasUnread = (unread.data?.data.unread_count ?? 0) > 0 || (data?.items.some((item) => !item.is_read) ?? false);
+  const markingAll = markAll.isPending || refreshingAfterMarkAll;
 
   useEffect(() => {
     if (notifications.error) reconcileNotificationAuth(notifications.error, queryClient);
@@ -81,7 +84,16 @@ export function NotificationCenter({ page }: { page: number }) {
       <PageHeader
         title="Notifications"
         headingId="notifications-heading"
-        actions={hasUnread ? <Button variant="secondary" disabled={markAll.isPending || refreshingAfterMarkAll} onClick={() => void markAllRead()}>{markAll.isPending || refreshingAfterMarkAll ? "Marking as read…" : "Mark all as read"}</Button> : null}
+        actions={hasUnread ? (
+          <PageAction
+            icon={CheckCheck}
+            variant="secondary"
+            label={markingAll ? "Marking as read…" : "Mark all read"}
+            disabled={markingAll}
+            aria-busy={markingAll}
+            onClick={() => void markAllRead()}
+          />
+        ) : null}
       />
       {actionError ? <p role="alert" className="mb-4 text-sm text-danger">{actionError}</p> : null}
       {data && notifications.isError ? <Notice role="alert" tone="warning" className="mb-4" action={<Button variant="secondary" onClick={() => void notifications.refetch()}>Retry</Button>}>Notifications could not be refreshed. Showing the last loaded page.</Notice> : null}

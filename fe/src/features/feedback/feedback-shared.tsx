@@ -52,18 +52,22 @@ export function FeedbackPageHeading({
   description,
   action,
   headingId = "feedback-page-heading",
+  back,
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
   action?: ReactNode;
   headingId?: string;
+  // A "Back to …" text link, styled with pageBackLinkClass.
+  back?: ReactNode;
 }) {
   return (
     <PageHeader
       title={title}
       headingId={headingId}
       context={eyebrow}
+      back={back}
       description={description}
       actions={action}
     />

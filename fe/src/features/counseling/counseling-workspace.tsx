@@ -5,6 +5,7 @@ import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -257,7 +258,7 @@ function CounselingWorkspaceContent({
 
   return (
     <div>
-      <CounselingPageHeading title="Counseling workspace" action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My counseling encounters</Link>} />
+      <CounselingPageHeading title="Counseling workspace" back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>} />
       {contextExpired ? (
         <Notice role="alert" tone="warning" title={<h2 className="font-heading text-xl font-semibold text-ink">Counseling workspace is no longer available</h2>}><p className="text-muted">These interaction details can no longer be reviewed here.</p>{expiredEncounterMessage ? <p className="mt-2 text-muted">{expiredEncounterMessage}</p> : null}</Notice>
       ) : (

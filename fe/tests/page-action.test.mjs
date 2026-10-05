@@ -83,3 +83,67 @@ test("page commands stay few per page and out of activity pages and panel header
     assert.doesNotMatch(path.relative(featuresRoot, file), /activity/, "Activity pages are not redesigned here");
   }
 });
+
+// The text of a JSX prop such as `actions={…}`, read to its matching brace.
+function propValues(source, name) {
+  const values = [];
+  for (const match of source.matchAll(new RegExp(`\\s${name}=\\{`, "g"))) {
+    let depth = 0;
+    for (let i = match.index + match[0].length - 1; i < source.length; i += 1) {
+      if (source[i] === "{") depth += 1;
+      else if (source[i] === "}" && --depth === 0) {
+        values.push(source.slice(match.index, i + 1));
+        break;
+      }
+    }
+  }
+  return values;
+}
+
+// Each page header's opening tag — PageHeader or a feature wrapper such as CounselingPageHeading —
+// with its props, read to the closing `>` outside any braces.
+function pageHeaders(source) {
+  const headers = [];
+  for (const match of source.matchAll(/<(PageHeader|[A-Z]\w*(?:PageHeading|Heading|PageHeader))\b/g)) {
+    let depth = 0;
+    for (let i = match.index; i < source.length; i += 1) {
+      if (source[i] === "{") depth += 1;
+      else if (source[i] === "}") depth -= 1;
+      else if (source[i] === ">" && depth === 0) {
+        headers.push(source.slice(match.index, i + 1));
+        break;
+      }
+    }
+  }
+  return headers;
+}
+
+test("Back stays a text link above the title, never a button among the page's commands", () => {
+  let headers = 0;
+  for (const file of sources(featuresRoot)) {
+    const source = readFileSync(file, "utf8");
+    const where = path.relative(featuresRoot, file);
+    for (const header of pageHeaders(source)) {
+      headers += 1;
+      for (const value of [...propValues(header, "action"), ...propValues(header, "actions")]) {
+        assert.doesNotMatch(value, />\s*(Back to|Return to)\b|<RoutineBackLink/, `${where} puts Back in the header's back slot`);
+      }
+      for (const value of propValues(header, "back")) {
+        assert.doesNotMatch(value, /buttonVariants|secondaryLinkClass|rounded-md border/, `${where} styles Back as a text link`);
+      }
+    }
+  }
+  assert.ok(headers > 50, "the scan reads the portal's page headers");
+});
+
+test("Notifications and Retention use page commands for their header commands", () => {
+  const read = (file) => readFileSync(new URL(`../src/features/${file}`, import.meta.url), "utf8");
+  const notifications = read("notifications/notification-center/notification-center.tsx");
+  assert.match(notifications, /actions=\{hasUnread \? \(\s*<PageAction\s+icon=\{CheckCheck\}/);
+  assert.match(notifications, /label=\{markingAll \? "Marking as read…" : "Mark all read"\}/);
+  assert.match(notifications, /disabled=\{markingAll\}/);
+
+  const retention = read("privacy-governance/retention/retention-page.tsx");
+  assert.match(retention, /action=\{\s*<PageActionLink\s+href="\/portal\/privacy\/retention\/rules"/);
+  assert.doesNotMatch(retention, /secondaryLinkClass/);
+});

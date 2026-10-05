@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 
-import { buttonVariants } from "@/components/ui/button";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelSection } from "@/components/ui/panel";
 import { safeQueryData } from "@/features/freshness/query-freshness";
@@ -84,7 +83,7 @@ export function CustomerFeedbackResponseDetail({ responseId }: { responseId: str
   return (
     <section aria-labelledby="customer-feedback-detail-heading">
       {detail.isError ? <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
-      <FeedbackPageHeading headingId="customer-feedback-detail-heading" eyebrow="Customer Feedback response" title={item.respondent_name || "Customer Feedback response"} description={`Submitted ${formatInstitutionalDateTime(item.submitted_at)}.`} action={<Link href="/portal/feedback/customer-feedback/responses" className={buttonVariants({ variant: "secondary" })}>Back to responses</Link>} />
+      <FeedbackPageHeading headingId="customer-feedback-detail-heading" eyebrow="Customer Feedback response" title={item.respondent_name || "Customer Feedback response"} description={`Submitted ${formatInstitutionalDateTime(item.submitted_at)}.`} back={<Link href="/portal/feedback/customer-feedback/responses" className={pageBackLinkClass}>Back to responses</Link>} />
       <Panel as="div" className="mt-5">
       <DetailSection title="I. Service/s received">
         <DetailField label="Services received">{services}</DetailField>
@@ -153,7 +152,7 @@ export function CsmResponseDetail({ responseId }: { responseId: string }) {
   return (
     <section aria-labelledby="csm-detail-heading">
       {detail.isError ? <RefreshFailureNotice onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
-      <FeedbackPageHeading headingId="csm-detail-heading" title="Client Satisfaction Measurement response" description={`Submitted ${formatInstitutionalDateTime(item.submitted_at)}.`} action={<Link href="/portal/feedback/csm/responses" className={buttonVariants({ variant: "secondary" })}>Back to responses</Link>} />
+      <FeedbackPageHeading headingId="csm-detail-heading" title="Client Satisfaction Measurement response" description={`Submitted ${formatInstitutionalDateTime(item.submitted_at)}.`} back={<Link href="/portal/feedback/csm/responses" className={pageBackLinkClass}>Back to responses</Link>} />
       <Panel as="div" className="mt-5">
       <DetailSection title="Respondent and instrument data">
         <DetailField label="Client type">{clientLabel}</DetailField>

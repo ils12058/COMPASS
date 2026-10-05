@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
@@ -44,11 +45,8 @@ function StudentInventoryHistoryDetail({ inventoryId }: { inventoryId: string })
   if (record.isError) {
     return (
       <section className="space-y-5">
-        <InventoryHeading title="Annual Individual Inventory" />
+        <InventoryHeading title="Annual Individual Inventory" back={<Link href="/portal/inventory" className={pageBackLinkClass}>Back to annual history</Link>} />
         <InventoryQueryError error={record.error} fallback="This annual Individual Inventory could not be found or is not available to you." />
-        <Link href="/portal/inventory" className="inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-          Return to annual history
-        </Link>
       </section>
     );
   }
@@ -59,11 +57,7 @@ function StudentInventoryHistoryDetail({ inventoryId }: { inventoryId: string })
       <InventoryHeading
         title="Annual Individual Inventory"
         description={`${inventory.academic_year.label} · ${inventory.form_revision.official_code} · Revision ${inventory.form_revision.official_revision}`}
-        action={
-          <Link href="/portal/inventory" className="inline-flex min-h-10 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-            Annual history
-          </Link>
-        }
+        back={<Link href="/portal/inventory" className={pageBackLinkClass}>Back to annual history</Link>}
       />
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <InventoryStatus status={inventory.status} correctionPending={inventory.correction_pending} />
