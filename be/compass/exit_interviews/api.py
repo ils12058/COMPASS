@@ -11,6 +11,7 @@ from django.http import HttpResponse
 from ninja import Router, Schema
 from pydantic import ConfigDict, Field
 
+from compass.accounts.services import is_current_student
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
@@ -26,12 +27,22 @@ from .models import (
     CareerMode,
     CollegeFeedbackItem,
     DelayReason,
+    ExitInterviewOpportunitySource,
+    ExitInterviewOpportunityStatus,
     ExitInterviewStatus,
     ProgramCompletion,
     SelfAssessmentItem,
     SignificantLearningExperience,
     StudyCareerChoice,
     WorkCareerChoice,
+)
+from .opportunities import (
+    get_my_status,
+    get_opportunity,
+    list_eligible_students,
+    list_opportunities,
+    open_opportunity,
+    revoke_opportunity,
 )
 from .services import (
     DEFAULT_PAGE_SIZE,
@@ -43,6 +54,9 @@ from .services import (
     ExitInterviewNotFound,
     ExitInterviewNotPermitted,
     ExitInterviewNotSubmitted,
+    ExitInterviewOpportunityConflict,
+    ExitInterviewOpportunityNotOpen,
+    ExitInterviewOpportunityRequired,
     InvalidExitInterviewInput,
     ensure_my_current,
     get_for_head,
@@ -72,6 +86,17 @@ class StrictSchema(Schema):
 class ExitInterviewStatusValue(StrEnum):
     DRAFT = ExitInterviewStatus.DRAFT
     SUBMITTED = ExitInterviewStatus.SUBMITTED
+
+
+class ExitInterviewOpportunitySourceValue(StrEnum):
+    GRADUATION = ExitInterviewOpportunitySource.GRADUATION
+    MANUAL = ExitInterviewOpportunitySource.MANUAL
+
+
+class ExitInterviewOpportunityStatusValue(StrEnum):
+    OPEN = ExitInterviewOpportunityStatus.OPEN
+    COMPLETED = ExitInterviewOpportunityStatus.COMPLETED
+    REVOKED = ExitInterviewOpportunityStatus.REVOKED
 
 
 class ProgramCompletionValue(StrEnum):
@@ -255,6 +280,7 @@ class ReopenEventResponse(StrictSchema):
 
 
 class ExitInterviewDetailResponse(ExitInterviewDraftPayload):
+    can_edit: bool
     id: UUID
     student: StudentSummary
     academic_year: AcademicYearSummary
@@ -292,6 +318,76 @@ class ExitInterviewPageResponse(StrictSchema):
     has_next: bool
 
 
+class ExitInterviewStudentOpportunityResponse(StrictSchema):
+    id: UUID
+    academic_year: AcademicYearSummary
+    source: ExitInterviewOpportunitySourceValue
+    status: ExitInterviewOpportunityStatusValue
+    opened_at: datetime
+    completed_at: datetime | None
+    revoked_at: datetime | None
+
+
+class ExitInterviewOpportunityWorkflowStatusValue(StrEnum):
+    NOT_STARTED = "NOT_STARTED"
+    DRAFT = ExitInterviewStatus.DRAFT
+    SUBMITTED = ExitInterviewStatus.SUBMITTED
+
+
+class ExitInterviewOpportunityResponse(ExitInterviewStudentOpportunityResponse):
+    workflow_status: ExitInterviewOpportunityWorkflowStatusValue
+    last_submitted_at: datetime | None
+    student: StudentSummary
+    opened_by: PersonSummary
+    revoked_by: PersonSummary | None
+    note: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ExitInterviewOpportunityPageResponse(StrictSchema):
+    current_academic_year: AcademicYearSummary | None
+    items: list[ExitInterviewOpportunityResponse]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class ExitInterviewOpenOpportunityRequest(StrictSchema):
+    student_id: UUID
+    academic_year_id: UUID | None = None
+    source: ExitInterviewOpportunitySourceValue
+    note: str = Field(default="", max_length=1000)
+
+
+class ExitInterviewWorkspaceStatusResponse(StrictSchema):
+    academic_year: AcademicYearSummary | None
+    opportunity: ExitInterviewStudentOpportunityResponse | None
+    current_record: ExitInterviewSummaryResponse | None
+    has_records: bool
+    inventory_submitted: bool
+    can_start: bool
+    can_edit_current: bool
+    graduation_good_moral_blocked: bool
+
+
+class ExitInterviewStudentCollegeResponse(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
+class ExitInterviewStudentOptionResponse(StudentSummary):
+    college: ExitInterviewStudentCollegeResponse | None
+
+
+class ExitInterviewStudentOptionsResponse(StrictSchema):
+    items: list[ExitInterviewStudentOptionResponse]
+    page: int
+    page_size: int
+    has_next: bool
+
+
 class ReopenRequest(StrictSchema):
     reason: str
 
@@ -304,6 +400,14 @@ def _require_student(request, capability: str) -> None:
     user = request.auth_user
     if not user.is_active or user.role.code != "STUDENT" or not user.has_capability(capability):
         raise APIError(403, "permission_denied", "Student Exit Interview access is required.")
+
+
+def _require_opportunity_manager(request) -> None:
+    user = request.auth_user
+    if not user.is_active or not user.has_capability("exit_interviews.manage_opportunities"):
+        raise APIError(
+            403, "permission_denied", "Guidance Exit Interview opportunity authority is required."
+        )
 
 
 def _require_head(request, capability: str) -> None:
@@ -329,6 +433,12 @@ def _raise(exc: ExitInterviewError) -> NoReturn:
         raise APIError(409, "current_academic_year_not_configured", str(exc)) from exc
     if isinstance(exc, ExitInterviewInventoryRequired):
         raise APIError(409, "exit_interview_inventory_required", str(exc)) from exc
+    if isinstance(exc, ExitInterviewOpportunityRequired):
+        raise APIError(409, "exit_interview_opportunity_required", str(exc)) from exc
+    if isinstance(exc, ExitInterviewOpportunityNotOpen):
+        raise APIError(409, "exit_interview_opportunity_not_open", str(exc)) from exc
+    if isinstance(exc, ExitInterviewOpportunityConflict):
+        raise APIError(409, "exit_interview_opportunity_conflict", str(exc)) from exc
     if isinstance(exc, ExitInterviewConflict):
         raise APIError(409, "exit_interview_conflict", str(exc)) from exc
     if isinstance(exc, InvalidExitInterviewInput):
@@ -455,6 +565,16 @@ def _summary(item) -> dict[str, object]:
 def _detail(item) -> dict[str, object]:
     return {
         **_summary(item),
+        "can_edit": bool(
+            is_current_student(item.student)
+            and item.student.has_capability("exit_interviews.manage_self")
+            and item.status == ExitInterviewStatus.DRAFT
+            and (
+                item.opportunity_id is None
+                or item.first_submitted_at is not None
+                or item.opportunity.status == ExitInterviewOpportunityStatus.OPEN
+            )
+        ),
         "inventory_id": item.inventory_id,
         "age": item.age_snapshot,
         "civil_status": item.civil_status_snapshot,
@@ -497,6 +617,187 @@ def _payload_values(payload: ExitInterviewDraftPayload) -> dict[str, object]:
     values["home_address_snapshot"] = values.pop("home_address")
     values["contact_number_snapshot"] = values.pop("contact_number")
     return values
+
+
+def _student_opportunity(item):
+    return {
+        "id": item.pk,
+        "academic_year": _academic_year(item.academic_year),
+        "source": item.source,
+        "status": item.status,
+        "opened_at": item.opened_at,
+        "completed_at": item.completed_at,
+        "revoked_at": item.revoked_at,
+    }
+
+
+def _opportunity(item):
+    return {
+        **_student_opportunity(item),
+        "workflow_status": item.workflow_status,
+        "last_submitted_at": item.last_submitted_at,
+        "student": _student_summary(item.student),
+        "opened_by": _person(item.opened_by),
+        "revoked_by": _person(item.revoked_by) if item.revoked_by_id else None,
+        "note": item.note,
+        "created_at": item.created_at,
+        "updated_at": item.updated_at,
+    }
+
+
+@router.get(
+    "/me/status",
+    response=response_with_errors(ExitInterviewWorkspaceStatusResponse, 401, 403),
+    auth=session_auth,
+    operation_id="exitInterviewsGetMyStatus",
+)
+def exit_interviews_get_my_status(request):
+    _require_student(request, "exit_interviews.view_self")
+    try:
+        result = get_my_status(request.auth_user)
+    except ExitInterviewError as exc:
+        _raise(exc)
+    return {
+        **result,
+        "academic_year": _academic_year(result["academic_year"])
+        if result["academic_year"]
+        else None,
+        "opportunity": _student_opportunity(result["opportunity"])
+        if result["opportunity"]
+        else None,
+        "current_record": _summary(result["current_record"]) if result["current_record"] else None,
+    }
+
+
+@router.get(
+    "/opportunities/students",
+    response=response_with_errors(ExitInterviewStudentOptionsResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="exitInterviewsListEligibleStudents",
+)
+def exit_interviews_list_eligible_students(
+    request, search: str | None = None, page: int = 1, page_size: int = 20
+):
+    _require_opportunity_manager(request)
+    try:
+        result = list_eligible_students(
+            actor=request.auth_user, search=search, page=page, page_size=page_size
+        )
+    except ExitInterviewError as exc:
+        _raise(exc)
+    return {
+        "items": [
+            {
+                "id": row.id,
+                "display_name": row.display_name,
+                "institutional_id": row.institutional_id,
+                "college": {
+                    "id": row.college.id,
+                    "code": row.college.code,
+                    "name": row.college.name,
+                }
+                if row.college
+                else None,
+            }
+            for row in result.items
+        ],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.get(
+    "/opportunities",
+    response=response_with_errors(ExitInterviewOpportunityPageResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="exitInterviewsListOpportunities",
+)
+def exit_interviews_list_opportunities(
+    request,
+    academic_year_id: UUID | None = None,
+    current_year_only: bool = False,
+    student_id: UUID | None = None,
+    status: ExitInterviewOpportunityStatusValue | None = None,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = 25,
+):
+    _require_opportunity_manager(request)
+    try:
+        result = list_opportunities(
+            actor=request.auth_user,
+            academic_year_id=academic_year_id,
+            current_year_only=current_year_only,
+            student_id=student_id,
+            status=status.value if status else None,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except ExitInterviewError as exc:
+        _raise(exc)
+    return {
+        **result,
+        "current_academic_year": _academic_year(result["current_academic_year"])
+        if result["current_academic_year"]
+        else None,
+        "items": [_opportunity(item) for item in result["items"]],
+    }
+
+
+@router.post(
+    "/opportunities",
+    response=response_with_errors(ExitInterviewOpportunityResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="exitInterviewsOpenOpportunity",
+)
+def exit_interviews_open_opportunity(request, payload: ExitInterviewOpenOpportunityRequest):
+    _require_opportunity_manager(request)
+    try:
+        item = open_opportunity(
+            actor=request.auth_user,
+            student_id=payload.student_id,
+            academic_year_id=payload.academic_year_id,
+            source=payload.source.value,
+            note=payload.note,
+            context=_context(request),
+        )
+    except ExitInterviewError as exc:
+        _raise(exc)
+    return _opportunity(item)
+
+
+@router.get(
+    "/opportunities/{opportunity_id}",
+    response=response_with_errors(ExitInterviewOpportunityResponse, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="exitInterviewsGetOpportunity",
+)
+def exit_interviews_get_opportunity(request, opportunity_id: UUID):
+    _require_opportunity_manager(request)
+    try:
+        item = get_opportunity(actor=request.auth_user, opportunity_id=opportunity_id)
+    except ExitInterviewError as exc:
+        _raise(exc)
+    return _opportunity(item)
+
+
+@router.post(
+    "/opportunities/{opportunity_id}/revoke",
+    response=response_with_errors(ExitInterviewOpportunityResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="exitInterviewsRevokeOpportunity",
+)
+def exit_interviews_revoke_opportunity(request, opportunity_id: UUID):
+    _require_opportunity_manager(request)
+    try:
+        item = revoke_opportunity(
+            actor=request.auth_user, opportunity_id=opportunity_id, context=_context(request)
+        )
+    except ExitInterviewError as exc:
+        _raise(exc)
+    return _opportunity(item)
 
 
 # Static Student self routes are registered before UUID routes.

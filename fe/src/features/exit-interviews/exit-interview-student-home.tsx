@@ -3,102 +3,62 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { DoorOpen } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
+import { PageAction } from "@/components/ui/page-action";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ExitInterviewAccess } from "@/features/exit-interviews/exit-interviews-access";
 import {
-  ExitInterviewError,
-  ExitInterviewHeading,
-  ExitInterviewStatus,
-  exitInterviewErrorCode,
-  exitInterviewErrorMessage,
-  isUncertainExitInterviewMutation,
+  ExitInterviewError, ExitInterviewHeading, ExitInterviewStatus,
+  exitInterviewErrorMessage, isUncertainExitInterviewMutation,
   shouldHideExitInterviewCachedData,
 } from "@/features/exit-interviews/exit-interview-shared";
 import { formatExitInterviewDateTime } from "@/features/exit-interviews/exit-interview-presentation";
 import {
-  exitInterviewsEnsureMyCurrent,
-  getExitInterviewsGetMineQueryKey,
-  getExitInterviewsGetMyCurrentQueryKey,
-  getExitInterviewsListMineQueryKey,
-  useExitInterviewsGetMyCurrent,
-  useExitInterviewsListMine,
+  exitInterviewsEnsureMyCurrent, getExitInterviewsGetMineQueryKey,
+  getExitInterviewsGetMyStatusQueryKey, getExitInterviewsListMineQueryKey,
+  useExitInterviewsGetMyStatus, useExitInterviewsListMine,
 } from "@/lib/api/generated/exit-interviews/exit-interviews";
 
-export function ExitInterviewStudentHome({
-  access,
-}: {
-  access: ExitInterviewAccess;
-}) {
+export function ExitInterviewStudentHome({ access }: { access: ExitInterviewAccess }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const current = useExitInterviewsGetMyCurrent({
-    query: { enabled: access.canViewSelf, retry: false },
-  });
-  const history = useExitInterviewsListMine({
-    query: { enabled: access.canViewSelf, retry: false },
-  });
-  const start = useMutation({
-    mutationFn: () => exitInterviewsEnsureMyCurrent(),
-    retry: false,
-  });
+  const current = useExitInterviewsGetMyStatus({ query: { enabled: access.canViewSelf, retry: false, refetchOnWindowFocus: true } });
+  const history = useExitInterviewsListMine({ query: { enabled: access.canViewSelf, retry: false } });
+  const start = useMutation({ mutationFn: () => exitInterviewsEnsureMyCurrent(), retry: false });
   const [startError, setStartError] = useState<unknown>();
   const [needsStatusCheck, setNeedsStatusCheck] = useState(false);
-
-  if (!access.canViewSelf) {
-    return (
-      <section className="max-w-2xl space-y-5">
-        <ExitInterviewHeading title="Exit Interview" />
-        <Notice role="alert">
-          Your Exit Interview records are unavailable to this account.
-        </Notice>
-      </section>
-    );
-  }
-
-  const currentNotFound =
-    current.isError && exitInterviewErrorCode(current.error) === "exit_interview_not_found";
-  const currentCode = current.isError ? exitInterviewErrorCode(current.error) : undefined;
-  const suppressStaleCurrent =
-    (current.isError && shouldHideExitInterviewCachedData(current.error)) ||
-    currentCode === "current_student_required";
-  const suppressStaleHistory =
-    history.isError && shouldHideExitInterviewCachedData(history.error);
-  const currentRecord = suppressStaleCurrent ? undefined : current.data?.data;
-  const historicalItems = (history.data?.data.items ?? []).filter(
-    (item) => item.id !== currentRecord?.id,
-  );
+  const state = current.data?.data;
+  const record = state?.current_record;
+  const historicalItems = (history.data?.data.items ?? []).filter((item) => item.id !== record?.id);
+  const hideHistory = history.isError && shouldHideExitInterviewCachedData(history.error);
+  const canStart = !current.isError && access.canManageSelf && state?.can_start && !needsStatusCheck;
 
   async function handleStart() {
     setStartError(undefined);
-    setNeedsStatusCheck(false);
     try {
       const result = await start.mutateAsync();
-      queryClient.setQueryData(getExitInterviewsGetMyCurrentQueryKey(), result);
-      queryClient.setQueryData(
-        getExitInterviewsGetMineQueryKey(result.data.id),
-        result,
-      );
-      void queryClient.invalidateQueries({
-        queryKey: getExitInterviewsListMineQueryKey(),
-      });
+      queryClient.setQueryData(getExitInterviewsGetMineQueryKey(result.data.id), result);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getExitInterviewsGetMyStatusQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getExitInterviewsListMineQueryKey() }),
+      ]);
       router.push(`/portal/exit-interviews/${result.data.id}`);
     } catch (error) {
       setStartError(error);
       setNeedsStatusCheck(isUncertainExitInterviewMutation(error));
+      void current.refetch();
     }
   }
 
-  async function checkCurrentStatus() {
+  async function checkStatus() {
     const result = await current.refetch();
-    if (
-      !result.isError ||
-      exitInterviewErrorCode(result.error) === "exit_interview_not_found"
-    ) {
+    if (!result.isError) {
       setNeedsStatusCheck(false);
       setStartError(undefined);
     }
@@ -106,169 +66,50 @@ export function ExitInterviewStudentHome({
 
   return (
     <section className="space-y-5" aria-labelledby="exit-interview-home-heading">
-      <ExitInterviewHeading
-        id="exit-interview-home-heading"
-        title="Exit Interview"
-      />
-
-      <Panel aria-labelledby="exit-interview-current-heading" className="max-w-4xl">
-        <PanelHeader title="Current Academic Year" titleId="exit-interview-current-heading" />
+      <ExitInterviewHeading id="exit-interview-home-heading" title="Exit Interview"
+        action={canStart ? <PageAction icon={DoorOpen} label="Start" labelDetail="Exit Interview" onClick={() => void handleStart()} disabled={start.isPending} /> : undefined} />
+      <Panel aria-labelledby="exit-interview-current-heading">
+        <PanelHeader title={state?.academic_year?.label ?? "Current Exit Interview"} titleId="exit-interview-current-heading" />
         {current.isPending ? (
-          <div className="space-y-3 px-4 py-4 sm:px-5" aria-busy="true"><span className="sr-only">Loading current Exit Interview…</span>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-16 w-full max-w-2xl" />
-          </div>
-        ) : current.isError && !currentNotFound && (!current.data || suppressStaleCurrent) ? (
-          <div className="max-w-2xl px-4 py-4 sm:px-5">
-            <ExitInterviewError
-              error={current.error}
-              fallback="The current Academic Year Exit Interview could not be loaded."
-              onRetry={() => void current.refetch()}
-            />
-          </div>
-        ) : currentRecord ? (
+          <LoadingRegion label="Loading Exit Interview access…" className="space-y-3 px-4 py-4 sm:px-5"><Skeleton className="h-8 w-48" /><Skeleton className="h-16 w-full" /></LoadingRegion>
+        ) : current.isError ? (
+          <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void checkStatus()}>Retry</Button>}>
+            {exitInterviewErrorMessage(current.error, "Your latest Exit Interview access could not be confirmed.")}
+          </PanelMessage>
+        ) : record ? (
           <div className="px-4 py-4 sm:px-5">
-            {current.isError ? (
-              <p role="alert" className="mb-4 text-sm text-danger">
-                The current status could not be refreshed. Showing the last confirmed record.
-              </p>
-            ) : current.isFetching ? (
-              <p role="status" className="mb-4 text-xs text-muted">Refreshing current status…</p>
-            ) : null}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-semibold text-ink">{currentRecord.academic_year.label}</h3>
-              <ExitInterviewStatus status={currentRecord.status} />
-            </div>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              {currentRecord.status === "DRAFT"
-                ? "Your answers stay private until you submit."
-                : "Head Guidance can review your submitted answers."}
-            </p>
-            <p className="mt-2 text-xs text-muted">
-              {currentRecord.status === "SUBMITTED"
-                ? `Last submitted ${formatExitInterviewDateTime(currentRecord.last_submitted_at ?? currentRecord.first_submitted_at)}`
-                : `Last updated ${formatExitInterviewDateTime(currentRecord.updated_at)}`}
-            </p>
-            <Link
-              href={`/portal/exit-interviews/${currentRecord.id}`}
-              className={buttonVariants({
-                variant: currentRecord.status === "DRAFT" && access.canManageSelf ? "primary" : "secondary",
-                className: "mt-4",
-              })}
-            >
-              {currentRecord.status === "SUBMITTED"
-                ? "View submitted Exit Interview"
-                : access.canManageSelf
-                  ? "Continue Exit Interview"
-                  : "View draft Exit Interview"}
+            <ExitInterviewStatus status={record.status} />
+            <p className="mt-2 text-sm text-muted">{record.status === "SUBMITTED" ? "Head Guidance can review your submitted answers." : state?.can_edit_current ? "Your answers stay private until you submit." : "You can view this draft. Contact the Guidance and Counseling Office if you need to continue it."}</p>
+            <Link href={`/portal/exit-interviews/${record.id}`} className={buttonVariants({ variant: state?.can_edit_current ? "primary" : "secondary", className: "mt-4" })}>
+              {state?.can_edit_current ? "Continue Exit Interview" : record.status === "SUBMITTED" ? "View submitted Exit Interview" : "View draft Exit Interview"}
             </Link>
           </div>
-        ) : currentNotFound ? (
-          <div className="px-4 py-4 sm:px-5">
-            <p className="text-sm leading-6 text-muted">
-              No Exit Interview has been started for the current Academic Year.
-              {access.canManageSelf ? null : " Only current students can start an Exit Interview."}
-            </p>
-            {access.canManageSelf ? (
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Button onClick={() => void handleStart()} disabled={start.isPending || needsStatusCheck}>
-                  {start.isPending ? "Starting…" : "Start Exit Interview"}
-                </Button>
-                {needsStatusCheck ? (
-                  <Button variant="secondary" onClick={() => void checkCurrentStatus()} disabled={current.isFetching}>
-                    {current.isFetching ? "Checking…" : "Check current status"}
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
-            {startError ? (
-              <div className="mt-4 max-w-2xl">
-                {exitInterviewErrorCode(startError) === "exit_interview_inventory_required" ? (
-                  <p role="alert" className="text-sm leading-6 text-danger">
-                    {exitInterviewErrorMessage(startError, "A submitted Individual Inventory is required before starting.")} {" "}
-                    <Link href="/portal/inventory" className="font-semibold underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                      Open Individual Inventory
-                    </Link>
-                  </p>
-                ) : (
-                  <p role="alert" className="text-sm leading-6 text-danger">
-                    {needsStatusCheck
-                      ? "We could not confirm whether the Exit Interview started. Check its current status before trying again."
-                      : exitInterviewErrorMessage(startError, "The Exit Interview could not be started.")}
-                  </p>
-                )}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </Panel>
-
-      <Panel aria-labelledby="exit-interview-history-heading" className="max-w-4xl">
-        <PanelHeader title="Exit Interview history" titleId="exit-interview-history-heading" />
-        {history.isPending ? (
-          <div className="space-y-3 px-4 py-4 sm:px-5" aria-busy="true"><span className="sr-only">Loading Exit Interview history…</span>
-            <Skeleton className="h-14 w-full max-w-3xl" />
-            <Skeleton className="h-14 w-full max-w-3xl" />
-          </div>
-        ) : history.isError &&
-          (!history.data || suppressStaleHistory) ? (
-          <div className="max-w-2xl px-4 py-4 sm:px-5">
-            <ExitInterviewError
-              error={history.error}
-              fallback="Exit Interview history could not be loaded."
-              onRetry={() => void history.refetch()}
-            />
-          </div>
-        ) : historicalItems.length === 0 ? (
-          history.isError ? (
-            <div className="max-w-2xl px-4 py-4 sm:px-5">
-              <ExitInterviewError
-                error={history.error}
-                fallback="Exit Interview history could not be refreshed."
-                onRetry={() => void history.refetch()}
-              />
-            </div>
-          ) : (
-            <PanelMessage>
-              No earlier Exit Interviews are available.
-            </PanelMessage>
-          )
+        ) : state?.opportunity?.status === "OPEN" && access.canManageSelf ? (
+          <PanelMessage action={!state.inventory_submitted ? <Link href="/portal/inventory" className={buttonVariants({ variant: "secondary" })}>Open Individual Inventory</Link> : undefined}>
+            The Guidance and Counseling Office has opened an Exit Interview for you.
+            {state.opportunity.source === "GRADUATION" ? " Submit it before requesting your graduation Good Moral certificate." : null}
+            {!state.inventory_submitted ? " Submit your current Individual Inventory before starting." : null}
+          </PanelMessage>
         ) : (
-          <>
-            {history.isError ? (
-              <div className="mt-4 max-w-2xl">
-                <ExitInterviewError
-                  error={history.error}
-                  fallback="Exit Interview history could not be refreshed."
-                  onRetry={() => void history.refetch()}
-                />
-              </div>
-            ) : null}
-            <ul className="divide-y divide-border">
-              {historicalItems.map((item) => (
-                <li key={item.id} className="px-4 py-4 sm:px-5">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <Link
-                        href={`/portal/exit-interviews/${item.id}`}
-                        className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                      >
-                        {item.academic_year.label}
-                      </Link>
-                      <p className="mt-1 text-xs text-muted">
-                        Updated {formatExitInterviewDateTime(item.updated_at)}
-                        {item.last_submitted_at
-                          ? ` · Last submitted ${formatExitInterviewDateTime(item.last_submitted_at)}`
-                          : ""}
-                      </p>
-                    </div>
-                    <ExitInterviewStatus status={item.status} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </>
+          <PanelMessage>{state?.opportunity?.status === "REVOKED" ? "The Guidance and Counseling Office has withdrawn your Exit Interview access." : state?.opportunity?.status === "COMPLETED" ? "Your Exit Interview workflow is completed." : "The Guidance and Counseling Office has not opened an Exit Interview for you."}</PanelMessage>
         )}
+      </Panel>
+      {startError ? <Notice role="alert" tone="danger" action={needsStatusCheck ? <Button variant="secondary" disabled={current.isFetching} onClick={() => void checkStatus()}>Check current status</Button> : undefined}>
+        {needsStatusCheck ? "We could not confirm whether your Exit Interview started. Check its current status before trying again." : exitInterviewErrorMessage(startError, "The Exit Interview could not be started.")}
+      </Notice> : null}
+      <Panel aria-labelledby="exit-interview-history-heading">
+        <PanelHeader title="Exit Interview history" titleId="exit-interview-history-heading" />
+        {history.isPending ? <LoadingRegion label="Loading Exit Interview history…" className="px-4 py-4 sm:px-5"><Skeleton className="h-16 w-full" /></LoadingRegion> : history.isError && (!history.data || hideHistory) ? (
+          <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void history.refetch()}>Retry</Button>}>{exitInterviewErrorMessage(history.error, "Exit Interview history could not be loaded.")}</PanelMessage>
+        ) : <>
+          {history.isError ? <ExitInterviewError error={history.error} fallback="History could not be refreshed. Showing the last confirmed records." onRetry={() => void history.refetch()} /> : null}
+          {historicalItems.length === 0 ? <PanelMessage>No other Exit Interview records.</PanelMessage> : <ul className="divide-y divide-border">
+            {historicalItems.map((item) => <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
+              <div><Link href={`/portal/exit-interviews/${item.id}`} className="text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{item.academic_year.label}</Link><p className="mt-1 text-xs text-muted">Updated {formatExitInterviewDateTime(item.updated_at)}</p></div>
+              <ExitInterviewStatus status={item.status} />
+            </li>)}
+          </ul>}
+        </>}
       </Panel>
     </section>
   );

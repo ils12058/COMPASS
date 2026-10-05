@@ -6,6 +6,10 @@ import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useExitInterviewsGetMyStatus } from "@/lib/api/generated/exit-interviews/exit-interviews";
+import { GraduationGoodMoralPrerequisite } from "@/features/good-moral/graduation-good-moral-prerequisite";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
@@ -200,6 +204,8 @@ function CreateFeedback({
           tone="danger"
           action={state.errorCode === "good_moral_inventory_required" ? (
             <Link href="/portal/inventory/current" className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open Individual Inventory</Link>
+          ) : state.errorCode === "good_moral_exit_interview_required" ? (
+            <Link href="/portal/exit-interviews" className={buttonVariants({ variant: "secondary" })}>Open Exit Interview</Link>
           ) : undefined}
         >
           {state.error}
@@ -217,13 +223,18 @@ function CreateFeedback({
 }
 
 function CurrentStudentRequestForm() {
+  const { user } = usePortalSession();
+  const canReadExitStatus = user.capabilities.includes("exit_interviews.view_self");
+  const status = useExitInterviewsGetMyStatus({ query: { enabled: canReadExitStatus, retry: false, refetchOnWindowFocus: true, staleTime: 0 } });
+  const blocked = canReadExitStatus && (status.isPending || status.isError || status.data?.data.graduation_good_moral_blocked === true);
   const create = useCreateGoodMoralRequest();
   const [yearLevel, setYearLevel] = useState("");
   const [semester, setSemester] = useState("");
-  const fieldsLocked = create.isPending || Boolean(create.uncertainIntent);
+  const fieldsLocked = create.isPending || Boolean(create.uncertainIntent) || blocked;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (blocked) return;
     create.start({ variant: "CURRENT_STUDENT", payload: { year_level: yearLevel, semester } });
   }
 
@@ -232,6 +243,9 @@ function CurrentStudentRequestForm() {
       title="Request Good Moral Certificate"
     >
       <CreateFeedback state={create} busy={create.isPending} />
+      {canReadExitStatus && status.isPending ? <LoadingRegion label="Checking Good Moral prerequisites…"><Skeleton className="h-14 w-full" /></LoadingRegion> : canReadExitStatus && status.isError ? (
+        <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void status.refetch()}>Retry</Button>}>Your graduation workflow status could not be confirmed.</Notice>
+      ) : status.data?.data.graduation_good_moral_blocked ? <GraduationGoodMoralPrerequisite /> : null}
       <form onSubmit={submit} aria-busy={create.isPending}>
         <Panel as="div">
         <PanelSection
@@ -254,7 +268,7 @@ function CurrentStudentRequestForm() {
         </PanelSection>
         {!create.uncertainIntent ? (
           <PanelFooter>
-            <Button type="submit" disabled={create.isPending}>
+            <Button type="submit" disabled={create.isPending || blocked}>
               {create.isPending ? "Submitting request…" : "Submit request"}
             </Button>
           </PanelFooter>

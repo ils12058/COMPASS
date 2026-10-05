@@ -17,7 +17,7 @@ import { getGoodMoralGetRequestQueryKey, getGoodMoralListRequestsQueryKey } from
 const staff = {
   id: "staff", role: "GUIDANCE_SERVICES_STAFF", first_name: "Guidance", last_name: "Staff",
   email: "staff@example.test", student_lifecycle_status: null, designations: [],
-  capabilities: ["good_moral.view", "good_moral.prepare", "academic_years.view", "institutional_forms.view"],
+  capabilities: ["good_moral.view", "good_moral.prepare", "academic_years.view", "institutional_forms.view", "exit_interviews.manage_opportunities"],
 };
 const clerical = ["year_level", "course", "major", "semester", "official_receipt_number", "official_receipt_date", "official_receipt_amount"];
 const actions = { request_version: "2026-10-05T00:00:00.123456+00:00", preparation_version: null, can_correct: true, can_prepare: true, can_issue: false, can_cancel: false, can_download: false, correction_fields: clerical };
@@ -46,7 +46,8 @@ function render(element, user = staff, request = item) {
 test("GSS gets Good Moral and references while professional destinations stay absent", () => {
   const hrefs = portalWorkspaceGroups(staff).flatMap((group) => group.links.map((link) => link.href));
   assert.ok(hrefs.includes("/portal/good-moral"));
-  for (const path of ["/portal/counseling", "/portal/inventory", "/portal/routine-interviews", "/portal/exit-interviews", "/portal/reports"]) assert.ok(!hrefs.includes(path));
+  assert.ok(hrefs.includes("/portal/exit-interviews"));
+  for (const path of ["/portal/counseling", "/portal/inventory", "/portal/routine-interviews", "/portal/reports"]) assert.ok(!hrefs.includes(path));
   const revoked = { ...staff, capabilities: ["good_moral.view"] };
   assert.equal(getGoodMoralAccess(revoked).canPrepare, false);
   assert.equal(getGoodMoralAccess(revoked).hasOperationalWorkspace, true);

@@ -8,6 +8,12 @@ Counselor-only preparation decision below is preserved as the original foundatio
 
 Accepted for the Good Moral foundation.
 
+[ADR-075](ADR-075-exit-interview-opportunities-and-graduation-good-moral.md)
+refines F4 creation for an explicit same-year GCO GRADUATION Exit Interview workflow.
+A matching submitted Exit Interview is then required; ordinary F4 and historical F6
+retain their existing prerequisites. Persistent replay remains before new eligibility
+checks. The historical foundation decisions below are retained with this refinement.
+
 ## Context
 
 COMPASS needs a small source-faithful workflow for the Guidance and Counseling Office's two
@@ -292,7 +298,9 @@ This foundation does not change Service Catalog, Appointment, Availability, Coun
 Interview, Referral workflow semantics, Call Slip workflow semantics, or Routine Interview workflow
 semantics beyond the narrow shared FormRevision resolver consistency described above.
 
-It introduces no Exit Interview prerequisite, Graduate Tracer, Registrar/SIS/enrollment subsystem,
+The foundation introduced no Exit Interview prerequisite; ADR-075 deliberately refines that
+decision for graduation-related CURRENT Student F4. There remains no Graduate Tracer,
+Registrar/SIS/enrollment subsystem,
 ALUMNI role, payment/billing/cashier system, generic certificate/workflow/approval engine,
 notifications, QR verification, digital signatures, or PDF archive.
 

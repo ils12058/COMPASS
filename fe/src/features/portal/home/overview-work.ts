@@ -91,7 +91,7 @@ export function useOverviewAttention(
     routineAccess.canViewSelf &&
     hasCount(studentRoutineCount) &&
     studentRoutineCount > 0;
-  const exitEnabled = isStudent && exitAccess.canManageSelf;
+  const exitEnabled = isStudent && exitAccess.canManageSelf && exitAccess.hasStudentWorkspace;
   const graduateEnabled = isStudent && graduateAccess.canManageSelf;
   const counselorRoutineCount = summary?.guidance?.routine_evaluation_pending_count;
   const counselorRoutineEnabled =
@@ -226,7 +226,7 @@ export function useOverviewAttention(
       exitErrorCode === "exit_interview_not_found"
       ? undefined
       : currentExitInterview.data?.data;
-    if (current?.status === "DRAFT") {
+    if (current?.status === "DRAFT" && current.can_edit) {
       items.push({
         id: "exit-interview-" + current.id,
         title: "Exit Interview",

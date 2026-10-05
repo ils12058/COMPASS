@@ -30,7 +30,7 @@ from compass.appointments.models import Appointment
 from compass.audit.context import AuditContext
 from compass.call_slips.models import CallSlip
 from compass.counseling.models import CounselingEncounter, CounselingSharedSummary
-from compass.exit_interviews.models import ExitInterview
+from compass.exit_interviews.models import ExitInterview, ExitInterviewOpportunity
 from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
 from compass.good_moral.models import GoodMoralRequest
 from compass.graduate_tracer.models import GraduateTracerResponse
@@ -54,6 +54,7 @@ ALIGNABLE_TIMESTAMPS: dict[type[models.Model], frozenset[str]] = {
         {"created_at", "updated_at", "submitted_at", "first_submitted_at", "last_submitted_at"}
     ),
     ExitInterview: frozenset({"created_at", "updated_at"}),
+    ExitInterviewOpportunity: frozenset({"created_at", "updated_at", "opened_at"}),
     Appointment: frozenset({"created_at", "updated_at"}),
     CounselingEncounter: frozenset({"created_at", "updated_at"}),
     CounselingSharedSummary: frozenset({"created_at", "updated_at", "published_at"}),

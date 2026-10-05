@@ -61,6 +61,7 @@ def test_gss_baseline_is_clerical_and_reference_only():
         "institutional_forms.view",
         "good_moral.view",
         "good_moral.prepare",
+        "exit_interviews.manage_opportunities",
     } <= codes
     assert not any(
         code.startswith(
@@ -70,13 +71,14 @@ def test_gss_baseline_is_clerical_and_reference_only():
                 "shared_summaries.",
                 "inventory.",
                 "ecounseling.",
-                "exit_interviews.",
             )
         )
         for code in codes
     )
     assert {
         "good_moral.issue",
+        "exit_interviews.view",
+        "exit_interviews.reopen",
         "reports.view",
         "student_support.view",
         "accounts.manage",

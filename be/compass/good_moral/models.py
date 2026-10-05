@@ -28,6 +28,21 @@ class GoodMoralStatus(models.TextChoices):
 
 class GoodMoralRequest(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    graduation_opportunity = models.ForeignKey(
+        "exit_interviews.ExitInterviewOpportunity",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="good_moral_requests",
+    )
+    exit_interview = models.ForeignKey(
+        "exit_interviews.ExitInterview",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="good_moral_requests",
+    )
+    exit_interview_submitted_at = models.DateTimeField(null=True, blank=True)
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -149,6 +164,22 @@ class GoodMoralRequest(models.Model):
                     )
                 ),
                 name="good_moral_preparation_shape",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        graduation_opportunity__isnull=True,
+                        exit_interview__isnull=True,
+                        exit_interview_submitted_at__isnull=True,
+                    )
+                    | models.Q(
+                        variant=GoodMoralVariant.CURRENT_STUDENT,
+                        graduation_opportunity__isnull=False,
+                        exit_interview__isnull=False,
+                        exit_interview_submitted_at__isnull=False,
+                    )
+                ),
+                name="good_moral_exit_prereq_shape",
             ),
             models.CheckConstraint(
                 condition=(

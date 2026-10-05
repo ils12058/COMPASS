@@ -6,10 +6,12 @@ import { Label } from "@/components/ui/label";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import type {
   CallSlipStudentOptionResponse,
+  ExitInterviewStudentOptionResponse,
   ReferralStudentOptionResponse,
 } from "@/lib/api/generated/model";
 
 export type EligibleStudentOption =
+  | ExitInterviewStudentOptionResponse
   | CallSlipStudentOptionResponse
   | ReferralStudentOptionResponse;
 

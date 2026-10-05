@@ -37,6 +37,7 @@ from .services import (
     GoodMoralCurrentStudentRequired,
     GoodMoralDocumentUnavailable,
     GoodMoralError,
+    GoodMoralExitInterviewRequired,
     GoodMoralGraduatedStudentRequired,
     GoodMoralInventoryRequired,
     GoodMoralNotFound,
@@ -167,6 +168,9 @@ class GoodMoralOperationalSummaryResponse(GoodMoralSummaryResponse):
 
 class GoodMoralDetailResponse(GoodMoralSummaryResponse):
     student: PersonSummary
+    graduation_opportunity_id: UUID | None
+    exit_interview_id: UUID | None
+    exit_interview_submitted_at: datetime | None
     inventory_id: UUID | None
     academic_year: AcademicYearSummary | None
     major: str
@@ -257,6 +261,8 @@ def _raise(exc: GoodMoralError) -> NoReturn:
         raise APIError(409, "current_student_required", str(exc)) from exc
     if isinstance(exc, GoodMoralGraduatedStudentRequired):
         raise APIError(409, "graduated_student_required", str(exc)) from exc
+    if isinstance(exc, GoodMoralExitInterviewRequired):
+        raise APIError(409, "good_moral_exit_interview_required", str(exc)) from exc
     if isinstance(exc, GoodMoralInventoryRequired):
         raise APIError(409, "good_moral_inventory_required", str(exc)) from exc
     if isinstance(exc, GoodMoralAffiliationRequired):
@@ -363,6 +369,9 @@ def _detail(item) -> dict[str, object]:
     return {
         **_summary(item),
         "student": _person(item.student),
+        "graduation_opportunity_id": item.graduation_opportunity_id,
+        "exit_interview_id": item.exit_interview_id,
+        "exit_interview_submitted_at": item.exit_interview_submitted_at,
         "inventory_id": item.inventory_id,
         "academic_year": (
             {"id": item.academic_year_id, "label": item.academic_year.label}

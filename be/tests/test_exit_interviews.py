@@ -38,6 +38,7 @@ from compass.exit_interviews.models import (
     DelayReason,
     ExitInterview,
     ExitInterviewCollegeFeedbackRating,
+    ExitInterviewOpportunity,
     ExitInterviewReopenEvent,
     ExitInterviewSelfAssessmentRating,
     ProgramCompletion,
@@ -111,7 +112,18 @@ def make_inventory(
     submitted: bool = True,
     course: str = "Bachelor of Science in Information Systems",
     major: str = "Information Systems",
+    admit: bool = True,
 ) -> StudentInventory:
+    if admit:
+        # Positive Exit Interview fixtures explicitly include GCO admission.
+        opener = User.objects.filter(email="fixture-exit-opener@example.edu").first()
+        if opener is None:
+            opener = make_head("fixture-exit-opener@example.edu")
+        ExitInterviewOpportunity.objects.get_or_create(
+            student=student,
+            academic_year=academic_year,
+            defaults={"source": "MANUAL", "opened_by": opener, "opened_at": timezone.now()},
+        )
     return StudentInventory.objects.create(
         student=student,
         academic_year=academic_year,
@@ -292,8 +304,12 @@ def test_exit_interview_policy_is_student_self_plus_head_only():
 
     assert head.has_capability("exit_interviews.view")
     assert head.has_capability("exit_interviews.reopen")
+    assert head.has_capability("exit_interviews.manage_opportunities")
     assert not head.has_capability("exit_interviews.view_self")
 
+    assert staff.has_capability("exit_interviews.manage_opportunities")
+    for user in (student, counselor, admin, dpo):
+        assert not user.has_capability("exit_interviews.manage_opportunities")
     for user in (counselor, staff, admin, dpo):
         assert not user.has_capability("exit_interviews.view")
         assert not user.has_capability("exit_interviews.reopen")

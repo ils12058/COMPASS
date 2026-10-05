@@ -7,6 +7,7 @@ export type ExitInterviewAccess = {
   canManageSelf: boolean;
   canViewOperational: boolean;
   canReopen: boolean;
+  canManageOpportunities: boolean;
   hasStudentWorkspace: boolean;
   hasOperationalWorkspace: boolean;
   hasWorkspace: boolean;
@@ -23,8 +24,9 @@ export function getExitInterviewAccess(user: UserSummary): ExitInterviewAccess {
     user.capabilities.includes("exit_interviews.manage_self");
   const canViewOperational = user.capabilities.includes("exit_interviews.view");
   const canReopen = user.capabilities.includes("exit_interviews.reopen");
-  const hasStudentWorkspace = canViewSelf;
-  const hasOperationalWorkspace = canViewOperational;
+  const canManageOpportunities = user.capabilities.includes("exit_interviews.manage_opportunities");
+  const hasStudentWorkspace = canViewSelf && user.exit_interview_workspace_available === true;
+  const hasOperationalWorkspace = canViewOperational || canManageOpportunities;
 
   return {
     isStudent,
@@ -33,6 +35,7 @@ export function getExitInterviewAccess(user: UserSummary): ExitInterviewAccess {
     canManageSelf,
     canViewOperational,
     canReopen,
+    canManageOpportunities,
     hasStudentWorkspace,
     hasOperationalWorkspace,
     hasWorkspace: hasStudentWorkspace || hasOperationalWorkspace,

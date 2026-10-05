@@ -22,8 +22,8 @@ the preparer, and the actual Counselor performing final issuance remains issued_
 
 ### Narrow authority
 
-GSS receives academic_years.view, institutional_forms.view, good_moral.view, and
-good_moral.prepare. Counselors receive prepare alongside existing view, manage, and
+GSS receives academic_years.view, institutional_forms.view, good_moral.view,
+good_moral.prepare, and bounded exit_interviews.manage_opportunities. Counselors receive prepare alongside existing view, manage, and
 issue. The new prepare capability depends on view. Existing manage remains a
 Counselor-only authority for identity/graduation-fact correction and cancellation.
 
@@ -105,17 +105,20 @@ or dashboard framework is introduced.
 
 ### Exit Interview integration dependency
 
-The separate Exit Interview opportunity slice is not on staging at this slice's
-base, 2ed4a9aad6cf23a311b53ab031e556157c0ba9dd. It is being developed in a separate
-worktree. This slice deliberately adds no competing opportunity model, endpoint,
-or placeholder capability. GSS continues to be denied response detail and reopen.
+The separate Exit Interview opportunity slice landed in staging through PR #171,
+commit 773dc09dc7f82a0407158387a6ff962ac4f4fdf2, during integration of this slice.
+GSS now receives the existing exit_interviews.manage_opportunities capability. Its
+accounts.view dependency remains; no response view/reopen or PDF authority is added.
+The existing Student picker, opening/revocation, list, and inspection UI are reused.
+Operational representations include only Student/year/source/status, NOT_STARTED /
+DRAFT / SUBMITTED workflow status, and opening/submission times alongside operational
+provenance. Workflow status is projected from a bounded status/timestamp subquery,
+without loading response answers. Opportunity APIs use purpose-specific operational
+authority; Head Guidance response APIs retain their separate guards.
 
-After that domain lands, integration must reuse its bounded opportunity-management
-authority and expose only Student/year/source/opportunity status, workflow status,
-and opening/submission times. It must not grant response view/reopen or PDF access.
-The two independent Good Moral migration leaves will also need an integration merge
-migration when both branches are brought together. Neither slice is automatically
-merged or deployed by this work.
+A merge migration reconciles the independent Good Moral migration leaves without
+changing their data operations or rewriting historical records. ADR-075's admission
+and graduation F4 prerequisite remain authoritative alongside preparation/issuance.
 
 ### Audit and compatibility
 

@@ -17,6 +17,13 @@ A separate client/domain clarification establishes that initiating an Exit Inter
 SUBMITTED Individual Inventory for the institution's current Academic Year. This prerequisite is an
 Exit Interview domain rule and is independent of Service Catalog integration.
 
+## Subsequent refinement
+
+[ADR-075](ADR-075-exit-interview-opportunities-and-graduation-good-moral.md)
+adds explicit GCO admission and refines the original Good Moral non-coupling decision
+for graduation-related CURRENT Student F4 only. It preserves historical and controlled
+correction access, ordinary F4, and legacy graduate F6.
+
 ## Decision
 
 ### Domain ownership
@@ -375,7 +382,10 @@ Creating, saving, submitting, reopening, or resubmitting an Exit Interview does 
 - Service Catalog record
 - FormRevision
 
-Good Moral is not an Exit Interview prerequisite in either direction.
+The foundation originally decided: "Good Moral is not an Exit Interview prerequisite in either
+direction." ADR-075 supersedes the universal independence claim: a matching submitted Exit Interview
+is required for a CURRENT Student F4 when GCO has opened a GRADUATION workflow for the same year.
+Ordinary F4 and legacy graduate F6 remain independent; Good Moral never gates Exit Interview.
 
 The original Exit Interview foundation introduced no notification/email. ADR-046 later added the
 mandatory privacy-safe `exit_interview.reopened` Notification/email for a successful SUBMITTED ->

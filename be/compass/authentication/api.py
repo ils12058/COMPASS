@@ -108,6 +108,7 @@ class UserSummary(Schema):
     first_name: str
     last_name: str
     role: RoleCode
+    exit_interview_workspace_available: bool = False
     student_lifecycle_status: StudentLifecycleCode | None
     designations: list[DesignationCode]
     capabilities: list[CapabilityCode]
@@ -316,6 +317,8 @@ def _require_csrf(request) -> None:
 
 
 def _user_summary(user) -> dict[str, object]:
+    from compass.exit_interviews.opportunities import has_student_workspace
+
     designations = sorted(
         set(
             user.designations.filter(code__in=DESIGNATION_CODES).values_list(
@@ -331,6 +334,7 @@ def _user_summary(user) -> dict[str, object]:
         "last_name": user.last_name,
         "role": user.role.code,
         "student_lifecycle_status": user.student_lifecycle_status,
+        "exit_interview_workspace_available": has_student_workspace(user),
         "designations": designations,
         "capabilities": sorted(effective_capabilities(user)),
     }
