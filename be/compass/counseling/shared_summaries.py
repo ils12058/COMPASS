@@ -18,6 +18,7 @@ from compass.notifications.services import create_notification_for_event
 
 from .models import CounselingEncounter, CounselingSharedSummary
 from .services import DEFAULT_PAGE_SIZE, CounselingError, _validate_page
+from .shared_summary_content import read_shared_summary_content, write_shared_summary_content
 
 
 class CounselingSharedSummaryNotFound(CounselingError):
@@ -95,9 +96,6 @@ def get_assigned_shared_summary(*, encounter_id: UUID, counselor: User) -> Couns
 def put_assigned_shared_summary(
     *, encounter_id: UUID, counselor: User, content: str
 ) -> CounselingSharedSummary:
-    if not isinstance(content, str):
-        raise TypeError("content must be a string")
-
     with transaction.atomic():
         encounter = _lock_assigned_encounter(encounter_id=encounter_id, counselor=counselor)
         item = (
@@ -106,14 +104,17 @@ def put_assigned_shared_summary(
             .first()
         )
         if item is None:
-            item = CounselingSharedSummary.objects.create(encounter=encounter, content=content)
+            item = CounselingSharedSummary(encounter=encounter)
+            # The model allocates its final UUID before authenticated context binding.
+            write_shared_summary_content(item, content)
+            item.save(force_insert=True)
         else:
             if item.published_at is not None:
                 raise CounselingSharedSummaryAlreadyPublished(
                     "A published Counseling Shared Summary is locked from ordinary editing."
                 )
-            item.content = content
-            item.save(update_fields=["content", "updated_at"])
+            write_shared_summary_content(item, content)
+            item.save(update_fields=["content_ciphertext", "updated_at"])
         return _summary_queryset().get(pk=item.pk)
 
 
@@ -133,7 +134,7 @@ def publish_assigned_shared_summary(
             )
         if item.published_at is not None:
             return _summary_queryset().get(pk=item.pk)
-        if not item.content.strip():
+        if not read_shared_summary_content(item).strip():
             raise CounselingSharedSummaryEmpty(
                 "Counseling Shared Summary content must not be empty when published."
             )

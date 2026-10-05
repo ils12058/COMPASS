@@ -67,3 +67,12 @@ second counseling service, a generic notes platform, or an E-Counseling-specific
 has no frontend, AI generation, recording/transcription dependency, notifications, Student comments,
 read receipts, rich text, attachments, Case Records, Referral, Call Slip, delete operation, or
 published-summary correction workflow in this foundation.
+
+
+## Storage implementation update (ADR-080, 2026-10-06)
+
+ADR-080 supersedes only the original plaintext-at-rest storage detail: the Summary body is now
+stored in `content_ciphertext` using a dedicated keyring and explicit authorized reads. Empty
+drafts, deliberate Student disclosure after publication, encounter relationships, locking,
+idempotence, immutable published content and all ADR-025 authorization semantics remain in effect.
+Publication does not remove encryption at rest. This update does not introduce private notes.

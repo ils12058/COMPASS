@@ -28,6 +28,7 @@ from compass.counseling.models import (
     CounselingSharedSummary,
 )
 from compass.counseling.services import CounselingNotFound, get_encounter_for_actor
+from compass.counseling.shared_summary_content import write_shared_summary_content
 from compass.inventory.models import StudentInventory
 from compass.inventory.services import (
     ensure_current_inventory,
@@ -800,16 +801,14 @@ def test_context_shared_summaries_are_published_only(world):
         ended_at=now - timedelta(days=4),
         created_by=world["a"],
     )
-    published = CounselingSharedSummary.objects.create(
-        encounter=published_encounter,
-        content="Published context-safe summary.",
-        published_at=now - timedelta(days=4),
+    published = CounselingSharedSummary(
+        encounter=published_encounter, published_at=now - timedelta(days=4)
     )
-    CounselingSharedSummary.objects.create(
-        encounter=draft_encounter,
-        content="UNPUBLISHED-PRIVATE-SENTINEL",
-        published_at=None,
-    )
+    write_shared_summary_content(published, "Published context-safe summary.")
+    published.save()
+    draft = CounselingSharedSummary(encounter=draft_encounter)
+    write_shared_summary_content(draft, "UNPUBLISHED-PRIVATE-SENTINEL")
+    draft.save()
 
     summaries = list_context_shared_summaries(access)
     assert [item.id for item in summaries] == [published.pk]

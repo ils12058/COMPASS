@@ -99,7 +99,7 @@ class CounselingSharedSummary(models.Model):
         on_delete=models.PROTECT,
         related_name="shared_summary",
     )
-    content = models.TextField(blank=True, default="")
+    content_ciphertext = models.TextField(editable=False)
     published_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -107,3 +107,9 @@ class CounselingSharedSummary(models.Model):
     class Meta:
         default_permissions = ()
         ordering = ("-created_at", "id")
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(content_ciphertext=""),
+                name="counseling_summary_ciphertext_present",
+            ),
+        ]

@@ -8,7 +8,7 @@ secret-management service.
 ## Host directory and service grants
 
 `/opt/compass/secrets` is persistent outside `/opt/compass/releases`, owned by `compass:compass`,
-mode `0700`. All 15 source files must be regular files, not symlinks, owned by `compass`, mode
+mode `0700`. All 16 source files must be regular files, not symlinks, owned by `compass`, mode
 `0444`. Never put this directory in Git, a checkout, an image, or a release symlink.
 
 The host parent directory is the confidentiality boundary: other unprivileged users cannot traverse
@@ -33,12 +33,13 @@ remain trusted. A compromised authorized process can read its own grants.
 | `PSGC_API_TOKEN` | `psgc_api_token` | optional; dependent operations enforce availability |
 | `AUTH_TOTP_ENCRYPTION_KEY` | `auth_totp_encryption_key` | yes |
 | `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` | `routine_interview_encryption_keys` | yes |
+| `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS` | `counseling_shared_summary_encryption_keys` | yes |
 | `WEB_PUSH_PRIVATE_KEY` | `web_push_private_key` | when enabled |
 | `WEB_PUSH_STORAGE_KEY` | `web_push_storage_key` | when enabled |
 
 | Service | Explicit grants |
 | --- | --- |
-| `web`, `worker`, `beat` | all 15, because Django loads settings eagerly |
+| `web`, `worker`, `beat` | all 16, because Django loads settings eagerly |
 | `postgres` | `postgres_password` only |
 | `redis` | `redis_password` only |
 | `proxy` | none |
@@ -81,7 +82,16 @@ volume, replacing this file does **not** alter the database role password. Prese
 password during initial migration; a future password change requires coordinated SQL and application
 credential changes. Do not delete/reinitialize the database volume.
 
-## Initial migration: operator execution only
+## Original ADR-078 migration: historical operator reference
+
+The original ADR-078 cutover below migrated 15 existing values. ADR-080 adds a **new** required
+16th value; the current inventory/checker/exporter includes it. The numbered 15-value steps
+are historical, not a recipe to rerun export on an already converted host. They describe the
+original 15-value helper/inventory shipped with ADR-078. Current utilities expect all 16.
+An old 15-secret runtime has no Shared Summary key to export. Provision the new independently generated keyring using the
+separate cutover below before using current-inventory utilities. The exporter never generates
+keys and cannot recover an absent value. Preserve the original values and ordered keyrings.
+Do not rerun export on the file-backed host; follow the ADR-080 cutover section instead.
 
 1. Record the current public `/api/v1/meta` build and release manifest, database identity, current
    service health and an encrypted rollback copy of the current `.env`/deployment state. Take and
@@ -181,10 +191,69 @@ Encryption keys require their own transition/readability plan. Follow ADR-066 fo
 keyring; TOTP and Web Push storage keys require their specific migration procedures. Never replace
 one with a newly generated key as routine secret-file maintenance. Keep independently protected
 recovery copies of `AUTH_TOTP_ENCRYPTION_KEY`, the complete ordered
-`ROUTINE_INTERVIEW_ENCRYPTION_KEYS`, and `WEB_PUSH_STORAGE_KEY`, including older keys while retained
+`ROUTINE_INTERVIEW_ENCRYPTION_KEYS`, `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS`, and
+`WEB_PUSH_STORAGE_KEY`, including older keys while retained
 backups depend on them. Future application encryption keyrings follow the same rule. An approved
 password manager or encrypted offline archive is sufficient; no escrow service is part of this slice.
 
 `DEMO_ACCOUNT_PASSWORD` remains one-off operator input. It is never a long-running Compose grant;
 existing `_FILE` support can be used only when an operator explicitly mounts it for the seeding
 command. See [staging-demo-seeding.md](staging-demo-seeding.md).
+
+
+## ADR-080: one-time Shared Summary encryption cutover (separate authorization)
+
+This repository change does not provision a live key or start deployment. The currently provisioned
+host may still have 15 source files. The new manifest requires 16; preflight fails until the new
+mandatory file and pointer exist. Do not dispatch the ordinary deployment workflow prematurely.
+
+1. Record the exact current build/image/manifest, migration state and non-secret Summary counts.
+   Take a verified restorable encrypted database backup and protected rollback environment/manifest
+   copy. Generate a fresh independent ordered Fernet keyring through a protected operator process,
+   without terminal/CI output. Never reuse Django, TOTP, Web Push storage or any Routine key. Keep an
+   independently protected off-host recovery copy of the complete keyring before proceeding. A
+   Droplet-only copy or database backup is insufficient: ciphertext is unrecoverable without keys.
+2. Provision `/opt/compass/secrets/counseling_shared_summary_encryption_keys`, regular/non-symlink,
+   `0444 compass:compass`, beneath the existing `0700 compass:compass` directory, without changing
+   the other 15 values. Add exactly
+   `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS_FILE=/run/secrets/counseling_shared_summary_encryption_keys`
+   to protected `/opt/compass/.env`; remove the direct assignment. Use the new inventory/checker and
+   intended immutable image for preflight, quiet Compose validation and settings validation. The
+   declared grants are web/worker/beat only; PostgreSQL/Redis/proxy do not receive this key.
+3. Coordinate a maintenance window: stop old web, worker and Beat, drain in-flight requests/tasks,
+   and prevent old processes or scheduled/operator jobs from restarting/writing during migration.
+   The normal workflow runs candidate migrations **before** fully replacing old services. Phase B
+   removes `content`, which old code requires. Its table lock cannot make old code compatible after
+   commit. Confirm old writers remain stopped through candidate activation; maintain this downtime
+   if a workflow fails. Deploy the exact reviewed staging SHA with `--ref staging` and
+   `expected_staging_sha=<full SHA>` only after these gates.
+4. `counseling.0004_encrypt_shared_summary_content` backfills nullable ciphertext while plaintext
+   remains authoritative. `0005_remove_plaintext_shared_summary_content` locks the table, validates
+   each current plaintext body, verifies binding/schema/content of each present token, re-encrypts
+   missing or readable-but-stale tokens from the latest plaintext, and verifies again. Corrupt,
+   rebound, unsupported or invalid content aborts the atomic Phase B transaction before the column
+   drop. Only then does it remove `content`, require non-null ciphertext and add the non-empty
+   constraint. Neither migration emits Audit/notifications or changes timestamps/publication.
+5. Verify actual applied migrations, no plaintext column, non-null/non-empty ciphertext, counts,
+   all existing bodies through approved explicit reads and
+   `rotate_counseling_shared_summary_encryption --dry-run`. Verify authorized Counselor, owning
+   Student published-only and time-bounded Counseling Context reads, public build/readiness, worker
+   and Beat. Compare business metadata/content privately to pre-cutover evidence; print counts and
+   safe context only. Do not remove older recovery keys while retained backups depend on them.
+6. Controlled rollback requires the same downtime and readable keyring. With old services stopped,
+   reverse Counseling to `0003_service_name_snapshot` using the candidate image/keyring. Phase B
+   reverse restores the plaintext column from verified ciphertext in one transaction; unreadable
+   content aborts without blank restoration. Reverse Phase A removes ciphertext only after plaintext
+   has been restored. Activate the compatible previous immutable image/manifest/environment pair,
+   verify health/build, and retain the new key for encrypted backups. If verification cannot succeed,
+   use the approved tested backup recovery plan; do not launch old code against the ciphertext-only
+   schema. Restored plaintext and old backups remain sensitive and require restricted storage.
+
+For later key rotation, provision `[new_primary, previous_keys...]`, preserve its off-host recovery
+copy, recreate all granted services so they consume the new file inode, then run
+`rotate_counseling_shared_summary_encryption --dry-run --batch-size 100` and real rotation during an
+approved operation. The command verifies every selected binding/payload, rewraps only previous-key
+tokens with the original Fernet timestamp, commits bounded batches and preserves business metadata.
+A rerun resumes safely; failures remain unchanged and produce non-success with safe UUID/reason
+output. It refuses both real and dry runs while the plaintext column remains. It does not replace
+provider credentials, change Routine keys, schedule rotation or delete older keys.
