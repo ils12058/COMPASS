@@ -12,6 +12,7 @@ import { NotificationBell } from "@/features/notifications/components/notificati
 import { NotificationFreshness } from "@/features/notifications/notification-freshness";
 import { MaintenanceNotice } from "@/features/platform/maintenance-presentation";
 import { PortalNavigation } from "@/features/portal/components/portal-navigation";
+import { PortalCommandPalette } from "@/features/portal/components/portal-command-palette";
 import { PortalUserMenu } from "@/features/portal/components/portal-user-menu";
 import { cn } from "@/lib/utils/cn";
 
@@ -98,6 +99,9 @@ export function PortalShell({ children }: { children: ReactNode }) {
                 COMPASS
               </span>
             </GuardedPortalLink>
+          </div>
+          <div className="flex min-w-0 flex-1 justify-start">
+            <PortalCommandPalette />
           </div>
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <AccessibilityControl placement="header" />
