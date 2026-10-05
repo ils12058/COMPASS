@@ -39,6 +39,7 @@ from compass.good_moral.services import (
     GoodMoralConflict,
     cancel_request,
     issue_request,
+    prepare_request,
     render_certificate_pdf,
     update_request,
 )
@@ -611,6 +612,9 @@ def test_good_moral_requested_cancellation_is_retained_and_issued_remains_immuta
         render_certificate_pdf(item)
 
     issued_item = make_graduate_request(student)
+    prepare_request(
+        actor=counselor, request_id=issued_item.pk, context=appointment_context(counselor)
+    )
     issued = issue_request(
         actor=counselor,
         request_id=issued_item.pk,

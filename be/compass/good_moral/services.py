@@ -18,9 +18,11 @@ from compass.accounts.profiles import get_person_profile_context
 from compass.accounts.services import is_current_student
 from compass.audit.actions import (
     GOOD_MORAL_ISSUED,
+    GOOD_MORAL_PREPARED,
     GOOD_MORAL_REQUEST_CANCELLED,
     GOOD_MORAL_REQUEST_CREATED,
     GOOD_MORAL_REQUEST_UPDATED,
+    GOOD_MORAL_RETURNED_TO_PREPARATION,
 )
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
@@ -102,6 +104,14 @@ class GoodMoralCreationConflict(GoodMoralConflict):
     pass
 
 
+class GoodMoralNotReady(GoodMoralConflict):
+    pass
+
+
+class GoodMoralPreparationChanged(GoodMoralConflict):
+    pass
+
+
 class GoodMoralDocumentUnavailable(GoodMoralError):
     pass
 
@@ -129,6 +139,7 @@ def _queryset():
         "form_revision",
         "form_revision__family",
         "issued_by",
+        "prepared_by",
         "cancelled_by",
     )
 
@@ -151,6 +162,16 @@ def _validate_counselor(actor: User, capability: str) -> None:
         or not actor.has_capability(capability)
     ):
         raise GoodMoralNotPermitted("Authorized Counselor Good Moral access is required.")
+
+
+def _validate_operational(actor: User, capability: str) -> None:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        or not actor.has_capability(capability)
+    ):
+        raise GoodMoralNotPermitted("Authorized Guidance Good Moral access is required.")
 
 
 def _validate_idempotency_key(value: str) -> str:
@@ -461,7 +482,7 @@ def count_my_requested_requests(student: User) -> int | None:
         return None
     return GoodMoralRequest.objects.filter(
         student_id=student.pk,
-        status=GoodMoralStatus.REQUESTED,
+        status__in=(GoodMoralStatus.REQUESTED, GoodMoralStatus.READY_FOR_ISSUANCE),
     ).count()
 
 
@@ -469,11 +490,19 @@ def count_requested_requests(actor: User) -> int | None:
     if (
         not getattr(actor, "pk", None)
         or not actor.is_active
-        or actor.role.code != "COUNSELOR"
+        or actor.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
         or not actor.has_capability("good_moral.view")
     ):
         return None
     return GoodMoralRequest.objects.filter(status=GoodMoralStatus.REQUESTED).count()
+
+
+def count_ready_requests(actor: User) -> int | None:
+    try:
+        _validate_operational(actor, "good_moral.view")
+    except GoodMoralNotPermitted:
+        return None
+    return GoodMoralRequest.objects.filter(status=GoodMoralStatus.READY_FOR_ISSUANCE).count()
 
 
 def list_mine(student: User) -> tuple[GoodMoralRequest, ...]:
@@ -505,10 +534,11 @@ def list_requests(
     student_id: UUID | None = None,
     search: str | None = None,
     form_revision_id: UUID | None = None,
+    academic_year_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> GoodMoralPage:
-    _validate_counselor(actor, "good_moral.view")
+    _validate_operational(actor, "good_moral.view")
     page, page_size = _pagination(page, page_size)
     queryset = _queryset()
     revisions = represented_form_revisions(
@@ -516,6 +546,8 @@ def list_requests(
     )
     if form_revision_id is not None:
         queryset = queryset.filter(form_revision_id=form_revision_id)
+    if academic_year_id is not None:
+        queryset = queryset.filter(academic_year_id=academic_year_id)
     if variant is not None:
         if variant not in GoodMoralVariant.values:
             raise InvalidGoodMoralInput("variant is not supported.")
@@ -550,7 +582,7 @@ def list_requests(
 
 
 def get_request(*, actor: User, request_id: UUID) -> GoodMoralRequest:
-    _validate_counselor(actor, "good_moral.view")
+    _validate_operational(actor, "good_moral.view")
     item = _queryset().filter(pk=request_id).first()
     if item is None:
         raise GoodMoralNotFound("The requested Good Moral record was not found.")
@@ -581,6 +613,30 @@ GRADUATE_EDITABLE_FIELDS = frozenset(
         "official_receipt_amount",
     }
 )
+
+
+CLERICAL_FIELDS = frozenset(
+    {
+        "year_level_snapshot",
+        "course_snapshot",
+        "major_snapshot",
+        "semester_snapshot",
+        "official_receipt_number",
+        "official_receipt_date",
+        "official_receipt_amount",
+    }
+)
+
+
+def correction_fields(actor: User, item: GoodMoralRequest) -> frozenset[str]:
+    allowed = (
+        CURRENT_EDITABLE_FIELDS
+        if item.variant == GoodMoralVariant.CURRENT_STUDENT
+        else GRADUATE_EDITABLE_FIELDS
+    )
+    if actor.role.code != "COUNSELOR" or not actor.has_capability("good_moral.manage"):
+        return allowed & CLERICAL_FIELDS
+    return allowed
 
 
 def _normalize_update(field_name: str, value: object) -> object:
@@ -616,19 +672,15 @@ def update_request(
     changes: dict[str, object],
     context: AuditContext,
 ) -> GoodMoralRequest:
-    _validate_counselor(actor, "good_moral.manage")
+    _validate_operational(actor, "good_moral.prepare")
     with transaction.atomic():
         item = GoodMoralRequest.objects.select_for_update().filter(pk=request_id).first()
         if item is None:
             raise GoodMoralNotFound("The requested Good Moral record was not found.")
-        if item.status != GoodMoralStatus.REQUESTED:
-            raise GoodMoralConflict("Only a REQUESTED Good Moral request may be corrected.")
+        if item.status not in {GoodMoralStatus.REQUESTED, GoodMoralStatus.READY_FOR_ISSUANCE}:
+            raise GoodMoralConflict("Issued and cancelled Good Moral requests cannot be corrected.")
 
-        allowed = (
-            CURRENT_EDITABLE_FIELDS
-            if item.variant == GoodMoralVariant.CURRENT_STUDENT
-            else GRADUATE_EDITABLE_FIELDS
-        )
+        allowed = correction_fields(actor, item)
         unknown = set(changes) - allowed
         if unknown:
             raise InvalidGoodMoralInput(
@@ -644,7 +696,12 @@ def update_request(
 
         for name in changed:
             setattr(item, name, normalized[name])
-        item.save(update_fields=[*changed, "updated_at"])
+        returned = item.status == GoodMoralStatus.READY_FOR_ISSUANCE
+        if returned:
+            item.status = GoodMoralStatus.REQUESTED
+            item.prepared_at = None
+            item.prepared_by = None
+        item.save(update_fields=[*changed, "status", "prepared_at", "prepared_by", "updated_at"])
         record_event(
             context=context,
             action=GOOD_MORAL_REQUEST_UPDATED,
@@ -652,6 +709,58 @@ def update_request(
             target_type="goodmoral.request",
             target_id=item.pk,
             metadata={"variant": item.variant, "changed_fields": changed},
+        )
+        if returned:
+            record_event(
+                context=context,
+                action=GOOD_MORAL_RETURNED_TO_PREPARATION,
+                outcome=AuditOutcome.SUCCESS,
+                target_type="goodmoral.request",
+                target_id=item.pk,
+                metadata={"variant": item.variant, "transition": "READY_FOR_ISSUANCE -> REQUESTED"},
+            )
+        return _queryset().get(pk=item.pk)
+
+
+def prepare_request(
+    *,
+    actor: User,
+    request_id: UUID,
+    context: AuditContext,
+    expected_resource_version: str | None = None,
+    now: datetime | None = None,
+) -> GoodMoralRequest:
+    _validate_operational(actor, "good_moral.prepare")
+    prepared_at = now or timezone.now()
+    if timezone.is_naive(prepared_at):
+        raise InvalidGoodMoralInput("The preparation time must be timezone-aware.")
+    with transaction.atomic():
+        item = GoodMoralRequest.objects.select_for_update().filter(pk=request_id).first()
+        if item is None:
+            raise GoodMoralNotFound("The requested Good Moral record was not found.")
+        if (
+            expected_resource_version is not None
+            and item.updated_at.isoformat() != expected_resource_version
+        ):
+            raise GoodMoralPreparationChanged(
+                "This request changed. Review its latest details first."
+            )
+        if item.status == GoodMoralStatus.READY_FOR_ISSUANCE:
+            return _queryset().get(pk=item.pk)
+        if item.status != GoodMoralStatus.REQUESTED:
+            raise GoodMoralConflict("Only a requested Good Moral certificate can be prepared.")
+        _validate_issuance_completeness(item)
+        item.status = GoodMoralStatus.READY_FOR_ISSUANCE
+        item.prepared_by = actor
+        item.prepared_at = prepared_at
+        item.save(update_fields=["status", "prepared_by", "prepared_at", "updated_at"])
+        record_event(
+            context=context,
+            action=GOOD_MORAL_PREPARED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="goodmoral.request",
+            target_id=item.pk,
+            metadata={"variant": item.variant, "transition": "REQUESTED -> READY_FOR_ISSUANCE"},
         )
         return _queryset().get(pk=item.pk)
 
@@ -702,6 +811,7 @@ def issue_request(
     request_id: UUID,
     context: AuditContext,
     now: datetime | None = None,
+    expected_preparation_version: str | None = None,
 ) -> GoodMoralRequest:
     _validate_counselor(actor, "good_moral.issue")
     issued_at = now or timezone.now()
@@ -714,8 +824,17 @@ def issue_request(
             raise GoodMoralNotFound("The requested Good Moral record was not found.")
         if item.status == GoodMoralStatus.ISSUED:
             return _queryset().get(pk=item.pk)
-        if item.status != GoodMoralStatus.REQUESTED:
-            raise GoodMoralConflict("A CANCELLED Good Moral request cannot be issued.")
+        if item.status != GoodMoralStatus.READY_FOR_ISSUANCE:
+            raise GoodMoralNotReady(
+                "Mark this request ready after reviewing its certificate details."
+            )
+        if (
+            expected_preparation_version is not None
+            and item.prepared_at.isoformat() != expected_preparation_version
+        ):
+            raise GoodMoralPreparationChanged(
+                "This request was prepared again. Review its latest details before issuing."
+            )
 
         if item.variant == GoodMoralVariant.CURRENT_STUDENT:
             locked_student = (
@@ -781,7 +900,7 @@ def issue_request(
             target_id=item.pk,
             metadata={
                 "variant": item.variant,
-                "transition": "REQUESTED -> ISSUED",
+                "transition": "READY_FOR_ISSUANCE -> ISSUED",
                 "official_code": revision.official_code,
                 "official_revision": revision.official_revision,
                 "document_template_key": template_key,
@@ -850,9 +969,10 @@ def cancel_request(
             raise GoodMoralNotFound("The requested Good Moral record was not found.")
         if item.status == GoodMoralStatus.CANCELLED:
             return _queryset().get(pk=item.pk)
-        if item.status != GoodMoralStatus.REQUESTED:
+        if item.status not in {GoodMoralStatus.REQUESTED, GoodMoralStatus.READY_FOR_ISSUANCE}:
             raise GoodMoralConflict("An ISSUED Good Moral request cannot be cancelled.")
 
+        previous_status = item.status
         item.status = GoodMoralStatus.CANCELLED
         item.cancelled_at = cancelled_at
         item.cancelled_by = actor
@@ -874,7 +994,7 @@ def cancel_request(
             target_id=item.pk,
             metadata={
                 "variant": item.variant,
-                "transition": "REQUESTED -> CANCELLED",
+                "transition": f"{previous_status} -> CANCELLED",
                 "self_service": self_service,
             },
         )

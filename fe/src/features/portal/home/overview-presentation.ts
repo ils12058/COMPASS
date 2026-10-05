@@ -95,12 +95,12 @@ export function getOverviewMetrics(
       summary.guidance.routine_evaluation_pending_count,
       routineAccess.hasWorkspace ? PENDING_ROUTINE_EVALUATIONS : undefined,
     );
-    addMetric(
-      metrics,
-      "Good Moral requests",
-      summary.guidance.good_moral_requested_count,
-      goodMoralAccess.hasWorkspace ? REQUESTED_GOOD_MORAL : undefined,
-    );
+    if (goodMoralAccess.canViewOperational) {
+      addMetric(metrics, "Good Moral needs preparation",
+        summary.guidance.good_moral_requested_count, REQUESTED_GOOD_MORAL);
+      addMetric(metrics, "Good Moral ready for issuance",
+        summary.guidance.good_moral_ready_count, "/portal/good-moral?status=READY_FOR_ISSUANCE");
+    }
     addMetric(
       metrics,
       "Active Call Slips",

@@ -34,10 +34,11 @@ export default async function Page({
   const filters: GoodMoralOperationalFilters = {
     search: singleValue(query.search),
     formRevisionId: singleValue(query.form_revision_id),
+    academicYearId: singleValue(query.academic_year_id),
     variant: variantValue === GoodMoralVariantValue.CURRENT_STUDENT || variantValue === GoodMoralVariantValue.GRADUATE
       ? variantValue
       : "",
-    status: statusValue === GoodMoralStatusValue.REQUESTED || statusValue === GoodMoralStatusValue.ISSUED || statusValue === GoodMoralStatusValue.CANCELLED
+    status: statusValue === GoodMoralStatusValue.READY_FOR_ISSUANCE || statusValue === GoodMoralStatusValue.REQUESTED || statusValue === GoodMoralStatusValue.ISSUED || statusValue === GoodMoralStatusValue.CANCELLED
       ? statusValue
       : "",
     page: pageNumber(singleValue(query.page)),

@@ -24,6 +24,7 @@ class OverviewGuidanceSummary(StrictSchema):
     upcoming_managed_appointments_count: int | None
     routine_evaluation_pending_count: int | None
     good_moral_requested_count: int | None
+    good_moral_ready_count: int | None
     active_call_slip_count: int | None
 
 

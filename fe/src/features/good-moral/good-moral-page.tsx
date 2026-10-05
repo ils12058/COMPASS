@@ -29,7 +29,7 @@ export function GoodMoralWorkspacePage({ filters }: { filters: GoodMoralOperatio
     );
   }
 
-  if (access.isCounselor && access.hasOperationalWorkspace) {
+  if (access.hasOperationalWorkspace) {
     return <GoodMoralOperationalList filters={filters} />;
   }
 

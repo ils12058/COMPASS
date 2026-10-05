@@ -13,7 +13,11 @@ from compass.appointments.services import (
     count_upcoming_self_appointments,
 )
 from compass.call_slips.services import count_active_call_slips, count_my_active_call_slips
-from compass.good_moral.services import count_my_requested_requests, count_requested_requests
+from compass.good_moral.services import (
+    count_my_requested_requests,
+    count_ready_requests,
+    count_requested_requests,
+)
 from compass.platform_ops.email_operations import get_email_delivery_summary
 from compass.routine_interviews.services import (
     count_my_draft_intakes,
@@ -40,6 +44,7 @@ class GuidanceOverviewSummary:
     routine_evaluation_pending_count: int | None
     good_moral_requested_count: int | None
     active_call_slip_count: int | None
+    good_moral_ready_count: int | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,6 +92,7 @@ def build_overview_summary(actor: User, *, now: datetime | None = None) -> Overv
             upcoming_managed_appointments_count=None,
             routine_evaluation_pending_count=count_pending_assigned_evaluations(actor),
             good_moral_requested_count=count_requested_requests(actor),
+            good_moral_ready_count=count_ready_requests(actor),
             active_call_slip_count=count_active_call_slips(actor),
         )
     elif role == "GUIDANCE_SERVICES_STAFF":
@@ -97,7 +103,8 @@ def build_overview_summary(actor: User, *, now: datetime | None = None) -> Overv
                 now=current,
             ),
             routine_evaluation_pending_count=None,
-            good_moral_requested_count=None,
+            good_moral_requested_count=count_requested_requests(actor),
+            good_moral_ready_count=count_ready_requests(actor),
             active_call_slip_count=count_active_call_slips(actor),
         )
     elif role == "IT_ADMIN" and actor.has_capability("platform_operations.view"):

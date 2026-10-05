@@ -13,7 +13,7 @@ from compass.accounts.models import Capability, UserCapabilityOverride
 from compass.appointments.services import InvalidAppointmentInput, list_my_appointments
 from compass.availability.models import ProviderAvailabilityWindow
 from compass.counseling.services import create_encounter
-from compass.good_moral.services import issue_request
+from compass.good_moral.services import issue_request, prepare_request
 from compass.institutional_forms.models import FormRevision
 from compass.inventory.models import StudentInventory
 from compass.organization.models import AcademicYear
@@ -396,6 +396,7 @@ def test_good_moral_receipt_identity_and_revision_filters_keep_nullable_and_fami
     request = gm.make_graduate_request(student)
     pending = gm.make_graduate_request(student)
     type(request).objects.filter(pk=request.pk).update(official_receipt_number="OR 123-456")
+    prepare_request(actor=counselor, request_id=request.pk, context=gm.AuditContext.user(counselor))
     issued = issue_request(
         actor=counselor, request_id=request.pk, context=gm.AuditContext.user(counselor)
     )
@@ -403,6 +404,9 @@ def test_good_moral_receipt_identity_and_revision_filters_keep_nullable_and_fami
     type(request).objects.filter(pk=request.pk).update(form_revision=old)
     current_student = gm.make_user("current@example.edu")
     current_request, _ = gm.make_current_request(current_student)
+    prepare_request(
+        actor=counselor, request_id=current_request.pk, context=gm.AuditContext.user(counselor)
+    )
     current_issued = issue_request(
         actor=counselor, request_id=current_request.pk, context=gm.AuditContext.user(counselor)
     )

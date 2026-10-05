@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GoodMoralSection, goodMoralErrorMessage, uncertainGoodMoralMutation } from "@/features/good-moral/good-moral-shared";
 import { goodMoralUpdateRequest, getGoodMoralGetRequestQueryKey, getGoodMoralListRequestsQueryKey } from "@/lib/api/generated/good-moral/good-moral";
-import type { GoodMoralCorrectionPayload, GoodMoralDetailResponse } from "@/lib/api/generated/model";
+import type { GoodMoralCorrectionPayload, GoodMoralOperationalDetailResponse } from "@/lib/api/generated/model";
 
 type CorrectionDraft = {
   applicantName: string;
@@ -25,7 +25,7 @@ type CorrectionDraft = {
   receiptAmount: string;
 };
 
-function draftFrom(item: GoodMoralDetailResponse): CorrectionDraft {
+function draftFrom(item: GoodMoralOperationalDetailResponse): CorrectionDraft {
   return {
     applicantName: item.applicant_name,
     yearLevel: item.year_level,
@@ -41,7 +41,7 @@ function draftFrom(item: GoodMoralDetailResponse): CorrectionDraft {
   };
 }
 
-function correctionPayload(item: GoodMoralDetailResponse, draft: CorrectionDraft): GoodMoralCorrectionPayload {
+function correctionPayload(item: GoodMoralOperationalDetailResponse, draft: CorrectionDraft): GoodMoralCorrectionPayload {
   const changes: GoodMoralCorrectionPayload = {};
   const changedText = (next: string, current: string) => next.trim() !== current.trim();
 
@@ -68,6 +68,9 @@ function correctionPayload(item: GoodMoralDetailResponse, draft: CorrectionDraft
   if (draft.receiptAmount.trim() !== (item.official_receipt_amount ?? "")) {
     changes.official_receipt_amount = draft.receiptAmount.trim() || null;
   }
+  for (const field of Object.keys(changes) as (keyof GoodMoralCorrectionPayload)[]) {
+    if (!item.actions.correction_fields.includes(field)) delete changes[field];
+  }
   return changes;
 }
 
@@ -81,8 +84,8 @@ export function GoodMoralCorrectionForm({
   open,
   onClose,
 }: {
-  item: GoodMoralDetailResponse;
-  onRefresh: () => Promise<GoodMoralDetailResponse | undefined>;
+  item: GoodMoralOperationalDetailResponse;
+  onRefresh: () => Promise<GoodMoralOperationalDetailResponse | undefined>;
   open: boolean;
   onClose: () => void;
 }) {
@@ -105,7 +108,7 @@ export function GoodMoralCorrectionForm({
     setNotice(null);
   }
 
-  async function refreshCanonical(): Promise<GoodMoralDetailResponse | undefined> {
+  async function refreshCanonical(): Promise<GoodMoralOperationalDetailResponse | undefined> {
     const refreshed = await onRefresh();
     if (!refreshed) {
       setBlockedUntilRefresh(true);
@@ -166,30 +169,30 @@ export function GoodMoralCorrectionForm({
     <>
       <GoodMoralSection
         title="Correct certificate details"
-        description="Changes apply only to this Good Moral request and do not update the Student's Account, Individual Inventory, or Organization records."
+        description="Changes apply only to this certificate. Saving a change returns a ready request to preparation."
       >
         <form onSubmit={submit} aria-busy={update.isPending} className="max-w-4xl space-y-6">
           <fieldset disabled={update.isPending || blockedUntilRefresh} className="space-y-5 disabled:opacity-80">
             <section aria-labelledby="good-moral-correction-certificate-heading">
               <h3 id="good-moral-correction-certificate-heading" className="text-sm font-semibold text-ink">Certificate details</h3>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2">
+                {item.actions.correction_fields.includes("applicant_name") ? <div className="sm:col-span-2">
                   {correctionFieldLabel("applicant-name", "Applicant name", true)}
                   <Input id="good-moral-correction-applicant-name" className="mt-2" maxLength={200} value={draft.applicantName} onChange={(event) => setField("applicantName", event.target.value)} />
-                </div>
+                </div> : null}
                 {item.variant === "CURRENT_STUDENT" ? (
                   <>
                     <div>{correctionFieldLabel("year-level", "Year level")}<Input id="good-moral-correction-year-level" className="mt-2" maxLength={64} value={draft.yearLevel} onChange={(event) => setField("yearLevel", event.target.value)} /></div>
-                    <div>{correctionFieldLabel("college", "College")}<Input id="good-moral-correction-college" className="mt-2" maxLength={160} value={draft.college} onChange={(event) => setField("college", event.target.value)} /></div>
+                    {item.actions.correction_fields.includes("college") ? <div>{correctionFieldLabel("college", "College")}<Input id="good-moral-correction-college" className="mt-2" maxLength={160} value={draft.college} onChange={(event) => setField("college", event.target.value)} /></div> : null}
                     <div>{correctionFieldLabel("course", "Course")}<Input id="good-moral-correction-course" className="mt-2" maxLength={180} value={draft.course} onChange={(event) => setField("course", event.target.value)} /></div>
                     <div>{correctionFieldLabel("major", "Major")}<Input id="good-moral-correction-major" className="mt-2" maxLength={180} value={draft.major} onChange={(event) => setField("major", event.target.value)} /></div>
                     <div>{correctionFieldLabel("semester", "Semester")}<Input id="good-moral-correction-semester" className="mt-2" maxLength={80} value={draft.semester} onChange={(event) => setField("semester", event.target.value)} /></div>
                   </>
                 ) : (
                   <>
-                    <div>{correctionFieldLabel("degree", "Degree")}<Input id="good-moral-correction-degree" className="mt-2" maxLength={255} value={draft.degree} onChange={(event) => setField("degree", event.target.value)} /></div>
+                    {item.actions.correction_fields.includes("degree") ? <div>{correctionFieldLabel("degree", "Degree")}<Input id="good-moral-correction-degree" className="mt-2" maxLength={255} value={draft.degree} onChange={(event) => setField("degree", event.target.value)} /></div> : null}
                     <div>{correctionFieldLabel("major", "Major")}<Input id="good-moral-correction-major" className="mt-2" maxLength={180} value={draft.major} onChange={(event) => setField("major", event.target.value)} /></div>
-                    <div>{correctionFieldLabel("graduation-date", "Graduation date")}<Input id="good-moral-correction-graduation-date" className="mt-2" type="date" value={draft.graduationDate} onChange={(event) => setField("graduationDate", event.target.value)} /></div>
+                    {item.actions.correction_fields.includes("graduation_date") ? <div>{correctionFieldLabel("graduation-date", "Graduation date")}<Input id="good-moral-correction-graduation-date" className="mt-2" type="date" value={draft.graduationDate} onChange={(event) => setField("graduationDate", event.target.value)} /></div> : null}
                   </>
                 )}
               </div>

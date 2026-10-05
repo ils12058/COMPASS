@@ -45,6 +45,7 @@ from compass.good_moral.services import (
     get_mine,
     issue_request,
     list_mine,
+    prepare_request,
     render_certificate_pdf,
     update_request,
 )
@@ -59,6 +60,13 @@ from compass.institutional_forms.models import FormRevision
 from compass.inventory.models import StudentInventory
 from compass.notifications.models import EmailDelivery, Notification, NotificationPreference
 from compass.organization.models import AcademicYear, Campus, College, StudentAffiliation
+
+
+def prepare_and_issue(**kwargs):
+    item = GoodMoralRequest.objects.get(pk=kwargs["request_id"])
+    if item.status == GoodMoralStatus.REQUESTED:
+        prepare_request(actor=kwargs["actor"], request_id=item.pk, context=kwargs["context"])
+    return issue_request(**kwargs)
 
 
 def sync_policy() -> None:
@@ -505,7 +513,7 @@ def test_counselor_corrections_are_variant_local_private_and_locked_after_issue(
             context=AuditContext.user(counselor),
         )
 
-    issued = issue_request(
+    issued = prepare_and_issue(
         actor=counselor,
         request_id=item.pk,
         context=AuditContext.user(counselor),
@@ -529,19 +537,19 @@ def test_f4_issue_rechecks_current_lifecycle_and_duplicate_issue_is_idempotent()
     student.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
     student.save(update_fields=["student_lifecycle_status", "updated_at"])
     with pytest.raises(GoodMoralCurrentStudentRequired):
-        issue_request(
+        prepare_and_issue(
             actor=counselor,
             request_id=item.pk,
             context=AuditContext.user(counselor),
         )
     item.refresh_from_db()
-    assert item.status == GoodMoralStatus.REQUESTED
+    assert item.status == GoodMoralStatus.READY_FOR_ISSUANCE
     assert item.inventory_id == inventory.pk
     assert not AuditEvent.objects.filter(action="good_moral.issued").exists()
 
     student.student_lifecycle_status = StudentLifecycleStatus.CURRENT
     student.save(update_fields=["student_lifecycle_status", "updated_at"])
-    issued = issue_request(
+    issued = prepare_and_issue(
         actor=counselor,
         request_id=item.pk,
         context=AuditContext.user(counselor),
@@ -590,7 +598,7 @@ def test_f4_issue_rechecks_current_lifecycle_and_duplicate_issue_is_idempotent()
     assert EmailDelivery.objects.filter(notification=issued_notification).exists()
     assert EmailDelivery.objects.filter(notification=feedback_notification).exists()
 
-    repeated = issue_request(
+    repeated = prepare_and_issue(
         actor=counselor,
         request_id=item.pk,
         context=AuditContext.user(counselor),
@@ -643,7 +651,7 @@ def test_feedback_invitation_email_respects_optional_preference_but_issuance_ema
     item, _inventory = make_current_request(student)
     NotificationPreference.objects.create(user=student, optional_email_enabled=False)
 
-    issue_request(
+    prepare_and_issue(
         actor=counselor,
         request_id=item.pk,
         context=AuditContext.user(counselor),
@@ -691,13 +699,13 @@ def test_good_moral_issuance_requires_active_supported_variant_revision():
     )
 
     with pytest.raises(GoodMoralConfigurationConflict):
-        issue_request(
+        prepare_and_issue(
             actor=counselor,
             request_id=item.pk,
             context=AuditContext.user(counselor),
         )
     item.refresh_from_db()
-    assert item.status == GoodMoralStatus.REQUESTED
+    assert item.status == GoodMoralStatus.READY_FOR_ISSUANCE
     assert item.form_revision_id is None
 
 
@@ -717,12 +725,15 @@ def test_issue_api_requires_counselor_capability_but_not_step_up():
         designation=Designation.objects.get(code="DPO"),
     )
     item = make_graduate_request(student)
+    item = prepare_request(
+        actor=counselor, request_id=item.pk, context=AuditContext.user(counselor)
+    )
 
     for user in (student, gss, admin, dpo):
         client = auth_client(user, recent_mfa=True)
         denied = client.post(
             f"/api/v1/good-moral/requests/{item.pk}/issue",
-            data=json.dumps({}),
+            data=json.dumps({"expected_preparation_version": item.prepared_at.isoformat()}),
             content_type="application/json",
             **csrf(client),
         )
@@ -733,7 +744,7 @@ def test_issue_api_requires_counselor_capability_but_not_step_up():
     without_step_up = auth_client(counselor)
     issued = without_step_up.post(
         f"/api/v1/good-moral/requests/{item.pk}/issue",
-        data=json.dumps({}),
+        data=json.dumps({"expected_preparation_version": item.prepared_at.isoformat()}),
         content_type="application/json",
         **csrf(without_step_up),
     )
@@ -747,7 +758,7 @@ def test_saved_render_provenance_drives_html_after_current_data_and_revision_cha
     student = make_user("render.student@example.edu")
     counselor = make_user("render.counselor@example.edu", role="COUNSELOR")
     item, inventory = make_current_request(student)
-    issued = issue_request(
+    issued = prepare_and_issue(
         actor=counselor,
         request_id=item.pk,
         context=AuditContext.user(counselor),
@@ -870,7 +881,7 @@ def test_f4_render_uses_full_labels_and_fragments_without_changing_snapshots(
         semester=semester,
         context=AuditContext.user(student),
     )
-    issued = issue_request(
+    issued = prepare_and_issue(
         actor=counselor,
         request_id=item.pk,
         context=AuditContext.user(counselor),
@@ -924,7 +935,7 @@ def test_pdf_endpoints_require_issued_state_and_use_safe_pdf_response(monkeypatc
     pending = client.get(f"/api/v1/good-moral/me/{item.pk}/pdf")
     assert pending.status_code == 409
 
-    issued = issue_request(
+    issued = prepare_and_issue(
         actor=counselor,
         request_id=item.pk,
         context=AuditContext.user(counselor),
@@ -971,7 +982,7 @@ def test_saved_missing_template_fails_closed_instead_of_switching_versions():
     )
     counselor = make_user("template.counselor@example.edu", role="COUNSELOR")
     item = make_graduate_request(student)
-    issued = issue_request(
+    issued = prepare_and_issue(
         actor=counselor,
         request_id=item.pk,
         context=AuditContext.user(counselor),
@@ -997,7 +1008,7 @@ def test_real_chromium_smoke_renders_issued_graduate_certificate():
     )
     counselor = make_user("chromium.counselor@example.edu", role="COUNSELOR")
     item = make_graduate_request(student)
-    issued = issue_request(
+    issued = prepare_and_issue(
         actor=counselor,
         request_id=item.pk,
         context=AuditContext.user(counselor),
@@ -1455,7 +1466,7 @@ def test_create_replay_returns_current_cancelled_and_issued_resource_state():
     )
     assert created_issued.status_code == 201
     issued_id = created_issued.json()["id"]
-    issue_request(
+    prepare_and_issue(
         actor=counselor,
         request_id=uuid.UUID(issued_id),
         context=AuditContext.user(counselor),
@@ -1616,7 +1627,7 @@ def test_historical_null_creation_identity_rows_keep_existing_workflows(monkeypa
         major_snapshot="",
         graduation_date=date(2026, 6, 30),
     )
-    issued = issue_request(
+    issued = prepare_and_issue(
         actor=counselor,
         request_id=issuable.pk,
         context=AuditContext.user(counselor),

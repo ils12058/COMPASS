@@ -485,6 +485,7 @@ def test_guidance_overview_preserves_counselor_gss_and_head_scope() -> None:
         "upcoming_managed_appointments_count": None,
         "routine_evaluation_pending_count": 1,
         "good_moral_requested_count": 1,
+        "good_moral_ready_count": 0,
         "active_call_slip_count": 1,
     }
 
@@ -493,7 +494,8 @@ def test_guidance_overview_preserves_counselor_gss_and_head_scope() -> None:
         "upcoming_self_appointments_count": None,
         "upcoming_managed_appointments_count": 2,
         "routine_evaluation_pending_count": None,
-        "good_moral_requested_count": None,
+        "good_moral_requested_count": 1,
+        "good_moral_ready_count": 0,
         "active_call_slip_count": 1,
     }
 

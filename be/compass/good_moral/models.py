@@ -21,6 +21,7 @@ class GoodMoralVariant(models.TextChoices):
 
 class GoodMoralStatus(models.TextChoices):
     REQUESTED = "REQUESTED", "Requested"
+    READY_FOR_ISSUANCE = "READY_FOR_ISSUANCE", "Ready for issuance"
     ISSUED = "ISSUED", "Issued"
     CANCELLED = "CANCELLED", "Cancelled"
 
@@ -34,7 +35,7 @@ class GoodMoralRequest(models.Model):
     )
     variant = models.CharField(max_length=24, choices=GoodMoralVariant.choices)
     status = models.CharField(
-        max_length=16,
+        max_length=24,
         choices=GoodMoralStatus.choices,
         default=GoodMoralStatus.REQUESTED,
     )
@@ -82,6 +83,14 @@ class GoodMoralRequest(models.Model):
         validators=[MinValueValidator(Decimal("0.00"))],
     )
 
+    prepared_at = models.DateTimeField(null=True, blank=True)
+    prepared_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="prepared_good_moral_requests",
+        null=True,
+        blank=True,
+    )
     issued_at = models.DateTimeField(null=True, blank=True)
     issued_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -125,6 +134,24 @@ class GoodMoralRequest(models.Model):
         constraints = [
             models.CheckConstraint(
                 condition=(
+                    (
+                        models.Q(prepared_at__isnull=True, prepared_by__isnull=True)
+                        & ~models.Q(status=GoodMoralStatus.READY_FOR_ISSUANCE)
+                    )
+                    | models.Q(
+                        status__in=(
+                            GoodMoralStatus.READY_FOR_ISSUANCE,
+                            GoodMoralStatus.ISSUED,
+                            GoodMoralStatus.CANCELLED,
+                        ),
+                        prepared_at__isnull=False,
+                        prepared_by__isnull=False,
+                    )
+                ),
+                name="good_moral_preparation_shape",
+            ),
+            models.CheckConstraint(
+                condition=(
                     models.Q(
                         variant=GoodMoralVariant.CURRENT_STUDENT,
                         inventory__isnull=False,
@@ -147,7 +174,11 @@ class GoodMoralRequest(models.Model):
             models.CheckConstraint(
                 condition=(
                     models.Q(
-                        status__in=(GoodMoralStatus.REQUESTED, GoodMoralStatus.CANCELLED),
+                        status__in=(
+                            GoodMoralStatus.REQUESTED,
+                            GoodMoralStatus.READY_FOR_ISSUANCE,
+                            GoodMoralStatus.CANCELLED,
+                        ),
                         form_revision__isnull=True,
                         issued_at__isnull=True,
                         issued_by__isnull=True,
@@ -172,7 +203,11 @@ class GoodMoralRequest(models.Model):
             models.CheckConstraint(
                 condition=(
                     models.Q(
-                        status__in=(GoodMoralStatus.REQUESTED, GoodMoralStatus.ISSUED),
+                        status__in=(
+                            GoodMoralStatus.REQUESTED,
+                            GoodMoralStatus.READY_FOR_ISSUANCE,
+                            GoodMoralStatus.ISSUED,
+                        ),
                         cancelled_at__isnull=True,
                         cancellation_reason="",
                     )

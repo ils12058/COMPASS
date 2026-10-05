@@ -10,6 +10,7 @@ import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { GoodMoralCancelAction } from "@/features/good-moral/good-moral-cancellation-action";
 import { GoodMoralCorrectionForm } from "@/features/good-moral/good-moral-correction-form";
+import { GoodMoralPreparationSection } from "@/features/good-moral/good-moral-preparation-section";
 import { GoodMoralIssueSection } from "@/features/good-moral/good-moral-issue-section";
 import { GoodMoralPdfDownload } from "@/features/good-moral/good-moral-pdf";
 import {
@@ -37,10 +38,12 @@ export function GoodMoralCounselorDetail({
   requestId,
   canManage,
   canIssue,
+  canPrepare,
 }: {
   requestId: string;
   canManage: boolean;
   canIssue: boolean;
+  canPrepare: boolean;
 }) {
   const detail = useGoodMoralGetRequest(requestId, { query: { retry: false } });
   const confirmed = safeQueryData(detail);
@@ -70,6 +73,7 @@ export function GoodMoralCounselorDetail({
     { label: "Institutional ID", value: shown(item.student_institutional_id) },
     { label: "Current Student account", value: shown(item.student.display_name) },
     { label: "Requested", value: formatGoodMoralDateTime(item.created_at) },
+    ...(item.prepared_at ? [{ label: "Prepared by", value: item.prepared_by?.display_name ?? "Not recorded" }, { label: "Prepared at", value: formatGoodMoralDateTime(item.prepared_at) }] : []),
     ...(item.issued_at ? [{ label: "Issued", value: formatGoodMoralDateTime(item.issued_at) }] : []),
     ...(item.cancelled_at ? [{ label: "Cancelled", value: formatGoodMoralDateTime(item.cancelled_at) }] : []),
   ];
@@ -127,8 +131,8 @@ export function GoodMoralCounselorDetail({
         </PanelSection>
       </Panel>
 
-      {item.status === "REQUESTED" && canManage && !detail.isError ? (
-        correctionOpen ? (
+      {((item.actions.can_correct && canPrepare) || (item.actions.can_cancel && canManage)) && !detail.isError ? (
+        correctionOpen && item.actions.can_correct && canPrepare ? (
           <>
             <GoodMoralCorrectionForm
               item={item}
@@ -137,20 +141,22 @@ export function GoodMoralCounselorDetail({
               onClose={() => setCorrectionOpen(false)}
             />
             <GoodMoralSection title="Request actions">
-              <GoodMoralCancelAction requestId={item.id} studentFacing={false} onRefresh={refresh} />
+              {canManage && item.actions.can_cancel ? <GoodMoralCancelAction requestId={item.id} studentFacing={false} onRefresh={refresh} /> : null}
             </GoodMoralSection>
           </>
         ) : (
           <GoodMoralSection title="Request actions">
             <div className="flex flex-wrap gap-3">
-              <Button variant="secondary" onClick={() => setCorrectionOpen(true)}>Correct certificate details</Button>
-              <GoodMoralCancelAction requestId={item.id} studentFacing={false} onRefresh={refresh} />
+              {item.actions.can_correct && canPrepare ? <Button variant="secondary" onClick={() => setCorrectionOpen(true)}>Correct certificate details</Button> : null}
+              {canManage && item.actions.can_cancel ? <GoodMoralCancelAction requestId={item.id} studentFacing={false} onRefresh={refresh} /> : null}
             </div>
           </GoodMoralSection>
         )
       ) : null}
 
-      {item.status === "REQUESTED" && canIssue && !detail.isError ? <GoodMoralIssueSection item={item} onRefresh={refresh} /> : null}
+      {canPrepare && (item.status === "REQUESTED" || item.status === "READY_FOR_ISSUANCE") && !detail.isError && !correctionOpen ? <GoodMoralPreparationSection item={item} onRefresh={refresh} /> : null}
+
+      {item.actions.can_issue && canIssue && !detail.isError ? <GoodMoralIssueSection item={item} onRefresh={refresh} /> : null}
 
       {item.status === "ISSUED" ? (
         <GoodMoralSection title="Certificate issuance">
@@ -162,7 +168,7 @@ export function GoodMoralCounselorDetail({
             <GoodMoralField label="Official revision" value={item.form_revision?.official_revision ? `Revision ${item.form_revision.official_revision}` : null} />
           </dl>
           <div className="mt-5 border-t border-border pt-4">
-            <GoodMoralPdfDownload requestId={item.id} studentFacing={false} />
+            {item.actions.can_download && !detail.isError ? <GoodMoralPdfDownload requestId={item.id} studentFacing={false} /> : null}
           </div>
         </GoodMoralSection>
       ) : null}

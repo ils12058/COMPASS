@@ -7,23 +7,24 @@ import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { GoodMoralField, GoodMoralSection, formatGoodMoralDate, goodMoralErrorCode, goodMoralErrorMessage, uncertainGoodMoralMutation } from "@/features/good-moral/good-moral-shared";
 import { goodMoralIssueRequest, getGoodMoralGetRequestQueryKey, getGoodMoralListRequestsQueryKey } from "@/lib/api/generated/good-moral/good-moral";
-import type { GoodMoralDetailResponse } from "@/lib/api/generated/model";
+import type { GoodMoralOperationalDetailResponse } from "@/lib/api/generated/model";
 
 export function GoodMoralIssueSection({
   item,
   onRefresh,
 }: {
-  item: GoodMoralDetailResponse;
-  onRefresh: () => Promise<GoodMoralDetailResponse | undefined>;
+  item: GoodMoralOperationalDetailResponse;
+  onRefresh: () => Promise<GoodMoralOperationalDetailResponse | undefined>;
 }) {
   const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reviewedPreparedAt, setReviewedPreparedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [blockedUntilRefresh, setBlockedUntilRefresh] = useState(false);
   // Covers the whole confirmation, including the refresh after the request succeeds.
   const [issuing, setIssuing] = useState(false);
-  const issue = useMutation({ mutationFn: () => goodMoralIssueRequest(item.id), retry: false });
+  const issue = useMutation({ mutationFn: () => goodMoralIssueRequest(item.id, { expected_preparation_version: reviewedPreparedAt ?? "" }), retry: false });
   const issuePending = issue.isPending || issuing;
 
   async function invalidate() {
@@ -36,12 +37,15 @@ export function GoodMoralIssueSection({
   // Issuance is protected by the good_moral.issue capability, this confirmation, and the recorded
   // issuer; it does not need an authenticator step-up.
   function beginIssue() {
+    if (!item.actions.preparation_version || !item.actions.can_issue) return;
+    setReviewedPreparedAt(item.actions.preparation_version);
     setError(null);
     setNotice(null);
     setConfirmOpen(true);
   }
 
   async function confirmIssue() {
+    if (!reviewedPreparedAt) return;
     setError(null);
     setNotice(null);
     setIssuing(true);
@@ -53,6 +57,12 @@ export function GoodMoralIssueSection({
       setNotice("Good Moral certificate issued.");
     } catch (caught) {
       const code = goodMoralErrorCode(caught);
+      if (code === "good_moral_preparation_changed" || code === "good_moral_not_ready") {
+        setConfirmOpen(false);
+        await onRefresh();
+        setError(goodMoralErrorMessage(caught, "Review the latest certificate details."));
+        return;
+      }
       if (code === "current_student_required") {
         await onRefresh();
         setConfirmOpen(false);
@@ -67,9 +77,9 @@ export function GoodMoralIssueSection({
           await invalidate();
           setError(null);
           setNotice("Good Moral certificate issued.");
-        } else if (refreshed?.status === "REQUESTED") {
+        } else if (refreshed?.status === "READY_FOR_ISSUANCE") {
           setBlockedUntilRefresh(false);
-          setError("Issuance could not be confirmed. The request is still Requested; review the certificate details before deliberately trying again.");
+          setError("Issuance could not be confirmed. The request is still ready for issuance; review the certificate details before deliberately trying again.");
         } else {
           setBlockedUntilRefresh(true);
           setError("Issuance could not be confirmed and the request could not be refreshed. Do not retry until its current state can be checked.");
@@ -89,10 +99,10 @@ export function GoodMoralIssueSection({
       await invalidate();
       setError(null);
       setNotice("Good Moral certificate issued.");
-    } else if (refreshed?.status === "REQUESTED") {
+    } else if (refreshed?.status === "READY_FOR_ISSUANCE") {
       setBlockedUntilRefresh(false);
       setError(null);
-      setNotice("The request is still Requested. Review the current certificate details before deciding whether to issue it.");
+      setNotice("The request is still ready for issuance. Review the current certificate details before deciding whether to issue it.");
     } else if (refreshed?.status === "CANCELLED") {
       setBlockedUntilRefresh(false);
       setError("This request was cancelled and cannot be issued.");

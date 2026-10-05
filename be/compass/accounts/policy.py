@@ -372,6 +372,11 @@ CAPABILITY_DEFINITIONS = (
         description="Correct certificate-local Good Moral request facts before issuance.",
     ),
     CapabilityDefinition(
+        code="good_moral.prepare",
+        name="Prepare Good Moral requests",
+        description="Correct clerical certificate facts and mark Good Moral requests ready.",
+    ),
+    CapabilityDefinition(
         code="good_moral.issue",
         name="Issue Good Moral certificates",
         description="Issue source-controlled Good Moral certificates as an authorized Counselor.",
@@ -513,6 +518,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "call_slips.manage",
             "good_moral.view",
             "good_moral.manage",
+            "good_moral.prepare",
             "good_moral.issue",
             "announcements.manage",
             "resources.manage",
@@ -525,6 +531,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
         {
             "accounts.view",
             "organization.structure.view",
+            "academic_years.view",
+            "institutional_forms.view",
             "services.catalog.view",
             "availability.view",
             "appointments.view_self",
@@ -533,6 +541,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "referrals.manage",
             "call_slips.view",
             "call_slips.manage",
+            "good_moral.view",
+            "good_moral.prepare",
             "announcements.manage",
             "resources.manage",
         }
@@ -621,6 +631,7 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "graduate_tracer.manage_self": frozenset({"graduate_tracer.view_self"}),
     "good_moral.request_self": frozenset({"good_moral.view_self"}),
     "good_moral.manage": frozenset({"good_moral.view"}),
+    "good_moral.prepare": frozenset({"good_moral.view"}),
     "good_moral.issue": frozenset({"good_moral.view"}),
     "counseling.manage_assigned": frozenset({"counseling.view_assigned"}),
     "referrals.manage": frozenset({"referrals.view"}),

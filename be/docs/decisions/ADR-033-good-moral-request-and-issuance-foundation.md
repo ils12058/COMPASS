@@ -2,6 +2,10 @@
 
 ## Status
 
+Operational delegation and pre-issuance readiness are refined by
+[ADR-076](ADR-076-guidance-staff-good-moral-preparation.md). The historical
+Counselor-only preparation decision below is preserved as the original foundation.
+
 Accepted for the Good Moral foundation.
 
 ## Context

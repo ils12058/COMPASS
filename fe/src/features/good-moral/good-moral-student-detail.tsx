@@ -122,7 +122,7 @@ export function GoodMoralStudentDetail({
         </GoodMoralSection>
       ) : null}
 
-      {item.status === "REQUESTED" && canCancel && !detail.isError ? (
+      {(item.status === "REQUESTED" || item.status === "READY_FOR_ISSUANCE") && canCancel && !detail.isError ? (
         <GoodMoralSection title="Request actions">
           <GoodMoralCancelAction requestId={item.id} studentFacing onRefresh={refresh} />
         </GoodMoralSection>

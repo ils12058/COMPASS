@@ -17,11 +17,11 @@ export function GoodMoralDetailPage({ requestId }: { requestId: string }) {
     return <GoodMoralStudentDetail requestId={requestId} canCancel={access.canRequestSelf} />;
   }
 
-  if (access.isCounselor) {
+  if (access.hasOperationalWorkspace) {
     if (!access.canViewOperational) {
       return <GoodMoralUnavailable title="Request unavailable" message="This Good Moral request is unavailable to you." />;
     }
-    return <GoodMoralCounselorDetail requestId={requestId} canManage={access.canManageOperational} canIssue={access.canIssue} />;
+    return <GoodMoralCounselorDetail requestId={requestId} canManage={access.canManageOperational} canIssue={access.canIssue} canPrepare={access.canPrepare} />;
   }
 
   return <GoodMoralUnavailable title="Request unavailable" message="Good Moral request details are unavailable to this account." />;
