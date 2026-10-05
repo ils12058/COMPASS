@@ -1,6 +1,7 @@
 .DS_Store
 .env
 **/.env
+be/secrets/
 **/.venv/
 **/__pycache__/
 **/*.py[cod]
