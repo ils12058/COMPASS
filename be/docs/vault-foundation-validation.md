@@ -87,15 +87,33 @@ All fixture credentials and keys were synthetic. Local disposable service fixtur
 up/stopped; existing local application services were not changed. Logs and manual smoke scripts
 are local evidence under `/Users/reynantlntno/.codex/artifacts/vault-secrets-foundation/`.
 
+## Read-only live host inspection
+
+DigitalOcean `doctl` inventory and pinned SSH inspection on 2026-10-05 verified:
+
+- Droplet `602091909`, `compass-staging-api-01`, active in Singapore; 2 vCPUs / 4 GB RAM / 80 GB disk.
+- Guest OS Ubuntu 24.04.4 LTS (Noble), x86_64; Python 3.12.3.
+- Guest snapshot: 3.8 GiB RAM total / 2.4 GiB available; root filesystem 77 GiB total / 25 GiB
+  available; no swap. These measurements do not establish capacity under future Vault load.
+- No Vault executable/package found; both planned Vault systemd units report `not-found`.
+- All six COMPASS containers running; web/proxy/PostgreSQL/Redis healthy.
+- `/opt/compass/.env` mode 0600 and ownership `compass:compass`; its contents were not read.
+- Deployment user `compass` could not execute `sudo -n true`; the tested local bootstrap SSH key was
+  refused for root. Administrator access remains an installation prerequisite.
+- The first timeout matched an SSH firewall /32 allowlist excluding the current client IP.
+  Temporary current-client TCP 22 access was removed after inspection; the original rules were
+  verified restored. Public TCP 8200/8201 remain unallowed.
+
+No package, application configuration, runtime value, container, or Vault data was changed.
+
 ## Live steps still required
 
-The attempted read-only Droplet SSH connection timed out; OS, installed Vault, host systemd,
-live runtime values, certificate trust, capacity and operational service state are unverified.
-Nothing was installed or migrated on the Droplet. The new manifest/workflow requires provisioning
-before deployment. Do not treat merge or synthetic validation as a completed live cutover.
+Vault TLS/Agent health, live value equality, encrypted-data readability, backups and live cutover
+remain unverified. The new manifest/workflow requires provisioning before deployment. Do not
+treat merge or synthetic validation as a completed live cutover.
 
-The operator must verify OS/version/capacity/swap and sudo/SSH; take verified PostgreSQL and
-encrypted off-host configuration/key recovery backups; install the approved Community package;
+The operator must establish administrator access and recheck OS/version/capacity/swap; take
+verified PostgreSQL and encrypted off-host configuration/key recovery backups; install the approved Community package;
 install host identities/TLS/Raft/units; initialize with off-host share custody; unseal and enable
 KV/audit; establish human/runtime identities and revoke root; export/import exact current values;
 start Agent; compare every rendered value; convert protected `.env` to pointers/remove direct

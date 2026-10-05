@@ -17,11 +17,23 @@ Do not generate replacement application keys, rotate, or re-encrypt. Only infras
 Vault identities are new. Ordinary configuration/public material stays outside Vault. GitHub
 DigitalOcean/SSH deployment credentials stay in Actions Secrets; frontend needs no integration.
 
-The implementation's read-only SSH connection timed out. **Actual Droplet OS and installed Vault
-version remain unverified.** Before installation record `cat /etc/os-release`, `uname -m`,
-`vault version` if installed, `free -h`, `df -h`, and `swapon --show`. Confirm sudo and pinned SSH
-trust. Do not assume Ubuntu 20.04. Take a PostgreSQL backup and a verified, encrypted, off-host
-operator recovery copy of the original `.env`; never print/upload it. Keep live `.env` mode 0600.
+Read-only DigitalOcean inventory and pinned SSH inspection on 2026-10-05 confirmed Droplet
+`602091909` (`compass-staging-api-01`, Singapore), **Ubuntu 24.04.4 LTS (Noble), x86_64**, and
+Python 3.12.3. Its plan has 2 vCPUs, 4 GB RAM and an 80 GB disk. The guest snapshot showed
+3.8 GiB RAM total / 2.4 GiB available, 25 GiB available on the 77 GiB root filesystem, and no
+swap. No Vault executable/package was found; `vault.service` and `vault-agent.service` were
+not found. All six COMPASS containers were running; web, proxy, PostgreSQL and Redis were healthy.
+The protected `/opt/compass/.env` remained mode 0600, owned by `compass:compass`; its contents
+were not read. These are inspection-time observations, not a Vault installation or capacity guarantee.
+
+The initial SSH timeout matched the current client IP being outside the firewall's SSH allowlist.
+Temporary current-client /32 access to TCP 22 enabled inspection and was removed afterward;
+the original firewall was verified restored, with no public 8200/8201 rule. The deployment user
+`compass` could not execute `sudo -n true`, and the tested local bootstrap key could not log in as root.
+**Establish an authorized administrator session before installation.** Recheck `cat /etc/os-release`,
+`uname -m`, `vault version` if installed, `free -h`, `df -h`, and `swapon --show` at execution time.
+Take a PostgreSQL backup and a verified, encrypted, off-host operator recovery copy of the original
+`.env`; never print/upload it. Keep live `.env` mode 0600.
 
 Build/deploy code support first using the previous manifest if necessary. The **new manifest is
 file-only**; its workflow refuses to deploy until Vault is provisioned, unsealed, rendered, compared,
