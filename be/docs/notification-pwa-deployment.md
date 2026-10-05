@@ -4,7 +4,10 @@
 
 Apply the notifications migration before enabling Web Push. Keep the existing PostgreSQL, Redis, Celery worker and Beat topology; Beat dispatches due push deliveries every 60 seconds. No Caddy or Gunicorn streaming change is required because foreground freshness uses short requests. The DigitalOcean staging Droplet currently has two synchronous WSGI workers; capacity test the 8-second visible-client refresh rate before expanding usage.
 
-Set these in the backend deployment's protected `.env` (and production equivalent):
+Keep public/configuration values in the backend deployment's protected `.env`. Live staging uses
+[Vault Agent file delivery](vault-live-staging.md) for `WEB_PUSH_PRIVATE_KEY_FILE` and
+`WEB_PUSH_STORAGE_KEY_FILE`; preserve both existing values and the public VAPID pair during cutover.
+For a new initial setup, configure these values through the appropriate secret source:
 
 - `WEB_PUSH_ENABLED=true` only after keys and migration are ready.
 - `WEB_PUSH_PUBLIC_KEY`: URL-safe base64 P-256 VAPID public key for `PushManager.subscribe`.

@@ -52,3 +52,25 @@ def test_required_env_rejects_an_unreadable_secret_file_without_exposing_path(
         required_env("COMPASS_TEST_SECRET")
 
     assert str(secret_path) not in str(exc.value)
+
+
+@pytest.mark.parametrize("content", [b"", b"\r\n", b"\xff\xfe"])
+def test_required_file_rejects_empty_or_invalid_utf8(tmp_path, monkeypatch, content):
+    secret_path = tmp_path / "private-file"
+    secret_path.write_bytes(content)
+    monkeypatch.delenv("COMPASS_TEST_SECRET", raising=False)
+    monkeypatch.setenv("COMPASS_TEST_SECRET_FILE", str(secret_path))
+    with pytest.raises(ValueError) as exc:
+        required_env("COMPASS_TEST_SECRET")
+    assert str(exc.value) in {
+        "COMPASS_TEST_SECRET is required",
+        "COMPASS_TEST_SECRET_FILE could not be read",
+    }
+    assert str(secret_path) not in str(exc.value)
+
+
+def test_file_failure_never_uses_default(tmp_path, monkeypatch):
+    monkeypatch.delenv("COMPASS_TEST_SECRET", raising=False)
+    monkeypatch.setenv("COMPASS_TEST_SECRET_FILE", str(tmp_path / "missing"))
+    with pytest.raises(ValueError, match="COMPASS_TEST_SECRET_FILE could not be read"):
+        env("COMPASS_TEST_SECRET", "fallback-must-not-be-used")
