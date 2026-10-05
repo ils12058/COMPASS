@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { EncounterCorrectionForm } from "@/features/counseling/encounter-correction-form";
@@ -35,14 +36,14 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
 
   if (!access.isCounselor || !access.canViewAssigned) return <CounselingUnavailable title="Encounter unavailable" />;
   if (query.isPending) return <EncounterDetailSkeleton />;
-  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My Counseling Encounters</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "This counseling encounter is unavailable to this account.")} onRetry={() => void query.refetch()} /></>;
+  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "This counseling encounter is unavailable to this account.")} onRetry={() => void query.refetch()} /></>;
 
   return (
     <article>
       <CounselingPageHeading
         title="Counseling Encounter"
         description={`${encounter.student.display_name} · ${counselingEntryModeLabel(encounter.entry_mode)}`}
-        action={<Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My Counseling Encounters</Link>}
+        back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>}
       />
 
       <Panel aria-labelledby="encounter-details-heading">

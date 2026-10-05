@@ -1,8 +1,10 @@
 "use client";
 
+import { ListChecks } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { PageActionLink } from "@/components/ui/page-action";
 import {
   Panel,
   PanelBody,
@@ -25,7 +27,6 @@ import {
   PrivacyListSkeleton,
   PrivacyQueryError,
   textLinkClass,
-  secondaryLinkClass,
 } from "../privacy-governance-shared";
 import {
   usePrivacyGovernanceListDispositionCases,
@@ -76,12 +77,12 @@ export function RetentionPage() {
       <PrivacyPageHeader
         title="Retention & Disposition"
         action={
-          <Link
+          <PageActionLink
             href="/portal/privacy/retention/rules"
-            className={secondaryLinkClass}
-          >
-            Retention rules
-          </Link>
+            icon={ListChecks}
+            variant="secondary"
+            label="Retention rules"
+          />
         }
       />
       <Panel className="mb-5">

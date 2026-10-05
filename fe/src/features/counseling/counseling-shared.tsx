@@ -76,12 +76,15 @@ export function CounselingPageHeading({
   title,
   description,
   action,
+  back,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  // A "Back to …" text link, styled with pageBackLinkClass.
+  back?: ReactNode;
 }) {
-  return <PageHeader title={title} description={description} actions={action} />;
+  return <PageHeader title={title} description={description} back={back} actions={action} />;
 }
 export function CounselingUnavailable({
   title = "Counseling unavailable",
