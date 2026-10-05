@@ -23,6 +23,8 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
+from compass.institutional_forms.filter_options import represented_form_revisions
+from compass.institutional_forms.models import FormRevision
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     UnsupportedInstitutionalFormRevision,
@@ -111,6 +113,7 @@ class CallSlipPage:
     page: int
     page_size: int
     has_next: bool
+    form_revisions: tuple[FormRevision, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -344,11 +347,15 @@ def _apply_state_filter(queryset, state: str | CallSlipLifecycleState | None):
     raise InvalidCallSlipInput("state must be ACTIVE, COMPLETED, or VOIDED.")
 
 
-def _page(queryset, *, page: int, page_size: int) -> CallSlipPage:
+def _page(
+    queryset, *, page: int, page_size: int, form_revisions: tuple[FormRevision, ...] = ()
+) -> CallSlipPage:
     page, page_size = _pagination(page, page_size)
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
-    return CallSlipPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
+    return CallSlipPage(
+        tuple(rows[:page_size]), page, page_size, len(rows) > page_size, form_revisions
+    )
 
 
 def _active_call_slip_revision():
@@ -767,11 +774,15 @@ def list_call_slips(
     to_date: date | None = None,
     include_voided: bool = False,
     state: str | CallSlipLifecycleState | None = None,
+    form_revision_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> CallSlipPage:
     _validate_operational_actor(actor)
     qs = _scope_queryset(_queryset(), actor)
+    revisions = represented_form_revisions(qs, family_keys=("call_slip",))
+    if form_revision_id is not None:
+        qs = qs.filter(form_revision_id=form_revision_id)
     if state is not None:
         # An explicit lifecycle state is authoritative over the legacy include_voided toggle.
         qs = _apply_state_filter(qs, state)
@@ -805,6 +816,7 @@ def list_call_slips(
         qs.order_by("-report_at", "-created_at", "id"),
         page=page,
         page_size=page_size,
+        form_revisions=revisions,
     )
 
 

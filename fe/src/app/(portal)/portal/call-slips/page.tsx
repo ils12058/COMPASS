@@ -35,6 +35,7 @@ export default async function Page({
   const toDate = singleValue(query.to_date);
   const operationalFilters: CallSlipListFilters = {
     search: singleValue(query.search),
+    formRevisionId: singleValue(query.form_revision_id),
     destination,
     fromDate,
     toDate,

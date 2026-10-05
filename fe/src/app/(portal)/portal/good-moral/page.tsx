@@ -33,6 +33,7 @@ export default async function Page({
   const statusValue = singleValue(query.status);
   const filters: GoodMoralOperationalFilters = {
     search: singleValue(query.search),
+    formRevisionId: singleValue(query.form_revision_id),
     variant: variantValue === GoodMoralVariantValue.CURRENT_STUDENT || variantValue === GoodMoralVariantValue.GRADUATE
       ? variantValue
       : "",

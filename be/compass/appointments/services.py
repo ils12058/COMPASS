@@ -383,6 +383,7 @@ def list_my_appointments(
     status: str | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
+    search: str | None = None,
     upcoming: bool = False,
     ordering: str | AppointmentListOrdering = AppointmentListOrdering.START_DESC,
     page: int = DEFAULT_PAGE_SIZE // DEFAULT_PAGE_SIZE,
@@ -398,6 +399,14 @@ def list_my_appointments(
         qs = qs.filter(provider_id=actor.pk)
     else:
         qs = qs.none()
+    if search is not None:
+        if not isinstance(search, str):
+            raise InvalidAppointmentInput("search must be text")
+        term = search.strip()
+        if len(term) > MAX_SEARCH_LENGTH:
+            raise InvalidAppointmentInput(f"search must be at most {MAX_SEARCH_LENGTH} characters")
+        if term:
+            qs = qs.filter(reference_code__icontains=term)
     if normalized_status is not None:
         qs = qs.filter(status=normalized_status)
     qs = _apply_upcoming_filter(qs, upcoming=upcoming, now=now)

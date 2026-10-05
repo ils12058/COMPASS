@@ -25,6 +25,7 @@ export default async function Page({
   const query = await searchParams;
   const filters: ReferralListFilters = {
     search: singleValue(query.search),
+    formRevisionId: singleValue(query.form_revision_id),
     fromDate: singleValue(query.from_date),
     toDate: singleValue(query.to_date),
     includeVoided: singleValue(query.include_voided) === "true",

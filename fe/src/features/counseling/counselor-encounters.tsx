@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
 import { FilterField } from "@/components/ui/filter-toolbar";
-import { FloatingListTools } from "@/components/ui/floating-list-tools";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
 import { PageAction } from "@/components/ui/page-action";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -61,9 +61,11 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
   const fromDate = searchParams.get("from_date") ?? "";
   const toDate = searchParams.get("to_date") ?? "";
   const page = positivePage(searchParams.get("page"));
-  const hasFilters = Boolean(entryMode || deliveryMode || fromDate || toDate);
+  const search = searchParams.get("search") ?? "";
+  const hasFilters = Boolean(search || entryMode || deliveryMode || fromDate || toDate);
   const encounters = useCounselingListMyEncounters(
     {
+      ...(search ? { search } : {}),
       ...(entryMode ? { entry_mode: entryMode } : {}),
       ...(deliveryMode ? { delivery_mode: deliveryMode } : {}),
       ...(fromDate ? { from_date: fromDate } : {}),
@@ -74,10 +76,6 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
     { query: { enabled: access.canViewAssigned, retry: false } },
   );
   const items = encounters.data?.data.items ?? [];
-
-  function setFilter(name: string, value: string) {
-    router.replace(updateQuery(pathname, new URLSearchParams(searchParams.toString()), name, value), { scroll: false });
-  }
 
   return (
     <div>
@@ -103,20 +101,24 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
       {recordOpen ? <RecordEncounterForm onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} /> : null}
 
       <section id="encounters" aria-labelledby="my-counseling-encounters-heading" className={recordOpen ? "mt-5" : undefined}>
-          {/* Selects and dates only, so each choice applies as soon as it changes. The tools step
-              aside while an encounter is being recorded, so they never sit over that form. */}
+          {/* The collection tools step aside while an encounter is being recorded. */}
           {recordOpen ? null : (
+          <form action={pathname} method="get" key={searchParams.toString()} role="search" aria-label="Counseling encounters">
           <FloatingListTools
+            submits
             label="Counseling encounter filters"
             filterCount={[entryMode, deliveryMode, fromDate, toDate].filter(Boolean).length}
             clear={hasFilters ? <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>Clear filters</Button> : undefined}
             filters={<>
-            <FilterField label="Origin" htmlFor="counseling-entry-filter"><Select id="counseling-entry-filter" value={entryMode ?? "ALL"} onChange={(event) => setFilter("entry_mode", event.target.value === "ALL" ? "" : event.target.value)}><option value="ALL">All origins</option><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></Select></FilterField>
-            <FilterField label="Delivery mode" htmlFor="counseling-delivery-filter"><Select id="counseling-delivery-filter" value={deliveryMode ?? "ALL"} onChange={(event) => setFilter("delivery_mode", event.target.value === "ALL" ? "" : event.target.value)}><option value="ALL">All delivery modes</option><option value="IN_PERSON">In person</option><option value="ONLINE">Online</option></Select></FilterField>
-            <FilterField label="From date" htmlFor="counseling-from-date"><Input id="counseling-from-date" type="date" value={fromDate} onChange={(event) => setFilter("from_date", event.target.value)} /></FilterField>
-            <FilterField label="To date" htmlFor="counseling-to-date"><Input id="counseling-to-date" type="date" value={toDate} onChange={(event) => setFilter("to_date", event.target.value)} /></FilterField>
+            <FilterField label="Origin" htmlFor="counseling-entry-filter"><Select id="counseling-entry-filter" name="entry_mode" defaultValue={entryMode ?? ""}><option value="">All origins</option><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></Select></FilterField>
+            <FilterField label="Delivery mode" htmlFor="counseling-delivery-filter"><Select id="counseling-delivery-filter" name="delivery_mode" defaultValue={deliveryMode ?? ""}><option value="">All delivery modes</option><option value="IN_PERSON">In person</option><option value="ONLINE">Online</option></Select></FilterField>
+            <FilterField label="From date" htmlFor="counseling-from-date"><Input id="counseling-from-date" type="date" name="from_date" defaultValue={fromDate} /></FilterField>
+            <FilterField label="To date" htmlFor="counseling-to-date"><Input id="counseling-to-date" type="date" name="to_date" defaultValue={toDate} /></FilterField>
             </>}
-          />
+          >
+            <ListSearchField id="encounter-search" name="search" label="Search Student name, Institutional ID, or Appointment reference" placeholder="Search Student name, Institutional ID, or Appointment reference" defaultValue={search} maxLength={160} />
+          </FloatingListTools>
+          </form>
           )}
 
           <Panel as="div">
@@ -147,7 +149,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
                   <tbody className={dataTable.body}>
                     {items.map((encounter) => (
                       <tr key={encounter.id} className={dataTable.row}>
-                        <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} min-w-48 font-normal`}><Link href={`/portal/counseling/encounters/${encounter.id}`} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.student.display_name}</Link><span className="mt-1 block text-xs text-muted">View encounter</span></th>
+                        <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} min-w-48 font-normal`}><Link href={`/portal/counseling/encounters/${encounter.id}`} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.student.display_name}</Link>{encounter.student.institutional_id ? <span className="mt-1 block text-xs text-muted">{encounter.student.institutional_id}</span> : null}</th>
                         <td className={dataTable.cell}>{counselingEntryModeLabel(encounter.entry_mode)}</td>
                         <td className={dataTable.cell}>{counselingDeliveryModeLabel(encounter.delivery_mode)}</td>
                         <td className={dataTable.cell}>{formatCounselingDateTime(encounter.started_at)}</td>

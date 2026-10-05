@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
 import { FilterField } from "@/components/ui/filter-toolbar";
-import { FloatingListTools } from "@/components/ui/floating-list-tools";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
@@ -64,9 +64,11 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
     ? orderingParam
     : AppointmentListOrdering.START_ASC;
   const page = pageValue(searchParams.get("page"));
+  const search = searchParams.get("search") ?? "";
 
   const list = useAppointmentsListMy(
     {
+      ...(search ? { search } : {}),
       ...(status ? { status } : {}),
       ...(upcoming ? { upcoming: true } : {}),
       ...(fromDate ? { from_date: fromDate } : {}),
@@ -77,17 +79,6 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
     },
     { query: { retry: false } },
   );
-
-  function updateFilter(name: string, value: string) {
-    router.replace(
-      updateAppointmentQuery(
-        pathname,
-        new URLSearchParams(searchParams.toString()),
-        { [name]: value },
-      ),
-      { scroll: false },
-    );
-  }
 
   function movePage(nextPage: number) {
     router.push(
@@ -103,7 +94,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
 
   const pageData = list.data?.data;
   const items = pageData?.items ?? [];
-  const filtering = Boolean(fromDate || toDate || (statusParam !== null && statusParam !== "ALL"));
+  const filtering = Boolean(search || ordering !== AppointmentListOrdering.START_ASC || fromDate || toDate || (statusParam !== null && statusParam !== "ALL"));
   // Status and Order count only when they differ from the list's defaults.
   const filterCount = [
     status !== AppointmentStatus.SCHEDULED,
@@ -114,7 +105,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
   const clearHref = updateAppointmentQuery(
     pathname,
     new URLSearchParams(searchParams.toString()),
-    { status: "ALL", from: "", to: "" },
+    { search: "", status: "ALL", from: "", to: "", ordering: "" },
   );
 
   return (
@@ -130,8 +121,9 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
         }
       />
 
-      {/* No free-text search here, so each choice applies as soon as it changes. */}
+      <form action={pathname} method="get" key={searchParams.toString()} role="search" aria-label="My Appointments">
       <FloatingListTools
+        submits
         label="Appointment filters"
         filterCount={filterCount}
         clear={filtering ? (
@@ -143,8 +135,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
         <FilterField label="Status" htmlFor="my-appointment-status">
           <Select
             id="my-appointment-status"
-            value={upcoming ? UPCOMING_APPOINTMENTS_VIEW : status ?? "ALL"}
-            onChange={(event) => updateFilter("status", event.target.value)}
+            name="status" defaultValue={upcoming ? UPCOMING_APPOINTMENTS_VIEW : status ?? "ALL"}
           >
             <option value={AppointmentStatus.SCHEDULED}>Scheduled</option>
             <option value={UPCOMING_APPOINTMENTS_VIEW}>Upcoming (not yet started)</option>
@@ -158,30 +149,30 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
           <Input
             id="my-appointment-from"
             type="date"
-            value={fromDate}
-            onChange={(event) => updateFilter("from", event.target.value)}
+            name="from" defaultValue={fromDate}
           />
         </FilterField>
         <FilterField label="To date" htmlFor="my-appointment-to">
           <Input
             id="my-appointment-to"
             type="date"
-            value={toDate}
-            onChange={(event) => updateFilter("to", event.target.value)}
+            name="to" defaultValue={toDate}
           />
         </FilterField>
         <FilterField label="Order" htmlFor="my-appointment-order">
           <Select
             id="my-appointment-order"
-            value={ordering}
-            onChange={(event) => updateFilter("ordering", event.target.value)}
+            name="ordering" defaultValue={ordering}
           >
             <option value={AppointmentListOrdering.START_ASC}>Earliest start first</option>
             <option value={AppointmentListOrdering.START_DESC}>Latest start first</option>
           </Select>
         </FilterField>
         </>}
-      />
+      >
+        <ListSearchField id="my-appointment-search" name="search" label="Search by Appointment reference" placeholder="Search by Appointment reference" defaultValue={search} maxLength={160} />
+      </FloatingListTools>
+      </form>
 
       <Panel aria-labelledby="my-appointments-results-heading">
         <PanelHeader
@@ -217,7 +208,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
           </PanelMessage>
         ) : items.length === 0 ? (
           <PanelMessage
-            action={status !== undefined || upcoming || fromDate || toDate ? (
+            action={filtering || status !== undefined || upcoming ? (
               <Link
                 href={clearHref}
                 className={buttonVariants({ variant: "secondary" })}

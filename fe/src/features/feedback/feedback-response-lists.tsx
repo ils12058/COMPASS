@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { dataTable } from "@/components/ui/data-table";
+import { FormRevisionFilter } from "@/features/institutional-forms/form-revision-filter";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -74,10 +75,11 @@ export function CustomerFeedbackResponseList() {
   const searchParams = useSearchParams();
   const params = new URLSearchParams(searchParams.toString());
   const search = (params.get("search") ?? "").trim();
+  const formRevisionId = params.get("form_revision_id") ?? "";
   const serviceParam = params.get("service") ?? "";
   const service = Object.values(CustomerFeedbackServiceValue).includes(serviceParam as CustomerFeedbackServiceValue) ? serviceParam as CustomerFeedbackServiceValue : undefined;
   const page = getPage(params);
-  const list = useFeedbackListCustomerFeedbackResponses({ ...(search ? { search } : {}), ...(service ? { service } : {}), ...(params.get("submitted_from") ? { submitted_from: params.get("submitted_from")! } : {}), ...(params.get("submitted_to") ? { submitted_to: params.get("submitted_to")! } : {}), page, page_size: 25 }, { query: { retry: false, enabled: access.canViewCustomerFeedback } });
+  const list = useFeedbackListCustomerFeedbackResponses({ ...(formRevisionId ? { form_revision_id: formRevisionId } : {}), ...(search ? { search } : {}), ...(service ? { service } : {}), ...(params.get("submitted_from") ? { submitted_from: params.get("submitted_from")! } : {}), ...(params.get("submitted_to") ? { submitted_to: params.get("submitted_to")! } : {}), page, page_size: 25 }, { query: { retry: false, enabled: access.canViewCustomerFeedback } });
 
   if (!access.canViewCustomerFeedback) return <FeedbackAccessUnavailable title="Customer Feedback responses unavailable" />;
 
@@ -92,7 +94,7 @@ export function CustomerFeedbackResponseList() {
     }
     setFilterError(null);
     const next = new URLSearchParams();
-    for (const key of ["search", "service", "submitted_from", "submitted_to"]) {
+    for (const key of ["search", "service", "submitted_from", "submitted_to", "form_revision_id"]) {
       const value = String(data.get(key) ?? "").trim();
       if (value) next.set(key, value);
     }
@@ -105,7 +107,7 @@ export function CustomerFeedbackResponseList() {
     router.push(pathname);
   }
 
-  const hasFilters = Boolean(search || service || params.get("submitted_from") || params.get("submitted_to"));
+  const hasFilters = Boolean(formRevisionId || search || service || params.get("submitted_from") || params.get("submitted_to"));
   const rows = safeQueryData(list)?.data;
 
   return (
@@ -115,10 +117,11 @@ export function CustomerFeedbackResponseList() {
         <FloatingListTools
           submits
           invalid={Boolean(filterError)}
-          filterCount={[service, params.get("submitted_from"), params.get("submitted_to")].filter(Boolean).length}
+          filterCount={[formRevisionId, service, params.get("submitted_from"), params.get("submitted_to")].filter(Boolean).length}
           clear={hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : undefined}
           filters={<>
             <FilterField label="Service" htmlFor="feedback-service-filter" className="sm:col-span-2"><Select id="feedback-service-filter" name="service" defaultValue={service ?? ""}><option value="">All services</option>{feedbackServices.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></FilterField>
+            <FormRevisionFilter id="feedback-revision" selectedId={formRevisionId} defaultValue={formRevisionId} options={rows?.filter_options.form_revisions} />
             <DateRangeFilters searchParams={params} />
             {filterError ? <p role="alert" className="text-sm text-danger sm:col-span-full">{filterError}</p> : null}
           </>}

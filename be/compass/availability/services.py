@@ -248,6 +248,25 @@ def _validate_provider_for_new_configuration(provider: User) -> None:
         )
 
 
+def _directory_provider_queryset():
+    legacy_gss = Q(role__code="GUIDANCE_SERVICES_STAFF") & (
+        Q(availability_windows__isnull=False) | Q(unavailability_exceptions__isnull=False)
+    )
+    return (
+        User.objects.select_related("role")
+        .filter(Q(role__code="COUNSELOR") | legacy_gss)
+        .distinct()
+        .order_by("last_name", "first_name", "id")
+    )
+
+
+def get_availability_provider(provider_id: UUID) -> User:
+    provider = _directory_provider_queryset().filter(pk=provider_id).first()
+    if provider is None:
+        raise AvailabilityNotFound("The requested provider was not found.")
+    return provider
+
+
 def list_availability_providers(
     *,
     search: str | None = None,
@@ -265,18 +284,13 @@ def list_availability_providers(
             raise InvalidAvailabilityInput("search must be text")
         term = search.strip()[:254]
 
-    legacy_gss = Q(role__code="GUIDANCE_SERVICES_STAFF") & (
-        Q(availability_windows__isnull=False) | Q(unavailability_exceptions__isnull=False)
-    )
-    queryset = (
-        User.objects.select_related("role")
-        .filter(Q(role__code="COUNSELOR") | legacy_gss)
-        .distinct()
-        .order_by("last_name", "first_name", "id")
-    )
-    if term:
+    queryset = _directory_provider_queryset()
+    for token in term.split():
         queryset = queryset.filter(
-            Q(first_name__icontains=term) | Q(last_name__icontains=term) | Q(email__icontains=term)
+            Q(first_name__icontains=token)
+            | Q(middle_name__icontains=token)
+            | Q(last_name__icontains=token)
+            | Q(email__icontains=token)
         )
 
     offset = (page - 1) * page_size

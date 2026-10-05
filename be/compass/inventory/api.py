@@ -17,6 +17,10 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.documents.filenames import institutional_pdf_content_disposition
+from compass.institutional_forms.filter_options import (
+    CollectionFilterOptions,
+    project_filter_options,
+)
 from compass.privacy_governance.releases import (
     ReleaseAuditUnavailable,
     record_individual_inventory_release,
@@ -553,6 +557,7 @@ class CounselorInventoryRosterPage(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    filter_options: CollectionFilterOptions
 
 
 class CounselorInventoryHistoryItem(StrictSchema):
@@ -1148,6 +1153,7 @@ def inventory_list_students(
     year_level: int | None = None,
     search: str | None = None,
     student_id: UUID | None = None,
+    form_revision_id: UUID | None = None,
     page: int = 1,
     page_size: int = 20,
 ):
@@ -1162,6 +1168,7 @@ def inventory_list_students(
             year_level=year_level,
             search=search,
             student_id=student_id,
+            form_revision_id=form_revision_id,
             page=page,
             page_size=page_size,
         )
@@ -1172,6 +1179,7 @@ def inventory_list_students(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "filter_options": project_filter_options(result.form_revisions),
     }
 
 

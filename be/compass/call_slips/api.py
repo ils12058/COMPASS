@@ -17,6 +17,10 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
 from compass.documents.filenames import institutional_pdf_content_disposition
+from compass.institutional_forms.filter_options import (
+    CollectionFilterOptions,
+    project_filter_options,
+)
 from compass.privacy_governance.releases import (
     ReleaseAuditUnavailable,
     record_call_slip_release,
@@ -193,6 +197,7 @@ class CallSlipOperationalPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    filter_options: CollectionFilterOptions
 
 
 def _context(request) -> AuditContext:
@@ -475,6 +480,7 @@ def call_slips_list(
     to_date: date | None = None,
     include_voided: bool = False,
     state: CallSlipLifecycleStateValue | None = None,
+    form_revision_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -491,6 +497,7 @@ def call_slips_list(
             to_date=to_date,
             include_voided=include_voided,
             state=state.value if state is not None else None,
+            form_revision_id=form_revision_id,
             page=page,
             page_size=page_size,
         )
@@ -501,6 +508,7 @@ def call_slips_list(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "filter_options": project_filter_options(result.form_revisions),
     }
 
 

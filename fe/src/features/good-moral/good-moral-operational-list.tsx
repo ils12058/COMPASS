@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
+import { FormRevisionFilter } from "@/features/institutional-forms/form-revision-filter";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -19,6 +20,7 @@ import { GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated
 
 export type GoodMoralOperationalFilters = {
   search: string;
+  formRevisionId: string;
   variant: GoodMoralVariantValue | "";
   status: GoodMoralStatusValue | "";
   page: number;
@@ -27,6 +29,7 @@ export type GoodMoralOperationalFilters = {
 
 function pageHref(filters: GoodMoralOperationalFilters, page: number): string {
   const params = new URLSearchParams();
+  if (filters.formRevisionId) params.set("form_revision_id", filters.formRevisionId);
   if (filters.search) params.set("search", filters.search);
   if (filters.variant) params.set("variant", filters.variant);
   if (filters.status) params.set("status", filters.status);
@@ -39,6 +42,7 @@ function pageHref(filters: GoodMoralOperationalFilters, page: number): string {
 export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperationalFilters }) {
   const params = {
     ...(filters.search ? { search: filters.search } : {}),
+      ...(filters.formRevisionId ? { form_revision_id: filters.formRevisionId } : {}),
     ...(filters.variant ? { variant: filters.variant } : {}),
     ...(filters.status ? { status: filters.status } : {}),
     page: filters.page,
@@ -47,7 +51,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
   const router = useRouter();
   const queue = useGoodMoralListRequests(params, { query: { retry: false } });
   const page = safeQueryData(queue)?.data;
-  const hasFilters = Boolean(filters.search || filters.variant || filters.status);
+  const hasFilters = Boolean(filters.formRevisionId || filters.search || filters.variant || filters.status);
 
   const resultContext = page
     ? describeResultPage({
@@ -58,7 +62,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
         filtered: hasFilters,
       })
     : null;
-  const clearHref = pageHref({ ...filters, search: "", variant: "", status: "" }, 1);
+  const clearHref = pageHref({ ...filters, search: "", formRevisionId: "", variant: "", status: "" }, 1);
 
   return (
     <section className="space-y-5" aria-labelledby="good-moral-operational-heading">
@@ -68,9 +72,10 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
         {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
         <FloatingListTools
           submits
-          filterCount={[filters.variant, filters.status].filter(Boolean).length}
+          filterCount={[filters.formRevisionId, filters.variant, filters.status].filter(Boolean).length}
           clear={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
           filters={<>
+          <FormRevisionFilter id="good-moral-revision" selectedId={filters.formRevisionId} defaultValue={filters.formRevisionId} options={page?.filter_options.form_revisions} />
           <FilterField label="Variant" htmlFor="good-moral-variant">
             <Select id="good-moral-variant" name="variant" defaultValue={filters.variant}>
               <option value="">All variants</option>
@@ -88,7 +93,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
           </FilterField>
           </>}
         >
-          <ListSearchField id="good-moral-search" name="search" label="Search Student name or Institutional ID" placeholder="Search Student name or Institutional ID" defaultValue={filters.search} />
+          <ListSearchField id="good-moral-search" name="search" label="Search Student name, Institutional ID, or Official Receipt number" placeholder="Search Student name, Institutional ID, or Official Receipt number" defaultValue={filters.search} maxLength={160} />
         </FloatingListTools>
       </form>
       {queue.isError && page ? <RefreshFailureNotice onRetry={() => void queue.refetch()} retrying={queue.isFetching} /> : null}
@@ -132,6 +137,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
                         {item.applicant_name || "Applicant name not provided"}
                       </Link>
                       {item.student_institutional_id ? <span className="mt-1 block text-xs font-normal text-muted">{item.student_institutional_id}</span> : null}
+                      {item.official_receipt_number ? <span className="mt-1 block text-xs font-normal text-muted">OR {item.official_receipt_number}</span> : null}
                     </th>
                     <td className={`${dataTable.cell} text-muted`}>{goodMoralVariantLabel(item.variant)}</td>
                     <td className={dataTable.cell}><GoodMoralStatus status={item.status} /></td>

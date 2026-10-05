@@ -10,7 +10,7 @@ from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -24,6 +24,8 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.institutional_forms.filter_options import represented_form_revisions
+from compass.institutional_forms.models import FormRevision
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     require_active_supported_form_revision,
@@ -220,6 +222,7 @@ class InventoryRosterPage:
     page: int
     page_size: int
     has_next: bool
+    form_revisions: tuple[FormRevision, ...] = ()
 
 
 SCALAR_FIELDS = (
@@ -1338,6 +1341,7 @@ def list_inventory_students(
     year_level: int | None = None,
     search: str | None = None,
     student_id: UUID | None = None,
+    form_revision_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> InventoryRosterPage:
@@ -1363,8 +1367,28 @@ def list_inventory_students(
             "Historical MISSING coverage cannot be reconstructed from authoritative COMPASS data."
         )
 
+    scoped_students = _scoped_students(actor)
     if year.is_current:
-        queryset = _scoped_students(actor).filter(student_lifecycle_status="CURRENT")
+        scoped_students = scoped_students.filter(student_lifecycle_status="CURRENT")
+    authorized_inventories = _inventory_queryset().filter(
+        academic_year_id=year.pk, student_id__in=scoped_students.values("pk")
+    )
+    revisions = represented_form_revisions(
+        authorized_inventories, family_keys=("individual_inventory",)
+    )
+
+    if year.is_current:
+        queryset = scoped_students
+        if form_revision_id is not None:
+            queryset = queryset.filter(
+                Exists(
+                    StudentInventory.objects.filter(
+                        student_id=OuterRef("pk"),
+                        academic_year_id=year.pk,
+                        form_revision_id=form_revision_id,
+                    )
+                )
+            )
         if student_id is not None:
             queryset = queryset.filter(pk=student_id)
         if college_id is not None:
@@ -1415,13 +1439,11 @@ def list_inventory_students(
             InventoryRosterRow(student, year, inventory_by_student.get(student.pk))
             for student in selected
         )
-        return InventoryRosterPage(rows, page, page_size, len(students) > page_size)
+        return InventoryRosterPage(rows, page, page_size, len(students) > page_size, revisions)
 
-    scoped_student_ids = _scoped_students(actor).values("pk")
-    queryset = _inventory_queryset().filter(
-        academic_year_id=year.pk,
-        student_id__in=scoped_student_ids,
-    )
+    queryset = authorized_inventories
+    if form_revision_id is not None:
+        queryset = queryset.filter(form_revision_id=form_revision_id)
     if student_id is not None:
         queryset = queryset.filter(student_id=student_id)
     if college_id is not None:
@@ -1439,7 +1461,7 @@ def list_inventory_students(
     offset = (page - 1) * page_size
     items = list(queryset[offset : offset + page_size + 1])
     rows = tuple(InventoryRosterRow(item.student, year, item) for item in items[:page_size])
-    return InventoryRosterPage(rows, page, page_size, len(items) > page_size)
+    return InventoryRosterPage(rows, page, page_size, len(items) > page_size, revisions)
 
 
 def get_inventory_for_counselor(*, actor: User, inventory_id: UUID) -> StudentInventory:

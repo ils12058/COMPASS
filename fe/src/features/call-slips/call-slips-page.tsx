@@ -9,6 +9,7 @@ import { useState, type FormEvent } from "react";
 import { PageActionLink } from "@/components/ui/page-action";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
+import { FormRevisionFilter } from "@/features/institutional-forms/form-revision-filter";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export type CallSlipListFilters = {
   search: string;
+  formRevisionId: string;
   destination: "" | CallSlipDestinationType;
   fromDate: string;
   toDate: string;
@@ -50,6 +52,7 @@ function lifecycleStateFrom(value: string): "" | CallSlipLifecycleStateValue {
 
 function operationalFiltersToUrl(filters: CallSlipListFilters): string {
   const params = new URLSearchParams();
+  if (filters.formRevisionId) params.set("form_revision_id", filters.formRevisionId);
   if (filters.search.trim()) params.set("search", filters.search.trim());
   if (filters.destination) params.set("destination", filters.destination);
   if (filters.fromDate) params.set("from_date", filters.fromDate);
@@ -201,6 +204,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
   const slips = useCallSlipsList(
     {
       ...(filters.search ? { search: filters.search } : {}),
+      ...(filters.formRevisionId ? { form_revision_id: filters.formRevisionId } : {}),
       ...(filters.destination ? { destination_type: filters.destination } : {}),
       ...(filters.fromDate ? { from_date: filters.fromDate } : {}),
       ...(filters.toDate ? { to_date: filters.toDate } : {}),
@@ -224,8 +228,8 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
   const effectiveFilters = access.canManageOperational
     ? filters
     : { ...filters, includeVoided: false, state: effectiveState(filters, false) };
-  const hasFilters = Boolean(effectiveFilters.search || effectiveFilters.destination || effectiveFilters.fromDate || effectiveFilters.toDate || effectiveFilters.includeVoided || effectiveFilters.state || effectiveFilters.page > 1);
-  const advancedCount = [effectiveFilters.destination, effectiveFilters.state, effectiveFilters.fromDate, effectiveFilters.toDate, effectiveFilters.includeVoided].filter(Boolean).length;
+  const hasFilters = Boolean(effectiveFilters.formRevisionId || effectiveFilters.search || effectiveFilters.destination || effectiveFilters.fromDate || effectiveFilters.toDate || effectiveFilters.includeVoided || effectiveFilters.state || effectiveFilters.page > 1);
+  const advancedCount = [effectiveFilters.formRevisionId, effectiveFilters.destination, effectiveFilters.state, effectiveFilters.fromDate, effectiveFilters.toDate, effectiveFilters.includeVoided].filter(Boolean).length;
   const draftRangeInvalid = Boolean(draft.fromDate && draft.toDate && draft.fromDate > draft.toDate);
 
   return (
@@ -242,6 +246,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
           clear={hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
           filters={
             <>
+          <FormRevisionFilter id="call-slips-revision" selectedId={draft.formRevisionId} value={draft.formRevisionId} options={data?.filter_options.form_revisions} onChange={(event) => setDraft({ ...draft, formRevisionId: event.target.value })} />
           <FilterField label="Destination" htmlFor="call-slips-destination">
             <Select id="call-slips-destination" value={draft.destination} onChange={(event) => setDraft({ ...draft, destination: event.target.value as CallSlipListFilters["destination"] })}>
               <option value="">All destinations</option>

@@ -25,6 +25,10 @@ from compass.common.idempotency import (
     abandon_after_unexpected_failure,
     request_fingerprint,
 )
+from compass.institutional_forms.filter_options import (
+    CollectionFilterOptions,
+    project_filter_options,
+)
 
 from .models import (
     CSMCC1,
@@ -222,6 +226,7 @@ class CustomerFeedbackPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    filter_options: CollectionFilterOptions
 
 
 class CSMSubmitRequest(StrictSchema):
@@ -598,6 +603,7 @@ def feedback_list_customer_feedback_responses(
     service: CustomerFeedbackServiceValue | None = None,
     submitted_from: date | None = None,
     submitted_to: date | None = None,
+    form_revision_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -609,6 +615,7 @@ def feedback_list_customer_feedback_responses(
             service=service.value if service is not None else None,
             submitted_from=submitted_from,
             submitted_to=submitted_to,
+            form_revision_id=form_revision_id,
             page=page,
             page_size=page_size,
         )
@@ -619,6 +626,7 @@ def feedback_list_customer_feedback_responses(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "filter_options": project_filter_options(result.form_revisions),
     }
 
 
