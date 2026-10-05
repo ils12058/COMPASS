@@ -22,6 +22,7 @@ from compass.student_support.services import StudentSupportContext, build_studen
 
 from .context_access import CounselingContextAccess
 from .models import CounselingSharedSummary
+from .shared_summary_content import read_shared_summary_content
 
 
 @dataclass(frozen=True, slots=True)
@@ -391,7 +392,7 @@ def list_context_shared_summaries(
     return tuple(
         CounselingContextSharedSummary(
             id=item.pk,
-            content=item.content,
+            content=read_shared_summary_content(item),
             published_at=item.published_at,
             counseling_ended_at=item.encounter.ended_at,
             counselor_id=item.encounter.counselor_id,

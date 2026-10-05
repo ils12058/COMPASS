@@ -19,6 +19,7 @@ SECRET_FILES = {
     "PSGC_API_TOKEN": "psgc_api_token",
     "AUTH_TOTP_ENCRYPTION_KEY": "auth_totp_encryption_key",
     "ROUTINE_INTERVIEW_ENCRYPTION_KEYS": "routine_interview_encryption_keys",
+    "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS": "counseling_shared_summary_encryption_keys",
     "WEB_PUSH_PRIVATE_KEY": "web_push_private_key",
     "WEB_PUSH_STORAGE_KEY": "web_push_storage_key",
 }
@@ -30,6 +31,7 @@ REQUIRED_SECRETS = {
     "S3_SECRET_ACCESS_KEY",
     "AUTH_TOTP_ENCRYPTION_KEY",
     "ROUTINE_INTERVIEW_ENCRYPTION_KEYS",
+    "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS",
 }
 URL_SETTINGS = (
     "REDIS_URL",

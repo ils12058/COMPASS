@@ -22,7 +22,7 @@ from compass.routine_interviews.api import RoutineEvaluationStatus, RoutineIntak
 from compass.service_catalog.api import DeliveryMode
 from compass.student_support.services import StudentSupportConfigurationConflict
 
-from .api import CounselingEntryMode
+from .api import CounselingEntryMode, _raise
 from .context_access import (
     CounselingContextNotFound,
     CounselingContextSource,
@@ -35,6 +35,7 @@ from .context_services import (
     list_context_history,
     list_context_shared_summaries,
 )
+from .shared_summary_content import CounselingSharedSummaryContentUnavailable
 
 router = Router(tags=["counseling"])
 
@@ -406,7 +407,10 @@ def counseling_context_list_shared_summaries(
 ):
     bounded_limit = _validate_limit(limit)
     access = _resolve(request, anchor_type, anchor_id)
-    items = list_context_shared_summaries(access, limit=bounded_limit)
+    try:
+        items = list_context_shared_summaries(access, limit=bounded_limit)
+    except CounselingSharedSummaryContentUnavailable as exc:
+        _raise(exc)
     return {
         "items": [
             {

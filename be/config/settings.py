@@ -427,6 +427,23 @@ if WEB_PUSH_ENABLED:
             raise ValueError("VAPID key mismatch")
     except Exception as exc:
         raise ValueError("WEB_PUSH_PUBLIC_KEY and WEB_PUSH_PRIVATE_KEY must match") from exc
+# Shared Summary bodies have a separate required ordered keyring (ADR-080), even locally.
+COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS = parse_fernet_keyring(
+    required_env("COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS"),
+    setting="COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS",
+)
+if keyring_reuses_secret(
+    COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS,
+    SECRET_KEY,
+    AUTH_TOTP_ENCRYPTION_KEY,
+    WEB_PUSH_STORAGE_KEY,
+    *ROUTINE_INTERVIEW_ENCRYPTION_KEYS,
+):
+    raise ValueError(
+        "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS must not reuse SECRET_KEY, "
+        "AUTH_TOTP_ENCRYPTION_KEY, WEB_PUSH_STORAGE_KEY or ROUTINE_INTERVIEW_ENCRYPTION_KEYS"
+    )
+
 if not 1 <= NOTIFICATION_EMAIL_MAX_ATTEMPTS <= 20:
     raise ValueError("NOTIFICATION_EMAIL_MAX_ATTEMPTS must be between 1 and 20")
 if not 1 <= NOTIFICATION_EMAIL_RETRY_BASE_SECONDS <= 3_600:

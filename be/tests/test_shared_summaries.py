@@ -22,6 +22,7 @@ from compass.counseling.shared_summaries import (
     publish_assigned_shared_summary,
     put_assigned_shared_summary,
 )
+from compass.counseling.shared_summary_content import read_shared_summary_content
 from compass.inventory.services import (
     ensure_current_inventory,
     replace_current_inventory,
@@ -122,13 +123,15 @@ def test_shared_summary_model_one_per_encounter_protect_and_draft_put_is_stable(
     )
 
     assert first.pk == second.pk
-    assert second.content == "Revised draft"
+    assert read_shared_summary_content(second) == "Revised draft"
     assert second.published_at is None
     assert CounselingSharedSummary.objects.filter(encounter=encounter).count() == 1
 
     with pytest.raises(IntegrityError):
         with transaction.atomic():
-            CounselingSharedSummary.objects.create(encounter=encounter, content="Duplicate")
+            CounselingSharedSummary.objects.create(
+                encounter=encounter, content_ciphertext=second.content_ciphertext
+            )
 
     with pytest.raises(ProtectedError):
         encounter.delete()

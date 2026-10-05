@@ -34,6 +34,7 @@ _TEST_ENV = {
     "API_DOCS_ENABLED": "true",
     # Ephemeral per test process; never a deployment key.
     "ROUTINE_INTERVIEW_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
+    "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
 }
 
 for _name, _value in _TEST_ENV.items():

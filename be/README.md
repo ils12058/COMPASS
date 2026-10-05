@@ -47,7 +47,7 @@ Prerequisites: Podman, `podman-compose` (or a compatible `podman compose` provid
 ```sh
 cd /Users/reynantlntno/Projects/COMPASS/be
 cp .env.example .env
-# Set ROUTINE_INTERVIEW_ENCRYPTION_KEYS in .env first; see "Routine Interview content encryption".
+# Set both independent content keyrings in .env before startup; see the encryption sections below.
 uv python install 3.13
 uv sync
 podman compose --profile local build web
@@ -343,6 +343,25 @@ interrupt and repeat. To rotate:
 3. Retire `OLD` only after every backup that may hold content under it has expired.
 
 ADR-066 has the first-deployment runbook and the threat model.
+
+## Counseling Shared Summary content encryption
+
+Shared Summary bodies use `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS`, a required independent
+ordered Fernet keyring in every environment, including local-staging. Do not reuse any Routine,
+TOTP, Web Push storage or Django secret key. Keep a protected off-host recovery copy. Drafts and
+published bodies both remain encrypted; authorized responses still expose ordinary `content`.
+Encounter metadata remains queryable. See ADR-080 for the exact binding/schema and migration.
+
+```sh
+uv run python manage.py rotate_counseling_shared_summary_encryption --dry-run --batch-size 100
+```
+
+The command verifies every selected body and refuses legacy plaintext schema. Real rotation uses
+the primary key in bounded transactions, preserving publication/timestamps/Audit/notifications,
+and can resume after interruption. Live deployment requires a separate coordinated cutover:
+provision the 16th runtime secret and stop/drain old web/worker/Beat through the destructive
+migration and candidate activation. Follow [runtime-secrets.md](docs/runtime-secrets.md), including
+verified backups and controlled reverse migration; do not start the normal deployment prematurely.
 
 ## API Contract
 

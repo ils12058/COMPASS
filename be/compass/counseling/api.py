@@ -50,6 +50,10 @@ from .shared_summaries import (
     publish_assigned_shared_summary,
     put_assigned_shared_summary,
 )
+from .shared_summary_content import (
+    CounselingSharedSummaryContentUnavailable,
+    read_shared_summary_content,
+)
 
 router = Router(tags=["counseling"])
 
@@ -233,6 +237,8 @@ def _require_student(request, capability: str) -> None:
 
 
 def _raise(exc: CounselingError) -> NoReturn:
+    if isinstance(exc, CounselingSharedSummaryContentUnavailable):
+        raise APIError(500, "counseling_shared_summary_content_unavailable", str(exc)) from None
     if isinstance(exc, CounselingSharedSummaryNotFound):
         raise APIError(404, "shared_summary_not_found", str(exc)) from exc
     if isinstance(exc, CounselingSharedSummaryAlreadyPublished):
@@ -332,7 +338,7 @@ def _assigned_shared_summary(item) -> dict[str, object]:
     return {
         "id": item.pk,
         "encounter_id": item.encounter_id,
-        "content": item.content,
+        "content": _shared_summary_content(item),
         "published_at": _institutional(item.published_at) if item.published_at else None,
         "created_at": _institutional(item.created_at),
         "updated_at": _institutional(item.updated_at),
@@ -342,11 +348,19 @@ def _assigned_shared_summary(item) -> dict[str, object]:
 def _student_shared_summary(item) -> dict[str, object]:
     return {
         "id": item.pk,
-        "content": item.content,
+        "content": _shared_summary_content(item),
         "published_at": _institutional(item.published_at),
         "counseling_ended_at": _institutional(item.encounter.ended_at),
         "delivery_mode": item.encounter.delivery_mode,
     }
+
+
+def _shared_summary_content(item) -> str:
+    # Both projections receive only relationship-authorized resources from the service layer.
+    try:
+        return read_shared_summary_content(item)
+    except CounselingSharedSummaryContentUnavailable as exc:
+        _raise(exc)
 
 
 @router.get(
