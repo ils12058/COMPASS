@@ -67,7 +67,7 @@ function StudentExitInterviewDetail({
   }
 
   const record = detail.data.data;
-  if (record.status === "DRAFT" && canManageSelf && !detail.isError) {
+  if (record.status === "DRAFT" && canManageSelf && record.can_edit && !detail.isError) {
     async function refreshRecord() {
       const result = await detail.refetch();
       return result.isError ? undefined : result.data?.data;

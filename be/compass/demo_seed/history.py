@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from django.db import transaction
 
 from compass.accounts.profiles import update_my_profile
+from compass.exit_interviews.opportunities import open_opportunity
 from compass.exit_interviews.services import (
     ensure_my_current,
     replace_my_current,
@@ -181,6 +182,16 @@ def seed_exit_interview(
 ) -> None:
     student = session.user(persona.key)
     context = session.as_user(persona.key)
+    # The demo scenario explicitly opens manual access; it never infers graduation.
+    opportunity = open_opportunity(
+        actor=session.user("head_guidance"),
+        student_id=student.pk,
+        academic_year_id=get_current_academic_year().pk,
+        source="MANUAL",
+        note="",
+        context=session.as_user("head_guidance"),
+    )
+    align_timestamps(opportunity, created_at=started, updated_at=started, opened_at=started)
     item = ensure_my_current(student=student, context=context)
     reference = (submitted or started).date()
     values = {
@@ -197,6 +208,7 @@ def seed_exit_interview(
     replace_my_current(student=student, values=values)
     if submitted is not None:
         submit_my_current(student=student, context=context, now=submitted)
+        align_timestamps(opportunity, updated_at=submitted)
     align_timestamps(item, created_at=started, updated_at=submitted or saved)
     session.record("Exit Interviews", created=True)
 

@@ -31,6 +31,12 @@ from compass.documents.template_specs import (
     UnknownDocumentTemplate,
     get_template_spec,
 )
+from compass.exit_interviews.models import (
+    ExitInterview,
+    ExitInterviewOpportunity,
+    ExitInterviewOpportunitySource,
+    ExitInterviewStatus,
+)
 from compass.feedback.models import CustomerFeedbackService, FeedbackOpportunitySourceType
 from compass.feedback.services import ensure_feedback_opportunity
 from compass.institutional_forms.filter_options import represented_form_revisions
@@ -83,6 +89,10 @@ class GoodMoralGraduatedStudentRequired(GoodMoralError):
 
 
 class GoodMoralInventoryRequired(GoodMoralError):
+    pass
+
+
+class GoodMoralExitInterviewRequired(GoodMoralError):
     pass
 
 
@@ -299,6 +309,38 @@ def _current_affiliation(student: User) -> StudentAffiliation:
     return affiliation
 
 
+def _graduation_prerequisite(student: User, academic_year_id: UUID):
+    # Caller already holds the Student fence. Reopen, submission, and opportunity
+    # transitions use the same fence, including the absent-opportunity case.
+    opportunity = (
+        ExitInterviewOpportunity.objects.select_for_update()
+        .filter(
+            student_id=student.pk,
+            academic_year_id=academic_year_id,
+            source=ExitInterviewOpportunitySource.GRADUATION,
+        )
+        .first()
+    )
+    if opportunity is None:
+        return None, None
+    interview = (
+        ExitInterview.objects.select_for_update()
+        .filter(
+            student_id=student.pk,
+            academic_year_id=academic_year_id,
+            status=ExitInterviewStatus.SUBMITTED,
+            last_submitted_at__isnull=False,
+        )
+        .first()
+    )
+    if interview is None:
+        raise GoodMoralExitInterviewRequired(
+            "Complete and submit your Exit Interview before requesting your graduation "
+            "Good Moral certificate."
+        )
+    return opportunity, interview
+
+
 def create_my_current_student(
     *,
     student: User,
@@ -340,6 +382,9 @@ def create_my_current_student(
             )
 
         inventory = _require_submitted_inventory(locked_student)
+        graduation_opportunity, exit_interview = _graduation_prerequisite(
+            locked_student, inventory.academic_year_id
+        )
         affiliation = _current_affiliation(locked_student)
         profile = get_person_profile_context(locked_student)
 
@@ -350,6 +395,11 @@ def create_my_current_student(
                     variant=GoodMoralVariant.CURRENT_STUDENT,
                     inventory=inventory,
                     academic_year=inventory.academic_year,
+                    graduation_opportunity=graduation_opportunity,
+                    exit_interview=exit_interview,
+                    exit_interview_submitted_at=exit_interview.last_submitted_at
+                    if exit_interview
+                    else None,
                     applicant_name_snapshot=profile.full_name.strip(),
                     year_level_snapshot=year,
                     college_snapshot=affiliation.college.name.strip(),

@@ -16,6 +16,7 @@ from compass.accounts.profiles import get_person_profile_context
 from compass.accounts.services import is_current_student
 from compass.audit.actions import (
     EXIT_INTERVIEW_CREATED,
+    EXIT_INTERVIEW_OPPORTUNITY_COMPLETED,
     EXIT_INTERVIEW_REOPENED,
     EXIT_INTERVIEW_RESUBMITTED,
     EXIT_INTERVIEW_SUBMITTED,
@@ -38,6 +39,8 @@ from .models import (
     DelayReason,
     ExitInterview,
     ExitInterviewCollegeFeedbackRating,
+    ExitInterviewOpportunity,
+    ExitInterviewOpportunityStatus,
     ExitInterviewReopenEvent,
     ExitInterviewSelfAssessmentRating,
     ExitInterviewStatus,
@@ -104,6 +107,18 @@ class ExitInterviewConflict(ExitInterviewError):
     pass
 
 
+class ExitInterviewOpportunityRequired(ExitInterviewError):
+    pass
+
+
+class ExitInterviewOpportunityNotOpen(ExitInterviewError):
+    pass
+
+
+class ExitInterviewOpportunityConflict(ExitInterviewConflict):
+    pass
+
+
 class ExitInterviewNotPermitted(ExitInterviewError):
     pass
 
@@ -145,6 +160,7 @@ def _detail_queryset():
         .select_related(
             "student__role",
             "inventory",
+            "opportunity",
             "inventory__academic_year",
         )
         .prefetch_related(
@@ -486,6 +502,72 @@ def _safe_metadata(
     return metadata
 
 
+def _lock_current_student(student: User) -> User:
+    locked = User.objects.select_for_update(of=("self",)).select_related("role").get(pk=student.pk)
+    _validate_student(locked)
+    if not locked.has_capability("exit_interviews.manage_self"):
+        raise ExitInterviewNotPermitted("Student Exit Interview management access is required.")
+    if not is_current_student(locked):
+        raise ExitInterviewCurrentStudentRequired(
+            "Only current Students can edit or submit an Exit Interview."
+        )
+    return locked
+
+
+def _require_draft_admission(item: ExitInterview) -> None:
+    # Legacy drafts have no opportunity. Reopened responses use the controlled
+    # record lifecycle even though their original opportunity is COMPLETED.
+    if item.opportunity_id is None:
+        return
+    opportunity = ExitInterviewOpportunity.objects.select_for_update().get(pk=item.opportunity_id)
+    if (
+        opportunity.student_id != item.student_id
+        or opportunity.academic_year_id != item.academic_year_id
+    ):
+        raise ExitInterviewOpportunityConflict(
+            "The Exit Interview admission provenance is inconsistent."
+        )
+    if item.first_submitted_at is not None:
+        return
+    if opportunity.status != ExitInterviewOpportunityStatus.OPEN:
+        raise ExitInterviewOpportunityNotOpen(
+            "Your Exit Interview access is no longer open. Contact the Guidance and "
+            "Counseling Office."
+        )
+
+
+def _complete_opportunity(
+    item: ExitInterview, *, context: AuditContext, submitted_at: datetime
+) -> None:
+    opportunity = (
+        ExitInterviewOpportunity.objects.select_for_update()
+        .filter(
+            student_id=item.student_id,
+            academic_year_id=item.academic_year_id,
+            status=ExitInterviewOpportunityStatus.OPEN,
+        )
+        .first()
+    )
+    if opportunity is None:
+        return
+    opportunity.status = ExitInterviewOpportunityStatus.COMPLETED
+    opportunity.completed_at = submitted_at
+    opportunity.save(update_fields=["status", "completed_at", "updated_at"])
+    record_event(
+        context=context,
+        action=EXIT_INTERVIEW_OPPORTUNITY_COMPLETED,
+        outcome=AuditOutcome.SUCCESS,
+        target_type="exitinterviews.exitinterviewopportunity",
+        target_id=opportunity.pk,
+        metadata={
+            "academic_year_id": str(opportunity.academic_year_id),
+            "source": opportunity.source,
+            "transition": "OPEN -> COMPLETED",
+            "exit_interview_id": str(item.pk),
+        },
+    )
+
+
 def ensure_my_current(
     *,
     student: User,
@@ -507,17 +589,38 @@ def ensure_my_current(
                 "Current Student lifecycle is required to initiate an Exit Interview."
             )
 
-        # Domain prerequisite: this is intentionally independent of Service Catalog.
-        inventory = _require_submitted_current_inventory(locked_student)
-        current = inventory.academic_year
-
+        if not locked_student.has_capability("exit_interviews.manage_self"):
+            raise ExitInterviewNotPermitted("Student Exit Interview management access is required.")
+        current = _current_year()
         existing = (
             ExitInterview.objects.select_for_update()
             .filter(student_id=locked_student.pk, academic_year_id=current.pk)
             .first()
         )
         if existing is not None:
+            # Existing records, including pre-opportunity drafts and controlled corrections,
+            # remain authoritative. Admission never creates a second response.
             return _detail_queryset().get(pk=existing.pk)
+
+        inventory = _require_submitted_current_inventory(locked_student)
+        current = inventory.academic_year
+        opportunity = (
+            ExitInterviewOpportunity.objects.select_for_update()
+            .filter(
+                student_id=locked_student.pk,
+                academic_year_id=current.pk,
+            )
+            .first()
+        )
+        if opportunity is None:
+            raise ExitInterviewOpportunityRequired(
+                "The Guidance and Counseling Office needs to open an Exit Interview for you first."
+            )
+        if opportunity.status != ExitInterviewOpportunityStatus.OPEN:
+            raise ExitInterviewOpportunityNotOpen(
+                "Your Exit Interview access is no longer open. Contact the Guidance and "
+                "Counseling Office."
+            )
 
         profile = get_person_profile_context(locked_student)
         reference_date = timezone.localdate()
@@ -528,6 +631,7 @@ def ensure_my_current(
                     student=locked_student,
                     academic_year=current,
                     inventory=inventory,
+                    opportunity=opportunity,
                     student_name_snapshot=profile.full_name.strip(),
                     age_snapshot=_age_on(profile.date_of_birth, reference_date),
                     civil_status_snapshot=profile.civil_status.strip(),
@@ -592,6 +696,7 @@ def replace_my_current(*, student: User, values: dict[str, object]) -> ExitInter
     normalized = _normalized_root(values)
 
     with transaction.atomic():
+        _lock_current_student(student)
         item = (
             ExitInterview.objects.select_for_update()
             .filter(student_id=student.pk, academic_year_id=current.pk)
@@ -603,6 +708,8 @@ def replace_my_current(*, student: User, values: dict[str, object]) -> ExitInter
             raise ExitInterviewConflict(
                 "A submitted Exit Interview is locked against Student edits."
             )
+
+        _require_draft_admission(item)
 
         for field_name, value in normalized.items():
             setattr(item, field_name, value)
@@ -633,6 +740,7 @@ def replace_mine(
     normalized = _normalized_root(values)
 
     with transaction.atomic():
+        _lock_current_student(student)
         item = (
             ExitInterview.objects.select_for_update()
             .filter(pk=exit_interview_id, student_id=student.pk)
@@ -644,6 +752,8 @@ def replace_mine(
             raise ExitInterviewConflict(
                 "A submitted Exit Interview is locked against Student edits."
             )
+
+        _require_draft_admission(item)
 
         for field_name, value in normalized.items():
             setattr(item, field_name, value)
@@ -700,6 +810,7 @@ def submit_my_current(
         raise InvalidExitInterviewInput("The submission time must be timezone-aware.")
 
     with transaction.atomic():
+        _lock_current_student(student)
         item = (
             ExitInterview.objects.select_for_update(of=("self",))
             .select_related("academic_year", "inventory")
@@ -711,6 +822,7 @@ def submit_my_current(
         if item.status == ExitInterviewStatus.SUBMITTED:
             return _detail_queryset().get(pk=item.pk)
 
+        _require_draft_admission(item)
         _validate_submission(item)
         first_submission = item.first_submitted_at is None
         if first_submission:
@@ -725,6 +837,7 @@ def submit_my_current(
                 "updated_at",
             ]
         )
+        _complete_opportunity(item, context=context, submitted_at=submitted_at)
         action = EXIT_INTERVIEW_SUBMITTED if first_submission else EXIT_INTERVIEW_RESUBMITTED
         record_event(
             context=context,
@@ -756,6 +869,7 @@ def submit_mine(
         raise InvalidExitInterviewInput("The submission time must be timezone-aware.")
 
     with transaction.atomic():
+        _lock_current_student(student)
         item = (
             ExitInterview.objects.select_for_update(of=("self",))
             .select_related("academic_year", "inventory")
@@ -767,6 +881,7 @@ def submit_mine(
         if item.status == ExitInterviewStatus.SUBMITTED:
             return _detail_queryset().get(pk=item.pk)
 
+        _require_draft_admission(item)
         _validate_submission(item)
         first_submission = item.first_submitted_at is None
         if first_submission:
@@ -781,6 +896,7 @@ def submit_mine(
                 "updated_at",
             ]
         )
+        _complete_opportunity(item, context=context, submitted_at=submitted_at)
         action = EXIT_INTERVIEW_SUBMITTED if first_submission else EXIT_INTERVIEW_RESUBMITTED
         record_event(
             context=context,
@@ -877,8 +993,16 @@ def reopen_for_correction(
         raise InvalidExitInterviewInput("The reopen time must be timezone-aware.")
 
     with transaction.atomic():
+        owner_id = (
+            ExitInterview.objects.filter(pk=exit_interview_id)
+            .values_list("student_id", flat=True)
+            .first()
+        )
+        if owner_id is None:
+            raise ExitInterviewNotFound("The requested Exit Interview was not found.")
+        owner = User.objects.select_for_update(of=("self",)).select_related("role").get(pk=owner_id)
         item = (
-            ExitInterview.objects.select_for_update(of=("self", "student"))
+            ExitInterview.objects.select_for_update(of=("self",))
             .select_related("academic_year", "student__role")
             .filter(pk=exit_interview_id)
             .first()
@@ -887,7 +1011,7 @@ def reopen_for_correction(
             raise ExitInterviewNotFound("The requested Exit Interview was not found.")
         if item.status != ExitInterviewStatus.SUBMITTED:
             raise ExitInterviewConflict("Only a submitted Exit Interview may be reopened.")
-        if not is_current_student(item.student):
+        if not is_current_student(owner):
             raise ExitInterviewCurrentStudentRequired(
                 "Current Student lifecycle is required before reopening for Student correction."
             )

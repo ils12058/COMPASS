@@ -3223,6 +3223,7 @@
           "ecounseling.manage_media_assigned",
           "ecounseling.view_assigned",
           "ecounseling.view_self",
+          "exit_interviews.manage_opportunities",
           "exit_interviews.manage_self",
           "exit_interviews.reopen",
           "exit_interviews.view",
@@ -8221,6 +8222,10 @@
             ],
             "title": "Age"
           },
+          "can_edit": {
+            "title": "Can Edit",
+            "type": "boolean"
+          },
           "career_modes": {
             "items": {
               "$ref": "#/components/schemas/CareerModeValue"
@@ -8438,6 +8443,7 @@
         "required": [
           "self_assessment_ratings",
           "college_feedback_ratings",
+          "can_edit",
           "id",
           "student",
           "academic_year",
@@ -8645,6 +8651,198 @@
         "title": "ExitInterviewHistoryResponse",
         "type": "object"
       },
+      "ExitInterviewOpenOpportunityRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Year Id"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Note",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ExitInterviewOpportunitySourceValue"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student_id",
+          "source"
+        ],
+        "title": "ExitInterviewOpenOpportunityRequest",
+        "type": "object"
+      },
+      "ExitInterviewOpportunityPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "current_academic_year": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicYearSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExitInterviewOpportunityResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "current_academic_year",
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "ExitInterviewOpportunityPageResponse",
+        "type": "object"
+      },
+      "ExitInterviewOpportunityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "opened_at": {
+            "format": "date-time",
+            "title": "Opened At",
+            "type": "string"
+          },
+          "opened_by": {
+            "$ref": "#/components/schemas/PersonSummary"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "revoked_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/ExitInterviewOpportunitySourceValue"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExitInterviewOpportunityStatusValue"
+          },
+          "student": {
+            "$ref": "#/components/schemas/StudentSummary"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "academic_year",
+          "source",
+          "status",
+          "opened_at",
+          "completed_at",
+          "revoked_at",
+          "student",
+          "opened_by",
+          "revoked_by",
+          "note",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ExitInterviewOpportunityResponse",
+        "type": "object"
+      },
+      "ExitInterviewOpportunitySourceValue": {
+        "enum": [
+          "GRADUATION",
+          "MANUAL"
+        ],
+        "title": "ExitInterviewOpportunitySourceValue",
+        "type": "string"
+      },
+      "ExitInterviewOpportunityStatusValue": {
+        "enum": [
+          "OPEN",
+          "COMPLETED",
+          "REVOKED"
+        ],
+        "title": "ExitInterviewOpportunityStatusValue",
+        "type": "string"
+      },
       "ExitInterviewPageResponse": {
         "additionalProperties": false,
         "properties": {
@@ -8684,6 +8882,165 @@
         ],
         "title": "ExitInterviewStatusValue",
         "type": "string"
+      },
+      "ExitInterviewStudentCollegeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "ExitInterviewStudentCollegeResponse",
+        "type": "object"
+      },
+      "ExitInterviewStudentOpportunityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearSummary"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "opened_at": {
+            "format": "date-time",
+            "title": "Opened At",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ExitInterviewOpportunitySourceValue"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExitInterviewOpportunityStatusValue"
+          }
+        },
+        "required": [
+          "id",
+          "academic_year",
+          "source",
+          "status",
+          "opened_at",
+          "completed_at",
+          "revoked_at"
+        ],
+        "title": "ExitInterviewStudentOpportunityResponse",
+        "type": "object"
+      },
+      "ExitInterviewStudentOptionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExitInterviewStudentCollegeResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "institutional_id",
+          "college"
+        ],
+        "title": "ExitInterviewStudentOptionResponse",
+        "type": "object"
+      },
+      "ExitInterviewStudentOptionsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExitInterviewStudentOptionResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "ExitInterviewStudentOptionsResponse",
+        "type": "object"
       },
       "ExitInterviewSummaryResponse": {
         "additionalProperties": false,
@@ -8753,6 +9110,73 @@
           "updated_at"
         ],
         "title": "ExitInterviewSummaryResponse",
+        "type": "object"
+      },
+      "ExitInterviewWorkspaceStatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicYearSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_edit_current": {
+            "title": "Can Edit Current",
+            "type": "boolean"
+          },
+          "can_start": {
+            "title": "Can Start",
+            "type": "boolean"
+          },
+          "current_record": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExitInterviewSummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graduation_good_moral_blocked": {
+            "title": "Graduation Good Moral Blocked",
+            "type": "boolean"
+          },
+          "has_records": {
+            "title": "Has Records",
+            "type": "boolean"
+          },
+          "inventory_submitted": {
+            "title": "Inventory Submitted",
+            "type": "boolean"
+          },
+          "opportunity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExitInterviewStudentOpportunityResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "academic_year",
+          "opportunity",
+          "current_record",
+          "has_records",
+          "inventory_submitted",
+          "can_start",
+          "can_edit_current",
+          "graduation_good_moral_blocked"
+        ],
+        "title": "ExitInterviewWorkspaceStatusResponse",
         "type": "object"
       },
       "FamilyMemberKindValue": {
@@ -9861,6 +10285,30 @@
             ],
             "title": "Document Template Version"
           },
+          "exit_interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Interview Id"
+          },
+          "exit_interview_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Interview Submitted At"
+          },
           "form_revision": {
             "anyOf": [
               {
@@ -9882,6 +10330,18 @@
               }
             ],
             "title": "Graduation Date"
+          },
+          "graduation_opportunity_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Opportunity Id"
           },
           "id": {
             "format": "uuid",
@@ -9991,6 +10451,9 @@
           "created_at",
           "updated_at",
           "student",
+          "graduation_opportunity_id",
+          "exit_interview_id",
+          "exit_interview_submitted_at",
           "inventory_id",
           "academic_year",
           "major",
@@ -10107,6 +10570,30 @@
             ],
             "title": "Document Template Version"
           },
+          "exit_interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Interview Id"
+          },
+          "exit_interview_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Interview Submitted At"
+          },
           "form_revision": {
             "anyOf": [
               {
@@ -10128,6 +10615,18 @@
               }
             ],
             "title": "Graduation Date"
+          },
+          "graduation_opportunity_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Opportunity Id"
           },
           "id": {
             "format": "uuid",
@@ -10248,6 +10747,9 @@
           "created_at",
           "updated_at",
           "student",
+          "graduation_opportunity_id",
+          "exit_interview_id",
+          "exit_interview_submitted_at",
           "inventory_id",
           "academic_year",
           "major",
@@ -20975,6 +21477,11 @@
             "title": "Email",
             "type": "string"
           },
+          "exit_interview_workspace_available": {
+            "default": false,
+            "title": "Exit Interview Workspace Available",
+            "type": "boolean"
+          },
           "first_name": {
             "title": "First Name",
             "type": "string"
@@ -22018,6 +22525,7 @@
                 "ecounseling.manage_media_assigned",
                 "ecounseling.view_assigned",
                 "ecounseling.view_self",
+                "exit_interviews.manage_opportunities",
                 "exit_interviews.manage_self",
                 "exit_interviews.reopen",
                 "exit_interviews.view",
@@ -22184,6 +22692,7 @@
                 "ecounseling.manage_media_assigned",
                 "ecounseling.view_assigned",
                 "ecounseling.view_self",
+                "exit_interviews.manage_opportunities",
                 "exit_interviews.manage_self",
                 "exit_interviews.reopen",
                 "exit_interviews.view",
@@ -33345,6 +33854,53 @@
         ]
       }
     },
+    "/api/v1/exit-interviews/me/status": {
+      "get": {
+        "operationId": "exitInterviewsGetMyStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewWorkspaceStatusResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews Get My Status",
+        "tags": [
+          "exit-interviews"
+        ]
+      }
+    },
     "/api/v1/exit-interviews/me/{exit_interview_id}": {
       "get": {
         "operationId": "exitInterviewsGetMine",
@@ -33691,6 +34247,504 @@
           }
         ],
         "summary": "Exit Interviews Submit Mine",
+        "tags": [
+          "exit-interviews"
+        ]
+      }
+    },
+    "/api/v1/exit-interviews/opportunities": {
+      "get": {
+        "operationId": "exitInterviewsListOpportunities",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "academic_year_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Academic Year Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "current_year_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Current Year Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "student_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Student Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ExitInterviewOpportunityStatusValue"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewOpportunityPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews List Opportunities",
+        "tags": [
+          "exit-interviews"
+        ]
+      },
+      "post": {
+        "operationId": "exitInterviewsOpenOpportunity",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExitInterviewOpenOpportunityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewOpportunityResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews Open Opportunity",
+        "tags": [
+          "exit-interviews"
+        ]
+      }
+    },
+    "/api/v1/exit-interviews/opportunities/students": {
+      "get": {
+        "operationId": "exitInterviewsListEligibleStudents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewStudentOptionsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews List Eligible Students",
+        "tags": [
+          "exit-interviews"
+        ]
+      }
+    },
+    "/api/v1/exit-interviews/opportunities/{opportunity_id}": {
+      "get": {
+        "operationId": "exitInterviewsGetOpportunity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewOpportunityResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews Get Opportunity",
+        "tags": [
+          "exit-interviews"
+        ]
+      }
+    },
+    "/api/v1/exit-interviews/opportunities/{opportunity_id}/revoke": {
+      "post": {
+        "operationId": "exitInterviewsRevokeOpportunity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitInterviewOpportunityResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exit Interviews Revoke Opportunity",
         "tags": [
           "exit-interviews"
         ]

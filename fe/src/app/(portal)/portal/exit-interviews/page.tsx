@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ExitInterviewListSkeleton } from "@/features/exit-interviews/exit-interview-shared";
 import { ExitInterviewWorkspacePage } from "@/features/exit-interviews/exit-interview-workspace-page";
 import type { ExitInterviewOperationalFilters } from "@/features/exit-interviews/exit-interview-operational-list";
+import type { ExitInterviewsListOpportunitiesParams } from "@/lib/api/generated/model";
 import { ExitInterviewStatusValue } from "@/lib/api/generated/model";
 
 type SearchValue = string | string[] | undefined;
@@ -49,14 +50,24 @@ export default async function Page({
     page: pageNumber(singleValue(query.page)),
     pageSize: pageSize(singleValue(query.page_size)),
   };
+  const opportunityStatus = singleValue(query.opportunity_status);
+  const studentId = singleValue(query.student_id);
+  const opportunities: ExitInterviewsListOpportunitiesParams | undefined = singleValue(query.workspace) === "opportunities" ? {
+    search: filters.search || undefined,
+    academic_year_id: filters.academicYearId || undefined,
+    student_id: UUID_PATTERN.test(studentId) ? studentId : undefined,
+    status: opportunityStatus === "OPEN" || opportunityStatus === "COMPLETED" || opportunityStatus === "REVOKED" ? opportunityStatus : undefined,
+    page: filters.page, page_size: filters.pageSize,
+  } : undefined;
   const notice = singleValue(query.notice) === "reopened" ? "reopened" : undefined;
 
   return (
     <Suspense fallback={<ExitInterviewListSkeleton />}>
       <ExitInterviewWorkspacePage
-        key={JSON.stringify(filters)}
+        key={JSON.stringify({ filters, opportunities })}
         filters={filters}
         notice={notice}
+        opportunities={opportunities}
       />
     </Suspense>
   );
