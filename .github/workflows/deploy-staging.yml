@@ -224,6 +224,10 @@ jobs:
           scp "${scp_opts[@]}" \
             be/compose.staging.yaml \
             be/Caddyfile \
+            be/deploy/vault/redis-start.sh \
+            be/deploy/vault/check-runtime-secrets.sh \
+            be/deploy/vault/check-runtime-env.py \
+            be/deploy/vault/migrate-runtime-secrets.py \
             "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST:$release_dir/"
           scp "${scp_opts[@]}" \
             "$STAGING_REGISTRY_PULL_CONFIG" \
@@ -284,6 +288,8 @@ jobs:
           cd "$RELEASE_DIR"
           compose=(docker compose -f compose.staging.yaml)
 
+          python3 ./check-runtime-env.py "$DEPLOY_PATH/.env"
+          sh ./check-runtime-secrets.sh
           "${compose[@]}" config >/dev/null
           "${compose[@]}" pull --quiet web worker beat proxy postgres redis
           docker image inspect "$IMAGE" >/dev/null

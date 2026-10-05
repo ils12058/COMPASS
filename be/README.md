@@ -42,6 +42,11 @@ can still be used to install `uv`, but the project runtime remains pinned to 3.1
 
 ## Local-staging setup
 
+Live staging uses [Vault Community and Agent file delivery](docs/vault-live-staging.md) under
+[ADR-075](docs/decisions/ADR-075-vault-runtime-secret-delivery.md). Provision/unseal/render and
+complete the operator comparison/cutover before using the new staging manifest. Local-staging
+and CI continue using the environment contract below without Vault.
+
 Prerequisites: Podman, `podman-compose` (or a compatible `podman compose` provider), and `uv`.
 
 ```sh

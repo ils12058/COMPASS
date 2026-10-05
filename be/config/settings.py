@@ -10,6 +10,8 @@ from py_vapid import Vapid
 
 from compass.common.build_metadata import read_project_version, validate_runtime_build_identity
 from compass.common.config import env, env_bool, env_csv, env_float, env_int, required_env
+from compass.common.redis_config import redis_connection_urls
+from compass.common.runtime_secrets import validate_runtime_secret_sources
 from compass.routine_interviews.crypto import keyring_reuses_secret, parse_keyring
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -17,6 +19,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 APP_ENV = env("APP_ENV", "local-staging")
 if APP_ENV not in {"local-staging", "live-staging"}:
     raise ValueError("APP_ENV must be either local-staging or live-staging")
+
+validate_runtime_secret_sources()
 
 APPLICATION_VERSION = read_project_version(BASE_DIR / "pyproject.toml")
 COMPASS_BUILD_ID, COMPASS_BUILD_TIME = validate_runtime_build_identity(
@@ -165,10 +169,11 @@ DATABASES = {
     }
 }
 
-REDIS_URL = required_env("REDIS_URL")
-REDIS_CACHE_URL = required_env("REDIS_CACHE_URL")
-REDIS_RATE_LIMIT_URL = required_env("REDIS_RATE_LIMIT_URL")
-REDIS_IDEMPOTENCY_URL = required_env("REDIS_IDEMPOTENCY_URL")
+_redis_urls = redis_connection_urls()
+REDIS_URL = _redis_urls["REDIS_URL"]
+REDIS_CACHE_URL = _redis_urls["REDIS_CACHE_URL"]
+REDIS_RATE_LIMIT_URL = _redis_urls["REDIS_RATE_LIMIT_URL"]
+REDIS_IDEMPOTENCY_URL = _redis_urls["REDIS_IDEMPOTENCY_URL"]
 REDIS_SOCKET_TIMEOUT = env_float("REDIS_SOCKET_TIMEOUT", 2.0)
 RATE_LIMITER_FAIL_OPEN = env_bool("RATE_LIMITER_FAIL_OPEN", False)
 

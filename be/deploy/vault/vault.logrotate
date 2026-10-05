@@ -1,0 +1,15 @@
+/var/log/vault/audit.json {
+    daily
+    rotate 14
+    maxsize 50M
+    missingok
+    notifempty
+    compress
+    delaycompress
+    create 0600 vault vault
+    su vault vault
+    sharedscripts
+    postrotate
+        /usr/bin/systemctl reload vault.service > /dev/null
+    endscript
+}
