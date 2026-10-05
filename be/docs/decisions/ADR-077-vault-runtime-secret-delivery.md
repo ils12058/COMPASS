@@ -1,4 +1,4 @@
-# ADR-075: Vault Community runtime secret delivery
+# ADR-077: Vault Community runtime secret delivery
 
 ## Context
 

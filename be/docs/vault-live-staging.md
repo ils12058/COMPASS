@@ -1,9 +1,10 @@
 # Vault Community live-staging operator runbook
 
-This repository foundation is not a completed live migration. Audited base `6a6bb887` moved to
-`2ed4a9aad6cf23a311b53ab031e556157c0ba9dd` through record retrieval and page commands; no intervening
-deployment/settings changes occurred. Read [ADR-075](decisions/ADR-075-vault-runtime-secret-delivery.md)
-with [ADR-007](decisions/ADR-007-environment-strategy.md). Non-secret assets are in `be/deploy/vault/`.
+This repository foundation is not a completed live migration. The branch is based on staging
+`3f951cfdf4b154c8db947cf3c9d2e3fdf9fb1e57`, including Exit Interview opportunities (#171) and
+Good Moral preparation (#172). Those merges do not change Vault configuration or deployment.
+Read [ADR-077](decisions/ADR-077-vault-runtime-secret-delivery.md) with
+[ADR-007](decisions/ADR-007-environment-strategy.md). Non-secret assets are in `be/deploy/vault/`.
 
 ## Preconditions and boundary
 

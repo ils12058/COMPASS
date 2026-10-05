@@ -2,13 +2,16 @@
 
 Branch: `codex/vault-secrets-foundation`. Worktree:
 `/Users/reynantlntno/.codex/worktrees/vault-secrets-foundation/COMPASS`.
-Base: `2ed4a9aad6cf23a311b53ab031e556157c0ba9dd` (`staging` fetched before edits).
-The prompt's audited `6a6bb887` base had moved through PRs #168/#169; their backend delta is scoped
-record retrieval, with no deployment/settings changes. The primary checkout was left untouched.
+Current base: `3f951cfdf4b154c8db947cf3c9d2e3fdf9fb1e57` (`staging` fetched for rebase).
+The Vault commits were initially implemented on `2ed4a9aad6cf23a311b53ab031e556157c0ba9dd`, then
+rebased after Exit Interview opportunities (#171) and Good Moral preparation (#172) merged.
+Neither merge changes Vault settings/deployment code. Rebase preserved both Vault patches without
+conflicts; the Vault ADR is now ADR-077 because staging added ADR-075/076. The primary checkout
+was left untouched.
 
 ## Delivered architecture
 
-[ADR-075](decisions/ADR-075-vault-runtime-secret-delivery.md) and the complete
+[ADR-077](decisions/ADR-077-vault-runtime-secret-delivery.md) and the complete
 [operator runbook](vault-live-staging.md) establish host `vault.service` and `vault-agent.service`,
 Community TLS on loopback 8200/8201, Integrated Storage/Raft in `/var/lib/vault/raft`, Shamir
 off-host custody, and protected rotating file auditing. Vault is independent of application releases.
@@ -51,7 +54,7 @@ Local Compose/Mailpit/MinIO and ephemeral CI crypto keys remain independent of V
 - Staging Compose and `deploy-staging.yml` file mounts/preflight uploads and checks.
 - `deploy/vault/`: server/Agent HCL, two systemd units, runtime/human policies, logrotate,
   pointer overlay, Redis wrapper, file/env preflights, and operator export/comparison utility.
-- ADR-075, live operator runbook, this evidence report, and Daily/Push/demo documentation links.
+- ADR-077, live operator runbook, this evidence report, and Daily/Push/demo documentation links.
 - Common helper, Redis routing/source-guard, and migration/preflight tests.
 
 No frontend, OpenAPI/client, model/migration, dependency lock, or crypto implementation changes.
@@ -86,6 +89,24 @@ No frontend, OpenAPI/client, model/migration, dependency lock, or crypto impleme
 All fixture credentials and keys were synthetic. Local disposable service fixtures were cleaned
 up/stopped; existing local application services were not changed. Logs and manual smoke scripts
 are local evidence under `/Users/reynantlntno/.codex/artifacts/vault-secrets-foundation/`.
+
+## Validation after rebase
+
+- **93 passed in 47.88s**: common configuration, Redis routing/source guards, runtime-secret
+  migration/preflight, Exit Interview opportunities, and Good Moral preparation. This covers
+  Vault's configuration boundary together with both newly merged domains.
+- Locked dependencies, whole-backend Ruff format/check (508 files), Django system check,
+  migration dry-run, committed OpenAPI check and diff whitespace passed on the new base.
+- The two original Vault commits replayed without conflicts; `git range-diff` showed unchanged
+  patches. The only follow-up change is ADR renumbering and updated handoff documentation.
+- The previous [backend CI run](https://github.com/ils12058/COMPASS/actions/runs/37257433632)
+  tested the pre-rebase head: 16 failed, 1555 passed, 17 setup errors. Failures concern appointment
+  actions, canonical/scheduling consequences, demo seeding, lock scope and contract assertions;
+  none are in the Vault-specific test modules. All affected test files are inherited from staging.
+  An independent AST scan of latest staging and the rebased branch found the same three unscoped
+  joined row locks in `compass/appointments/services.py` (lines 981, 1457 and 1512), proving that
+  particular CI failure is present in the base. The new head requires fresh repository CI;
+  focused success is not a claim that the full suite passes.
 
 ## Read-only live host inspection
 
