@@ -1939,6 +1939,16 @@ last. Add a workspace there, in the group where its daily use belongs.
 
 Information architecture is product design, not an automatic projection of the backend router.
 
+## Portal feature navigation
+
+The dock is the browsable primary workspace structure. The top-bar Go-to command palette
+(`Cmd/Ctrl+K`) indexes stable portal features, not records. Root visibility reuses
+`portalWorkspaceGroups`; deep destinations reuse current access helpers and workspace gates.
+Exclude dynamic record routes and destinations requiring record context. Build only authorized
+commands, never unauthorized names hidden with CSS. Navigation uses the unsaved-changes guard;
+the palette cannot execute mutations directly. Do not add record search, query logging, or search
+history to feature navigation.
+
 ---
 
 # 66. Administrative detail pages
