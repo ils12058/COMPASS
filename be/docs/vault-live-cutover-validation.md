@@ -1,7 +1,8 @@
 # Live-staging Vault cutover execution record
 
-Execution date: 2026-10-05. Status: **stopped before provisioning because required administrator
-access and recovery custody are not established**. No live cutover or recovery drill is claimed.
+Execution date: 2026-10-05. Status: **administrator access and verified off-host recovery preparation
+complete; provisioning pending two device-owned custodian keys and independent recovery handoff**.
+No live Vault cutover or Vault recovery drill is claimed.
 
 ## Repository and corrective change
 
@@ -12,7 +13,8 @@ Corrections are isolated on `codex/vault-live-cutover` in
 
 The runbook now uses `token_policies`, `token_ttl`, and `token_max_ttl` for Userpass creation,
 requires policy/TTL readback before bootstrap-root revocation, records the current package candidate
-and separate package-signing key, and resolves staging before execution/dispatch. No runtime,
+and separate package-signing key, resolves staging before execution/dispatch, and uses the owner's
+explicitly approved three-share/two-threshold custody arrangement. No runtime,
 frontend, contract, model, migration, dependency, or encryption implementation changed.
 
 ## Version and command verification
@@ -31,7 +33,7 @@ the 2.1.1 CLI. The table records supported syntax, not completed live operations
 | --- | --- |
 | `server -config`, `agent -config` | 2.1.1 CLI help; [server](https://developer.hashicorp.com/vault/docs/commands/server), [Agent](https://developer.hashicorp.com/vault/docs/commands/agent). |
 | `version`, `status` | Disposable server identifies itself as 2.1.1; sealed status returns 2 and unsealed status returns 0. [Status](https://developer.hashicorp.com/vault/docs/commands/status). |
-| `operator init` | CLI recognizes shares/threshold, PGP recipients, root-token recipient, and JSON format. [Initialization](https://developer.hashicorp.com/vault/docs/commands/operator/init). 5-share/3-threshold live custody was not exercised. |
+| `operator init` | Three-share/two-threshold PGP initialization succeeded in a disposable 2.1.1 TLS/Raft cluster; every distinct pair unsealed, one share stayed sealed, and operator PGP root-token recovery succeeded. [Initialization](https://developer.hashicorp.com/vault/docs/commands/operator/init). Real three-person custody remains pending. |
 | `operator unseal` | Hidden interactive input remains the live procedure; never place shares in arguments. [Unseal](https://developer.hashicorp.com/vault/docs/commands/operator/unseal). |
 | `secrets enable -path=kv -version=2 kv` | Executed against the disposable 2.1.1 server. [Enable secrets](https://developer.hashicorp.com/vault/docs/commands/secrets/enable). |
 | `audit enable -path=compass-file file ... mode=0600` | Executed; audit file mode 0600 verified. [Audit enable](https://developer.hashicorp.com/vault/docs/commands/audit/enable), [file device](https://developer.hashicorp.com/vault/docs/audit/file). |
@@ -46,10 +48,11 @@ the 2.1.1 CLI. The table records supported syntax, not completed live operations
 The exact [2.1.1 Userpass source](https://github.com/hashicorp/vault/blob/v2.1.1/builtin/credential/userpass/path_users.go)
 registers token fields. The exact [PGP file parser](https://github.com/hashicorp/vault/blob/v2.1.1/helper/pgpkeys/flag.go)
 accepts a single armored public key per file as well as binary/base64 public material, so the runbook's
-`.asc` filenames are supported. Supplied custodian fingerprints and key usability still need verification.
+`.asc` filenames are supported. The prepared RSA-3072 custodian/operator keys were verified with
+the disposable 2.1.1 server. The other two holders' public fingerprints and key usability remain pending.
 
 The smoke used synthetic credentials and a disposable TLS/Raft container, not dev mode. It did
-not use live secrets, host systemd, five real custodians, a production restore, or a live restart.
+not use live secrets, host systemd, three real custodians, a production restore, or a live restart.
 Its container and temporary fixtures were removed. Script and output are operator-local evidence
 under `/Users/reynantlntno/.codex/artifacts/vault-live-cutover/`.
 
@@ -57,7 +60,7 @@ under `/Users/reynantlntno/.codex/artifacts/vault-live-cutover/`.
 
 `doctl` inventory and pinned SSH confirmed Droplet `602091909`, `compass-staging-api-01`, active
 in Singapore. Guest OS is Ubuntu 24.04.4 LTS (Noble), x86_64. Its 2-vCPU/4-GB/80-GB plan currently
-has 2.3 GiB available RAM, 25 GiB free root disk, and no swap. Vault executable/package is absent;
+has 2.5 GiB available RAM, 25 GiB free root disk, and no swap. Vault executable/package is absent;
 both Vault systemd services report `LoadState=not-found`, inactive/dead. GID 1900 and the proposed
 Vault/Agent users were not present during inspection.
 
@@ -68,24 +71,70 @@ application, database, and canonical services OK. This existing deployment is no
 
 Both pinned native SSH and `doctl compute ssh` reach the deployment user `compass`, UID 1000,
 with Docker group membership. `sudo -n true` fails because a password is required. Root login with
-the tested `bootstrap_ed25519` and `ci_ed25519` keys is refused (`Permission denied (publickey)`). No privileged container,
-host-root mount, root-key injection, sudoers change, or root-password reset was used to substitute
-for an approved administrator session. The inspected [doctl SSH implementation](https://github.com/digitalocean/doctl/blob/v1.168.0/pkg/ssh/ssh.go)
+the tested `bootstrap_ed25519` and `ci_ed25519` keys is refused (`Permission denied (publickey)`).
+The owner subsequently logged into the dashboard, reset the root password, and completed the
+required password change in Safari's Recovery Console. `id -u` verified UID 0. This is the approved
+administrator session; no privileged container/host-root mount, injected root key, or sudoers change
+was used. Root SSH remains excluded by the existing transport configuration. The inspected
+[doctl SSH implementation](https://github.com/digitalocean/doctl/blob/v1.168.0/pkg/ssh/ssh.go)
 executes SSH; it does not confer root privileges. [Account SSH-key management](https://docs.digitalocean.com/reference/doctl/reference/compute/ssh-key/)
-does not add a key to an existing guest. The opened DigitalOcean access page requires dashboard login.
+does not add a key to an existing guest. Dashboard and Recovery Console access are now established.
 
-The current client `/32` was temporarily allowed on TCP 22 for bounded inspection and doctl probes.
-After both sessions the original inbound/outbound rules, attached Droplet, and tags were restored;
+The current client `/32` was temporarily allowed on TCP 22 for bounded inspection and encrypted
+backup capture. After those sessions the original inbound/outbound rules, attached Droplet, and tags were restored;
 the final verification showed no pending changes. The original SSH source remains
 `136.158.101.248/32`; only HTTP/HTTPS have public inbound rules. No public Vault port was added.
 
-`/opt/compass/.env` remains 0600, `compass:compass`. Neither its contents nor live secret values were
-read, exported, printed, or changed. `/opt/compass/.deploy.env` was not changed.
-Only backup metadata was inspected: `/opt/compass/backups` contains a protected historical
+`/opt/compass/.env` remains 0600, `compass:compass`; `.deploy.env` remains 0640, `compass:compass`.
+Their original bytes were captured privately and encrypted off-host, then recovered and compared
+in memory. Neither file nor any running application value was changed. No secret value was printed.
+`/opt/compass/backups` contains a protected historical
 `retention-policy-before-0004-d6e3cf68.dump` dated 2026-10-03 (4152 bytes). That file is not evidence
-of a complete/current PostgreSQL backup or a restore check. No fresh database backup or encrypted
-configuration/key-escrow copy was created because the operator's recovery recipient/location and
-custodian public keys have not been supplied.
+of a complete/current PostgreSQL backup or a restore check. The fresh off-host backup below is
+separate from that historical file.
+
+## Approved custody and off-host recovery preparation
+
+The owner authorized preparation on the operator Mac and explicitly replaced the original
+five-share/three-threshold requirement with **three real shares, two required**. Only one real
+custodian key has been generated so far. The other two holders have public-only preparation packages
+with a tested Mac/Linux helper and Windows instructions; each must generate and keep their own
+private key on their own device. The packages contain no application secret, private key, or unseal share.
+Windows instructions have not been executed on a Windows host.
+
+Three separate RSA-3072 OpenPGP key pairs were prepared on the operator Mac: the first custodian,
+bootstrap operator, and off-host recovery recipient. Each has a two-year encryption subkey and
+a passphrase-protected private export. Independent temporary keyrings proved that a wrong
+passphrase fails and that the protected export recovers an exact synthetic challenge with the
+correct passphrase. GnuPG 2.5.22 is installed; FileVault is enabled. Key homes/directories are 0700
+and private exports/passphrase files are 0600, outside Git and off the Droplet. These three keys do
+not constitute three independent custodians. Protected offline/device-independent copies and
+separate passphrase custody still require holder handoff.
+
+At **2026-10-05 11:02:14 UTC**, the operator captured five encrypted files into the protected
+off-host recovery directory. Only ciphertext checksums are recorded in its local manifest:
+
+| Recovery artifact | Verified result |
+| --- | --- |
+| PostgreSQL custom dump | Source PostgreSQL 17.11; encrypted stream, no plaintext dump file. Recovered using the protected private-key export and restored with `pg_restore --exit-on-error` into PostgreSQL 17.11: 88 public base tables, 85 Django migration records. |
+| Original runtime `.env` | Decryption and exact byte equality passed; live file remains unchanged. |
+| Original `.deploy.env` | Decryption and exact byte equality passed; live file remains unchanged. |
+| Critical-key escrow | Existing `AUTH_TOTP_ENCRYPTION_KEY`, original ordered `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` scalar (one entry), and `WEB_PUSH_STORAGE_KEY` recovered with exact byte equality and canonical Fernet-key format checks. No new application key. |
+| Previous release manifest | Exact existing `compose.staging.yaml` and `Caddyfile` captured as encrypted tar; decryption and byte equality passed. Previous image/release: `3fd847adeabcf644f3cf297a001f0e9f51982fda`. |
+
+The database restore fixture had **network disabled, zero published ports, and tmpfs data storage**;
+its actual filesystem was verified before recovery. Both fixture and independent verification
+keyring were removed. The dump was decrypted directly into the restore stream, never an ordinary
+plaintext temporary file. No restored row values were printed. Ciphertext integrity was verified
+before restore. The earlier harness check was corrected for Podman's `HostConfig.Tmpfs` representation
+before the successful restore. These are rollback preparation results, not Vault snapshot or live
+encrypted-data acceptance results. Refresh the backup if live state changes before cutover.
+
+A separate disposable Vault 2.1.1 TLS/Raft test used the prepared first-custodian public key,
+two synthetic recipient fixtures, and the actual bootstrap-operator public key. PGP initialization,
+share decryption, root-token decryption, all three distinct unseal pairs, and rejection of one-share
+unseal passed. The two synthetic fixtures are not substitutes for the remaining real custodians.
+The disposable server and synthetic private material were removed; no live cluster was initialized.
 
 ## Validation and live acceptance
 
@@ -122,7 +171,7 @@ custodian public keys have not been supplied.
 | KV paths | None provisioned; reviewed eleven-domain inventory unchanged. |
 | AppRole | Not provisioned; reviewed scoped 1h-period service token, 720h Secret ID, loopback bindings unchanged. Expiry/accessor/replacement record pending. |
 | Rendered files | None; fifteen-file 0440/GID 1900 live acceptance pending. |
-| Live equality | Not performed; no live values exported/imported. |
+| Live equality | Agent rendered-value comparison not performed; existing values were captured only for encrypted rollback/configuration/key recovery. No Vault import. |
 | `.env` secret removal | Not performed; original environment preserved for the running application. |
 | Redis | Existing container healthy; file-only authentication/metadata/DB routing acceptance pending. |
 | PostgreSQL | Existing container healthy; unchanged-password file-only authentication acceptance pending. |
@@ -133,13 +182,16 @@ custodian public keys have not been supplied.
 | SMTP/Turnstile/Daily/PSGC/S3 | Cutover acceptance not performed; providers were not enabled/disabled or contacted for this check. |
 | Public build ID | Existing live build `3fd847adeabcf644f3cf297a001f0e9f51982fda`; readiness OK. |
 | Snapshot | No live snapshot or encrypted off-host copy; only synthetic snapshot validation. |
-| Restart/seal/unseal/reboot | No live drill or Droplet reboot. |
-| Rollback readiness | Existing deployment preserved; exact previous manifest/image, verified full DB backup, original env recovery and independent key escrow must be captured before installation/cutover. |
+| Restart/seal/unseal/reboot | No live Vault drill. The owner's root-password reset restarted the Droplet; existing application containers/readiness were healthy afterward. |
+| Rollback readiness | Previous manifest/image, original environment, verified full DB restore and separate critical-key escrow captured encrypted off-host; protected second-device/offline recovery handoff remains pending. |
+| Custody | Approved 3 shares / threshold 2. First holder/operator/recovery keys prepared; other two device-owned public keys, verified fingerprints, and protected recovery copies pending. |
 | Remaining limitations | Single node/no HA; manual Shamir unseal; same-host root boundary; finite Agent Secret ID lifecycle; secrets in app memory; eager shared app secret set; no dynamic DB credentials or automatic rotation. |
 
-Resume only after an approved administrator session, the five custodian plus bootstrap-operator
-public keys, encrypted off-host recovery destination/recipient, and a usable custodian unseal
-procedure are established. Then take and verify the required backups before installing Vault.
+Before provisioning, receive and verify the other two real custodians' public keys/fingerprints,
+confirm their private-export recovery and protected offline copies, complete the operator recovery
+handoff, and establish the two-person unseal procedure. Approved administrator access, bootstrap/
+recovery keys, encrypted off-host capture, and isolated PostgreSQL restore are now prepared.
+Recheck access/host state and refresh backups when live state changes before installation.
 Initialization, equality, environment conversion, exact-SHA deployment, service/encrypted-data
 acceptance, snapshot escrow, restart/seal/unseal drill, and plaintext cleanup all remain required.
 

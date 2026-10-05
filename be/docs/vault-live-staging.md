@@ -19,23 +19,42 @@ Do not generate replacement application keys, rotate, or re-encrypt. Only infras
 Vault identities are new. Ordinary configuration/public material stays outside Vault. GitHub
 DigitalOcean/SSH deployment credentials stay in Actions Secrets; frontend needs no integration.
 
-Read-only DigitalOcean inventory and pinned SSH inspection on 2026-10-05 confirmed Droplet
+DigitalOcean inventory, pinned SSH inspection, and the approved Recovery Console on 2026-10-05 confirmed Droplet
 `602091909` (`compass-staging-api-01`, Singapore), **Ubuntu 24.04.4 LTS (Noble), x86_64**, and
 Python 3.12.3. Its plan has 2 vCPUs, 4 GB RAM and an 80 GB disk. The guest snapshot showed
-3.8 GiB RAM total / 2.4 GiB available, 25 GiB available on the 77 GiB root filesystem, and no
+3.8 GiB RAM total / 2.5 GiB available, 25 GiB available on the 77 GiB root filesystem, and no
 swap. No Vault executable/package was found; `vault.service` and `vault-agent.service` were
 not found. All six COMPASS containers were running; web, proxy, PostgreSQL and Redis were healthy.
-The protected `/opt/compass/.env` remained mode 0600, owned by `compass:compass`; its contents
-were not read. These are inspection-time observations, not a Vault installation or capacity guarantee.
+The protected `/opt/compass/.env` remained mode 0600, owned by `compass:compass`. Its original
+contents were subsequently encrypted directly to the approved off-host operator Mac, without
+printing values or making an ordinary plaintext temporary file. These are inspection-time
+observations, not a Vault installation or capacity guarantee.
 
 The initial SSH timeout matched the current client IP being outside the firewall's SSH allowlist.
 Temporary current-client /32 access to TCP 22 enabled inspection and was removed afterward;
 the original firewall was verified restored, with no public 8200/8201 rule. The deployment user
 `compass` could not execute `sudo -n true`, and the tested local bootstrap key could not log in as root.
-**Establish an authorized administrator session before installation.** Recheck `cat /etc/os-release`,
+The owner subsequently reset the root password and logged into the Recovery Console; `id -u`
+confirmed UID 0. This approved administrator session does not grant root SSH or change sudoers.
+**Recheck the authorized administrator session before installation.** Recheck `cat /etc/os-release`,
 `uname -m`, `vault version` if installed, `free -h`, `df -h`, and `swapon --show` at execution time.
 Take a PostgreSQL backup and a verified, encrypted, off-host operator recovery copy of the original
-`.env`; never print/upload it. Keep live `.env` mode 0600.
+`.env`; never print/upload it. Keep live `.env` mode 0600. The execution record documents a fresh
+encrypted backup and isolated restore; refresh it if live state changes before cutover.
+
+The owner approved **three shares with a threshold of two** on 2026-10-05, replacing the original
+five-share/three-threshold plan. Use three real, independent custodians. Each prepares and retains
+their own passphrase-protected PGP private key on their own device; accept only their public key,
+verified fingerprint, and a successful private-export recovery challenge. The bootstrap operator
+and off-host backup recipient use separate keys and do not count as additional custodians.
+
+Before installation/initialization, verify all three public keys have a usable encryption subkey,
+confirm fingerprints through a separate known contact path, establish protected recovery copies
+and the two-person unseal procedure, and verify the full PostgreSQL backup can be restored. The
+original runtime/deployment environment and previous image/manifest must be recoverable off-host;
+escrow the existing TOTP, ordered Routine Interview keyring, and Web Push storage key independently
+of Vault. One keyring and a private export on the same Mac do not constitute a second-device backup.
+The current execution record identifies the completed preparation and outstanding custody handoff.
 
 Build/deploy code support first using the previous manifest if necessary. The **new manifest is
 file-only**; its workflow refuses to deploy until Vault is provisioned, unsealed, rendered, compared,
@@ -141,15 +160,18 @@ The certificate's 127.0.0.1 SAN remains valid through the tunnel.
 
 ```bash
 umask 077
-vault operator init -key-shares=5 -key-threshold=3 \
-  -pgp-keys=custodian1.asc,custodian2.asc,custodian3.asc,custodian4.asc,custodian5.asc \
+vault operator init -key-shares=3 -key-threshold=2 \
+  -pgp-keys=custodian1.asc,custodian2.asc,custodian3.asc \
   -root-token-pgp-key=bootstrap-operator.asc -format=json > vault-init.encrypted.json
 ```
 
-Output is protected **off-Droplet**. Separate custodians keep encrypted shares and private PGP keys
+Record the public fingerprint-to-share-index mapping before initialization. Output is protected
+**off-Droplet**. Deliver each encrypted share only to its mapped holder and have that holder verify
+local decryption without returning the plaintext. Separate custodians keep encrypted shares and private PGP keys
 off-host. Never store plaintext shares in Git/GitHub, `.env`, systemd, Agent, or Docker volumes.
 Custodians decrypt locally and enter shares into the hidden `vault operator unseal` prompt, never
-as arguments or in a recorded terminal. Repeat to threshold; verify `vault status` unsealed/Raft.
+as arguments or in a recorded terminal. Two distinct holders are required; verify `vault status`
+unsealed/Raft. Rehearse recovery with each distinct pair before claiming custody acceptance.
 
 The bootstrap operator privately reads the decrypted root token into laptop memory only:
 `read -rs VAULT_TOKEN; export VAULT_TOKEN`. Do not log it, `vault login` with it, or store it in a

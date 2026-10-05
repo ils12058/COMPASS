@@ -130,16 +130,19 @@ No package, application configuration, runtime value, container, or Vault data w
 ## Live steps still required
 
 The subsequent [live cutover execution record](vault-live-cutover-validation.md) corrects the
-Userpass token fields and records fresh version/access checks. It stopped before provisioning
-because administrator access and off-host recovery custody remain unavailable; the foundation
-merge is not a completed live migration.
+Userpass token fields and records fresh version/access checks. The owner established an approved
+root Recovery Console session, approved three shares with a threshold of two, and authorized
+off-host preparation. Encrypted database/configuration/key-escrow backups and an isolated database
+restore are complete. Provisioning remains pending until the other two real custodians prepare
+their own keys and protected recovery copies; the foundation merge is not a completed live migration.
 
-Vault TLS/Agent health, live value equality, encrypted-data readability, backups and live cutover
+Vault TLS/Agent health, live rendered-value equality, encrypted-data readability, Vault snapshots and live cutover
 remain unverified. The new manifest/workflow requires provisioning before deployment. Do not
 treat merge or synthetic validation as a completed live cutover.
 
-The operator must establish administrator access and recheck OS/version/capacity/swap; take
-verified PostgreSQL and encrypted off-host configuration/key recovery backups; install the approved Community package;
+The operator must recheck approved administrator access and OS/version/capacity/swap; complete
+three-person PGP custody and refresh verified PostgreSQL/off-host configuration/key backups when
+live state changes; install the approved Community package;
 install host identities/TLS/Raft/units; initialize with off-host share custody; unseal and enable
 KV/audit; establish human/runtime identities and revoke root; export/import exact current values;
 start Agent; compare every rendered value; convert protected `.env` to pointers/remove direct
