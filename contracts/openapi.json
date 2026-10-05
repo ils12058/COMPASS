@@ -3234,6 +3234,7 @@
           "feedback.view_customer_feedback",
           "good_moral.issue",
           "good_moral.manage",
+          "good_moral.prepare",
           "good_moral.request_self",
           "good_moral.view",
           "good_moral.view_self",
@@ -8759,6 +8760,18 @@
             "title": "Id",
             "type": "string"
           },
+          "last_submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Submitted At"
+          },
           "note": {
             "title": "Note",
             "type": "string"
@@ -8806,6 +8819,9 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "workflow_status": {
+            "$ref": "#/components/schemas/ExitInterviewOpportunityWorkflowStatusValue"
           }
         },
         "required": [
@@ -8816,6 +8832,8 @@
           "opened_at",
           "completed_at",
           "revoked_at",
+          "workflow_status",
+          "last_submitted_at",
           "student",
           "opened_by",
           "revoked_by",
@@ -8841,6 +8859,15 @@
           "REVOKED"
         ],
         "title": "ExitInterviewOpportunityStatusValue",
+        "type": "string"
+      },
+      "ExitInterviewOpportunityWorkflowStatusValue": {
+        "enum": [
+          "NOT_STARTED",
+          "DRAFT",
+          "SUBMITTED"
+        ],
+        "title": "ExitInterviewOpportunityWorkflowStatusValue",
         "type": "string"
       },
       "ExitInterviewPageResponse": {
@@ -10044,6 +10071,65 @@
         "title": "GeographicLocationPayload",
         "type": "object"
       },
+      "GoodMoralActionsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "can_cancel": {
+            "title": "Can Cancel",
+            "type": "boolean"
+          },
+          "can_correct": {
+            "title": "Can Correct",
+            "type": "boolean"
+          },
+          "can_download": {
+            "title": "Can Download",
+            "type": "boolean"
+          },
+          "can_issue": {
+            "title": "Can Issue",
+            "type": "boolean"
+          },
+          "can_prepare": {
+            "title": "Can Prepare",
+            "type": "boolean"
+          },
+          "correction_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Correction Fields",
+            "type": "array"
+          },
+          "preparation_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preparation Version"
+          },
+          "request_version": {
+            "title": "Request Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_version",
+          "preparation_version",
+          "can_prepare",
+          "can_correct",
+          "can_issue",
+          "can_cancel",
+          "can_download",
+          "correction_fields"
+        ],
+        "title": "GoodMoralActionsResponse",
+        "type": "object"
+      },
       "GoodMoralCancellationPayload": {
         "additionalProperties": false,
         "properties": {
@@ -10492,6 +10578,20 @@
         "title": "GoodMoralHistoryResponse",
         "type": "object"
       },
+      "GoodMoralIssuePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_preparation_version": {
+            "title": "Expected Preparation Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_preparation_version"
+        ],
+        "title": "GoodMoralIssuePayload",
+        "type": "object"
+      },
       "GoodMoralOperationalDetailResponse": {
         "additionalProperties": false,
         "properties": {
@@ -10504,6 +10604,9 @@
                 "type": "null"
               }
             ]
+          },
+          "actions": {
+            "$ref": "#/components/schemas/GoodMoralActionsResponse"
           },
           "applicant_name": {
             "title": "Applicant Name",
@@ -10703,6 +10806,28 @@
             "title": "Official Receipt Number",
             "type": "string"
           },
+          "prepared_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prepared At"
+          },
+          "prepared_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "semester": {
             "title": "Semester",
             "type": "string"
@@ -10768,7 +10893,10 @@
           "issued_by",
           "issued_by_name_snapshot",
           "student_institutional_id",
-          "cancellation"
+          "cancellation",
+          "prepared_by",
+          "prepared_at",
+          "actions"
         ],
         "title": "GoodMoralOperationalDetailResponse",
         "type": "object"
@@ -10776,6 +10904,16 @@
       "GoodMoralOperationalSummaryResponse": {
         "additionalProperties": false,
         "properties": {
+          "academic_year": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicYearSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "applicant_name": {
             "title": "Applicant Name",
             "type": "string"
@@ -10818,6 +10956,18 @@
             "title": "Official Receipt Number",
             "type": "string"
           },
+          "prepared_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prepared At"
+          },
           "status": {
             "$ref": "#/components/schemas/GoodMoralStatusValue"
           },
@@ -10851,7 +11001,9 @@
           "created_at",
           "updated_at",
           "student_institutional_id",
-          "official_receipt_number"
+          "official_receipt_number",
+          "academic_year",
+          "prepared_at"
         ],
         "title": "GoodMoralOperationalSummaryResponse",
         "type": "object"
@@ -10892,9 +11044,24 @@
         "title": "GoodMoralPageResponse",
         "type": "object"
       },
+      "GoodMoralPreparationPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_resource_version": {
+            "title": "Expected Resource Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_resource_version"
+        ],
+        "title": "GoodMoralPreparationPayload",
+        "type": "object"
+      },
       "GoodMoralStatusValue": {
         "enum": [
           "REQUESTED",
+          "READY_FOR_ISSUANCE",
           "ISSUED",
           "CANCELLED"
         ],
@@ -15660,6 +15827,17 @@
             ],
             "title": "Active Call Slip Count"
           },
+          "good_moral_ready_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Good Moral Ready Count"
+          },
           "good_moral_requested_count": {
             "anyOf": [
               {
@@ -15710,6 +15888,7 @@
           "upcoming_managed_appointments_count",
           "routine_evaluation_pending_count",
           "good_moral_requested_count",
+          "good_moral_ready_count",
           "active_call_slip_count"
         ],
         "title": "OverviewGuidanceSummary",
@@ -22536,6 +22715,7 @@
                 "feedback.view_customer_feedback",
                 "good_moral.issue",
                 "good_moral.manage",
+                "good_moral.prepare",
                 "good_moral.request_self",
                 "good_moral.view",
                 "good_moral.view_self",
@@ -22703,6 +22883,7 @@
                 "feedback.view_customer_feedback",
                 "good_moral.issue",
                 "good_moral.manage",
+                "good_moral.prepare",
                 "good_moral.request_self",
                 "good_moral.view",
                 "good_moral.view_self",
@@ -36359,6 +36540,23 @@
           },
           {
             "in": "query",
+            "name": "academic_year_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Academic Year Id"
+            }
+          },
+          {
+            "in": "query",
             "name": "page",
             "required": false,
             "schema": {
@@ -36708,6 +36906,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoodMoralIssuePayload"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -36865,6 +37073,104 @@
           }
         ],
         "summary": "Good Moral Download",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/requests/{request_id}/prepare": {
+      "post": {
+        "operationId": "goodMoralPrepareRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoodMoralPreparationPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralOperationalDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral Prepare",
         "tags": [
           "good-moral"
         ]

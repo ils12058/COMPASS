@@ -1,4 +1,4 @@
-"""Student self-service and Counselor operational API for Good Moral certificates."""
+"""Student self-service and Guidance operational API for Good Moral certificates."""
 
 from __future__ import annotations
 
@@ -42,8 +42,11 @@ from .services import (
     GoodMoralInventoryRequired,
     GoodMoralNotFound,
     GoodMoralNotPermitted,
+    GoodMoralNotReady,
+    GoodMoralPreparationChanged,
     InvalidGoodMoralInput,
     cancel_request,
+    correction_fields,
     create_my_current_student,
     create_my_graduate,
     get_mine,
@@ -51,6 +54,7 @@ from .services import (
     issue_request,
     list_mine,
     list_requests,
+    prepare_request,
     render_certificate_pdf,
     update_request,
 )
@@ -84,6 +88,7 @@ class GoodMoralVariantValue(StrEnum):
 
 class GoodMoralStatusValue(StrEnum):
     REQUESTED = GoodMoralStatus.REQUESTED
+    READY_FOR_ISSUANCE = GoodMoralStatus.READY_FOR_ISSUANCE
     ISSUED = GoodMoralStatus.ISSUED
     CANCELLED = GoodMoralStatus.CANCELLED
 
@@ -101,6 +106,14 @@ class GraduateRequestPayload(StrictSchema):
 
 class GoodMoralCancellationPayload(StrictSchema):
     reason: str
+
+
+class GoodMoralPreparationPayload(StrictSchema):
+    expected_resource_version: str
+
+
+class GoodMoralIssuePayload(StrictSchema):
+    expected_preparation_version: str
 
 
 class GoodMoralCorrectionPayload(StrictSchema):
@@ -149,6 +162,8 @@ class GoodMoralSummaryResponse(StrictSchema):
 class GoodMoralOperationalSummaryResponse(GoodMoralSummaryResponse):
     student_institutional_id: str | None
     official_receipt_number: str
+    academic_year: AcademicYearSummary | None
+    prepared_at: datetime | None
 
 
 class GoodMoralDetailResponse(GoodMoralSummaryResponse):
@@ -180,9 +195,23 @@ class GoodMoralCancellationSummary(StrictSchema):
     reason: str
 
 
+class GoodMoralActionsResponse(StrictSchema):
+    request_version: str
+    preparation_version: str | None
+    can_prepare: bool
+    can_correct: bool
+    can_issue: bool
+    can_cancel: bool
+    can_download: bool
+    correction_fields: list[str]
+
+
 class GoodMoralOperationalDetailResponse(GoodMoralDetailResponse):
     student_institutional_id: str | None
     cancellation: GoodMoralCancellationSummary | None
+    prepared_by: PersonSummary | None
+    prepared_at: datetime | None
+    actions: GoodMoralActionsResponse
 
 
 class GoodMoralHistoryResponse(StrictSchema):
@@ -213,6 +242,16 @@ def _require_counselor(request, capability: str) -> None:
         raise APIError(403, "permission_denied", f"The {capability} capability is required.")
 
 
+def _require_operational(request, capability: str) -> None:
+    user = request.auth_user
+    if (
+        not user.is_active
+        or user.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        or not user.has_capability(capability)
+    ):
+        raise APIError(403, "permission_denied", "Guidance Good Moral access is required.")
+
+
 def _raise(exc: GoodMoralError) -> NoReturn:
     if isinstance(exc, GoodMoralNotFound):
         raise APIError(404, "good_moral_not_found", str(exc)) from exc
@@ -233,6 +272,10 @@ def _raise(exc: GoodMoralError) -> NoReturn:
     if isinstance(exc, GoodMoralCreationConflict):
         # Same stable code as the other idempotent creation routes.
         raise APIError(409, "idempotency_key_conflict", str(exc)) from exc
+    if isinstance(exc, GoodMoralNotReady):
+        raise APIError(409, "good_moral_not_ready", str(exc)) from exc
+    if isinstance(exc, GoodMoralPreparationChanged):
+        raise APIError(409, "good_moral_preparation_changed", str(exc)) from exc
     if isinstance(exc, GoodMoralConflict):
         raise APIError(409, "good_moral_conflict", str(exc)) from exc
     if isinstance(exc, GoodMoralDocumentUnavailable):
@@ -266,10 +309,14 @@ def _operational_summary(item) -> dict[str, object]:
         **_summary(item),
         "student_institutional_id": item.student.institutional_id,
         "official_receipt_number": item.official_receipt_number,
+        "academic_year": {"id": item.academic_year_id, "label": item.academic_year.label}
+        if item.academic_year_id
+        else None,
+        "prepared_at": item.prepared_at,
     }
 
 
-def _operational_detail(item) -> dict[str, object]:
+def _operational_detail(item, actor) -> dict[str, object]:
     cancellation = None
     if item.cancelled_at is not None:
         cancellation = {
@@ -280,6 +327,40 @@ def _operational_detail(item) -> dict[str, object]:
         **_detail(item),
         "student_institutional_id": item.student.institutional_id,
         "cancellation": cancellation,
+        "prepared_by": _person(item.prepared_by) if item.prepared_by_id else None,
+        "prepared_at": item.prepared_at,
+        "actions": _actions(item, actor),
+    }
+
+
+def _actions(item, actor):
+    preparable = item.status in {GoodMoralStatus.REQUESTED, GoodMoralStatus.READY_FOR_ISSUANCE}
+    prepare = actor.has_capability("good_moral.prepare")
+    counselor = actor.role.code == "COUNSELOR"
+    mapping = {
+        "applicant_name_snapshot": "applicant_name",
+        "year_level_snapshot": "year_level",
+        "college_snapshot": "college",
+        "course_snapshot": "course",
+        "major_snapshot": "major",
+        "semester_snapshot": "semester",
+        "degree_snapshot": "degree",
+    }
+    return {
+        "request_version": item.updated_at.isoformat(),
+        "preparation_version": item.prepared_at.isoformat() if item.prepared_at else None,
+        "can_prepare": prepare and item.status == GoodMoralStatus.REQUESTED,
+        "can_correct": prepare and preparable,
+        "can_issue": counselor
+        and actor.has_capability("good_moral.issue")
+        and item.status == GoodMoralStatus.READY_FOR_ISSUANCE,
+        "can_cancel": counselor and actor.has_capability("good_moral.manage") and preparable,
+        "can_download": item.status == GoodMoralStatus.ISSUED,
+        "correction_fields": sorted(
+            mapping.get(name, name) for name in correction_fields(actor, item)
+        )
+        if prepare and preparable
+        else [],
     }
 
 
@@ -536,10 +617,11 @@ def good_moral_list_requests(
     student_id: UUID | None = None,
     search: str | None = None,
     form_revision_id: UUID | None = None,
+    academic_year_id: UUID | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
-    _require_counselor(request, "good_moral.view")
+    _require_operational(request, "good_moral.view")
     try:
         result = list_requests(
             actor=request.auth_user,
@@ -548,6 +630,7 @@ def good_moral_list_requests(
             student_id=student_id,
             search=search,
             form_revision_id=form_revision_id,
+            academic_year_id=academic_year_id,
             page=page,
             page_size=page_size,
         )
@@ -570,7 +653,7 @@ def good_moral_list_requests(
     openapi_extra=PDF_SUCCESS_OPENAPI,
 )
 def good_moral_download(request, request_id: UUID):
-    _require_counselor(request, "good_moral.view")
+    _require_operational(request, "good_moral.view")
     try:
         item = get_request(actor=request.auth_user, request_id=request_id)
     except GoodMoralError as exc:
@@ -600,7 +683,7 @@ def good_moral_cancel_request(
         )
     except GoodMoralError as exc:
         _raise(exc)
-    return _operational_detail(item)
+    return _operational_detail(item, request.auth_user)
 
 
 @router.post(
@@ -609,17 +692,18 @@ def good_moral_cancel_request(
     auth=session_auth,
     operation_id="goodMoralIssueRequest",
 )
-def good_moral_issue(request, request_id: UUID):
+def good_moral_issue(request, request_id: UUID, payload: GoodMoralIssuePayload):
     _require_counselor(request, "good_moral.issue")
     try:
         item = issue_request(
+            expected_preparation_version=payload.expected_preparation_version,
             actor=request.auth_user,
             request_id=request_id,
             context=_context(request),
         )
     except GoodMoralError as exc:
         _raise(exc)
-    return _operational_detail(item)
+    return _operational_detail(item, request.auth_user)
 
 
 @router.get(
@@ -629,12 +713,12 @@ def good_moral_issue(request, request_id: UUID):
     operation_id="goodMoralGetRequest",
 )
 def good_moral_get(request, request_id: UUID):
-    _require_counselor(request, "good_moral.view")
+    _require_operational(request, "good_moral.view")
     try:
         item = get_request(actor=request.auth_user, request_id=request_id)
     except GoodMoralError as exc:
         _raise(exc)
-    return _operational_detail(item)
+    return _operational_detail(item, request.auth_user)
 
 
 @router.patch(
@@ -644,7 +728,7 @@ def good_moral_get(request, request_id: UUID):
     operation_id="goodMoralUpdateRequest",
 )
 def good_moral_update(request, request_id: UUID, payload: GoodMoralCorrectionPayload):
-    _require_counselor(request, "good_moral.manage")
+    _require_operational(request, "good_moral.prepare")
     try:
         item = update_request(
             actor=request.auth_user,
@@ -654,4 +738,24 @@ def good_moral_update(request, request_id: UUID, payload: GoodMoralCorrectionPay
         )
     except GoodMoralError as exc:
         _raise(exc)
-    return _operational_detail(item)
+    return _operational_detail(item, request.auth_user)
+
+
+@router.post(
+    "/requests/{request_id}/prepare",
+    response=response_with_errors(GoodMoralOperationalDetailResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="goodMoralPrepareRequest",
+)
+def good_moral_prepare(request, request_id: UUID, payload: GoodMoralPreparationPayload):
+    _require_operational(request, "good_moral.prepare")
+    try:
+        item = prepare_request(
+            actor=request.auth_user,
+            request_id=request_id,
+            context=_context(request),
+            expected_resource_version=payload.expected_resource_version,
+        )
+    except GoodMoralError as exc:
+        _raise(exc)
+    return _operational_detail(item, request.auth_user)

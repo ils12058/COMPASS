@@ -20,6 +20,8 @@ export function goodMoralStatusLabel(status: GoodMoralStatusValue): string {
   switch (status) {
     case "REQUESTED":
       return "Requested";
+    case "READY_FOR_ISSUANCE":
+      return "Ready for issuance";
     case "ISSUED":
       return "Issued";
     case "CANCELLED":
@@ -57,6 +59,10 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
   switch (code) {
+    case "good_moral_not_ready":
+      return "Review the certificate details and mark the request ready before issuing.";
+    case "good_moral_preparation_changed":
+      return "This request changed. Review its latest details before continuing.";
     case "good_moral_not_found":
       return "Good Moral request not found.";
     case "good_moral_inventory_required":

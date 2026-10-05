@@ -43,11 +43,12 @@ fabricating a new admission.
 
 ### Least-privilege authority and API
 
-`exit_interviews.manage_opportunities` is granted only to the existing
-HEAD_GUIDANCE_COUNSELOR designation. It requires `accounts.view` for Student
-selection, and does not grant identifiable answer access. Counselors, Guidance
-Services Staff, IT Admin, DPO, and Students receive no new baseline grant. Existing
-`exit_interviews.view` and `exit_interviews.reopen` boundaries stay intact.
+`exit_interviews.manage_opportunities` was initially granted only to the existing
+HEAD_GUIDANCE_COUNSELOR designation. ADR-076 extends that bounded baseline to
+Guidance Services Staff. It requires `accounts.view` for Student selection, and
+does not grant identifiable answer access. Ordinary Counselors, IT Admin, DPO,
+and Students receive no new admission baseline. Existing `exit_interviews.view`
+and `exit_interviews.reopen` boundaries stay intact.
 
 Purpose-built APIs list/search opportunities, select current Students using the
 shared organizational Student lookup, open, inspect, and revoke opportunities.
@@ -149,3 +150,11 @@ ordinary/manual F4, matching-year submission, F6, persistent replay, saved prere
 provenance, and races around open/admission/revoke/submit/F4/reopen. Backend OpenAPI
 and generated frontend clients stay synchronized. Frontend validation preserves the
 existing lint, strict types, build, and targeted UI/access checks.
+
+## Subsequent operational delegation
+
+[ADR-076](ADR-076-guidance-staff-good-moral-preparation.md) extends the bounded
+opportunity-management baseline to Guidance Services Staff. It exposes workflow
+status and submission times without granting response content, PDF, or reopen
+authority. Admission, graduation provenance, and Student correction rules remain
+as decided here.

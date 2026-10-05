@@ -307,7 +307,8 @@ def test_exit_interview_policy_is_student_self_plus_head_only():
     assert head.has_capability("exit_interviews.manage_opportunities")
     assert not head.has_capability("exit_interviews.view_self")
 
-    for user in (student, counselor, staff, admin, dpo):
+    assert staff.has_capability("exit_interviews.manage_opportunities")
+    for user in (student, counselor, admin, dpo):
         assert not user.has_capability("exit_interviews.manage_opportunities")
     for user in (counselor, staff, admin, dpo):
         assert not user.has_capability("exit_interviews.view")

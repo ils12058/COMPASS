@@ -328,7 +328,15 @@ class ExitInterviewStudentOpportunityResponse(StrictSchema):
     revoked_at: datetime | None
 
 
+class ExitInterviewOpportunityWorkflowStatusValue(StrEnum):
+    NOT_STARTED = "NOT_STARTED"
+    DRAFT = ExitInterviewStatus.DRAFT
+    SUBMITTED = ExitInterviewStatus.SUBMITTED
+
+
 class ExitInterviewOpportunityResponse(ExitInterviewStudentOpportunityResponse):
+    workflow_status: ExitInterviewOpportunityWorkflowStatusValue
+    last_submitted_at: datetime | None
     student: StudentSummary
     opened_by: PersonSummary
     revoked_by: PersonSummary | None
@@ -392,6 +400,14 @@ def _require_student(request, capability: str) -> None:
     user = request.auth_user
     if not user.is_active or user.role.code != "STUDENT" or not user.has_capability(capability):
         raise APIError(403, "permission_denied", "Student Exit Interview access is required.")
+
+
+def _require_opportunity_manager(request) -> None:
+    user = request.auth_user
+    if not user.is_active or not user.has_capability("exit_interviews.manage_opportunities"):
+        raise APIError(
+            403, "permission_denied", "Guidance Exit Interview opportunity authority is required."
+        )
 
 
 def _require_head(request, capability: str) -> None:
@@ -618,6 +634,8 @@ def _student_opportunity(item):
 def _opportunity(item):
     return {
         **_student_opportunity(item),
+        "workflow_status": item.workflow_status,
+        "last_submitted_at": item.last_submitted_at,
         "student": _student_summary(item.student),
         "opened_by": _person(item.opened_by),
         "revoked_by": _person(item.revoked_by) if item.revoked_by_id else None,
@@ -660,7 +678,7 @@ def exit_interviews_get_my_status(request):
 def exit_interviews_list_eligible_students(
     request, search: str | None = None, page: int = 1, page_size: int = 20
 ):
-    _require_head(request, "exit_interviews.manage_opportunities")
+    _require_opportunity_manager(request)
     try:
         result = list_eligible_students(
             actor=request.auth_user, search=search, page=page, page_size=page_size
@@ -705,7 +723,7 @@ def exit_interviews_list_opportunities(
     page: int = 1,
     page_size: int = 25,
 ):
-    _require_head(request, "exit_interviews.manage_opportunities")
+    _require_opportunity_manager(request)
     try:
         result = list_opportunities(
             actor=request.auth_user,
@@ -735,7 +753,7 @@ def exit_interviews_list_opportunities(
     operation_id="exitInterviewsOpenOpportunity",
 )
 def exit_interviews_open_opportunity(request, payload: ExitInterviewOpenOpportunityRequest):
-    _require_head(request, "exit_interviews.manage_opportunities")
+    _require_opportunity_manager(request)
     try:
         item = open_opportunity(
             actor=request.auth_user,
@@ -757,7 +775,7 @@ def exit_interviews_open_opportunity(request, payload: ExitInterviewOpenOpportun
     operation_id="exitInterviewsGetOpportunity",
 )
 def exit_interviews_get_opportunity(request, opportunity_id: UUID):
-    _require_head(request, "exit_interviews.manage_opportunities")
+    _require_opportunity_manager(request)
     try:
         item = get_opportunity(actor=request.auth_user, opportunity_id=opportunity_id)
     except ExitInterviewError as exc:
@@ -772,7 +790,7 @@ def exit_interviews_get_opportunity(request, opportunity_id: UUID):
     operation_id="exitInterviewsRevokeOpportunity",
 )
 def exit_interviews_revoke_opportunity(request, opportunity_id: UUID):
-    _require_head(request, "exit_interviews.manage_opportunities")
+    _require_opportunity_manager(request)
     try:
         item = revoke_opportunity(
             actor=request.auth_user, opportunity_id=opportunity_id, context=_context(request)

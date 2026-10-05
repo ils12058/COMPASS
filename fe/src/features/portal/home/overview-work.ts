@@ -101,7 +101,6 @@ export function useOverviewAttention(
     counselorRoutineCount > 0;
   const goodMoralCount = summary?.guidance?.good_moral_requested_count;
   const goodMoralEnabled =
-    isCounselor &&
     goodMoralAccess.canViewOperational &&
     hasCount(goodMoralCount) &&
     goodMoralCount > 0;

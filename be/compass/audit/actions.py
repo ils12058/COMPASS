@@ -72,6 +72,8 @@ GOOD_MORAL_REQUEST_CREATED = "good_moral.request_created"
 GOOD_MORAL_REQUEST_UPDATED = "good_moral.request_updated"
 GOOD_MORAL_REQUEST_CANCELLED = "good_moral.request.cancelled"
 GOOD_MORAL_ISSUED = "good_moral.issued"
+GOOD_MORAL_PREPARED = "good_moral.prepared"
+GOOD_MORAL_RETURNED_TO_PREPARATION = "good_moral.returned_to_preparation"
 CUSTOMER_FEEDBACK_SUBMITTED = "feedback.customer_feedback_submitted"
 CSM_SUBMITTED = "feedback.csm_submitted"
 GRADUATE_TRACER_DRAFT_CREATED = "graduate_tracer.draft_created"
@@ -280,6 +282,8 @@ __all__ = [
     "GOOD_MORAL_REQUEST_UPDATED",
     "GOOD_MORAL_REQUEST_CANCELLED",
     "GOOD_MORAL_ISSUED",
+    "GOOD_MORAL_PREPARED",
+    "GOOD_MORAL_RETURNED_TO_PREPARATION",
     "CUSTOMER_FEEDBACK_SUBMITTED",
     "CSM_SUBMITTED",
     "GRADUATE_TRACER_DRAFT_CREATED",

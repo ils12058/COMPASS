@@ -146,7 +146,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
     assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
     assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 78
+    assert RoleCapability.objects.count() == 84
     assert DesignationCapability.objects.count() == 20
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
@@ -158,8 +158,8 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 70
-    assert RoleCapability.objects.count() == 78
+    assert Capability.objects.count() == 71
+    assert RoleCapability.objects.count() == 84
     assert DesignationCapability.objects.count() == 20
 
 
@@ -272,8 +272,9 @@ def test_counselor_baseline_adds_scoped_authority_without_admin_expansion():
 
     gss = make_user(role="GUIDANCE_SERVICES_STAFF", email="baseline-gss@example.edu")
     assert not gss.has_capability("reports.view")
-    assert not gss.has_capability("academic_years.view")
-    assert not gss.has_capability("institutional_forms.view")
+    assert gss.has_capability("academic_years.view")
+    assert gss.has_capability("institutional_forms.view")
+    assert gss.has_capability("exit_interviews.manage_opportunities")
 
 
 @pytest.mark.django_db
@@ -332,6 +333,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "call_slips.manage",
         "good_moral.view",
         "good_moral.manage",
+        "good_moral.prepare",
         "good_moral.issue",
         "announcements.manage",
         "resources.manage",

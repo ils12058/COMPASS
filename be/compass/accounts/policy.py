@@ -297,7 +297,7 @@ CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
         code="exit_interviews.manage_opportunities",
         name="Manage Exit Interview opportunities",
-        description="Open and revoke Student Exit Interview admission for Head Guidance.",
+        description="Open and revoke Student Exit Interview admission without reading responses.",
     ),
     CapabilityDefinition(
         code="routine_interviews.view_self",
@@ -375,6 +375,11 @@ CAPABILITY_DEFINITIONS = (
         code="good_moral.manage",
         name="Manage Good Moral requests",
         description="Correct certificate-local Good Moral request facts before issuance.",
+    ),
+    CapabilityDefinition(
+        code="good_moral.prepare",
+        name="Prepare Good Moral requests",
+        description="Correct clerical certificate facts and mark Good Moral requests ready.",
     ),
     CapabilityDefinition(
         code="good_moral.issue",
@@ -518,6 +523,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "call_slips.manage",
             "good_moral.view",
             "good_moral.manage",
+            "good_moral.prepare",
             "good_moral.issue",
             "announcements.manage",
             "resources.manage",
@@ -530,6 +536,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
         {
             "accounts.view",
             "organization.structure.view",
+            "academic_years.view",
+            "institutional_forms.view",
             "services.catalog.view",
             "availability.view",
             "appointments.view_self",
@@ -538,6 +546,9 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "referrals.manage",
             "call_slips.view",
             "call_slips.manage",
+            "good_moral.view",
+            "good_moral.prepare",
+            "exit_interviews.manage_opportunities",
             "announcements.manage",
             "resources.manage",
         }
@@ -628,6 +639,7 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "graduate_tracer.manage_self": frozenset({"graduate_tracer.view_self"}),
     "good_moral.request_self": frozenset({"good_moral.view_self"}),
     "good_moral.manage": frozenset({"good_moral.view"}),
+    "good_moral.prepare": frozenset({"good_moral.view"}),
     "good_moral.issue": frozenset({"good_moral.view"}),
     "counseling.manage_assigned": frozenset({"counseling.view_assigned"}),
     "referrals.manage": frozenset({"referrals.view"}),

@@ -164,9 +164,7 @@ def test_duplicate_and_changed_source_conflict_and_database_uniqueness():
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    "role", ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]
-)
+@pytest.mark.parametrize("role", ["STUDENT", "COUNSELOR", "IT_ADMIN", "INSTITUTIONAL_OFFICER"])
 def test_unauthorized_actor_cannot_operate_or_discover_opportunities(role):
     student, head, year, _ = setup_student()
     opportunity = open_for(student, head, year)
@@ -555,3 +553,69 @@ def test_concurrent_f4_creation_and_reopen_preserve_checked_submission_provenanc
         assert request.exit_interview_submitted_at == item.last_submitted_at
     else:
         assert not GoodMoralRequest.objects.exists()
+
+
+@pytest.mark.django_db
+def test_gss_opportunity_metadata_never_exposes_response_content():
+    student, _, year, _ = setup_student()
+    staff = make_user("opportunity-staff@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    client = auth_client(staff)
+    opened = client.post(
+        "/api/v1/exit-interviews/opportunities",
+        data=json.dumps(
+            {"student_id": str(student.pk), "academic_year_id": str(year.pk), "source": "MANUAL"}
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert opened.status_code == 200
+    body = opened.json()
+    assert body["workflow_status"] == "NOT_STARTED" and body["last_submitted_at"] is None
+    url = f"/api/v1/exit-interviews/opportunities/{body['id']}"
+    student_client = auth_client(student)
+    created = ensure_api(student_client)
+    assert created.status_code == 200
+    record_id = created.json()["id"]
+    assert put_api(student_client, valid_payload()).status_code == 200
+    draft = client.get(url).json()
+    assert draft["workflow_status"] == "DRAFT" and draft["last_submitted_at"] is None
+    assert not {
+        "ratings",
+        "career_modes",
+        "work_choices",
+        "student_name",
+        "contact_number",
+        "home_address",
+        "comments",
+    } & set(draft)
+    assert "form-local@example.edu" not in json.dumps(draft)
+    assert client.get(f"/api/v1/exit-interviews/{record_id}").status_code == 403
+    assert client.get(f"/api/v1/exit-interviews/{record_id}/pdf").status_code == 403
+    assert submit_api(student_client).status_code == 200
+    completed = client.get(url).json()
+    assert completed["status"] == "COMPLETED" and completed["workflow_status"] == "SUBMITTED"
+    assert completed["last_submitted_at"] is not None
+    listing = client.get("/api/v1/exit-interviews/opportunities").json()["items"]
+    assert listing[0]["workflow_status"] == "SUBMITTED"
+
+
+@pytest.mark.django_db
+def test_gss_can_revoke_only_opportunity_access_and_override_revocation_is_enforced():
+    student, _, year, _ = setup_student()
+    staff = make_user("opportunity-revoker@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    opportunity = open_for(student, staff, year, source="MANUAL")
+    client = auth_client(staff)
+    url = f"/api/v1/exit-interviews/opportunities/{opportunity.pk}/revoke"
+    assert client.post(url, **csrf(client)).status_code == 200
+    opportunity.refresh_from_db()
+    assert opportunity.status == "REVOKED" and opportunity.revoked_by_id == staff.pk
+    from compass.accounts.models import Capability, UserCapabilityOverride
+
+    UserCapabilityOverride.objects.create(
+        user=staff,
+        capability=Capability.objects.get(code="exit_interviews.manage_opportunities"),
+        effect="REVOKE",
+        reason="Remove operational access",
+    )
+    assert client.get("/api/v1/exit-interviews/opportunities").status_code == 403
+    assert client.post(url, **csrf(client)).status_code == 403

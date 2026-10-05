@@ -43,6 +43,7 @@ from compass.good_moral.services import (
     create_my_current_student,
     create_my_graduate,
     issue_request,
+    prepare_request,
     update_request,
 )
 from compass.graduate_tracer.models import GraduateTracerResponse
@@ -846,6 +847,12 @@ def good_moral_student(session: SeedSession) -> None:
         context=session.as_user(COUNSELOR_B.key),
     )
     issued_at = t.past(7, 15, 30)
+    prepare_request(
+        actor=session.user(COUNSELOR_B.key),
+        request_id=request.pk,
+        context=session.as_user(COUNSELOR_B.key),
+        now=issued_at,
+    )
     issue_request(
         actor=session.user(COUNSELOR_B.key),
         request_id=request.pk,
@@ -908,6 +915,12 @@ def recent_graduate(session: SeedSession) -> None:
         context=session.as_user(COUNSELOR_A.key),
     )
     issued_at = t.on(2026, 7, 15, 14)
+    prepare_request(
+        actor=session.user(COUNSELOR_A.key),
+        request_id=request.pk,
+        context=session.as_user(COUNSELOR_A.key),
+        now=issued_at,
+    )
     issue_request(
         actor=session.user(COUNSELOR_A.key),
         request_id=request.pk,

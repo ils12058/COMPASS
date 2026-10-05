@@ -62,9 +62,9 @@ export function GoodMoralCancelAction({
       await completed();
       return;
     }
-    if (refreshed?.status === "REQUESTED") {
+    if (refreshed?.status === "REQUESTED" || refreshed?.status === "READY_FOR_ISSUANCE") {
       setBlockedUntilRefresh(false);
-      setError("The request is still Requested. Review it, then deliberately retry with the same reason if cancellation is still intended.");
+      setError("The request has not been cancelled. Review it, then deliberately retry with the same reason if cancellation is still intended.");
       return;
     }
     setBlockedUntilRefresh(true);

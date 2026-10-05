@@ -9,7 +9,8 @@ from __future__ import annotations
 from uuid import UUID
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import CharField, OuterRef, Q, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -38,6 +39,7 @@ from .models import (
 from .services import (
     ExitInterviewCurrentStudentRequired,
     ExitInterviewNotFound,
+    ExitInterviewNotPermitted,
     ExitInterviewOpportunityConflict,
     InvalidExitInterviewInput,
     _clean_search,
@@ -45,15 +47,33 @@ from .services import (
     _current_year,
     _pagination,
     _summary_queryset,
-    _validate_head,
     _validate_student,
 )
 
 CAPABILITY = "exit_interviews.manage_opportunities"
 
 
+def _validate_operator(actor: User) -> None:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or not actor.has_capability(CAPABILITY)
+    ):
+        raise ExitInterviewNotPermitted(
+            "Guidance Exit Interview opportunity authority is required."
+        )
+
+
 def _queryset():
-    return ExitInterviewOpportunity.objects.select_related(
+    response = ExitInterview.objects.filter(
+        student_id=OuterRef("student_id"), academic_year_id=OuterRef("academic_year_id")
+    )
+    return ExitInterviewOpportunity.objects.annotate(
+        workflow_status=Coalesce(
+            Subquery(response.values("status")[:1]), Value("NOT_STARTED"), output_field=CharField()
+        ),
+        last_submitted_at=Subquery(response.values("last_submitted_at")[:1]),
+    ).select_related(
         "student",
         "academic_year",
         "opened_by",
@@ -85,7 +105,7 @@ def open_opportunity(
     note: str,
     context: AuditContext,
 ) -> ExitInterviewOpportunity:
-    _validate_head(actor, CAPABILITY)
+    _validate_operator(actor)
     if source not in ExitInterviewOpportunitySource.values:
         raise InvalidExitInterviewInput("Choose Graduation or Manual as the opening reason.")
     note = _clean_text(note, "note", 1000)
@@ -178,7 +198,7 @@ def open_opportunity(
 def revoke_opportunity(
     *, actor: User, opportunity_id: UUID, context: AuditContext
 ) -> ExitInterviewOpportunity:
-    _validate_head(actor, CAPABILITY)
+    _validate_operator(actor)
     with transaction.atomic():
         owner_id = (
             ExitInterviewOpportunity.objects.filter(pk=opportunity_id)
@@ -209,7 +229,7 @@ def revoke_opportunity(
 
 
 def get_opportunity(*, actor: User, opportunity_id: UUID) -> ExitInterviewOpportunity:
-    _validate_head(actor, CAPABILITY)
+    _validate_operator(actor)
     item = _queryset().filter(pk=opportunity_id).first()
     if item is None:
         raise ExitInterviewNotFound("The Exit Interview opportunity was not found.")
@@ -227,7 +247,7 @@ def list_opportunities(
     page: int = 1,
     page_size: int = 25,
 ):
-    _validate_head(actor, CAPABILITY)
+    _validate_operator(actor)
     page, page_size = _pagination(page, page_size)
     term = _clean_search(search)
     queryset = _queryset()
@@ -260,7 +280,7 @@ def list_opportunities(
 
 
 def list_eligible_students(*, actor: User, search: str | None, page: int, page_size: int):
-    _validate_head(actor, CAPABILITY)
+    _validate_operator(actor)
     try:
         return list_scoped_operational_students(
             actor=actor, search=search, page=page, page_size=page_size

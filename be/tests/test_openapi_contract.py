@@ -232,6 +232,7 @@ EXPECTED_OPERATION_IDS = {
     "goodMoralGetRequest",
     "goodMoralUpdateRequest",
     "goodMoralIssueRequest",
+    "goodMoralPrepareRequest",
     "goodMoralCancelRequest",
     "goodMoralDownloadCertificate",
     "feedbackListMyOpportunities",
@@ -374,6 +375,25 @@ def test_publication_update_contract_exposes_consequence_acknowledgement() -> No
         assert acknowledgement["type"] == "boolean"
         assert acknowledgement["default"] is False
 
+
+def test_good_moral_preparation_contract_has_explicit_actions_and_exact_versions():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    assert "READY_FOR_ISSUANCE" in schemas["GoodMoralStatusValue"]["enum"]
+    prepare = _operation(schema, "/api/v1/good-moral/requests/{request_id}/prepare", "post")
+    assert prepare["operationId"] == "goodMoralPrepareRequest"
+    assert _response_statuses(prepare) >= {200, 403, 409, 422}
+    assert schemas["GoodMoralPreparationPayload"]["required"] == ["expected_resource_version"]
+    assert schemas["GoodMoralIssuePayload"]["required"] == ["expected_preparation_version"]
+    actions = schemas["GoodMoralActionsResponse"]["properties"]
+    assert actions["request_version"]["type"] == "string"
+    for name in ("can_prepare", "can_correct", "can_issue", "can_cancel", "can_download"):
+        assert actions[name]["type"] == "boolean"
+    detail = schemas["GoodMoralOperationalDetailResponse"]["properties"]
+    assert {"prepared_at", "prepared_by", "actions"} <= set(detail)
+    listing = _operation(schema, "/api/v1/good-moral/requests", "get")
+    assert "academic_year_id" in {param["name"] for param in listing["parameters"]}
+
     announcement_update = _operation(
         schema,
         "/api/v1/announcements/management/{announcement_id}",
@@ -432,6 +452,7 @@ def test_overview_summary_contract_is_typed_and_nullable_by_domain() -> None:
             "upcoming_managed_appointments_count",
             "routine_evaluation_pending_count",
             "good_moral_requested_count",
+            "good_moral_ready_count",
             "active_call_slip_count",
         },
         "OverviewPlatformSummary": {
@@ -1723,6 +1744,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "feedback.view_customer_feedback",
             "good_moral.issue",
             "good_moral.manage",
+            "good_moral.prepare",
             "good_moral.request_self",
             "good_moral.view",
             "good_moral.view_self",
