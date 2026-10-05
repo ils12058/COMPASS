@@ -40,6 +40,7 @@ import {
   exitInterviewsUpdateMine,
   getExitInterviewsGetMineQueryKey,
   getExitInterviewsGetMyCurrentQueryKey,
+  getExitInterviewsGetMyStatusQueryKey,
   getExitInterviewsListMineQueryKey,
 } from "@/lib/api/generated/exit-interviews/exit-interviews";
 
@@ -198,6 +199,7 @@ export function ExitInterviewForm({
       setSaveMessage("Draft saved.");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getExitInterviewsGetMyCurrentQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getExitInterviewsGetMyStatusQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getExitInterviewsListMineQueryKey() }),
       ]);
     } catch (error) {
@@ -213,6 +215,7 @@ export function ExitInterviewForm({
       setConfirmSubmit(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getExitInterviewsGetMyCurrentQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getExitInterviewsGetMyStatusQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getExitInterviewsListMineQueryKey() }),
       ]);
     } catch (error) {

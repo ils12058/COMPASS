@@ -18,6 +18,94 @@ class ExitInterviewStatus(models.TextChoices):
     SUBMITTED = "SUBMITTED", "Submitted"
 
 
+class ExitInterviewOpportunitySource(models.TextChoices):
+    GRADUATION = "GRADUATION", "Graduation"
+    MANUAL = "MANUAL", "Manual"
+
+
+class ExitInterviewOpportunityStatus(models.TextChoices):
+    OPEN = "OPEN", "Open"
+    COMPLETED = "COMPLETED", "Completed"
+    REVOKED = "REVOKED", "Revoked"
+
+
+class ExitInterviewOpportunity(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="exit_interview_opportunities",
+    )
+    academic_year = models.ForeignKey(
+        AcademicYear,
+        on_delete=models.PROTECT,
+        related_name="exit_interview_opportunities",
+    )
+    source = models.CharField(max_length=16, choices=ExitInterviewOpportunitySource.choices)
+    status = models.CharField(
+        max_length=16,
+        choices=ExitInterviewOpportunityStatus.choices,
+        default=ExitInterviewOpportunityStatus.OPEN,
+    )
+    opened_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="opened_exit_interview_opportunities",
+    )
+    opened_at = models.DateTimeField()
+    completed_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="revoked_exit_interview_opportunities",
+    )
+    note = models.CharField(max_length=1000, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("-opened_at", "id")
+        indexes = [
+            models.Index(fields=("academic_year", "status"), name="exit_opp_year_status_idx")
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("student", "academic_year"), name="exit_opp_student_year_uniq"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(source__in=ExitInterviewOpportunitySource.values),
+                name="exit_opp_source_valid",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        status="OPEN",
+                        completed_at__isnull=True,
+                        revoked_at__isnull=True,
+                        revoked_by__isnull=True,
+                    )
+                    | models.Q(
+                        status="COMPLETED",
+                        completed_at__isnull=False,
+                        revoked_at__isnull=True,
+                        revoked_by__isnull=True,
+                    )
+                    | models.Q(
+                        status="REVOKED",
+                        completed_at__isnull=True,
+                        revoked_at__isnull=False,
+                        revoked_by__isnull=False,
+                    )
+                ),
+                name="exit_opp_status_shape",
+            ),
+        ]
+
+
 class ProgramCompletion(models.TextChoices):
     ACCORDING_TO_SCHEDULE = "ACCORDING_TO_SCHEDULE", "According to schedule"
     WITH_SOME_DELAY = "WITH_SOME_DELAY", "With some delay"
@@ -172,6 +260,14 @@ class CollegeFeedbackItem(models.TextChoices):
 
 class ExitInterview(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    # Null only for records admitted before explicit GCO opportunities existed.
+    opportunity = models.OneToOneField(
+        ExitInterviewOpportunity,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="exit_interview",
+    )
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

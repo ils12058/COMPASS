@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
-import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 import type { ExitInterviewStatusValue } from "@/lib/api/generated/model";
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
@@ -41,6 +41,10 @@ export function exitInterviewErrorMessage(
       return "A current Academic Year is not configured. Contact the institutional administrator.";
     case "exit_interview_not_submitted":
       return "This Exit Interview is currently a draft and is not available for Head Guidance review until the Student submits it.";
+    case "exit_interview_opportunity_required":
+    case "exit_interview_opportunity_not_open":
+    case "exit_interview_opportunity_conflict":
+      return readApiErrorMessage(error.body) ?? fallback;
     case "exit_interview_conflict":
       return "The Exit Interview changed before this action completed. Refresh the record and review its current status.";
     case "permission_denied":

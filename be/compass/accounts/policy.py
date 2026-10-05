@@ -295,6 +295,11 @@ CAPABILITY_DEFINITIONS = (
         description="Reopen a submitted Exit Interview for controlled Student correction.",
     ),
     CapabilityDefinition(
+        code="exit_interviews.manage_opportunities",
+        name="Manage Exit Interview opportunities",
+        description="Open and revoke Student Exit Interview admission for Head Guidance.",
+    ),
+    CapabilityDefinition(
         code="routine_interviews.view_self",
         name="View own routine interviews",
         description="View the authenticated Student's own Routine Interview records.",
@@ -581,6 +586,7 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "institutional_forms.view",
             "exit_interviews.view",
             "exit_interviews.reopen",
+            "exit_interviews.manage_opportunities",
             "feedback.view_customer_feedback",
             "feedback.view_csm",
             "graduate_tracer.view",
@@ -618,6 +624,7 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "routine_interviews.manage_assigned": frozenset({"routine_interviews.view_assigned"}),
     "exit_interviews.manage_self": frozenset({"exit_interviews.view_self"}),
     "exit_interviews.reopen": frozenset({"exit_interviews.view"}),
+    "exit_interviews.manage_opportunities": frozenset({"accounts.view"}),
     "graduate_tracer.manage_self": frozenset({"graduate_tracer.view_self"}),
     "good_moral.request_self": frozenset({"good_moral.view_self"}),
     "good_moral.manage": frozenset({"good_moral.view"}),
