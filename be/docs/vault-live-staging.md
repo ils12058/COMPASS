@@ -1,8 +1,9 @@
 # Vault Community live-staging operator runbook
 
-This repository foundation is not a completed live migration. The branch is based on staging
-`3f951cfdf4b154c8db947cf3c9d2e3fdf9fb1e57`, including Exit Interview opportunities (#171) and
-Good Moral preparation (#172). Those merges do not change Vault configuration or deployment.
+This repository foundation is not a completed live migration. PR #170 merged into staging as
+`27587181acb2f1e4a9122e251a2e6a930e3ea4e7`. Fetch staging before execution and inspect subsequent
+changes to settings, Compose, deployment assets/workflow, and Vault documentation. Resolve staging
+again immediately before dispatch; an old recorded SHA is not deployment authorization.
 Read [ADR-077](decisions/ADR-077-vault-runtime-secret-delivery.md) with
 [ADR-007](decisions/ADR-007-environment-strategy.md). Non-secret assets are in `be/deploy/vault/`.
 
@@ -42,9 +43,14 @@ and the environment converted. Do not dispatch the new workflow before completin
 
 ## Installation on the verified OS
 
-The official [Community install page](https://developer.hashicorp.com/vault/install) advertised
-2.1.1 during preparation. Recheck support/advisories and pin an exact approved Community version
-at execution time; record it and use its matching docs. Do not silently upgrade an existing cluster.
+On 2026-10-05 the official [Community install page](https://developer.hashicorp.com/vault/install)
+advertised 2.1.1, and the Noble/amd64 repository listed package `2.1.1-1`. Neither observation
+means Vault is installed on the Droplet. Recheck support/advisories and pin an exact approved
+Community version at execution time; record it and use its matching docs. Do not silently upgrade
+an existing cluster. The package signing key is separate from the binary-release signing key:
+the [official security page](https://www.hashicorp.com/en/trust/security) currently identifies
+`D55C 0D1A C78A 8D81 26CB 631C FC9C A96A CA02 6560`. Verify the current published fingerprint
+and repository signatures; do not trust an older cached fingerprint after a key rotation.
 On a confirmed supported Ubuntu/Debian system, as an administrator:
 
 ```bash
@@ -165,8 +171,15 @@ vault write auth/approle/role/compass-live-staging-runtime \
 vault auth enable userpass >/dev/null
 vault write auth/userpass/users/compass-operator \
   password=@/operator-private/new-vault-operator-password \
-  policies=compass-live-staging-operator ttl=1h max_ttl=8h >/dev/null
+  token_policies=compass-live-staging-operator \
+  token_ttl=1h token_max_ttl=8h >/dev/null
 ```
+
+These are the supported [Userpass token fields](https://developer.hashicorp.com/vault/api-docs/auth/userpass).
+Read back `token_policies`, `token_ttl` (3600 seconds), and `token_max_ttl` (28800 seconds) from
+`auth/userpass/users/compass-operator` before login. A successful write alone is insufficient:
+check that no parameter was ignored, and that the login token has the intended policy and TTL.
+Do not use the older `policies`, `ttl`, or `max_ttl` names for this example.
 
 The human password file is protected off-host infrastructure identity material. Use an existing
 approved human auth method instead if available. In a second laptop shell without `VAULT_TOKEN`,
@@ -354,6 +367,10 @@ database credentials with lease/connection renewal, shared crypto/new domain enc
 
 ## Current primary references
 
+- [CLI and package verification record](vault-live-cutover-validation.md)
+- [Userpass API fields](https://developer.hashicorp.com/vault/api-docs/auth/userpass)
+- [AppRole API fields](https://developer.hashicorp.com/vault/api-docs/auth/approle)
+- [CLI write/file/stdin semantics](https://developer.hashicorp.com/vault/docs/commands/write)
 - [Community installation](https://developer.hashicorp.com/vault/install)
 - [Integrated Storage deployment](https://developer.hashicorp.com/vault/tutorials/day-one-raft/raft-deployment-guide)
 - [Raft](https://developer.hashicorp.com/vault/docs/configuration/storage/raft)

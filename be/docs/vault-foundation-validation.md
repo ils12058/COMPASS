@@ -129,6 +129,11 @@ No package, application configuration, runtime value, container, or Vault data w
 
 ## Live steps still required
 
+The subsequent [live cutover execution record](vault-live-cutover-validation.md) corrects the
+Userpass token fields and records fresh version/access checks. It stopped before provisioning
+because administrator access and off-host recovery custody remain unavailable; the foundation
+merge is not a completed live migration.
+
 Vault TLS/Agent health, live value equality, encrypted-data readability, backups and live cutover
 remain unverified. The new manifest/workflow requires provisioning before deployment. Do not
 treat merge or synthetic validation as a completed live cutover.
