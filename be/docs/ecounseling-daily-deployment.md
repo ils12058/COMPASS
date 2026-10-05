@@ -6,13 +6,14 @@ Daily webhooks automatically during startup, migrations, or ordinary requests.
 ## Environment variables
 
 `DAILY_ENABLED=false` keeps the provider integration disabled while the rest of COMPASS remains
-usable. To enable E-Counseling, provide deployment secrets through the environment or secret manager:
+usable. To enable E-Counseling in live-staging, use the
+[host-managed secret files](runtime-secrets.md) and keep ordinary configuration in `.env`:
 
 ```text
 DAILY_ENABLED=true
-DAILY_API_KEY=<daily-api-key>
+DAILY_API_KEY_FILE=/run/secrets/daily_api_key
 DAILY_API_BASE_URL=https://api.daily.co/v1
-DAILY_WEBHOOK_HMAC=<base64-hmac-secret>
+DAILY_WEBHOOK_HMAC_FILE=/run/secrets/daily_webhook_hmac
 DAILY_HTTP_TIMEOUT_SECONDS=5
 DAILY_MEETING_TOKEN_TTL_SECONDS=300
 DAILY_WEBHOOK_MAX_AGE_SECONDS=300

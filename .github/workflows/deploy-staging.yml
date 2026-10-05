@@ -220,11 +220,16 @@ jobs:
           )
 
           ssh "${ssh_opts[@]}" "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST" \
-            "test -d '$DEPLOY_PATH' && test -f '$DEPLOY_PATH/.env' && mkdir -p '$release_dir' && chmod 750 '$release_dir'"
+            "test -d '$DEPLOY_PATH' && test -f '$DEPLOY_PATH/.env' && mkdir -p '$release_dir/deploy/runtime-secrets' && chmod 750 '$release_dir'"
           scp "${scp_opts[@]}" \
             be/compose.staging.yaml \
             be/Caddyfile \
             "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST:$release_dir/"
+          scp "${scp_opts[@]}" \
+            be/deploy/runtime-secrets/redis-start.sh \
+            be/deploy/runtime-secrets/check-runtime-secrets.py \
+            be/deploy/runtime-secrets/runtime_secrets.py \
+            "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST:$release_dir/deploy/runtime-secrets/"
           scp "${scp_opts[@]}" \
             "$STAGING_REGISTRY_PULL_CONFIG" \
             "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST:$remote_registry_config"
@@ -281,9 +286,13 @@ jobs:
           install -m 600 "$REGISTRY_CONFIG" "$docker_config_dir/config.json"
           export DOCKER_CONFIG="$docker_config_dir"
           export COMPASS_IMAGE="$IMAGE"
+          export COMPASS_SECRETS_DIR="$DEPLOY_PATH/secrets"
           cd "$RELEASE_DIR"
           compose=(docker compose -f compose.staging.yaml)
 
+          python3 deploy/runtime-secrets/check-runtime-secrets.py \
+            --secrets-dir "$COMPASS_SECRETS_DIR" \
+            --env-file "$DEPLOY_PATH/.env" --owner compass
           "${compose[@]}" config >/dev/null
           "${compose[@]}" pull --quiet web worker beat proxy postgres redis
           docker image inspect "$IMAGE" >/dev/null

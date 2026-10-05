@@ -4,13 +4,14 @@
 
 Apply the notifications migration before enabling Web Push. Keep the existing PostgreSQL, Redis, Celery worker and Beat topology; Beat dispatches due push deliveries every 60 seconds. No Caddy or Gunicorn streaming change is required because foreground freshness uses short requests. The DigitalOcean staging Droplet currently has two synchronous WSGI workers; capacity test the 8-second visible-client refresh rate before expanding usage.
 
-Set these in the backend deployment's protected `.env` (and production equivalent):
+Keep ordinary settings in the backend deployment's protected `.env`. On live-staging, use the
+[host-managed secret runbook](runtime-secrets.md) for the private/storage key files:
 
 - `WEB_PUSH_ENABLED=true` only after keys and migration are ready.
 - `WEB_PUSH_PUBLIC_KEY`: URL-safe base64 P-256 VAPID public key for `PushManager.subscribe`.
-- `WEB_PUSH_PRIVATE_KEY`: matching URL-safe base64 raw or DER VAPID private key accepted by `pywebpush`; keep secret.
+- `WEB_PUSH_PRIVATE_KEY_FILE=/run/secrets/web_push_private_key`: matching URL-safe base64 raw or DER VAPID private key accepted by `pywebpush`; keep secret.
 - `WEB_PUSH_CONTACT`: a monitored `mailto:` address for VAPID claims.
-- `WEB_PUSH_STORAGE_KEY`: independent Fernet key for browser endpoint/key encryption at rest; keep secret and back up securely.
+- `WEB_PUSH_STORAGE_KEY_FILE=/run/secrets/web_push_storage_key`: independent Fernet key for browser endpoint/key encryption at rest; keep an independent protected off-host recovery copy.
 
 Create VAPID keys using a trusted Web Push/VAPID tool; verify the public/private pair in a staging test subscription before enabling users. Generate the Fernet key with `Fernet.generate_key()` from the pinned backend `cryptography` dependency. Never commit or print private key material. Preserve the storage key across redeploys and backups; losing it makes existing encrypted subscriptions unreadable. Coordinate storage-key rotation and VAPID-key rotation with a subscription migration/re-enrollment plan. The `WEB_PUSH_ENABLED=false` default leaves existing in-app/email behavior intact until infrastructure is configured.
 

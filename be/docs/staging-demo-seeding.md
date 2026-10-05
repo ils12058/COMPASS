@@ -76,7 +76,12 @@ Live staging uses Docker Compose on the Droplet. Run this only after the deploym
 succeeds and public `/api/v1/meta` reports the exact intended `staging` SHA as `build_id` with
 `environment=live-staging`. As the deployment user on the Droplet, use the release image and
 manifest selected by the workflow. The prompts keep the password out of shell history and the
-long-running application `.env`:
+long-running application `.env`.
+
+The live manifest grants the host-managed runtime files from [runtime-secrets.md](runtime-secrets.md).
+`DEMO_ACCOUNT_PASSWORD` is deliberately excluded from that inventory. Keep it one-off as below;
+its `_FILE` form requires an explicit one-off mount and must not be added to web/worker/beat grants
+or the long-running `.env`. Run the one-off command as follows:
 
 ```bash
 seed_demo_live_staging() {

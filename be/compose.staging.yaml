@@ -4,6 +4,22 @@ x-app: &app
   image: ${COMPASS_IMAGE:?COMPASS_IMAGE must be set}
   env_file:
     - .env
+  secrets:
+    - django_secret_key
+    - postgres_password
+    - redis_password
+    - s3_access_key_id
+    - s3_secret_access_key
+    - smtp_username
+    - smtp_password
+    - turnstile_secret_key
+    - daily_api_key
+    - daily_webhook_hmac
+    - psgc_api_token
+    - auth_totp_encryption_key
+    - routine_interview_encryption_keys
+    - web_push_private_key
+    - web_push_storage_key
   restart: unless-stopped
 
 services:
@@ -111,8 +127,10 @@ services:
     environment:
       POSTGRES_DB: "${POSTGRES_DB:-compass}"
       POSTGRES_USER: "${POSTGRES_USER:-compass}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
       PGDATA: /var/lib/postgresql/data/pgdata
+    secrets:
+      - postgres_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -124,25 +142,57 @@ services:
   redis:
     image: docker.io/library/redis:8.10.1-trixie
     restart: unless-stopped
-    environment:
-      REDIS_PASSWORD: "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"
-    command:
-      [
-        "sh",
-        "-c",
-        "exec redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\"",
-      ]
+    secrets:
+      - redis_password
+    entrypoint: ["sh", "/usr/local/bin/compass-redis-start"]
+    tmpfs:
+      - /run/redis-config:rw,noexec,nosuid,size=1m,mode=0700
     volumes:
       - redis_data:/data
+      - ./deploy/runtime-secrets/redis-start.sh:/usr/local/bin/compass-redis-start:ro
     healthcheck:
       test:
         [
-          "CMD-SHELL",
-          "redis-cli --no-auth-warning -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG",
+          "CMD",
+          "sh",
+          "/usr/local/bin/compass-redis-start",
+          "healthcheck",
         ]
       interval: 5s
       timeout: 5s
       retries: 10
+
+secrets:
+  django_secret_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/django_secret_key
+  postgres_password:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/postgres_password
+  redis_password:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/redis_password
+  s3_access_key_id:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/s3_access_key_id
+  s3_secret_access_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/s3_secret_access_key
+  smtp_username:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/smtp_username
+  smtp_password:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/smtp_password
+  turnstile_secret_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/turnstile_secret_key
+  daily_api_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/daily_api_key
+  daily_webhook_hmac:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/daily_webhook_hmac
+  psgc_api_token:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/psgc_api_token
+  auth_totp_encryption_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/auth_totp_encryption_key
+  routine_interview_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/routine_interview_encryption_keys
+  web_push_private_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/web_push_private_key
+  web_push_storage_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/web_push_storage_key
 
 volumes:
   postgres_data:

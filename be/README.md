@@ -377,12 +377,15 @@ authentication cookie.
 
 ## Live-staging outline
 
-Create a deployment-only `.env` from the same settings contract and set:
+Follow [the host-managed runtime secret runbook](docs/runtime-secrets.md) (ADR-078) before
+deploying `compose.staging.yaml`. Keep long-lived values in `/opt/compass/secrets` and only ordinary
+configuration plus `_FILE` pointers in the deployment `.env`. In particular, set:
 
-- `APP_ENV=live-staging`, `DEBUG=false`, a generated `SECRET_KEY`, and explicit `ALLOWED_HOSTS`;
-- PostgreSQL credentials/host and Redis URLs that are reachable only on the private network;
-- `S3_ENDPOINT_URL` and credentials for the approved external S3-compatible service;
-- real SMTP host/credentials; do not use Mailpit;
+- `APP_ENV=live-staging`, `DEBUG=false`, `SECRET_KEY_FILE`, and explicit `ALLOWED_HOSTS`;
+- PostgreSQL password-file/host and `REDIS_PASSWORD_FILE`, `REDIS_HOST`, `REDIS_PORT` on the private
+  network; Redis/Celery URLs are derived rather than stored in live `.env`;
+- `S3_ENDPOINT_URL` and credential-file pointers for the approved external S3-compatible service;
+- real SMTP host and credential-file pointers; do not use Mailpit;
 - `TURNSTILE_ENABLED=true`, the server-only Turnstile secret, and expected hostname/action values;
 - a valid `AUTH_TOTP_ENCRYPTION_KEY` in deployment secret storage, `AUTH_COOKIE_SECURE=true`,
   and explicit auth cookie/origin policy;
@@ -392,17 +395,10 @@ Create a deployment-only `.env` from the same settings contract and set:
 - `CADDY_ADDRESS` and `CADDY_HEALTH_HOST` to the staging hostname,
   `PROXY_BIND_ADDRESS=0.0.0.0`, and ports 80/443.
 
-Start only the non-local services on the droplet:
-
-```sh
-podman compose up -d
-podman compose run --rm web python manage.py migrate
-podman compose run --rm web python manage.py sync_identity_policy
-podman compose run --rm web python manage.py sync_canonical_services
-podman compose run --rm web python manage.py sync_institutional_forms
-podman compose run --rm web python manage.py sync_organization_catalog
-podman compose run --rm web python manage.py check --deploy
-```
+Provision and compare exact existing values before the first file-backed deployment. Dispatch
+`Deploy staging backend` for the full current staging SHA; it runs host-secret metadata preflight,
+quiet Compose validation and the existing migration/synchronization checks before replacing the
+application containers. Repository correctness and live cutover are separate acceptance steps.
 
 The same backend image is used by `web`, `worker`, and `beat`; only the command differs. Keep
 exactly one Beat service per environment. Expose only Caddy publicly, keep PostgreSQL/Redis

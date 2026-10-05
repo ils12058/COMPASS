@@ -179,10 +179,12 @@ changes never rotate anything by themselves.
    `python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'`.
    Store it in the deployment secret store, and escrow a copy away from the database host and its
    backups. Content encrypted under a lost key cannot be recovered, including from backups.
-2. Set `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` in the deployment-owned `.env` (mode 600, outside
-   version control). `compose.staging.yaml` does not mount Compose secrets yet. The `_FILE` form
-   (`ROUTINE_INTERVIEW_ENCRYPTION_KEYS_FILE=/run/secrets/routine_interview_encryption_keys`)
-   becomes available once `web`, `worker`, and `beat` mount that secret.
+2. For current live-staging, follow ADR-078 and [the runtime-secret runbook](../runtime-secrets.md):
+   store the exact ordered keyring in the protected host file and set
+   `ROUTINE_INTERVIEW_ENCRYPTION_KEYS_FILE=/run/secrets/routine_interview_encryption_keys` in
+   the deployment-owned `.env` (mode 600). Compose grants it to `web`, `worker`, and `beat`.
+   Direct environment values remain supported for local staging. Changing delivery does not
+   generate, rotate or reorder keys.
 3. Take and verify a PostgreSQL backup. The deployment workflow does not take one. That backup
    still contains plaintext Routine content, so protect it and expire it under the retention
    policy.
@@ -198,8 +200,11 @@ changes never rotate anything by themselves.
 
 ### Key rotation and retirement
 
-1. Generate `K2` and configure `ROUTINE_INTERVIEW_ENCRYPTION_KEYS=K2,K1`. Restart or redeploy
-   `web`, `worker`, and `beat`. New writes then use `K2`, and content under `K1` stays readable.
+1. Generate `K2` and configure the ordered keyring as `K2,K1`. Current live-staging replaces the
+   protected `routine_interview_encryption_keys` host file atomically (ADR-078); local-staging
+   may use `ROUTINE_INTERVIEW_ENCRYPTION_KEYS=K2,K1`. Recreate or redeploy `web`, `worker`, and
+   `beat` so file bind mounts see the replacement. New writes use `K2`; content under `K1` stays
+   readable.
 2. Run `rotate_routine_interview_encryption --dry-run`, then the command itself. Repeat until it
    reports nothing left to re-encrypt and no unreadable payloads. Re-run it if any process was
    still writing under `K1`.

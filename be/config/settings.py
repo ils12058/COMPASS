@@ -10,6 +10,7 @@ from py_vapid import Vapid
 
 from compass.common.build_metadata import read_project_version, validate_runtime_build_identity
 from compass.common.config import env, env_bool, env_csv, env_float, env_int, required_env
+from compass.common.redis_config import redis_urls
 from compass.routine_interviews.crypto import keyring_reuses_secret, parse_keyring
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -165,10 +166,11 @@ DATABASES = {
     }
 }
 
-REDIS_URL = required_env("REDIS_URL")
-REDIS_CACHE_URL = required_env("REDIS_CACHE_URL")
-REDIS_RATE_LIMIT_URL = required_env("REDIS_RATE_LIMIT_URL")
-REDIS_IDEMPOTENCY_URL = required_env("REDIS_IDEMPOTENCY_URL")
+_redis_urls = redis_urls(live_staging=not IS_LOCAL_STAGING)
+REDIS_URL = _redis_urls["REDIS_URL"]
+REDIS_CACHE_URL = _redis_urls["REDIS_CACHE_URL"]
+REDIS_RATE_LIMIT_URL = _redis_urls["REDIS_RATE_LIMIT_URL"]
+REDIS_IDEMPOTENCY_URL = _redis_urls["REDIS_IDEMPOTENCY_URL"]
 REDIS_SOCKET_TIMEOUT = env_float("REDIS_SOCKET_TIMEOUT", 2.0)
 RATE_LIMITER_FAIL_OPEN = env_bool("RATE_LIMITER_FAIL_OPEN", False)
 
@@ -484,8 +486,8 @@ SECURE_HSTS_SECONDS = 0 if IS_LOCAL_STAGING else 31_536_000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not IS_LOCAL_STAGING
 SECURE_HSTS_PRELOAD = not IS_LOCAL_STAGING
 
-CELERY_BROKER_URL = env("CELERY_BROKER_URL", REDIS_URL)
-CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", REDIS_CACHE_URL)
+CELERY_BROKER_URL = _redis_urls["CELERY_BROKER_URL"]
+CELERY_RESULT_BACKEND = _redis_urls["CELERY_RESULT_BACKEND"]
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
