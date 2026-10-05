@@ -4,17 +4,6 @@ x-app: &app
   image: ${COMPASS_IMAGE:?COMPASS_IMAGE must be set}
   env_file:
     - .env
-  environment:
-    RUNTIME_SECRETS_MODE: files
-  group_add:
-    - "1900"
-  volumes:
-    - type: bind
-      source: /run/compass-secrets
-      target: /run/secrets/compass
-      read_only: true
-      bind:
-        create_host_path: false
   restart: unless-stopped
 
 services:
@@ -122,16 +111,10 @@ services:
     environment:
       POSTGRES_DB: "${POSTGRES_DB:-compass}"
       POSTGRES_USER: "${POSTGRES_USER:-compass}"
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - type: bind
-        source: /run/compass-secrets/postgres_password
-        target: /run/secrets/postgres_password
-        read_only: true
-        bind:
-          create_host_path: false
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
@@ -141,23 +124,21 @@ services:
   redis:
     image: docker.io/library/redis:8.10.1-trixie
     restart: unless-stopped
-    entrypoint: ["sh", "/usr/local/bin/compass-redis-start"]
-    tmpfs:
-      - /run/compass-redis:rw,noexec,nosuid,nodev,size=1m,mode=0700
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"
+    command:
+      [
+        "sh",
+        "-c",
+        "exec redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\"",
+      ]
     volumes:
       - redis_data:/data
-      - ./redis-start.sh:/usr/local/bin/compass-redis-start:ro
-      - type: bind
-        source: /run/compass-secrets/redis_password
-        target: /run/secrets/redis_password
-        read_only: true
-        bind:
-          create_host_path: false
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "REDISCLI_AUTH=\"$$(cat /run/secrets/redis_password)\" redis-cli --no-auth-warning ping 2>/dev/null | grep -qx PONG",
+          "redis-cli --no-auth-warning -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG",
         ]
       interval: 5s
       timeout: 5s

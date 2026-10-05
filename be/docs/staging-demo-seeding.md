@@ -32,11 +32,6 @@ starts. A second concurrent run is refused through a PostgreSQL advisory lock.
 ## Configuration
 
 These values are read only while the command runs; application startup never depends on them.
-The [Vault runtime migration](vault-live-staging.md) excludes demo credentials from the ordinary
-Agent/policy. Supply them only to the one-off command; never store them in the long-running `.env`
-or `/run/compass-secrets`. Application credentials still use their mounted `_FILE` pointers.
-Prefer an additional ephemeral file mount for the one-off demo password, then remove it after
-the command. Ordinary application startup does not read these operator-only settings.
 Each also accepts the repository's `NAME_FILE` convention (for example
 `DEMO_ACCOUNT_PASSWORD_FILE=/run/secrets/demo_account_password`); do not set both forms.
 
