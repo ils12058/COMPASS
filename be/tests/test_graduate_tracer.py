@@ -20,6 +20,7 @@ from compass.accounts.models import (
 )
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.graduate_tracer.confidential_content import read_confidential_content
 from compass.graduate_tracer.models import (
     GTS_SCHEMA_VERSION,
     GraduateTracerEducation,
@@ -388,9 +389,12 @@ def test_q14_columns_are_separate_and_others_is_one_shared_free_text_line():
     response = put_json(client, "/api/v1/graduate-tracer/me", payload)
     assert response.status_code == 200
     item = GraduateTracerResponse.objects.get()
-    assert item.undergraduate_degree_reasons == ["PASSION_PROFESSION", "IMMEDIATE_EMPLOYMENT"]
-    assert item.graduate_study_reasons == ["CAREER_ADVANCEMENT"]
-    assert item.degree_other_reason == "One source-level Others line"
+    assert read_confidential_content(item).undergraduate_degree_reasons == (
+        "PASSION_PROFESSION",
+        "IMMEDIATE_EMPLOYMENT",
+    )
+    assert read_confidential_content(item).graduate_study_reasons == ("CAREER_ADVANCEMENT",)
+    assert read_confidential_content(item).degree_other_reason == "One source-level Others line"
     assert not hasattr(item, "undergraduate_degree_other_reason")
     assert not hasattr(item, "graduate_study_other_reason")
 

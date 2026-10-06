@@ -39,7 +39,12 @@ ANALYTICAL_FIELDS = (
 
 def verify_anonymized(item):
     item.refresh_from_db()
-    if item.student_id is not None or item.anonymized_at is None:
+    if (
+        item.student_id is not None
+        or item.anonymized_at is None
+        or item.status != GraduateTracerStatus.SUBMITTED
+        or item.confidential_content_ciphertext is not None
+    ):
         return False
     allowed = {
         "id",
@@ -90,6 +95,7 @@ def anonymize_response(source_id):
     operation_day = timezone.make_aware(datetime.combine(timezone.localdate(), time.min))
     retained = GraduateTracerResponse.objects.create(
         student=None,
+        confidential_content_ciphertext=None,
         instrument_schema_version=GTS_SCHEMA_VERSION,
         status=GraduateTracerStatus.SUBMITTED,
         submitted_at=submitted_day,

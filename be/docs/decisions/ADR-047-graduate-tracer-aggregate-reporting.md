@@ -226,3 +226,13 @@ This ADR does not add CSM, Customer Feedback, Exit Interview, Appointment, Couns
 generic dashboard analytics. It does not add AI insights, trend prediction, employability scoring,
 graduate ranking, response-rate calculations, PDF output, frontend dashboards, charts, pages, or a
 generic configurable analytics framework.
+
+
+## ADR-084 storage amendment
+
+Selective Graduate Tracer encryption is specified in
+[ADR-084](ADR-084-graduate-tracer-confidential-content-encryption.md). Metadata/search and the exact
+existing aggregate/analytical allowlist remain plaintext. Authorized raw detail uses explicit bound
+private projections; aggregate JSON/XLSX never decrypt. Approved retention copies only the unchanged
+analytical allowlist, creates ciphertext-free anonymous contributions and deletes encrypted source
+and children without decryption. Historical workflow and retention decisions remain in force.

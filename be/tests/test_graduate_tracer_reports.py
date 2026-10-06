@@ -48,6 +48,7 @@ from compass.reports.graduate_tracer import (
     build_graduate_tracer_report,
     calculate_percentage,
 )
+from tests.graduate_tracer_test_helpers import encrypted_row
 
 
 def sync_policy() -> None:
@@ -113,7 +114,8 @@ def make_response(
         "unemployment_reasons": [GTSUnemploymentReason.NO_JOB_OPPORTUNITY],
     }
     defaults.update(values)
-    return GraduateTracerResponse.objects.create(
+    return encrypted_row(
+        GraduateTracerResponse,
         student=student,
         status=(GraduateTracerStatus.SUBMITTED if submitted else GraduateTracerStatus.DRAFT),
         submitted_at=(submitted_at or timezone.now()) if submitted else None,
@@ -477,7 +479,8 @@ def test_aggregate_response_excludes_identity_free_text_and_academic_inference()
         useful_competencies_other=sentinel,
         curriculum_improvement_suggestions=sentinel,
     )
-    GraduateTracerEducation.objects.create(
+    encrypted_row(
+        GraduateTracerEducation,
         response=item,
         position=1,
         degree_and_specialization=sentinel,
@@ -485,13 +488,15 @@ def test_aggregate_response_excludes_identity_free_text_and_academic_inference()
         year_graduated=2026,
         honors_or_awards=sentinel,
     )
-    GraduateTracerProfessionalExam.objects.create(
+    encrypted_row(
+        GraduateTracerProfessionalExam,
         response=item,
         position=1,
         examination_name=sentinel,
         rating=sentinel,
     )
-    GraduateTracerTraining.objects.create(
+    encrypted_row(
+        GraduateTracerTraining,
         response=item,
         position=1,
         title=sentinel,

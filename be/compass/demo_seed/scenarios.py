@@ -877,12 +877,15 @@ def good_moral_student(session: SeedSession) -> None:
 
 
 def _tracer_values(response: GraduateTracerResponse, persona: StudentPersona, answers) -> dict:
+    from compass.graduate_tracer.confidential_content import read_confidential_content
+
+    private = read_confidential_content(response)
     return {
         "name_snapshot": response.name_snapshot,
-        "permanent_address_snapshot": response.permanent_address_snapshot,
-        "email_snapshot": response.email_snapshot,
-        "telephone_contact_numbers_snapshot": response.telephone_contact_numbers_snapshot,
-        "mobile_number_snapshot": response.mobile_number_snapshot,
+        "permanent_address_snapshot": private.permanent_address_snapshot,
+        "email_snapshot": private.email_snapshot,
+        "telephone_contact_numbers_snapshot": private.telephone_contact_numbers_snapshot,
+        "mobile_number_snapshot": private.mobile_number_snapshot,
         "birth_date": persona.date_of_birth,
         **answers,
     }
