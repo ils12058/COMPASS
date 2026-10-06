@@ -20,6 +20,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.institutional_forms.models import FormFamily, FormRevision, FormRevisionStatus
+from compass.inventory.confidential_content import read_confidential_content
 from compass.inventory.models import (
     CivilStatusCategory,
     PWDStatus,
@@ -44,6 +45,7 @@ from compass.student_support.models import (
     ParentLifeStatus,
     StudentSupportProfile,
 )
+from tests.inventory_encryption_helpers import create_inventory_row, update_inventory_private
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
@@ -111,7 +113,8 @@ def make_inventory(
     mother_life_status: str | None = ParentLifeStatus.LIVING,
     father_life_status: str | None = ParentLifeStatus.LIVING,
 ) -> StudentInventory:
-    item = StudentInventory.objects.create(
+    item = create_inventory_row(
+        StudentInventory,
         student=student,
         academic_year=year,
         form_revision=make_revision(suffix),
@@ -390,9 +393,11 @@ def test_support_context_is_privacy_minimized_and_has_no_scores_or_narratives():
         pwd_status=PWDStatus.PWD,
         four_ps_status=FourPsStatus.BENEFICIARY,
     )
-    item.physical_disadvantage = "SENTINEL PRIVATE PHYSICAL NARRATIVE"
-    item.current_concerns = "SENTINEL PRIVATE COUNSELING CONCERN"
-    item.save(update_fields=["physical_disadvantage", "current_concerns", "updated_at"])
+    update_inventory_private(
+        item,
+        physical_disadvantage="SENTINEL PRIVATE PHYSICAL NARRATIVE",
+        current_concerns="SENTINEL PRIVATE COUNSELING CONCERN",
+    )
 
     response = auth_client(counselor).get(f"/api/v1/student-support/students/{student.pk}/context")
     serialized = response.content.decode()
@@ -539,8 +544,8 @@ def test_submitted_historical_null_support_profile_remains_readable_and_immutabl
     replace_current_inventory(student=student, values={"nickname": "Current only"})
     old.refresh_from_db()
     current_item.refresh_from_db()
-    assert old.nickname == ""
-    assert current_item.nickname == "Current only"
+    assert read_confidential_content(old).nickname == ""
+    assert read_confidential_content(current_item).nickname == "Current only"
 
 
 @pytest.mark.django_db
@@ -572,8 +577,11 @@ def test_support_profile_failure_rolls_back_inventory_root_and_children(monkeypa
         replace_current_inventory(student=student, values=values)
 
     item = StudentInventory.objects.get(student=student, academic_year=year)
-    assert item.nickname == ""
-    assert not item.family_members.filter(name="Must Roll Back Parent").exists()
+    assert read_confidential_content(item).nickname == ""
+    assert all(
+        read_confidential_content(row).name != "Must Roll Back Parent"
+        for row in item.family_members.all()
+    )
 
 
 @pytest.mark.django_db

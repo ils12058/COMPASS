@@ -60,6 +60,7 @@ from compass.institutional_forms.models import FormRevision
 from compass.inventory.models import StudentInventory
 from compass.notifications.models import EmailDelivery, Notification, NotificationPreference
 from compass.organization.models import AcademicYear, Campus, College, StudentAffiliation
+from tests.inventory_encryption_helpers import create_inventory_row
 
 
 def prepare_and_issue(**kwargs):
@@ -158,7 +159,8 @@ def make_inventory(
         family__key="individual_inventory",
         status="ACTIVE",
     )
-    return StudentInventory.objects.create(
+    return create_inventory_row(
+        StudentInventory,
         student=student,
         academic_year=academic_year,
         form_revision=revision,
@@ -274,14 +276,16 @@ def test_f4_inventory_prerequisite_failures_are_controlled_good_moral_409(case: 
     if case != "no_current_year":
         current = make_academic_year()
         if case == "draft":
-            StudentInventory.objects.create(
+            create_inventory_row(
+                StudentInventory,
                 student=student,
                 academic_year=current,
                 form_revision=revision,
             )
         elif case == "prior_only":
             prior = make_academic_year("2025-2026", current=False)
-            StudentInventory.objects.create(
+            create_inventory_row(
+                StudentInventory,
                 student=student,
                 academic_year=prior,
                 form_revision=revision,

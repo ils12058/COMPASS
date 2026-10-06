@@ -44,6 +44,7 @@ from compass.organization.models import (
 )
 from compass.reports.services import calculate_percentage, year_level_label
 from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
+from tests.inventory_encryption_helpers import create_inventory_row
 
 
 def sync_policy() -> None:
@@ -134,7 +135,8 @@ def make_inventory(
     with_parents: bool = True,
     with_location: bool = True,
 ) -> StudentInventory:
-    item = StudentInventory.objects.create(
+    item = create_inventory_row(
+        StudentInventory,
         student=student,
         academic_year=academic_year,
         form_revision=revision,
@@ -158,7 +160,8 @@ def make_inventory(
         current_fears="Private fear narrative",
     )
     if with_parents:
-        InventoryFamilyMember.objects.create(
+        create_inventory_row(
+            InventoryFamilyMember,
             inventory=item,
             kind=FamilyMemberKind.FATHER,
             name="Private Father",
@@ -167,7 +170,8 @@ def make_inventory(
             annual_income_status=AnnualIncomeStatus.NONE,
             annual_income_previous_year=Decimal("0"),
         )
-        InventoryFamilyMember.objects.create(
+        create_inventory_row(
+            InventoryFamilyMember,
             inventory=item,
             kind=FamilyMemberKind.MOTHER,
             name="Private Mother",

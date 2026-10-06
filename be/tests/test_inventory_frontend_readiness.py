@@ -16,6 +16,7 @@ from compass.integrations.psgc import (
     PSGCReferenceNotFound,
 )
 from compass.inventory import services as inventory_services
+from compass.inventory.confidential_content import read_confidential_content
 from compass.inventory.services import (
     InvalidInventoryInput,
     InventoryStatus,
@@ -26,6 +27,7 @@ from compass.inventory.services import (
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
 from compass.organization.models import Campus, College, Program
+from tests.inventory_encryption_helpers import create_inventory_row
 from tests.inventory_test_helpers import (
     ensure_inventory_form_revision,
     minimum_normalized_inventory_values,
@@ -154,7 +156,7 @@ def test_psgc_outage_does_not_block_inventory_draft_save_but_blocks_submission(m
     )
 
     saved = replace_current_inventory(student=student, values=values)
-    assert saved.nickname == "Saved while PSGC unavailable"
+    assert read_confidential_content(saved).nickname == "Saved while PSGC unavailable"
     assert saved.submitted_at is None
     assert saved.geographic_locations.get(kind="CURRENT").region_name_snapshot == (
         "Unverified Region"
@@ -173,7 +175,7 @@ def test_psgc_outage_does_not_block_inventory_draft_save_but_blocks_submission(m
     saved.refresh_from_db()
     assert saved.submitted_at is None
     assert get_current_inventory_status(student).status == InventoryStatus.DRAFT
-    assert saved.nickname == "Saved while PSGC unavailable"
+    assert read_confidential_content(saved).nickname == "Saved while PSGC unavailable"
     assert saved.geographic_locations.get(kind="CURRENT").region_name_snapshot == (
         "Unverified Region"
     )
@@ -401,7 +403,8 @@ def test_ensure_recovers_from_a_concurrent_insert_without_an_aborted_transaction
         revision = original_revision()
         # Simulate another request committing the same annual Inventory first.
         inserted.append(
-            StudentInventory.objects.create(
+            create_inventory_row(
+                StudentInventory,
                 student=student,
                 academic_year=year,
                 form_revision=revision,

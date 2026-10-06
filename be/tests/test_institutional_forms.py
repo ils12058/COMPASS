@@ -35,6 +35,7 @@ from compass.routine_interviews.services import (
     RoutineInterviewFormRevisionUnsupported,
     _optional_form_revision,
 )
+from tests.inventory_encryption_helpers import create_inventory_row
 
 
 def sync_policy() -> None:
@@ -214,7 +215,8 @@ def test_canonical_sync_repairs_drift_preserves_ids_and_historical_references():
 
     student = make_user("historical-form@example.edu", "STUDENT")
     year = AcademicYear.objects.create(label="2026-2027", is_current=False)
-    historical_inventory = StudentInventory.objects.create(
+    historical_inventory = create_inventory_row(
+        StudentInventory,
         student=student,
         academic_year=year,
         form_revision=legacy,

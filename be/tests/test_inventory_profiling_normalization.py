@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from compass.accounts.models import Role, User
 from compass.audit.context import AuditContext
+from compass.inventory.confidential_content import read_confidential_content
 from compass.inventory.models import (
     AnnualIncomeStatus,
     CivilStatusCategory,
@@ -40,6 +41,7 @@ from compass.inventory.services import (
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
 from compass.organization.models import Campus, College, Program
 from compass.student_support.models import ParentLifeStatus
+from tests.inventory_encryption_helpers import create_inventory_row, update_inventory_row
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
@@ -109,7 +111,7 @@ def test_civil_status_fixed_categories_normalize_text_snapshot(category, expecte
         },
     )
     assert item.civil_status_category == category
-    assert item.civil_status == expected_text
+    assert read_confidential_content(item).civil_status == expected_text
 
 
 @pytest.mark.django_db
@@ -128,7 +130,7 @@ def test_civil_status_other_requires_detail_and_not_specified_does_not_invent_te
             "civil_status": "Custom status",
         },
     )
-    assert other.civil_status == "Custom status"
+    assert read_confidential_content(other).civil_status == "Custom status"
 
     unspecified = replace_current_inventory(
         student=student,
@@ -137,7 +139,7 @@ def test_civil_status_other_requires_detail_and_not_specified_does_not_invent_te
             "civil_status": "Must be cleared",
         },
     )
-    assert unspecified.civil_status == ""
+    assert read_confidential_content(unspecified).civil_status == ""
 
 
 @pytest.mark.django_db
@@ -154,11 +156,14 @@ def test_current_religion_categories_are_explicit_without_fuzzy_classification(c
     )
     assert item.current_religion_category == category
     if category == CurrentReligionCategory.OTHER:
-        assert item.current_religion == "Custom faith"
+        assert read_confidential_content(item).current_religion == "Custom faith"
     elif category == CurrentReligionCategory.NOT_SPECIFIED:
-        assert item.current_religion == ""
+        assert read_confidential_content(item).current_religion == ""
     else:
-        assert item.current_religion == CurrentReligionCategory(category).label
+        assert (
+            read_confidential_content(item).current_religion
+            == CurrentReligionCategory(category).label
+        )
 
 
 @pytest.mark.django_db
@@ -177,13 +182,13 @@ def test_current_religion_other_requires_detail_and_none_is_distinct_from_not_sp
         student=student,
         values={"current_religion_category": CurrentReligionCategory.NONE},
     )
-    assert none_value.current_religion == "None"
+    assert read_confidential_content(none_value).current_religion == "None"
 
     unspecified = replace_current_inventory(
         student=student,
         values={"current_religion_category": CurrentReligionCategory.NOT_SPECIFIED},
     )
-    assert unspecified.current_religion == ""
+    assert read_confidential_content(unspecified).current_religion == ""
     assert CurrentReligionCategory.NONE != CurrentReligionCategory.NOT_SPECIFIED
 
 
@@ -206,7 +211,7 @@ def test_pwd_status_requires_detail_only_when_pwd_and_clears_non_pwd_detail():
             "physical_disadvantage": "Mobility limitation",
         },
     )
-    assert reported.physical_disadvantage == "Mobility limitation"
+    assert read_confidential_content(reported).physical_disadvantage == "Mobility limitation"
 
     none_value = replace_current_inventory(
         student=student,
@@ -215,7 +220,7 @@ def test_pwd_status_requires_detail_only_when_pwd_and_clears_non_pwd_detail():
             "physical_disadvantage": "Contradiction",
         },
     )
-    assert none_value.physical_disadvantage == ""
+    assert read_confidential_content(none_value).physical_disadvantage == ""
 
     unspecified = replace_current_inventory(
         student=student,
@@ -224,7 +229,7 @@ def test_pwd_status_requires_detail_only_when_pwd_and_clears_non_pwd_detail():
             "physical_disadvantage": "Do not infer",
         },
     )
-    assert unspecified.physical_disadvantage == ""
+    assert read_confidential_content(unspecified).physical_disadvantage == ""
 
 
 @pytest.mark.django_db
@@ -298,11 +303,11 @@ def test_parent_occupation_category_requires_detail_only_for_other(category):
     mother = item.family_members.get(kind="MOTHER")
     assert mother.occupation_category == category
     if category == OccupationCategory.OTHER:
-        assert mother.occupation == "Custom occupation"
+        assert read_confidential_content(mother).occupation == "Custom occupation"
     elif category in {OccupationCategory.NONE, OccupationCategory.NOT_SPECIFIED}:
-        assert mother.occupation == ""
+        assert read_confidential_content(mother).occupation == ""
     else:
-        assert mother.occupation == "Narrative detail"
+        assert read_confidential_content(mother).occupation == "Narrative detail"
 
 
 @pytest.mark.django_db
@@ -480,8 +485,8 @@ def test_psgc_snapshot_pairs_are_trimmed_provider_agnostic_and_allow_province_le
     assert current.region_name_snapshot == "National Capital Region"
     assert current.province_psgc_code == ""
     assert current.city_municipality_name_snapshot == "Synthetic City"
-    assert item.current_address == "Full descriptive current address"
-    assert item.permanent_address == "Full descriptive permanent address"
+    assert read_confidential_content(item).current_address == "Full descriptive current address"
+    assert read_confidential_content(item).permanent_address == "Full descriptive permanent address"
 
 
 @pytest.mark.django_db
@@ -594,7 +599,7 @@ def test_transportation_frequency_fixed_categories_normalize_legacy_snapshot(
         },
     )
     row = item.transportation_entries.get()
-    assert row.frequency == expected_frequency
+    assert read_confidential_content(row).frequency == expected_frequency
     assert row.fare == Decimal("20.00")
 
 
@@ -646,7 +651,7 @@ def test_transportation_frequency_other_requires_detail_and_fare_is_not_an_enum(
         },
     )
     row = item.transportation_entries.get()
-    assert row.frequency == "Twice monthly"
+    assert read_confidential_content(row).frequency == "Twice monthly"
     assert row.fare == Decimal("37.50")
 
 
@@ -655,14 +660,16 @@ def test_negative_transport_fare_and_parent_income_have_database_protection():
     student, _, draft = make_draft("db-nonnegative@example.edu")
     with pytest.raises(IntegrityError):
         with transaction.atomic():
-            InventoryTransportationEntry.objects.create(
+            create_inventory_row(
+                InventoryTransportationEntry,
                 inventory=draft,
                 mode="BUS",
                 fare=Decimal("-1"),
             )
     with pytest.raises(IntegrityError):
         with transaction.atomic():
-            InventoryFamilyMember.objects.create(
+            create_inventory_row(
+                InventoryFamilyMember,
                 inventory=draft,
                 kind="FATHER",
                 annual_income_previous_year=Decimal("-1"),
@@ -755,17 +762,18 @@ def test_valid_normalized_inventory_submits_and_freezes_all_snapshots():
     replace_current_inventory(student=student, values=values)
     submitted = submit_current_inventory(student=student, context=context(student))
     assert submitted.submitted_at is not None
-    assert submitted.civil_status == "Single"
-    assert submitted.current_religion == "Roman Catholic"
-    assert submitted.physical_disadvantage == ""
+    assert read_confidential_content(submitted).civil_status == "Single"
+    assert read_confidential_content(submitted).current_religion == "Roman Catholic"
+    assert read_confidential_content(submitted).physical_disadvantage == ""
     assert submitted.course_currently_enrolled == program.name
-    assert submitted.transportation_entries.get().frequency == "Daily"
+    assert read_confidential_content(submitted.transportation_entries.get()).frequency == "Daily"
 
 
 @pytest.mark.django_db
 def test_legacy_submitted_inventory_with_null_normalized_fields_remains_readable_and_unmodified():
     student, _, draft = make_draft("legacy-normalization@example.edu")
-    StudentInventory.objects.filter(pk=draft.pk).update(
+    update_inventory_row(
+        StudentInventory.objects.filter(pk=draft.pk),
         submitted_at=timezone.now() - timedelta(days=100),
         civil_status="legacy free text",
         civil_status_category=None,
@@ -778,7 +786,8 @@ def test_legacy_submitted_inventory_with_null_normalized_fields_remains_readable
         program=None,
         year_level=None,
     )
-    InventoryFamilyMember.objects.create(
+    create_inventory_row(
+        InventoryFamilyMember,
         inventory=draft,
         kind="FATHER",
         occupation="Teacher at DepEd",
@@ -786,7 +795,8 @@ def test_legacy_submitted_inventory_with_null_normalized_fields_remains_readable
         annual_income_previous_year=None,
         annual_income_status=None,
     )
-    InventoryTransportationEntry.objects.create(
+    create_inventory_row(
+        InventoryTransportationEntry,
         inventory=draft,
         mode="TRICYCLE",
         frequency="legacy free text",
@@ -806,8 +816,8 @@ def test_legacy_submitted_inventory_with_null_normalized_fields_remains_readable
     assert historical.support_profile.father_life_status is None
     assert historical.transportation_entries.get().frequency_category is None
     assert historical.geographic_locations.count() == 0
-    assert historical.civil_status == "legacy free text"
-    assert historical.current_religion == "legacy religion"
+    assert read_confidential_content(historical).civil_status == "legacy free text"
+    assert read_confidential_content(historical).current_religion == "legacy religion"
 
 
 @pytest.mark.django_db

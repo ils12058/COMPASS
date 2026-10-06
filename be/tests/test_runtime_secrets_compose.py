@@ -28,6 +28,7 @@ SECRET_NAMES = {
     "counseling_shared_summary_encryption_keys",
     "referral_confidential_content_encryption_keys",
     "exit_interview_confidential_content_encryption_keys",
+    "inventory_confidential_content_encryption_keys",
     "web_push_private_key",
     "web_push_storage_key",
 }
@@ -83,7 +84,7 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
             config["services"]["web"]["environment"]["REDIS_PASSWORD"] == "dev-only-redis-password"
         )
         return
-    assert len(SECRET_NAMES) == 18
+    assert len(SECRET_NAMES) == 19
     assert set(config["secrets"]) == SECRET_NAMES
     for name, source in config["secrets"].items():
         assert source["file"] == str(secrets / name)
@@ -107,6 +108,11 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
         assert (
             app["environment"]["EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE"]
             == "/run/secrets/exit_interview_confidential_content_encryption_keys"
+        )
+        assert "INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS" not in app["environment"]
+        assert (
+            app["environment"]["INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE"]
+            == "/run/secrets/inventory_confidential_content_encryption_keys"
         )
         assert "SECRET_KEY" not in app["environment"]
         assert "REDIS_PASSWORD" not in app["environment"]

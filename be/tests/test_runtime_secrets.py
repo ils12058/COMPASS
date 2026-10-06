@@ -38,6 +38,7 @@ def runtime(tmp_path, monkeypatch):
                 "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS",
                 "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
                 "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+                "INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
             }
             else ""
         )
@@ -119,6 +120,7 @@ def test_file_metadata(runtime, fault):
         "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS",
         "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
         "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+        "INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
         "REDIS_URL",
         "CELERY_BROKER_URL",
         "REDIS_CACHE_URL_FILE",
@@ -253,7 +255,7 @@ def test_missing_or_unrepresentable_effective_values_fail_before_export(
 @pytest.mark.parametrize("fault", ["empty", "missing", "wrong-pointer", "direct"])
 def test_new_summary_secret_required_and_pointer_only(runtime, fault):
     checker, directory, env_file = runtime
-    assert len(checker.SECRET_FILES) == 18
+    assert len(checker.SECRET_FILES) == 19
     setting = "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS"
     filename = "counseling_shared_summary_encryption_keys"
     assert checker.SECRET_FILES[setting] == filename
@@ -290,7 +292,7 @@ def test_export_cannot_generate_absent_new_summary_key(migration, monkeypatch):
 @pytest.mark.parametrize("fault", ["empty", "missing", "wrong-pointer", "direct"])
 def test_new_referral_secret_required_and_pointer_only(runtime, fault):
     checker, directory, env_file = runtime
-    assert len(checker.SECRET_FILES) == 18
+    assert len(checker.SECRET_FILES) == 19
     setting = "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"
     filename = "referral_confidential_content_encryption_keys"
     assert checker.SECRET_FILES[setting] == filename
@@ -327,7 +329,7 @@ def test_export_cannot_generate_absent_new_referral_key(migration, monkeypatch):
 @pytest.mark.parametrize("fault", ["empty", "missing", "wrong-pointer", "direct"])
 def test_new_exit_interview_secret_required_and_pointer_only(runtime, fault):
     checker, directory, env_file = runtime
-    assert len(checker.SECRET_FILES) == 18
+    assert len(checker.SECRET_FILES) == 19
     setting = "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"
     filename = "exit_interview_confidential_content_encryption_keys"
     assert checker.SECRET_FILES[setting] == filename
@@ -357,5 +359,42 @@ def test_export_cannot_generate_absent_new_exit_interview_key(migration, monkeyp
     module, directory = migration
     monkeypatch.delenv("EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS")
     with pytest.raises(ValueError, match="EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"):
+        module.effective_values()
+    assert not list(directory.iterdir())
+
+
+@pytest.mark.parametrize("fault", ["empty", "missing", "wrong-pointer", "direct"])
+def test_new_inventory_secret_required_and_pointer_only(runtime, fault):
+    checker, directory, env_file = runtime
+    assert len(checker.SECRET_FILES) == 19
+    setting = "INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"
+    filename = "inventory_confidential_content_encryption_keys"
+    assert checker.SECRET_FILES[setting] == filename
+    path = directory / filename
+    if fault == "empty":
+        path.chmod(0o600)
+        path.write_text("")
+        path.chmod(0o444)
+    elif fault == "missing":
+        path.unlink()
+    elif fault == "wrong-pointer":
+        env_file.write_text(
+            env_file.read_text().replace(
+                f"{setting}_FILE=/run/secrets/{filename}", f"{setting}_FILE=/wrong/path"
+            )
+        )
+    else:
+        with env_file.open("a") as output:
+            output.write(f"{setting}=private-sentinel\n")
+    with pytest.raises(ValueError) as caught:
+        verify(runtime)
+    assert "private-sentinel" not in str(caught.value)
+    assert setting in str(caught.value) or filename in str(caught.value)
+
+
+def test_export_cannot_generate_absent_new_inventory_key(migration, monkeypatch):
+    module, directory = migration
+    monkeypatch.delenv("INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS")
+    with pytest.raises(ValueError, match="INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"):
         module.effective_values()
     assert not list(directory.iterdir())

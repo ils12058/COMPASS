@@ -15,6 +15,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.availability.services import replace_office_weekly, replace_provider_weekly
+from compass.inventory.confidential_content import read_confidential_content
 from compass.inventory.services import (
     CurrentAcademicYearNotConfigured,
     InvalidInventoryInput,
@@ -246,7 +247,10 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
     assert updated.program_id == program.pk
     assert updated.year_level == 1
     assert updated.course_currently_enrolled == program.name
-    assert updated.family_members.get(kind="MOTHER").name == "Parent Snapshot"
+    assert (
+        read_confidential_content(updated.family_members.get(kind="MOTHER")).name
+        == "Parent Snapshot"
+    )
     assert updated.siblings.get().is_self
     assert updated.education_entries.get().level == "SENIOR_HIGH"
     assert updated.organization_memberships.get().scope == "INSIDE_SCHOOL"
@@ -380,7 +384,7 @@ def test_nullable_sibling_sex_persists_as_blank_draft_value():
     )
 
     sibling = updated.siblings.get()
-    assert sibling.sex == ""
+    assert read_confidential_content(sibling).sex == ""
 
 
 @pytest.mark.django_db

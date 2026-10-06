@@ -13,6 +13,10 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.documents.rendering import render_document_html, render_document_pdf
+from compass.inventory.confidential_content import (
+    read_confidential_content,
+    read_inventory_private_projection,
+)
 from compass.inventory.documents import (
     build_inventory_render_context,
     render_inventory_pdf,
@@ -34,6 +38,7 @@ from compass.organization.models import (
     Program,
     StudentAffiliation,
 )
+from tests.inventory_encryption_helpers import update_inventory_private
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
@@ -147,7 +152,9 @@ def test_individual_inventory_html_and_chromium_pdf_are_source_shaped_and_three_
     actor = make_user("inventory-pdf-admin@example.edu", "IT_ADMIN")
     item = make_submitted_inventory(student=student, actor=actor, code="INVPDF")
 
-    context_data = build_inventory_render_context(item)
+    context_data = build_inventory_render_context(
+        item, private=read_inventory_private_projection(item)
+    )
     html, spec = render_document_html("individual_inventory", 1, context=context_data)
     for label in (
         "INDIVIDUAL INVENTORY",
@@ -239,12 +246,14 @@ def test_individual_inventory_html_and_chromium_pdf_are_source_shaped_and_three_
     )
     assert "A lengthy answer" not in caplog.text
     item.refresh_from_db()
-    assert item.current_concerns == context_data["inventory_form"]["concerns"]
-    assert item.current_fears == context_data["inventory_form"]["fears"]
+    assert (
+        read_confidential_content(item).current_concerns
+        == context_data["inventory_form"]["concerns"]
+    )
+    assert read_confidential_content(item).current_fears == context_data["inventory_form"]["fears"]
 
     school = item.education_entries.get(level="SENIOR_HIGH")
-    school.school_attended_address = "Very long school address " * 40
-    school.save(update_fields=("school_attended_address",))
+    update_inventory_private(school, school_attended_address="Very long school address " * 40)
     item.refresh_from_db()
     with caplog.at_level("WARNING", logger="compass.documents.rendering"):
         long_school_pdf = render_inventory_pdf(item)
@@ -256,7 +265,7 @@ def test_individual_inventory_html_and_chromium_pdf_are_source_shaped_and_three_
         getattr(record, "event", None) == "inventory_pdf_values_truncated"
         for record in caplog.records
     )
-    assert "Very long school address" in school.school_attended_address
+    assert "Very long school address" in read_confidential_content(school).school_attended_address
 
 
 @pytest.mark.django_db
@@ -267,8 +276,7 @@ def test_student_inventory_pdf_is_owned_submitted_only_and_audited_safely(monkey
     actor = make_user("inventory-pdf-access-admin@example.edu", "IT_ADMIN")
     submitted = make_submitted_inventory(student=student, actor=actor, code="PDFACCESS")
     school = submitted.education_entries.get(level="SENIOR_HIGH")
-    school.school_attended_address = "Very long school address " * 40
-    school.save(update_fields=("school_attended_address",))
+    update_inventory_private(school, school_attended_address="Very long school address " * 40)
     client = auth_client(student)
 
     own_response = client.get(f"/api/v1/inventory/me/{submitted.pk}/pdf")

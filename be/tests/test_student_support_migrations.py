@@ -11,6 +11,15 @@ from compass.institutional_forms.models import FormFamily, FormRevision
 from compass.organization.models import AcademicYear
 
 
+@pytest.fixture(autouse=True)
+def restore_current_graph(transactional_db):
+    initial = MigrationExecutor(connection).loader.graph.leaf_nodes()
+    try:
+        yield
+    finally:
+        MigrationExecutor(connection).migrate(initial)
+
+
 @pytest.mark.django_db(transaction=True)
 def test_student_support_migration_preserves_legacy_pwd_and_parent_life_status():
     executor = MigrationExecutor(connection)
