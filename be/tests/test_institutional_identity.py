@@ -21,6 +21,7 @@ from compass.inventory.services import (
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
 from compass.organization.models import Campus, College, Program
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
+from tests.profile_fixtures import initialized_user
 
 
 def sync_policy() -> None:
@@ -89,13 +90,15 @@ def test_database_rejects_case_only_institutional_id_collision():
     with pytest.raises(IntegrityError), transaction.atomic():
         User.objects.bulk_create(
             [
-                User(
-                    email="second-id@example.edu",
-                    institutional_id="ucn-0042",
-                    password="!",
-                    role=role,
-                    first_name="Second",
-                    last_name="User",
+                initialized_user(
+                    User(
+                        email="second-id@example.edu",
+                        institutional_id="ucn-0042",
+                        password="!",
+                        role=role,
+                        first_name="Second",
+                        last_name="User",
+                    )
                 )
             ]
         )

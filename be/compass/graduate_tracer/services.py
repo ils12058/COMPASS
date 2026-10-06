@@ -12,6 +12,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from compass.accounts.confidential_profile import AccountProfileConfidentialContentUnavailable
 from compass.accounts.models import StudentLifecycleStatus, User
 from compass.accounts.profiles import get_person_profile_context
 from compass.audit.actions import GRADUATE_TRACER_DRAFT_CREATED, GRADUATE_TRACER_SUBMITTED
@@ -291,7 +292,10 @@ def ensure_my_response(
         if existing is not None:
             return _queryset().get(pk=existing.pk)
 
-        profile = get_person_profile_context(locked)
+        try:
+            profile = get_person_profile_context(locked)
+        except AccountProfileConfidentialContentUnavailable:
+            raise GraduateTracerError("The current account profile is unavailable.") from None
         try:
             with transaction.atomic():
                 item = GraduateTracerResponse(

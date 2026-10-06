@@ -32,10 +32,18 @@ SECRET_FILES = {
     "GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
         "graduate_tracer_confidential_content_encryption_keys"
     ),
+    "ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
+        "account_profile_confidential_content_encryption_keys"
+    ),
+    "FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
+        "feedback_confidential_content_encryption_keys"
+    ),
     "WEB_PUSH_PRIVATE_KEY": "web_push_private_key",
     "WEB_PUSH_STORAGE_KEY": "web_push_storage_key",
 }
 REQUIRED_SECRETS = {
+    "FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+    "ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
     "SECRET_KEY",
     "POSTGRES_PASSWORD",
     "REDIS_PASSWORD",

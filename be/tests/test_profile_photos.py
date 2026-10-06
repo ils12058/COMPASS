@@ -184,3 +184,14 @@ class ProfilePhotoCommitTests(TestCase):
         assert self.user.profile_photo_object_key is None
         assert self.backend.deleted == ["profile-photos/users/old.webp"]
         assert not remove_profile_photo(self.user, storage=self.storage)
+
+
+@pytest.fixture(autouse=True)
+def no_confidential_profile_reads(monkeypatch):
+    from compass.accounts import confidential_profile, profile_api, profiles
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Profile photo operations must not decrypt confidential profile values")
+
+    for module in [confidential_profile, profiles, profile_api]:
+        monkeypatch.setattr(module, "read_account_profile_confidential_content", forbidden)

@@ -45,6 +45,7 @@ from compass.resources.services import archive_resource, create_resource, publis
 
 from . import narratives, publication_data
 from .cast import DPO, HEAD_GUIDANCE, PERSONAS_BY_KEY, SECOND_YEAR
+from .feedback_content import matching_feedback
 from .publication_data import AnnouncementSpec, ResourceSpec
 from .support import DemoSeedError, SeedSession, align_timestamps
 
@@ -311,10 +312,16 @@ def seed_feedback(session: SeedSession) -> None:
 
         for persona_key, values in narratives.CUSTOMER_FEEDBACK.items():
             persona = PERSONAS_BY_KEY[persona_key]
-            existing = CustomerFeedbackResponse.objects.filter(
-                respondent_name_snapshot=persona.full_name,
-                additional_feedback=values["additional_feedback"],
-            ).first()
+            existing = next(
+                matching_feedback(
+                    CustomerFeedbackResponse.objects.filter(
+                        respondent_name_snapshot=persona.full_name
+                    ),
+                    "additional_feedback",
+                    values["additional_feedback"],
+                ),
+                None,
+            )
             created = existing is None
             if existing is None:
                 existing = create_customer_feedback(
@@ -333,12 +340,18 @@ def seed_feedback(session: SeedSession) -> None:
         for response in narratives.CLIENT_SATISFACTION:
             persona_key = response["persona"]
             values = {key: value for key, value in response.items() if key != "persona"}
-            existing = ClientSatisfactionResponse.objects.filter(
-                service_availed=values["service_availed"],
-                suggestions=values["suggestions"],
-                age=values["age"],
-                sex=values["sex"],
-            ).first()
+            existing = next(
+                matching_feedback(
+                    ClientSatisfactionResponse.objects.filter(
+                        service_availed=values["service_availed"],
+                        age=values["age"],
+                        sex=values["sex"],
+                    ),
+                    "suggestions",
+                    values["suggestions"],
+                ),
+                None,
+            )
             created = existing is None
             if existing is None:
                 existing = create_csm_response(

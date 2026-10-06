@@ -284,3 +284,10 @@ as initial prefill while continuing to own their submitted historical truth.
 
 No duplicate profile lifecycle, generic personal-data directory, hidden synchronization, or
 historical rewrite is introduced.
+
+
+## Storage supersession (2026-10-07)
+
+ADR-085 supersedes only the ordinary plaintext representation of the selected Accounts current-profile
+values. Ownership, canonical identity, lifecycle, disclosure and logical API contracts above
+remain authoritative; historical design context is preserved.

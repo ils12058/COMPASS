@@ -120,6 +120,7 @@ class CSMRating(models.IntegerChoices):
 
 
 class CustomerFeedbackResponse(models.Model):
+    confidential_content_ciphertext = models.TextField(editable=False)
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     form_revision = models.ForeignKey(
         FormRevision,
@@ -130,7 +131,6 @@ class CustomerFeedbackResponse(models.Model):
         models.CharField(max_length=40, choices=CustomerFeedbackService.choices),
         default=list,
     )
-    other_service = models.CharField(max_length=255, blank=True, default="")
     talked_to_guidance_counselor = models.BooleanField()
     accommodated_by = models.CharField(
         max_length=24,
@@ -179,12 +179,8 @@ class CustomerFeedbackResponse(models.Model):
         choices=CustomerFeedbackRating.choices
     )
 
-    additional_feedback = models.TextField(blank=True, default="")
-    future_service_improvement = models.TextField(blank=True, default="")
     respondent_name_snapshot = models.CharField(max_length=200)
     course_year_snapshot = models.CharField(max_length=160)
-    address_snapshot = models.TextField(blank=True, default="")
-    mobile_number_snapshot = models.CharField(max_length=64, blank=True, default="")
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -192,6 +188,10 @@ class CustomerFeedbackResponse(models.Model):
         ordering = ("-submitted_at", "id")
         indexes = [models.Index(fields=("submitted_at",), name="feedback_f14_submitted_idx")]
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="customerfeedbackresponse_cipher_nonempty",
+            ),
             models.CheckConstraint(
                 condition=models.Q(office_visit_count__gte=1, office_visit_count__lte=10000),
                 name="feedback_f14_visit_count_range",
@@ -245,6 +245,7 @@ class CustomerFeedbackResponse(models.Model):
 
 
 class ClientSatisfactionResponse(models.Model):
+    confidential_content_ciphertext = models.TextField(editable=False)
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     instrument_schema_version = models.PositiveSmallIntegerField(default=1, editable=False)
     client_type = models.CharField(max_length=16, choices=CSMClientType.choices)
@@ -266,8 +267,6 @@ class ClientSatisfactionResponse(models.Model):
     sqd6 = models.PositiveSmallIntegerField(choices=CSMRating.choices)
     sqd7 = models.PositiveSmallIntegerField(choices=CSMRating.choices)
     sqd8 = models.PositiveSmallIntegerField(choices=CSMRating.choices)
-    suggestions = models.TextField(blank=True, default="")
-    email = models.EmailField(max_length=320, blank=True, default="")
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -275,6 +274,10 @@ class ClientSatisfactionResponse(models.Model):
         ordering = ("-submitted_at", "id")
         indexes = [models.Index(fields=("submitted_at",), name="feedback_csm_submitted_idx")]
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="clientsatisfactionresponse_cipher_nonempty",
+            ),
             models.CheckConstraint(
                 condition=models.Q(instrument_schema_version=1),
                 name="feedback_csm_schema_version_one",

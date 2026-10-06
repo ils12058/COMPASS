@@ -9,6 +9,7 @@ from django.core.management import call_command
 from django.test import Client
 from django.utils import timezone
 
+from compass.accounts.confidential_profile import read_account_profile_confidential_content
 from compass.accounts.models import (
     Capability,
     Designation,
@@ -31,6 +32,7 @@ from compass.graduate_tracer.models import (
     GTSDegreeReason,
     GTSFirstJobDuration,
 )
+from tests.profile_fixtures import set_profile
 
 
 def sync_policy() -> None:
@@ -267,19 +269,11 @@ def test_non_student_and_inactive_student_cannot_create_gts():
 def test_ensure_prefills_profile_once_without_fabricating_mobile_semantics():
     sync_policy()
     student = make_user("profile-gts@example.edu")
-    student.permanent_address = "Original Permanent Address"
-    student.contact_number = "054-123-4567"
-    student.date_of_birth = timezone.localdate().replace(year=2000)
-    student.civil_status = "Married"
-    student.save(
-        update_fields=[
-            "permanent_address",
-            "contact_number",
-            "date_of_birth",
-            "civil_status",
-            "updated_at",
-        ]
-    )
+    set_profile(student, permanent_address="Original Permanent Address")
+    set_profile(student, contact_number="054-123-4567")
+    set_profile(student, date_of_birth=timezone.localdate().replace(year=2000))
+    set_profile(student, civil_status="Married")
+    student.save(update_fields=["updated_at"])
     client = auth_client(student)
 
     response = post_empty(client, "/api/v1/graduate-tracer/me")
@@ -293,16 +287,9 @@ def test_ensure_prefills_profile_once_without_fabricating_mobile_semantics():
     assert body["civil_status"] == "MARRIED"
 
     student.first_name = "Changed"
-    student.permanent_address = "Changed Address"
-    student.contact_number = "09999999999"
-    student.save(
-        update_fields=[
-            "first_name",
-            "permanent_address",
-            "contact_number",
-            "updated_at",
-        ]
-    )
+    set_profile(student, permanent_address="Changed Address")
+    set_profile(student, contact_number="09999999999")
+    student.save(update_fields=["first_name", "updated_at"])
     again = post_empty(client, "/api/v1/graduate-tracer/me")
     assert again.status_code == 200
     assert again.json()["name"] == "Graduate Student"
@@ -314,8 +301,8 @@ def test_ensure_prefills_profile_once_without_fabricating_mobile_semantics():
 def test_draft_replacement_is_response_local_and_repeatable_rows_do_not_duplicate():
     sync_policy()
     student = make_user("rows-gts@example.edu")
-    student.permanent_address = "Profile Address"
-    student.save(update_fields=["permanent_address", "updated_at"])
+    set_profile(student, permanent_address="Profile Address")
+    student.save(update_fields=["updated_at"])
     client = auth_client(student)
     assert post_empty(client, "/api/v1/graduate-tracer/me").status_code == 200
 
@@ -371,7 +358,7 @@ def test_draft_replacement_is_response_local_and_repeatable_rows_do_not_duplicat
 
     student.refresh_from_db()
     assert student.get_full_name() == "Graduate Student"
-    assert student.permanent_address == "Profile Address"
+    assert read_account_profile_confidential_content(student).permanent_address == "Profile Address"
 
 
 @pytest.mark.django_db

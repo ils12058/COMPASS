@@ -153,6 +153,12 @@ class UserManager(BaseUserManager):
             user.set_unusable_password()
         else:
             user.set_password(password)
+        from .confidential_profile import (
+            AccountProfileConfidentialContent,
+            write_account_profile_confidential_content,
+        )
+
+        write_account_profile_confidential_content(user, AccountProfileConfidentialContent())
         user.save(using=self._db)
         return user
 
@@ -167,11 +173,7 @@ class User(AbstractBaseUser):
     middle_name = models.CharField(max_length=150, blank=True, default="")
     last_name = models.CharField(max_length=150)
     suffix = models.CharField(max_length=32, blank=True, default="")
-    date_of_birth = models.DateField(blank=True, null=True)
-    civil_status = models.CharField(max_length=80, blank=True, default="")
-    contact_number = models.CharField(max_length=64, blank=True, default="")
-    current_address = models.TextField(blank=True, default="")
-    permanent_address = models.TextField(blank=True, default="")
+    profile_confidential_content_ciphertext = models.TextField(editable=False)
     role = models.ForeignKey(
         Role,
         on_delete=models.PROTECT,
@@ -209,6 +211,10 @@ class User(AbstractBaseUser):
     class Meta:
         default_permissions = ()
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(profile_confidential_content_ciphertext=""),
+                name="accounts_user_profile_cipher_nonempty",
+            ),
             models.UniqueConstraint(
                 Lower("email"),
                 name="accounts_user_email_ci_uniq",

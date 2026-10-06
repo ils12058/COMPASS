@@ -21,6 +21,7 @@ RENAMES = (
 @pytest.mark.django_db(transaction=True)
 def test_upgrade_preserves_capability_identity_grants_and_both_override_effects():
     executor = MigrationExecutor(connection)
+    initial = executor.loader.graph.leaf_nodes()
     executor.migrate(BEFORE)
     old_apps = executor.loader.project_state(BEFORE).apps
     Role = old_apps.get_model("accounts", "Role")
@@ -121,7 +122,7 @@ def test_upgrade_preserves_capability_identity_grants_and_both_override_effects(
             assert ReversedCapability.objects.filter(code=old_code).exists()
             assert not ReversedCapability.objects.filter(code=new_code).exists()
     finally:
-        MigrationExecutor(connection).migrate(AFTER)
+        MigrationExecutor(connection).migrate(initial)
 
 
 @pytest.mark.django_db(transaction=True)

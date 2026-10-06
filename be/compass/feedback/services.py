@@ -25,6 +25,12 @@ from compass.institutional_forms.services import (
     require_active_supported_form_revision,
 )
 
+from .confidential_content import (
+    FIELDS,
+    ClientSatisfactionConfidentialContent,
+    CustomerFeedbackConfidentialContent,
+    write_feedback_confidential_content,
+)
 from .models import (
     CSMCC1,
     CSMCC2,
@@ -117,6 +123,12 @@ def _validate_viewer(actor: User, capability: str) -> None:
 def _clean_text(value: object, field_name: str, maximum: int, *, required: bool) -> str:
     if not isinstance(value, str):
         raise InvalidFeedbackInput(f"{field_name} must be text.")
+    if "\x00" in value:
+        raise InvalidFeedbackInput(f"{field_name} must not contain NUL.")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise InvalidFeedbackInput(f"{field_name} must be UTF-8 text.") from None
     cleaned = value.strip()
     if required and not cleaned:
         raise InvalidFeedbackInput(f"{field_name} is required.")
@@ -366,7 +378,7 @@ def _normalize_services(raw: object) -> list[str]:
     return normalized
 
 
-def _normalize_customer_feedback(values: dict[str, object], profile) -> dict[str, object]:
+def _normalize_customer_feedback(values: dict[str, object], student) -> dict[str, object]:
     services = _normalize_services(values.get("services_received"))
     other_service = _clean_text(
         values.get("other_service", ""), "other_service", 255, required=False
@@ -446,16 +458,19 @@ def _normalize_customer_feedback(values: dict[str, object], profile) -> dict[str
     supplied_name = _clean_text(
         values.get("respondent_name", ""), "respondent_name", 200, required=False
     )
-    normalized["respondent_name_snapshot"] = supplied_name or profile.full_name.strip()
+    normalized["respondent_name_snapshot"] = supplied_name or student.get_full_name().strip()
     if not normalized["respondent_name_snapshot"]:
         raise InvalidFeedbackInput("respondent_name is required.")
 
     supplied_address = _clean_text(values.get("address", ""), "address", 2000, required=False)
-    normalized["address_snapshot"] = (
-        supplied_address or profile.current_address.strip() or profile.permanent_address.strip()
-    )
     supplied_mobile = _clean_text(
         values.get("mobile_number", ""), "mobile_number", 64, required=False
+    )
+    profile = (
+        get_person_profile_context(student) if not supplied_address or not supplied_mobile else None
+    )
+    normalized["address_snapshot"] = (
+        supplied_address or profile.current_address.strip() or profile.permanent_address.strip()
     )
     normalized["mobile_number_snapshot"] = supplied_mobile or profile.contact_number.strip()
     return normalized
@@ -491,13 +506,15 @@ def create_customer_feedback(
             revision = require_active_supported_form_revision("customer_feedback")
         except InstitutionalFormConflict as exc:
             raise FeedbackConfigurationConflict(str(exc)) from exc
-        profile = get_person_profile_context(locked)
-        normalized = _normalize_customer_feedback(values, profile)
+        normalized = _normalize_customer_feedback(values, locked)
         if opportunity.service_kind not in normalized["services_received"]:
             raise InvalidFeedbackInput(
                 "services_received must include the service for this Feedback opportunity."
             )
-        item = CustomerFeedbackResponse.objects.create(form_revision=revision, **normalized)
+        private = {name: normalized.pop(name) for name in FIELDS["CustomerFeedbackResponse"]}
+        item = CustomerFeedbackResponse(form_revision=revision, **normalized)
+        write_feedback_confidential_content(item, CustomerFeedbackConfidentialContent(**private))
+        item.save(force_insert=True)
         opportunity.customer_feedback_submitted_at = item.submitted_at
         opportunity.save(update_fields=["customer_feedback_submitted_at", "updated_at"])
         record_event(
@@ -587,7 +604,10 @@ def create_csm_response(
                 "has already been submitted."
             )
         normalized = _normalize_csm(values)
-        item = ClientSatisfactionResponse.objects.create(**normalized)
+        private = {name: normalized.pop(name) for name in FIELDS["ClientSatisfactionResponse"]}
+        item = ClientSatisfactionResponse(**normalized)
+        write_feedback_confidential_content(item, ClientSatisfactionConfidentialContent(**private))
+        item.save(force_insert=True)
         opportunity.csm_submitted_at = item.submitted_at
         opportunity.save(update_fields=["csm_submitted_at", "updated_at"])
         record_event(

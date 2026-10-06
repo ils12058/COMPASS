@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date
 from uuid import UUID
 
@@ -14,6 +14,11 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 
+from .confidential_profile import (
+    AccountProfileConfidentialContent,
+    read_account_profile_confidential_content,
+    write_account_profile_confidential_content,
+)
 from .models import User
 
 PROFILE_EDITABLE_FIELDS = frozenset(
@@ -71,21 +76,28 @@ def get_person_profile_context(user: User) -> PersonProfileContext:
 
     if not getattr(user, "pk", None):
         raise ValueError("a saved user is required")
+    content = read_account_profile_confidential_content(user)
     return PersonProfileContext(
         user_id=user.pk,
         full_name=user.get_full_name(),
         email=user.email,
-        date_of_birth=user.date_of_birth,
-        civil_status=user.civil_status,
-        contact_number=user.contact_number,
-        current_address=user.current_address,
-        permanent_address=user.permanent_address,
+        date_of_birth=content.date_of_birth,
+        civil_status=content.civil_status,
+        contact_number=content.contact_number,
+        current_address=content.current_address,
+        permanent_address=content.permanent_address,
     )
 
 
 def _normalize_text(field_name: str, value: object, *, maximum: int) -> str:
     if not isinstance(value, str):
         raise InvalidProfileInput(f"{field_name} must be text.")
+    if "\x00" in value:
+        raise InvalidProfileInput(f"{field_name} must not contain NUL.")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise InvalidProfileInput(f"{field_name} must be UTF-8 text.") from None
     normalized = value.strip()
     if len(normalized) > maximum:
         raise InvalidProfileInput(f"{field_name} is too long.")
@@ -95,7 +107,7 @@ def _normalize_text(field_name: str, value: object, *, maximum: int) -> str:
 def _normalize_date_of_birth(value: object) -> date | None:
     if value is None:
         return None
-    if not isinstance(value, date):
+    if type(value) is not date:
         raise InvalidProfileInput("date_of_birth must be a date or null.")
     if value > timezone.localdate():
         raise InvalidProfileInput("date_of_birth must not be in the future.")
@@ -138,7 +150,7 @@ def update_my_profile(
     changes: dict[str, object],
     context: AuditContext,
 ) -> ProfileUpdateResult:
-    """Update only the authenticated owner's ordinary current-profile fields."""
+    """Update only the authenticated owner's logical current-profile values."""
 
     if not getattr(user, "pk", None):
         raise ProfileUnavailable("The authenticated account is unavailable.")
@@ -149,19 +161,20 @@ def update_my_profile(
         if locked is None or not locked.is_active:
             raise ProfileUnavailable("The authenticated account is unavailable.")
 
+        current = read_account_profile_confidential_content(locked)
         changed_fields = tuple(
             sorted(
                 field_name
                 for field_name, value in normalized.items()
-                if getattr(locked, field_name) != value
+                if getattr(current, field_name) != value
             )
         )
         if not changed_fields:
             return ProfileUpdateResult(user=locked, changed_fields=())
 
-        for field_name in changed_fields:
-            setattr(locked, field_name, normalized[field_name])
-        locked.save(update_fields=[*changed_fields, "updated_at"])
+        merged = AccountProfileConfidentialContent(**{**asdict(current), **normalized})
+        write_account_profile_confidential_content(locked, merged)
+        locked.save(update_fields=["profile_confidential_content_ciphertext", "updated_at"])
 
         record_event(
             context=context,

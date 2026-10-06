@@ -27,6 +27,7 @@ from compass.common.idempotency import (
     RedisIdempotencyStore,
 )
 from compass.feedback import api as feedback_api
+from compass.feedback.confidential_content import read_feedback_confidential_content
 from compass.feedback.models import (
     ClientSatisfactionResponse,
     CustomerFeedbackResponse,
@@ -36,6 +37,7 @@ from compass.feedback.models import (
 )
 from compass.feedback.services import ensure_feedback_opportunity
 from compass.institutional_forms.models import FormFamily, FormRevision
+from tests.profile_fixtures import set_profile
 
 
 def sync_policy() -> None:
@@ -349,28 +351,28 @@ def test_inactive_student_and_non_student_cannot_submit():
 def test_f14_prefills_profile_snapshots_once_and_does_not_store_user_fk():
     sync_policy()
     student = make_user("profile-feedback@example.edu")
-    student.current_address = "Initial Address"
-    student.contact_number = "09171234567"
-    student.save(update_fields=["current_address", "contact_number", "updated_at"])
+    set_profile(student, current_address="Initial Address")
+    set_profile(student, contact_number="09171234567")
+    student.save(update_fields=["updated_at"])
     client = auth_client(student)
 
     response = post_json(client, "/api/v1/feedback/customer-feedback", valid_f14_payload())
     assert response.status_code == 201
     item = CustomerFeedbackResponse.objects.get()
     assert item.respondent_name_snapshot == "Feedback Student"
-    assert item.address_snapshot == "Initial Address"
-    assert item.mobile_number_snapshot == "09171234567"
+    assert read_feedback_confidential_content(item).address_snapshot == "Initial Address"
+    assert read_feedback_confidential_content(item).mobile_number_snapshot == "09171234567"
     assert item.course_year_snapshot == "BS Information Systems / 4th Year"
     assert not any(field.name in {"user", "student", "respondent"} for field in item._meta.fields)
 
     student.first_name = "Changed"
-    student.current_address = "Changed Address"
-    student.contact_number = "09999999999"
-    student.save(update_fields=["first_name", "current_address", "contact_number", "updated_at"])
+    set_profile(student, current_address="Changed Address")
+    set_profile(student, contact_number="09999999999")
+    student.save(update_fields=["first_name", "updated_at"])
     item.refresh_from_db()
     assert item.respondent_name_snapshot == "Feedback Student"
-    assert item.address_snapshot == "Initial Address"
-    assert item.mobile_number_snapshot == "09171234567"
+    assert read_feedback_confidential_content(item).address_snapshot == "Initial Address"
+    assert read_feedback_confidential_content(item).mobile_number_snapshot == "09171234567"
 
 
 @pytest.mark.django_db
@@ -464,7 +466,7 @@ def test_csm_is_data_minimized_and_does_not_copy_account_identity():
         "college",
         "affiliation",
     }.isdisjoint(field_names)
-    assert item.email == ""
+    assert read_feedback_confidential_content(item).email == ""
     assert "identity-not-copied@example.edu" not in str(item.__dict__)
     assert item.instrument_schema_version == 1
 
@@ -527,7 +529,7 @@ def test_csm_optional_email_is_voluntary_and_validated_when_supplied():
 
     blank = post_json(client, "/api/v1/feedback/csm", valid_csm_payload())
     assert blank.status_code == 201
-    assert ClientSatisfactionResponse.objects.get().email == ""
+    assert read_feedback_confidential_content(ClientSatisfactionResponse.objects.get()).email == ""
 
     valid = valid_csm_payload()
     valid["email"] = "respondent@example.com"
@@ -1255,9 +1257,9 @@ def test_feedback_abandon_failure_returns_idempotency_unavailable(monkeypatch):
 def test_feedback_replay_storage_contains_only_submission_response_and_digests(monkeypatch):
     sync_policy()
     student = make_user("privacy-replay@example.edu")
-    student.current_address = "Sensitive Home Address"
-    student.contact_number = "09991234567"
-    student.save(update_fields=["current_address", "contact_number", "updated_at"])
+    set_profile(student, current_address="Sensitive Home Address")
+    set_profile(student, contact_number="09991234567")
+    student.save(update_fields=["updated_at"])
     client = auth_client(student)
     redis = FakeRedis()
     store = RedisIdempotencyStore(redis, ttl_seconds=60)

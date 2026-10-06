@@ -11,6 +11,7 @@ from django.test import Client
 from django.utils import timezone
 
 from compass.account_management.services import serialize_account
+from compass.accounts.confidential_profile import read_account_profile_confidential_content
 from compass.accounts.models import (
     Capability,
     Designation,
@@ -48,6 +49,7 @@ from compass.referrals.confidential_content import (
 )
 from compass.referrals.models import Referral
 from tests.inventory_encryption_helpers import create_inventory_row
+from tests.profile_fixtures import set_profile
 
 PROFILE_FIELDS = {
     "date_of_birth",
@@ -105,16 +107,17 @@ def test_user_directly_owns_minimal_reusable_profile_fields_without_personalprof
     sync_policy()
     user = make_user("defaults@example.edu")
 
-    assert user.date_of_birth is None
-    assert user.civil_status == ""
-    assert user.contact_number == ""
-    assert user.current_address == ""
-    assert user.permanent_address == ""
+    assert read_account_profile_confidential_content(user).date_of_birth is None
+    assert read_account_profile_confidential_content(user).civil_status == ""
+    assert read_account_profile_confidential_content(user).contact_number == ""
+    assert read_account_profile_confidential_content(user).current_address == ""
+    assert read_account_profile_confidential_content(user).permanent_address == ""
     assert user.profile_photo_object_key is None
     assert user.profile_photo_updated_at is None
 
     field_names = {field.name for field in User._meta.get_fields()}
-    assert PROFILE_FIELDS <= field_names
+    assert PROFILE_FIELDS.isdisjoint(field_names)
+    assert "profile_confidential_content_ciphertext" in field_names
     assert {
         "email",
         "institutional_id",
@@ -165,21 +168,12 @@ def test_profile_foundation_tracks_current_capability_policy_counts():
 def test_every_active_primary_role_can_get_only_its_own_profile(role_code):
     sync_policy()
     user = make_user(f"{role_code.lower()}@example.edu", role=role_code)
-    user.date_of_birth = timezone.localdate() - timedelta(days=8000)
-    user.civil_status = "Single"
-    user.contact_number = "09171234567"
-    user.current_address = "Current address"
-    user.permanent_address = "Permanent address"
-    user.save(
-        update_fields=[
-            "date_of_birth",
-            "civil_status",
-            "contact_number",
-            "current_address",
-            "permanent_address",
-            "updated_at",
-        ]
-    )
+    set_profile(user, date_of_birth=timezone.localdate() - timedelta(days=8000))
+    set_profile(user, civil_status="Single")
+    set_profile(user, contact_number="09171234567")
+    set_profile(user, current_address="Current address")
+    set_profile(user, permanent_address="Permanent address")
+    user.save(update_fields=["updated_at"])
     client, _session = auth_client(user)
 
     response = client.get("/api/v1/me/profile")
@@ -192,7 +186,10 @@ def test_every_active_primary_role_can_get_only_its_own_profile(role_code):
     assert body["last_name"] == user.last_name
     assert body["full_name"] == user.get_full_name()
     assert body["role"] == role_code
-    assert body["date_of_birth"] == user.date_of_birth.isoformat()
+    assert (
+        body["date_of_birth"]
+        == read_account_profile_confidential_content(user).date_of_birth.isoformat()
+    )
     assert body["civil_status"] == "Single"
     assert body["contact_number"] == "09171234567"
     assert body["current_address"] == "Current address"
@@ -275,8 +272,8 @@ def test_each_role_can_patch_own_profile_without_recent_mfa_or_session_rotation(
     assert body["permanent_address"] == "Home province"
 
     user.refresh_from_db()
-    assert user.civil_status == "Single"
-    assert user.current_address == "Line 1\nLine 2"
+    assert read_account_profile_confidential_content(user).civil_status == "Single"
+    assert read_account_profile_confidential_content(user).current_address == "Line 1\nLine 2"
 
     session.refresh_from_db()
     assert session.pk == original_session_id
@@ -289,31 +286,22 @@ def test_each_role_can_patch_own_profile_without_recent_mfa_or_session_rotation(
 def test_profile_patch_is_true_partial_and_dob_can_be_explicitly_cleared():
     sync_policy()
     user = make_user("partial@example.edu")
-    user.date_of_birth = timezone.localdate() - timedelta(days=9000)
-    user.civil_status = "Single"
-    user.contact_number = "old"
-    user.current_address = "Current"
-    user.permanent_address = "Permanent"
-    user.save(
-        update_fields=[
-            "date_of_birth",
-            "civil_status",
-            "contact_number",
-            "current_address",
-            "permanent_address",
-            "updated_at",
-        ]
-    )
+    set_profile(user, date_of_birth=timezone.localdate() - timedelta(days=9000))
+    set_profile(user, civil_status="Single")
+    set_profile(user, contact_number="old")
+    set_profile(user, current_address="Current")
+    set_profile(user, permanent_address="Permanent")
+    user.save(update_fields=["updated_at"])
     client, _session = auth_client(user)
 
     first = patch_profile(client, {"contact_number": " new "})
     assert first.status_code == 200
     user.refresh_from_db()
-    assert user.contact_number == "new"
-    assert user.civil_status == "Single"
-    assert user.current_address == "Current"
-    assert user.permanent_address == "Permanent"
-    assert user.date_of_birth is not None
+    assert read_account_profile_confidential_content(user).contact_number == "new"
+    assert read_account_profile_confidential_content(user).civil_status == "Single"
+    assert read_account_profile_confidential_content(user).current_address == "Current"
+    assert read_account_profile_confidential_content(user).permanent_address == "Permanent"
+    assert read_account_profile_confidential_content(user).date_of_birth is not None
 
     cleared = patch_profile(
         client,
@@ -325,9 +313,9 @@ def test_profile_patch_is_true_partial_and_dob_can_be_explicitly_cleared():
     )
     assert cleared.status_code == 200
     user.refresh_from_db()
-    assert user.date_of_birth is None
-    assert user.civil_status == ""
-    assert user.current_address == ""
+    assert read_account_profile_confidential_content(user).date_of_birth is None
+    assert read_account_profile_confidential_content(user).civil_status == ""
+    assert read_account_profile_confidential_content(user).current_address == ""
 
 
 @pytest.mark.django_db
@@ -472,21 +460,12 @@ def test_person_profile_context_is_immutable_accounts_only_current_data(django_a
         first_name="Current",
         last_name="Student",
     )
-    student.date_of_birth = timezone.localdate() - timedelta(days=8000)
-    student.civil_status = "Single"
-    student.contact_number = "0917"
-    student.current_address = "Current"
-    student.permanent_address = "Permanent"
-    student.save(
-        update_fields=[
-            "date_of_birth",
-            "civil_status",
-            "contact_number",
-            "current_address",
-            "permanent_address",
-            "updated_at",
-        ]
-    )
+    set_profile(student, date_of_birth=timezone.localdate() - timedelta(days=8000))
+    set_profile(student, civil_status="Single")
+    set_profile(student, contact_number="0917")
+    set_profile(student, current_address="Current")
+    set_profile(student, permanent_address="Permanent")
+    student.save(update_fields=["updated_at"])
 
     with django_assert_num_queries(0):
         context = get_person_profile_context(student)
@@ -494,7 +473,7 @@ def test_person_profile_context_is_immutable_accounts_only_current_data(django_a
     assert context.user_id == student.pk
     assert context.full_name == "Current Student"
     assert context.email == student.email
-    assert context.date_of_birth == student.date_of_birth
+    assert context.date_of_birth == read_account_profile_confidential_content(student).date_of_birth
     assert context.civil_status == "Single"
     assert context.contact_number == "0917"
     assert context.current_address == "Current"
@@ -539,21 +518,12 @@ def test_self_profile_uses_existing_signed_photo_projection_without_exposing_obj
 def test_admin_and_organization_serializers_do_not_leak_current_profile_fields():
     sync_policy()
     user = make_user("privacy@example.edu")
-    user.date_of_birth = timezone.localdate() - timedelta(days=9000)
-    user.civil_status = "Private"
-    user.contact_number = "Private phone"
-    user.current_address = "Private address"
-    user.permanent_address = "Private permanent address"
-    user.save(
-        update_fields=[
-            "date_of_birth",
-            "civil_status",
-            "contact_number",
-            "current_address",
-            "permanent_address",
-            "updated_at",
-        ]
-    )
+    set_profile(user, date_of_birth=timezone.localdate() - timedelta(days=9000))
+    set_profile(user, civil_status="Private")
+    set_profile(user, contact_number="Private phone")
+    set_profile(user, current_address="Private address")
+    set_profile(user, permanent_address="Private permanent address")
+    user.save(update_fields=["updated_at"])
 
     summary = serialize_account(user)
     detail = serialize_account(user, detail=True)
