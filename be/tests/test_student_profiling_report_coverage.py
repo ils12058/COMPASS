@@ -19,6 +19,7 @@ from compass.reports.services import (
     ReportAccessScope,
     build_student_profiling_report,
 )
+from tests.inventory_encryption_helpers import create_inventory_row
 from tests.test_student_profiling_reports import (
     auth_client,
     make_head,
@@ -105,7 +106,8 @@ def test_parent_income_reuses_normalized_status_and_excludes_spouse():
         annual_income_status=AnnualIncomeStatus.NONE,
         annual_income_previous_year=Decimal("0"),
     )
-    InventoryFamilyMember.objects.create(
+    create_inventory_row(
+        InventoryFamilyMember,
         inventory=first_item,
         kind=FamilyMemberKind.SPOUSE,
         annual_income_status=AnnualIncomeStatus.REPORTED,

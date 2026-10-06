@@ -62,6 +62,7 @@ from compass.organization.models import AcademicYear
 from compass.referrals.models import Referral
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.models import Service
+from tests.inventory_encryption_helpers import create_inventory_row
 
 
 def sync_policy() -> None:
@@ -137,7 +138,8 @@ def make_inventory(
             )
             write_opportunity_note(opportunity, "")
             opportunity.save(force_insert=True)
-    return StudentInventory.objects.create(
+    return create_inventory_row(
+        StudentInventory,
         student=student,
         academic_year=academic_year,
         form_revision=make_inventory_revision(),

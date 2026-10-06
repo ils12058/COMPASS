@@ -31,6 +31,12 @@ from compass.student_support.models import (
     ParentLifeStatus,
 )
 
+from .confidential_content import (
+    FIELDS,
+    InventoryConfidentialContentUnavailable,
+    read_inventory_private_projection,
+    read_reopen_reason,
+)
 from .documents import InventoryDocumentUnavailable, render_inventory_pdf
 from .models import (
     AnnualIncomeStatus,
@@ -614,6 +620,8 @@ def _require_counselor(request, capability: str) -> None:
 
 
 def _raise(exc: InventoryError) -> NoReturn:
+    if isinstance(exc, InventoryConfidentialContentUnavailable):
+        raise APIError(500, "inventory_confidential_content_unavailable", str(exc)) from None
     if isinstance(exc, InventoryDocumentUnavailable):
         raise APIError(503, "inventory_document_unavailable", str(exc)) from exc
     if isinstance(exc, InventoryNotPermitted):
@@ -697,16 +705,32 @@ def _correction(item) -> tuple[bool, dict[str, object] | None]:
     event = get_pending_correction(item)
     if event is None:
         return False, None
-    return True, {"requested_at": event.reopened_at, "message": event.reason}
+    try:
+        reason = read_reopen_reason(event)
+    except InventoryConfidentialContentUnavailable as exc:
+        _raise(exc)
+    return True, {"requested_at": event.reopened_at, "message": reason}
 
 
-def _child_rows(item, relation: str, fields: tuple[str, ...]) -> list[dict[str, object]]:
+def _child_rows(
+    item, relation: str, fields: tuple[str, ...], *, private
+) -> list[dict[str, object]]:
     return [
-        {field: getattr(row, field) for field in fields} for row in getattr(item, relation).all()
+        {
+            field: getattr(private.children[row.pk], field)
+            if field in FIELDS.get(type(row).__name__, {})
+            else getattr(row, field)
+            for field in fields
+        }
+        for row in getattr(item, relation).all()
     ]
 
 
 def _inventory(item) -> dict[str, object]:
+    try:
+        private = read_inventory_private_projection(item)
+    except InventoryConfidentialContentUnavailable as exc:
+        _raise(exc)
     data: dict[str, object] = {
         "id": item.pk,
         "academic_year": _academic_year(item.academic_year),
@@ -803,7 +827,11 @@ def _inventory(item) -> dict[str, object]:
         "current_concerns",
         "current_fears",
     ):
-        data[field] = getattr(item, field)
+        data[field] = (
+            getattr(private.root, field)
+            if field in FIELDS["StudentInventory"]
+            else getattr(item, field)
+        )
     data["program_id"] = item.program_id
     data["program"] = (
         {
@@ -850,26 +878,31 @@ def _inventory(item) -> dict[str, object]:
             "religion_raised_with",
             "current_religion",
         ),
+        private=private,
     )
     data["siblings"] = _child_rows(
         item,
         "siblings",
         ("sort_order", "name", "sex", "age", "educational_attainment", "occupation", "is_self"),
+        private=private,
     )
     data["education_entries"] = _child_rows(
         item,
         "education_entries",
         ("level", "school_attended_address", "inclusive_years", "awards_received"),
+        private=private,
     )
     data["organization_memberships"] = _child_rows(
         item,
         "organization_memberships",
         ("scope", "sort_order", "organization_name", "position_title"),
+        private=private,
     )
     data["transportation_entries"] = _child_rows(
         item,
         "transportation_entries",
         ("mode", "frequency", "frequency_category", "fare"),
+        private=private,
     )
     data["geographic_locations"] = _child_rows(
         item,
@@ -886,6 +919,7 @@ def _inventory(item) -> dict[str, object]:
             "barangay_psgc_code",
             "barangay_name_snapshot",
         ),
+        private=private,
     )
     profile = item.support_profile
     data["support_profile"] = {

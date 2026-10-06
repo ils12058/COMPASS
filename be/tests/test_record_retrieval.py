@@ -27,6 +27,7 @@ from tests import test_good_moral as gm
 from tests import test_inventory_counselor_review as inv
 from tests import test_referrals as referrals
 from tests import test_routine_interviews as routine
+from tests.inventory_encryption_helpers import create_inventory_row
 
 pytestmark = pytest.mark.django_db
 
@@ -348,8 +349,8 @@ def test_inventory_revision_is_bound_to_selected_year_and_excludes_missing():
     inv.affiliate(missing, college)
     record = inv.submit_inventory(student=student, program=program, year_level=2)
     old = historical_revision("individual_inventory")
-    historical_record = StudentInventory.objects.create(
-        student=student, academic_year=historical, form_revision=old
+    historical_record = create_inventory_row(
+        StudentInventory, student=student, academic_year=historical, form_revision=old
     )
     client = inv.auth_client(counselor)
     current_response = client.get(

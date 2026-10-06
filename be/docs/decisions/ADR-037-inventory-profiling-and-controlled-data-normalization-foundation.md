@@ -178,3 +178,9 @@ StudentAffiliation mutation.
 No profiling endpoint, report model, PDF, percentages, dashboard, chart, materialized view, or
 generic report engine is implemented here. The next focused slice is the Students' Profile /
 First-Year Profiling Report consuming this normalized Inventory foundation.
+
+
+## Later at-rest representation
+
+ADR-083 supersedes only the at-rest representation of selected private Inventory source fields.
+This ADR's lifecycle, controlled form, normalized reporting and authorization semantics remain.

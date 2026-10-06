@@ -145,3 +145,9 @@ actual domain fields explicitly.
 Institutional display branding/profile, print templates, semester/calendar configuration,
 administrative Inventory reopen, Counselor Inventory-content access, and generalized sensitive-field
 encryption remain deliberate future concerns rather than hidden scope in this foundation.
+
+
+## Later at-rest representation
+
+ADR-083 supersedes only the at-rest representation of selected private Inventory source fields.
+This ADR's lifecycle, controlled form, normalized reporting and authorization semantics remain.

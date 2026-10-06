@@ -34,6 +34,7 @@ from compass.organization.models import (
 from compass.routine_interviews.content import initial_content
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.models import Service
+from tests.inventory_encryption_helpers import create_inventory_row
 
 
 def sync_policy() -> None:
@@ -109,7 +110,8 @@ def make_revision(key: str) -> FormRevision:
 def make_inventory(student: User, *, suffix: str) -> StudentInventory:
     year, _ = AcademicYear.objects.get_or_create(label="2026-2027", defaults={"is_current": True})
     revision = make_revision(f"overview_inventory_{suffix}")
-    return StudentInventory.objects.create(
+    return create_inventory_row(
+        StudentInventory,
         student=student,
         academic_year=year,
         form_revision=revision,

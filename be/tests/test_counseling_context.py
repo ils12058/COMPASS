@@ -60,6 +60,7 @@ from compass.student_support.models import (
 )
 from compass.student_support.services import build_student_support_context
 from tests.canonical_service_helpers import legacy_counseling_service
+from tests.inventory_encryption_helpers import create_inventory_row
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
@@ -690,7 +691,8 @@ def test_context_support_indicators_use_only_current_submitted_inventory(world):
     _, missing_college, missing_program = make_org("MISSING")
     StudentAffiliation.objects.create(student=missing_student, college=missing_college)
     historical_year = AcademicYear.objects.create(label="2025-2026", is_current=False)
-    historical = StudentInventory.objects.create(
+    historical = create_inventory_row(
+        StudentInventory,
         student=missing_student,
         academic_year=historical_year,
         form_revision=world["inventory"].form_revision,

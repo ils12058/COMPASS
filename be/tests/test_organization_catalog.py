@@ -24,6 +24,7 @@ from compass.organization.models import (
     Program,
     StudentAffiliation,
 )
+from tests.inventory_encryption_helpers import create_inventory_row
 
 
 def _sync_policy() -> None:
@@ -165,7 +166,8 @@ def test_sync_deactivates_legacy_program_but_preserves_inventory_foreign_key():
         family__key="individual_inventory",
         status=FormRevisionStatus.ACTIVE,
     )
-    inventory = StudentInventory.objects.create(
+    inventory = create_inventory_row(
+        StudentInventory,
         student=_student("legacy-program@example.edu"),
         academic_year=academic_year,
         form_revision=revision,

@@ -239,28 +239,15 @@ class StudentInventory(models.Model):
 
     # Page 1 — personal snapshot.
     full_name_snapshot = models.CharField(max_length=200, blank=True, default="")
-    nickname = models.CharField(max_length=100, blank=True, default="")
     student_number = models.CharField(max_length=64, blank=True, default="")
     date_of_birth = models.DateField(null=True, blank=True)
-    place_of_birth = models.CharField(max_length=160, blank=True, default="")
-    nationality = models.CharField(max_length=100, blank=True, default="")
     sex = models.CharField(max_length=16, choices=Sex.choices, blank=True, default="")
-    birth_order_among_siblings = models.CharField(max_length=64, blank=True, default="")
-    civil_status = models.CharField(max_length=80, blank=True, default="")
     civil_status_category = models.CharField(
         max_length=32,
         choices=CivilStatusCategory.choices,
         null=True,
         blank=True,
     )
-    current_address = models.TextField(blank=True, default="")
-    permanent_address = models.TextField(blank=True, default="")
-    contact_number = models.CharField(max_length=64, blank=True, default="")
-    email_address = models.EmailField(blank=True, default="")
-    languages_spoken_at_home = models.TextField(blank=True, default="")
-    languages_most_fluent = models.TextField(blank=True, default="")
-    religion_from_birth = models.CharField(max_length=120, blank=True, default="")
-    current_religion = models.CharField(max_length=120, blank=True, default="")
     current_religion_category = models.CharField(
         max_length=40,
         choices=CurrentReligionCategory.choices,
@@ -278,21 +265,8 @@ class StudentInventory(models.Model):
         null=True,
         blank=True,
     )
-    guardian_name = models.CharField(max_length=160, blank=True, default="")
-    guardian_relationship = models.CharField(max_length=120, blank=True, default="")
-    guardian_address = models.TextField(blank=True, default="")
-    guardian_contact_number = models.CharField(max_length=64, blank=True, default="")
-    emergency_contact_name = models.CharField(max_length=160, blank=True, default="")
-    emergency_contact_number = models.CharField(max_length=64, blank=True, default="")
 
     # Page 2 — unique features, living, health, current study.
-    friends_in_school = models.TextField(blank=True, default="")
-    friends_outside_school = models.TextField(blank=True, default="")
-    special_interest = models.TextField(blank=True, default="")
-    special_skills_talents = models.TextField(blank=True, default="")
-    hobbies_recreation = models.TextField(blank=True, default="")
-    ambition_goal = models.TextField(blank=True, default="")
-    characteristics = models.TextField(blank=True, default="")
     living_arrangement = models.CharField(
         max_length=32,
         choices=LivingArrangement.choices,
@@ -300,35 +274,17 @@ class StudentInventory(models.Model):
         default="",
     )
     boarding_exclusive = models.BooleanField(null=True, blank=True)
-    boarding_landlord_name = models.CharField(max_length=160, blank=True, default="")
-    boarding_address = models.TextField(blank=True, default="")
     present_place_people_count = models.PositiveSmallIntegerField(null=True, blank=True)
     room_sharing_people_count = models.PositiveSmallIntegerField(null=True, blank=True)
-    accidents_experienced = models.TextField(blank=True, default="")
-    accidents_effect = models.TextField(blank=True, default="")
-    operations_experienced = models.TextField(blank=True, default="")
-    operations_effect = models.TextField(blank=True, default="")
-    immunizations = ArrayField(
-        models.CharField(max_length=24, choices=ImmunizationType.choices),
-        default=list,
-        blank=True,
-    )
-    immunization_other = models.CharField(max_length=160, blank=True, default="")
-    height = models.CharField(max_length=64, blank=True, default="")
-    weight = models.CharField(max_length=64, blank=True, default="")
-    physical_disadvantage = models.TextField(blank=True, default="")
     pwd_status = models.CharField(
         max_length=32,
         choices=PWDStatus.choices,
         null=True,
         blank=True,
     )
-    illness_this_year = models.TextField(blank=True, default="")
-    previous_illness = models.TextField(blank=True, default="")
     course_currently_enrolled = models.CharField(max_length=180, blank=True, default="")
     major = models.CharField(max_length=180, blank=True, default="")
     schedule_satisfied = models.BooleanField(null=True, blank=True)
-    schedule_satisfaction_reason = models.TextField(blank=True, default="")
 
     # Page 3 — course, interests, perception, prior counseling and current concerns.
     course_first_choice = models.BooleanField(null=True, blank=True)
@@ -337,20 +293,11 @@ class StudentInventory(models.Model):
         default=list,
         blank=True,
     )
-    course_choice_other = models.TextField(blank=True, default="")
-    lowest_subjects_grades = models.TextField(blank=True, default="")
-    highest_subjects_grades = models.TextField(blank=True, default="")
-    inclination_performing_arts = models.TextField(blank=True, default="")
-    inclination_sports = models.TextField(blank=True, default="")
-    inclination_leadership = models.TextField(blank=True, default="")
     interests = ArrayField(
         models.CharField(max_length=32, choices=InterestType.choices),
         default=list,
         blank=True,
     )
-    other_skills_hobbies = models.TextField(blank=True, default="")
-    desired_extracurricular_activities = models.TextField(blank=True, default="")
-    reading_preferences = models.TextField(blank=True, default="")
     handedness = models.CharField(max_length=16, choices=Handedness.choices, blank=True, default="")
     daily_hours_class = models.DecimalField(
         max_digits=4,
@@ -406,21 +353,20 @@ class StudentInventory(models.Model):
         blank=True,
         default="",
     )
-    intended_work_other = models.CharField(max_length=160, blank=True, default="")
-    prior_counseling_experience = models.BooleanField(null=True, blank=True)
-    prior_counselor_name = models.CharField(max_length=160, blank=True, default="")
-    prior_counseling_when = models.CharField(max_length=120, blank=True, default="")
-    prior_counseling_where = models.CharField(max_length=200, blank=True, default="")
-    current_concerns = models.TextField(blank=True, default="")
-    current_fears = models.TextField(blank=True, default="")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    confidential_content_ciphertext = models.TextField(editable=False)
 
     class Meta:
         default_permissions = ()
         ordering = ("-academic_year__label", "student_id")
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="studentinventory_cipher_present",
+            ),
             models.UniqueConstraint(
                 fields=("student", "academic_year"),
                 name="inventory_student_academic_year_uniq",
@@ -448,11 +394,18 @@ class InventoryReopenEvent(models.Model):
         related_name="inventory_reopen_events",
     )
     reopened_at = models.DateTimeField()
-    reason = models.TextField(max_length=1000)
+
+    reason_ciphertext = models.TextField(editable=False)
 
     class Meta:
         default_permissions = ()
         ordering = ("reopened_at", "id")
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(reason_ciphertext=""),
+                name="inventoryreopenevent_cipher_present",
+            ),
+        ]
 
 
 class InventoryFamilyMember(models.Model):
@@ -463,23 +416,12 @@ class InventoryFamilyMember(models.Model):
         related_name="family_members",
     )
     kind = models.CharField(max_length=16, choices=FamilyMemberKind.choices)
-    name = models.CharField(max_length=160, blank=True, default="")
-    date_of_birth = models.DateField(null=True, blank=True)
-    place_of_birth = models.CharField(max_length=160, blank=True, default="")
-    current_address = models.TextField(blank=True, default="")
-    permanent_address = models.TextField(blank=True, default="")
-    contact_number = models.CharField(max_length=64, blank=True, default="")
-    email_address = models.EmailField(blank=True, default="")
-    educational_attainment = models.CharField(max_length=160, blank=True, default="")
-    occupation = models.CharField(max_length=160, blank=True, default="")
     occupation_category = models.CharField(
         max_length=32,
         choices=OccupationCategory.choices,
         null=True,
         blank=True,
     )
-    business_address = models.TextField(blank=True, default="")
-    business_telephone = models.CharField(max_length=64, blank=True, default="")
     annual_income_previous_year = models.DecimalField(
         max_digits=14,
         decimal_places=2,
@@ -493,14 +435,17 @@ class InventoryFamilyMember(models.Model):
         null=True,
         blank=True,
     )
-    languages_spoken = models.TextField(blank=True, default="")
-    religion_raised_with = models.CharField(max_length=120, blank=True, default="")
-    current_religion = models.CharField(max_length=120, blank=True, default="")
+
+    confidential_content_ciphertext = models.TextField(editable=False)
 
     class Meta:
         default_permissions = ()
         ordering = ("kind", "id")
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="inventoryfamilymember_cipher_present",
+            ),
             models.UniqueConstraint(
                 fields=("inventory", "kind"),
                 name="inventory_family_member_kind_uniq",
@@ -550,17 +495,18 @@ class InventorySibling(models.Model):
         StudentInventory, on_delete=models.CASCADE, related_name="siblings"
     )
     sort_order = models.PositiveSmallIntegerField()
-    name = models.CharField(max_length=160, blank=True, default="")
-    sex = models.CharField(max_length=16, choices=Sex.choices, blank=True, default="")
-    age = models.PositiveSmallIntegerField(null=True, blank=True)
-    educational_attainment = models.CharField(max_length=160, blank=True, default="")
-    occupation = models.CharField(max_length=160, blank=True, default="")
     is_self = models.BooleanField(default=False)
+
+    confidential_content_ciphertext = models.TextField(editable=False)
 
     class Meta:
         default_permissions = ()
         ordering = ("sort_order", "id")
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="inventorysibling_cipher_present",
+            ),
             models.UniqueConstraint(
                 fields=("inventory", "sort_order"),
                 name="inventory_sibling_order_uniq",
@@ -576,14 +522,17 @@ class InventoryEducationEntry(models.Model):
         related_name="education_entries",
     )
     level = models.CharField(max_length=32, choices=EducationLevel.choices)
-    school_attended_address = models.TextField(blank=True, default="")
-    inclusive_years = models.CharField(max_length=100, blank=True, default="")
-    awards_received = models.TextField(blank=True, default="")
+
+    confidential_content_ciphertext = models.TextField(editable=False)
 
     class Meta:
         default_permissions = ()
         ordering = ("level", "id")
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="inventoryeducationentry_cipher_present",
+            ),
             models.UniqueConstraint(
                 fields=("inventory", "level"),
                 name="inventory_education_level_uniq",
@@ -600,13 +549,17 @@ class InventoryOrganizationMembership(models.Model):
     )
     scope = models.CharField(max_length=24, choices=OrganizationScope.choices)
     sort_order = models.PositiveSmallIntegerField()
-    organization_name = models.CharField(max_length=180, blank=True, default="")
-    position_title = models.CharField(max_length=160, blank=True, default="")
+
+    confidential_content_ciphertext = models.TextField(editable=False)
 
     class Meta:
         default_permissions = ()
         ordering = ("scope", "sort_order", "id")
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="inventoryorganizationmembership_cipher_present",
+            ),
             models.UniqueConstraint(
                 fields=("inventory", "scope", "sort_order"),
                 name="inventory_organization_order_uniq",
@@ -622,7 +575,6 @@ class InventoryTransportationEntry(models.Model):
         related_name="transportation_entries",
     )
     mode = models.CharField(max_length=16, choices=TransportationMode.choices)
-    frequency = models.CharField(max_length=100, blank=True, default="")
     frequency_category = models.CharField(
         max_length=32,
         choices=TransportationFrequencyCategory.choices,
@@ -637,10 +589,16 @@ class InventoryTransportationEntry(models.Model):
         validators=[MinValueValidator(0)],
     )
 
+    confidential_content_ciphertext = models.TextField(editable=False)
+
     class Meta:
         default_permissions = ()
         ordering = ("mode", "id")
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="inventorytransportationentry_cipher_present",
+            ),
             models.UniqueConstraint(
                 fields=("inventory", "mode"),
                 name="inventory_transport_mode_uniq",

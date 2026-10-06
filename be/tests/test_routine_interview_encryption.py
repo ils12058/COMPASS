@@ -53,6 +53,7 @@ from compass.routine_interviews.services import (
     replace_my_intake,
     submit_my_intake,
 )
+from tests.inventory_encryption_helpers import create_inventory_row
 from tests.test_routine_interviews import (
     auth_client,
     configure_year,
@@ -837,7 +838,8 @@ def _legacy_participants():
         official_revision="0",
         internal_schema_version=1,
     )
-    inventory = StudentInventory.objects.create(
+    inventory = create_inventory_row(
+        StudentInventory,
         student=student,
         academic_year=AcademicYear.objects.create(label=f"L-{suffix}"),
         form_revision=revision,

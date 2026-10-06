@@ -115,3 +115,9 @@ The governing list invariant is:
 The governing Inventory authority is:
 
 > capability + current organizational resource scope + Inventory state/Academic Year eligibility = authorized action
+
+
+## Later at-rest representation
+
+ADR-083 supersedes only the at-rest representation of selected private Inventory source fields.
+This ADR's lifecycle, controlled form, normalized reporting and authorization semantics remain.

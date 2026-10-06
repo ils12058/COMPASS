@@ -51,6 +51,15 @@ from compass.student_support.models import (
     StudentSupportProfile,
 )
 
+from .confidential_content import (
+    FIELDS,
+    PROJECTIONS,
+    initial_confidential_content,
+    project_confidential_input,
+    read_inventory_private_projection,
+    write_confidential_content,
+)
+from .errors import InvalidInventoryInput, InventoryError
 from .models import (
     AnnualIncomeStatus,
     CivilStatusCategory,
@@ -162,10 +171,6 @@ def derive_age_on(*, date_of_birth: date, on_date: date) -> int:
     )
 
 
-class InventoryError(RuntimeError):
-    pass
-
-
 class InventoryNotFound(InventoryError):
     pass
 
@@ -175,10 +180,6 @@ class InventoryConflict(InventoryError):
 
 
 class InventoryCurrentStudentRequired(InventoryError):
-    pass
-
-
-class InvalidInventoryInput(InventoryError):
     pass
 
 
@@ -327,6 +328,11 @@ SUPPORT_FIELDS = (
     "indigenous_peoples_status",
     "mother_life_status",
     "father_life_status",
+)
+
+
+QUERYABLE_SCALAR_FIELDS = tuple(
+    field for field in SCALAR_FIELDS if field not in FIELDS["StudentInventory"]
 )
 
 
@@ -804,12 +810,14 @@ def ensure_current_inventory(*, student: User, context: AuditContext) -> Student
         revision = _active_inventory_revision()
         try:
             with transaction.atomic():
-                item = StudentInventory.objects.create(
+                item = StudentInventory(
                     student=locked_student,
                     academic_year=current,
                     form_revision=revision,
                     student_number=locked_student.institutional_id or "",
                 )
+                initial_confidential_content(item)
+                item.save()
                 StudentSupportProfile.objects.create(inventory=item)
         except IntegrityError:
             item = StudentInventory.objects.filter(
@@ -839,13 +847,13 @@ def ensure_current_inventory(*, student: User, context: AuditContext) -> Student
         return _inventory_queryset().get(pk=item.pk)
 
 
-def _validate_draft_consistency(item: StudentInventory) -> None:
-    if item.prior_counseling_experience is False and any(
+def _validate_draft_consistency(item: StudentInventory, content) -> None:
+    if content.prior_counseling_experience is False and any(
         value.strip()
         for value in (
-            item.prior_counselor_name,
-            item.prior_counseling_when,
-            item.prior_counseling_where,
+            content.prior_counselor_name,
+            content.prior_counseling_when,
+            content.prior_counseling_where,
         )
     ):
         raise InvalidInventoryInput(
@@ -853,8 +861,8 @@ def _validate_draft_consistency(item: StudentInventory) -> None:
         )
     if item.living_arrangement != LivingArrangement.BOARDING_HOUSE and (
         item.boarding_exclusive is not None
-        or item.boarding_landlord_name.strip()
-        or item.boarding_address.strip()
+        or content.boarding_landlord_name.strip()
+        or content.boarding_address.strip()
     ):
         raise InvalidInventoryInput(
             "Boarding-house details may only be supplied for BOARDING_HOUSE living arrangement."
@@ -864,8 +872,10 @@ def _validate_draft_consistency(item: StudentInventory) -> None:
 def _validate_submission(
     item: StudentInventory,
     profile: StudentSupportProfile,
-) -> None:
-    _validate_draft_consistency(item)
+    private,
+) -> dict[str, object]:
+    content = private.root
+    _validate_draft_consistency(item, content)
     required_scalars = (
         ("sex", item.sex),
         ("date_of_birth", item.date_of_birth),
@@ -881,14 +891,15 @@ def _validate_submission(
             "Inventory submission requires normalized fields: " + ", ".join(missing) + "."
         )
 
+    root_values = content.payload()
     normalized_root = _normalize_snapshot_categories(
         {
             "civil_status_category": item.civil_status_category,
-            "civil_status": item.civil_status,
+            "civil_status": content.civil_status,
             "current_religion_category": item.current_religion_category,
-            "current_religion": item.current_religion,
+            "current_religion": content.current_religion,
             "pwd_status": item.pwd_status,
-            "physical_disadvantage": item.physical_disadvantage,
+            "physical_disadvantage": content.physical_disadvantage,
             "parent_status_category": item.parent_status_category,
         }
     )
@@ -897,7 +908,7 @@ def _validate_submission(
         "current_religion",
         "physical_disadvantage",
     ):
-        setattr(item, field, normalized_root[field])
+        root_values[field] = normalized_root[field]
 
     required_support = (
         ("four_ps_status", profile.four_ps_status),
@@ -956,7 +967,7 @@ def _validate_submission(
                 {
                     "kind": parent.kind,
                     "occupation_category": parent.occupation_category,
-                    "occupation": parent.occupation,
+                    "occupation": private.children[parent.pk].occupation,
                     "annual_income_status": parent.annual_income_status,
                     "annual_income_previous_year": parent.annual_income_previous_year,
                 }
@@ -971,42 +982,50 @@ def _validate_submission(
             [
                 {
                     "mode": row.mode,
-                    "frequency": row.frequency,
+                    "frequency": private.children[row.pk].frequency,
                     "frequency_category": row.frequency_category,
                     "fare": row.fare,
                 }
             ]
         )
 
-    if ImmunizationType.OTHER in item.immunizations and not item.immunization_other.strip():
+    if ImmunizationType.OTHER in content.immunizations and not content.immunization_other.strip():
         raise InvalidInventoryInput(
             "immunization_other is required when OTHER immunization is selected."
         )
     if (
         CourseChoiceReason.OTHER in item.course_choice_reasons
-        and not item.course_choice_other.strip()
+        and not content.course_choice_other.strip()
     ):
         raise InvalidInventoryInput(
             "course_choice_other is required when OTHER course-choice reason is selected."
         )
     if (
         item.intended_work_field == PostGraduationField.OTHER
-        and not item.intended_work_other.strip()
+        and not content.intended_work_other.strip()
     ):
         raise InvalidInventoryInput(
             "intended_work_other is required when intended_work_field is OTHER."
         )
 
+    return root_values
 
-def _apply_scalar_values(item: StudentInventory, values: dict[str, object]) -> None:
+
+def _apply_scalar_values(item: StudentInventory, values: dict[str, object], private) -> None:
+    payload = private.root.payload()
     for field in SCALAR_FIELDS:
         if field in values:
-            setattr(item, field, values[field])
+            if field in FIELDS["StudentInventory"]:
+                payload[field] = values[field]
+            else:
+                setattr(item, field, values[field])
+    content = project_confidential_input(payload, "StudentInventory")
+    _validate_draft_consistency(item, content)
+    write_confidential_content(item, content)
     try:
         item.full_clean(exclude=("student", "academic_year", "form_revision"))
-    except ValidationError as exc:
-        raise InvalidInventoryInput("The Inventory contains invalid typed values.") from exc
-    _validate_draft_consistency(item)
+    except ValidationError:
+        raise InvalidInventoryInput("The Inventory contains invalid typed values.") from None
 
 
 def _normalize_sibling_rows(rows: object) -> list[dict[str, object]]:
@@ -1019,6 +1038,18 @@ def _normalize_sibling_rows(rows: object) -> list[dict[str, object]]:
     return normalized
 
 
+def _encrypted_child(model, inventory, values):
+    family = model.__name__
+    private = PROJECTIONS[family]().payload()
+    private.update({name: value for name, value in values.items() if name in FIELDS[family]})
+    row = model(
+        inventory=inventory,
+        **{name: value for name, value in values.items() if name not in FIELDS[family]},
+    )
+    write_confidential_content(row, private)
+    return row
+
+
 def _replace_children(item: StudentInventory, values: dict[str, object]) -> None:
     family_rows = _normalize_family_rows(values.get("family_members", []))
     sibling_rows = _normalize_sibling_rows(values.get("siblings", []))
@@ -1029,23 +1060,23 @@ def _replace_children(item: StudentInventory, values: dict[str, object]) -> None
 
     item.family_members.all().delete()
     InventoryFamilyMember.objects.bulk_create(
-        [InventoryFamilyMember(inventory=item, **row) for row in family_rows]
+        [_encrypted_child(InventoryFamilyMember, item, row) for row in family_rows]
     )
     item.siblings.all().delete()
     InventorySibling.objects.bulk_create(
-        [InventorySibling(inventory=item, **row) for row in sibling_rows]
+        [_encrypted_child(InventorySibling, item, row) for row in sibling_rows]
     )
     item.education_entries.all().delete()
     InventoryEducationEntry.objects.bulk_create(
-        [InventoryEducationEntry(inventory=item, **row) for row in education_rows]
+        [_encrypted_child(InventoryEducationEntry, item, row) for row in education_rows]
     )
     item.organization_memberships.all().delete()
     InventoryOrganizationMembership.objects.bulk_create(
-        [InventoryOrganizationMembership(inventory=item, **row) for row in organization_rows]
+        [_encrypted_child(InventoryOrganizationMembership, item, row) for row in organization_rows]
     )
     item.transportation_entries.all().delete()
     InventoryTransportationEntry.objects.bulk_create(
-        [InventoryTransportationEntry(inventory=item, **row) for row in transportation_rows]
+        [_encrypted_child(InventoryTransportationEntry, item, row) for row in transportation_rows]
     )
     item.geographic_locations.all().delete()
     InventoryGeographicLocation.objects.bulk_create(
@@ -1087,6 +1118,7 @@ def replace_current_inventory(
             raise InventoryNotFound("The current academic-year Individual Inventory was not found.")
         if item.submitted_at is not None:
             raise InventoryConflict("A submitted Individual Inventory is locked.")
+        private = read_inventory_private_projection(item)
         normalized_values = _normalize_snapshot_categories(values)
         support_values = None
         if "support_profile" in normalized_values:
@@ -1101,8 +1133,15 @@ def replace_current_inventory(
         canonical_institutional_id = locked_student.institutional_id
         if canonical_institutional_id is not None:
             normalized_values["student_number"] = canonical_institutional_id
-        _apply_scalar_values(item, normalized_values)
-        item.save(update_fields=["program", *SCALAR_FIELDS, "updated_at"])
+        _apply_scalar_values(item, normalized_values, private)
+        item.save(
+            update_fields=[
+                "program",
+                *QUERYABLE_SCALAR_FIELDS,
+                "confidential_content_ciphertext",
+                "updated_at",
+            ]
+        )
         _replace_children(item, normalized_values)
         if support_values is not None:
             _apply_support_profile(profile, support_values)
@@ -1280,7 +1319,10 @@ def submit_current_inventory(
         profile = _lock_or_create_support_profile(item)
         if locked_student.institutional_id is not None:
             item.student_number = locked_student.institutional_id
-        _validate_submission(item, profile)
+        private = read_inventory_private_projection(item)
+        normalized_private = _validate_submission(item, profile, private)
+        if normalized_private != private.root.payload():
+            write_confidential_content(item, normalized_private)
         _apply_resolved_geography(item, resolved_geography)
         submitted_at = timezone.now()
         is_resubmission = item.first_submitted_at is not None
@@ -1292,9 +1334,7 @@ def submit_current_inventory(
             update_fields=[
                 "student_number",
                 "course_currently_enrolled",
-                "civil_status",
-                "current_religion",
-                "physical_disadvantage",
+                "confidential_content_ciphertext",
                 "first_submitted_at",
                 "last_submitted_at",
                 "submitted_at",
@@ -1535,12 +1575,13 @@ def reopen_inventory_for_correction(
                 "Current Student lifecycle is required before reopening for Student correction."
             )
 
-        event = InventoryReopenEvent.objects.create(
+        event = InventoryReopenEvent(
             inventory=item,
             reopened_by=actor,
             reopened_at=reopened_at,
-            reason=cleaned_reason,
         )
+        write_confidential_content(event, {"reason": cleaned_reason})
+        event.save()
         item.submitted_at = None
         item.save(update_fields=["submitted_at", "updated_at"])
         record_event(

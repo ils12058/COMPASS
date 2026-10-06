@@ -38,6 +38,7 @@ from compass.authentication.models import AuthSession
 from compass.authentication.sessions import create_auth_session
 from compass.call_slips.models import CallSlip
 from compass.institutional_forms.models import FormFamily, FormRevision
+from compass.inventory.confidential_content import read_confidential_content
 from compass.inventory.models import StudentInventory
 from compass.organization.api import _person
 from compass.organization.models import AcademicYear
@@ -46,6 +47,7 @@ from compass.referrals.confidential_content import (
     write_referral_confidential_content,
 )
 from compass.referrals.models import Referral
+from tests.inventory_encryption_helpers import create_inventory_row
 
 PROFILE_FIELDS = {
     "date_of_birth",
@@ -577,7 +579,8 @@ def test_profile_edit_does_not_rewrite_inventory_referral_or_call_slip_history()
     )
     academic_year = AcademicYear.objects.create(label="2098-2099")
 
-    inventory = StudentInventory.objects.create(
+    inventory = create_inventory_row(
+        StudentInventory,
         student=student,
         academic_year=academic_year,
         form_revision=revision,
@@ -635,10 +638,10 @@ def test_profile_edit_does_not_rewrite_inventory_referral_or_call_slip_history()
     call_slip.refresh_from_db()
 
     assert inventory.full_name_snapshot == "Historical Student"
-    assert inventory.civil_status == "Historical"
-    assert inventory.contact_number == "old-contact"
-    assert inventory.current_address == "old-current-address"
-    assert inventory.permanent_address == "old-permanent-address"
+    assert read_confidential_content(inventory).civil_status == "Historical"
+    assert read_confidential_content(inventory).contact_number == "old-contact"
+    assert read_confidential_content(inventory).current_address == "old-current-address"
+    assert read_confidential_content(inventory).permanent_address == "old-permanent-address"
     assert referral.student_name_snapshot == "Historical Referral Student"
     assert referral.course_year_block_snapshot == "Historical Course / 4 / A"
     assert call_slip.student_name_snapshot == "Historical Call Slip Student"
