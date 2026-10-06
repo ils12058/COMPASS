@@ -32,6 +32,12 @@ from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.call_slips.models import CallSlip
 from compass.counseling.models import CounselingEncounter
+from compass.exit_interviews.confidential_content import (
+    CONTENT_LIMITS,
+    ExitInterviewConfidentialContent,
+    write_exit_interview_confidential_content,
+    write_opportunity_note,
+)
 from compass.exit_interviews.models import (
     CareerMode,
     CollegeFeedbackItem,
@@ -119,11 +125,18 @@ def make_inventory(
         opener = User.objects.filter(email="fixture-exit-opener@example.edu").first()
         if opener is None:
             opener = make_head("fixture-exit-opener@example.edu")
-        ExitInterviewOpportunity.objects.get_or_create(
-            student=student,
-            academic_year=academic_year,
-            defaults={"source": "MANUAL", "opened_by": opener, "opened_at": timezone.now()},
-        )
+        if not ExitInterviewOpportunity.objects.filter(
+            student=student, academic_year=academic_year
+        ).exists():
+            opportunity = ExitInterviewOpportunity(
+                student=student,
+                academic_year=academic_year,
+                source="MANUAL",
+                opened_by=opener,
+                opened_at=timezone.now(),
+            )
+            write_opportunity_note(opportunity, "")
+            opportunity.save(force_insert=True)
     return StudentInventory.objects.create(
         student=student,
         academic_year=academic_year,
@@ -133,6 +146,15 @@ def make_inventory(
         course_currently_enrolled=course,
         major=major,
     )
+
+
+def make_exit_interview(**values):
+    """Explicit final-schema fixture; never emulate removed ORM plaintext attributes."""
+    content = {name: values.pop(name, "") for name in CONTENT_LIMITS}
+    item = ExitInterview(**values)
+    write_exit_interview_confidential_content(item, ExitInterviewConfidentialContent(**content))
+    item.save(force_insert=True)
+    return item
 
 
 def auth_client(user: User) -> Client:

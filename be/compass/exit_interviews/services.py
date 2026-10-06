@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from uuid import UUID
 
@@ -33,6 +33,15 @@ from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.academic_years import AcademicYearConflict, require_current_academic_year
 
+from .confidential_content import (
+    CONTENT_LIMITS,
+    ExitInterviewConfidentialContent,
+    read_exit_interview_confidential_content,
+    validate_text,
+    write_exit_interview_confidential_content,
+    write_reopen_reason,
+)
+from .errors import ExitInterviewError, InvalidExitInterviewInput
 from .models import (
     CareerMode,
     CollegeFeedbackItem,
@@ -91,10 +100,6 @@ ROOT_EDITABLE_FIELDS = frozenset(
 COLLECTION_FIELDS = frozenset({"self_assessment_ratings", "college_feedback_ratings"})
 
 
-class ExitInterviewError(RuntimeError):
-    pass
-
-
 class ExitInterviewNotFound(ExitInterviewError):
     pass
 
@@ -132,10 +137,6 @@ class ExitInterviewCurrentStudentRequired(ExitInterviewError):
 
 
 class ExitInterviewCurrentAcademicYearNotConfigured(ExitInterviewError):
-    pass
-
-
-class InvalidExitInterviewInput(ExitInterviewError):
     pass
 
 
@@ -223,6 +224,7 @@ def _clean_text(value: object, field_name: str, maximum: int) -> str:
     cleaned = value.strip()
     if len(cleaned) > maximum:
         raise InvalidExitInterviewInput(f"{field_name} is too long.")
+    validate_text(cleaned, field_name, maximum)
     return cleaned
 
 
@@ -627,7 +629,7 @@ def ensure_my_current(
         home_address = profile.current_address.strip() or profile.permanent_address.strip()
         try:
             with transaction.atomic():
-                item = ExitInterview.objects.create(
+                item = ExitInterview(
                     student=locked_student,
                     academic_year=current,
                     inventory=inventory,
@@ -637,10 +639,16 @@ def ensure_my_current(
                     civil_status_snapshot=profile.civil_status.strip(),
                     course_snapshot=inventory.course_currently_enrolled.strip(),
                     major_snapshot=inventory.major.strip(),
-                    email_snapshot=profile.email.strip(),
-                    home_address_snapshot=home_address,
-                    contact_number_snapshot=profile.contact_number.strip(),
                 )
+                write_exit_interview_confidential_content(
+                    item,
+                    ExitInterviewConfidentialContent(
+                        email_snapshot=profile.email.strip(),
+                        home_address_snapshot=home_address,
+                        contact_number_snapshot=profile.contact_number.strip(),
+                    ),
+                )
+                item.save(force_insert=True)
         except IntegrityError:
             concurrent = ExitInterview.objects.filter(
                 student_id=locked_student.pk,
@@ -711,15 +719,27 @@ def replace_my_current(*, student: User, values: dict[str, object]) -> ExitInter
 
         _require_draft_admission(item)
 
-        for field_name, value in normalized.items():
+        # Full replacement still verifies existing authorized content: a corrupt token
+        # cannot be silently repaired by a PUT. The request controls logical form fields only.
+        read_exit_interview_confidential_content(item)
+        structured = {
+            name: value for name, value in normalized.items() if name not in CONTENT_LIMITS
+        }
+        for field_name, value in structured.items():
             setattr(item, field_name, value)
+        write_exit_interview_confidential_content(
+            item,
+            ExitInterviewConfidentialContent(**{name: normalized[name] for name in CONTENT_LIMITS}),
+        )
         try:
             item.full_clean(exclude=("student", "academic_year", "inventory"))
-        except ValidationError as exc:
+        except ValidationError:
             raise InvalidExitInterviewInput(
                 "The Exit Interview contains invalid typed values."
-            ) from exc
-        item.save(update_fields=[*normalized.keys(), "updated_at"])
+            ) from None
+        item.save(
+            update_fields=[*structured.keys(), "confidential_content_ciphertext", "updated_at"]
+        )
         _replace_ratings(item, values)
         return _detail_queryset().get(pk=item.pk)
 
@@ -755,21 +775,36 @@ def replace_mine(
 
         _require_draft_admission(item)
 
-        for field_name, value in normalized.items():
+        # Full replacement still verifies existing authorized content: a corrupt token
+        # cannot be silently repaired by a PUT. The request controls logical form fields only.
+        read_exit_interview_confidential_content(item)
+        structured = {
+            name: value for name, value in normalized.items() if name not in CONTENT_LIMITS
+        }
+        for field_name, value in structured.items():
             setattr(item, field_name, value)
+        write_exit_interview_confidential_content(
+            item,
+            ExitInterviewConfidentialContent(**{name: normalized[name] for name in CONTENT_LIMITS}),
+        )
         try:
             item.full_clean(exclude=("student", "academic_year", "inventory"))
-        except ValidationError as exc:
+        except ValidationError:
             raise InvalidExitInterviewInput(
                 "The Exit Interview contains invalid typed values."
-            ) from exc
-        item.save(update_fields=[*normalized.keys(), "updated_at"])
+            ) from None
+        item.save(
+            update_fields=[*structured.keys(), "confidential_content_ciphertext", "updated_at"]
+        )
         _replace_ratings(item, values)
         return _detail_queryset().get(pk=item.pk)
 
 
 def _validate_submission(item: ExitInterview) -> None:
-    root_values = {field: getattr(item, field) for field in ROOT_EDITABLE_FIELDS}
+    root_values = {
+        field: getattr(item, field) for field in ROOT_EDITABLE_FIELDS - CONTENT_LIMITS.keys()
+    }
+    root_values.update(asdict(read_exit_interview_confidential_content(item)))
     _validate_consistency(root_values)
 
     self_codes = set(item.self_assessment_ratings.values_list("item_code", flat=True))
@@ -1016,12 +1051,13 @@ def reopen_for_correction(
                 "Current Student lifecycle is required before reopening for Student correction."
             )
 
-        event = ExitInterviewReopenEvent.objects.create(
+        event = ExitInterviewReopenEvent(
             exit_interview=item,
             reopened_at=reopened_at,
             reopened_by=actor,
-            reason=cleaned_reason,
         )
+        write_reopen_reason(event, cleaned_reason)
+        event.save(force_insert=True)
         item.status = ExitInterviewStatus.DRAFT
         item.save(update_fields=["status", "updated_at"])
         record_event(

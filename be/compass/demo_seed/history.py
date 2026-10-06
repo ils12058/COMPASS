@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from django.db import transaction
 
 from compass.accounts.profiles import update_my_profile
+from compass.exit_interviews.confidential_content import read_exit_interview_confidential_content
 from compass.exit_interviews.opportunities import open_opportunity
 from compass.exit_interviews.services import (
     ensure_my_current,
@@ -193,6 +194,7 @@ def seed_exit_interview(
     )
     align_timestamps(opportunity, created_at=started, updated_at=started, opened_at=started)
     item = ensure_my_current(student=student, context=context)
+    content = read_exit_interview_confidential_content(item)
     reference = (submitted or started).date()
     values = {
         "student_name_snapshot": item.student_name_snapshot,
@@ -200,9 +202,9 @@ def seed_exit_interview(
         "civil_status_snapshot": item.civil_status_snapshot,
         "course_snapshot": item.course_snapshot,
         "major_snapshot": item.major_snapshot,
-        "email_snapshot": item.email_snapshot,
-        "home_address_snapshot": item.home_address_snapshot,
-        "contact_number_snapshot": item.contact_number_snapshot,
+        "email_snapshot": content.email_snapshot,
+        "home_address_snapshot": content.home_address_snapshot,
+        "contact_number_snapshot": content.contact_number_snapshot,
         **narrative,
     }
     replace_my_current(student=student, values=values)

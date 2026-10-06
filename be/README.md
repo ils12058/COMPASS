@@ -47,7 +47,7 @@ Prerequisites: Podman, `podman-compose` (or a compatible `podman compose` provid
 ```sh
 cd /Users/reynantlntno/Projects/COMPASS/be
 cp .env.example .env
-# Set all three independent content keyrings in .env before startup; see the encryption sections below.
+# Set all four independent content keyrings in .env before startup; see the encryption sections below.
 uv python install 3.13
 uv sync
 podman compose --profile local build web
@@ -359,7 +359,8 @@ uv run python manage.py rotate_counseling_shared_summary_encryption --dry-run --
 The command verifies every selected body and refuses legacy plaintext schema. Real rotation uses
 the primary key in bounded transactions, preserving publication/timestamps/Audit/notifications,
 and can resume after interruption. Live deployment requires a separate coordinated cutover:
-provision the 16th runtime secret and stop/drain old web/worker/Beat through the destructive
+provision every absent required domain keyring (current runtime inventory: 18) and stop/drain
+old web/worker/Beat through the destructive
 migration and candidate activation. Follow [runtime-secrets.md](docs/runtime-secrets.md), including
 verified backups and controlled reverse migration; do not start the normal deployment prematurely.
 
@@ -672,3 +673,29 @@ Referral and action payloads without writing; real rotation rewraps previous-key
 business metadata. It refuses the legacy schema. Live staging is explicitly deferred: resolve the
 actual host state and both outstanding ADR-080/ADR-081 dependencies through the separate
 [runtime-secret cutover runbook](docs/runtime-secrets.md) before deploying.
+
+## Exit Interview confidential contact and narrative content
+
+ADR-082 selectively encrypts 13 direct-contact/narrative fields, opportunity notes and correction
+reasons in three independently bound envelopes under the one required ordered
+`EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`. Structured survey dimensions, both rating
+models, workflow/provenance and historical name search stay queryable. Authorized logical API/PDF
+fields remain unchanged; Head DRAFT and GSS response boundaries remain enforced before decrypt.
+Good Moral graduation eligibility requires metadata only.
+
+For local setup, provision a separate local keyring in `.env`; do not reuse Django, TOTP, Web Push
+storage or any Routine, Shared Summary or Referral entry. The example has no usable key. Preserve
+complete ordered keyrings in protected off-host recovery, including older keys for retained backups.
+
+```sh
+uv run python manage.py rotate_exit_interview_confidential_content --dry-run --batch-size 100
+uv run python manage.py rotate_exit_interview_confidential_content --batch-size 100
+```
+
+Rotation verifies all three families, refuses legacy plaintext schema, and rewraps previous-key
+tokens in row-locked bounded transactions without changing business metadata. Counts/errors remain
+content-free, and interrupted work resumes safely. Live activation is deferred: follow the ADR-082
+section of [runtime-secrets.md](docs/runtime-secrets.md) for actual starting-state discovery, the
+18-secret manifest, each absent independent domain keyring, backup/recovery and maintenance with
+all old writers stopped/drained through destructive migrations and exact-SHA activation. Do not
+start ordinary deployment until that separately authorized cutover is ready.

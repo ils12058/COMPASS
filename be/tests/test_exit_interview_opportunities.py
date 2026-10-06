@@ -17,6 +17,7 @@ from compass.demo_seed.history import seed_exit_interview
 from compass.demo_seed.narratives import RECENT_GRADUATE_EXIT_INTERVIEW
 from compass.demo_seed.support import SeedSession
 from compass.demo_seed.timeline import DemoTimeline
+from compass.exit_interviews.confidential_content import write_opportunity_note
 from compass.exit_interviews.models import ExitInterview, ExitInterviewOpportunity
 from compass.exit_interviews.opportunities import open_opportunity, revoke_opportunity
 from compass.exit_interviews.services import (
@@ -32,6 +33,7 @@ from tests.test_exit_interviews import (
     auth_client,
     csrf,
     ensure_api,
+    make_exit_interview,
     make_head,
     make_inventory,
     make_user,
@@ -153,13 +155,15 @@ def test_duplicate_and_changed_source_conflict_and_database_uniqueness():
     with pytest.raises(ExitInterviewOpportunityConflict):
         open_for(student, head, year, "MANUAL")
     with pytest.raises(IntegrityError), transaction.atomic():
-        ExitInterviewOpportunity.objects.create(
+        duplicate = ExitInterviewOpportunity(
             student=student,
             academic_year=year,
             source="MANUAL",
             opened_by=head,
             opened_at=timezone.now(),
         )
+        write_opportunity_note(duplicate, "")
+        duplicate.save(force_insert=True)
     assert AuditEvent.objects.filter(action="exit_interview.opportunity_opened").count() == 1
 
 
@@ -279,7 +283,7 @@ def test_revocation_preserves_draft_but_blocks_new_work_until_explicit_reopening
 @pytest.mark.django_db
 def test_legacy_draft_without_opportunity_remains_editable_submittable_and_historical():
     student, _, year, inventory = setup_student()
-    item = ExitInterview.objects.create(student=student, academic_year=year, inventory=inventory)
+    item = make_exit_interview(student=student, academic_year=year, inventory=inventory)
     client = auth_client(student)
     assert ensure_api(client).json()["id"] == str(item.pk)
     assert put_api(client, valid_payload()).status_code == 200
@@ -336,7 +340,7 @@ def test_graduation_f4_requires_matching_submitted_response_with_controlled_api_
     elif state == "WRONG_YEAR_SUBMITTED":
         prior = make_year("2098-2099", current=False)
         prior_inventory = make_inventory(student, prior, admit=False)
-        ExitInterview.objects.create(
+        make_exit_interview(
             student=student,
             academic_year=prior,
             inventory=prior_inventory,

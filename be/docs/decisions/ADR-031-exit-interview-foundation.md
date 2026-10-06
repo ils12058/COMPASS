@@ -437,3 +437,13 @@ resolver rather than duplicated policy logic.
 The design preserves the source's unresolved rating value 0 without inventing meaning, preserves
 identifiable institutional feedback behind narrow authorization, and avoids speculative Service
 Catalog/QMS/SIS/generic-survey architecture.
+
+## Subsequent at-rest representation decision (ADR-082)
+
+[ADR-082](ADR-082-exit-interview-confidential-content-encryption.md) supersedes only the at-rest
+representation of email, home address, contact number, delay Other, significant-learning Other,
+all seven feedback comments, suggestions/recommendations, opportunity note and reopen reason.
+These now use explicit bound confidential-content envelopes; the logical source fields and form
+remain unchanged. This ADR remains authoritative for source-form semantics, lifecycle, ownership,
+controlled corrections and privacy boundaries. Structured survey dimensions/ratings and historical
+name search remain ordinary queryable columns; no broader GSS response access is introduced.

@@ -8,7 +8,7 @@ secret-management service.
 ## Host directory and service grants
 
 `/opt/compass/secrets` is persistent outside `/opt/compass/releases`, owned by `compass:compass`,
-mode `0700`. All 17 source files must be regular files, not symlinks, owned by `compass`, mode
+mode `0700`. All 18 source files must be regular files, not symlinks, owned by `compass`, mode
 `0444`. Never put this directory in Git, a checkout, an image, or a release symlink.
 
 The host parent directory is the confidentiality boundary: other unprivileged users cannot traverse
@@ -35,12 +35,13 @@ remain trusted. A compromised authorized process can read its own grants.
 | `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` | `routine_interview_encryption_keys` | yes |
 | `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS` | `counseling_shared_summary_encryption_keys` | yes |
 | `REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `referral_confidential_content_encryption_keys` | yes |
+| `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `exit_interview_confidential_content_encryption_keys` | yes |
 | `WEB_PUSH_PRIVATE_KEY` | `web_push_private_key` | when enabled |
 | `WEB_PUSH_STORAGE_KEY` | `web_push_storage_key` | when enabled |
 
 | Service | Explicit grants |
 | --- | --- |
-| `web`, `worker`, `beat` | all 17, because Django loads settings eagerly |
+| `web`, `worker`, `beat` | all 18, because Django loads settings eagerly |
 | `postgres` | `postgres_password` only |
 | `redis` | `redis_password` only |
 | `proxy` | none |
@@ -86,8 +87,8 @@ credential changes. Do not delete/reinitialize the database volume.
 ## Original ADR-078 migration: historical operator reference
 
 The original ADR-078 cutover below migrated 15 existing values. ADR-080 adds the new required
-16th value and ADR-081 adds the new required 17th value. The current inventory/checker/exporter
-expects all 17. The numbered 15-value steps remain historical instructions for the original
+16th value, ADR-081 adds the 17th, and ADR-082 adds the required 18th value. The current
+inventory/checker/exporter expects all 18. The numbered 15-value steps remain historical instructions for the original
 helper/inventory, not a recipe to rerun export on an already converted host. An old runtime has
 no new domain keys to export; the exporter never generates keys or recovers absent values.
 Preserve every existing value and ordered keyring. Resolve the actual starting state and follow
@@ -192,8 +193,8 @@ keyring; TOTP and Web Push storage keys require their specific migration procedu
 one with a newly generated key as routine secret-file maintenance. Keep independently protected
 recovery copies of `AUTH_TOTP_ENCRYPTION_KEY`, the complete ordered
 `ROUTINE_INTERVIEW_ENCRYPTION_KEYS`, `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS`,
-`REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`, and
-`WEB_PUSH_STORAGE_KEY`, including older keys while retained
+`REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`,
+`EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`, and `WEB_PUSH_STORAGE_KEY`, including older keys while retained
 backups depend on them. Future application encryption keyrings follow the same rule. An approved
 password manager or encrypted offline archive is sufficient; no escrow service is part of this slice.
 
@@ -205,9 +206,9 @@ command. See [staging-demo-seeding.md](staging-demo-seeding.md).
 ## ADR-080: one-time Shared Summary encryption cutover (separate authorization)
 
 This repository change does not provision a live key or start deployment. The currently provisioned
-host may still have 15 source files. ADR-080 originally required 16; the current ADR-081 manifest
-requires 17. Apply the combined cutover gates below, provisioning both missing independent
-keyrings if necessary. Do not dispatch the ordinary deployment workflow prematurely.
+host may still have 15 source files. ADR-080 originally required 16, ADR-081 required 17, and
+the current ADR-082 manifest requires 18. Apply the ADR-082 combined cutover gates below,
+provisioning each missing independent domain keyring if necessary. Do not dispatch the ordinary deployment workflow prematurely.
 
 1. Record the exact current build/image/manifest, migration state and non-secret Summary counts.
    Take a verified restorable encrypted database backup and protected rollback environment/manifest
@@ -267,7 +268,8 @@ Repository implementation only: live cutovers are explicitly deferred. Merged co
 that ADR-080 Shared Summary encryption or ADR-081 Referral encryption is active on the host.
 Before any future deployment, resolve the actual running image, manifest, applied migrations,
 source-file inventory and pointers using safe metadata only. The live starting state may still
-be the original 15-secret/schema runtime. The reviewed target now needs all 17 files.
+be the original 15-secret/schema runtime. This ADR-081 procedure originally targeted 17 files;
+the current ADR-082 target needs all 18 and the additional Exit Interview steps below.
 
 1. Obtain separate cutover authorization. Record exact live/target build identity, database/schema
    state, Referral/action/Summary counts and operational metadata. Take and privately verify a
@@ -283,8 +285,8 @@ be the original 15-secret/schema runtime. The reviewed target now needs all 17 f
    regular/non-symlink, `0444 compass:compass`. Add the exact `_FILE` pointers from the current
    example to protected `/opt/compass/.env`, with direct assignments absent. The Referral filename
    is `referral_confidential_content_encryption_keys`; only web/worker/Beat receive it. Preserve
-   existing credentials/order. Run the 17-file checker, quiet Compose validation and candidate
-   settings checks against the intended immutable image before dispatch.
+   existing credentials/order. For the current target use the 18-file checker and ADR-082 gates,
+   quiet Compose validation and candidate settings checks against the intended immutable image before dispatch.
 4. Coordinate maintenance downtime: stop/drain old web, worker, Beat and every old scheduled or
    operator writer; prevent restarts until candidate activation. The ordinary workflow migrates
    candidate code before replacing all old services. Table locks protect verification but cannot
@@ -323,3 +325,77 @@ Each bounded batch commits separately and can resume after interruption; only ci
 Counts are separate for Referrals/actions. Failures are left untouched and cause non-success.
 Both real and dry runs refuse any remaining legacy Referral plaintext column. No scheduled
 rotation, key deletion, provider credential change, provisioning or deployment occurs automatically.
+
+## ADR-082: deferred combined Shared Summary, Referral and Exit Interview cutover
+
+This implementation performs no live provisioning, migration or deployment. Earlier merges do not
+prove that any confidential-content migration or new keyring is active on the host. The **current
+candidate inventory is 18**; actual starting state may be the original 15-secret/schema deployment,
+an intermediate deployment, or already partly provisioned. The ADR-080/081 instructions above
+preserve their historical domain procedures; use these combined gates for the current candidate.
+
+1. Obtain separate live-cutover authorization. Inspect actual public build, immutable image/release
+   manifest, applied migration graph, runtime source/pointer metadata and non-secret row counts for
+   Summary, Referral/actions and Exit Interview/opportunities/reopen events. Record metadata/ratings
+   and privately verifiable historical-content evidence. Secure and test a restorable encrypted
+   database backup and matching prior immutable image/manifest/protected environment rollback pair.
+2. Independently provision **each absent** ordered keyring through a protected operator process,
+   never terminal/CI output: `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS`,
+   `REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` and
+   `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`. Preserve any existing value/order. No
+   domain may reuse Django, TOTP, Web Push storage or any entry from another content keyring.
+   Escrow the complete ordered keyrings in independently protected approved off-host recovery
+   before migration; retain older keys while backups need them. A database/Droplet-only backup is
+   insufficient. The runtime exporter cannot export or generate an absent new key.
+3. Use the existing `0700 compass:compass` parent and regular/non-symlink `0444 compass:compass`
+   files. The new source is `exit_interview_confidential_content_encryption_keys`; its exact pointer
+   in protected `/opt/compass/.env` is
+   `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE=/run/secrets/exit_interview_confidential_content_encryption_keys`.
+   Remove direct assignments and use the current example for all 18 pointers. Only web/worker/Beat
+   receive new domain sources; PostgreSQL/Redis/proxy grants stay narrow. Preflight all 18 files,
+   quiet Compose and candidate settings against the reviewed immutable image, without exposing
+   values/hashes/tokens. Do not dispatch ordinary deployment before provisioning succeeds.
+4. Coordinate maintenance downtime: stop/drain old web, worker, Beat, every old scheduled/operator
+   job and any other database writer; prevent restart through migrations and activation. Ordinary
+   workflow migrations run before complete service replacement. Phase-B table locks fence current
+   writes but cannot make old code compatible with removed columns after commit. Keep old processes
+   stopped if migration/activation fails. Activate only the exact reviewed full staging SHA with
+   `--ref staging` and `expected_staging_sha=<full SHA>` after all gates are satisfied.
+5. Apply any missing Summary/Referral phases using their procedures, plus Exit Interview
+   `0003_encrypt_confidential_content` then `0004_remove_plaintext_confidential_content`. Exit Phase A
+   leaves plaintext authoritative and nullable ciphertext in three tables. Phase B locks response,
+   opportunity, then reopen tables before verification, validates latest plaintext, authenticates
+   every present v1/binding/payload, reconciles only missing or readable stale tokens (including old
+   edits, changed Other choices/text, revoked-opportunity reopen notes and late rows), verifies again,
+   removes 15 confidential plaintext columns and requires non-null/non-empty ciphertext. Corrupt
+   present tokens abort atomically, including earlier writes. Never repair from plaintext or substitute
+   blanks. Metadata, timestamps, ratings, IDs and side effects must remain unchanged.
+6. Verify actual applied migrations and final columns, row counts/provenance/rating equality and
+   historical content privately. Run all three domain rotation dry runs, including
+   `rotate_exit_interview_confidential_content --dry-run --batch-size 100`. Exercise authorized
+   owner DRAFT/SUBMITTED detail/edit, Head SUBMITTED detail/PDF and reopened-DRAFT denial, GSS
+   opportunity-note-only access, metadata search/status and graduation Good Moral. Confirm saved
+   contact snapshots/PDF fidelity, content-free Audit/notifications, exact public build/readiness and
+   web/worker/Beat health. Print only sanitized counts/UUID/reason context. Repository evidence alone
+   cannot establish live readiness. Resume service only with compatible candidate code.
+7. Controlled rollback requires the same stopped/drained writers and complete readable keyrings.
+   With the candidate image/keyrings, reverse Exit Interview to
+   `0002_exitinterviewopportunity_exitinterview_opportunity_and_more` before launching old code.
+   Reverse any newly activated Referral to `0002_void_provenance` and Summary to
+   `0003_service_name_snapshot` if the prior image needs those plaintext columns too. Exit reverse
+   temporarily re-adds nullable/default-compatible columns, fences writers, verifies/decrypts all
+   13 response fields plus every note/reason, restores exact plaintext, then restores historical
+   field state. Corruption aborts all restoration atomically. Phase A reverse drops tokens only after
+   successful plaintext restoration. Verify schema compatibility with the actual previous release
+   before activating its immutable image/manifest/environment pair; retain keys for encrypted backups.
+   If verification cannot succeed, follow the tested backup recovery plan. Never start old code on
+   a ciphertext-only schema. Restored plaintext and historical plaintext backups remain sensitive.
+
+Later Exit Interview rotation is a separately operated transition: provision
+`[new_primary, previous_keys...]`, preserve full protected off-host recovery and recreate all three
+application services so mounts consume the new inode. Run dry-run followed by real rotation with
+`--batch-size 100`. The command authenticates every envelope/schema/domain field, rotates only old-key
+tokens through ADR-079, preserves token timestamps/plaintext bytes and all business metadata, commits
+bounded row-locked batches and resumes after interruption. Output separates the three families and
+lists at most 20 safe failure contexts; failed rows remain untouched and cause non-success. Both
+modes refuse legacy plaintext columns. No scheduled rotation, key deletion or live action is automatic.

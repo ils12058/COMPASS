@@ -36,6 +36,7 @@ _TEST_ENV = {
     "ROUTINE_INTERVIEW_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
     "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
     "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
+    "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
 }
 
 for _name, _value in _TEST_ENV.items():

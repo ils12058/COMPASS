@@ -62,7 +62,7 @@ class ExitInterviewOpportunity(models.Model):
         blank=True,
         related_name="revoked_exit_interview_opportunities",
     )
-    note = models.CharField(max_length=1000, blank=True, default="")
+    note_ciphertext = models.TextField(editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -73,6 +73,9 @@ class ExitInterviewOpportunity(models.Model):
             models.Index(fields=("academic_year", "status"), name="exit_opp_year_status_idx")
         ]
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(note_ciphertext=""), name="exit_opp_note_ciphertext_present"
+            ),
             models.UniqueConstraint(
                 fields=("student", "academic_year"), name="exit_opp_student_year_uniq"
             ),
@@ -298,9 +301,6 @@ class ExitInterview(models.Model):
     civil_status_snapshot = models.CharField(max_length=80, blank=True, default="")
     course_snapshot = models.CharField(max_length=180, blank=True, default="")
     major_snapshot = models.CharField(max_length=180, blank=True, default="")
-    email_snapshot = models.EmailField(max_length=320, blank=True, default="")
-    home_address_snapshot = models.TextField(blank=True, default="")
-    contact_number_snapshot = models.CharField(max_length=64, blank=True, default="")
 
     program_completion = models.CharField(
         max_length=32,
@@ -318,14 +318,12 @@ class ExitInterview(models.Model):
         default=list,
         blank=True,
     )
-    delay_other = models.TextField(blank=True, default="")
 
     significant_learning_experiences = ArrayField(
         models.CharField(max_length=40, choices=SignificantLearningExperience.choices),
         default=list,
         blank=True,
     )
-    significant_learning_other = models.TextField(blank=True, default="")
 
     career_modes = ArrayField(
         models.CharField(max_length=16, choices=CareerMode.choices),
@@ -343,14 +341,7 @@ class ExitInterview(models.Model):
         blank=True,
     )
 
-    dean_comments = models.TextField(blank=True, default="")
-    program_chair_comments = models.TextField(blank=True, default="")
-    faculty_comments = models.TextField(blank=True, default="")
-    curriculum_comments = models.TextField(blank=True, default="")
-    guidance_counselor_comments = models.TextField(blank=True, default="")
-    office_staff_comments = models.TextField(blank=True, default="")
-    facilities_comments = models.TextField(blank=True, default="")
-    suggestions_recommendations = models.TextField(blank=True, default="")
+    confidential_content_ciphertext = models.TextField(editable=False)
 
     first_submitted_at = models.DateTimeField(null=True, blank=True)
     last_submitted_at = models.DateTimeField(null=True, blank=True)
@@ -361,6 +352,10 @@ class ExitInterview(models.Model):
         default_permissions = ()
         ordering = ("-academic_year__label", "-created_at", "id")
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="exit_confidential_ciphertext_present",
+            ),
             models.UniqueConstraint(
                 fields=("student", "academic_year"),
                 name="exit_interview_student_year_uniq",
@@ -460,8 +455,13 @@ class ExitInterviewReopenEvent(models.Model):
         on_delete=models.PROTECT,
         related_name="exit_interview_reopen_events",
     )
-    reason = models.TextField(max_length=1000)
+    reason_ciphertext = models.TextField(editable=False)
 
     class Meta:
         default_permissions = ()
         ordering = ("reopened_at", "id")
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(reason_ciphertext=""), name="exit_reopen_ciphertext_present"
+            ),
+        ]
