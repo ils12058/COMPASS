@@ -589,3 +589,43 @@ def test_csm_corruption_rolls_back_earlier_f14_reconciliation(legacy):
         migrate(AFTER)
     assert {n: raw(apps.get_model("feedback", n)) for n in NAMES} == before
     assert "additional_feedback" in columns(CustomerFeedbackResponse)
+
+
+def test_demo_private_reconciliation_and_counts_use_explicit_projections(world, monkeypatch):
+    from types import SimpleNamespace
+
+    from compass.demo_seed import seed
+    from compass.demo_seed.feedback_content import matching_feedback
+
+    first = submitted(world, NAMES[0])
+    second = submitted(world, NAMES[1])
+    monkeypatch.setattr(seed, "CUSTOMER_FEEDBACK", {"one": PRIVATE[NAMES[0]]})
+    monkeypatch.setattr(
+        seed, "PERSONAS_BY_KEY", {"one": SimpleNamespace(full_name=first.respondent_name_snapshot)}
+    )
+    monkeypatch.setattr(
+        seed,
+        "CLIENT_SATISFACTION",
+        [
+            {
+                "service_availed": second.service_availed,
+                "suggestions": PRIVATE[NAMES[1]]["suggestions"],
+            }
+        ],
+    )
+    assert seed._seeded_customer_feedback() == 1
+    assert seed._seeded_csm() == 1
+    assert list(
+        matching_feedback(
+            CustomerFeedbackResponse.objects.filter(
+                respondent_name_snapshot=first.respondent_name_snapshot
+            ),
+            "additional_feedback",
+            PRIVATE[NAMES[0]]["additional_feedback"],
+        )
+    ) == [first]
+    CustomerFeedbackResponse.objects.filter(pk=first.pk).update(
+        confidential_content_ciphertext="PRIVATE-corrupt"
+    )
+    with pytest.raises(content.FeedbackConfidentialContentUnavailable):
+        seed._seeded_customer_feedback()
