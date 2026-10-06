@@ -21,6 +21,7 @@ from compass.reports.graduate_tracer_xlsx import (
     EMPTY_REPORT_MESSAGE,
     render_graduate_tracer_xlsx,
 )
+from tests.graduate_tracer_test_helpers import encrypted_row
 
 
 def sync_policy() -> None:
@@ -50,7 +51,8 @@ def make_response(email: str, **values) -> GraduateTracerResponse:
         "unemployment_reasons": ["NO_JOB_OPPORTUNITY"],
     }
     defaults.update(values)
-    return GraduateTracerResponse.objects.create(
+    return encrypted_row(
+        GraduateTracerResponse,
         student=make_student(email),
         status=GraduateTracerStatus.SUBMITTED,
         submitted_at=timezone.now(),
@@ -80,7 +82,8 @@ def test_graduate_tracer_xlsx_is_aggregate_only_safe_and_compact():
         unemployment_other_reason=sentinel,
         curriculum_improvement_suggestions=sentinel,
     )
-    GraduateTracerEducation.objects.create(
+    encrypted_row(
+        GraduateTracerEducation,
         response=item,
         position=1,
         degree_and_specialization=sentinel,

@@ -156,3 +156,13 @@ suggestions.
 No reports, employability analytics, dashboards, exports, AI classification/scoring, PDF
 generation, notification/email campaign, generic campaign infrastructure, or third-party alumni
 contact collection is included in this foundation.
+
+
+## ADR-084 storage amendment
+
+Selective Graduate Tracer encryption is specified in
+[ADR-084](ADR-084-graduate-tracer-confidential-content-encryption.md). Metadata/search and the exact
+existing aggregate/analytical allowlist remain plaintext. Authorized raw detail uses explicit bound
+private projections; aggregate JSON/XLSX never decrypt. Approved retention copies only the unchanged
+analytical allowlist, creates ciphertext-free anonymous contributions and deletes encrypted source
+and children without decryption. Historical workflow and retention decisions remain in force.

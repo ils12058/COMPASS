@@ -34,6 +34,7 @@ from compass.privacy_governance import retention
 from compass.privacy_governance.retention_models import DispositionCase, OperationalRetentionRule
 from compass.privacy_governance.tasks import execute_disposition, recover_disposition
 from compass.reports.graduate_tracer import build_graduate_tracer_report
+from tests.graduate_tracer_test_helpers import encrypted_row
 from tests.test_privacy_governance import (
     auth_client,
     make_dpo,
@@ -86,7 +87,8 @@ def tracer(email="graduate@example.edu", **values):
     student = make_user(email, role="STUDENT")
     student.student_lifecycle_status = "GRADUATED"
     student.save()
-    return GraduateTracerResponse.objects.create(
+    return encrypted_row(
+        GraduateTracerResponse,
         student=student,
         status="SUBMITTED",
         submitted_at=timezone.now() - timedelta(days=31),
@@ -343,7 +345,7 @@ def test_anonymization_map_children_aggregate_identity_and_personal_api(dpo):
         (GraduateTracerProfessionalExam, {"examination_name": "Named exam"}),
         (GraduateTracerTraining, {"title": "Specific training"}),
     ):
-        model.objects.create(response=source, position=1, **values)
+        encrypted_row(model, response=source, position=1, **values)
     before = build_graduate_tracer_report()
     case = approve(dpo, discovered_case(source))
     execute_disposition(str(case.pk))
@@ -353,9 +355,12 @@ def test_anonymization_map_children_aggregate_identity_and_personal_api(dpo):
     anonymous = GraduateTracerResponse.objects.get(anonymized_at__isnull=False)
     assert verify_anonymized(anonymous) and anonymous.pk != source.pk
     assert all(getattr(source, field) == getattr(anonymous, field) for field in ANALYTICAL_FIELDS)
-    assert anonymous.birth_date is None and anonymous.province == ""
-    assert anonymous.undergraduate_degree_reasons == [] and anonymous.advanced_study_reasons == []
-    assert anonymous.curriculum_improvement_suggestions == ""
+    assert anonymous.confidential_content_ciphertext is None
+    assert not hasattr(anonymous, "birth_date")
+    assert not hasattr(anonymous, "province")
+    assert not hasattr(anonymous, "undergraduate_degree_reasons")
+    assert not hasattr(anonymous, "advanced_study_reasons")
+    assert not hasattr(anonymous, "curriculum_improvement_suggestions")
     assert all(
         model.objects.count() == 0
         for model in (

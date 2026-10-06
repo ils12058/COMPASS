@@ -191,3 +191,13 @@ UCN/DPO must still supply approved durations, policy references/effective dates,
 holders, real hold decisions and any future reporting/minimization changes. Infrastructure owners must
 confirm Daily storage configuration and backup restoration procedures. The application supplies none
 of these institutional policy decisions by default.
+
+
+## ADR-084 storage amendment
+
+Selective Graduate Tracer encryption is specified in
+[ADR-084](ADR-084-graduate-tracer-confidential-content-encryption.md). Metadata/search and the exact
+existing aggregate/analytical allowlist remain plaintext. Authorized raw detail uses explicit bound
+private projections; aggregate JSON/XLSX never decrypt. Approved retention copies only the unchanged
+analytical allowlist, creates ciphertext-free anonymous contributions and deletes encrypted source
+and children without decryption. Historical workflow and retention decisions remain in force.

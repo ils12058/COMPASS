@@ -19,6 +19,13 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 
+from .confidential_content import (
+    FIELDS,
+    PROJECTIONS,
+    read_private_projection,
+    write_confidential_content,
+)
+from .errors import GraduateTracerError, InvalidGraduateTracerInput
 from .models import (
     GTS_SCHEMA_VERSION,
     GraduateTracerEducation,
@@ -110,10 +117,6 @@ BOOLEAN_FIELDS = {
 }
 
 
-class GraduateTracerError(RuntimeError):
-    pass
-
-
 class GraduateTracerNotFound(GraduateTracerError):
     pass
 
@@ -144,10 +147,6 @@ def _require_personal_response_available(student):
             "Your personal response was anonymized under an approved retention rule. "
             "Its aggregate contribution remains; the personal response cannot be restored."
         )
-
-
-class InvalidGraduateTracerInput(GraduateTracerError):
-    pass
 
 
 @dataclass(frozen=True, slots=True)
@@ -202,6 +201,12 @@ def _validate_viewer(actor: User) -> None:
 def _clean_text(value: object, field_name: str, maximum: int) -> str:
     if not isinstance(value, str):
         raise InvalidGraduateTracerInput(f"{field_name} must be text.")
+    if "\x00" in value:
+        raise InvalidGraduateTracerInput(f"{field_name} contains invalid text.")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise InvalidGraduateTracerInput(f"{field_name} contains invalid text.") from None
     cleaned = value.strip()
     if len(cleaned) > maximum:
         raise InvalidGraduateTracerInput(f"{field_name} is too long.")
@@ -289,17 +294,22 @@ def ensure_my_response(
         profile = get_person_profile_context(locked)
         try:
             with transaction.atomic():
-                item = GraduateTracerResponse.objects.create(
+                item = GraduateTracerResponse(
                     student=locked,
                     instrument_schema_version=GTS_SCHEMA_VERSION,
                     name_snapshot=profile.full_name.strip(),
+                    civil_status=_profile_civil_status(profile.civil_status),
+                )
+                private = PROJECTIONS["GraduateTracerResponse"]().payload()
+                private.update(
                     permanent_address_snapshot=profile.permanent_address.strip(),
                     email_snapshot=profile.email.strip(),
                     telephone_contact_numbers_snapshot=profile.contact_number.strip(),
-                    mobile_number_snapshot="",
                     birth_date=profile.date_of_birth,
-                    civil_status=_profile_civil_status(profile.civil_status),
                 )
+                write_confidential_content(item, private)
+                item.save()
+
         except IntegrityError:
             concurrent = GraduateTracerResponse.objects.filter(
                 student_id=locked.pk,
@@ -528,6 +538,9 @@ def _normalize_root(values: dict[str, object]) -> dict[str, object]:
             "current_job_level",
             "initial_gross_monthly_earning",
             "useful_competencies_other",
+            "reasons_for_staying_other",
+            "reasons_for_accepting_other",
+            "reasons_for_changing_other",
         ):
             normalized[field_name] = ""
         for field_name in (
@@ -571,18 +584,20 @@ def _replace_children(
     professional_exams: list[dict[str, object]],
     trainings: list[dict[str, object]],
 ) -> None:
-    item.education_rows.all().delete()
-    GraduateTracerEducation.objects.bulk_create(
-        [GraduateTracerEducation(response=item, **row) for row in education]
-    )
-    item.professional_exam_rows.all().delete()
-    GraduateTracerProfessionalExam.objects.bulk_create(
-        [GraduateTracerProfessionalExam(response=item, **row) for row in professional_exams]
-    )
-    item.training_rows.all().delete()
-    GraduateTracerTraining.objects.bulk_create(
-        [GraduateTracerTraining(response=item, **row) for row in trainings]
-    )
+    for model, relation, values in (
+        (GraduateTracerEducation, "education_rows", education),
+        (GraduateTracerProfessionalExam, "professional_exam_rows", professional_exams),
+        (GraduateTracerTraining, "training_rows", trainings),
+    ):
+        getattr(item, relation).all().delete()
+        rows = []
+        for values_row in values:
+            row = model(response=item, position=values_row["position"])
+            write_confidential_content(
+                row, {name: values_row[name] for name in FIELDS[model.__name__]}
+            )
+            rows.append(row)
+        model.objects.bulk_create(rows)
 
 
 def replace_my_draft(
@@ -606,6 +621,7 @@ def replace_my_draft(
         if locked_student is None:
             raise GraduateTracerNotFound("The Student account was not found.")
         _validate_graduated_student_access(locked_student, "graduate_tracer.manage_self")
+        _require_personal_response_available(locked_student)
         item = (
             GraduateTracerResponse.objects.select_for_update()
             .filter(
@@ -621,9 +637,13 @@ def replace_my_draft(
         if item.status != GraduateTracerStatus.DRAFT:
             raise GraduateTracerConflict("A submitted Graduate Tracer response is immutable.")
 
-        for field_name, value in normalized.items():
+        read_private_projection(_queryset().get(pk=item.pk))
+        private_names = FIELDS["GraduateTracerResponse"]
+        write_confidential_content(item, {name: normalized[name] for name in private_names})
+        public = {name: value for name, value in normalized.items() if name not in private_names}
+        for field_name, value in public.items():
             setattr(item, field_name, value)
-        item.save(update_fields=[*normalized.keys(), "updated_at"])
+        item.save(update_fields=[*public, "confidential_content_ciphertext", "updated_at"])
         _replace_children(
             item,
             education=education,
@@ -651,17 +671,17 @@ def _validate_other(
         raise InvalidGraduateTracerInput(f"{label} must be blank unless OTHER is selected.")
 
 
-def _validate_submission(item: GraduateTracerResponse) -> None:
+def _validate_submission(item: GraduateTracerResponse, private) -> None:
     _require_text(item.name_snapshot, "name")
     if not item.civil_status:
         raise InvalidGraduateTracerInput("civil_status is required before submission.")
     if not item.sex:
         raise InvalidGraduateTracerInput("sex is required before submission.")
-    if item.birth_date is None:
+    if private.birth_date is None:
         raise InvalidGraduateTracerInput("birth_date is required before submission.")
     if not item.region_of_origin:
         raise InvalidGraduateTracerInput("region_of_origin is required before submission.")
-    _require_text(item.province, "province")
+    _require_text(private.province, "province")
     if not item.residence_location:
         raise InvalidGraduateTracerInput("residence_location is required before submission.")
     if not item.education_rows.exists():
@@ -670,8 +690,8 @@ def _validate_submission(item: GraduateTracerResponse) -> None:
         )
 
     _validate_other(
-        item.advanced_study_reasons,
-        item.advanced_study_other_reason,
+        private.advanced_study_reasons,
+        private.advanced_study_other_reason,
         other_code=GTSAdvancedStudyReason.OTHER,
         label="advanced_study_other_reason",
     )
@@ -687,7 +707,7 @@ def _validate_submission(item: GraduateTracerResponse) -> None:
             )
         _validate_other(
             item.unemployment_reasons,
-            item.unemployment_other_reason,
+            private.unemployment_other_reason,
             other_code=GTSUnemploymentReason.OTHER,
             label="unemployment_other_reason",
         )
@@ -701,8 +721,8 @@ def _validate_submission(item: GraduateTracerResponse) -> None:
             "present_employment_status is required for an employed respondent."
         )
     if item.present_employment_status == GTSPresentEmploymentStatus.SELF_EMPLOYED:
-        _require_text(item.self_employed_college_skills, "self_employed_college_skills")
-    _require_text(item.present_occupation, "present_occupation")
+        _require_text(private.self_employed_college_skills, "self_employed_college_skills")
+    _require_text(private.present_occupation, "present_occupation")
     if not item.employer_business_line:
         raise InvalidGraduateTracerInput(
             "employer_business_line is required for an employed respondent."
@@ -721,7 +741,7 @@ def _validate_submission(item: GraduateTracerResponse) -> None:
             )
         _validate_other(
             item.reasons_for_staying_on_job,
-            item.reasons_for_staying_other,
+            private.reasons_for_staying_other,
             other_code=GTSStayingReason.OTHER,
             label="reasons_for_staying_other",
         )
@@ -731,14 +751,14 @@ def _validate_submission(item: GraduateTracerResponse) -> None:
             )
 
     _validate_other(
-        item.reasons_for_accepting_first_job,
-        item.reasons_for_accepting_other,
+        private.reasons_for_accepting_first_job,
+        private.reasons_for_accepting_other,
         other_code=GTSJobReason.OTHER,
         label="reasons_for_accepting_other",
     )
     _validate_other(
-        item.reasons_for_changing_job,
-        item.reasons_for_changing_other,
+        private.reasons_for_changing_job,
+        private.reasons_for_changing_other,
         other_code=GTSJobReason.OTHER,
         label="reasons_for_changing_other",
     )
@@ -748,8 +768,8 @@ def _validate_submission(item: GraduateTracerResponse) -> None:
             "first_job_duration is required for an employed respondent."
         )
     if item.first_job_duration == GTSFirstJobDuration.OTHER:
-        _require_text(item.first_job_duration_other, "first_job_duration_other")
-    elif item.first_job_duration_other:
+        _require_text(private.first_job_duration_other, "first_job_duration_other")
+    elif private.first_job_duration_other:
         raise InvalidGraduateTracerInput(
             "first_job_duration_other must be blank unless OTHER is selected."
         )
@@ -757,8 +777,8 @@ def _validate_submission(item: GraduateTracerResponse) -> None:
     if not item.first_job_source:
         raise InvalidGraduateTracerInput("first_job_source is required for an employed respondent.")
     if item.first_job_source == GTSFirstJobSource.OTHER:
-        _require_text(item.first_job_source_other, "first_job_source_other")
-    elif item.first_job_source_other:
+        _require_text(private.first_job_source_other, "first_job_source_other")
+    elif private.first_job_source_other:
         raise InvalidGraduateTracerInput(
             "first_job_source_other must be blank unless OTHER is selected."
         )
@@ -768,8 +788,8 @@ def _validate_submission(item: GraduateTracerResponse) -> None:
             "time_to_first_job is required for an employed respondent."
         )
     if item.time_to_first_job == GTSFirstJobDuration.OTHER:
-        _require_text(item.time_to_first_job_other, "time_to_first_job_other")
-    elif item.time_to_first_job_other:
+        _require_text(private.time_to_first_job_other, "time_to_first_job_other")
+    elif private.time_to_first_job_other:
         raise InvalidGraduateTracerInput(
             "time_to_first_job_other must be blank unless OTHER is selected."
         )
@@ -793,7 +813,7 @@ def _validate_submission(item: GraduateTracerResponse) -> None:
             )
         _validate_other(
             item.useful_competencies,
-            item.useful_competencies_other,
+            private.useful_competencies_other,
             other_code=GTSUsefulCompetency.OTHER,
             label="useful_competencies_other",
         )
@@ -820,6 +840,7 @@ def submit_my_response(
         if locked_student is None:
             raise GraduateTracerNotFound("The Student account was not found.")
         _validate_graduated_student_access(locked_student, "graduate_tracer.manage_self")
+        _require_personal_response_available(locked_student)
         item = (
             GraduateTracerResponse.objects.select_for_update()
             .filter(
@@ -834,7 +855,8 @@ def submit_my_response(
             return _queryset().get(pk=item.pk)
 
         item = _queryset().get(pk=item.pk)
-        _validate_submission(item)
+        projection = read_private_projection(item)
+        _validate_submission(item, projection.root)
         item.status = GraduateTracerStatus.SUBMITTED
         item.submitted_at = submitted_at
         item.save(update_fields=["status", "submitted_at", "updated_at"])

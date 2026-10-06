@@ -256,47 +256,22 @@ class GraduateTracerResponse(models.Model):
     )
 
     name_snapshot = models.CharField(max_length=200, blank=True, default="")
-    permanent_address_snapshot = models.TextField(blank=True, default="")
-    email_snapshot = models.EmailField(max_length=320, blank=True, default="")
-    telephone_contact_numbers_snapshot = models.CharField(max_length=128, blank=True, default="")
-    mobile_number_snapshot = models.CharField(max_length=64, blank=True, default="")
     civil_status = models.CharField(
         max_length=24, choices=GTSCivilStatus.choices, blank=True, default=""
     )
     sex = models.CharField(max_length=8, choices=GTSSex.choices, blank=True, default="")
-    birth_date = models.DateField(null=True, blank=True)
     region_of_origin = models.CharField(
         max_length=16,
         choices=GTSRegionOfOrigin.choices,
         blank=True,
         default="",
     )
-    province = models.CharField(max_length=160, blank=True, default="")
     residence_location = models.CharField(
         max_length=16,
         choices=GTSResidenceLocation.choices,
         blank=True,
         default="",
     )
-
-    undergraduate_degree_reasons = ArrayField(
-        models.CharField(max_length=48, choices=GTSDegreeReason.choices),
-        default=list,
-        blank=True,
-    )
-    graduate_study_reasons = ArrayField(
-        models.CharField(max_length=48, choices=GTSDegreeReason.choices),
-        default=list,
-        blank=True,
-    )
-    degree_other_reason = models.TextField(blank=True, default="")
-
-    advanced_study_reasons = ArrayField(
-        models.CharField(max_length=40, choices=GTSAdvancedStudyReason.choices),
-        default=list,
-        blank=True,
-    )
-    advanced_study_other_reason = models.TextField(blank=True, default="")
 
     current_employment_state = models.CharField(
         max_length=24,
@@ -309,7 +284,6 @@ class GraduateTracerResponse(models.Model):
         default=list,
         blank=True,
     )
-    unemployment_other_reason = models.TextField(blank=True, default="")
 
     present_employment_status = models.CharField(
         max_length=32,
@@ -317,8 +291,6 @@ class GraduateTracerResponse(models.Model):
         blank=True,
         default="",
     )
-    self_employed_college_skills = models.TextField(blank=True, default="")
-    present_occupation = models.CharField(max_length=255, blank=True, default="")
     employer_business_line = models.CharField(
         max_length=48,
         choices=GTSBusinessLine.choices,
@@ -335,21 +307,7 @@ class GraduateTracerResponse(models.Model):
         default=list,
         blank=True,
     )
-    reasons_for_staying_other = models.TextField(blank=True, default="")
     first_job_related_to_course = models.BooleanField(null=True, blank=True)
-
-    reasons_for_accepting_first_job = ArrayField(
-        models.CharField(max_length=40, choices=GTSJobReason.choices),
-        default=list,
-        blank=True,
-    )
-    reasons_for_accepting_other = models.TextField(blank=True, default="")
-    reasons_for_changing_job = ArrayField(
-        models.CharField(max_length=40, choices=GTSJobReason.choices),
-        default=list,
-        blank=True,
-    )
-    reasons_for_changing_other = models.TextField(blank=True, default="")
 
     first_job_duration = models.CharField(
         max_length=32,
@@ -357,21 +315,18 @@ class GraduateTracerResponse(models.Model):
         blank=True,
         default="",
     )
-    first_job_duration_other = models.TextField(blank=True, default="")
     first_job_source = models.CharField(
         max_length=32,
         choices=GTSFirstJobSource.choices,
         blank=True,
         default="",
     )
-    first_job_source_other = models.TextField(blank=True, default="")
     time_to_first_job = models.CharField(
         max_length=32,
         choices=GTSFirstJobDuration.choices,
         blank=True,
         default="",
     )
-    time_to_first_job_other = models.TextField(blank=True, default="")
     first_job_level = models.CharField(
         max_length=48,
         choices=GTSJobLevel.choices,
@@ -396,18 +351,35 @@ class GraduateTracerResponse(models.Model):
         default=list,
         blank=True,
     )
-    useful_competencies_other = models.TextField(blank=True, default="")
-    curriculum_improvement_suggestions = models.TextField(blank=True, default="")
 
     submitted_at = models.DateTimeField(null=True, blank=True)
     anonymized_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    confidential_content_ciphertext = models.TextField(null=True, blank=True, editable=False)
+
     class Meta:
         default_permissions = ()
         ordering = ("-created_at", "id")
         constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        student__isnull=False,
+                        anonymized_at__isnull=True,
+                        confidential_content_ciphertext__isnull=False,
+                    )
+                    & ~models.Q(confidential_content_ciphertext="")
+                )
+                | models.Q(
+                    student__isnull=True,
+                    anonymized_at__isnull=False,
+                    status="SUBMITTED",
+                    confidential_content_ciphertext__isnull=True,
+                ),
+                name="graduatetracerresponse_cipher_shape",
+            ),
             models.CheckConstraint(
                 condition=(
                     models.Q(student__isnull=False, anonymized_at__isnull=True)
@@ -447,19 +419,21 @@ class GraduateTracerEducation(models.Model):
         related_name="education_rows",
     )
     position = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
-    degree_and_specialization = models.CharField(max_length=255)
-    college_or_university = models.CharField(max_length=255)
-    year_graduated = models.PositiveSmallIntegerField(validators=[MinValueValidator(1900)])
-    honors_or_awards = models.CharField(max_length=255, blank=True, default="")
+
+    confidential_content_ciphertext = models.TextField(editable=False)
 
     class Meta:
         default_permissions = ()
         ordering = ("position", "id")
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="graduatetracereducation_cipher_shape",
+            ),
             models.UniqueConstraint(
                 fields=("response", "position"),
                 name="graduate_tracer_education_position_uniq",
-            )
+            ),
         ]
 
 
@@ -471,18 +445,21 @@ class GraduateTracerProfessionalExam(models.Model):
         related_name="professional_exam_rows",
     )
     position = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
-    examination_name = models.CharField(max_length=255)
-    date_taken = models.DateField(null=True, blank=True)
-    rating = models.CharField(max_length=128, blank=True, default="")
+
+    confidential_content_ciphertext = models.TextField(editable=False)
 
     class Meta:
         default_permissions = ()
         ordering = ("position", "id")
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="graduatetracerprofessionalexam_cipher_shape",
+            ),
             models.UniqueConstraint(
                 fields=("response", "position"),
                 name="graduate_tracer_exam_position_uniq",
-            )
+            ),
         ]
 
 
@@ -494,16 +471,19 @@ class GraduateTracerTraining(models.Model):
         related_name="training_rows",
     )
     position = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
-    title = models.CharField(max_length=255)
-    duration_and_credits = models.CharField(max_length=255, blank=True, default="")
-    institution = models.CharField(max_length=255, blank=True, default="")
+
+    confidential_content_ciphertext = models.TextField(editable=False)
 
     class Meta:
         default_permissions = ()
         ordering = ("position", "id")
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="graduatetracertraining_cipher_shape",
+            ),
             models.UniqueConstraint(
                 fields=("response", "position"),
                 name="graduate_tracer_training_position_uniq",
-            )
+            ),
         ]

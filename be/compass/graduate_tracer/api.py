@@ -375,6 +375,14 @@ def _require_viewer(request) -> None:
 
 
 def _raise(exc: GraduateTracerError) -> NoReturn:
+    from .confidential_content import GraduateTracerConfidentialContentUnavailable
+
+    if isinstance(exc, GraduateTracerConfidentialContentUnavailable):
+        raise APIError(
+            500,
+            "graduate_tracer_confidential_content_unavailable",
+            "The Graduate Tracer confidential content is unavailable.",
+        ) from None
     from .services import GraduateTracerDisposed
 
     if isinstance(exc, GraduateTracerDisposed):
@@ -396,35 +404,35 @@ def _raise(exc: GraduateTracerError) -> NoReturn:
     ) from exc
 
 
-def _education_rows(item) -> list[dict[str, object]]:
+def _education_rows(item, projection) -> list[dict[str, object]]:
     return [
         {
-            "degree_and_specialization": row.degree_and_specialization,
-            "college_or_university": row.college_or_university,
-            "year_graduated": row.year_graduated,
-            "honors_or_awards": row.honors_or_awards,
+            "degree_and_specialization": projection.children[row.pk].degree_and_specialization,
+            "college_or_university": projection.children[row.pk].college_or_university,
+            "year_graduated": projection.children[row.pk].year_graduated,
+            "honors_or_awards": projection.children[row.pk].honors_or_awards,
         }
         for row in item.education_rows.all()
     ]
 
 
-def _professional_exam_rows(item) -> list[dict[str, object]]:
+def _professional_exam_rows(item, projection) -> list[dict[str, object]]:
     return [
         {
-            "examination_name": row.examination_name,
-            "date_taken": row.date_taken,
-            "rating": row.rating,
+            "examination_name": projection.children[row.pk].examination_name,
+            "date_taken": projection.children[row.pk].date_taken,
+            "rating": projection.children[row.pk].rating,
         }
         for row in item.professional_exam_rows.all()
     ]
 
 
-def _training_rows(item) -> list[dict[str, object]]:
+def _training_rows(item, projection) -> list[dict[str, object]]:
     return [
         {
-            "title": row.title,
-            "duration_and_credits": row.duration_and_credits,
-            "institution": row.institution,
+            "title": projection.children[row.pk].title,
+            "duration_and_credits": projection.children[row.pk].duration_and_credits,
+            "institution": projection.children[row.pk].institution,
         }
         for row in item.training_rows.all()
     ]
@@ -439,6 +447,13 @@ def _student_summary(item) -> dict[str, object]:
 
 
 def _detail(item) -> dict[str, object]:
+    from .confidential_content import read_private_projection
+
+    try:
+        projection = read_private_projection(item)
+    except GraduateTracerError as exc:
+        _raise(exc)
+    private = projection.root
     return {
         "id": item.pk,
         "student_id": item.student_id,
@@ -449,53 +464,53 @@ def _detail(item) -> dict[str, object]:
         "created_at": item.created_at,
         "updated_at": item.updated_at,
         "name": item.name_snapshot,
-        "permanent_address": item.permanent_address_snapshot,
-        "email": item.email_snapshot,
-        "telephone_contact_numbers": item.telephone_contact_numbers_snapshot,
-        "mobile_number": item.mobile_number_snapshot,
+        "permanent_address": private.permanent_address_snapshot,
+        "email": private.email_snapshot,
+        "telephone_contact_numbers": private.telephone_contact_numbers_snapshot,
+        "mobile_number": private.mobile_number_snapshot,
         "civil_status": item.civil_status or None,
         "sex": item.sex or None,
-        "birth_date": item.birth_date,
+        "birth_date": private.birth_date,
         "region_of_origin": item.region_of_origin or None,
-        "province": item.province,
+        "province": private.province,
         "residence_location": item.residence_location or None,
-        "education": _education_rows(item),
-        "professional_exams": _professional_exam_rows(item),
-        "undergraduate_degree_reasons": item.undergraduate_degree_reasons,
-        "graduate_study_reasons": item.graduate_study_reasons,
-        "degree_other_reason": item.degree_other_reason,
-        "trainings": _training_rows(item),
-        "advanced_study_reasons": item.advanced_study_reasons,
-        "advanced_study_other_reason": item.advanced_study_other_reason,
+        "education": _education_rows(item, projection),
+        "professional_exams": _professional_exam_rows(item, projection),
+        "undergraduate_degree_reasons": private.undergraduate_degree_reasons,
+        "graduate_study_reasons": private.graduate_study_reasons,
+        "degree_other_reason": private.degree_other_reason,
+        "trainings": _training_rows(item, projection),
+        "advanced_study_reasons": private.advanced_study_reasons,
+        "advanced_study_other_reason": private.advanced_study_other_reason,
         "current_employment_state": item.current_employment_state or None,
         "unemployment_reasons": item.unemployment_reasons,
-        "unemployment_other_reason": item.unemployment_other_reason,
+        "unemployment_other_reason": private.unemployment_other_reason,
         "present_employment_status": item.present_employment_status or None,
-        "self_employed_college_skills": item.self_employed_college_skills,
-        "present_occupation": item.present_occupation,
+        "self_employed_college_skills": private.self_employed_college_skills,
+        "present_occupation": private.present_occupation,
         "employer_business_line": item.employer_business_line or None,
         "place_of_work": item.place_of_work or None,
         "first_job_after_college": item.first_job_after_college,
         "reasons_for_staying_on_job": item.reasons_for_staying_on_job,
-        "reasons_for_staying_other": item.reasons_for_staying_other,
+        "reasons_for_staying_other": private.reasons_for_staying_other,
         "first_job_related_to_course": item.first_job_related_to_course,
-        "reasons_for_accepting_first_job": item.reasons_for_accepting_first_job,
-        "reasons_for_accepting_other": item.reasons_for_accepting_other,
-        "reasons_for_changing_job": item.reasons_for_changing_job,
-        "reasons_for_changing_other": item.reasons_for_changing_other,
+        "reasons_for_accepting_first_job": private.reasons_for_accepting_first_job,
+        "reasons_for_accepting_other": private.reasons_for_accepting_other,
+        "reasons_for_changing_job": private.reasons_for_changing_job,
+        "reasons_for_changing_other": private.reasons_for_changing_other,
         "first_job_duration": item.first_job_duration or None,
-        "first_job_duration_other": item.first_job_duration_other,
+        "first_job_duration_other": private.first_job_duration_other,
         "first_job_source": item.first_job_source or None,
-        "first_job_source_other": item.first_job_source_other,
+        "first_job_source_other": private.first_job_source_other,
         "time_to_first_job": item.time_to_first_job or None,
-        "time_to_first_job_other": item.time_to_first_job_other,
+        "time_to_first_job_other": private.time_to_first_job_other,
         "first_job_level": item.first_job_level or None,
         "current_job_level": item.current_job_level or None,
         "initial_gross_monthly_earning": item.initial_gross_monthly_earning or None,
         "curriculum_relevant_to_first_job": item.curriculum_relevant_to_first_job,
         "useful_competencies": item.useful_competencies,
-        "useful_competencies_other": item.useful_competencies_other,
-        "curriculum_improvement_suggestions": item.curriculum_improvement_suggestions,
+        "useful_competencies_other": private.useful_competencies_other,
+        "curriculum_improvement_suggestions": private.curriculum_improvement_suggestions,
     }
 
 

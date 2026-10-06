@@ -22,6 +22,7 @@ x-app: &app
     - referral_confidential_content_encryption_keys
     - exit_interview_confidential_content_encryption_keys
     - inventory_confidential_content_encryption_keys
+    - graduate_tracer_confidential_content_encryption_keys
     - web_push_private_key
     - web_push_storage_key
   restart: unless-stopped
@@ -201,6 +202,8 @@ secrets:
     file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/exit_interview_confidential_content_encryption_keys
   inventory_confidential_content_encryption_keys:
     file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/inventory_confidential_content_encryption_keys
+  graduate_tracer_confidential_content_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/graduate_tracer_confidential_content_encryption_keys
   web_push_private_key:
     file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/web_push_private_key
   web_push_storage_key:
