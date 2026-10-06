@@ -26,6 +26,11 @@ from compass.privacy_governance.releases import (
     record_referral_release,
 )
 
+from .confidential_content import (
+    ReferralConfidentialContentUnavailable,
+    read_referral_action_remarks,
+    read_referral_confidential_content,
+)
 from .models import ReferralActionType
 from .services import (
     DEFAULT_PAGE_SIZE,
@@ -193,6 +198,12 @@ def _require(request, capability: str) -> None:
 
 
 def _raise(exc: ReferralError) -> NoReturn:
+    if isinstance(exc, ReferralConfidentialContentUnavailable):
+        raise APIError(
+            500,
+            "referral_confidential_content_unavailable",
+            "The Referral confidential content is unavailable.",
+        ) from None
     if isinstance(exc, ReferralNotFound):
         raise APIError(404, "referral_not_found", str(exc)) from exc
     if isinstance(exc, ReferralNotPermitted):
@@ -245,13 +256,28 @@ def _action(action) -> dict[str, object]:
         "id": action.pk,
         "action_type": action.action_type,
         "occurred_at": action.occurred_at,
-        "remarks": action.remarks,
+        "remarks": _read_action(action),
         "created_at": action.created_at,
         "recorded_by": _actor(action.recorded_by) if action.recorded_by_id else None,
     }
 
 
-def _summary(item) -> dict[str, object]:
+def _read_content(item):
+    try:
+        return read_referral_confidential_content(item)
+    except ReferralConfidentialContentUnavailable as exc:
+        _raise(exc)
+
+
+def _read_action(action):
+    try:
+        return read_referral_action_remarks(action)
+    except ReferralConfidentialContentUnavailable as exc:
+        _raise(exc)
+
+
+def _summary(item, *, content=None) -> dict[str, object]:
+    content = content if content is not None else _read_content(item)
     return {
         "id": item.pk,
         "reference_code": item.reference_code,
@@ -260,7 +286,7 @@ def _summary(item) -> dict[str, object]:
         "course_year_block_snapshot": item.course_year_block_snapshot,
         "referred_on": item.referred_on,
         "received_at": item.received_at,
-        "status_note": item.status_note,
+        "status_note": content.status_note,
         "voided_at": item.voided_at,
         "created_at": item.created_at,
     }
@@ -314,13 +340,14 @@ def _pdf_response(item, *, context: AuditContext) -> HttpResponse:
 
 
 def _detail(item) -> dict[str, object]:
+    content = _read_content(item)
     return {
-        **_summary(item),
-        "reason": item.reason,
-        "referrer_name": item.referrer_name,
+        **_summary(item, content=content),
+        "reason": content.reason,
+        "referrer_name": content.referrer_name,
         "form_revision": _revision(item.form_revision),
         "actions": [_action(action) for action in item.actions.all()],
-        "void_reason": item.void_reason,
+        "void_reason": content.void_reason,
         "updated_at": item.updated_at,
         "recorded_by": _actor(item.recorded_by) if item.recorded_by_id else None,
         "voided_by": _actor(item.voided_by) if item.voided_by_id else None,

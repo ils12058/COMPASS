@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -39,6 +39,15 @@ from compass.operational_students import (
 from compass.organization.access_scope import resolve_organizational_access_scope
 from compass.organization.models import StudentAffiliation
 
+from .confidential_content import (
+    ReferralConfidentialContent,
+    read_referral_action_remarks,
+    read_referral_confidential_content,
+    validate_text,
+    write_referral_action_remarks,
+    write_referral_confidential_content,
+)
+from .errors import InvalidReferralInput, ReferralError
 from .models import Referral, ReferralAction, ReferralActionType, ReferralReferenceCounter
 
 REFERRAL_FORM_FAMILY_KEY = "referral_slip"
@@ -53,19 +62,11 @@ MAX_VOID_REASON_LENGTH = 1_000
 MAX_SEARCH_LENGTH = 160
 
 
-class ReferralError(RuntimeError):
-    pass
-
-
 class ReferralNotFound(ReferralError):
     pass
 
 
 class ReferralNotPermitted(ReferralError):
-    pass
-
-
-class InvalidReferralInput(ReferralError):
     pass
 
 
@@ -125,6 +126,8 @@ def _clean_required(value: str, label: str, max_length: int) -> str:
     cleaned = value.strip()
     if len(cleaned) > max_length:
         raise InvalidReferralInput(f"{label} is too long.")
+    if label in {"reason", "referrer_name"}:
+        validate_text(cleaned, label=label, max_length=max_length, required=True)
     return cleaned
 
 
@@ -134,6 +137,7 @@ def _clean_optional(value: str, label: str, max_length: int) -> str:
     cleaned = value.strip()
     if len(cleaned) > max_length:
         raise InvalidReferralInput(f"{label} is too long.")
+    validate_text(cleaned, label=label, max_length=max_length)
     return cleaned
 
 
@@ -414,13 +418,11 @@ def create_referral(
 
         revision = _active_referral_revision()
         reference_code = _allocate_reference(at=current)
-        item = Referral.objects.create(
+        item = Referral(
             reference_code=reference_code,
             student=student,
             student_name_snapshot=student.get_full_name(),
             course_year_block_snapshot=course_snapshot,
-            reason=cleaned_reason,
-            referrer_name=cleaned_referrer,
             referred_on=source_date,
             received_at=normalized_received_at,
             form_revision=revision,
@@ -428,6 +430,10 @@ def create_referral(
             creation_key_digest=digest,
             creation_request_fingerprint=fingerprint,
         )
+        write_referral_confidential_content(
+            item, ReferralConfidentialContent(reason=cleaned_reason, referrer_name=cleaned_referrer)
+        )
+        item.save(force_insert=True)
         item_for_audit = _queryset().get(pk=item.pk)
         record_event(
             context=context,
@@ -524,6 +530,7 @@ _REFERRAL_ACTION_LABELS = {
 
 
 def build_referral_render_context(item: Referral) -> dict[str, object]:
+    content = read_referral_confidential_content(item)
     recorded = {action.action_type: action for action in item.actions.all()}
     action_rows: list[dict[str, object]] = []
     for action_type in ReferralActionType.values:
@@ -539,7 +546,7 @@ def build_referral_render_context(item: Referral) -> dict[str, object]:
                     if occurred_at is not None
                     else None
                 ),
-                "remarks": action.remarks if action is not None else "",
+                "remarks": read_referral_action_remarks(action) if action is not None else "",
             }
         )
 
@@ -549,7 +556,7 @@ def build_referral_render_context(item: Referral) -> dict[str, object]:
             "reference_code": item.reference_code,
             "student_name": item.student_name_snapshot,
             "course_year_block": item.course_year_block_snapshot,
-            "referrer_name": item.referrer_name,
+            "referrer_name": content.referrer_name,
             "referred_on": item.referred_on,
             "received_date": (received_at.date() if received_at is not None else None),
             "received_time": (
@@ -557,11 +564,11 @@ def build_referral_render_context(item: Referral) -> dict[str, object]:
                 if received_at is not None
                 else None
             ),
-            "reason": item.reason,
+            "reason": content.reason,
             "actions": action_rows,
-            "status_note": item.status_note,
+            "status_note": content.status_note,
             "is_voided": item.voided_at is not None,
-            "void_reason": item.void_reason,
+            "void_reason": content.void_reason,
         },
         "controlled_form": {
             "official_code": item.form_revision.official_code,
@@ -604,10 +611,11 @@ def update_status_note(
         item = _lock_scoped_referral(actor=actor, referral_id=referral_id)
         if item.voided_at is not None:
             raise ReferralVoidConflict("A voided Referral cannot be changed.")
-        if item.status_note == cleaned:
+        content = read_referral_confidential_content(item)
+        if content.status_note == cleaned:
             return _detail_queryset().get(pk=item.pk)
-        item.status_note = cleaned
-        item.save(update_fields=["status_note", "updated_at"])
+        write_referral_confidential_content(item, replace(content, status_note=cleaned))
+        item.save(update_fields=["confidential_content_ciphertext", "updated_at"])
         record_event(
             context=context,
             action=REFERRAL_STATUS_UPDATED,
@@ -654,13 +662,14 @@ def _create_action_locked(
         )
     try:
         with transaction.atomic():
-            action = ReferralAction.objects.create(
+            action = ReferralAction(
                 referral=referral,
                 action_type=action_type,
                 occurred_at=occurred_at,
-                remarks=remarks,
                 recorded_by=actor,
             )
+            write_referral_action_remarks(action, remarks)
+            action.save(force_insert=True)
     except IntegrityError as exc:
         raise ReferralActionConflict(
             "This Referral action type has already been recorded for the source Referral."
@@ -761,7 +770,10 @@ def ensure_call_slip_action(
                 remarks=remarks or "",
                 now=current,
             )
-            if existing.occurred_at != normalized_occurred or existing.remarks != cleaned_remarks:
+            if (
+                existing.occurred_at != normalized_occurred
+                or read_referral_action_remarks(existing) != cleaned_remarks
+            ):
                 raise ReferralActionConflict(
                     "The supplied Call-Slip Referral action conflicts with the "
                     "existing source action."
@@ -826,10 +838,18 @@ def void_referral(
                 "Void the active linked Call Slip before voiding this Referral."
             )
 
+        content = read_referral_confidential_content(item)
         item.voided_at = current
         item.voided_by = actor
-        item.void_reason = cleaned_reason
-        item.save(update_fields=["voided_at", "voided_by", "void_reason", "updated_at"])
+        write_referral_confidential_content(item, replace(content, void_reason=cleaned_reason))
+        item.save(
+            update_fields=[
+                "voided_at",
+                "voided_by",
+                "confidential_content_ciphertext",
+                "updated_at",
+            ]
+        )
         record_event(
             context=context,
             action=REFERRAL_VOIDED,

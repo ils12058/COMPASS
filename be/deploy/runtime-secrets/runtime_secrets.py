@@ -20,6 +20,9 @@ SECRET_FILES = {
     "AUTH_TOTP_ENCRYPTION_KEY": "auth_totp_encryption_key",
     "ROUTINE_INTERVIEW_ENCRYPTION_KEYS": "routine_interview_encryption_keys",
     "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS": "counseling_shared_summary_encryption_keys",
+    "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
+        "referral_confidential_content_encryption_keys"
+    ),
     "WEB_PUSH_PRIVATE_KEY": "web_push_private_key",
     "WEB_PUSH_STORAGE_KEY": "web_push_storage_key",
 }
@@ -32,6 +35,7 @@ REQUIRED_SECRETS = {
     "AUTH_TOTP_ENCRYPTION_KEY",
     "ROUTINE_INTERVIEW_ENCRYPTION_KEYS",
     "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS",
+    "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
 }
 URL_SETTINGS = (
     "REDIS_URL",

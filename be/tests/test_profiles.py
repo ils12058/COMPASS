@@ -41,6 +41,10 @@ from compass.institutional_forms.models import FormFamily, FormRevision
 from compass.inventory.models import StudentInventory
 from compass.organization.api import _person
 from compass.organization.models import AcademicYear
+from compass.referrals.confidential_content import (
+    ReferralConfidentialContent,
+    write_referral_confidential_content,
+)
 from compass.referrals.models import Referral
 
 PROFILE_FIELDS = {
@@ -584,17 +588,22 @@ def test_profile_edit_does_not_rewrite_inventory_referral_or_call_slip_history()
         current_address="old-current-address",
         permanent_address="old-permanent-address",
     )
-    referral = Referral.objects.create(
+    referral = Referral(
         reference_code="REF-2099-999998",
         student=student,
         student_name_snapshot="Historical Referral Student",
         course_year_block_snapshot="Historical Course / 4 / A",
-        reason="Historical reason",
-        referrer_name="Historical Referrer",
         referred_on=timezone.localdate(),
         form_revision=revision,
         recorded_by=counselor,
     )
+    write_referral_confidential_content(
+        referral,
+        ReferralConfidentialContent(
+            reason="Historical reason", referrer_name="Historical Referrer"
+        ),
+    )
+    referral.save(force_insert=True)
     call_slip = CallSlip.objects.create(
         student=student,
         student_name_snapshot="Historical Call Slip Student",

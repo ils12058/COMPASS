@@ -39,6 +39,7 @@ from compass.operational_students import (
 )
 from compass.organization.access_scope import resolve_organizational_access_scope
 from compass.organization.models import StaffSupervision, StudentAffiliation
+from compass.referrals.confidential_content import ReferralConfidentialContentUnavailable
 from compass.referrals.models import Referral, ReferralAction, ReferralActionType
 from compass.referrals.services import (
     InvalidReferralInput,
@@ -702,6 +703,8 @@ def create_call_slip_from_referral(
                 remarks=action_remarks,
                 context=context,
             )
+        except ReferralConfidentialContentUnavailable:
+            raise
         except ReferralError as exc:
             raise _translate_referral_action_error(exc) from exc
 

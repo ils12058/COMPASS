@@ -158,3 +158,12 @@ auditable and concurrency-safe.
 
 Call Slip issuance, parent-letter generation, printing, Referral-to-Counseling linkage, retention,
 deletion, corrections, and any future operational Referral state machine remain separate work.
+
+
+## Storage representation update (2026-10-06)
+
+[ADR-081](ADR-081-referral-confidential-source-content-encryption.md) supersedes only the
+plaintext-at-rest representation of `reason`, `referrer_name`, `status_note`, `void_reason` and
+ReferralAction `remarks`. The original source semantics, chronology, form fidelity, operational
+scope, idempotency, action uniqueness and safe Audit rules remain authoritative. Authorized API
+and PDF disclosures preserve the existing plaintext contract through explicit decryption.

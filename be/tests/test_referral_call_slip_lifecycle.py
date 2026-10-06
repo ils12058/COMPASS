@@ -17,6 +17,7 @@ from compass.call_slips.services import (
     record_interview_ended,
     void_call_slip,
 )
+from compass.referrals.confidential_content import read_referral_confidential_content
 from compass.referrals.models import ReferralAction, ReferralActionType
 from compass.referrals.services import (
     ReferralActiveCallSlipConflict,
@@ -263,7 +264,7 @@ def test_referral_void_blocks_active_and_completed_dependencies_without_partial_
     active.refresh_from_db()
     assert active_referral.voided_at is None
     assert active_referral.voided_by_id is None
-    assert active_referral.void_reason == ""
+    assert read_referral_confidential_content(active_referral).void_reason == ""
     assert active.lifecycle_state == "ACTIVE"
 
     completed_referral = create_referral_for(
@@ -297,7 +298,7 @@ def test_referral_void_blocks_active_and_completed_dependencies_without_partial_
     completed.refresh_from_db()
     assert completed_referral.voided_at is None
     assert completed_referral.voided_by_id is None
-    assert completed_referral.void_reason == ""
+    assert read_referral_confidential_content(completed_referral).void_reason == ""
     assert completed.lifecycle_state == "COMPLETED"
     assert completed.interview_ended_at == completed_at
 

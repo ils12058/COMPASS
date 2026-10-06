@@ -47,7 +47,7 @@ Prerequisites: Podman, `podman-compose` (or a compatible `podman compose` provid
 ```sh
 cd /Users/reynantlntno/Projects/COMPASS/be
 cp .env.example .env
-# Set both independent content keyrings in .env before startup; see the encryption sections below.
+# Set all three independent content keyrings in .env before startup; see the encryption sections below.
 uv python install 3.13
 uv sync
 podman compose --profile local build web
@@ -654,3 +654,21 @@ Appointment detail projects the lifecycle `actions` available to the requesting 
 closed `blocker` when unavailable, and `counseling_context_available` for the assigned Counselor.
 Both list routes accept `upcoming=true` (SCHEDULED and not yet started), which is the population
 counted on the Overview.
+
+
+## Referral confidential source content
+
+ADR-081 stores Referral reason/referrer/status/void reason together in ciphertext and each action's
+remarks in its own bound ciphertext under the dedicated required
+`REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`. First key encrypts; all ordered entries decrypt.
+Operational/searchable metadata remains queryable. Authorized API and Referral Slip PDF content
+stay compatible through explicit reads; Context history uses metadata only. See
+[ADR-081](docs/decisions/ADR-081-referral-confidential-source-content-encryption.md).
+
+For local setup, generate a separate local Fernet keyring and set it in `.env`; do not reuse Django,
+TOTP, Web Push, Routine or Shared Summary keys. The example intentionally contains no usable key.
+`python manage.py rotate_referral_confidential_content --dry-run --batch-size 100` verifies both
+Referral and action payloads without writing; real rotation rewraps previous-key tokens and retains
+business metadata. It refuses the legacy schema. Live staging is explicitly deferred: resolve the
+actual host state and both outstanding ADR-080/ADR-081 dependencies through the separate
+[runtime-secret cutover runbook](docs/runtime-secrets.md) before deploying.

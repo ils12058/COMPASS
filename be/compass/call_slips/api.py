@@ -25,6 +25,7 @@ from compass.privacy_governance.releases import (
     ReleaseAuditUnavailable,
     record_call_slip_release,
 )
+from compass.referrals.confidential_content import ReferralConfidentialContentUnavailable
 
 from .models import CallSlipDestinationType, CallSlipIssuanceMode, CallSlipLifecycleState
 from .services import (
@@ -585,6 +586,12 @@ def call_slips_create_from_referral(
             request_fingerprint=fingerprint,
             context=_context(request),
         )
+    except ReferralConfidentialContentUnavailable:
+        raise APIError(
+            500,
+            "referral_confidential_content_unavailable",
+            "The Referral confidential content is unavailable.",
+        ) from None
     except CallSlipError as exc:
         _raise(exc)
     return Status(201, _operational_view(item))

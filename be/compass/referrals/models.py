@@ -46,8 +46,7 @@ class Referral(models.Model):
     )
     student_name_snapshot = models.CharField(max_length=512)
     course_year_block_snapshot = models.CharField(max_length=255)
-    reason = models.TextField()
-    referrer_name = models.CharField(max_length=255)
+    confidential_content_ciphertext = models.TextField(editable=False)
     referred_on = models.DateField()
     received_at = models.DateTimeField(null=True, blank=True)
     form_revision = models.ForeignKey(
@@ -55,7 +54,6 @@ class Referral(models.Model):
         on_delete=models.PROTECT,
         related_name="referrals",
     )
-    status_note = models.TextField(blank=True, default="")
     voided_at = models.DateTimeField(null=True, blank=True)
     voided_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -64,7 +62,6 @@ class Referral(models.Model):
         null=True,
         blank=True,
     )
-    void_reason = models.TextField(blank=True, default="", max_length=1000)
     recorded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -92,11 +89,8 @@ class Referral(models.Model):
         ]
         constraints = [
             models.CheckConstraint(
-                condition=(
-                    models.Q(voided_at__isnull=True, void_reason="")
-                    | (models.Q(voided_at__isnull=False) & ~models.Q(void_reason=""))
-                ),
-                name="referral_void_shape",
+                condition=~models.Q(confidential_content_ciphertext=""),
+                name="referral_confidential_ciphertext_present",
             )
         ]
 
@@ -110,7 +104,7 @@ class ReferralAction(models.Model):
     )
     action_type = models.CharField(max_length=48, choices=ReferralActionType.choices)
     occurred_at = models.DateTimeField()
-    remarks = models.TextField(blank=True, default="")
+    remarks_ciphertext = models.TextField(editable=False)
     recorded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -127,5 +121,9 @@ class ReferralAction(models.Model):
             models.UniqueConstraint(
                 fields=("referral", "action_type"),
                 name="referral_action_type_uniq",
-            )
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(remarks_ciphertext=""),
+                name="referral_action_ciphertext_present",
+            ),
         ]
