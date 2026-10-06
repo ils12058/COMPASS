@@ -7,6 +7,10 @@ import logging
 from compass.common.correlation import get_current_request_id
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 
+from .confidential_content import (
+    ExitInterviewConfidentialContent,
+    read_exit_interview_confidential_content,
+)
 from .models import (
     CareerMode,
     CollegeFeedbackItem,
@@ -45,7 +49,9 @@ def _choices(choices, selected: list[str]) -> list[dict[str, object]]:
     ]
 
 
-def build_exit_interview_render_context(item) -> dict[str, object]:
+def build_exit_interview_render_context(
+    item, content: ExitInterviewConfidentialContent
+) -> dict[str, object]:
     """Use only saved form-local answers and saved child ratings."""
     if item.status != ExitInterviewStatus.SUBMITTED:
         raise ExitInterviewNotSubmitted("Only submitted Exit Interviews have a downloadable PDF.")
@@ -59,7 +65,9 @@ def build_exit_interview_render_context(item) -> dict[str, object]:
             for code, item_label in CollegeFeedbackItem.choices
             if code.startswith(prefix)
         ]
-        categories.append({"label": label, "rows": rows, "comments": getattr(item, comments_field)})
+        categories.append(
+            {"label": label, "rows": rows, "comments": getattr(content, comments_field)}
+        )
 
     return {
         "exit_form": {
@@ -68,18 +76,18 @@ def build_exit_interview_render_context(item) -> dict[str, object]:
             "civil_status": item.civil_status_snapshot,
             "course": item.course_snapshot,
             "major": item.major_snapshot,
-            "email": item.email_snapshot,
-            "address": item.home_address_snapshot,
-            "contact": item.contact_number_snapshot,
+            "email": content.email_snapshot,
+            "address": content.home_address_snapshot,
+            "contact": content.contact_number_snapshot,
             "completion": _choices(ProgramCompletion, [item.program_completion]),
             "delayed": item.program_completion == ProgramCompletion.WITH_SOME_DELAY,
             "extra_terms": item.extra_terms_count,
             "delay_reasons": _choices(DelayReason, item.delay_reasons),
-            "delay_other": item.delay_other,
+            "delay_other": content.delay_other,
             "learning": _choices(
                 SignificantLearningExperience, item.significant_learning_experiences
             ),
-            "learning_other": item.significant_learning_other,
+            "learning_other": content.significant_learning_other,
             "career_modes": _choices(CareerMode, item.career_modes),
             "work_choices": _choices(WorkCareerChoice, item.work_choices),
             "study_choices": _choices(StudyCareerChoice, item.study_choices),
@@ -88,7 +96,7 @@ def build_exit_interview_render_context(item) -> dict[str, object]:
                 for code, label in SelfAssessmentItem.choices
             ],
             "categories": categories,
-            "suggestions": item.suggestions_recommendations,
+            "suggestions": content.suggestions_recommendations,
         },
         "self_scale": (5, 4, 3, 2, 1),
         "college_scale": (5, 4, 3, 2, 1, 0),
@@ -96,7 +104,10 @@ def build_exit_interview_render_context(item) -> dict[str, object]:
 
 
 def render_exit_interview_pdf(item) -> bytes:
-    context = build_exit_interview_render_context(item)
+    if item.status != ExitInterviewStatus.SUBMITTED:
+        raise ExitInterviewNotSubmitted("Only submitted Exit Interviews have a downloadable PDF.")
+    content = read_exit_interview_confidential_content(item)
+    context = build_exit_interview_render_context(item, content)
     try:
         return render_document_pdf("exit_interview", 1, context=context).pdf_bytes
     except DocumentRenderError as exc:

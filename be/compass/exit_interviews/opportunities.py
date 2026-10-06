@@ -29,6 +29,7 @@ from compass.operational_students import (
 )
 from compass.organization.models import AcademicYear
 
+from .confidential_content import read_opportunity_note, write_opportunity_note
 from .models import (
     ExitInterview,
     ExitInterviewOpportunity,
@@ -147,7 +148,7 @@ def open_opportunity(
                     "correction is needed."
                 )
             if item.status == ExitInterviewOpportunityStatus.OPEN:
-                if item.note != note:
+                if read_opportunity_note(item) != note:
                     raise ExitInterviewOpportunityConflict(
                         "Access is already open. Review the existing opportunity before making "
                         "another change."
@@ -161,22 +162,25 @@ def open_opportunity(
             )
         now = timezone.now()
         if item is None:
-            item = ExitInterviewOpportunity.objects.create(
+            item = ExitInterviewOpportunity(
                 student=student,
                 academic_year=year,
                 source=source,
-                note=note,
                 opened_by=actor,
                 opened_at=now,
             )
+            write_opportunity_note(item, note)
+            item.save(force_insert=True)
             transition = "NONE -> OPEN"
         else:
+            previous_note = read_opportunity_note(item)
+            if previous_note != note:
+                write_opportunity_note(item, note)
             item.status = ExitInterviewOpportunityStatus.OPEN
             item.opened_by = actor
             item.opened_at = now
             item.revoked_at = None
             item.revoked_by = None
-            item.note = note
             item.save(
                 update_fields=[
                     "status",
@@ -184,7 +188,7 @@ def open_opportunity(
                     "opened_at",
                     "revoked_at",
                     "revoked_by",
-                    "note",
+                    "note_ciphertext",
                     "updated_at",
                 ]
             )
@@ -215,6 +219,7 @@ def revoke_opportunity(
             raise ExitInterviewOpportunityConflict(
                 "Only open Exit Interview access can be revoked."
             )
+        read_opportunity_note(item)
         item.status = ExitInterviewOpportunityStatus.REVOKED
         item.revoked_at = timezone.now()
         item.revoked_by = actor

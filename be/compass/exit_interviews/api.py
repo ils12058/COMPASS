@@ -22,6 +22,12 @@ from compass.privacy_governance.releases import (
     record_exit_interview_release,
 )
 
+from .confidential_content import (
+    ExitInterviewConfidentialContentUnavailable,
+    read_exit_interview_confidential_content,
+    read_opportunity_note,
+    read_reopen_reason,
+)
 from .documents import ExitInterviewDocumentUnavailable, render_exit_interview_pdf
 from .models import (
     CareerMode,
@@ -419,6 +425,12 @@ def _require_head(request, capability: str) -> None:
 
 
 def _raise(exc: ExitInterviewError) -> NoReturn:
+    if isinstance(exc, ExitInterviewConfidentialContentUnavailable):
+        raise APIError(
+            500,
+            "exit_interview_confidential_content_unavailable",
+            "The Exit Interview confidential content is unavailable.",
+        ) from None
     if isinstance(exc, ExitInterviewDocumentUnavailable):
         raise APIError(503, "exit_interview_document_unavailable", str(exc)) from exc
     if isinstance(exc, ExitInterviewCurrentStudentRequired):
@@ -536,13 +548,20 @@ def _ordered_feedback_ratings(item) -> list[dict[str, object]]:
     ]
 
 
+def _read(reader, item):
+    try:
+        return reader(item)
+    except ExitInterviewConfidentialContentUnavailable as exc:
+        _raise(exc)
+
+
 def _reopen_events(item) -> list[dict[str, object]]:
     return [
         {
             "id": event.pk,
             "reopened_at": event.reopened_at,
             "reopened_by": _person(event.reopened_by),
-            "reason": event.reason,
+            "reason": _read(read_reopen_reason, event),
         }
         for event in item.reopen_events.all()
     ]
@@ -563,6 +582,7 @@ def _summary(item) -> dict[str, object]:
 
 
 def _detail(item) -> dict[str, object]:
+    content = _read(read_exit_interview_confidential_content, item)
     return {
         **_summary(item),
         "can_edit": bool(
@@ -580,28 +600,28 @@ def _detail(item) -> dict[str, object]:
         "civil_status": item.civil_status_snapshot,
         "course": item.course_snapshot,
         "major": item.major_snapshot,
-        "email_address": item.email_snapshot,
-        "home_address": item.home_address_snapshot,
-        "contact_number": item.contact_number_snapshot,
+        "email_address": content.email_snapshot,
+        "home_address": content.home_address_snapshot,
+        "contact_number": content.contact_number_snapshot,
         "program_completion": item.program_completion or None,
         "extra_terms_count": item.extra_terms_count,
         "delay_reasons": item.delay_reasons,
-        "delay_other": item.delay_other,
+        "delay_other": content.delay_other,
         "significant_learning_experiences": item.significant_learning_experiences,
-        "significant_learning_other": item.significant_learning_other,
+        "significant_learning_other": content.significant_learning_other,
         "career_modes": item.career_modes,
         "work_choices": item.work_choices,
         "study_choices": item.study_choices,
         "self_assessment_ratings": _ordered_self_ratings(item),
         "college_feedback_ratings": _ordered_feedback_ratings(item),
-        "dean_comments": item.dean_comments,
-        "program_chair_comments": item.program_chair_comments,
-        "faculty_comments": item.faculty_comments,
-        "curriculum_comments": item.curriculum_comments,
-        "guidance_counselor_comments": item.guidance_counselor_comments,
-        "office_staff_comments": item.office_staff_comments,
-        "facilities_comments": item.facilities_comments,
-        "suggestions_recommendations": item.suggestions_recommendations,
+        "dean_comments": content.dean_comments,
+        "program_chair_comments": content.program_chair_comments,
+        "faculty_comments": content.faculty_comments,
+        "curriculum_comments": content.curriculum_comments,
+        "guidance_counselor_comments": content.guidance_counselor_comments,
+        "office_staff_comments": content.office_staff_comments,
+        "facilities_comments": content.facilities_comments,
+        "suggestions_recommendations": content.suggestions_recommendations,
         "reopen_events": _reopen_events(item),
     }
 
@@ -639,7 +659,7 @@ def _opportunity(item):
         "student": _student_summary(item.student),
         "opened_by": _person(item.opened_by),
         "revoked_by": _person(item.revoked_by) if item.revoked_by_id else None,
-        "note": item.note,
+        "note": _read(read_opportunity_note, item),
         "created_at": item.created_at,
         "updated_at": item.updated_at,
     }

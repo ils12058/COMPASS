@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from io import BytesIO
 from unittest.mock import patch
 
@@ -12,6 +13,10 @@ from pypdf import PdfReader
 from compass.accounts.models import Designation, UserDesignation
 from compass.audit.models import AuditEvent
 from compass.documents.rendering import DocumentRenderError, render_document_html
+from compass.exit_interviews.confidential_content import (
+    read_exit_interview_confidential_content,
+    write_exit_interview_confidential_content,
+)
 from compass.exit_interviews.documents import (
     build_exit_interview_render_context,
     render_exit_interview_pdf,
@@ -53,7 +58,9 @@ def test_submitted_pdf_uses_saved_snapshots_and_all_source_rows(tmp_path):
     item.inventory.course_currently_enrolled = "Changed Inventory Course"
     item.inventory.save(update_fields=["course_currently_enrolled"])
 
-    context = build_exit_interview_render_context(item)
+    context = build_exit_interview_render_context(
+        item, read_exit_interview_confidential_content(item)
+    )
     form = context["exit_form"]
     assert form["name"] == "Form Local Student"
     assert form["email"] == "form-local@example.edu"
@@ -99,11 +106,17 @@ def test_submitted_pdf_uses_saved_snapshots_and_all_source_rows(tmp_path):
 @pytest.mark.django_db
 def test_long_comments_flow_to_additional_pages_without_losing_text(tmp_path):
     _, _, item = _submitted()
-    item.dean_comments = "\n".join(f"Dean comment line {index:02d}" for index in range(60))
-    item.suggestions_recommendations = "\n".join(
-        f"Suggestion line {index:02d}" for index in range(60)
+    write_exit_interview_confidential_content(
+        item,
+        replace(
+            read_exit_interview_confidential_content(item),
+            dean_comments="\n".join(f"Dean comment line {index:02d}" for index in range(60)),
+            suggestions_recommendations="\n".join(
+                f"Suggestion line {index:02d}" for index in range(60)
+            ),
+        ),
     )
-    item.save(update_fields=["dean_comments", "suggestions_recommendations", "updated_at"])
+    item.save(update_fields=["confidential_content_ciphertext", "updated_at"])
 
     pdf = render_exit_interview_pdf(item)
     (tmp_path / "long-exit-interview.pdf").write_bytes(pdf)

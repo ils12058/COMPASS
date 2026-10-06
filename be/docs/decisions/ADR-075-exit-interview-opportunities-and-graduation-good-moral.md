@@ -158,3 +158,10 @@ opportunity-management baseline to Guidance Services Staff. It exposes workflow
 status and submission times without granting response content, PDF, or reopen
 authority. Admission, graduation provenance, and Student correction rules remain
 as decided here.
+
+## Subsequent storage decision (ADR-082)
+
+[ADR-082](ADR-082-exit-interview-confidential-content-encryption.md) encrypts the bounded opportunity
+note at rest while preserving these lifecycle/provenance rules. Graduation Good Moral eligibility
+and saved prerequisite provenance remain metadata-only and require no Exit Interview confidential
+read. Guidance Services Staff still receives no identifiable Exit Interview answer content or PDF.

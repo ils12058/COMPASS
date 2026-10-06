@@ -23,6 +23,9 @@ SECRET_FILES = {
     "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
         "referral_confidential_content_encryption_keys"
     ),
+    "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
+        "exit_interview_confidential_content_encryption_keys"
+    ),
     "WEB_PUSH_PRIVATE_KEY": "web_push_private_key",
     "WEB_PUSH_STORAGE_KEY": "web_push_storage_key",
 }
@@ -36,6 +39,7 @@ REQUIRED_SECRETS = {
     "ROUTINE_INTERVIEW_ENCRYPTION_KEYS",
     "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS",
     "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+    "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
 }
 URL_SETTINGS = (
     "REDIS_URL",
