@@ -6,9 +6,10 @@ import pytest
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 
-from compass.accounts.models import Role, User
+from compass.accounts.models import Role
 from compass.institutional_forms.models import FormFamily, FormRevision
 from compass.organization.models import AcademicYear
+from tests.profile_fixtures import create_initialized_user
 
 
 @pytest.fixture(autouse=True)
@@ -59,7 +60,7 @@ def test_student_support_migration_preserves_legacy_pwd_and_parent_life_status()
     inventory_ids: list[tuple[object, str | None, str | None, str | None]] = []
 
     for index, (legacy_pwd, expected_pwd, father_status, mother_status) in enumerate(cases):
-        student = User.objects.create(
+        student = create_initialized_user(
             email=f"migration-support-{index}@example.edu",
             password="!",
             role=role,

@@ -31,6 +31,7 @@ from compass.accounts.services import (
     is_current_student,
     set_user_capability_override,
 )
+from tests.profile_fixtures import initialized_user
 
 User = get_user_model()
 
@@ -84,12 +85,14 @@ def test_postgresql_expression_constraint_rejects_case_only_email_collision():
     role = Role.objects.create(code="TEST_ROLE", name="Test role")
     User.objects.bulk_create(
         [
-            User(
-                email="Reynan@Example.edu",
-                password=make_password("password"),
-                first_name="Reynan",
-                last_name="Test",
-                role=role,
+            initialized_user(
+                User(
+                    email="Reynan@Example.edu",
+                    password=make_password("password"),
+                    first_name="Reynan",
+                    last_name="Test",
+                    role=role,
+                )
             )
         ]
     )
@@ -97,12 +100,14 @@ def test_postgresql_expression_constraint_rejects_case_only_email_collision():
         with transaction.atomic():
             User.objects.bulk_create(
                 [
-                    User(
-                        email="reynan@example.edu",
-                        password=make_password("password"),
-                        first_name="Another",
-                        last_name="Test",
-                        role=role,
+                    initialized_user(
+                        User(
+                            email="reynan@example.edu",
+                            password=make_password("password"),
+                            first_name="Another",
+                            last_name="Test",
+                            role=role,
+                        )
                     )
                 ]
             )

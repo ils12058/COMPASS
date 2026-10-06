@@ -12,6 +12,7 @@ from django.http import HttpResponse, JsonResponse
 from ninja import Header, Router, Schema
 from pydantic import ConfigDict, Field
 
+from compass.accounts.confidential_profile import AccountProfileConfidentialContentUnavailable
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
@@ -30,6 +31,10 @@ from compass.institutional_forms.filter_options import (
     project_filter_options,
 )
 
+from .confidential_content import (
+    FeedbackConfidentialContentUnavailable,
+    read_feedback_confidential_content,
+)
 from .models import (
     CSMCC1,
     CSMCC2,
@@ -305,7 +310,17 @@ def _require_viewer(request, capability: str) -> None:
         )
 
 
-def _raise(exc: FeedbackError) -> NoReturn:
+def _raise(
+    exc: FeedbackError
+    | FeedbackConfidentialContentUnavailable
+    | AccountProfileConfidentialContentUnavailable,
+) -> NoReturn:
+    if isinstance(
+        exc, (FeedbackConfidentialContentUnavailable, AccountProfileConfidentialContentUnavailable)
+    ):
+        raise APIError(
+            500, "feedback_confidential_content_unavailable", "The Feedback content is unavailable."
+        ) from None
     if isinstance(exc, FeedbackOpportunityNotFound):
         raise APIError(404, "feedback_opportunity_not_found", str(exc)) from exc
     if isinstance(exc, FeedbackNotFound):
@@ -442,6 +457,7 @@ def _customer_summary(item) -> dict[str, object]:
 
 
 def _customer_detail(item) -> dict[str, object]:
+    content = read_feedback_confidential_content(item)
     revision = item.form_revision
     return {
         **_customer_summary(item),
@@ -452,7 +468,7 @@ def _customer_detail(item) -> dict[str, object]:
             "official_revision": revision.official_revision,
             "internal_schema_version": revision.internal_schema_version,
         },
-        "other_service": item.other_service,
+        "other_service": content.other_service,
         "talked_to_guidance_counselor": item.talked_to_guidance_counselor,
         "accommodated_by": item.accommodated_by or None,
         "office_visit_count": item.office_visit_count,
@@ -469,11 +485,11 @@ def _customer_detail(item) -> dict[str, object]:
         "office_hours_rating": item.office_hours_rating,
         "personnel_availability_rating": item.personnel_availability_rating,
         "overall_satisfaction_rating": item.overall_satisfaction_rating,
-        "additional_feedback": item.additional_feedback,
-        "future_service_improvement": item.future_service_improvement,
+        "additional_feedback": content.additional_feedback,
+        "future_service_improvement": content.future_service_improvement,
         "course_year": item.course_year_snapshot,
-        "address": item.address_snapshot,
-        "mobile_number": item.mobile_number_snapshot,
+        "address": content.address_snapshot,
+        "mobile_number": content.mobile_number_snapshot,
     }
 
 
@@ -488,6 +504,7 @@ def _csm_summary(item) -> dict[str, object]:
 
 
 def _csm_detail(item) -> dict[str, object]:
+    content = read_feedback_confidential_content(item)
     return {
         **_csm_summary(item),
         "sex": item.sex,
@@ -505,8 +522,8 @@ def _csm_detail(item) -> dict[str, object]:
         "sqd6": item.sqd6,
         "sqd7": item.sqd7,
         "sqd8": item.sqd8,
-        "suggestions": item.suggestions,
-        "email": item.email,
+        "suggestions": content.suggestions,
+        "email": content.email,
     }
 
 
@@ -579,7 +596,7 @@ def feedback_submit_customer_feedback(
             values=values,
             context=_context(request),
         )
-    except FeedbackError as exc:
+    except (FeedbackError, AccountProfileConfidentialContentUnavailable) as exc:
         _abandon_submission_or_503(store, decision.reservation)
         _raise(exc)
     except Exception:
@@ -640,9 +657,9 @@ def feedback_get_customer_feedback_response(request, response_id: UUID):
     _require_viewer(request, "feedback.view_customer_feedback")
     try:
         item = get_customer_feedback(actor=request.auth_user, response_id=response_id)
-    except FeedbackError as exc:
+        return _customer_detail(item)
+    except (FeedbackError, FeedbackConfidentialContentUnavailable) as exc:
         _raise(exc)
-    return _customer_detail(item)
 
 
 @router.post(
@@ -741,6 +758,6 @@ def feedback_get_csm_response(request, response_id: UUID):
     _require_viewer(request, "feedback.view_csm")
     try:
         item = get_csm_response(actor=request.auth_user, response_id=response_id)
-    except FeedbackError as exc:
+        return _csm_detail(item)
+    except (FeedbackError, FeedbackConfidentialContentUnavailable) as exc:
         _raise(exc)
-    return _csm_detail(item)

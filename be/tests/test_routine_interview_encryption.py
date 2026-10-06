@@ -18,7 +18,7 @@ from django.db.migrations.executor import MigrationExecutor
 from django.test import override_settings
 from django.utils import timezone
 
-from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.accounts.models import Designation, Role, UserDesignation
 from compass.audit.models import AuditEvent
 from compass.counseling.models import CounselingEncounter
 from compass.institutional_forms.models import FormFamily, FormRevision
@@ -54,6 +54,7 @@ from compass.routine_interviews.services import (
     submit_my_intake,
 )
 from tests.inventory_encryption_helpers import create_inventory_row
+from tests.profile_fixtures import create_initialized_user
 from tests.test_routine_interviews import (
     auth_client,
     configure_year,
@@ -817,14 +818,14 @@ def _legacy_participants():
         code="COUNSELOR", defaults={"name": "Counselor", "description": ""}
     )
     suffix = uuid4().hex[:8]
-    student = User.objects.create(
+    student = create_initialized_user(
         email=f"legacy-routine-student-{suffix}@example.edu",
         password="!",
         role=student_role,
         first_name="Legacy",
         last_name="Student",
     )
-    counselor = User.objects.create(
+    counselor = create_initialized_user(
         email=f"legacy-routine-counselor-{suffix}@example.edu",
         password="!",
         role=counselor_role,

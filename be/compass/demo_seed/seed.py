@@ -67,6 +67,7 @@ from .configuration import (
     offboard_former_staff,
     program_for,
 )
+from .feedback_content import matching_feedback
 from .guard import ensure_demo_seeding_allowed_by_settings
 from .history import check_history_preconditions, run_academic_timeline, seed_profiles
 from .narratives import CLIENT_SATISFACTION, CUSTOMER_FEEDBACK
@@ -393,19 +394,30 @@ def _status_breakdown_with_total(queryset, field_name: str) -> str:
 
 def _seeded_customer_feedback() -> int:
     return sum(
-        CustomerFeedbackResponse.objects.filter(
-            respondent_name_snapshot=PERSONAS_BY_KEY[key].full_name,
-            additional_feedback=values["additional_feedback"],
-        ).count()
+        sum(
+            1
+            for _ in matching_feedback(
+                CustomerFeedbackResponse.objects.filter(
+                    respondent_name_snapshot=PERSONAS_BY_KEY[key].full_name
+                ),
+                "additional_feedback",
+                values["additional_feedback"],
+            )
+        )
         for key, values in CUSTOMER_FEEDBACK.items()
     )
 
 
 def _seeded_csm() -> int:
     return sum(
-        ClientSatisfactionResponse.objects.filter(
-            service_availed=item["service_availed"], suggestions=item["suggestions"]
-        ).count()
+        sum(
+            1
+            for _ in matching_feedback(
+                ClientSatisfactionResponse.objects.filter(service_availed=item["service_availed"]),
+                "suggestions",
+                item["suggestions"],
+            )
+        )
         for item in CLIENT_SATISFACTION
     )
 

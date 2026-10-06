@@ -15,6 +15,10 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
+from .confidential_profile import (
+    AccountProfileConfidentialContentUnavailable,
+    read_account_profile_confidential_content,
+)
 from .profile_photos import (
     ProfilePhotoValidationError,
     profile_photo_url,
@@ -68,6 +72,7 @@ class MyProfilePhotoResponse(StrictSchema):
 
 
 def _serialize(user) -> dict[str, object]:
+    content = read_account_profile_confidential_content(user)
     return {
         "user_id": user.pk,
         "institutional_id": user.institutional_id,
@@ -78,17 +83,23 @@ def _serialize(user) -> dict[str, object]:
         "suffix": user.suffix,
         "full_name": user.get_full_name(),
         "role": user.role.code,
-        "date_of_birth": user.date_of_birth,
-        "civil_status": user.civil_status,
-        "contact_number": user.contact_number,
-        "current_address": user.current_address,
-        "permanent_address": user.permanent_address,
+        "date_of_birth": content.date_of_birth,
+        "civil_status": content.civil_status,
+        "contact_number": content.contact_number,
+        "current_address": content.current_address,
+        "permanent_address": content.permanent_address,
         "profile_photo_url": profile_photo_url(user),
         "profile_photo_updated_at": user.profile_photo_updated_at,
     }
 
 
-def _raise_profile_error(exc: ProfileError) -> NoReturn:
+def _raise_profile_error(
+    exc: ProfileError | AccountProfileConfidentialContentUnavailable,
+) -> NoReturn:
+    if isinstance(exc, AccountProfileConfidentialContentUnavailable):
+        raise APIError(
+            500, "profile_confidential_content_unavailable", "The account profile is unavailable."
+        ) from None
     if isinstance(exc, InvalidProfileInput):
         raise APIError(422, "invalid_profile_request", str(exc)) from exc
     if isinstance(exc, ProfileUnavailable):
@@ -106,7 +117,10 @@ def _raise_profile_error(exc: ProfileError) -> NoReturn:
 def get_my_profile(request):
     if not request.auth_user.is_active:
         raise APIError(403, "profile_unavailable", "The account profile is unavailable.")
-    return _serialize(request.auth_user)
+    try:
+        return _serialize(request.auth_user)
+    except AccountProfileConfidentialContentUnavailable as exc:
+        _raise_profile_error(exc)
 
 
 @router.patch(
@@ -124,9 +138,9 @@ def patch_my_profile(request, payload: MyProfileUpdateRequest):
             changes=changes,
             context=AuditContext.from_request(request, actor=request.auth_user),
         )
-    except ProfileError as exc:
+        return _serialize(result.user)
+    except (ProfileError, AccountProfileConfidentialContentUnavailable) as exc:
         _raise_profile_error(exc)
-    return _serialize(result.user)
 
 
 @router.put(

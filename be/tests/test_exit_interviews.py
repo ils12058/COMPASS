@@ -12,6 +12,7 @@ from django.db import IntegrityError, close_old_connections, transaction
 from django.test import Client
 from django.utils import timezone
 
+from compass.accounts.confidential_profile import read_account_profile_confidential_content
 from compass.accounts.models import (
     Capability,
     Designation,
@@ -63,6 +64,7 @@ from compass.referrals.models import Referral
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.models import Service
 from tests.inventory_encryption_helpers import create_inventory_row
+from tests.profile_fixtures import set_profile
 
 
 def sync_policy() -> None:
@@ -406,21 +408,12 @@ def test_ensure_uses_profile_and_inventory_prefill_once_and_is_idempotent():
         last_name="Person",
     )
     birthday = date(timezone.localdate().year - 22, 1, 1)
-    student.date_of_birth = birthday
-    student.civil_status = "Single"
-    student.contact_number = "09170000000"
-    student.current_address = " Current Address "
-    student.permanent_address = " Permanent Address "
-    student.save(
-        update_fields=[
-            "date_of_birth",
-            "civil_status",
-            "contact_number",
-            "current_address",
-            "permanent_address",
-            "updated_at",
-        ]
-    )
+    set_profile(student, date_of_birth=birthday)
+    set_profile(student, civil_status="Single")
+    set_profile(student, contact_number="09170000000")
+    set_profile(student, current_address=" Current Address ")
+    set_profile(student, permanent_address=" Permanent Address ")
+    student.save(update_fields=["updated_at"])
     current = make_year()
     inventory = make_inventory(
         student,
@@ -469,9 +462,9 @@ def test_ensure_uses_profile_and_inventory_prefill_once_and_is_idempotent():
 def test_home_address_falls_back_to_permanent_and_missing_dob_keeps_age_null():
     sync_policy()
     student = make_user("fallback@example.edu")
-    student.current_address = "   "
-    student.permanent_address = " Permanent Home "
-    student.save(update_fields=["current_address", "permanent_address", "updated_at"])
+    set_profile(student, current_address="   ")
+    set_profile(student, permanent_address=" Permanent Home ")
+    student.save(update_fields=["updated_at"])
     current = make_year()
     make_inventory(student, current)
     client = auth_client(student)
@@ -486,17 +479,10 @@ def test_home_address_falls_back_to_permanent_and_missing_dob_keeps_age_null():
 def test_profile_and_inventory_changes_after_creation_do_not_refresh_exit_interview():
     sync_policy()
     student = make_user("immutable-prefill@example.edu", first_name="Old", last_name="Name")
-    student.contact_number = "old-contact"
-    student.current_address = "old-address"
-    student.date_of_birth = date(2000, 1, 1)
-    student.save(
-        update_fields=[
-            "contact_number",
-            "current_address",
-            "date_of_birth",
-            "updated_at",
-        ]
-    )
+    set_profile(student, contact_number="old-contact")
+    set_profile(student, current_address="old-address")
+    set_profile(student, date_of_birth=date(2000, 1, 1))
+    student.save(update_fields=["updated_at"])
     current = make_year()
     inventory = make_inventory(student, current, course="Old Course", major="Old Major")
     client = auth_client(student)
@@ -507,20 +493,10 @@ def test_profile_and_inventory_changes_after_creation_do_not_refresh_exit_interv
     student.first_name = "New"
     student.last_name = "Profile"
     student.email = "new-profile@example.edu"
-    student.contact_number = "new-contact"
-    student.current_address = "new-address"
-    student.date_of_birth = date(2005, 1, 1)
-    student.save(
-        update_fields=[
-            "first_name",
-            "last_name",
-            "email",
-            "contact_number",
-            "current_address",
-            "date_of_birth",
-            "updated_at",
-        ]
-    )
+    set_profile(student, contact_number="new-contact")
+    set_profile(student, current_address="new-address")
+    set_profile(student, date_of_birth=date(2005, 1, 1))
+    student.save(update_fields=["first_name", "last_name", "email", "updated_at"])
     inventory.course_currently_enrolled = "New Course"
     inventory.major = "New Major"
     inventory.save(update_fields=["course_currently_enrolled", "major", "updated_at"])
@@ -544,9 +520,9 @@ def test_profile_and_inventory_changes_after_creation_do_not_refresh_exit_interv
 def test_full_put_edits_form_local_values_without_mutating_profile_or_inventory():
     sync_policy()
     student = make_user("form-local@example.edu", first_name="Canonical", last_name="Profile")
-    student.contact_number = "profile-contact"
-    student.current_address = "profile-address"
-    student.save(update_fields=["contact_number", "current_address", "updated_at"])
+    set_profile(student, contact_number="profile-contact")
+    set_profile(student, current_address="profile-address")
+    student.save(update_fields=["updated_at"])
     current = make_year()
     inventory = make_inventory(student, current, course="Inventory Course", major="Inventory Major")
     client = auth_client(student)
@@ -563,8 +539,8 @@ def test_full_put_edits_form_local_values_without_mutating_profile_or_inventory(
     student.refresh_from_db()
     inventory.refresh_from_db()
     assert student.get_full_name() == "Canonical Profile"
-    assert student.contact_number == "profile-contact"
-    assert student.current_address == "profile-address"
+    assert read_account_profile_confidential_content(student).contact_number == "profile-contact"
+    assert read_account_profile_confidential_content(student).current_address == "profile-address"
     assert inventory.course_currently_enrolled == "Inventory Course"
     assert inventory.major == "Inventory Major"
 
@@ -917,8 +893,8 @@ def test_reopen_and_resubmit_preserve_first_submission_and_append_correction_his
 def test_reopen_does_not_refresh_profile_or_inventory_snapshots():
     sync_policy()
     student = make_user("reopen-snapshot@example.edu", first_name="Original", last_name="Name")
-    student.current_address = "Original Address"
-    student.save(update_fields=["current_address", "updated_at"])
+    set_profile(student, current_address="Original Address")
+    student.save(update_fields=["updated_at"])
     current = make_year()
     inventory = make_inventory(student, current, course="Original Course", major="Original Major")
     student_client = auth_client(student)
@@ -928,8 +904,8 @@ def test_reopen_does_not_refresh_profile_or_inventory_snapshots():
 
     student.first_name = "Changed"
     student.last_name = "Profile"
-    student.current_address = "Changed Address"
-    student.save(update_fields=["first_name", "last_name", "current_address", "updated_at"])
+    set_profile(student, current_address="Changed Address")
+    student.save(update_fields=["first_name", "last_name", "updated_at"])
     inventory.course_currently_enrolled = "Changed Course"
     inventory.major = "Changed Major"
     inventory.save(update_fields=["course_currently_enrolled", "major", "updated_at"])

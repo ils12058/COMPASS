@@ -145,3 +145,10 @@ This foundation does not add a public/anonymous endpoint, QR/token intake, paper
 analytics/dashboard calculations, PDF generation, exports, AI/sentiment/risk automation,
 feedback-to-case/referral automation, notifications, or Service Catalog coupling. Those require
 separate evidence and design decisions.
+
+
+## Storage supersession (2026-10-07)
+
+ADR-086 supersedes only the ordinary plaintext representation of the selected Feedback private prose/contact
+values. Ownership, canonical identity, lifecycle, disclosure and logical API contracts above
+remain authoritative; historical design context is preserved.

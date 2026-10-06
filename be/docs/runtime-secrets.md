@@ -1,5 +1,10 @@
 # Host-managed live-staging runtime secrets
 
+Current repository target: **22** sources (ADR-085/086). All older numbered cutover sections
+are historical domain procedures; the final combined ADR-085/086 gates govern the current target.
+No implementation merge establishes live readiness.
+
+
 This is the operator runbook for ADR-078. Repository validation proves the delivery mechanism;
 live cutover requires separate authorization, exact-value comparison and service verification.
 Do not deploy the new manifest before the host is provisioned. There is no daemon or external
@@ -8,7 +13,7 @@ secret-management service.
 ## Host directory and service grants
 
 `/opt/compass/secrets` is persistent outside `/opt/compass/releases`, owned by `compass:compass`,
-mode `0700`. All 20 source files must be regular files, not symlinks, owned by `compass`, mode
+mode `0700`. All 22 source files must be regular files, not symlinks, owned by `compass`, mode
 `0444`. Never put this directory in Git, a checkout, an image, or a release symlink.
 
 The host parent directory is the confidentiality boundary: other unprivileged users cannot traverse
@@ -38,12 +43,14 @@ remain trusted. A compromised authorized process can read its own grants.
 | `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `exit_interview_confidential_content_encryption_keys` | yes |
 | `INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `inventory_confidential_content_encryption_keys` | yes |
 | `GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `graduate_tracer_confidential_content_encryption_keys` | yes |
+| `ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `account_profile_confidential_content_encryption_keys` | yes |
+| `FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `feedback_confidential_content_encryption_keys` | yes |
 | `WEB_PUSH_PRIVATE_KEY` | `web_push_private_key` | when enabled |
 | `WEB_PUSH_STORAGE_KEY` | `web_push_storage_key` | when enabled |
 
 | Service | Explicit grants |
 | --- | --- |
-| `web`, `worker`, `beat` | all 20, because Django loads settings eagerly |
+| `web`, `worker`, `beat` | all 22, because Django loads settings eagerly |
 | `postgres` | `postgres_password` only |
 | `redis` | `redis_password` only |
 | `proxy` | none |
@@ -89,8 +96,8 @@ credential changes. Do not delete/reinitialize the database volume.
 ## Original ADR-078 migration: historical operator reference
 
 The original ADR-078 cutover below migrated 15 existing values. ADR-080 adds the new required
-16th value, ADR-081 adds the 17th, ADR-082 adds the required 18th value, ADR-083 adds the required 19th value, and ADR-084 adds the required 20th value. The current
-inventory/checker/exporter expects all 20. The numbered 15-value steps remain historical instructions for the original
+16th value, ADR-081 adds the 17th, ADR-082 adds the required 18th value, ADR-083 adds the required 19th value, ADR-084 adds the required 20th value, and ADR-085/086 add the required 21st/22nd values. The current
+inventory/checker/exporter expects all 22. The numbered 15-value steps remain historical instructions for the original
 helper/inventory, not a recipe to rerun export on an already converted host. An old runtime has
 no new domain keys to export; the exporter never generates keys or recovers absent values.
 Preserve every existing value and ordered keyring. Resolve the actual starting state and follow
@@ -209,8 +216,8 @@ command. See [staging-demo-seeding.md](staging-demo-seeding.md).
 
 This repository change does not provision a live key or start deployment. The currently provisioned
 host may still have 15 source files. ADR-080 originally required 16, ADR-081 required 17, and
-the ADR-083 manifest required 19. The current ADR-084 manifest requires 20; apply the combined
-ADR-084 gates below,
+the ADR-083 manifest required 19 and ADR-084 required 20. The current ADR-085/086 target requires
+22; apply its final combined gates below,
 provisioning each missing independent domain keyring if necessary. Do not dispatch the ordinary deployment workflow prematurely.
 
 1. Record the exact current build/image/manifest, migration state and non-secret Summary counts.
@@ -272,8 +279,8 @@ that ADR-080 Shared Summary encryption or ADR-081 Referral encryption is active 
 Before any future deployment, resolve the actual running image, manifest, applied migrations,
 source-file inventory and pointers using safe metadata only. The live starting state may still
 be the original 15-secret/schema runtime. This ADR-081 procedure originally targeted 17 files;
-the ADR-083 target required all 19; the current ADR-084 target needs 20 and the additional
-Exit Interview/Inventory/Graduate Tracer steps below.
+the ADR-083 target required all 19 and ADR-084 required 20. The current ADR-085/086 target needs
+22 and the additional Exit/Inventory/Tracer/Account Profile/Feedback steps below.
 
 1. Obtain separate cutover authorization. Record exact live/target build identity, database/schema
    state, Referral/action/Summary counts and operational metadata. Take and privately verify a
@@ -289,7 +296,7 @@ Exit Interview/Inventory/Graduate Tracer steps below.
    regular/non-symlink, `0444 compass:compass`. Add the exact `_FILE` pointers from the current
    example to protected `/opt/compass/.env`, with direct assignments absent. The Referral filename
    is `referral_confidential_content_encryption_keys`; only web/worker/Beat receive it. Preserve
-   existing credentials/order. For the current target use the 20-file checker and ADR-084 gates,
+   existing credentials/order. For the current target use the 22-file checker and ADR-085/086 gates,
    quiet Compose validation and candidate settings checks against the intended immutable image before dispatch.
 4. Coordinate maintenance downtime: stop/drain old web, worker, Beat and every old scheduled or
    operator writer; prevent restarts until candidate activation. The ordinary workflow migrates
@@ -427,7 +434,7 @@ above describe their historical migrations; these gates also cover the new Inven
    Reject decoded-byte reuse with Django, TOTP, Web Push storage and every current/previous content
    domain key. Escrow complete ordered keyrings in approved independently protected off-host
    storage; retain older keys as long as backups need them. The exporter cannot generate absent keys.
-3. Preflight all 20 current sources, exact pointers, quiet Compose and candidate settings. Web, worker and
+3. For this historical target, preflight all 20 sources, exact pointers, quiet Compose and candidate settings. Web, worker and
    Beat get the Inventory source; PostgreSQL, Redis and proxy do not. Recreate application containers
    after source inode changes. Ordinary workflow deployment must wait until these gates succeed.
 4. Stop/drain old web, worker, Beat, scheduled jobs, operator jobs and all other database writers.
@@ -471,7 +478,7 @@ bounded transactional batches and resumes without rewrapping already-current row
 20 structural failure contexts, leaves failed rows unchanged and exits nonzero on unreadable content.
 
 
-## ADR-084 combined deferred cutover: current 20-file inventory
+## ADR-084 combined deferred cutover: historical 20-file target
 
 Use [ADR-084](decisions/ADR-084-graduate-tracer-confidential-content-encryption.md) with the
 ADR-080–083 gates above. Establish actual live state first; historical repository merges do not
@@ -502,3 +509,82 @@ rollback keeps writers drained, retains needed full keyrings, reverses affected 
 previous migration graph, verifies restored identifiable plaintext and anonymous minimized defaults,
 and only then activates the previous exact SHA. Never restore personal content to an anonymous row.
 No live cutover was performed here.
+
+
+## ADR-085/086 combined deferred cutover: current 22-file inventory
+
+This repository implementation authorizes no live key, host secret, migration or deployment.
+Earlier merges do not establish actual live provisioning/schema readiness. The current target is
+**22 required/optional sources**, with seven potentially absent content-domain keyrings: Summary,
+Referral, Exit Interview, Inventory, Graduate Tracer, Account Profile and Feedback. Historical
+15–20-file procedures above retain their domain migration/recovery details; use these combined
+current gates before any separately authorized live operation.
+
+1. Obtain explicit live-cutover authorization. Inspect actual backend public build, immutable image,
+   release manifest, protected environment metadata, applied migration graph and source/pointer
+   metadata. Record non-secret row counts and business metadata for all seven domains, Accounts
+   identities and both Feedback families; privately prepare historical-content comparison evidence.
+   Preserve every existing credential/key entry and order. Secure and **test restore** a restorable
+   encrypted database backup plus encrypted host rollback backup and matching previous immutable
+   image/manifest/environment pair, with approved off-host recovery. Verify the exact previous graph.
+2. Independently provision each absent domain ring in a protected operator process; never expose
+   values/hashes/tokens to terminal/CI. Reject decoded-byte reuse across all current/previous content
+   rings, Django SECRET_KEY, TOTP and Web Push storage. Escrow **complete ordered keyrings**, including
+   previous entries, in independently protected approved off-host storage before migration.
+   Database/Droplet backups alone cannot recover ciphertext. Retain old keys while any retained
+   backup requires them. Exporter tools cannot export/generate absent new values.
+3. Account source: `/opt/compass/secrets/account_profile_confidential_content_encryption_keys`;
+   Feedback source: `/opt/compass/secrets/feedback_confidential_content_encryption_keys`. Keep the
+   persistent compass-owned parent at 0700; sources must be regular/non-symlink 0444 compass-owned
+   files. Protected `/opt/compass/.env` must contain only exact pointers:
+   `ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE=/run/secrets/account_profile_confidential_content_encryption_keys`
+   and `FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE=/run/secrets/feedback_confidential_content_encryption_keys`.
+   Use the current example for all 22 sources; direct assignments are forbidden. Only web/worker/beat
+   get new grants; Postgres/Redis/proxy do not. Preflight all 22 file metadata/pointers, quiet Compose
+   and candidate settings against the reviewed immutable image. Recreate application containers
+   after source inode changes. Never dispatch ordinary deployment before these gates pass.
+4. Coordinate maintenance: stop/drain old web, worker, beat, queued/in-flight jobs, every old scheduled
+   or operator writer and any other database writer; prevent restart through all destructive phases
+   and compatible activation. Ordinary workflow migrations happen before full service replacement.
+   PostgreSQL fences protect verification but cannot make old code compatible with removed columns
+   after commit. Keep old processes stopped if migration/activation fails. Activate only the reviewed
+   exact full staging SHA, `--ref staging`, `expected_staging_sha=<full SHA>` after every gate passes.
+5. Apply missing Summary/Referral/Exit/Inventory/Tracer phases using their frozen domain procedures.
+   Accounts: `0007_encrypt_confidential_content`, then `0008_remove_plaintext_confidential_content`.
+   Feedback: `0003_encrypt_confidential_content`, then `0004_remove_plaintext_confidential_content`.
+   Phase A leaves plaintext authoritative. Phase B fences accounts_user and independently Customer
+   Feedback then CSM before verification/destruction. Authenticate every present envelope, reconcile
+   only missing/valid stale tokens against latest plaintext (including late old writers/inserts),
+   verify, remove exactly five Accounts plus seven Feedback fields and require non-empty tokens.
+   Present unreadable/rebound/unsupported/malformed tokens abort atomically; never repair or blank.
+   Identity/security/photo state, timestamps, Feedback revision/ratings/dimensions and side effects
+   must remain unchanged. Confirm actual applied migrations and final schema privately.
+6. Verify historical plaintext equivalence privately, row counts/business metadata and content-free
+   side effects. Exercise active self-profile GET/partial/no-op PATCH and required-corrupt errors;
+   identity/search/admin/capability/photo operations with profile decryption forbidden; form prefill
+   and independent saved snapshots; Student Feedback submission/one-shot provenance; Head detail
+   plus metadata-only list/search/pagination; unauthorized role denial before decryption. Verify
+   exact build/readiness and all three application services. Run all seven content-domain dry runs:
+   Summary, Referral, Exit, Inventory, Tracer commands above plus
+   `rotate_account_profile_confidential_content --dry-run --batch-size 100` and
+   `rotate_feedback_confidential_content --dry-run --batch-size 100`. Resolve every unreadable row
+   before retiring keys. Log sanitized counts/UUIDs/bounded reasons only; repository tests alone
+   cannot establish live readiness. Resume only with compatible candidate code.
+7. Controlled rollback keeps all writers drained and full readable ordered rings available. With the
+   candidate image reverse Accounts to `0006_rename_reference_capabilities` and Feedback to
+   `0002_feedback_opportunity` if those are the exact prior image's required leaves. Reverse other
+   newly activated domains to the verified previous graph as necessary. Fences execute before
+   restored-column DDL; temporary nullable columns are filled with exact verified plaintext, then
+   historical definitions reinstated. Unreadable content rolls back the complete reverse atomically.
+   Phase A removes tokens only after restoration. Verify schema compatibility before activating the
+   previous immutable image/manifest/environment pair. If verification fails, follow tested backup
+   recovery; never launch old code against ciphertext-only columns or replace lost content with
+   blanks. Restored plaintext and historical plaintext backups remain sensitive.
+
+Later rotation is separately operated: provision `[new_primary, previous_keys...]` independently for
+Accounts/Feedback, update complete protected off-host recovery, recreate web/worker/beat to consume
+new inodes, dry-run, then real commands with batches 1–1000 (default 100). Verify bindings/schema/
+payloads and preserve plaintext bytes/Fernet timestamps. Batches lock real rows and commit separately;
+resume after interruption, current-primary rows are no-ops, failures remain untouched and exit nonzero.
+Only token columns change; no User.updated_at/security/session/photo/Audit or Feedback metadata change.
+No scheduled rotation, automatic key deletion or live action is introduced here.

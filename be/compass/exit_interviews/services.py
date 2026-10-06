@@ -11,6 +11,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from compass.accounts.confidential_profile import AccountProfileConfidentialContentUnavailable
 from compass.accounts.models import User
 from compass.accounts.profiles import get_person_profile_context
 from compass.accounts.services import is_current_student
@@ -624,7 +625,10 @@ def ensure_my_current(
                 "Counseling Office."
             )
 
-        profile = get_person_profile_context(locked_student)
+        try:
+            profile = get_person_profile_context(locked_student)
+        except AccountProfileConfidentialContentUnavailable:
+            raise ExitInterviewError("The current account profile is unavailable.") from None
         reference_date = timezone.localdate()
         home_address = profile.current_address.strip() or profile.permanent_address.strip()
         try:
