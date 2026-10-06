@@ -703,11 +703,30 @@ def test_rotation_real_row_locks_and_interruption_resume(world, settings, monkey
 @pytest.fixture
 def legacy(transactional_db):
     initial = MigrationExecutor(connection).loader.graph.leaf_nodes()
-    # PostgreSQL retains dropped attribute slots. Each matrix case needs fresh test tables,
-    # rather than hundreds of committed add/drop cycles exhausting the 1600-column limit.
+    # PostgreSQL keeps dropped attribute slots. Refresh only empty, dedicated test tables;
+    # rebuilding the entire dependency graph per case is unnecessary and very expensive.
     assert connection.settings_dict["NAME"].startswith("test_")
-    MigrationExecutor(connection).migrate([("inventory", None)])
-    MigrationExecutor(connection).migrate(initial)
+    models = [apps.get_model("inventory", name) for name in NAMES]
+    assert all(not model.objects.exists() for model in models)
+    tables = [model._meta.db_table for model in models]
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT conrelid::regclass::text, conname, pg_get_constraintdef(oid) "
+            "FROM pg_constraint WHERE contype = 'f' "
+            "AND confrelid = ANY(%s::regclass[]) AND NOT conrelid = ANY(%s::regclass[])",
+            [tables, tables],
+        )
+        incoming = cursor.fetchall()
+    with connection.schema_editor() as editor:
+        for model in reversed(models):
+            editor.delete_model(model)
+        for model in models:
+            editor.create_model(model)
+        for table, name, definition in incoming:
+            editor.execute(
+                f"ALTER TABLE {editor.quote_name(table)} "
+                f"ADD CONSTRAINT {editor.quote_name(name)} {definition}"
+            )
     world = make_world()
     MigrationExecutor(connection).migrate(BEFORE)
     try:
