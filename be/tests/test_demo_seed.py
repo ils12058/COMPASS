@@ -115,6 +115,7 @@ from compass.privacy_governance.models import (
     PrivacyNotice,
     PrivacyNoticeRevisionStatus,
 )
+from compass.referrals.confidential_content import read_referral_confidential_content
 from compass.referrals.models import Referral, ReferralAction
 from compass.referrals.services import build_referral_render_context
 from compass.reports.graduate_tracer import build_graduate_tracer_report
@@ -667,7 +668,7 @@ class SeededDemoDatasetTests(TestCase):
         assert referrals.count() == 4
         assert referrals.filter(voided_at__isnull=True).count() == 3
         voided = referrals.get(voided_at__isnull=False)
-        assert "Duplicate entry" in voided.void_reason
+        assert "Duplicate entry" in read_referral_confidential_content(voided).void_reason
         for referral in referrals.filter(voided_at__isnull=True):
             assert referral.received_at.date() >= referral.referred_on
             action = referral.actions.get(action_type="SEND_CALL_SLIP_INTERVIEW_PERMIT")

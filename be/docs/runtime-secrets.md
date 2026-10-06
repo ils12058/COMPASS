@@ -8,7 +8,7 @@ secret-management service.
 ## Host directory and service grants
 
 `/opt/compass/secrets` is persistent outside `/opt/compass/releases`, owned by `compass:compass`,
-mode `0700`. All 16 source files must be regular files, not symlinks, owned by `compass`, mode
+mode `0700`. All 17 source files must be regular files, not symlinks, owned by `compass`, mode
 `0444`. Never put this directory in Git, a checkout, an image, or a release symlink.
 
 The host parent directory is the confidentiality boundary: other unprivileged users cannot traverse
@@ -34,12 +34,13 @@ remain trusted. A compromised authorized process can read its own grants.
 | `AUTH_TOTP_ENCRYPTION_KEY` | `auth_totp_encryption_key` | yes |
 | `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` | `routine_interview_encryption_keys` | yes |
 | `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS` | `counseling_shared_summary_encryption_keys` | yes |
+| `REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `referral_confidential_content_encryption_keys` | yes |
 | `WEB_PUSH_PRIVATE_KEY` | `web_push_private_key` | when enabled |
 | `WEB_PUSH_STORAGE_KEY` | `web_push_storage_key` | when enabled |
 
 | Service | Explicit grants |
 | --- | --- |
-| `web`, `worker`, `beat` | all 16, because Django loads settings eagerly |
+| `web`, `worker`, `beat` | all 17, because Django loads settings eagerly |
 | `postgres` | `postgres_password` only |
 | `redis` | `redis_password` only |
 | `proxy` | none |
@@ -84,14 +85,13 @@ credential changes. Do not delete/reinitialize the database volume.
 
 ## Original ADR-078 migration: historical operator reference
 
-The original ADR-078 cutover below migrated 15 existing values. ADR-080 adds a **new** required
-16th value; the current inventory/checker/exporter includes it. The numbered 15-value steps
-are historical, not a recipe to rerun export on an already converted host. They describe the
-original 15-value helper/inventory shipped with ADR-078. Current utilities expect all 16.
-An old 15-secret runtime has no Shared Summary key to export. Provision the new independently generated keyring using the
-separate cutover below before using current-inventory utilities. The exporter never generates
-keys and cannot recover an absent value. Preserve the original values and ordered keyrings.
-Do not rerun export on the file-backed host; follow the ADR-080 cutover section instead.
+The original ADR-078 cutover below migrated 15 existing values. ADR-080 adds the new required
+16th value and ADR-081 adds the new required 17th value. The current inventory/checker/exporter
+expects all 17. The numbered 15-value steps remain historical instructions for the original
+helper/inventory, not a recipe to rerun export on an already converted host. An old runtime has
+no new domain keys to export; the exporter never generates keys or recovers absent values.
+Preserve every existing value and ordered keyring. Resolve the actual starting state and follow
+the combined deferred cutover gates below before using current-inventory utilities.
 
 1. Record the current public `/api/v1/meta` build and release manifest, database identity, current
    service health and an encrypted rollback copy of the current `.env`/deployment state. Take and
@@ -191,7 +191,8 @@ Encryption keys require their own transition/readability plan. Follow ADR-066 fo
 keyring; TOTP and Web Push storage keys require their specific migration procedures. Never replace
 one with a newly generated key as routine secret-file maintenance. Keep independently protected
 recovery copies of `AUTH_TOTP_ENCRYPTION_KEY`, the complete ordered
-`ROUTINE_INTERVIEW_ENCRYPTION_KEYS`, `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS`, and
+`ROUTINE_INTERVIEW_ENCRYPTION_KEYS`, `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS`,
+`REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`, and
 `WEB_PUSH_STORAGE_KEY`, including older keys while retained
 backups depend on them. Future application encryption keyrings follow the same rule. An approved
 password manager or encrypted offline archive is sufficient; no escrow service is part of this slice.
@@ -204,8 +205,9 @@ command. See [staging-demo-seeding.md](staging-demo-seeding.md).
 ## ADR-080: one-time Shared Summary encryption cutover (separate authorization)
 
 This repository change does not provision a live key or start deployment. The currently provisioned
-host may still have 15 source files. The new manifest requires 16; preflight fails until the new
-mandatory file and pointer exist. Do not dispatch the ordinary deployment workflow prematurely.
+host may still have 15 source files. ADR-080 originally required 16; the current ADR-081 manifest
+requires 17. Apply the combined cutover gates below, provisioning both missing independent
+keyrings if necessary. Do not dispatch the ordinary deployment workflow prematurely.
 
 1. Record the exact current build/image/manifest, migration state and non-secret Summary counts.
    Take a verified restorable encrypted database backup and protected rollback environment/manifest
@@ -257,3 +259,67 @@ tokens with the original Fernet timestamp, commits bounded batches and preserves
 A rerun resumes safely; failures remain unchanged and produce non-success with safe UUID/reason
 output. It refuses both real and dry runs while the plaintext column remains. It does not replace
 provider credentials, change Routine keys, schedule rotation or delete older keys.
+
+
+## ADR-081: deferred Referral and Shared Summary cutover
+
+Repository implementation only: live cutovers are explicitly deferred. Merged code is not evidence
+that ADR-080 Shared Summary encryption or ADR-081 Referral encryption is active on the host.
+Before any future deployment, resolve the actual running image, manifest, applied migrations,
+source-file inventory and pointers using safe metadata only. The live starting state may still
+be the original 15-secret/schema runtime. The reviewed target now needs all 17 files.
+
+1. Obtain separate cutover authorization. Record exact live/target build identity, database/schema
+   state, Referral/action/Summary counts and operational metadata. Take and privately verify a
+   restorable encrypted database backup and compatible previous image/manifest/environment pair.
+2. Independently generate each absent ordered keyring through a protected operator process, never
+   terminal/CI output: `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS` and
+   `REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`. Never reuse Django, TOTP, Web Push, any Routine
+   entry or any Shared Summary entry for Referral. Escrow the **complete ordered keyrings** in
+   independently protected off-host recovery before migration. A database/Droplet backup alone
+   cannot restore confidential ciphertext. Retain old keys while retained backups require them.
+   `migrate-runtime-secrets.py` cannot export an absent new key and must not generate one.
+3. Provision missing sources beneath the existing `0700 compass:compass` directory; each must be
+   regular/non-symlink, `0444 compass:compass`. Add the exact `_FILE` pointers from the current
+   example to protected `/opt/compass/.env`, with direct assignments absent. The Referral filename
+   is `referral_confidential_content_encryption_keys`; only web/worker/Beat receive it. Preserve
+   existing credentials/order. Run the 17-file checker, quiet Compose validation and candidate
+   settings checks against the intended immutable image before dispatch.
+4. Coordinate maintenance downtime: stop/drain old web, worker, Beat and every old scheduled or
+   operator writer; prevent restarts until candidate activation. The ordinary workflow migrates
+   candidate code before replacing all old services. Table locks protect verification but cannot
+   make old code compatible with removed plaintext columns after commit. Keep old services stopped
+   if activation fails. Deploy only the exact reviewed staging SHA with `--ref staging` and
+   `expected_staging_sha=<full SHA>` after every gate is satisfied.
+5. Apply missing ADR-080 migrations as described above and Referral `0003_encrypt_confidential_content`
+   then `0004_remove_plaintext_confidential_content`. Phase A adds nullable ciphertext and backfills
+   Referral's four-field payload and each action's separate remarks. Phase B locks Referral then
+   ReferralAction in one transaction, validates latest plaintext/lifecycle, authenticates every
+   present token/context/schema/content, reconciles only absent or readable stale tokens, verifies
+   replacements, then removes five plaintext columns and enforces non-null/non-empty ciphertext.
+   An old writer may have voided a formerly active Referral; an authenticated old active payload
+   is reconciled to the latest authoritative void state. Present unverifiable tokens abort the
+   entire phase, including earlier rewrites; no corruption replacement or blank fallback.
+6. Verify actual migration/schema state, unchanged row counts/business metadata, all historical
+   content privately, authorized list/detail/PDF and Call Slip source-action reconciliation,
+   metadata-only Context history, both domain rotation dry runs, build/readiness and all services.
+   Use `rotate_referral_confidential_content --dry-run --batch-size 100`; output is counts and
+   bounded UUID/action-type/reason context only. Repository tests do not prove live readiness.
+7. Controlled rollback uses the same downtime and the complete readable keyrings. With candidate
+   code/keyrings, reverse Referrals to `0002_void_provenance` and, if it was newly activated, reverse
+   Counseling to `0003_service_name_snapshot` before running old code. Referral reverse first
+   adds temporarily nullable plaintext columns, verifies/decrypts and restores every payload,
+   then reinstates original nullability/defaults and the void-shape constraint. Corruption aborts
+   schema/data restoration atomically. Phase A reverse drops ciphertext only after successful
+   plaintext restoration. Activate the matching previous image/manifest/environment pair and
+   verify build/services; preserve new keys for encrypted backups. Never launch old code against
+   a ciphertext-only schema. Restored plaintext/older backups remain restricted sensitive data.
+
+Later Referral rotation is separately operated: provision `[new_primary, previous_keys...]`, keep
+protected off-host recovery, recreate web/worker/Beat so they consume the new inode, run dry-run then
+`rotate_referral_confidential_content --batch-size 100`. Both envelope types are fully verified;
+previous-key tokens are rewrapped with ADR-079 MultiFernet.rotate, preserving bytes/timestamps.
+Each bounded batch commits separately and can resume after interruption; only ciphertext changes.
+Counts are separate for Referrals/actions. Failures are left untouched and cause non-success.
+Both real and dry runs refuse any remaining legacy Referral plaintext column. No scheduled
+rotation, key deletion, provider credential change, provisioning or deployment occurs automatically.

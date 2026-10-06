@@ -28,6 +28,7 @@ from compass.organization.models import (
     StaffSupervision,
     StudentAffiliation,
 )
+from compass.referrals.confidential_content import read_referral_confidential_content
 from compass.referrals.models import Referral, ReferralAction, ReferralReferenceCounter
 from compass.referrals.services import (
     InvalidReferralInput,
@@ -524,8 +525,8 @@ def test_status_and_exact_three_actions_are_source_shaped_immutable_and_side_eff
     identity = (
         item.reference_code,
         item.student_id,
-        item.reason,
-        item.referrer_name,
+        read_referral_confidential_content(item).reason,
+        read_referral_confidential_content(item).referrer_name,
         item.referred_on,
         item.received_at,
         item.form_revision_id,
@@ -537,7 +538,7 @@ def test_status_and_exact_three_actions_are_source_shaped_immutable_and_side_eff
         status_note="For follow-up",
         context=context(head),
     )
-    assert status.status_note == "For follow-up"
+    assert read_referral_confidential_content(status).status_note == "For follow-up"
 
     action_types = [
         "CALL_PARENT_GUARDIAN",
@@ -571,8 +572,8 @@ def test_status_and_exact_three_actions_are_source_shaped_immutable_and_side_eff
     assert (
         item.reference_code,
         item.student_id,
-        item.reason,
-        item.referrer_name,
+        read_referral_confidential_content(item).reason,
+        read_referral_confidential_content(item).referrer_name,
         item.referred_on,
         item.received_at,
         item.form_revision_id,
