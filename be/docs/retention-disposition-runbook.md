@@ -99,7 +99,7 @@ Before approving V2 disposition, confirm private **unversioned** storage and no 
 expiration/CDN exposure using the media rollout preflight. Execution verifies live-object absence and
 any remaining Daily copy outside SQL transactions. Uncertain storage/provider deletion produces
 reconciliation, preserving identifiers for a reviewed retry. Never manually mark a case COMPLETED,
-clear location/provider evidence, or treat a recording 404 alone as a verified provider deletion.
+clear location/provider evidence, ignore a storage-namespace mismatch, or treat a recording 404 alone as a verified provider deletion.
 Holds still revoke pending approval; release requires a fresh approval. Withdrawal stops affected
 capture and does not immediately erase already captured files.
 

@@ -36,7 +36,8 @@ captured before withdrawal can be prepared without falsely claiming renewed cons
 One `ECounselingMediaArtifact` belongs to one capture. Its closed states are `PENDING`, `PROCESSING`,
 `STORED`, `FAILED`, `DISPOSED`. Capture `READY` means provider readiness, not local file availability.
 Internal metadata includes an opaque room/capture/artifact UUID key, size, MIME type, SHA-256,
-storage/disposal timestamps, independent provider-cleanup evidence, bounded retry timing and a
+storage/disposal timestamps, an opaque storage-namespace fingerprint, independent provider-cleanup
+evidence, bounded retry timing and a
 claim token. Workspaces expose only state, availability and disposition time. Provider IDs, keys,
 bucket/endpoint names, hashes, content and links are excluded.
 
@@ -101,7 +102,10 @@ meet these constraints. No other storage feature gains these restrictions.
 
 An upload is read back and its size/digest verified before `STORED` and the custody audit commit.
 A precommitted digest and stable key allow recovery after upload succeeds but acknowledgement/DB
-commit is lost. The configured backend overwrites that same key rather than generating renamed
+commit is lost. The namespace fingerprint excludes credentials and fences endpoint/bucket/prefix changes during
+ingestion, access and disposition. An absence check in a different namespace cannot prove deletion
+of the original copy; restore the correct configuration or reconcile a separately authorized move.
+The configured backend overwrites that same key rather than generating renamed
 copies. Digest mismatch preserves evidence for retry/reconciliation; it never deletes the provider
 source. Multipart infrastructure must abort abandoned incomplete uploads without applying an
 age-based expiration policy to completed governed media.

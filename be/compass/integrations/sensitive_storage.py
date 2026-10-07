@@ -1,5 +1,6 @@
 """Private, unversioned S3-compatible media custody; never emits object locations in errors."""
 
+import hashlib
 import json
 import uuid
 
@@ -44,6 +45,18 @@ class SensitiveMediaStorage(S3Storage):
             ),
         )
         super().__init__(**options)
+
+    def binding_identity(self):
+        # Credentials may rotate without moving bytes. Endpoint/bucket/prefix changes cannot
+        # silently make an old governed copy look absent in a new namespace.
+        namespace = [
+            "s3-media-v1",
+            (self.endpoint_url or "aws-s3").rstrip("/"),
+            self.region_name,
+            self.bucket_name,
+            self.location.rstrip("/"),
+        ]
+        return hashlib.sha256(json.dumps(namespace, separators=(",", ":")).encode()).hexdigest()
 
     def save(self, name, content, max_length=None):
         # This alias accepts only canonical UUID paths. Bypass Storage's name-renaming flow:

@@ -142,3 +142,19 @@ def test_sensitive_save_uses_exact_uuid_key_without_generic_name_renaming():
     for invalid in ("../opaque", "patient-name.mp4", key + "/extra", key.replace("/", "//", 1)):
         with pytest.raises(SensitiveStoragePolicyError):
             storage.save(invalid, ContentFile(b"synthetic"))
+
+
+def test_storage_namespace_identity_tracks_location_but_allows_credential_rotation():
+    storage, _ = backend()
+    identity = storage.binding_identity()
+    storage.access_key = "rotated"
+    storage.secret_key = "rotated"
+    assert storage.binding_identity() == identity
+    storage.bucket_name = "different-bucket"
+    assert storage.binding_identity() != identity
+    storage.bucket_name = "synthetic-private"
+    storage.location = "other-prefix"
+    assert storage.binding_identity() != identity
+    storage.location = "e-counseling"
+    storage.endpoint_url = "https://other-endpoint.invalid"
+    assert storage.binding_identity() != identity

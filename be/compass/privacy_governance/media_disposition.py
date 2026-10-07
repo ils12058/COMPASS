@@ -45,6 +45,8 @@ def execute_media_disposition(case_id, token, *, source_version, provider_id):
         try:
             storage = ObjectStorage(alias="ecounseling_media")
             storage.validate_sensitive_policy()
+            if artifact.storage_binding != storage.binding_identity():
+                raise ValueError()
             if not key or not artifact.stored_at or not artifact.sha256:
                 raise ValueError()
             if storage.exists(key):
@@ -77,6 +79,7 @@ def execute_media_disposition(case_id, token, *, source_version, provider_id):
             now = timezone.now()
             artifact.status, artifact.disposed_at = "DISPOSED", now
             artifact.object_key, artifact.sha256 = None, None
+            artifact.storage_binding = None
             artifact.content_type, artifact.size = None, None
             artifact.claim_token, artifact.claimed_at = None, None
             artifact.next_attempt_at, artifact.error_code = None, None

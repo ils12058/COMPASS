@@ -246,6 +246,11 @@ def test_combined_withdrawal_commits_before_both_stops_and_independent_storage_d
 
 
 class FakeStorage:
+    namespace = "f" * 64
+
+    def binding_identity(self):
+        return self.namespace
+
     def __init__(self, *, fail_save=False, fail_verify=False, fail_delete=False):
         self.objects = {}
         self.calls = []
@@ -435,6 +440,7 @@ def test_worker_adopts_upload_after_crash_without_a_second_provider_download():
     with fake_download("never-persisted", kind="RECORDING") as (file, mime, size, digest):
         artifact.object_key = f"{capture.room_id}/{capture.pk}/{artifact.pk}"
         artifact.content_type, artifact.size, artifact.sha256 = mime, size, digest
+        artifact.storage_binding = storage.binding_identity()
         artifact.status = "PROCESSING"
         artifact.claimed_at = timezone.now() - timedelta(hours=1)
         artifact.save()
@@ -967,3 +973,44 @@ def test_stream_validation_rejects_unbounded_or_unverified_content(failure, sett
     ):
         with stream_daily_media("https://synthetic/?signed=never-log", kind="RECORDING"):
             pytest.fail("Unverified bytes must not reach storage")
+
+
+def test_storage_namespace_change_blocks_access_and_disposition_of_original_copy():
+    _, counselor, appointment, capture, artifact, storage = ready_artifact(pending=False)
+    original_binding = artifact.storage_binding
+    storage.namespace = "0" * 64
+    with patch("compass.ecounseling.artifacts.ObjectStorage", return_value=storage):
+        response = auth_client(counselor).get(
+            f"/api/v1/e-counseling/appointments/{appointment.pk}/media/RECORDING/access"
+        )
+    assert response.status_code == 503 and response["Cache-Control"] == "no-store, private"
+    dpo, case = v2_case(capture)
+    retention.approve_case(
+        actor=dpo, case_id=case.pk, expected_revision=case.revision, context=context(dpo)
+    )
+    with patch("compass.privacy_governance.media_disposition.ObjectStorage", return_value=storage):
+        execute_disposition(case.pk)
+    case.refresh_from_db()
+    artifact.refresh_from_db()
+    assert case.state == "RECONCILIATION_REQUIRED" and case.blocker == "OBJECT_STORAGE_UNVERIFIED"
+    assert storage.objects and artifact.storage_binding == original_binding
+    assert artifact.object_key and artifact.status == "STORED"
+
+
+def test_ingestion_cannot_adopt_or_delete_using_a_different_storage_namespace():
+    _, _, _, capture, artifact, storage = ready_artifact()
+    provider = ArtifactDaily(capture)
+    storage.fail_verify = True
+    ingest_artifact(artifact.pk, storage=storage, client=provider, download=fake_download)
+    artifact.refresh_from_db()
+    assert artifact.status == "FAILED" and artifact.storage_binding == storage.namespace
+    count = storage.calls.count("SAVE")
+    storage.namespace = "0" * 64
+    storage.fail_verify = False
+    artifact.next_attempt_at = timezone.now()
+    artifact.save()
+    ingest_artifact(artifact.pk, storage=storage, client=provider, download=fake_download)
+    capture.refresh_from_db()
+    artifact.refresh_from_db()
+    assert artifact.status == "FAILED" and capture.provider_artifact_id
+    assert "DELETE" not in provider.calls and storage.calls.count("SAVE") == count

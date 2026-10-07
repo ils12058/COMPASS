@@ -197,6 +197,7 @@ class ECounselingMediaArtifact(models.Model):
     )
     status = models.CharField(max_length=16, choices=MediaArtifactStatus.choices, default="PENDING")
     object_key = models.CharField(max_length=180, null=True)
+    storage_binding = models.CharField(max_length=64, null=True)
     content_type = models.CharField(max_length=80, null=True)
     size = models.PositiveBigIntegerField(null=True)
     sha256 = models.CharField(max_length=64, null=True)
@@ -222,6 +223,7 @@ class ECounselingMediaArtifact(models.Model):
                 condition=~Q(status="STORED")
                 | Q(
                     object_key__isnull=False,
+                    storage_binding__isnull=False,
                     content_type__isnull=False,
                     size__isnull=False,
                     size__gt=0,
@@ -236,6 +238,7 @@ class ECounselingMediaArtifact(models.Model):
                 | Q(
                     disposed_at__isnull=False,
                     object_key__isnull=True,
+                    storage_binding__isnull=True,
                     sha256__isnull=True,
                 ),
                 name="ec_artifact_disposed_shape",

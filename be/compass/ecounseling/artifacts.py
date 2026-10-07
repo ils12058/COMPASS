@@ -194,6 +194,19 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
         try:
             storage = storage or ObjectStorage(alias="ecounseling_media")
             storage.validate_sensitive_policy()
+            binding = storage.binding_identity()
+            if artifact.storage_binding and artifact.storage_binding != binding:
+                raise ArtifactVerificationError("Media storage namespace changed.")
+            if artifact.storage_binding is None:
+                with transaction.atomic():
+                    current = ECounselingMediaArtifact.objects.select_for_update().get(
+                        pk=artifact_id
+                    )
+                    if current.claim_token != token:
+                        return
+                    current.storage_binding = binding
+                    current.save(update_fields=["storage_binding", "updated_at"])
+                    artifact = current
             if artifact.status != MediaArtifactStatus.STORED:
                 if artifact.size and artifact.sha256 and storage.exists(artifact.object_key):
                     if not storage.verify(
@@ -307,6 +320,8 @@ def access_artifact(*, counselor, appointment_id, kind, context):
     try:
         storage = ObjectStorage(alias="ecounseling_media")
         storage.validate_sensitive_policy()
+        if artifact.storage_binding != storage.binding_identity():
+            raise ArtifactVerificationError("Media storage namespace changed.")
         if not storage.exists(artifact.object_key):
             raise ValueError()
         extensions = {"video/mp4": "mp4", "video/webm": "webm", "text/vtt": "vtt"}

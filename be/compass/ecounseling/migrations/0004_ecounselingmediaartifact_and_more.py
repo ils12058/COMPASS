@@ -19,6 +19,7 @@ class Migration(migrations.Migration):
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('status', models.CharField(choices=[('PENDING', 'Pending'), ('PROCESSING', 'Processing'), ('STORED', 'Stored'), ('FAILED', 'Failed'), ('DISPOSED', 'Disposed')], default='PENDING', max_length=16)),
                 ('object_key', models.CharField(max_length=180, null=True)),
+                ('storage_binding', models.CharField(max_length=64, null=True)),
                 ('content_type', models.CharField(max_length=80, null=True)),
                 ('size', models.PositiveBigIntegerField(null=True)),
                 ('sha256', models.CharField(max_length=64, null=True)),
@@ -82,10 +83,10 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='ecounselingmediaartifact',
-            constraint=models.CheckConstraint(condition=models.Q(models.Q(('status', 'STORED'), _negated=True), models.Q(('content_type__isnull', False), ('disposed_at__isnull', True), ('object_key__isnull', False), ('sha256__isnull', False), ('size__gt', 0), ('size__isnull', False), ('stored_at__isnull', False)), _connector='OR'), name='ec_artifact_stored_shape'),
+            constraint=models.CheckConstraint(condition=models.Q(models.Q(('status', 'STORED'), _negated=True), models.Q(('content_type__isnull', False), ('disposed_at__isnull', True), ('object_key__isnull', False), ('sha256__isnull', False), ('size__gt', 0), ('size__isnull', False), ('storage_binding__isnull', False), ('stored_at__isnull', False)), _connector='OR'), name='ec_artifact_stored_shape'),
         ),
         migrations.AddConstraint(
             model_name='ecounselingmediaartifact',
-            constraint=models.CheckConstraint(condition=models.Q(models.Q(('status', 'DISPOSED'), _negated=True), models.Q(('disposed_at__isnull', False), ('object_key__isnull', True), ('sha256__isnull', True)), _connector='OR'), name='ec_artifact_disposed_shape'),
+            constraint=models.CheckConstraint(condition=models.Q(models.Q(('status', 'DISPOSED'), _negated=True), models.Q(('disposed_at__isnull', False), ('object_key__isnull', True), ('sha256__isnull', True), ('storage_binding__isnull', True)), _connector='OR'), name='ec_artifact_disposed_shape'),
         ),
     ]

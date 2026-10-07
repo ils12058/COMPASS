@@ -61,6 +61,10 @@ class ObjectStorage:
         """Fail closed unless the backend can verify the sensitive live-copy contract."""
         self.backend.validate_sensitive_policy()
 
+    def binding_identity(self) -> str:
+        """Opaque identity of the configured live-copy namespace, excluding credentials."""
+        return self.backend.binding_identity()
+
     def verify(self, name: str, *, size: int, sha256: str) -> bool:
         digest = hashlib.sha256()
         total = 0
