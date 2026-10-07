@@ -116,6 +116,8 @@ attempt. Only an exact documented deletion result clears the reference and recor
 A documented already-deleted transcript can reconcile a lost acknowledgement. Recording 404 alone
 is not treated as verified deletion; missing/uncertain recording evidence requires operator
 reconciliation. Operators must never fabricate provider-cleanup evidence to make a case complete.
+A missing provider locator without the artifact's verified cleanup timestamp also blocks disposition;
+absence of a reference cannot stand in for evidence that the provider copy was deleted.
 
 A worker that loses its database connection while external IO remains in flight must be terminated
 before recovery proceeds: a PostgreSQL lock cannot fence a disconnected process at an external

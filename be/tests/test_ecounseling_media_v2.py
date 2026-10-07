@@ -1014,3 +1014,20 @@ def test_ingestion_cannot_adopt_or_delete_using_a_different_storage_namespace():
     artifact.refresh_from_db()
     assert artifact.status == "FAILED" and capture.provider_artifact_id
     assert "DELETE" not in provider.calls and storage.calls.count("SAVE") == count
+
+
+def test_missing_provider_locator_requires_verified_cleanup_evidence_before_disposition():
+    _, _, _, capture, artifact, storage = ready_artifact(pending=False)
+    assert capture.provider_artifact_id is None and artifact.provider_deleted_at is not None
+    dpo, case = v2_case(capture)
+    retention.approve_case(
+        actor=dpo, case_id=case.pk, expected_revision=case.revision, context=context(dpo)
+    )
+    artifact.provider_deleted_at = None
+    artifact.save()
+    with patch("compass.privacy_governance.media_disposition.ObjectStorage", return_value=storage):
+        execute_disposition(case.pk)
+    case.refresh_from_db()
+    artifact.refresh_from_db()
+    assert case.state != "COMPLETED" and case.blocker == "PROVIDER_CLEANUP_UNVERIFIED"
+    assert storage.objects and artifact.object_key and artifact.status == "STORED"

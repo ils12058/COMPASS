@@ -286,6 +286,8 @@ def source_eligibility(rule, source, now):
                 return eligible_at, DispositionBlocker.INGESTION_INCOMPLETE
             if artifact.claim_token:
                 return eligible_at, DispositionBlocker.PROVIDER_CLEANUP_UNVERIFIED
+            if not source.provider_artifact_id and artifact.provider_deleted_at is None:
+                return eligible_at, DispositionBlocker.PROVIDER_CLEANUP_UNVERIFIED
         elif not source.provider_artifact_id:
             return eligible_at, DispositionBlocker.ARTIFACT_ID_MISSING
     return eligible_at, None

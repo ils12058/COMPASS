@@ -40,6 +40,9 @@ def execute_media_disposition(case_id, token, *, source_version, provider_id):
                 _failure(case_id, token, DispositionBlocker.SOURCE_CHANGED)
                 return
             artifact_version, key = artifact.updated_at, artifact.object_key
+            if not provider_id and artifact.provider_deleted_at is None:
+                _failure(case_id, token, DispositionBlocker.PROVIDER_CLEANUP_UNVERIFIED)
+                return
         # All network work is outside PostgreSQL transactions. PROCESSING blocks holds/retirement,
         # and the session advisory lock prevents ingestion/cleanup from touching this artifact.
         try:
