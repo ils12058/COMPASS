@@ -60,7 +60,6 @@ from compass.routine_interviews.services import (
     replace_my_intake,
     submit_my_intake,
 )
-from compass.service_catalog.models import ServiceProviderRole
 from compass.service_catalog.services import create_service, set_service_active
 from tests.canonical_service_helpers import legacy_counseling_service
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
@@ -117,11 +116,10 @@ def create_counseling_service(actor: User, *, modes: list[str] | None = None):
     service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
-        appointment_policy="OPTIONAL",
-        default_duration_minutes=60,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=modes or ["IN_PERSON", "ONLINE"],
-        provider_roles=["COUNSELOR"],
         context=context(actor),
     )
     return set_service_active(service_id=service.pk, is_active=True, context=context(actor))
@@ -989,11 +987,10 @@ def test_student_appointment_candidate_discovery_is_routine_owned_filtered_priva
     other_service = create_service(
         code="OTHER_SERVICE",
         name="Other Service",
-        appointment_policy="OPTIONAL",
-        default_duration_minutes=60,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=context(admin),
     )
     other_service = set_service_active(
@@ -1018,7 +1015,13 @@ def test_student_appointment_candidate_discovery_is_routine_owned_filtered_priva
     response = client.get("/api/v1/routine-interviews/me/appointment-candidates")
     assert response.status_code == 200
     body = response.json()
-    assert [row["id"] for row in body["items"]] == [str(older.pk), str(newer.pk)]
+    # A saved Appointment keeps its Routine Interview even if its delivery mode is no longer
+    # offered for new bookings (ADR-089).
+    assert [row["id"] for row in body["items"]] == [
+        str(older.pk),
+        str(newer.pk),
+        str(unsupported_mode.pk),
+    ]
     assert set(body["items"][0]) == {
         "id",
         "reference_code",
@@ -1033,7 +1036,6 @@ def test_student_appointment_candidate_discovery_is_routine_owned_filtered_priva
     assert "cancellation" not in serialized.lower()
     assert str(another_student.pk) not in serialized
     assert str(inactive_provider.pk) not in serialized
-    assert str(unsupported_mode.pk) not in serialized
     assert str(cancelled.pk) not in serialized
     assert str(completed.pk) not in serialized
     assert str(no_show.pk) not in serialized
@@ -1250,16 +1252,14 @@ def test_direct_options_fail_when_counselor_is_not_canonical_service_provider():
     assert inactive.json()["error"]["code"] == "routine_interview_appointment_invalid"
 
     service.is_active = True
-    service.save(update_fields=["is_active", "updated_at"])
-    ServiceProviderRole.objects.filter(service_id=service.pk).delete()
+    service.provider_coverage = "SELECTED_COUNSELORS"
+    service.save(update_fields=["is_active", "provider_coverage", "updated_at"])
     ineligible = client.get("/api/v1/routine-interviews/direct/options")
     assert ineligible.status_code == 409
     assert ineligible.json()["error"]["code"] == "routine_interview_appointment_invalid"
 
-    ServiceProviderRole.objects.create(
-        service=service,
-        role=Role.objects.get(code="COUNSELOR"),
-    )
+    service.provider_coverage = "ALL_COUNSELORS"
+    service.save(update_fields=["provider_coverage", "updated_at"])
     family = FormFamily.objects.get(key="routine_interview")
     FormRevision.objects.create(
         family=family,
@@ -1311,11 +1311,10 @@ def test_direct_encounter_candidates_use_shared_matching_privacy_order_and_final
     other_service = create_service(
         code="OTHER_ROUTINE_SERVICE",
         name="Other Routine Service",
-        appointment_policy="NONE",
-        default_duration_minutes=None,
+        appointment_booking_enabled=False,
+        default_appointment_duration_minutes=None,
         cancellation_cutoff_minutes=None,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=context(admin),
     )
     other_service = set_service_active(

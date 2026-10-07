@@ -97,16 +97,14 @@ def create_counseling_service(
     *,
     active: bool = True,
     delivery_modes: list[str] | None = None,
-    provider_roles: list[str] | None = None,
 ):
     service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
-        appointment_policy="OPTIONAL",
-        default_duration_minutes=60,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=delivery_modes or ["IN_PERSON", "ONLINE"],
-        provider_roles=provider_roles or ["COUNSELOR"],
         context=context(actor),
     )
     if active:
@@ -458,11 +456,10 @@ def test_linked_create_rejects_wrong_service_and_smuggled_student_or_mode():
     other_service = create_service(
         code="GOOD_MORAL",
         name="Good Moral",
-        appointment_policy="OPTIONAL",
-        default_duration_minutes=60,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=context(admin),
     )
     other_service = set_service_active(
@@ -928,11 +925,10 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
     other_service = create_service(
         code="OTHER_APPOINTMENT_SERVICE",
         name="Other Appointment Service",
-        appointment_policy="OPTIONAL",
-        default_duration_minutes=60,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=context(admin),
     )
     other_service = set_service_active(
@@ -1011,7 +1007,9 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
     )
     assert response.status_code == 200
     ids = {row["id"] for row in response.json()["items"]}
-    assert ids == {str(scheduled.pk), str(completed.pk)}
+    # The Counselor's saved Appointments stay recordable even when their delivery mode is no
+    # longer offered for new bookings (ADR-089).
+    assert ids == {str(scheduled.pk), str(completed.pk), str(unsupported_mode.pk)}
     assert {row["status"] for row in response.json()["items"]} == {
         AppointmentStatus.SCHEDULED,
         AppointmentStatus.COMPLETED,
@@ -1038,7 +1036,6 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
         no_show,
         wrong_provider,
         inactive,
-        unsupported_mode,
         wrong_service,
         used,
     ):
@@ -1047,7 +1044,11 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
     assert "cancellation" not in serialized.lower()
 
     candidates = list_appointment_candidates(counselor=counselor)
-    assert {item.pk for item in candidates.items} == {scheduled.pk, completed.pk}
+    assert {item.pk for item in candidates.items} == {
+        scheduled.pk,
+        completed.pk,
+        unsupported_mode.pk,
+    }
 
     started_at, ended_at = actual_times()
     created = create_encounter(
@@ -1080,7 +1081,8 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
     )
     assert auth_client(other).get("/api/v1/counseling/encounter-options").status_code == 403
 
-    service.provider_role_assignments.all().delete()
+    # Coverage limited to other Counselors makes this Counselor ineligible for new direct work.
+    type(service).objects.filter(pk=service.pk).update(provider_coverage="SELECTED_COUNSELORS")
     ineligible = client.get("/api/v1/counseling/encounter-options")
     assert ineligible.status_code == 409
     assert ineligible.json()["error"]["code"] == "counseling_not_permitted"
@@ -1186,11 +1188,10 @@ def test_historical_encounter_appointment_candidates_mirror_update_authority():
     other_service = create_service(
         code="CORRECTION_OTHER",
         name="Correction Other",
-        appointment_policy="OPTIONAL",
-        default_duration_minutes=60,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=context(admin),
     )
     other_service = set_service_active(
@@ -1256,8 +1257,8 @@ def test_historical_encounter_appointment_candidates_mirror_update_authority():
 
     # Simulate historical drift; normal Catalog operations now forbid this transition.
     service.is_active = False
-    service.save(update_fields=["is_active", "updated_at"])
-    service.provider_role_assignments.all().delete()
+    service.provider_coverage = "SELECTED_COUNSELORS"
+    service.save(update_fields=["is_active", "provider_coverage", "updated_at"])
 
     client = auth_client(counselor)
     response = client.get(f"/api/v1/counseling/encounters/{item.pk}/appointment-candidates")

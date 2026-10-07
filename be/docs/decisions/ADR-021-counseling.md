@@ -1,5 +1,9 @@
 # ADR-021: Counseling encounter foundation
 
+## Status
+
+Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) separates NEW direct Counseling (current Service qualification and delivery modes) from Appointment-backed Encounters (the Appointment's saved provenance).
+
 ## Context
 
 COMPASS needs a canonical record that Counseling actually occurred. Appointment remains a scheduled reservation; Availability remains potential scheduling time; Organization remains default routing/responsibility; Service Catalog remains the source of Service identity, delivery-mode support, and provider-role eligibility. Counseling must not collapse those domains or pre-build Routine Interview, Referral, Call Slip, Case Record, ServiceDelivery, e-Counseling delivery, or a generic workflow/form engine.

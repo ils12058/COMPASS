@@ -1,6 +1,7 @@
 # ADR-050: Final Operational Gap Closure
 
 - **Status:** Accepted
+- **Refined by:** [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) — Counselor remains the only provider class; Services now choose all or selected Counselors instead of a provider-role checkbox.
 - **Date:** 2026-09-20
 
 ## Context

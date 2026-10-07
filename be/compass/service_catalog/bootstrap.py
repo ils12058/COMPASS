@@ -16,18 +16,18 @@ from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import (
     MAX_SERVICE_DURATION_MINUTES,
     MIN_SERVICE_DURATION_MINUTES,
-    AppointmentPolicy,
     DeliveryMode,
     Service,
     ServiceDeliveryMode,
-    ServiceProviderRole,
+    ServiceProviderCoverage,
 )
 from compass.service_catalog.services import (
     InvalidServiceCatalogInput,
+    ServiceActivationBlocker,
     ServiceCatalogConflict,
-    _configured_modes,
-    _configured_provider_roles,
+    _current_configuration,
     _validate_active_configuration,
+    activation_blockers,
     set_service_active,
     update_service,
 )
@@ -54,21 +54,15 @@ def canonical_counseling_readiness() -> tuple[bool, str]:
         return False, "missing"
     if not service.is_active:
         return False, "inactive"
-    modes = _configured_modes(service.pk)
-    roles = _configured_provider_roles(service.pk)
-    if "COUNSELOR" not in roles:
-        return False, "counselor_provider_missing"
-    if not modes or not modes <= set(DeliveryMode.values):
+    configuration = _current_configuration(service)
+    if not configuration.delivery_modes or not configuration.delivery_modes <= set(
+        DeliveryMode.values
+    ):
         return False, "delivery_modes_invalid"
+    if ServiceActivationBlocker.SELECTED_COUNSELORS_MISSING in activation_blockers(service):
+        return False, "selected_counselors_missing"
     try:
-        _validate_active_configuration(
-            name=service.name,
-            appointment_policy=service.appointment_policy,
-            default_duration_minutes=service.default_duration_minutes,
-            cancellation_cutoff_minutes=service.cancellation_cutoff_minutes,
-            delivery_modes=modes,
-            provider_roles=roles,
-        )
+        _validate_active_configuration(configuration)
     except (InvalidServiceCatalogInput, ServiceCatalogConflict):
         return False, "active_configuration_invalid"
     return True, "ok"
@@ -79,7 +73,9 @@ def sync_canonical_services() -> CanonicalServiceSyncResult:
     """Create or reconcile COUNSELING after identity policy sync.
 
     Locking the canonical Role serializes concurrent sync commands, including the
-    absent-Service case where there is no Service row to lock yet.
+    absent-Service case where there is no Service row to lock yet. Valid operator configuration,
+    including selected-Counselor coverage and enabled ONLINE delivery, is preserved; only
+    structural drift is repaired (ADR-089).
     """
     counselor = Role.objects.select_for_update().filter(code="COUNSELOR").first()
     if counselor is None:
@@ -95,25 +91,18 @@ def sync_canonical_services() -> CanonicalServiceSyncResult:
                 service = Service.objects.create(
                     code=COUNSELING_SERVICE_CODE,
                     name=COUNSELING_NAME,
-                    appointment_policy=AppointmentPolicy.OPTIONAL,
-                    default_duration_minutes=COUNSELING_DURATION_MINUTES,
+                    appointment_booking_enabled=True,
+                    default_appointment_duration_minutes=COUNSELING_DURATION_MINUTES,
                     cancellation_cutoff_minutes=COUNSELING_CANCELLATION_CUTOFF_MINUTES,
                     requires_current_inventory=False,
+                    provider_coverage=ServiceProviderCoverage.ALL_COUNSELORS,
                     is_active=True,
                 )
         except IntegrityError:
             service = Service.objects.select_for_update().get(code=COUNSELING_SERVICE_CODE)
         else:
             ServiceDeliveryMode.objects.create(service=service, mode=DeliveryMode.IN_PERSON)
-            ServiceProviderRole.objects.create(service=service, role=counselor)
-            _validate_active_configuration(
-                name=service.name,
-                appointment_policy=service.appointment_policy,
-                default_duration_minutes=service.default_duration_minutes,
-                cancellation_cutoff_minutes=service.cancellation_cutoff_minutes,
-                delivery_modes=frozenset({DeliveryMode.IN_PERSON}),
-                provider_roles=frozenset({"COUNSELOR"}),
-            )
+            _validate_active_configuration(_current_configuration(service))
             record_event(
                 context=AuditContext.system(),
                 action=SERVICE_CREATED,
@@ -132,40 +121,33 @@ def sync_canonical_services() -> CanonicalServiceSyncResult:
     ):
         changes["name"] = COUNSELING_NAME
 
-    policy = service.appointment_policy
-    if policy not in AppointmentPolicy.values:
-        policy = AppointmentPolicy.OPTIONAL
-        changes["appointment_policy"] = policy
-    duration = service.default_duration_minutes
-    if policy in {AppointmentPolicy.OPTIONAL, AppointmentPolicy.REQUIRED} and (
+    duration = service.default_appointment_duration_minutes
+    if service.appointment_booking_enabled and (
         duration is None
         or not MIN_SERVICE_DURATION_MINUTES <= duration <= MAX_SERVICE_DURATION_MINUTES
     ):
-        changes["default_duration_minutes"] = COUNSELING_DURATION_MINUTES
-    elif (
-        duration is not None
-        and not MIN_SERVICE_DURATION_MINUTES <= duration <= MAX_SERVICE_DURATION_MINUTES
-    ):
-        changes["default_duration_minutes"] = None
-    if policy == AppointmentPolicy.NONE and service.cancellation_cutoff_minutes is not None:
-        changes["cancellation_cutoff_minutes"] = None
+        changes["default_appointment_duration_minutes"] = COUNSELING_DURATION_MINUTES
 
-    modes = _configured_modes(service.pk)
-    valid_modes = modes & set(DeliveryMode.values)
+    configuration = _current_configuration(service)
+    valid_modes = configuration.delivery_modes & set(DeliveryMode.values)
     if not valid_modes:
         valid_modes = frozenset({DeliveryMode.IN_PERSON})
-    if modes != valid_modes:
+    if configuration.delivery_modes != valid_modes:
         changes["delivery_modes"] = sorted(valid_modes)
 
-    roles = _configured_provider_roles(service.pk)
-    valid_roles = frozenset({"COUNSELOR"})
-    if roles != valid_roles:
-        changes["provider_roles"] = sorted(valid_roles)
+    # Provider coverage is an institutional choice: sync never widens or rewrites it. A selection
+    # left without an active Counselor is reported below for an operator to correct.
 
     context = AuditContext.system()
     was_inactive = not service.is_active
     if changes:
-        service = update_service(service_id=service.pk, changes=changes, context=context)
+        # Repairs restore validity for new work; existing Appointments keep their provenance.
+        service = update_service(
+            service_id=service.pk,
+            changes=changes,
+            context=context,
+            acknowledge_scheduling_consequences=True,
+        )
     if not service.is_active:
         service = set_service_active(service_id=service.pk, is_active=True, context=context)
     valid, reason = canonical_counseling_readiness()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from uuid import uuid4
 
 import pytest
 from django.test import override_settings
@@ -10,6 +11,7 @@ from compass.service_catalog.bootstrap import sync_canonical_services
 from compass.service_catalog.models import ServiceDeliveryMode
 from compass.service_catalog.services import (
     ServiceSchedulingConsequenceReviewRequired,
+    set_service_active,
     update_service,
 )
 from tests.test_appointments import (
@@ -34,20 +36,33 @@ def _appointment_snapshot(item) -> tuple[object, ...]:
         item.service_id,
         item.delivery_mode,
         item.cancellation_cutoff_minutes,
+        item.service_name_snapshot,
+        item.reference_code,
     )
+
+
+def _reference() -> str:
+    # Appointment reference codes are at most 32 characters.
+    return f"APT-T-{uuid4().hex[:12].upper()}"
 
 
 def _future_appointment(
     *, service, provider, student, mode: str = "ONLINE", status: str = "SCHEDULED"
 ):
     return create_list_appointment(
-        reference_code=f"APT-{service.code}-{mode}-{status}",
+        reference_code=_reference(),
         student=student,
         provider=provider,
         service=service,
         starts_at=future_local_start(),
         status=status,
         delivery_mode=mode,
+    )
+
+
+def _latest_update(service):
+    return AuditEvent.objects.filter(action="service.updated", target_id=str(service.pk)).latest(
+        "occurred_at"
     )
 
 
@@ -69,8 +84,9 @@ def test_ordinary_service_edits_need_no_acknowledgement_and_keep_appointment_sna
     updated = update_service(
         service_id=service.pk,
         changes={
+            "name": "Renamed Service",
             "description": "Updated description",
-            "default_duration_minutes": 45,
+            "default_appointment_duration_minutes": 45,
             "cancellation_cutoff_minutes": 15,
             "requires_current_inventory": True,
         },
@@ -78,10 +94,11 @@ def test_ordinary_service_edits_need_no_acknowledgement_and_keep_appointment_sna
     )
 
     assert updated.description == "Updated description"
-    assert updated.default_duration_minutes == 45
+    assert updated.default_appointment_duration_minutes == 45
     assert updated.cancellation_cutoff_minutes == 15
     assert updated.requires_current_inventory
     assert _appointment_snapshot(appointment) == before
+    assert "scheduling_consequence_acknowledged" not in _latest_update(service).metadata
 
 
 @pytest.mark.django_db
@@ -120,11 +137,10 @@ def test_delivery_mode_removal_requires_review_only_when_future_scheduled_depend
 
     assert {row.mode for row in updated.delivery_mode_assignments.all()} == {"IN_PERSON"}
     assert _appointment_snapshot(appointment) == before
-    event = AuditEvent.objects.filter(action="service.updated", target_id=str(service.pk)).latest(
-        "created_at"
-    )
+    event = _latest_update(service)
     assert event.metadata["scheduling_consequence_acknowledged"] is True
     assert event.metadata["existing_appointment_dependency_detected"] is True
+    assert event.metadata["provider_dependency_detected"] is False
     assert event.metadata["counseling_online_enabled"] is False
 
 
@@ -154,7 +170,7 @@ def test_removing_unused_delivery_mode_does_not_require_review():
 
 
 @pytest.mark.django_db
-def test_appointment_policy_none_requires_review_and_preserves_existing_reservation():
+def test_disabling_booking_requires_review_and_preserves_existing_reservation():
     sync_policy()
     actor = make_user("policy-admin@example.edu", "IT_ADMIN")
     provider = make_user("policy-provider@example.edu", "COUNSELOR")
@@ -168,10 +184,7 @@ def test_appointment_policy_none_requires_review_and_preserves_existing_reservat
     )
     before = _appointment_snapshot(appointment)
 
-    changes = {
-        "appointment_policy": "NONE",
-        "cancellation_cutoff_minutes": None,
-    }
+    changes = {"appointment_booking_enabled": False}
     with pytest.raises(ServiceSchedulingConsequenceReviewRequired):
         update_service(
             service_id=service.pk,
@@ -180,7 +193,7 @@ def test_appointment_policy_none_requires_review_and_preserves_existing_reservat
         )
 
     service.refresh_from_db()
-    assert service.appointment_policy == "OPTIONAL"
+    assert service.appointment_booking_enabled is True
     assert service.cancellation_cutoff_minutes == 30
     assert _appointment_snapshot(appointment) == before
 
@@ -190,13 +203,14 @@ def test_appointment_policy_none_requires_review_and_preserves_existing_reservat
         context=context(actor),
         acknowledge_scheduling_consequences=True,
     )
-    assert updated.appointment_policy == "NONE"
+    assert updated.appointment_booking_enabled is False
+    assert updated.default_appointment_duration_minutes is None
     assert updated.cancellation_cutoff_minutes is None
     assert _appointment_snapshot(appointment) == before
 
 
 @pytest.mark.django_db
-def test_policy_none_ignores_terminal_appointments_and_optional_required_transition():
+def test_disabling_booking_ignores_terminal_appointments():
     sync_policy()
     actor = make_user("terminal-admin@example.edu", "IT_ADMIN")
     provider = make_user("terminal-provider@example.edu", "COUNSELOR")
@@ -205,7 +219,7 @@ def test_policy_none_ignores_terminal_appointments_and_optional_required_transit
 
     for index, status in enumerate(("COMPLETED", "CANCELLED", "NO_SHOW"), start=1):
         create_list_appointment(
-            reference_code=f"APT-TERMINAL-{index}",
+            reference_code=_reference(),
             student=student,
             provider=provider,
             service=service,
@@ -214,22 +228,107 @@ def test_policy_none_ignores_terminal_appointments_and_optional_required_transit
             delivery_mode="ONLINE",
         )
 
-    required = update_service(
+    disabled = update_service(
         service_id=service.pk,
-        changes={"appointment_policy": "REQUIRED"},
+        changes={"appointment_booking_enabled": False},
         context=context(actor),
     )
-    assert required.appointment_policy == "REQUIRED"
+    assert disabled.appointment_booking_enabled is False
 
-    none = update_service(
+
+@pytest.mark.django_db
+def test_provider_coverage_change_affecting_future_appointments_requires_review():
+    sync_policy()
+    actor = make_user("coverage-admin@example.edu", "IT_ADMIN")
+    booked = make_user("coverage-booked@example.edu", "COUNSELOR")
+    kept = make_user("coverage-kept@example.edu", "COUNSELOR")
+    student = make_user("coverage-student@example.edu", "STUDENT")
+    service = active_service(actor, code="COVERAGE_REVIEW")
+    appointment = _future_appointment(
+        service=service, provider=booked, student=student, mode="IN_PERSON"
+    )
+    before = _appointment_snapshot(appointment)
+
+    # Narrowing to a selection that still includes the booked Counselor needs no review.
+    narrowed = update_service(
         service_id=service.pk,
         changes={
-            "appointment_policy": "NONE",
-            "cancellation_cutoff_minutes": None,
+            "provider_coverage": "SELECTED_COUNSELORS",
+            "selected_counselor_ids": [booked.pk, kept.pk],
         },
         context=context(actor),
     )
-    assert none.appointment_policy == "NONE"
+    assert narrowed.provider_coverage == "SELECTED_COUNSELORS"
+
+    # Removing the booked Counselor does.
+    with pytest.raises(ServiceSchedulingConsequenceReviewRequired) as review:
+        update_service(
+            service_id=service.pk,
+            changes={"selected_counselor_ids": [kept.pk]},
+            context=context(actor),
+        )
+    assert review.value.provider_dependency_detected is True
+    assert review.value.existing_appointment_dependency_detected is False
+
+    update_service(
+        service_id=service.pk,
+        changes={"selected_counselor_ids": [kept.pk]},
+        context=context(actor),
+        acknowledge_scheduling_consequences=True,
+    )
+    assert _appointment_snapshot(appointment) == before
+    assert _latest_update(service).metadata["provider_dependency_detected"] is True
+
+    # Widening back to all Counselors removes nobody, so it needs no review.
+    widened = update_service(
+        service_id=service.pk,
+        changes={"provider_coverage": "ALL_COUNSELORS", "selected_counselor_ids": []},
+        context=context(actor),
+    )
+    assert widened.provider_coverage == "ALL_COUNSELORS"
+
+
+@pytest.mark.django_db
+def test_disabling_a_service_with_future_appointments_requires_review_and_keeps_them():
+    sync_policy()
+    actor = make_user("disable-admin@example.edu", "IT_ADMIN")
+    provider = make_user("disable-provider@example.edu", "COUNSELOR")
+    student = make_user("disable-student@example.edu", "STUDENT")
+    service = active_service(actor, code="DISABLE_REVIEW")
+    appointment = _future_appointment(
+        service=service, provider=provider, student=student, mode="IN_PERSON"
+    )
+    before = _appointment_snapshot(appointment)
+
+    client = auth_client(actor)
+    headers = csrf(client)
+    blocked = client.post(
+        f"/api/v1/services/{service.pk}/disable",
+        data=json.dumps({}),
+        content_type="application/json",
+        **headers,
+    )
+    assert blocked.status_code == 409
+    assert blocked.json()["error"]["code"] == "service_scheduling_consequence_review_required"
+    assert blocked.json()["error"]["details"]["existing_appointment_dependency_detected"] is True
+    service.refresh_from_db()
+    assert service.is_active
+
+    disabled = client.post(
+        f"/api/v1/services/{service.pk}/disable",
+        data=json.dumps({"acknowledge_scheduling_consequences": True}),
+        content_type="application/json",
+        **headers,
+    )
+    assert disabled.status_code == 200
+    assert disabled.json()["is_active"] is False
+    assert _appointment_snapshot(appointment) == before
+
+    # Without future scheduled Appointments, disabling needs no review.
+    unused = active_service(actor, code="DISABLE_UNUSED")
+    assert not set_service_active(
+        service_id=unused.pk, is_active=False, context=context(actor)
+    ).is_active
 
 
 @pytest.mark.django_db
@@ -303,6 +402,7 @@ def test_service_update_api_exposes_stable_review_required_code_and_acknowledgem
     assert blocked.json()["error"]["code"] == "service_scheduling_consequence_review_required"
     assert blocked.json()["error"]["details"] == {
         "existing_appointment_dependency_detected": True,
+        "provider_dependency_detected": False,
         "counseling_online_enabled": False,
     }
 
@@ -328,12 +428,13 @@ def test_canonical_counseling_online_requires_review_but_not_provider_readiness(
     result = sync_canonical_services()
     service_id = result.service_id
 
-    with pytest.raises(ServiceSchedulingConsequenceReviewRequired):
+    with pytest.raises(ServiceSchedulingConsequenceReviewRequired) as review:
         update_service(
             service_id=service_id,
             changes={"delivery_modes": ["IN_PERSON", "ONLINE"]},
             context=context(make_user("counseling-admin@example.edu", "IT_ADMIN")),
         )
+    assert review.value.counseling_online_enabled is True
 
     actor = make_user("counseling-admin-ack@example.edu", "IT_ADMIN")
     updated = update_service(

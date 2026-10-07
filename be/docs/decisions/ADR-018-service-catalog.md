@@ -1,5 +1,9 @@
 # ADR-018: Service Catalog foundation
 
+## Status
+
+Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) replaces the three-state appointment policy with a two-state booking capability, makes Counselor the fixed provider class with all-or-selected Counselor coverage, and keeps role-level provider rows as legacy history. The original foundation below is preserved as history.
+
 ## Context
 
 COMPASS needs a stable way to describe the Guidance and Counseling Office services that exist before Availability, Appointment, or domain-specific workflows can be modeled. Appointment is shared scheduling, not the parent object for every office workflow. Some services are not normally scheduled, some may optionally use scheduling, and others may require it.

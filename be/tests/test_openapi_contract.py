@@ -141,6 +141,8 @@ EXPECTED_OPERATION_IDS = {
     "servicesUpdate",
     "servicesEnable",
     "servicesDisable",
+    "servicesListProviderCandidates",
+    "servicesGetProviders",
     "availabilityGetOfficeWeekly",
     "availabilityReplaceOfficeWeekly",
     "availabilityListOfficeExceptions",
@@ -1784,10 +1786,24 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         ]
     )
     assert schemas["Effect"]["enum"] == ["GRANT", "REVOKE"]
-    assert schemas["AppointmentPolicy"]["enum"] == ["NONE", "OPTIONAL", "REQUIRED"]
+    # ADR-089: two-state booking and Counselor coverage replace the three-state policy and
+    # provider-role configuration.
+    for retired in ("AppointmentPolicy", "ProviderRoleCode", "ConfigurableProviderRoleCode"):
+        assert retired not in schemas
     assert schemas["DeliveryMode"]["enum"] == ["IN_PERSON", "ONLINE"]
-    assert schemas["ProviderRoleCode"]["enum"] == ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]
-    assert schemas["ConfigurableProviderRoleCode"]["enum"] == ["COUNSELOR"]
+    assert schemas["ServiceProviderCoverage"]["enum"] == [
+        "ALL_COUNSELORS",
+        "SELECTED_COUNSELORS",
+    ]
+    for schema_name in ("ServiceResponse", "ServiceCreateRequest", "ServiceUpdateRequest"):
+        properties = schemas[schema_name]["properties"]
+        assert "appointment_booking_enabled" in properties
+        assert "default_appointment_duration_minutes" in properties
+        assert "provider_coverage" in properties
+        assert not {"appointment_policy", "provider_roles", "default_duration_minutes"} & set(
+            properties
+        )
+    assert set(schemas["ServiceProviderCandidate"]["properties"]) == {"id", "display_name"}
     assert schemas["Weekday"]["enum"] == [
         "MONDAY",
         "TUESDAY",
@@ -2107,9 +2123,8 @@ def test_appointment_frontend_readiness_openapi_contract() -> None:
         "code",
         "name",
         "description",
-        "appointment_policy",
         "delivery_modes",
-        "default_duration_minutes",
+        "default_appointment_duration_minutes",
         "cancellation_cutoff_minutes",
         "requires_current_inventory",
     }
@@ -2310,6 +2325,7 @@ def test_routine_interview_candidate_discovery_openapi_contract() -> None:
     assert set(schemas["RoutineInventoryContext"]["properties"]) == {
         "id",
         "academic_year",
+        "available",
         "full_name",
         "course",
         "major",

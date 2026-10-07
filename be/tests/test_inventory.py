@@ -99,12 +99,11 @@ def active_service(actor: User, *, requires_inventory: bool):
     service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
-        appointment_policy="OPTIONAL",
-        default_duration_minutes=60,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         requires_current_inventory=requires_inventory,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=context(actor),
     )
     return set_service_active(service_id=service.pk, is_active=True, context=context(actor))

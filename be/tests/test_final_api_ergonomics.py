@@ -152,15 +152,14 @@ def auth_client(user: User) -> Client:
     return client
 
 
-def make_service(actor: User, *, duration: int = 60, policy: str = "OPTIONAL"):
+def make_service(actor: User, *, duration: int = 60):
     service = create_service(
         code=f"ERGONOMICS_{uuid4().hex[:8].upper()}",
         name="Ergonomics Service",
-        appointment_policy=policy,
-        default_duration_minutes=duration,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=duration,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=context(actor),
     )
     return set_service_active(
@@ -703,8 +702,8 @@ def test_reschedule_slots_exclude_self_preserve_snapshot_duration_and_apply_stud
         service=service,
         starts_at=target + timedelta(hours=1),
     )
-    service.default_duration_minutes = 30
-    service.save(update_fields=["default_duration_minutes", "updated_at"])
+    service.default_appointment_duration_minutes = 30
+    service.save(update_fields=["default_appointment_duration_minutes", "updated_at"])
 
     before_cutoff = target
     own = list_reschedule_slots(
@@ -1053,9 +1052,8 @@ def test_slot_discovery_rejects_non_schedulable_service():
     service = create_service(
         code=f"NO_APPOINTMENT_{uuid4().hex[:8].upper()}",
         name="No Appointment",
-        appointment_policy="NONE",
+        appointment_booking_enabled=False,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=context(admin),
     )
     service = set_service_active(

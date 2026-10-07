@@ -32,7 +32,7 @@ from compass.notifications.services import create_notification_for_event
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import DeliveryMode, Service
 from compass.service_catalog.services import (
-    provider_role_eligible,
+    service_counselor_eligible,
     service_supports_delivery_mode,
 )
 
@@ -233,12 +233,18 @@ def _validate_active_student(user: User) -> None:
         raise CounselingNotPermitted("The selected account must be an active Student.")
 
 
-def _validate_service_for_new_encounter(
-    *, service: Service, counselor: User, delivery_mode: str
-) -> None:
+def _validate_canonical_service(service: Service) -> None:
     if service.code != COUNSELING_SERVICE_CODE or not service.is_active:
         raise CounselingConfigurationConflict("The canonical COUNSELING Service is not active.")
-    if not provider_role_eligible(service, counselor):
+
+
+def _validate_service_for_direct_encounter(
+    *, service: Service, counselor: User, delivery_mode: str
+) -> None:
+    """NEW direct Counseling follows CURRENT Service configuration (ADR-089)."""
+
+    _validate_canonical_service(service)
+    if not service_counselor_eligible(service, counselor):
         raise CounselingNotPermitted("The COUNSELING Service does not permit this Counselor.")
     if not service_supports_delivery_mode(service, delivery_mode):
         raise CounselingNotPermitted(
@@ -475,11 +481,10 @@ def create_encounter(
             _validate_active_student(locked_student)
             service = get_counseling_service(require_active=True, for_update=True)
             normalized_mode = _normalize_delivery_mode(appointment.delivery_mode)
-            _validate_service_for_new_encounter(
-                service=service,
-                counselor=locked_counselor,
-                delivery_mode=normalized_mode,
-            )
+            # Fulfilling a saved Appointment trusts its provenance: its Student, Counselor,
+            # Service, and delivery mode stand even if the Service's current delivery modes or
+            # provider coverage changed after booking (ADR-089).
+            _validate_canonical_service(service)
             if appointment.service_id != service.pk:
                 raise CounselingAppointmentInvalid(
                     "The linked Appointment does not use the canonical COUNSELING Service."
@@ -551,7 +556,7 @@ def create_encounter(
         _validate_active_counselor(locked_counselor)
         _validate_active_student(locked_student)
         service = get_counseling_service(require_active=True, for_update=True)
-        _validate_service_for_new_encounter(
+        _validate_service_for_direct_encounter(
             service=service,
             counselor=locked_counselor,
             delivery_mode=normalized_mode,
@@ -607,7 +612,7 @@ def get_encounter_creation_options(
 ) -> CounselingEncounterCreationOptions:
     _validate_active_counselor(counselor)
     service = get_counseling_service(require_active=True)
-    if not provider_role_eligible(service, counselor):
+    if not service_counselor_eligible(service, counselor):
         raise CounselingNotPermitted("The COUNSELING Service does not permit this Counselor.")
     delivery_modes = _configured_delivery_modes(service)
     if not delivery_modes:
@@ -631,8 +636,9 @@ def list_appointment_candidates(
     page, page_size = _validate_page(page, page_size)
     term = _clean_search(search)
 
-    options = get_encounter_creation_options(counselor)
-    delivery_modes = options.delivery_modes
+    # The Counselor's own saved Appointments, whatever the Service's current delivery modes or
+    # provider coverage: recording what happened under them never depends on later changes.
+    service = get_counseling_service(require_active=True)
 
     used = CounselingEncounter.objects.filter(appointment_id=OuterRef("pk"))
     queryset = (
@@ -647,9 +653,8 @@ def list_appointment_candidates(
             provider_id=counselor.pk,
             student__is_active=True,
             student__role__code="STUDENT",
-            service_id=options.service.pk,
+            service_id=service.pk,
             status__in=(AppointmentStatus.SCHEDULED, AppointmentStatus.COMPLETED),
-            delivery_mode__in=delivery_modes,
         )
         .annotate(_counseling_encounter_exists=Exists(used))
         .filter(_counseling_encounter_exists=False)

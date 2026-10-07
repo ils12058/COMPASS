@@ -16,6 +16,8 @@ import { CanonicalPagination } from "@/features/portal/components/canonical-pagi
 import { describeResultPage } from "@/features/portal/components/result-context";
 import {
   replaceServicesQueryParam,
+  serviceBookingLabel,
+  serviceDeliveryLabel,
   ServicesListSkeleton,
   ServicesPageHeading,
   servicesErrorMessage,
@@ -23,23 +25,12 @@ import {
   ServicesStatusBadge,
   ServicesSystemRequiredBadge,
 } from "@/features/services/services-shared";
-import {
-  AppointmentPolicy,
-  DeliveryMode,
-} from "@/lib/api/generated/model";
 import { useServicesList } from "@/lib/api/generated/services/services";
 
-function isAppointmentPolicy(value: string | null): value is AppointmentPolicy {
-  return (
-    value !== null &&
-    Object.values(AppointmentPolicy).includes(value as AppointmentPolicy)
-  );
-}
+type BookingFilter = "available" | "not_available";
 
-function policyLabel(policy: AppointmentPolicy): string {
-  if (policy === AppointmentPolicy.NONE) return "No appointment";
-  if (policy === AppointmentPolicy.OPTIONAL) return "Appointment optional";
-  return "Appointment required";
+function bookingFilter(value: string | null): BookingFilter | undefined {
+  return value === "available" || value === "not_available" ? value : undefined;
 }
 
 function descriptionExcerpt(value: string): string {
@@ -56,10 +47,7 @@ export function ServicesListPage() {
   const searchParams = useSearchParams();
 
   const search = (searchParams.get("search") ?? "").slice(0, 160).trim();
-  const requestedPolicy = searchParams.get("appointment_policy");
-  const appointmentPolicy = isAppointmentPolicy(requestedPolicy)
-    ? requestedPolicy
-    : undefined;
+  const booking = bookingFilter(searchParams.get("appointment_booking"));
   const requestedPage = Number.parseInt(searchParams.get("page") ?? "1", 10);
   const page = Number.isFinite(requestedPage) && requestedPage > 0
     ? requestedPage
@@ -71,21 +59,19 @@ export function ServicesListPage() {
     {
       ...(includeInactive ? { include_inactive: true } : {}),
       ...(search ? { search } : {}),
-      ...(appointmentPolicy
-        ? { appointment_policy: appointmentPolicy }
-        : {}),
+      ...(booking ? { appointment_booking_enabled: booking === "available" } : {}),
       page,
       page_size: 20,
     },
     { query: { retry: false } },
   );
 
-  function updatePolicy(value: string) {
+  function updateBooking(value: string) {
     router.replace(
       replaceServicesQueryParam(
         pathname,
         new URLSearchParams(searchParams.toString()),
-        "appointment_policy",
+        "appointment_booking",
         value,
       ),
       { scroll: false },
@@ -116,7 +102,7 @@ export function ServicesListPage() {
     );
   }
 
-  const hasFilters = Boolean(search || appointmentPolicy);
+  const hasFilters = Boolean(search || booking);
 
   return (
     <section aria-labelledby="services-heading">
@@ -135,27 +121,22 @@ export function ServicesListPage() {
       {/* The search applies as you type and the other choices apply on change. */}
       <FloatingListTools
         label="Service search and filters"
-        filterCount={[appointmentPolicy, includeInactive].filter(Boolean).length}
+        filterCount={[booking, includeInactive].filter(Boolean).length}
         clear={hasFilters || includeInactive ? (
           <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>
             Clear filters
           </Button>
         ) : undefined}
         filters={<>
-          <FilterField label="Appointment policy" htmlFor="services-policy-filter" className="sm:col-span-2">
+          <FilterField label="Appointment booking" htmlFor="services-booking-filter" className="sm:col-span-2">
             <Select
-              id="services-policy-filter"
-              value={appointmentPolicy ?? ""}
-              onChange={(event) => updatePolicy(event.target.value)}
+              id="services-booking-filter"
+              value={booking ?? ""}
+              onChange={(event) => updateBooking(event.target.value)}
             >
-              <option value="">All appointment policies</option>
-              <option value={AppointmentPolicy.NONE}>No appointment</option>
-              <option value={AppointmentPolicy.OPTIONAL}>
-                Appointment optional
-              </option>
-              <option value={AppointmentPolicy.REQUIRED}>
-                Appointment required
-              </option>
+              <option value="">All</option>
+              <option value="available">Available</option>
+              <option value="not_available">Not available</option>
             </Select>
           </FilterField>
         {canManage ? (
@@ -235,33 +216,18 @@ export function ServicesListPage() {
                       Delivery
                     </dt>
                     <dd className="mt-1 text-ink">
-                      {service.delivery_modes.length === 0
-                        ? "Not configured"
-                        : [
-                            service.delivery_modes.includes(
-                              DeliveryMode.IN_PERSON,
-                            )
-                              ? "In person"
-                              : null,
-                            service.delivery_modes.includes(DeliveryMode.ONLINE)
-                              ? "Online"
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join(", ")}
+                      {serviceDeliveryLabel(service.delivery_modes)}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
-                      Appointment
+                      Appointment booking
                     </dt>
                     <dd className="mt-1 text-ink">
-                      {policyLabel(service.appointment_policy)}
-                      {service.appointment_policy !== AppointmentPolicy.NONE &&
-                      service.default_duration_minutes !== null
-                        ? " · " +
-                          service.default_duration_minutes +
-                          " min"
+                      {serviceBookingLabel(service.appointment_booking_enabled)}
+                      {service.appointment_booking_enabled &&
+                      service.default_appointment_duration_minutes !== null
+                        ? " · " + service.default_appointment_duration_minutes + " min"
                         : ""}
                     </dd>
                   </div>

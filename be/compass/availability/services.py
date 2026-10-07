@@ -28,7 +28,7 @@ from compass.common.institutional_time import institution_timezone_name, institu
 from compass.service_catalog.models import DeliveryMode, Service
 from compass.service_catalog.services import (
     ELIGIBLE_PROVIDER_ROLE_CODES,
-    provider_role_eligible,
+    service_counselor_eligible,
     service_supports_delivery_mode,
 )
 
@@ -671,8 +671,8 @@ def compute_base_availability(
         raise AvailabilityNotApplicable("The requested Service is inactive.")
     if not service_supports_delivery_mode(service, requested_mode):
         raise AvailabilityNotApplicable("The Service does not support the requested delivery mode.")
-    if not provider_role_eligible(service, provider):
-        raise AvailabilityNotApplicable("The provider role is not eligible for this Service.")
+    if not service_counselor_eligible(service, provider):
+        raise AvailabilityNotApplicable("The provider does not currently provide this Service.")
 
     zone = institution_zone()
     range_start = datetime.combine(start_date, time.min, tzinfo=zone)
@@ -724,8 +724,13 @@ def compute_base_availability(
         for interval in normalize_intervals(clipped)
     )
 
-    if service.default_duration_minutes is not None:
-        minimum = timedelta(minutes=service.default_duration_minutes)
+    # The Appointment duration only shapes booking suitability, so it applies only while the
+    # Service accepts Appointments (ADR-089).
+    if (
+        service.appointment_booking_enabled
+        and service.default_appointment_duration_minutes is not None
+    ):
+        minimum = timedelta(minutes=service.default_appointment_duration_minutes)
         available = tuple(
             interval for interval in available if interval.ends_at - interval.starts_at >= minimum
         )

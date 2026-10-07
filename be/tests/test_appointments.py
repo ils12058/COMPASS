@@ -120,22 +120,20 @@ def active_service(
     actor: User,
     *,
     code: str = "APPOINTMENT_SERVICE",
-    policy: str = "OPTIONAL",
+    booking: bool = True,
     duration: int = 60,
     cutoff: int | None = 30,
     delivery_modes=None,
-    provider_roles=None,
     requires_current_inventory: bool = False,
 ):
     service = create_service(
         code=code,
         name=code.replace("_", " ").title(),
-        appointment_policy=policy,
-        default_duration_minutes=duration,
-        cancellation_cutoff_minutes=cutoff,
+        appointment_booking_enabled=booking,
+        default_appointment_duration_minutes=duration if booking else None,
+        cancellation_cutoff_minutes=cutoff if booking else None,
         requires_current_inventory=requires_current_inventory,
         delivery_modes=delivery_modes or ["IN_PERSON", "ONLINE"],
-        provider_roles=provider_roles or ["COUNSELOR"],
         context=context(actor),
     )
     return set_service_active(service_id=service.pk, is_active=True, context=context(actor))
@@ -313,9 +311,8 @@ def test_service_policy_and_delivery_mode_gate_booking():
     none_service = create_service(
         code="NO_APPOINTMENT",
         name="No Appointment",
-        appointment_policy="NONE",
+        appointment_booking_enabled=False,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=context(actor),
     )
     none_service = set_service_active(
@@ -450,7 +447,6 @@ def test_explicit_cross_scope_counselor_is_allowed_and_gss_is_not_student_select
     gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
     service = active_service(
         actor,
-        provider_roles=["COUNSELOR"],
     )
     replace_office_weekly(windows=[weekly()], context=context(actor))
     for provider in (default, other):
@@ -650,7 +646,7 @@ def test_service_duration_and_cutoff_are_booking_time_snapshots():
     )
     update_service(
         service_id=service.pk,
-        changes={"default_duration_minutes": 45, "cancellation_cutoff_minutes": 60},
+        changes={"default_appointment_duration_minutes": 45, "cancellation_cutoff_minutes": 60},
         context=context(actor),
     )
     second = create_student_appointment(
@@ -981,7 +977,7 @@ def test_database_constraints_preserve_local_appointment_invariants():
     service = create_service(
         code="CONSTRAINT_SERVICE",
         name="Constraint Service",
-        appointment_policy="NONE",
+        appointment_booking_enabled=False,
         context=context(student),
     )
     now = timezone.now()
@@ -1240,39 +1236,36 @@ def test_booking_service_discovery_is_appointment_owned_filtered_and_paginated()
     optional = active_service(
         admin,
         code="BOOK_OPTIONAL",
-        policy="OPTIONAL",
         delivery_modes=["IN_PERSON"],
     )
     required = active_service(
         admin,
         code="BOOK_REQUIRED",
-        policy="REQUIRED",
         delivery_modes=["ONLINE"],
         requires_current_inventory=True,
     )
     active_service(
         admin,
         code="BOOK_NONE",
-        policy="NONE",
-        cutoff=None,
+        booking=False,
         delivery_modes=["IN_PERSON"],
     )
     inactive = create_service(
         code="BOOK_INACTIVE",
         name="Book Inactive",
-        appointment_policy="OPTIONAL",
-        default_duration_minutes=60,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=context(admin),
     )
     invalid_provider = Service.objects.create(
         code="BOOK_NO_COUNSELOR",
         name="Book No Counselor",
-        appointment_policy="OPTIONAL",
-        default_duration_minutes=60,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
+        provider_coverage="SELECTED_COUNSELORS",
         is_active=True,
     )
     ServiceDeliveryMode.objects.create(service=invalid_provider, mode="IN_PERSON")
@@ -1301,9 +1294,8 @@ def test_booking_service_discovery_is_appointment_owned_filtered_and_paginated()
         "code",
         "name",
         "description",
-        "appointment_policy",
         "delivery_modes",
-        "default_duration_minutes",
+        "default_appointment_duration_minutes",
         "cancellation_cutoff_minutes",
         "requires_current_inventory",
     }
