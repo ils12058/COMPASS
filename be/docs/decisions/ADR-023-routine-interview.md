@@ -1,5 +1,12 @@
 # ADR-023: Interaction-specific Routine Interview
 
+## Status
+
+Accepted. [ADR-087](ADR-087-deterministic-routine-encounter-linking.md) refines "Encounter matching
+and finalization": COMPASS links the Counseling Encounter when the relationship becomes
+deterministic instead of at finalization. The rest of this decision, including independent
+Encounter recording and the Individual Inventory prerequisite, is unchanged.
+
 ## Context
 
 COMPASS needs a Routine Interview record without conflating four different concepts: the annual

@@ -31,6 +31,8 @@ import {
   CounselingQueryError,
   CounselingUnavailable,
   CounselingWorkspaceSkeleton,
+  contextEncounterState,
+  contextEncounterStateLabels,
   expiredContextEncounterMessage,
   formatCounselingDateTime,
 } from "@/features/counseling/counseling-shared";
@@ -58,8 +60,12 @@ import {
   useCounselingContextListHistory,
   useCounselingContextListSharedSummaries,
 } from "@/lib/api/generated/counseling/counseling";
-import { useRoutineInterviewsGetAssigned } from "@/lib/api/generated/routine-interviews/routine-interviews";
-import { getRoutineInterviewsListEncounterCandidatesQueryKey } from "@/lib/api/generated/routine-interviews/routine-interviews";
+import {
+  getRoutineInterviewsGetAssignedQueryKey,
+  getRoutineInterviewsListAssignedQueryKey,
+  getRoutineInterviewsListEncounterCandidatesQueryKey,
+  useRoutineInterviewsGetAssigned,
+} from "@/lib/api/generated/routine-interviews/routine-interviews";
 
 type ContextTabId = "OVERVIEW" | "ROUTINE" | "INVENTORY" | "SUPPORT_INDICATORS" | "HISTORY" | "SHARED_SUMMARIES";
 type ContextTab = { id: ContextTabId; label: string };
@@ -209,8 +215,10 @@ function CounselingWorkspaceContent({
   onContextInvalidated: (invalid: boolean) => void;
 }) {
   const queryClient = useQueryClient();
+  const { user } = usePortalSession();
   const [recordOpen, setRecordOpen] = useState(false);
   const [recordUncertain, setRecordUncertain] = useState(false);
+  const [recordNotice, setRecordNotice] = useState<string | null>(null);
   const [contextExpired, setContextExpired] = useState(false);
   const [contextPanelRevision, setContextPanelRevision] = useState(0);
 
@@ -231,19 +239,37 @@ function CounselingWorkspaceContent({
           studentName: overview.student.display_name,
           institutionalId: overview.student.institutional_id,
           deliveryMode: directDelivery,
+          // Recorded from this Routine Interview's workspace, so COMPASS links it on creation.
+          routineInterviewId: anchorId,
         }
       : undefined;
+  const encounterState = contextEncounterState(overview);
+  // Linking changes the Routine Interview, so recording here also needs Routine management.
+  const canRecord = access.canManageAssigned && (
+    anchorType !== CounselingContextAnchorType.ROUTINE_INTERVIEW || getRoutineInterviewAccess(user).canManageAssigned
+  );
 
   async function handleCreated() {
+    const routineId = overview.routine_interview?.id;
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: getCounselingContextGetOverviewQueryKey(anchorType, anchorId) }),
-      ...(anchorType === CounselingContextAnchorType.ROUTINE_INTERVIEW
-        ? [queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(anchorId) })]
+      // Recording links the Encounter to this context's Routine Interview.
+      ...(routineId
+        ? [
+            queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetAssignedQueryKey(routineId) }),
+            queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(routineId) }),
+            queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListAssignedQueryKey() }),
+          ]
         : []),
     ]);
     setRecordOpen(false);
     setContextPanelRevision((revision) => revision + 1);
     await onRefreshOverview();
+  }
+
+  async function handleAlreadyRecorded() {
+    await handleCreated();
+    setRecordNotice("This Routine Interview's encounter was already recorded. The latest details are now shown.");
   }
 
   async function handlePublished() {
@@ -270,12 +296,14 @@ function CounselingWorkspaceContent({
               <Metadata label="Delivery">{counselingDeliveryModeLabel(overview.delivery_mode)}</Metadata>
               <Metadata label="Available until">{formatCounselingDateTime(overview.valid_until)}</Metadata>
               <Metadata label="Routine Interview">{overview.routine_interview ? `${routineIntakeStatusLabel(overview.routine_interview.intake_status)} Intake · ${routineEvaluationStatusLabel(overview.routine_interview.evaluation_status)} Evaluation` : "No linked Routine Interview"}</Metadata>
-              <Metadata label="Counseling Encounter">{overview.matching_encounter ? "Recorded" : "Not yet recorded"}</Metadata>
+              <Metadata label="Counseling Encounter">{contextEncounterStateLabels[encounterState]}</Metadata>
             </dl>
-            {overview.matching_encounter ? (
-              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">Completed interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)}.</p><Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link></div>
-            ) : access.canManageAssigned ? (
-              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm font-medium text-ink">Counseling Encounter not yet recorded</p><Button className="mt-3" disabled={recordUncertain} onClick={() => setRecordOpen((open) => !open)}>{recordUncertain ? "Recording result unconfirmed" : recordOpen ? "Close recording" : "Record completed encounter"}</Button>{recordOpen ? preset ? <div className="mt-4"><RecordEncounterForm preset={preset} onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} onCreated={() => void handleCreated()} /></div> : <p role="alert" className="mt-3 text-sm text-danger">This interaction cannot be recorded from this page. Review its visit type and delivery mode.</p> : null}</div>
+            {overview.matching_encounter && encounterState === "RECORDED" ? (
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5">{recordNotice ? <p role="status" className="mb-2 text-sm text-ink">{recordNotice}</p> : null}<p className="text-sm text-muted">Completed interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)}.</p><Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link></div>
+            ) : overview.matching_encounter ? (
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A matching interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)} is not linked to this Routine Interview. If it is this interaction, choose it when finalizing the Counselor Evaluation.</p><Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link></div>
+            ) : canRecord ? (
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm font-medium text-ink">Counseling Encounter not yet recorded</p><Button className="mt-3" disabled={recordUncertain} onClick={() => setRecordOpen((open) => !open)}>{recordUncertain ? "Recording result unconfirmed" : recordOpen ? "Close recording" : "Record completed encounter"}</Button>{recordOpen ? preset ? <div className="mt-4"><RecordEncounterForm preset={preset} onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} onCreated={() => void handleCreated()} onAlreadyRecorded={() => void handleAlreadyRecorded()} /></div> : <p role="alert" className="mt-3 text-sm text-danger">This interaction cannot be recorded from this page. Review its visit type and delivery mode.</p> : null}</div>
             ) : null}
           </Panel>
 
@@ -389,7 +417,7 @@ function ContextOverview({ overview }: { overview: CounselingContextOverviewResp
         <Metadata label="Delivery mode">{counselingDeliveryModeLabel(overview.delivery_mode)}</Metadata>
         <Metadata label="Available until">{formatCounselingDateTime(overview.valid_until)}</Metadata>
         <Metadata label="Routine Interview">{overview.routine_interview ? `${routineIntakeStatusLabel(overview.routine_interview.intake_status)} Intake · ${routineEvaluationStatusLabel(overview.routine_interview.evaluation_status)} Evaluation` : "No Routine Interview is linked to this Counseling context."}</Metadata>
-        <Metadata label="Matching Encounter">{overview.matching_encounter ? "Counseling Encounter recorded" : "Counseling Encounter not yet recorded"}</Metadata>
+        <Metadata label="Counseling Encounter">{contextEncounterStateLabels[contextEncounterState(overview)]}</Metadata>
       </dl>
     </Panel>
   );
@@ -409,7 +437,7 @@ function RoutineContext({ routine, canManage }: { routine: QueryResultWithData<C
         />
         {detail.intake_status === "SUBMITTED" && detail.intake ? <div className="px-4 py-4 sm:px-5"><RoutineStudentIntakeReadOnly intake={detail.intake} /></div> : <PanelMessage role="status">Student Intake is still a draft. The Student’s answers become available after they submit their Intake.</PanelMessage>}
       </Panel>
-      {detail.intake_status !== "SUBMITTED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} /><PanelMessage>Counselor evaluation becomes available after the student submits the intake.</PanelMessage></Panel> : detail.evaluation_status === "FINALIZED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description={`Finalized ${detail.evaluation_finalized_at ? formatCounselingDateTime(detail.evaluation_finalized_at) : ""} · Read-only`} /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel> : canManage ? <RoutineCounselorEvaluationWorkspace key={detail.id} routineInterviewId={detail.id} entryMode={detail.entry_mode} initialEvaluation={detail.evaluation} evaluationFinalized={false} /> : <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description="Draft evaluation · Read-only for this account." /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel>}
+      {detail.intake_status !== "SUBMITTED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} /><PanelMessage>Counselor evaluation becomes available after the student submits the intake.</PanelMessage></Panel> : detail.evaluation_status === "FINALIZED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description={`Finalized ${detail.evaluation_finalized_at ? formatCounselingDateTime(detail.evaluation_finalized_at) : ""} · Read-only`} /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel> : canManage ? <RoutineCounselorEvaluationWorkspace key={detail.id} routineInterviewId={detail.id} entryMode={detail.entry_mode} linkedEncounter={detail.counseling_encounter} initialEvaluation={detail.evaluation} evaluationFinalized={false} /> : <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description="Draft evaluation · Read-only for this account." /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel>}
     </div>
   );
 }

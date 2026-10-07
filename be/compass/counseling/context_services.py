@@ -52,6 +52,8 @@ class ContextEncounterSummary:
     id: UUID
     started_at: datetime
     ended_at: datetime
+    # Whether this is the persisted Counseling Encounter of the context's Routine Interview.
+    routine_interview_linked: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,21 +216,26 @@ def get_context_overview(access: CounselingContextAccess) -> CounselingContextOv
             evaluation_status="FINALIZED" if routine.evaluation_finalized_at else "DRAFT",
         )
 
-    encounter_summary = None
-    if access.encounter_id is not None:
-        encounter = None
-        if routine is not None and routine.counseling_encounter_id == access.encounter_id:
-            encounter = routine.counseling_encounter
-        if encounter is None:
-            from .models import CounselingEncounter
+    # The Routine Interview's persisted Encounter is the recorded interaction, even when its times
+    # fall outside the window it would otherwise extend. Otherwise the access-window Encounter is
+    # shown, marked as not linked.
+    encounter = None
+    if routine is not None and routine.counseling_encounter_id is not None:
+        encounter = routine.counseling_encounter
+    elif access.encounter_id is not None:
+        from .models import CounselingEncounter
 
-            encounter = CounselingEncounter.objects.filter(pk=access.encounter_id).first()
-        if encounter is not None:
-            encounter_summary = ContextEncounterSummary(
-                id=encounter.pk,
-                started_at=encounter.started_at,
-                ended_at=encounter.ended_at,
-            )
+        encounter = CounselingEncounter.objects.filter(pk=access.encounter_id).first()
+    encounter_summary = None
+    if encounter is not None:
+        encounter_summary = ContextEncounterSummary(
+            id=encounter.pk,
+            started_at=encounter.started_at,
+            ended_at=encounter.ended_at,
+            routine_interview_linked=(
+                routine is not None and routine.counseling_encounter_id == encounter.pk
+            ),
+        )
 
     return CounselingContextOverview(
         student_id=student.pk,

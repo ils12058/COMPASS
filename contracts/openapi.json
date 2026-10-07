@@ -3721,6 +3721,10 @@
             "title": "Id",
             "type": "string"
           },
+          "routine_interview_linked": {
+            "title": "Routine Interview Linked",
+            "type": "boolean"
+          },
           "started_at": {
             "format": "date-time",
             "title": "Started At",
@@ -3730,7 +3734,8 @@
         "required": [
           "id",
           "started_at",
-          "ended_at"
+          "ended_at",
+          "routine_interview_linked"
         ],
         "title": "ContextEncounterResponse",
         "type": "object"
@@ -4454,6 +4459,18 @@
           },
           "entry_mode": {
             "$ref": "#/components/schemas/CounselingEntryMode"
+          },
+          "routine_interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routine Interview Id"
           },
           "started_at": {
             "format": "date-time",

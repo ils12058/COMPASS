@@ -129,6 +129,8 @@ class ContextEncounterResponse(StrictSchema):
     id: UUID
     started_at: datetime
     ended_at: datetime
+    # True when this is the persisted Counseling Encounter of the context's Routine Interview.
+    routine_interview_linked: bool
 
 
 class CounselingContextOverviewResponse(StrictSchema):
@@ -263,6 +265,7 @@ def _overview_payload(item) -> dict[str, object]:
                 "id": item.encounter.id,
                 "started_at": item.encounter.started_at,
                 "ended_at": item.encounter.ended_at,
+                "routine_interview_linked": item.encounter.routine_interview_linked,
             }
             if item.encounter is not None
             else None

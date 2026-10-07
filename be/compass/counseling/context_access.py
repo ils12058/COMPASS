@@ -164,13 +164,18 @@ def _candidate_direct_encounter(
             and routine_interview_encounter_matches(item=item, encounter=linked, now=now)
         ):
             return linked
+        # The persisted link is authoritative; another Encounter never stands in for it.
+        return None
 
+    # An unlinked Routine Interview (older records, or an Encounter recorded outside this
+    # context): a similar unlinked Encounter extends the access window but is never linked here.
     candidates = (
         CounselingEncounter.objects.select_related("service")
         .filter(
             student_id=item.student_id,
             counselor_id=item.counselor_id,
             appointment__isnull=True,
+            routine_interview__isnull=True,
             service__code=COUNSELING_SERVICE_CODE,
             entry_mode=item.entry_mode,
             delivery_mode=item.delivery_mode,

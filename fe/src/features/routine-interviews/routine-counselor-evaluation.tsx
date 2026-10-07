@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -20,6 +21,7 @@ import {
 import {
   RoutineEntryMode,
   type RoutineEncounterCandidate,
+  type RoutineEncounterSummary,
   type RoutineEvaluationPayload,
 } from "@/lib/api/generated/model";
 import {
@@ -172,11 +174,17 @@ export function RoutineCounselorEvaluationReadOnly({
 export function RoutineCounselorEvaluationWorkspace({
   routineInterviewId,
   entryMode,
+  linkedEncounter,
+  workspaceHref,
   initialEvaluation,
   evaluationFinalized,
 }: {
   routineInterviewId: string;
   entryMode: RoutineEntryMode;
+  // The Counseling Encounter COMPASS has linked to this Routine Interview, if any.
+  linkedEncounter: RoutineEncounterSummary | null;
+  // Where the completed interaction is recorded, when this page is not already that workspace.
+  workspaceHref?: string | null;
   initialEvaluation: RoutineEvaluationPayload;
   evaluationFinalized: boolean;
 }) {
@@ -297,6 +305,8 @@ export function RoutineCounselorEvaluationWorkspace({
       <RoutineEncounterFinalization
         routineInterviewId={routineInterviewId}
         entryMode={entryMode}
+        linkedEncounter={linkedEncounter}
+        workspaceHref={workspaceHref ?? null}
         disabled={dirty || save.isPending}
       />
     </Panel>
@@ -306,10 +316,14 @@ export function RoutineCounselorEvaluationWorkspace({
 function RoutineEncounterFinalization({
   routineInterviewId,
   entryMode,
+  linkedEncounter,
+  workspaceHref,
   disabled,
 }: {
   routineInterviewId: string;
   entryMode: RoutineEntryMode;
+  linkedEncounter: RoutineEncounterSummary | null;
+  workspaceHref: string | null;
   disabled: boolean;
 }) {
   const queryClient = useQueryClient();
@@ -318,11 +332,16 @@ function RoutineEncounterFinalization({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const appointmentBacked = entryMode === RoutineEntryMode.APPOINTMENT;
+  const linked = linkedEncounter !== null;
+  // Only an unlinked direct Routine Interview needs the Counselor to name an Encounter: one
+  // recorded outside its Counseling workspace. An Appointment-backed one resolves its single
+  // Appointment Encounter on the server.
+  const recovery = !linked && !appointmentBacked;
   const params = { page, page_size: 20 };
   const candidates = useRoutineInterviewsListEncounterCandidates(
     routineInterviewId,
     params,
-    { query: { retry: false } },
+    { query: { enabled: !linked, retry: false } },
   );
   const pageData = candidates.data?.data;
   const items = pageData?.items ?? [];
@@ -330,13 +349,14 @@ function RoutineEncounterFinalization({
     mutationKey: getRoutineInterviewsFinalizeAssignedEvaluationMutationKey(),
     mutationFn: () =>
       routineInterviewsFinalizeAssignedEvaluation(routineInterviewId, {
-        encounter_id: appointmentBacked ? null : selectedEncounterId,
+        encounter_id: recovery ? selectedEncounterId : null,
       }),
   });
   const pending = finalize.isPending;
+  const ready = linked || (!candidates.isPending && !candidates.isError && items.length > 0 && (!recovery || Boolean(selectedEncounterId)));
 
   async function confirmFinalize() {
-    if (disabled || pending || (!appointmentBacked && !selectedEncounterId)) return;
+    if (disabled || pending || !ready) return;
     setError(null);
     try {
       const response = await finalize.mutateAsync();
@@ -349,89 +369,105 @@ function RoutineEncounterFinalization({
       ]);
     } catch (caught) {
       const code = routineErrorCode(caught);
-      setError(code === "routine_interview_encounter_mismatch" || code === "routine_interview_encounter_required"
-        ? "The Counseling interaction changed while this page was open. Available completed Encounters have been refreshed; review the current options before trying again."
+      const changed = code === "routine_interview_encounter_mismatch" || code === "routine_interview_encounter_required" || code === "routine_interview_encounter_conflict";
+      setError(changed
+        ? "The Counseling interaction changed while this page was open. The latest details are now shown; review them before finalizing."
         : routineErrorMessage(caught, "The Counselor Evaluation could not be finalized."));
-      if (code === "routine_interview_encounter_mismatch" || code === "routine_interview_encounter_required") {
+      if (changed) {
         setSelectedEncounterId("");
-        void candidates.refetch();
+        setConfirmOpen(false);
+        void queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(routineInterviewId) });
       }
       void queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetAssignedQueryKey(routineInterviewId) });
     }
   }
 
+  const recordLink = workspaceHref ? (
+    <Link href={workspaceHref} className="font-semibold text-brand underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+      Open Counseling workspace
+    </Link>
+  ) : null;
+
   return (
     <section aria-labelledby="routine-encounter-finalization" className="border-t border-brand-line px-4 py-5 sm:px-5">
-      <h3 id="routine-encounter-finalization" className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-brand">Finalize against a completed Counseling interaction</h3>
+      <h3 id="routine-encounter-finalization" className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-brand">Finalize against the completed Counseling interaction</h3>
       <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
         Finalizing is separate from saving. COMPASS verifies the completed Counseling Encounter and permanently locks this Evaluation.
       </p>
 
-      {candidates.isPending ? (
+      {linkedEncounter ? (
+        <dl className="mt-4 rounded-sm bg-surface-subtle px-4 py-3">
+          <dt className="text-xs font-semibold text-muted">Counseling Encounter</dt>
+          <dd className="mt-1 text-sm text-ink">
+            {formatRoutineDateTime(linkedEncounter.started_at)}
+            <span className="block text-muted">Ended {formatRoutineDateTime(linkedEncounter.ended_at)}</span>
+          </dd>
+        </dl>
+      ) : candidates.isPending ? (
         <div aria-busy="true" className="mt-4 space-y-3"><span className="sr-only">Loading completed Counseling interactions…</span>
-          <Skeleton className="h-14 w-full" />
           <Skeleton className="h-14 w-full" />
         </div>
       ) : candidates.isError ? (
         <div role="alert" className="mt-4">
-          <p className="text-sm text-danger">{routineErrorMessage(candidates.error, "Matching completed Counseling interactions could not be loaded.")}</p>
+          <p className="text-sm text-danger">{routineErrorMessage(candidates.error, "Completed Counseling interactions could not be loaded.")}</p>
           <Button className="mt-3" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>
         </div>
-      ) : items.length === 0 ? (
+      ) : appointmentBacked ? (
+        <p className="mt-4 rounded-sm bg-surface-subtle px-4 py-3 text-sm text-ink">
+          {items.length > 0
+            ? "The completed Counseling Encounter for this Appointment is recorded. Finalizing links it to this Routine Interview."
+            : "A completed Counseling Encounter for this Appointment is required before the Evaluation can be finalized."}
+        </p>
+      ) : (
         <div className="mt-4 rounded-sm bg-surface-subtle px-4 py-3">
-          <p className="font-medium text-ink">{appointmentBacked ? "Counseling interaction not yet recorded" : "No matching completed Counseling Encounter is available yet."}</p>
+          <p className="font-medium text-ink">Counseling Encounter not yet recorded</p>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
-            {appointmentBacked
-              ? "A completed Counseling Encounter for this Appointment is required before the Evaluation can be finalized."
-              : "Record the completed Counseling interaction in the Counseling workspace before finalizing this Evaluation."}
+            Record the completed interaction from this Routine Interview&rsquo;s Counseling workspace and COMPASS links it here.{recordLink ? <> {recordLink}</> : null}
           </p>
         </div>
-      ) : (
-        <>
-          {appointmentBacked ? (
-            <p className="mt-4 rounded-sm bg-surface-subtle px-4 py-3 text-sm text-ink">
-              A completed Counseling Encounter for this Appointment is available. COMPASS will resolve and link it automatically during finalization.
-            </p>
-          ) : (
-            <fieldset className="mt-4 min-w-0">
-              <legend className="mb-2 text-sm font-medium text-ink">Select the completed Counseling Encounter</legend>
-              <div className="divide-y divide-border rounded-sm border border-border">
-                {items.map((candidate: RoutineEncounterCandidate) => (
-                  <label key={candidate.id} className="flex cursor-pointer items-start gap-3 px-3 py-3 has-[:checked]:bg-brand-wash">
-                    <input
-                      type="radio"
-                      name="routine-finalize-encounter"
-                      value={candidate.id}
-                      checked={candidate.id === selectedEncounterId}
-                      onChange={() => setSelectedEncounterId(candidate.id)}
-                      className="mt-1 size-4 accent-brand"
-                    />
-                    <span>
-                      <span className="block font-medium text-ink">{formatRoutineDateTime(candidate.started_at)}</span>
-                      <span className="mt-1 block text-sm text-muted">Ended {formatRoutineDateTime(candidate.ended_at)} · {routineEntryModeLabel(candidate.entry_mode)} · {routineDeliveryModeLabel(candidate.delivery_mode)}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-              {pageData ? (
-                <CanonicalPagination
-                  className="mt-3"
-                  page={pageData.page}
-                  hasNext={pageData.has_next}
-                  disabled={candidates.isFetching}
-                  label="Counseling Encounter candidate pages"
-                  onPageChange={setPage}
-                />
-              ) : null}
-            </fieldset>
-          )}
-        </>
       )}
+
+      {recovery && !candidates.isPending && !candidates.isError && items.length > 0 ? (
+        <fieldset className="mt-4 min-w-0">
+          <legend className="text-sm font-medium text-ink">Encounters recorded outside this Routine Interview</legend>
+          <p className="mb-2 mt-1 max-w-3xl text-sm text-muted">
+            If this interaction was already recorded from My Counseling Encounters, choose it to link it when you finalize.
+          </p>
+          <div className="divide-y divide-border rounded-sm border border-border">
+            {items.map((candidate: RoutineEncounterCandidate) => (
+              <label key={candidate.id} className="flex cursor-pointer items-start gap-3 px-3 py-3 has-[:checked]:bg-brand-wash">
+                <input
+                  type="radio"
+                  name="routine-finalize-encounter"
+                  value={candidate.id}
+                  checked={candidate.id === selectedEncounterId}
+                  onChange={() => setSelectedEncounterId(candidate.id)}
+                  className="mt-1 size-4 accent-brand"
+                />
+                <span>
+                  <span className="block font-medium text-ink">{formatRoutineDateTime(candidate.started_at)}</span>
+                  <span className="mt-1 block text-sm text-muted">Ended {formatRoutineDateTime(candidate.ended_at)} · {routineEntryModeLabel(candidate.entry_mode)} · {routineDeliveryModeLabel(candidate.delivery_mode)}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          {pageData ? (
+            <CanonicalPagination
+              className="mt-3"
+              page={pageData.page}
+              hasNext={pageData.has_next}
+              disabled={candidates.isFetching}
+              label="Counseling Encounter candidate pages"
+              onPageChange={setPage}
+            />
+          ) : null}
+        </fieldset>
+      ) : null}
 
       {error && !confirmOpen ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
       <Button
         className="mt-5"
-        disabled={disabled || pending || candidates.isPending || candidates.isError || items.length === 0 || (!appointmentBacked && !selectedEncounterId)}
+        disabled={disabled || pending || !ready}
         onClick={() => setConfirmOpen(true)}
       >
         Finalize Counselor Evaluation
@@ -449,8 +485,8 @@ function RoutineEncounterFinalization({
         onConfirm={() => void confirmFinalize()}
       >
         <p>
-          After finalization, this Evaluation becomes read-only and remains
-          linked to the completed Counseling interaction used for finalization.
+          After finalization, this Evaluation becomes read-only and stays
+          linked to the completed Counseling interaction.
         </p>
       </ConsequentialActionDialog>
     </section>

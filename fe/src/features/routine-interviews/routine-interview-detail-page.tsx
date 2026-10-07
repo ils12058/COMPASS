@@ -246,6 +246,8 @@ function CounselorRoutineDetail({
           key={detail.id}
           routineInterviewId={detail.id}
           entryMode={detail.entry_mode}
+          linkedEncounter={detail.counseling_encounter}
+          workspaceHref={workspaceHref}
           initialEvaluation={detail.evaluation}
           evaluationFinalized={false}
         />

@@ -153,7 +153,10 @@ def _encounter(
     ended: datetime,
     recorded: datetime,
     appointment: Appointment | None = None,
+    routine: RoutineInterview | None = None,
 ) -> CounselingEncounter:
+    """``routine`` records the interaction from that Routine Interview's Counseling context."""
+
     encounter = create_encounter(
         counselor=session.user(counselor_key),
         entry_mode=entry_mode,
@@ -162,6 +165,7 @@ def _encounter(
         student_id=session.users[student.key].pk,
         delivery_mode=None if appointment is not None else "IN_PERSON",
         appointment_id=appointment.pk if appointment is not None else None,
+        routine_interview_id=routine.pk if routine is not None else None,
         context=session.as_user(counselor_key),
         now=recorded,
     )
@@ -230,14 +234,15 @@ def _finalize_evaluation(
     values: dict[str, object],
     *,
     at: datetime,
-    encounter: CounselingEncounter | None = None,
 ) -> None:
+    """Finalize against the Encounter COMPASS already linked to ``routine``."""
+
     counselor = session.user(counselor_key)
     replace_assigned_evaluation(counselor=counselor, routine_interview_id=routine.pk, values=values)
     finalize_assigned_evaluation(
         counselor=counselor,
         routine_interview_id=routine.pk,
-        encounter_id=encounter.pk if encounter is not None else None,
+        encounter_id=None,
         context=session.as_user(counselor_key),
     )
     align_timestamps(routine, updated_at=at, evaluation_finalized_at=at)
@@ -711,6 +716,7 @@ def completed_counseling(session: SeedSession) -> None:
         started=t.past(8, 14, 10),
         ended=t.past(8, 14, 55),
         recorded=t.past(8, 15, 10),
+        routine=routine,
     )
     _finalize_evaluation(
         session,
@@ -718,7 +724,6 @@ def completed_counseling(session: SeedSession) -> None:
         routine,
         narratives.WALK_IN_EVALUATION,
         at=t.past(8, 16, 20),
-        encounter=walk_in,
     )
     _shared_summary(
         session,
