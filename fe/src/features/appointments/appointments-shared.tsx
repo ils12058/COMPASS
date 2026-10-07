@@ -253,14 +253,16 @@ export function AppointmentsPageHeading({
   title,
   description,
   action,
+  help,
   headingId = "appointments-page-heading",
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  help?: ReactNode;
   headingId?: string;
 }) {
-  return <PageHeader title={title} headingId={headingId} description={description} actions={action} />;
+  return <PageHeader title={title} headingId={headingId} description={description} actions={action} help={help} />;
 }
 
 // A list view rather than an Appointment status: Scheduled and not yet started by COMPASS

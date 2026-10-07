@@ -135,6 +135,7 @@ export function PrivacyPageHeader({
   title,
   description,
   action,
+  help,
   backHref,
   backLabel,
   context,
@@ -143,6 +144,7 @@ export function PrivacyPageHeader({
   title: string;
   description?: ReactNode;
   action?: ReactNode;
+  help?: ReactNode;
   backHref?: string;
   backLabel?: string;
   context?: ReactNode;
@@ -153,7 +155,7 @@ export function PrivacyPageHeader({
       title={title}
       context={context}
       description={description}
-      actions={action}
+      actions={action} help={help}
       back={backHref ? (
         <GuardedPortalLink href={backHref} className={pageBackLinkClass}>
           ← {backLabel}

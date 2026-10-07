@@ -17,11 +17,11 @@ export function ecounselingErrorMessage(error: unknown, fallback: string): strin
   const code = readApiErrorCode(error.body);
   const messages: Record<string, string> = {
     current_student_required: "Only a current Student can approve this consent. You can still decline it.",
-    ecounseling_not_found: "This E-Counseling session is unavailable to this account.",
-    ecounseling_not_permitted: "You cannot complete this E-Counseling action with this account.",
-    ecounseling_appointment_not_eligible: "This Appointment is no longer eligible for E-Counseling.",
-    ecounseling_consent_not_found: "That consent is no longer available. Refresh the session state.",
-    ecounseling_consent_not_approved: "The required consent is not currently effective.",
+    ecounseling_not_found: "This E-Counseling session is unavailable.",
+    ecounseling_not_permitted: "You don’t have access to this action.",
+    ecounseling_appointment_not_eligible: "E-Counseling is no longer available for this Appointment.",
+    ecounseling_consent_not_found: "That consent is no longer available. Refresh the session.",
+    ecounseling_consent_not_approved: "The student must approve this media permission before you can start.",
     ecounseling_consent_conflict: "The consent changed. The session has been refreshed.",
     ecounseling_media_conflict: "Recording or transcription changed. The session has been refreshed.",
     ecounseling_media_stop_pending: "Stopping is still being confirmed.",
@@ -38,7 +38,7 @@ export function consentStatusLabel(
 ): string {
   if (row.withdrawn_at) return "Withdrawn";
   if (row.decision === ECounselingConsentDecision.APPROVED) {
-    return row.effective ? "Approved" : "Not effective";
+    return row.effective ? "Approved" : "No longer valid";
   }
   if (row.decision === ECounselingConsentDecision.DENIED) return "Declined";
   return "Pending";
@@ -46,7 +46,7 @@ export function consentStatusLabel(
 
 export const consentProjectionLabels: Record<ECounselingConsentStatus, string> = {
   [ECounselingConsentStatus.NOT_REQUESTED]: "Not requested",
-  [ECounselingConsentStatus.PENDING]: "Pending",
+  [ECounselingConsentStatus.PENDING]: "Waiting for consent",
   [ECounselingConsentStatus.APPROVED]: "Approved",
   [ECounselingConsentStatus.DENIED]: "Declined",
   [ECounselingConsentStatus.WITHDRAWN]: "Withdrawn",

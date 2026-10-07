@@ -7,6 +7,8 @@ import { withNextRouter } from "./support/next-router.mjs";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
 import { EditServicePage } from "../src/features/services/service-editor-page.tsx";
 import { ServiceDetailPage } from "../src/features/services/service-detail-page.tsx";
+import { HelpSections } from "../src/components/ui/context-help.tsx";
+import { serviceHelpSections } from "../src/features/services/service-help.tsx";
 import { ServiceConsequenceSummary } from "../src/features/services/services-shared.tsx";
 import { counselingOnlineStatus } from "../src/features/services/counseling-delivery.tsx";
 import { BookingDeliveryModeChoice } from "../src/features/appointments/appointment-booking-page.tsx";
@@ -95,71 +97,63 @@ const editor = (service) => render(h(EditServicePage), { params: { serviceId: SE
 const detail = (service, user) => render(h(ServiceDetailPage), { user, params: { serviceId: SERVICE }, seed: seedService(service) });
 const E_COUNSELING = /E-Counseling|Online counseling|Online Counseling|video|Platform Health/;
 
-test("the fresh canonical Counseling editor explains Online counseling before it is enabled", () => {
+test("the Counseling editor names modes, shows current state and offers configuration Help", () => {
   const html = editor(serviceResponse());
   assert.match(html, /<legend class="sr-only">Counseling delivery modes<\/legend>/);
   assert.match(html, /<input[^>]*id="counseling-delivery-inPerson"[^>]*checked=""/);
   assert.doesNotMatch(html, /<input[^>]*id="counseling-delivery-online"[^>]*checked=""/);
   assert.match(html, /<label[^>]*for="counseling-delivery-online"[^>]*>Online counseling<\/label>/);
-  // The relationship to E-Counseling is visible while Online is still unchecked.
-  assert.match(html, /Scheduled Online Counseling appointments use the E-Counseling workspace\./);
-  assert.match(html, /role="status"[^>]*>Online counseling is not enabled\. New Online Counseling appointments cannot be scheduled, so no new appointments can enter E-Counseling\. In-person Counseling is not affected\./);
-  assert.match(html, /managed separately/);
-  assert.match(html, /aria-describedby="counseling-delivery-help counseling-delivery-status counseling-delivery-provider"/);
+  assert.match(html, /role="status"[^>]*>Online counseling off/);
+  assert.match(html, /aria-label="Help: About Service configuration"/);
+  assert.match(html, /aria-describedby="counseling-delivery-help counseling-delivery-status"/);
 });
 
-test("enabled Online counseling explains E-Counseling without claiming the video provider is ready", () => {
+test("enabled Online counseling shows scheduling state without claiming video readiness", () => {
   const html = editor(serviceResponse({ delivery_modes: ["IN_PERSON", "ONLINE"] }));
   assert.match(html, /<input[^>]*id="counseling-delivery-online"[^>]*checked=""/);
-  assert.match(html, /role="status"[^>]*>Online counseling is enabled\. New Online Counseling appointments may be scheduled where Counselor Availability permits\./);
-  assert.match(html, /Video-session availability also depends on the E-Counseling provider configuration, which is managed separately\./);
+  assert.match(html, /role="status"[^>]*>Online counseling on/);
   assert.doesNotMatch(html, /provider is (ready|healthy)|E-Counseling: Enabled/);
+  const help = renderToStaticMarkup(h(HelpSections, { sections: serviceHelpSections }));
+  assert.match(help, /Scheduled Online Counseling appointments use E-Counseling/);
+  assert.match(help, /video availability still depends on separate video-service settings/);
 });
 
 test("the Online status follows each delivery and booking state", () => {
-  assert.match(counselingOnlineStatus({ inPerson: true, online: false, bookingEnabled: true }), /cannot be scheduled.*In-person Counseling is not affected/);
+  assert.match(counselingOnlineStatus({ inPerson: true, online: false, bookingEnabled: true }), /Online counseling off.*In-person Counseling remains available/);
   assert.doesNotMatch(counselingOnlineStatus({ inPerson: false, online: false, bookingEnabled: true }), /In-person/);
-  assert.match(counselingOnlineStatus({ inPerson: true, online: true, bookingEnabled: true }), /^Online counseling is enabled\./);
-  assert.match(counselingOnlineStatus({ inPerson: false, online: true, bookingEnabled: false }), /booking is not available.*no new appointments can enter E-Counseling/);
+  assert.match(counselingOnlineStatus({ inPerson: true, online: true, bookingEnabled: true }), /Online counseling on.*booking is available/);
+  assert.match(counselingOnlineStatus({ inPerson: false, online: true, bookingEnabled: false }), /booking is off/);
 });
 
 test("ordinary Services keep generic delivery wording in the editor and detail", () => {
   const form = editor(ordinaryOnline);
   assert.match(form, /<legend[^>]*>Supported delivery modes<\/legend>/);
-  assert.match(form, /Removing a mode\s+stops new work in that mode/);
+  assert.match(form, /aria-label="Help: About Service configuration"/);
   assert.doesNotMatch(form, E_COUNSELING);
   const page = detail(ordinaryOnline, platformAdmin);
   assert.match(page, /In person, Online/);
   assert.doesNotMatch(page, E_COUNSELING);
 });
 
-test("canonical detail shows Online counseling as not enabled and E-Counseling as unavailable", () => {
+test("Counseling detail keeps delivery and E-Counseling unavailability visible", () => {
   const html = detail(serviceResponse(), serviceManager);
   assert.match(html, /Counseling delivery/);
   assert.match(html, />In person<\/dt><dd[^>]*>Available</);
   assert.match(html, />Online counseling<\/dt><dd[^>]*>Not enabled</);
   assert.match(html, />New E-Counseling appointments<\/dt><dd[^>]*>Unavailable</);
-  assert.match(html, /unavailable because Online counseling is not enabled for this Service\./);
+  assert.match(html, /aria-label="Help: About Service configuration"/);
   assert.doesNotMatch(html, /Video-session provider/);
 });
 
-test("canonical detail shows enabled Online counseling and keeps provider readiness separate", () => {
+test("Counseling detail shows scheduling state and discloses configuration semantics in Help", () => {
   const html = detail(serviceResponse({ delivery_modes: ["IN_PERSON", "ONLINE"] }), serviceManager);
   assert.match(html, />Online counseling<\/dt><dd[^>]*>Available</);
-  assert.match(html, />New E-Counseling appointments<\/dt><dd[^>]*>Available for scheduling, subject to Counselor Availability and booking settings</);
-  assert.match(html, />Video-session provider<\/dt><dd[^>]*>Managed separately</);
-  assert.match(html, /Scheduled Online Counseling appointments use the E-Counseling workspace\./);
-
+  assert.match(html, />New E-Counseling appointments<\/dt><dd[^>]*>Available for scheduling</);
+  assert.doesNotMatch(html, /provider is (ready|healthy)/);
   const onlineOnly = detail(serviceResponse({ delivery_modes: ["ONLINE"] }), serviceManager);
   assert.match(onlineOnly, />In person<\/dt><dd[^>]*>Not enabled</);
-  assert.match(onlineOnly, />Online counseling<\/dt><dd[^>]*>Available</);
-
-  const bookingOff = detail(
-    serviceResponse({ delivery_modes: ["ONLINE"], appointment_booking_enabled: false, default_appointment_duration_minutes: null, cancellation_cutoff_minutes: null }),
-    serviceManager,
-  );
+  const bookingOff = detail(serviceResponse({ delivery_modes: ["ONLINE"], appointment_booking_enabled: false, default_appointment_duration_minutes: null, cancellation_cutoff_minutes: null }), serviceManager);
   assert.match(bookingOff, />New E-Counseling appointments<\/dt><dd[^>]*>Unavailable</);
-  assert.match(bookingOff, /because Appointment booking is not available for this Service\./);
 });
 
 test("the Platform Health link appears only for viewers who already have Platform Operations", () => {

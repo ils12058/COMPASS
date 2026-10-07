@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 
+import { PlatformHelp } from "@/features/platform/platform-help";
 import { PageAction } from "@/components/ui/page-action";
 import { Button } from "@/components/ui/button";
 import { pageSheetWidth } from "@/components/ui/page-width";
-import { Panel, PanelBody, PanelHeader, PanelMessage, PanelSection } from "@/components/ui/panel";
+import { Panel, PanelBody, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { canShowLastKnownData, shouldHideProtectedData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { platformErrorMessage } from "@/features/platform/platform-actions";
@@ -56,6 +57,7 @@ export function PlatformHealthPage() {
     <section aria-labelledby="platform-page-heading" className={`${pageSheetWidth} @container/health`}>
       <PlatformPageHeader
         title="Health"
+        help={<PlatformHelp />}
         action={
           <PageAction
             icon={RefreshCw}
@@ -122,13 +124,6 @@ export function PlatformHealthPage() {
                   No diagnostic checks are available.
                 </PanelMessage>
               )}
-              <PanelSection
-                title="Not checked by passive Health"
-                titleId="health-unchecked-heading"
-                level={3}
-              >
-                <p className="text-sm leading-6 text-muted">The checks above cover only the dependencies listed. Worker, scheduler, Daily provider, and Turnstile runtime reachability are not established by this result.</p>
-              </PanelSection>
             </Panel>
           ) : null}
         </div>
@@ -137,7 +132,6 @@ export function PlatformHealthPage() {
           <PanelHeader
             title="Background worker"
             titleId="platform-worker-heading"
-            description="Run a harmless background task to verify that a worker can receive and complete queued work."
             actions={
               <Button
                 variant="secondary"
@@ -165,9 +159,6 @@ export function PlatformHealthPage() {
             ) : (
               <>
                 <p className="text-sm font-semibold text-ink">Not checked</p>
-                <p className="mt-1 text-sm leading-6 text-muted">
-                  This page has not run a worker diagnostic in this session.
-                </p>
               </>
             )}
             {workerError ? (

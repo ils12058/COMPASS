@@ -45,13 +45,22 @@ institutional helper names directly.
 
 ## Commands
 
+Frontend interaction and copy guidance: [UI information hierarchy](docs/ui-guidelines.md).
+The [page-density audit](docs/ui-density-audit.md) records the ADR-091 consolidation and validation.
+
 ```bash
 pnpm dev
 pnpm lint
 pnpm typecheck
+pnpm test
 pnpm build
 pnpm validate
+pnpm test:ui
 ```
 
 `pnpm validate` regenerates the client, runs lint and strict type checking, and
 creates a production build.
+
+`pnpm test:ui` runs the synthetic browser regressions against a local Next server on
+port 3107; see the audit for browser setup and coverage. Complete API generation before
+running tests, since regeneration temporarily removes the generated client directory.

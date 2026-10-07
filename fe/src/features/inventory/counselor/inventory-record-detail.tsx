@@ -10,8 +10,7 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Notice } from "@/components/ui/notice";
-import { Panel, PanelHeader } from "@/components/ui/panel";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
 import { InventoryPdfDownload } from "@/features/inventory/inventory-pdf-download";
@@ -235,13 +234,13 @@ function CounselorStudentInventoryHistory({
   const history = useInventoryListStudentHistory(studentId, { query: { retry: false } });
 
   if (history.isPending) {
-    return <Notice role="status">Loading annual Student Inventory history…</Notice>;
+    return <p role="status" className="text-sm text-muted">Loading Inventory history…</p>;
   }
   if (history.isError) {
     return <InventoryQueryError error={history.error} fallback="Annual Student Inventory history could not be loaded." onRetry={() => void history.refetch()} />;
   }
   const items = history.data.data.items;
-  if (!items.length) return <Notice>No earlier Individual Inventory records are available.</Notice>;
+  if (!items.length) return <Panel><PanelMessage>No earlier Individual Inventory records.</PanelMessage></Panel>;
 
   return (
     <Panel aria-labelledby="counselor-inventory-history-heading">

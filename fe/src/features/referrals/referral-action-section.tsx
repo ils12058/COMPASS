@@ -135,14 +135,14 @@ export function ReferralActionEntry({
     setReconcileRequired(false);
     if (!current) {
       setReconcileRequired(true);
-      setError("The Referral could not be refreshed. Do not retry this source action until the Referral detail can be checked.");
+      setError("The Referral could not be refreshed. Do not retry this action until the Referral detail can be checked.");
       return "unavailable";
     }
     const recorded = current.actions.some((item) => item.action_type === actionType);
     if (recorded) {
       setReview(null);
       setOpen(false);
-      setNotice("This source action is already recorded on the Referral.");
+      setNotice("This action is already recorded on the Referral.");
       return "recorded";
     }
     return "missing";
@@ -186,14 +186,14 @@ export function ReferralActionEntry({
       await queryClient.invalidateQueries({ queryKey: getReferralsGetQueryKey(referral.id) });
       setReview(null);
       setOpen(false);
-      setNotice("Referral source action recorded.");
+      setNotice("Referral action recorded.");
       setOccurredAt("");
       setRemarks("");
     } catch (caught) {
       if (referralErrorCode(caught) === "referral_conflict") {
         const result = await reconcile();
         if (result === "missing") {
-          setError(referralErrorMessage(caught, "The Referral action conflicts with current source history."));
+          setError(referralErrorMessage(caught, "The Referral action conflicts with current recorded history."));
         }
       } else if (uncertainReferralMutation(caught)) {
         setReconcileRequired(true);

@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
+import { Pencil } from "lucide-react";
+import { ServiceHelp } from "@/features/services/service-help";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelSection } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
-  counselingECounselingExplanation,
   newECounselingAppointmentsLabel,
   PlatformHealthLink,
 } from "@/features/services/counseling-delivery";
@@ -59,21 +60,18 @@ function BookingFacts({ service }: { service: ServiceResponse }) {
     return (
       <dl className="mt-4">
         <Fact label="Appointment booking">Not available</Fact>
-        <p className="mt-2 max-w-4xl text-sm leading-6 text-muted">
-          Students cannot create new Appointments for this Service.
-        </p>
       </dl>
     );
   }
   return (
     <dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
       <Fact label="Appointment booking">{serviceBookingLabel(true)}</Fact>
-      <Fact label="Default Appointment duration">
+      <Fact label="Duration">
         {service.default_appointment_duration_minutes === null
           ? "Not configured"
           : service.default_appointment_duration_minutes + " minutes"}
       </Fact>
-      <Fact label="Student cancellation/rescheduling cutoff">
+      <Fact label="Cancellation/rescheduling cutoff">
         {service.cancellation_cutoff_minutes === null
           ? "None"
           : service.cancellation_cutoff_minutes + " minutes before"}
@@ -102,11 +100,7 @@ function CounselingDeliveryFacts({ service }: { service: ServiceResponse }) {
         <Fact label="New E-Counseling appointments">
           {newECounselingAppointmentsLabel(state)}
         </Fact>
-        {state.online ? <Fact label="Video-session provider">Managed separately</Fact> : null}
       </dl>
-      <p className="mt-3 max-w-4xl text-sm leading-6 text-muted">
-        {counselingECounselingExplanation(state)}
-      </p>
       {state.online ? <PlatformHealthLink /> : null}
     </PanelSection>
   );
@@ -252,6 +246,7 @@ export function ServiceDetailPage() {
     <section>
       <ServicesPageHeading
         title={service.name}
+        help={<ServiceHelp counseling={systemRequired} />}
         backHref="/portal/services"
         backLabel="Services"
         action={
@@ -260,7 +255,7 @@ export function ServiceDetailPage() {
               href={"/portal/services/" + service.id + "/edit"}
               className={buttonVariants({ variant: "secondary" })}
             >
-              Edit Service
+              <Pencil aria-hidden="true" size={16} /> Edit
             </Link>
           ) : null
         }
@@ -270,12 +265,6 @@ export function ServiceDetailPage() {
           {canManage ? <ServicesStatusBadge active={service.is_active} /> : null}
           {systemRequired ? <ServicesSystemRequiredBadge /> : null}
         </div>
-        {systemRequired ? (
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            COMPASS uses this Service for Counseling, Routine Interviews, and
-            E-Counseling, so it must stay active. Its other settings can be changed.
-          </p>
-        ) : null}
       </ServicesPageHeading>
 
       {createdNotice ? (
@@ -321,15 +310,9 @@ export function ServiceDetailPage() {
 
         <PanelSection title="Appointment booking" titleId="service-appointment-heading">
           <BookingFacts service={service} />
-          {canManage ? (
-            <p className="mt-4 max-w-4xl text-xs leading-5 text-muted">
-              Booking settings apply to new Appointments. Existing Appointments keep
-              their saved time, duration, cutoff, provider, and delivery mode.
-            </p>
-          ) : null}
         </PanelSection>
 
-        <PanelSection title="Service providers" titleId="service-provider-heading">
+        <PanelSection title="Provider coverage" titleId="service-provider-heading">
           <dl className="mt-4 grid gap-5 sm:grid-cols-2">
             <Fact label="Provider type">Counselor</Fact>
             <Fact label="Coverage">{serviceCoverageLabels[service.provider_coverage]}</Fact>
@@ -341,18 +324,22 @@ export function ServiceDetailPage() {
         </PanelSection>
 
         {canManage ? (
-          <PanelSection title="Service status" titleId="service-lifecycle-heading">
+          <PanelSection title="Record dates" titleId="service-lifecycle-heading">
             <dl className="mt-4 grid gap-5 sm:grid-cols-3">
-              <Fact label="Status">
-                <ServicesStatusBadge active={service.is_active} />
-              </Fact>
               <Fact label="Created">{formatDate(service.created_at)}</Fact>
               <Fact label="Updated">{formatDate(service.updated_at)}</Fact>
             </dl>
-            <div className="mt-5">
+          </PanelSection>
+        ) : null}
+      </Panel>
+
+      {canManage ? (
+        <Panel className="mt-5" aria-label="Service actions">
+          <PanelSection title="Actions" titleId="service-actions-heading">
+            <div>
               {systemRequired && service.is_active ? (
                 <p className="text-sm text-muted">
-                  This Service is required by COMPASS and cannot be disabled.
+                  Counseling must stay active.
                 </p>
               ) : (
                 <Button
@@ -369,8 +356,8 @@ export function ServiceDetailPage() {
               )}
             </div>
           </PanelSection>
-        ) : null}
-      </Panel>
+        </Panel>
+      ) : null}
 
       <ConsequentialActionDialog
         open={lifecycleOpen}

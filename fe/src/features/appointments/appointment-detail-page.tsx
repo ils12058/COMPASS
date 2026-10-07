@@ -4,6 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
+import { MoreHorizontal } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
@@ -255,6 +258,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const [rescheduleReason, setRescheduleReason] = useState("");
   const [selectedProviderId, setSelectedProviderId] = useState("");
   const [reassignmentReason, setReassignmentReason] = useState("");
+  const [reassigning, setReassigning] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [reassignmentOpen, setReassignmentOpen] = useState(false);
   const [error, setError] = useState<ActionError | null>(null);
@@ -316,6 +320,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
     rescheduling ||
     reschedule.isPending ||
     reassign.isPending ||
+    reassigning ||
     complete.isPending ||
     noShow.isPending ||
     confirming;
@@ -485,10 +490,11 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
 
   async function submitReassignment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedProviderId || !reassignmentReason.trim()) return;
+    if (!selectedProviderId || !reassignmentReason.trim() || reassigning) return;
     setError(null);
     setNotice(null);
     setUpdatedNotice(null);
+    setReassigning(true);
     try {
       await reassign.mutateAsync({
         appointmentId,
@@ -504,6 +510,8 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       setNotice("Counselor reassigned.");
     } catch (caught) {
       await handleMutationError(caught, "The Counselor could not be reassigned.", "reassign");
+    } finally {
+      setReassigning(false);
     }
   }
 
@@ -559,7 +567,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       <AppointmentsLocalNavigation />
       <AppointmentsPageHeading
         headingId="appointment-detail-heading"
-        title="Appointment details"
+        title="Appointment"
         action={showCounselingLink || showEcounselingLink ? (
           <>
             {showCounselingLink ? (
@@ -626,16 +634,23 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
 
       {(canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || unavailable.length > 0) ? (
         <Panel aria-labelledby="appointment-actions-heading">
-          <PanelHeader title="Appointment actions" titleId="appointment-actions-heading" />
+          <PanelHeader title="Actions" titleId="appointment-actions-heading" />
           <PanelBody className="*:first:mt-0">
           {canCancel || canReschedule || canReassign || canComplete || canMarkNoShow ? (
             // The usual outcome leads; cancelling, the destructive one, comes last.
             <div className="mt-4 flex flex-wrap gap-2">
               {canComplete ? <Button disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button> : null}
-              {canReschedule ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); rescheduleChoice.clear(); setNotice(null); setRescheduleOpen((open) => !open); }}>{rescheduleOpen ? "Close reschedule" : "Reschedule appointment"}</Button> : null}
-              {canReassign ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setNotice(null); setReassignmentOpen((open) => !open); }}>{reassignmentOpen ? "Close reassignment" : "Reassign counselor"}</Button> : null}
-              {canMarkNoShow ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setConfirmAction("no-show"); }}>Mark no-show</Button> : null}
-              {canCancel ? <Button variant="danger" disabled={pending} onClick={() => { setError(null); setConfirmAction("cancel"); }}>Cancel appointment</Button> : null}
+              {canReschedule ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); rescheduleChoice.clear(); setNotice(null); setReassignmentOpen(false); setRescheduleOpen(true); }}>Reschedule</Button> : null}
+              {canReassign ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setNotice(null); setRescheduleOpen(false); setReassignmentOpen(true); }}>Reassign</Button> : null}
+              {canMarkNoShow ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild><Button variant="secondary" disabled={pending}><MoreHorizontal aria-hidden="true" size={18} />More actions</Button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => { setError(null); setConfirmAction("no-show"); }}>Mark no-show</DropdownMenuItem>
+                    {canCancel ? <DropdownMenuItem className="text-danger" onSelect={() => { setError(null); setConfirmAction("cancel"); }}>Cancel appointment</DropdownMenuItem> : null}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : canCancel ? <Button variant="danger" disabled={pending} onClick={() => { setError(null); setConfirmAction("cancel"); }}>Cancel appointment</Button> : null}
             </div>
           ) : null}
           {error && ((error.scope === "reschedule" && !canReschedule) || (error.scope === "reassign" && !canReassign)) ? (
@@ -653,14 +668,12 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           ) : null}
           </PanelBody>
 
-          {canReschedule && rescheduleOpen ? (
-            <PanelSection
-              title="Reschedule appointment"
-              titleId="reschedule-appointment-heading"
-              level={3}
-              description="Choose a date to see available times."
-            >
-            <form onSubmit={submitReschedule} className="max-w-3xl">
+          {canReschedule ? (
+            <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
+            <DialogContent className="max-w-2xl" dismissible={!rescheduling}>
+            <DialogTitle>Reschedule appointment</DialogTitle>
+            <DialogDescription>Choose a new time and review it before saving.</DialogDescription>
+            <form onSubmit={submitReschedule} className="mt-5">
               <div className="grid gap-2 sm:max-w-xs">
                 <Label htmlFor="reschedule-date">New date</Label>
                 <Input
@@ -685,7 +698,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                   ) : rescheduleSlots.isError && !rescheduleSlotsUnconfirmed ? (
                     <div role="alert"><p className="text-sm text-danger">Replacement times could not be loaded.</p><Button className="mt-2" variant="secondary" onClick={() => void rescheduleSlots.refetch()}>Retry</Button></div>
                   ) : rescheduleSlotItems.length === 0 ? (
-                    <p role="status" className="text-sm text-muted">No available appointment times were found for this date. Choose another date.</p>
+                    <p role="status" className="text-sm text-muted">No times are available. Choose another date.</p>
                   ) : (
                     <>
                       {rescheduleSlotsUnconfirmed ? (
@@ -738,13 +751,18 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               <Button className="mt-4" type="submit" disabled={!selectedRescheduleSlot || rescheduling || rescheduleSlotsUnconfirmed} aria-busy={rescheduling}>
                 {rescheduling ? "Rescheduling…" : "Reschedule appointment"}
               </Button>
+              <Button className="ml-2" variant="secondary" disabled={rescheduling} onClick={() => setRescheduleOpen(false)}>Cancel</Button>
             </form>
-            </PanelSection>
+            </DialogContent>
+            </Dialog>
           ) : null}
 
-          {canReassign && reassignmentOpen ? (
-            <PanelSection title="Reassign counselor" titleId="reassign-counselor-heading" level={3}>
-            <form onSubmit={submitReassignment} className="max-w-3xl">
+          {canReassign ? (
+            <Dialog open={reassignmentOpen} onOpenChange={setReassignmentOpen}>
+            <DialogContent className="max-w-2xl" dismissible={!pending}>
+            <DialogTitle>Reassign counselor</DialogTitle>
+            <DialogDescription>Choose a counselor and review the change before saving.</DialogDescription>
+            <form onSubmit={submitReassignment} className="mt-5">
               <p className="text-sm text-muted"><span className="font-semibold text-ink">Current counselor:</span> {appointment.provider.display_name}</p>
               {candidates.isPending ? (
                 <LoadingRegion label="Loading reassignment candidates…" className="mt-4">
@@ -753,11 +771,11 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               ) : candidates.isError ? (
                 <div role="alert" className="mt-4"><p className="text-sm text-danger">Reassignment candidates could not be loaded.</p><Button className="mt-2" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button></div>
               ) : candidateItems.length === 0 ? (
-                <p className="mt-4 text-sm text-muted">No other eligible Counselors are available for reassignment.</p>
+                <p className="mt-4 text-sm text-muted">No other Counselors are available at this time.</p>
               ) : (
                 <div className="mt-4 grid gap-2 sm:max-w-xl">
                   <Label htmlFor="reassignment-counselor">New counselor</Label>
-                  <Select id="reassignment-counselor" disabled={reassign.isPending} value={selectedProviderId} onChange={(event) => setSelectedProviderId(event.target.value)}>
+                  <Select id="reassignment-counselor" disabled={reassigning} value={selectedProviderId} onChange={(event) => setSelectedProviderId(event.target.value)}>
                     <option value="">Choose a Counselor</option>
                     {candidateItems.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.display_name}</option>)}
                   </Select>
@@ -765,7 +783,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               )}
               <div className="mt-4 grid max-w-3xl gap-2">
                 <Label htmlFor="reassignment-reason">Reason</Label>
-                <Textarea id="reassignment-reason" required disabled={reassign.isPending} className="min-h-24" value={reassignmentReason} onChange={(event) => setReassignmentReason(event.target.value)} />
+                <Textarea id="reassignment-reason" required disabled={reassigning} className="min-h-24" value={reassignmentReason} onChange={(event) => setReassignmentReason(event.target.value)} />
               </div>
               {selectedCandidate && reassignmentReason.trim() ? (
                 <div className="mt-4 rounded-sm bg-surface-subtle px-4 py-3.5">
@@ -775,11 +793,13 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                 </div>
               ) : null}
               {error?.scope === "reassign" ? <p role="alert" className="mt-4 text-sm text-danger">{error.message}</p> : null}
-              <Button className="mt-4" type="submit" disabled={!selectedProviderId || !reassignmentReason.trim() || reassign.isPending || candidates.isPending} aria-busy={reassign.isPending}>
-                {reassign.isPending ? "Reassigning…" : "Reassign counselor"}
+              <Button className="mt-4" type="submit" disabled={!selectedProviderId || !reassignmentReason.trim() || reassigning || candidates.isPending} aria-busy={reassigning}>
+                {reassigning ? "Reassigning…" : "Reassign counselor"}
               </Button>
+              <Button className="ml-2" variant="secondary" disabled={pending} onClick={() => setReassignmentOpen(false)}>Cancel</Button>
             </form>
-            </PanelSection>
+            </DialogContent>
+            </Dialog>
           ) : null}
         </Panel>
       ) : null}
@@ -797,7 +817,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
             Appointment history could not be loaded.
           </PanelMessage>
         ) : historyItems.length === 0 ? (
-          <PanelMessage>No appointment history entries are available.</PanelMessage>
+          <PanelMessage>No appointment history yet.</PanelMessage>
         ) : (
           <ol className="divide-y divide-border">
             {historyItems.map((entry, index) => (

@@ -76,7 +76,7 @@ export function useSessionJoin({
       setShowDailyFrame(true);
     } catch (error) {
       joinCredential.reset();
-      setJoinError(ecounselingErrorMessage(error, "A secure session could not be opened. Refresh the session state and try again."));
+      setJoinError(ecounselingErrorMessage(error, "Couldn’t open the video session. Refresh and try again."));
       void refetchWorkspace();
     }
   }
@@ -100,7 +100,7 @@ export function useSessionJoin({
       joinCredential.reset();
     },
     onFailed: () => {
-      setJoinError("The video session could not be opened. Request a fresh join to try again.");
+      setJoinError("Couldn’t open the video session. Join again to retry.");
       onCallChange(false);
       setShowDailyFrame(false);
       setCredential(null);
@@ -135,13 +135,10 @@ function SessionMediaStatus({ media }: { media: MediaWorkspaceState }) {
     <div className="border-t border-brand-line px-4 py-3 sm:px-5">
       <dl aria-live="polite" className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-1.5 text-sm">
         <dt className="text-muted">Recording</dt>
-        <dd>{media.recording.artifact_disposed_at ? "Provider recording disposed" : <CaptureState status={media.recording.capture_status} live="recording" />}</dd>
+        <dd>{media.recording.artifact_disposed_at ? "Recording deleted" : <CaptureState status={media.recording.capture_status} live="recording" />}</dd>
         <dt className="text-muted">Transcription</dt>
         <dd>{media.transcription.artifact_disposed_at ? "Stored transcript disposed" : <CaptureState status={media.transcription.capture_status} live="transcription" />}</dd>
       </dl>
-      <p className="mt-2 text-xs leading-5 text-muted">
-        Recordings and transcripts can’t be viewed or downloaded in COMPASS.
-      </p>
     </div>
   );
 }
@@ -192,7 +189,7 @@ export function SessionStage({
               disabled={!canJoin || join.joining || inCall}
               onClick={() => void join.requestJoin()}
             >
-              {join.joining ? "Preparing secure session…" : "Join session"}
+              {join.joining ? "Joining…" : "Join session"}
             </Button>
           </div>
         ) : unavailableMessage ? (

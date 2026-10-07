@@ -10,6 +10,8 @@ import {
   type SetStateAction,
 } from "react";
 
+import { ServiceHelp } from "@/features/services/service-help";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
@@ -29,7 +31,6 @@ import {
 import {
   counselingDeliveryOptions,
   counselingOnlineStatus,
-  counselingVideoProviderNote,
 } from "@/features/services/counseling-delivery";
 import {
   ServiceProviderPicker,
@@ -131,7 +132,7 @@ function ChoiceRadio({
   checked: boolean;
   onSelect: () => void;
   label: string;
-  description: string;
+  description?: string;
 }) {
   return (
     <label className="flex cursor-pointer items-start gap-3 rounded-sm border border-border px-3 py-2.5 has-[:checked]:border-brand has-[:checked]:bg-brand-wash">
@@ -144,7 +145,7 @@ function ChoiceRadio({
       />
       <span>
         <span className="block text-sm font-semibold text-ink">{label}</span>
-        <span className="mt-0.5 block text-xs leading-5 text-muted">{description}</span>
+        {description ? <span className="mt-0.5 block text-sm leading-6 text-muted">{description}</span> : null}
       </span>
     </label>
   );
@@ -162,13 +163,12 @@ function CounselingDeliveryFieldset({
   return (
     <fieldset
       className="mt-4"
-      aria-describedby="counseling-delivery-help counseling-delivery-status counseling-delivery-provider"
+      aria-describedby="counseling-delivery-help counseling-delivery-status"
     >
       {/* The section heading already says "Counseling delivery"; the legend still names the group. */}
       <legend className="sr-only">Counseling delivery modes</legend>
       <p id="counseling-delivery-help" className="max-w-3xl text-xs leading-5 text-muted">
-        Counseling needs at least one mode. Each mode controls new Counseling work; existing
-        Appointments keep their saved mode.
+        Choose at least one delivery mode.
       </p>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         {counselingDeliveryOptions.map((option) => {
@@ -211,9 +211,6 @@ function CounselingDeliveryFieldset({
           online: values.online,
           bookingEnabled: values.bookingEnabled,
         })}
-      </p>
-      <p id="counseling-delivery-provider" className="mt-1 max-w-3xl text-xs leading-5 text-muted">
-        {counselingVideoProviderNote}
       </p>
     </fieldset>
   );
@@ -280,8 +277,7 @@ function ServiceForm({
               }
             />
             <p className="text-xs leading-5 text-muted">
-              The Service code is a stable system identifier and cannot be
-              changed after creation.
+              The code cannot be changed after creation.
             </p>
           </div>
           <div className="grid gap-2">
@@ -302,11 +298,10 @@ function ServiceForm({
         </div>
         <div className="mt-5 grid gap-2">
           <Label htmlFor="service-description">Description</Label>
-          <textarea
+          <Textarea
             id="service-description"
             maxLength={2000}
             rows={5}
-            className="w-full rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-sm leading-6 text-ink outline-none placeholder:text-muted focus:border-focus focus:ring-2 focus:ring-focus/25"
             value={values.description}
             onChange={(event) =>
               setValues((current) => ({
@@ -360,11 +355,13 @@ function ServiceForm({
               </label>
             </div>
             <p id="service-delivery-help" className="mt-2 text-xs leading-5 text-muted">
-              An active Service requires at least one delivery mode. Removing a mode
-              stops new work in that mode; existing Appointments keep theirs.
+              Choose at least one delivery mode before enabling this Service.
             </p>
           </fieldset>
         )}
+        {(initial.inPerson && !values.inPerson) || (initial.online && !values.online) ? (
+          <p role="status" className="mt-3 text-sm text-warning">Saving stops new work in the removed delivery mode. Existing Appointments keep their saved mode.</p>
+        ) : null}
       </PanelSection>
 
       <PanelSection title="Appointment booking" titleId="service-appointment-heading">
@@ -376,14 +373,12 @@ function ServiceForm({
               checked={!values.bookingEnabled}
               onSelect={() => setBooking(false)}
               label="Not available"
-              description="Students cannot create new Appointments for this Service."
             />
             <ChoiceRadio
               name="service-booking"
               checked={values.bookingEnabled}
               onSelect={() => setBooking(true)}
               label="Available"
-              description="Students may schedule this Service through COMPASS Appointments when its booking requirements are met."
             />
           </div>
         </fieldset>
@@ -396,7 +391,7 @@ function ServiceForm({
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="service-default-duration">
-              Default Appointment duration (minutes)
+              Duration (minutes)
             </Label>
             <Input
               id="service-default-duration"
@@ -416,12 +411,12 @@ function ServiceForm({
               }
             />
             <p className="text-xs leading-5 text-muted">
-              1–480 minutes. Required before an active Service can be booked.
+              1–480 minutes. Required for booking.
             </p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="service-cancellation-cutoff">
-              Student cancellation/rescheduling cutoff (minutes)
+              Cancellation/rescheduling cutoff (minutes)
             </Label>
             <Input
               id="service-cancellation-cutoff"
@@ -458,16 +453,12 @@ function ServiceForm({
             }
           />
           <span>
-            Require a submitted current Individual Inventory before a Student books
+            Require a submitted current Individual Inventory
           </span>
         </label>
-        <p className="mt-3 max-w-3xl text-xs leading-5 text-muted">
-          Booking settings apply to new Appointments; existing Appointments retain
-          their saved timing and cancellation cutoff.
-        </p>
       </PanelSection>
 
-      <PanelSection title="Service providers" titleId="service-provider-heading">
+      <PanelSection title="Provider coverage" titleId="service-provider-heading">
         <dl className="mt-4">
           <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Provider type</dt>
           <dd className="mt-1 text-sm text-ink">Counselor</dd>
@@ -485,7 +476,6 @@ function ServiceForm({
                 }))
               }
               label="All active Counselors"
-              description="Any active Counselor may provide new work for this Service."
             />
             <ChoiceRadio
               name="service-coverage"
@@ -497,16 +487,11 @@ function ServiceForm({
                 }))
               }
               label="Selected Counselors"
-              description="Only the Counselors you select may provide new work for this Service."
             />
           </div>
         </fieldset>
         {values.providerCoverage === ServiceProviderCoverage.SELECTED_COUNSELORS ? (
           <>
-            <p className="mt-3 max-w-3xl text-xs leading-5 text-muted">
-              Counselor College responsibility is not a restriction on Student choice.
-              This setting controls Service qualification only.
-            </p>
             <ServiceProviderPicker
               selected={values.selectedCounselors}
               disabled={submitting}
@@ -585,7 +570,8 @@ export function CreateServicePage() {
         title="Create Service"
         backHref="/portal/services"
         backLabel="Services"
-        description="New Services are created inactive and may be incomplete. Enable the Service separately from its detail page when it is ready."
+        description="New Services start inactive."
+        help={<ServiceHelp />}
       />
       <ServiceForm
         initial={emptyCreateState}
@@ -786,6 +772,7 @@ export function EditServicePage() {
     <section>
       <ServicesPageHeading
         title={"Edit " + service.name}
+        help={<ServiceHelp counseling={service.is_system_required} />}
         backHref={"/portal/services/" + serviceId}
         backLabel="Service detail"
       >

@@ -53,12 +53,14 @@ export function ReferralHeading({
   title,
   description,
   action,
+  help,
   backHref,
   backLabel,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  help?: ReactNode;
   backHref?: string;
   backLabel?: string;
 }) {
@@ -66,7 +68,7 @@ export function ReferralHeading({
     <PageHeader
       title={title}
       description={description}
-      actions={action}
+      actions={action} help={help}
       back={backHref ? (
         <Link href={backHref} className={pageBackLinkClass}>
           {backLabel ?? "Back to Referrals"}
