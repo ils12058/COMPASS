@@ -112,7 +112,7 @@ test("a booking-off Service shows no Appointment settings", () => {
       );
     },
   });
-  assert.match(html, /Students cannot create new Appointments for this Service\./);
+  assert.match(html, />Appointment booking<\/dt><dd[^>]*>Not available</);
   assert.doesNotMatch(html, /Default Appointment duration/);
   assert.match(html, /All active Counselors/);
 });

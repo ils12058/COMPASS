@@ -92,7 +92,6 @@ export function SharedSummarySection({
       ) : canManage ? (
         <div className="mt-4 max-w-4xl">
           <p className="text-sm text-muted">This draft is private to you until you publish it to the Student.</p>
-          {absent ? <p className="mt-2 text-sm text-muted">No Shared Summary has been drafted yet.</p> : null}
           <div className="mt-4 grid gap-2">
             <Label htmlFor={`shared-summary-${encounterId}`}>Shared Summary draft</Label>
             <Textarea id={`shared-summary-${encounterId}`} value={value} disabled={save.isPending || publish.isPending} onChange={(event) => { setDraft(event.target.value); setSaveError(null); setPublishError(null); }} rows={9} />
@@ -125,7 +124,7 @@ export function SharedSummarySection({
         <p className="mt-3 text-sm text-muted">No Shared Summary has been drafted yet.</p>
       ) : (
         <div className="mt-3">
-          <p className="text-sm text-muted">This Shared Summary is a Counselor-authored message intended for the Student.</p>
+          <p className="text-sm text-muted">Shared with the student.</p>
           <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-7 text-ink">{summary?.content}</div>
         </div>
       )}

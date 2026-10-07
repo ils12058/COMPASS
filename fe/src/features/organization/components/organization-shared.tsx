@@ -34,18 +34,20 @@ export function PageHeading({
   headingId,
   description,
   action,
+  help,
 }: {
   title: string;
   headingId?: string;
   description?: ReactNode;
   action?: ReactNode;
+  help?: ReactNode;
 }) {
   return (
     <PageHeader
       title={title}
       headingId={headingId}
       description={description}
-      actions={action}
+      actions={action} help={help}
     />
   );
 }

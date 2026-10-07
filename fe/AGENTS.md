@@ -2122,6 +2122,9 @@ boundary, a `PanelSection`, or spacing.
 * `PageAction`, `PageActionLink`, and `PageActionGroup` (`src/components/ui/page-action.tsx`) for a
   page's major commands (see Page-level commands).
 * `ActionStatus` (`src/components/ui/action-status.tsx`) for routine success (§53).
+* `ContextHelp` (`src/components/ui/context-help.tsx`) for grouped page-level conceptual
+  explanation; `Tooltip` for short control names and `IconAction` for named low-risk compact
+  actions. Follow [the UI information hierarchy guideline](docs/ui-guidelines.md) (ADR-091).
 * `dataTable` classes (`src/components/ui/data-table.ts`, §46).
 * `describeResultPage` (`src/features/portal/components/result-context.ts`) for result context built
   only from canonical page facts.

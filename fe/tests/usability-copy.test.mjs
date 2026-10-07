@@ -85,7 +85,7 @@ test("media consent still says it does not affect Counseling, where Students dec
   assert.match(html, /Allows audio and video from this Counseling session to be recorded\./);
   assert.match(html, /Allows speech from this session to be processed as text while transcription is active\./);
   assert.match(html, /Allows the transcript of this session to be stored by the video service\./);
-  assert.match(html, />Approve</);
+  assert.match(html, />Allow</);
   assert.match(html, />Decline</);
   assert.match(html, />Withdraw consent</);
   assert.doesNotMatch(html, IMPLEMENTATION_TERMS);

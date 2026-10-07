@@ -179,9 +179,9 @@ export function CounselorMediaControls({
   const consentLabel = (scope: ECounselingConsentScope, projection: ECounselingConsentStatus) =>
     canReadConsents ? consentRowsLabel(rows, scope) : consentProjectionLabels[projection];
   const providerNote = !workspace.provider_readiness.daily_enabled
-    ? "Video sessions are not enabled, so recording and transcription are unavailable. Counseling is unaffected."
+    ? "Video sessions are off. Recording and transcription are unavailable; Counseling remains available."
     : !workspace.provider_readiness.room_provisioned || !workspace.provider_readiness.join_allowed
-      ? "Recording and transcription become available when the session can be joined."
+      ? "Recording and transcription will be available when the session opens."
       : null;
 
   return (
@@ -189,31 +189,29 @@ export function CounselorMediaControls({
       <PanelHeader
         title="Media controls"
         titleId="e-counseling-media-controls-heading"
-        description="Consent and capture are separate. Recording or transcription starts only when you start it, after the Student’s consent for it is effective."
       />
       {providerNote ? <p className="border-b border-brand-line px-4 py-3 text-sm text-muted sm:px-5">{providerNote}</p> : null}
       {access.canManageMediaAssigned ? consentQuery.isPending ? (
         <div aria-busy="true" className="px-4 pt-4 sm:px-5"><span className="sr-only">Loading session consent controls…</span><Skeleton className="h-16 w-full" /></div>
       ) : consentQuery.isError ? (
-        <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void consentQuery.refetch()}>Retry consent state</Button>}>
-          Consent state could not be loaded. New requests and starts are unavailable; an active capture can still be stopped.
+        <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void consentQuery.refetch()}>Retry</Button>}>
+          Consent couldn’t be loaded. New requests and starts are unavailable. You can still stop recording or transcription.
         </PanelMessage>
       ) : null : <PanelMessage>Media controls and consent details are unavailable to this account.</PanelMessage>}
       {access.canManageMediaAssigned ? <>
-        <PanelSection title="Audio/video recording" titleId="recording-controls-heading" level={3}>
+        <PanelSection title="Recording" titleId="recording-controls-heading" level={3}>
           <MediaFacts facts={[
             ["Consent", consentLabel(ECounselingConsentScope.AUDIO_VIDEO_RECORDING, workspace.media.recording.consent_status)],
             ["Status", <CaptureState key="capture" status={recordingStatus} live="recording" />],
           ]} />
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {canReadConsents && noRecordingRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.AUDIO_VIDEO_RECORDING])}>Request recording consent</Button> : null}
+            {canReadConsents && noRecordingRequest ? <Button variant="secondary" aria-label="Request recording consent" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.AUDIO_VIDEO_RECORDING])}>Request consent</Button> : null}
             {recordingCanStart ? <Button disabled={busy} onClick={() => setPendingStart("recording")}>Start recording</Button> : null}
             {recordingCanStop ? <Button variant="secondary" disabled={busy} onClick={() => void runCommand(() => stopRecording.mutateAsync({ appointmentId }))}>Stop recording</Button> : null}
-            {!recordingCanStart && recordingStatus === ECounselingCaptureStatus.NOT_STARTED && !recordingApproved ? <p className="basis-full text-sm text-muted">Recording can start only after the Student’s recording consent is effective.</p> : null}
-            {recordingStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">{workspace.media.recording.artifact_disposed_at ? "The provider recording was disposed under an approved retention rule." : "Recording completed."}</p> : null}
+            {recordingStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">{workspace.media.recording.artifact_disposed_at ? "The recording was deleted under an approved retention rule." : "Recording completed."}</p> : null}
           </div>
         </PanelSection>
-        <PanelSection title="Session transcription" titleId="transcription-controls-heading" level={3}>
+        <PanelSection title="Transcription" titleId="transcription-controls-heading" level={3}>
           <MediaFacts facts={[
             ["Consent", consentLabel(ECounselingConsentScope.LIVE_TRANSCRIPTION, workspace.media.transcription.consent_status)],
             ["Storage consent", consentLabel(ECounselingConsentScope.TRANSCRIPT_STORAGE, workspace.media.transcription.storage_consent_status)],
@@ -222,13 +220,11 @@ export function CounselorMediaControls({
           ]} />
           {transcriptionCanStart && storageApproved && transcriptionStatus === ECounselingCaptureStatus.NOT_STARTED ? <div className="mt-3 flex items-start gap-3"><input id="e-counseling-store-transcript" type="checkbox" checked={storeTranscript} disabled={busy} onChange={(event) => setStoreTranscript(event.target.checked)} className="mt-1 size-4 rounded border border-border accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /><div><Label htmlFor="e-counseling-store-transcript">Store transcript for this session</Label><p className="mt-1 text-sm text-muted">Optional and off by default. This choice must be made before transcription starts.</p></div></div> : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {canReadConsents && noTranscriptionRequest ? <><Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.LIVE_TRANSCRIPTION])}>Request transcription consent</Button>{noStorageRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.LIVE_TRANSCRIPTION, ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request transcription + storage consent</Button> : null}</> : null}
-            {canReadConsents && hasLiveTranscriptionRequest && noStorageRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request transcript-storage consent</Button> : null}
+            {canReadConsents && noTranscriptionRequest ? <><Button variant="secondary" aria-label="Request transcription consent" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.LIVE_TRANSCRIPTION])}>Request consent</Button>{noStorageRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.LIVE_TRANSCRIPTION, ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request transcription and storage</Button> : null}</> : null}
+            {canReadConsents && hasLiveTranscriptionRequest && noStorageRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request storage consent</Button> : null}
             {transcriptionCanStart ? <Button disabled={busy} onClick={() => setPendingStart("transcription")}>Start transcription</Button> : null}
             {transcriptionCanStop ? <Button variant="secondary" disabled={busy} onClick={() => void runCommand(() => stopTranscription.mutateAsync({ appointmentId }))}>Stop transcription</Button> : null}
-            {!transcriptionCanStart && transcriptionStatus === ECounselingCaptureStatus.NOT_STARTED && !transcriptionApproved ? <p className="basis-full text-sm text-muted">Transcription can start only after the Student’s transcription consent is effective.</p> : null}
-            {transcriptionApproved && !storageApproved && transcriptionStatus === ECounselingCaptureStatus.NOT_STARTED ? <p className="basis-full text-sm text-muted">Transcription may run without storage consent. Transcript storage is optional.</p> : null}
-            {transcriptionStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">{workspace.media.transcription.artifact_disposed_at ? "The stored transcript was disposed under an approved retention rule." : "Transcription completed. Transcript text and playback are not available in COMPASS."}</p> : null}
+            {transcriptionStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">{workspace.media.transcription.artifact_disposed_at ? "The stored transcript was deleted under an approved retention rule." : "Transcription completed."}</p> : null}
           </div>
         </PanelSection>
       </> : null}
@@ -260,10 +256,10 @@ export function CounselorMediaControls({
       >
         <p>
           {pendingStart === "recording"
-            ? "Recording will start only because the Student has currently approved this session’s recording consent."
+            ? "Starting recording captures audio and video from this session. The student has approved recording."
             : storeTranscript
-              ? "Speech will be processed as text while transcription is active. Transcript storage is enabled for this transcription because the Student has approved both transcription and transcript storage. COMPASS does not display or provide transcript text."
-              : "Speech will be processed as text while transcription is active. COMPASS does not display or provide transcript text."}
+              ? "Speech will be processed as text while transcription is active. The transcript will be stored by the video service. The student has approved transcription and storage separately. Transcript text isn’t available here."
+              : "Speech will be processed as text while transcription is active. Transcript storage is off. Transcript text isn’t available here."}
         </p>
       </ConsequentialActionDialog>
     </Panel>

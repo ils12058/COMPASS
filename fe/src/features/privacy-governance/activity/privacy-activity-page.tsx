@@ -128,7 +128,7 @@ export function PrivacyActivityPage() {
     <section>
       <PrivacyPageHeader
         title="Privacy & Security Activity"
-        description="A curated record of privacy-relevant events. It is not the full audit trail."
+        description="Privacy and security events."
         action={canExport ? <Button variant="secondary" disabled={exportCsv.isPending || query.isFetching || query.isError || query.isPlaceholderData || !result} onClick={() => exportCsv.mutate(criteria)}>{exportCsv.isPending ? "Exporting CSV…" : "Export CSV"}</Button> : undefined}
       />
 

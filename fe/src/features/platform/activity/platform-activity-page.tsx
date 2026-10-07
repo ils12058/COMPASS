@@ -51,7 +51,7 @@ export function PlatformActivityPage() {
     <section aria-labelledby="platform-page-heading">
       <PlatformPageHeader
         title="Technical activity"
-        description="A curated record of Platform Operations events. This is not the global Audit Trail."
+        description="Platform Operations events."
       />
 
       {activity.isError && result ? <RefreshFailureNotice onRetry={() => void activity.refetch()} retrying={activity.isFetching} /> : null}

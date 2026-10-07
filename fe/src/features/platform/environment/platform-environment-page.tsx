@@ -1,6 +1,6 @@
 "use client";
 
-import { Notice } from "@/components/ui/notice";
+import { PlatformHelp } from "@/features/platform/platform-help";
 import { Panel, PanelHeader, PanelMessage, PanelSection } from "@/components/ui/panel";
 import { canShowLastKnownData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -28,7 +28,8 @@ export function PlatformEnvironmentPage() {
     <section aria-labelledby="platform-page-heading">
       <PlatformPageHeader
         title="Environment"
-        description="Resolved non-secret configuration for this deployment. These values show how COMPASS is configured, not whether external services are currently reachable."
+        description="Non-secret settings for this deployment."
+        help={<PlatformHelp startupLimitation={result?.startup_limitation} />}
       />
 
       {environment.isPending ? <PlatformRowsSkeleton label="Loading environment details…" rows={5} /> : null}
@@ -42,17 +43,13 @@ export function PlatformEnvironmentPage() {
 
       {result ? (
         <>
-          <Notice tone="warning">
-            <span className="text-ink">{result.startup_limitation}</span>
-          </Notice>
-
           <Panel className="mt-5" aria-labelledby="environment-values-heading">
             <PanelHeader
               title="Resolved configuration"
               titleId="environment-values-heading"
               description={
                 <>
-                  Secrets and raw environment configuration are not shown. Resolved{" "}
+                  Resolved{" "}
                   <PlatformTimestamp value={result.timestamp} />.
                 </>
               }

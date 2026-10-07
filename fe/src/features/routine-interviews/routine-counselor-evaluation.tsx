@@ -390,9 +390,9 @@ function RoutineEncounterFinalization({
 
   return (
     <section aria-labelledby="routine-encounter-finalization" className="border-t border-brand-line px-4 py-5 sm:px-5">
-      <h3 id="routine-encounter-finalization" className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-brand">Finalize against the completed Counseling interaction</h3>
+      <h3 id="routine-encounter-finalization" className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-brand">Finalize evaluation</h3>
       <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
-        Finalizing is separate from saving. COMPASS verifies the completed Counseling Encounter and permanently locks this Evaluation.
+        Finalizing links the completed encounter and permanently locks this evaluation.
       </p>
 
       {linkedEncounter ? (
@@ -422,7 +422,7 @@ function RoutineEncounterFinalization({
         <div className="mt-4 rounded-sm bg-surface-subtle px-4 py-3">
           <p className="font-medium text-ink">Counseling Encounter not yet recorded</p>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
-            Record the completed interaction from this Routine Interview&rsquo;s Counseling workspace and COMPASS links it here.{recordLink ? <> {recordLink}</> : null}
+            Record the encounter from this interview&rsquo;s Counseling workspace.{recordLink ? <> {recordLink}</> : null}
           </p>
         </div>
       )}
@@ -431,7 +431,7 @@ function RoutineEncounterFinalization({
         <fieldset className="mt-4 min-w-0">
           <legend className="text-sm font-medium text-ink">Encounters recorded outside this Routine Interview</legend>
           <p className="mb-2 mt-1 max-w-3xl text-sm text-muted">
-            If this interaction was already recorded from My Counseling Encounters, choose it to link it when you finalize.
+            Choose the encounter for this interaction before finalizing.
           </p>
           <div className="divide-y divide-border rounded-sm border border-border">
             {items.map((candidate: RoutineEncounterCandidate) => (

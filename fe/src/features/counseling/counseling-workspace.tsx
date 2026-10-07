@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { CounselingHelp } from "@/features/counseling/counseling-help";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
@@ -20,7 +21,7 @@ import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { routineEvaluationStatusLabel, routineIntakeStatusLabel } from "@/features/routine-interviews/routine-interviews-shared";
 import type { EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
-import { RecordEncounterForm } from "@/features/counseling/record-encounter-form";
+import { RecordEncounterDialog } from "@/features/counseling/record-encounter-dialog";
 import { SharedSummarySection } from "@/features/counseling/shared-summary-section";
 import {
   counselingDeliveryModeLabel,
@@ -284,7 +285,7 @@ function CounselingWorkspaceContent({
 
   return (
     <div>
-      <CounselingPageHeading title="Counseling workspace" back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>} />
+      <CounselingPageHeading title="Counseling workspace" help={<CounselingHelp />} back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>} />
       {contextExpired ? (
         <Notice role="alert" tone="warning" title={<h2 className="font-heading text-xl font-semibold text-ink">Counseling workspace is no longer available</h2>}><p className="text-muted">These interaction details can no longer be reviewed here.</p>{expiredEncounterMessage ? <p className="mt-2 text-muted">{expiredEncounterMessage}</p> : null}</Notice>
       ) : (
@@ -303,7 +304,7 @@ function CounselingWorkspaceContent({
             ) : overview.matching_encounter ? (
               <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A matching interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)} is not linked to this Routine Interview. If it is this interaction, choose it when finalizing the Counselor Evaluation.</p><Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link></div>
             ) : canRecord ? (
-              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm font-medium text-ink">Counseling Encounter not yet recorded</p><Button className="mt-3" disabled={recordUncertain} onClick={() => setRecordOpen((open) => !open)}>{recordUncertain ? "Recording result unconfirmed" : recordOpen ? "Close recording" : "Record completed encounter"}</Button>{recordOpen ? preset ? <div className="mt-4"><RecordEncounterForm preset={preset} onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} onCreated={() => void handleCreated()} onAlreadyRecorded={() => void handleAlreadyRecorded()} /></div> : <p role="alert" className="mt-3 text-sm text-danger">This interaction cannot be recorded from this page. Review its visit type and delivery mode.</p> : null}</div>
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm font-medium text-ink">Encounter not recorded</p><Button className="mt-3" disabled={recordUncertain} onClick={() => setRecordOpen(true)}>{recordUncertain ? "Recording result unconfirmed" : "Record encounter"}</Button>{preset ? <RecordEncounterDialog open={recordOpen} onOpenChange={setRecordOpen} preset={preset} onUncertain={() => setRecordUncertain(true)} onCreated={handleCreated} onAlreadyRecorded={handleAlreadyRecorded} /> : recordOpen ? <p role="alert" className="mt-3 text-sm text-danger">This interaction cannot be recorded from this page. Review its visit type and delivery mode.</p> : null}</div>
             ) : null}
           </Panel>
 
@@ -312,6 +313,7 @@ function CounselingWorkspaceContent({
             anchorType={anchorType}
             anchorId={anchorId}
             overview={overview}
+            showInteractionFacts={false}
             access={access}
             onPublished={handlePublished}
             onContextExpiredChange={setContextExpired}
@@ -326,6 +328,7 @@ export function CounselingContextPanel({
   anchorType,
   anchorId,
   overview,
+  showInteractionFacts = true,
   access,
   onPublished,
   onContextExpiredChange,
@@ -333,6 +336,9 @@ export function CounselingContextPanel({
   anchorType: CounselingContextAnchorType;
   anchorId: string;
   overview: CounselingContextOverviewResponse;
+  // The standalone workspace already shows these facts in its Interaction panel. Embedded
+  // workspaces retain them here, including the confidential-context access deadline.
+  showInteractionFacts?: boolean;
   access: ReturnType<typeof getCounselingAccess>;
   onPublished?: () => unknown;
   onContextExpiredChange?: (expired: boolean) => void;
@@ -378,9 +384,9 @@ export function CounselingContextPanel({
 
   return (
     <section className="min-w-0" aria-label="Student Counseling context">
-      <h2 className="font-heading text-lg font-semibold text-ink">Student context</h2>
+      <h2 className="font-heading text-lg font-semibold text-ink">Student information</h2>
       {contextExpired ? (
-        <Notice role="status" className="mt-3">Counseling context is not currently available.</Notice>
+        <Notice role="status" className="mt-3">Student information isn’t available right now.</Notice>
       ) : (
         <>
           {/* Tabs sit on the canvas; each section brings its own surface. */}
@@ -390,7 +396,7 @@ export function CounselingContextPanel({
           <div id="counseling-context-panel" role="tabpanel" aria-labelledby={`counseling-context-tab-${activeTab}`} tabIndex={0} className="min-w-0 pt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
             {activeQuery && canShowLastKnownData(activeQuery) ? <RefreshFailureNotice onRetry={() => void activeQuery.refetch()} retrying={activeQuery.isFetching} /> : null}
             {activeQuery?.isFetching && activeQuery.data && !activeQuery.isError ? <p role="status" className="text-sm text-muted">Refreshing…</p> : null}
-            {activeTab === "OVERVIEW" ? <ContextOverview overview={overview} /> : null}
+            {activeTab === "OVERVIEW" ? <ContextOverview overview={overview} showInteractionFacts={showInteractionFacts} /> : null}
             {activeTab === "ROUTINE" ? <RoutineContext routine={routine} canManage={routineAccess.canManageAssigned} /> : null}
             {activeTab === "INVENTORY" ? <InventoryContext query={inventory} overview={overview} /> : null}
             {activeTab === "SUPPORT_INDICATORS" ? <SupportContext query={support} /> : null}
@@ -403,7 +409,7 @@ export function CounselingContextPanel({
   );
 }
 
-function ContextOverview({ overview }: { overview: CounselingContextOverviewResponse }) {
+function ContextOverview({ overview, showInteractionFacts }: { overview: CounselingContextOverviewResponse; showInteractionFacts: boolean }) {
   return (
     <Panel as="div">
       <dl className="grid gap-x-8 px-4 py-2 sm:grid-cols-2 sm:px-5">
@@ -413,11 +419,13 @@ function ContextOverview({ overview }: { overview: CounselingContextOverviewResp
         <Metadata label="College">{overview.student.college?.name ?? "Not provided"}</Metadata>
         <Metadata label="Program">{overview.student.program?.name ?? "Not provided"}</Metadata>
         <Metadata label="Year level">{overview.student.year_level ?? "Not provided"}</Metadata>
-        <Metadata label="Counseling origin">{counselingEntryModeLabel(overview.entry_mode)}</Metadata>
-        <Metadata label="Delivery mode">{counselingDeliveryModeLabel(overview.delivery_mode)}</Metadata>
-        <Metadata label="Available until">{formatCounselingDateTime(overview.valid_until)}</Metadata>
-        <Metadata label="Routine Interview">{overview.routine_interview ? `${routineIntakeStatusLabel(overview.routine_interview.intake_status)} Intake · ${routineEvaluationStatusLabel(overview.routine_interview.evaluation_status)} Evaluation` : "No Routine Interview is linked to this Counseling context."}</Metadata>
-        <Metadata label="Counseling Encounter">{contextEncounterStateLabels[contextEncounterState(overview)]}</Metadata>
+        {showInteractionFacts ? <>
+          <Metadata label="Origin">{counselingEntryModeLabel(overview.entry_mode)}</Metadata>
+          <Metadata label="Delivery">{counselingDeliveryModeLabel(overview.delivery_mode)}</Metadata>
+          <Metadata label="Available until">{formatCounselingDateTime(overview.valid_until)}</Metadata>
+          <Metadata label="Routine Interview">{overview.routine_interview ? `${routineIntakeStatusLabel(overview.routine_interview.intake_status)} Intake · ${routineEvaluationStatusLabel(overview.routine_interview.evaluation_status)} Evaluation` : "No linked Routine Interview"}</Metadata>
+          <Metadata label="Counseling Encounter">{contextEncounterStateLabels[contextEncounterState(overview)]}</Metadata>
+        </> : null}
       </dl>
     </Panel>
   );

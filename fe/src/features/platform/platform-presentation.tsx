@@ -79,13 +79,15 @@ export function PlatformPageHeader({
   headingId = "platform-page-heading",
   description,
   action,
+  help,
 }: {
   title: string;
   headingId?: string;
   description?: string;
   action?: ReactNode;
+  help?: ReactNode;
 }) {
-  return <PageHeader title={title} headingId={headingId} description={description} actions={action} />;
+  return <PageHeader title={title} headingId={headingId} description={description} actions={action} help={help} />;
 }
 
 export function PlatformQueryError({

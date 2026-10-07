@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { ResponsibilitiesHelp } from "@/features/organization/responsibilities/responsibilities-help";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import {
@@ -269,7 +270,7 @@ export function ResponsibilitiesPage() {
       <PageHeading
         title="Responsibilities"
         headingId="responsibilities-heading"
-        description="Organization responsibility defines default institutional routing. It does not by itself grant blanket access to confidential records."
+        help={<ResponsibilitiesHelp />}
       />
       {action.notice &&
       !collegeDialog &&
@@ -285,7 +286,6 @@ export function ResponsibilitiesPage() {
         <PanelHeader
           title="College counselors"
           titleId="college-counselors-heading"
-          description="One responsible Counselor may be assigned to each College. When none is assigned, default routing uses the Head Guidance Counselor if exactly one active Head Guidance Counselor can be identified."
         />
 
         {responsibilities.isPending ||
@@ -390,8 +390,7 @@ export function ResponsibilitiesPage() {
 
         {!canViewStructure ? (
           <p className="border-t border-brand-line px-4 py-3 text-xs leading-5 text-muted sm:px-5">
-            Organization structure is unavailable to this account, so only
-            Colleges that already have a responsible Counselor are listed.
+            Only Colleges with an assigned Counselor are shown. College structure is unavailable.
           </p>
         ) : null}
       </Panel>
@@ -400,7 +399,6 @@ export function ResponsibilitiesPage() {
         <PanelHeader
           title="Staff supervision"
           titleId="staff-supervision-heading"
-          description="Guidance Services Staff share their supervising counselor's assigned responsibilities in COMPASS."
           actions={<Button onClick={() => openStaff()}>Set supervisor</Button>}
         />
 
@@ -507,7 +505,7 @@ export function ResponsibilitiesPage() {
           </DialogTitle>
           <DialogDescription>
             {collegeDialog
-              ? `Choose the explicit responsible Counselor for ${collegeDialog.label}. You will review the current and new relationship before it is saved.`
+              ? `Choose a Counselor for ${collegeDialog.label}, then review the assignment.`
               : "Choose a Counselor."}
           </DialogDescription>
           <div className="mt-6">
@@ -587,7 +585,7 @@ export function ResponsibilitiesPage() {
                 <dd className="font-semibold text-ink">{collegeReview.newCounselor.full_name}</dd>
               </div>
             </dl>
-            <p>This changes the College&apos;s explicit Counselor responsibility used by default institutional routing.</p>
+            <p>This changes the College&apos;s counselor for default routing. It does not grant blanket confidential-record access.</p>
           </>
         ) : null}
       </ConsequentialActionDialog>
@@ -614,8 +612,8 @@ export function ResponsibilitiesPage() {
       >
         <p>
           {collegeRemoval
-            ? `${collegeRemoval.label} will no longer have this explicit Counselor responsibility. Default routing will use the Head Guidance Counselor when one is designated.`
-            : "The explicit responsibility will be removed."}
+            ? `${collegeRemoval.label} will no longer have an assigned Counselor. Default routing uses the Head Guidance Counselor only when exactly one active Head Guidance Counselor is available.`
+            : "The Counselor assignment will be removed."}
         </p>
       </ConsequentialActionDialog>
 
@@ -634,7 +632,7 @@ export function ResponsibilitiesPage() {
             {staffDialog?.staff ? "Change Staff supervisor" : "Set Staff supervisor"}
           </DialogTitle>
           <DialogDescription>
-            Choose one supervising Counselor. The final current → new relationship will be reviewed before it is saved.
+            Choose a supervising Counselor, then review the assignment.
           </DialogDescription>
           <div className="mt-6 space-y-6">
             {staffDialog?.staff ? (
@@ -766,7 +764,7 @@ export function ResponsibilitiesPage() {
       >
         <p>
           {staffRemoval
-            ? `${staffRemoval.staff.full_name} will no longer inherit ${staffRemoval.supervisor.full_name}'s organizational responsibility scope.`
+            ? `${staffRemoval.staff.full_name} will no longer share ${staffRemoval.supervisor.full_name}'s College or institution-wide responsibilities.`
             : "The Staff supervision relationship will be removed."}
         </p>
       </ConsequentialActionDialog>

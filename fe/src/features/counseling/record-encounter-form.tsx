@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -52,13 +52,18 @@ export type EncounterOriginPreset = {
   deliveryMode: DeliveryMode;
 };
 
+export type EncounterTimes = { startedAt: string; endedAt: string };
+
 type RecordEncounterFormProps = {
+  initialTimes?: EncounterTimes;
+  onTimesChange?: (times: EncounterTimes) => void;
+  onBusyChange?: (busy: boolean) => void;
   preset?: EncounterOriginPreset;
   onCancel?: () => void;
-  onCreated?: (encounterId: string) => void;
+  onCreated?: (encounterId: string) => void | Promise<void>;
   onUncertain?: () => void;
   // The Routine Interview already has its Encounter; the caller reloads what it shows.
-  onAlreadyRecorded?: () => void;
+  onAlreadyRecorded?: () => void | Promise<void>;
 };
 
 export function encounterCreatePayload(
@@ -89,7 +94,7 @@ function statusLabel(value: string): string {
   return value.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, onAlreadyRecorded }: RecordEncounterFormProps) {
+export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, onAlreadyRecorded, initialTimes, onTimesChange, onBusyChange }: RecordEncounterFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [source, setSource] = useState<Source | null>(null);
@@ -104,12 +109,16 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
   const [selectedStudentRecord, setSelectedStudentRecord] = useState<CounselingStudentResponse | null>(null);
   const [entryMode, setEntryMode] = useState<CounselingEntryMode>("WALK_IN");
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode | "">("");
-  const [startedAt, setStartedAt] = useState("");
-  const [endedAt, setEndedAt] = useState("");
+  const [startedAt, setStartedAt] = useState(initialTimes?.startedAt ?? "");
+  const [endedAt, setEndedAt] = useState(initialTimes?.endedAt ?? "");
   const [observedNow, setObservedNow] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const create = useCounselingCreateEncounter({ mutation: { retry: false } });
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => { onTimesChange?.({ startedAt, endedAt }); }, [startedAt, endedAt, onTimesChange]);
+  useEffect(() => { onBusyChange?.(submitting || uncertain); }, [submitting, uncertain, onBusyChange]);
 
   const appointmentCandidates = useCounselingListAppointmentCandidates(
     { ...(candidateQuery ? { search: candidateQuery } : {}), page, page_size: 20 },
@@ -191,7 +200,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedOrigin || create.isPending || uncertain) return;
+    if (!selectedOrigin || submitting || uncertain) return;
     setError(null);
     if (!startedAt || !endedAt) {
       setError("Enter the actual start and end times of the completed interaction.");
@@ -210,6 +219,9 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
 
     const payload = encounterCreatePayload(selectedOrigin, started, ended);
 
+    setSubmitting(true);
+    // Lock the containing dialog in the submission event, before Escape can dismiss it.
+    onBusyChange?.(true);
     try {
       const response = await create.mutateAsync({ data: payload });
       const encounterId = response.data.id;
@@ -219,7 +231,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
           ? [queryClient.invalidateQueries({ queryKey: getCounselingListAppointmentCandidatesQueryKey() })]
           : []),
       ]);
-      if (onCreated) onCreated(encounterId);
+      if (onCreated) await onCreated(encounterId);
       else router.push(`/portal/counseling/encounters/${encounterId}`);
     } catch (caught) {
       const isUncertain = !(caught instanceof CompassApiError) || caught.status >= 500;
@@ -229,7 +241,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
         setError(null);
       } else {
         setError(counselingErrorMessage(caught, "The Counseling Encounter could not be recorded. Review the values and try again."));
-        if (counselingErrorCode(caught) === "counseling_routine_interview_already_linked") onAlreadyRecorded?.();
+        if (counselingErrorCode(caught) === "counseling_routine_interview_already_linked") await onAlreadyRecorded?.();
         if (counselingErrorCode(caught) === "counseling_appointment_already_used") {
           setSelectedAppointmentId("");
           setSelectedAppointmentRecord(null);
@@ -239,6 +251,8 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
           ]);
         }
       }
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -265,8 +279,8 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
       <PanelHeader
         title="Record counseling encounter"
         titleId="record-encounter-heading"
-        description={preset ? "Record the completed interaction connected to this Counseling context." : source === "appointment" ? "Select an eligible Counseling Appointment, then enter when the interaction actually occurred." : "Select a Student and record the completed direct interaction."}
-        actions={!preset && !uncertain ? <Button variant="quiet" disabled={create.isPending} onClick={() => source ? changeSource(source === "appointment" ? "direct" : "appointment") : onCancel?.()}>Change source</Button> : preset && onCancel && !uncertain ? <Button variant="quiet" disabled={create.isPending} onClick={onCancel}>Close</Button> : undefined}
+        description={preset ? undefined : source === "appointment" ? "Choose an Appointment." : "Choose a Student."}
+        actions={!preset && !uncertain ? <Button variant="quiet" disabled={submitting} onClick={() => source ? changeSource(source === "appointment" ? "direct" : "appointment") : onCancel?.()}>Change source</Button> : preset && onCancel && !uncertain ? <Button variant="quiet" disabled={submitting} onClick={onCancel}>Close</Button> : undefined}
       />
 
       {!preset && source === "appointment" ? (
@@ -330,13 +344,13 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
             <div className="grid gap-4 border-t border-border pt-5 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="counseling-entry-mode">Interaction origin</Label>
-                <Select id="counseling-entry-mode" value={entryMode} onChange={(event) => setEntryMode(event.target.value as CounselingEntryMode)} disabled={create.isPending}>
+                <Select id="counseling-entry-mode" value={entryMode} onChange={(event) => setEntryMode(event.target.value as CounselingEntryMode)} disabled={submitting}>
                   <option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option>
                 </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="counseling-delivery-mode">Delivery mode</Label>
-                <Select id="counseling-delivery-mode" value={selectedDeliveryMode} onChange={(event) => setDeliveryMode(event.target.value as DeliveryMode)} disabled={create.isPending || options.delivery_modes.length === 1}>
+                <Select id="counseling-delivery-mode" value={selectedDeliveryMode} onChange={(event) => setDeliveryMode(event.target.value as DeliveryMode)} disabled={submitting || options.delivery_modes.length === 1}>
                   {options.delivery_modes.length === 0 ? <option value="">No delivery mode configured</option> : null}
                   {options.delivery_modes.map((mode) => <option key={mode} value={mode}>{counselingDeliveryModeLabel(mode)}</option>)}
                 </Select>
@@ -352,32 +366,32 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
             <div><p className="text-xs font-semibold text-muted">Student</p><p className="mt-1 text-sm font-semibold text-ink">{selectedOrigin.studentName}</p><p className="mt-1 text-xs text-muted">Institutional ID: {selectedOrigin.institutionalId ?? "Not provided"}</p></div>
             <div><p className="text-xs font-semibold text-muted">Origin and delivery</p><p className="mt-1 text-sm text-ink">{counselingEntryModeLabel(selectedOrigin.entryMode)} · {counselingDeliveryModeLabel(selectedOrigin.deliveryMode)}</p>{selectedOrigin.appointmentReference ? <p className="mt-1 text-xs text-muted">Appointment {selectedOrigin.appointmentReference}</p> : null}</div>
           </div>
-          {selectedOrigin.entryMode === "APPOINTMENT" ? <p className="mt-3 text-xs text-muted">Student, Counselor, Counseling Service, and delivery mode are fixed by this Appointment and the signed-in Counselor.</p> : <p className="mt-3 text-xs text-muted">You are recorded as the Counselor, and the Counseling Service is assigned automatically.</p>}
-          <p className="mt-4 text-sm text-muted">Enter the actual times of the completed interaction. Appointment schedule boundaries and default duration do not constrain these times.</p>
+          {selectedOrigin.entryMode === "APPOINTMENT" ? <p className="mt-3 text-xs text-muted">The Appointment sets the student, Service, and delivery mode. You are recorded as the counselor.</p> : <p className="mt-3 text-xs text-muted">You are recorded as the counselor for this Counseling encounter.</p>}
+          <p className="mt-4 text-sm text-muted">Enter the actual start and end, even if they differ from the scheduled times.</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2"><Label htmlFor="counseling-started-at">Actual start</Label><Input id="counseling-started-at" type="datetime-local" required value={startedAt} disabled={create.isPending || uncertain} aria-invalid={Boolean(error && !startedAt) || Boolean(startedAt && endedAt && timeError)} aria-describedby={error && (!startedAt || !endedAt) ? "counseling-time-required" : startedAt && endedAt && timeError ? "counseling-time-error" : undefined} onChange={(event) => { setStartedAt(event.target.value); setObservedNow(Date.now()); setError(null); }} /></div>
-            <div className="grid gap-2"><Label htmlFor="counseling-ended-at">Actual end</Label><Input id="counseling-ended-at" type="datetime-local" required value={endedAt} disabled={create.isPending || uncertain} aria-invalid={Boolean(error && (!endedAt || timeError))} aria-describedby={error && (!startedAt || !endedAt) ? "counseling-time-required" : startedAt && endedAt && timeError ? "counseling-time-error" : undefined} onChange={(event) => { setEndedAt(event.target.value); setObservedNow(Date.now()); setError(null); }} /></div>
+            <div className="grid gap-2"><Label htmlFor="counseling-started-at">Actual start</Label><Input id="counseling-started-at" type="datetime-local" required value={startedAt} disabled={submitting || uncertain} aria-invalid={Boolean(error && !startedAt) || Boolean(startedAt && endedAt && timeError)} aria-describedby={error && (!startedAt || !endedAt) ? "counseling-time-required" : startedAt && endedAt && timeError ? "counseling-time-error" : undefined} onChange={(event) => { setStartedAt(event.target.value); setObservedNow(Date.now()); setError(null); }} /></div>
+            <div className="grid gap-2"><Label htmlFor="counseling-ended-at">Actual end</Label><Input id="counseling-ended-at" type="datetime-local" required value={endedAt} disabled={submitting || uncertain} aria-invalid={Boolean(error && (!endedAt || timeError))} aria-describedby={error && (!startedAt || !endedAt) ? "counseling-time-required" : startedAt && endedAt && timeError ? "counseling-time-error" : undefined} onChange={(event) => { setEndedAt(event.target.value); setObservedNow(Date.now()); setError(null); }} /></div>
           </div>
           {error && (!startedAt || !endedAt) ? <p id="counseling-time-required" className="mt-2 text-sm text-danger">{error}</p> : null}
           {startedAt && endedAt && timeError ? <p id="counseling-time-error" className="mt-2 text-sm text-danger">The actual start must be before the end, and the end cannot be in the future.</p> : null}
           {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
           {uncertain ? (
             <Notice role="alert" tone="warning" className="mt-4">
-              <p className="text-ink">The result of this recording request could not be confirmed. Refresh My Counseling Encounters before recording the interaction again to avoid a duplicate record.</p>
+              <p className="text-ink">We couldn’t confirm whether the encounter was saved. Check your encounters before trying again to avoid a duplicate.</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button type="button" variant="secondary" onClick={() => void Promise.all([
                   queryClient.invalidateQueries({ queryKey: getCounselingListMyEncountersQueryKey() }),
                   ...(selectedOrigin.entryMode === "APPOINTMENT" ? [queryClient.invalidateQueries({ queryKey: getCounselingListAppointmentCandidatesQueryKey() })] : []),
-                ])}>Refresh My Counseling Encounters</Button>
-                <Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "secondary" })}>View My Counseling Encounters</Link>
+                ])}>Refresh encounters</Button>
+                <Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "secondary" })}>View encounters</Link>
               </div>
             </Notice>
           ) : null}
           {!uncertain ? (
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button type="submit" disabled={create.isPending || !selectedDeliveryMode || Boolean(timeError)} aria-busy={create.isPending}>{create.isPending ? "Recording…" : "Record counseling encounter"}</Button>
+              <Button type="submit" disabled={submitting || !selectedDeliveryMode || Boolean(timeError)} aria-busy={submitting}>{submitting ? "Recording…" : "Record counseling encounter"}</Button>
               {!preset && source === "appointment" && selectedAppointment?.status === "SCHEDULED" ? <p className="basis-full text-xs text-muted">Recording this Encounter will not complete the Appointment.</p> : null}
-              {!preset && onCancel ? <Button type="button" variant="secondary" disabled={create.isPending} onClick={onCancel}>Cancel</Button> : null}
+              {!preset && onCancel ? <Button type="button" variant="secondary" disabled={submitting} onClick={onCancel}>Cancel</Button> : null}
             </div>
           ) : null}
         </form>

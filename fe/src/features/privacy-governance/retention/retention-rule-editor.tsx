@@ -1,5 +1,7 @@
 "use client";
 
+import { RetentionHelp } from "@/features/privacy-governance/retention/retention-help";
+
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -417,6 +419,7 @@ export function RetentionRuleEditor({
   return (
     <article className={pageSheetWidth}>
       <PrivacyPageHeader
+        help={<RetentionHelp />}
         title={
           creating
             ? "Create retention draft"
@@ -493,7 +496,7 @@ export function RetentionRuleEditor({
       ) : null}
       {item && canManage && item.status !== "RETIRED" ? (
         <Panel className="mt-5">
-          <PanelHeader title="Rule lifecycle" />
+          <PanelHeader title="Rule actions" />
           <PanelBody>
             <p className="mb-3 text-sm">
               {item.status === "DRAFT"

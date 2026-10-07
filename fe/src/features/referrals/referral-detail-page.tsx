@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { ReferralHelp } from "@/features/referrals/referral-help";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
@@ -89,6 +90,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
     <div className="space-y-5">
       <ReferralHeading
         title={item.reference_code}
+        help={<ReferralHelp />}
         backHref="/portal/referrals"
         action={<ReferralPdfDownload referral={item} />}
       />
@@ -114,9 +116,9 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         </div>
       </RecordSection>
 
-      <RecordSection title="Student on source Referral">
+      <RecordSection title="Student on referral">
         <div>
-          <dt className="text-xs font-semibold text-muted">Name on source Referral</dt>
+          <dt className="text-xs font-semibold text-muted">Name on referral</dt>
           <dd className="mt-1 text-sm text-ink">{item.student_name_snapshot}</dd>
         </div>
         <div>
@@ -400,7 +402,7 @@ function VoidReferralButton({
         onConfirm={() => void confirmVoid()}
       >
         <p>
-          Voiding keeps the source record for review but prevents status-note
+          Voiding keeps the Referral for review but prevents status-note
           updates, new actions, and linked Call Slip issuance. This does not
           delete the Referral.
         </p>

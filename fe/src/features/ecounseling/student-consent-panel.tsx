@@ -117,7 +117,7 @@ export function StudentConsentPanel({
   return (
     <Panel aria-labelledby="e-counseling-consent-heading">
       <PanelHeader
-        title="Media consent"
+        title="Media permissions"
         titleId="e-counseling-consent-heading"
         description="Your media-consent choice does not affect your ability to receive Counseling."
       />
@@ -135,8 +135,8 @@ export function StudentConsentPanel({
                     <span className={pending ? "text-sm font-semibold text-ink" : "text-sm text-muted"}>{row ? consentStatusLabel(row) : "Not requested"}</span>
                   </div>
                   <p className="mt-0.5 text-sm leading-6 text-muted">{scopeDescription(scope)}</p>
-                  {pending && row ? <div className="mt-2.5 flex flex-wrap gap-2"><Button variant="primary" disabled={decide.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.APPROVED }); }}>Approve</Button><Button variant="secondary" disabled={decide.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.DENIED }); }}>Decline</Button></div> : null}
-                  {canWithdraw && row ? <Button className="mt-2.5" variant="secondary" disabled={withdraw.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, withdraw: true }); }}>Withdraw consent</Button> : null}
+                  {pending && row ? <div className="mt-2.5 flex flex-wrap gap-2"><Button variant="primary" aria-label={`Allow ${scopeLabel(scope).toLowerCase()}`} disabled={decide.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.APPROVED }); }}>Allow</Button><Button variant="secondary" aria-label={`Decline ${scopeLabel(scope).toLowerCase()}`} disabled={decide.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.DENIED }); }}>Decline</Button></div> : null}
+                  {canWithdraw && row ? <Button className="mt-2.5" variant="secondary" aria-label={`Withdraw ${scopeLabel(scope).toLowerCase()} consent`} disabled={withdraw.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, withdraw: true }); }}>Withdraw consent</Button> : null}
                   {row?.decision === ECounselingConsentDecision.DENIED && !withdrawn ? <p className="mt-1.5 text-sm text-muted">This media option will not be requested again for this session.</p> : null}
                   {row ? <p className="mt-1.5 text-xs text-muted">Requested {formatECounselingDateTime(row.requested_at)}{row.decided_at ? ` · Decided ${formatECounselingDateTime(row.decided_at)}` : ""}</p> : null}
                   {error?.scope === scope ? <p role="alert" className="mt-2 text-sm text-danger">{scopeLabel(scope)}: {error.message}</p> : null}
@@ -153,9 +153,9 @@ export function StudentConsentPanel({
       ) : null}
       <AlertDialog open={Boolean(action)} onOpenChange={(open) => { if (!open && !decide.isPending && !withdraw.isPending) setAction(null); }}>
         {action ? <AlertDialogContent>
-          <AlertDialogTitle>{action.withdraw ? `Withdraw ${withdrawalSubjects[action.scope]} consent?` : `${action.decision === ConsentDecisionRequestDecision.APPROVED ? "Approve" : "Decline"} ${scopeLabel(action.scope).toLowerCase()}?`}</AlertDialogTitle>
+          <AlertDialogTitle>{action.withdraw ? `Withdraw ${withdrawalSubjects[action.scope]} consent?` : `${action.decision === ConsentDecisionRequestDecision.APPROVED ? "Allow" : "Decline"} ${scopeLabel(action.scope).toLowerCase()}?`}</AlertDialogTitle>
           <AlertDialogDescription>{action.withdraw ? "This withdraws your consent for the rest of this session. Counseling continues to be available." : action.decision === ConsentDecisionRequestDecision.APPROVED ? scopeDescription(action.scope) : "This media option will not be requested again for this session. Your decision does not affect Counseling."}</AlertDialogDescription>
-          <div className="mt-6 flex justify-end gap-2"><AlertDialogCancel asChild><Button variant="secondary" disabled={decide.isPending || withdraw.isPending}>Cancel</Button></AlertDialogCancel><AlertDialogAction asChild><Button variant="secondary" disabled={decide.isPending || withdraw.isPending} onClick={(event) => { event.preventDefault(); void confirmAction(); }}>{decide.isPending || withdraw.isPending ? "Saving…" : action.withdraw ? "Withdraw consent" : action.decision === ConsentDecisionRequestDecision.APPROVED ? "Approve" : "Decline"}</Button></AlertDialogAction></div>
+          <div className="mt-6 flex justify-end gap-2"><AlertDialogCancel asChild><Button variant="secondary" disabled={decide.isPending || withdraw.isPending}>Cancel</Button></AlertDialogCancel><AlertDialogAction asChild><Button variant="secondary" disabled={decide.isPending || withdraw.isPending} onClick={(event) => { event.preventDefault(); void confirmAction(); }}>{decide.isPending || withdraw.isPending ? "Saving…" : action.withdraw ? "Withdraw consent" : action.decision === ConsentDecisionRequestDecision.APPROVED ? "Allow" : "Decline"}</Button></AlertDialogAction></div>
         </AlertDialogContent> : null}
       </AlertDialog>
     </Panel>

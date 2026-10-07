@@ -120,7 +120,7 @@ export function GoodMoralCounselorDetail({
         <PanelSection
           title="Official Receipt"
           titleId="good-moral-counselor-receipt"
-          description="Optional receipt facts only. COMPASS does not record payment status here."
+          description="Optional receipt details. Payment status isn’t tracked here."
         >
           <dl className={factGrid}>
             <GoodMoralField label="Receipt number" value={item.official_receipt_number || "Not provided"} />

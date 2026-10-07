@@ -20,6 +20,7 @@ export function PageHeader({
   context,
   meta,
   actions,
+  help,
   className,
   children,
 }: {
@@ -33,6 +34,7 @@ export function PageHeader({
   // Short facts that belong beside the title, such as a record status.
   meta?: ReactNode;
   actions?: ReactNode;
+  help?: ReactNode;
   className?: string;
   // Anything else that belongs under the title, such as record dates.
   children?: ReactNode;
@@ -54,7 +56,7 @@ export function PageHeader({
           ) : null}
           {children}
         </div>
-        {actions ? <div className="flex shrink-0 flex-wrap gap-2">{actions}</div> : null}
+        {actions || help ? <div className="flex shrink-0 flex-wrap items-start gap-2">{actions}{help}</div> : null}
       </div>
     </header>
   );

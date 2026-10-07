@@ -4,14 +4,16 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { ECounselingHelp } from "@/features/ecounseling/session-help";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelBody, PanelHeader, PanelMessage } from "@/components/ui/panel";
-import { appointmentStatusLabel, deliveryModeLabel, formatAppointmentDateTime } from "@/features/appointments/appointments-shared";
+import { AppointmentStatusBadge, formatAppointmentDateTime } from "@/features/appointments/appointments-shared";
 import { CounselingContextPanel } from "@/features/counseling/counseling-workspace";
-import { RecordEncounterForm, type EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
+import { RecordEncounterDialog } from "@/features/counseling/record-encounter-dialog";
+import { type EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { CounselorMediaControls } from "@/features/ecounseling/counselor-media-controls";
 import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
@@ -84,16 +86,13 @@ function RecordStatus({ workspace, canManage }: { workspace: CounselorWorkspaceR
     <Panel aria-labelledby="e-counseling-encounter-heading">
       <PanelHeader title="Counseling Encounter" titleId="e-counseling-encounter-heading" />
       <PanelBody>
-        <p className="text-sm leading-6 text-muted">Not recorded yet. Recording the encounter is separate from media consent and capture.</p>
-        {canManage ? open ? (
-          <div className="mt-4 border-t border-border pt-4">
-            <RecordEncounterForm preset={preset} onCancel={() => setOpen(false)} onUncertain={() => setUncertain(true)} onCreated={() => void handleCreated()} />
-          </div>
-        ) : (
+        <p className="text-sm leading-6 text-muted">Not recorded</p>
+        {canManage ? (
           <Button className="mt-3" disabled={uncertain} onClick={() => setOpen(true)}>
-            {uncertain ? "Recording result unconfirmed" : "Record completed encounter"}
+            {uncertain ? "Recording result unconfirmed" : "Record encounter"}
           </Button>
         ) : null}
+        {canManage ? <RecordEncounterDialog open={open} onOpenChange={setOpen} preset={preset} onUncertain={() => setUncertain(true)} onCreated={handleCreated} /> : null}
       </PanelBody>
     </Panel>
   );
@@ -114,7 +113,10 @@ function SessionHeader({
 }) {
   return (
     <PageHeader
-      title="E-Counseling session"
+      title={participant}
+      description={formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}
+      meta={<AppointmentStatusBadge status={appointment.status} />}
+      help={<ECounselingHelp />}
       back={(
         <GuardedPortalLink href={`/portal/appointments/${appointmentId}`} className={pageBackLinkClass}>
           ← Back to appointment
@@ -122,21 +124,13 @@ function SessionHeader({
       )}
       actions={routine ? (
         <Link className={buttonVariants({ variant: "secondary" })} href={`/portal/routine-interviews/${routine.id}`}>
-          Open Routine Interview
+          Routine Interview
         </Link>
       ) : undefined}
     >
-      <p className="mt-1 text-sm text-ink">
-        {participant}
-        <span aria-hidden="true"> · </span>
-        {formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}
-      </p>
       <p className="mt-0.5 text-sm text-muted">
-        Appointment <span className="font-mono text-ink">{appointment.reference_code}</span>
-        <span aria-hidden="true"> · </span>
-        {deliveryModeLabel(appointment.delivery_mode)}
-        <span aria-hidden="true"> · </span>
-        {appointmentStatusLabel(appointment.status)}
+        E-Counseling <span aria-hidden="true"> · </span>
+        <span className="font-mono text-ink">{appointment.reference_code}</span>
       </p>
       {routine ? <p className="mt-0.5 text-sm text-muted">Routine Interview · {routine.status}</p> : null}
     </PageHeader>
@@ -161,7 +155,7 @@ function WorkspaceSkeleton() {
 }
 
 function WorkspaceLoadError({ error, retry }: { error: unknown; retry: () => void }) {
-  return <section className="max-w-2xl"><PageHeader title="E-Counseling unavailable" /><Notice role="alert" action={<><Button variant="secondary" onClick={retry}>Retry</Button><Link className="inline-flex min-h-10 items-center px-2 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/portal/appointments/my">Return to appointments</Link></>}>{ecounselingErrorMessage(error, "This E-Counseling session is not currently available.")}</Notice></section>;
+  return <section className="max-w-2xl"><PageHeader title="E-Counseling unavailable" /><Notice role="alert" action={<><Button variant="secondary" onClick={retry}>Retry</Button><Link className="inline-flex min-h-10 items-center px-2 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/portal/appointments/my">Return to appointments</Link></>}>{ecounselingErrorMessage(error, "This E-Counseling session is unavailable. Try again.")}</Notice></section>;
 }
 
 const JOIN_BOUNDARY_REFRESH_BUFFER_MS = 500;
@@ -317,12 +311,12 @@ function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; 
           <CounselorMediaControls appointmentId={appointmentId} access={access} workspace={data} />
           {!data.counseling_context_available ? (
             <Panel aria-labelledby="e-counseling-context-heading">
-              <PanelHeader title="Student context" titleId="e-counseling-context-heading" />
-              <PanelMessage role="status">Student context is not available for this appointment right now.</PanelMessage>
+              <PanelHeader title="Student information" titleId="e-counseling-context-heading" />
+              <PanelMessage role="status">Student information isn’t available right now.</PanelMessage>
             </Panel>
           ) : context.isPending ? (
             <Panel aria-busy="true" aria-labelledby="e-counseling-context-heading">
-              <PanelHeader title="Student context" titleId="e-counseling-context-heading" />
+              <PanelHeader title="Student information" titleId="e-counseling-context-heading" />
               <PanelBody>
                 <span className="sr-only">Loading Student context…</span>
                 <Skeleton className="h-10 w-full" />
@@ -331,9 +325,9 @@ function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; 
             </Panel>
           ) : context.isError || !context.data?.data ? (
             <Panel aria-labelledby="e-counseling-context-heading">
-              <PanelHeader title="Student context" titleId="e-counseling-context-heading" />
+              <PanelHeader title="Student information" titleId="e-counseling-context-heading" />
               <PanelMessage role="alert" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>
-                Student context could not be loaded.
+                Student information couldn’t be loaded. Try again.
               </PanelMessage>
             </Panel>
           ) : (

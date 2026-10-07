@@ -21,18 +21,15 @@ export const counselingDeliveryOptions = [
   {
     mode: DeliveryMode.IN_PERSON,
     label: "In person",
-    description: "Permits new in-person Counseling.",
+    description: "In-person sessions.",
   },
   {
     mode: DeliveryMode.ONLINE,
     label: "Online counseling",
     description:
-      "Permits new online Counseling. Scheduled Online Counseling appointments use the E-Counseling workspace.",
+      "Scheduled sessions use E-Counseling.",
   },
 ] as const;
-
-export const counselingVideoProviderNote =
-  "Video-session availability also depends on the E-Counseling provider configuration, which is managed separately.";
 
 // What the current choice means for new work, shown whether or not Online is checked.
 export function counselingOnlineStatus({
@@ -41,23 +38,12 @@ export function counselingOnlineStatus({
   bookingEnabled,
 }: CounselingDeliveryState): string {
   if (!online) {
-    return (
-      "Online counseling is not enabled. New Online Counseling appointments cannot be scheduled, " +
-      "so no new appointments can enter E-Counseling." +
-      (inPerson ? " In-person Counseling is not affected." : "")
-    );
+    return "Online counseling off." + (inPerson ? " In-person Counseling remains available." : "");
   }
   if (!bookingEnabled) {
-    return (
-      "Online counseling is enabled for new Counseling work, but Appointment booking is not " +
-      "available for this Service, so no new appointments can enter E-Counseling."
-    );
+    return "Online counseling on. Appointment booking is off.";
   }
-  return (
-    "Online counseling is enabled. New Online Counseling appointments may be scheduled where " +
-    "Counselor Availability permits. Scheduled Online Counseling appointments use the " +
-    "E-Counseling workspace."
-  );
+  return "Online counseling on. Appointment booking is available.";
 }
 
 export function newECounselingAppointmentsLabel({
@@ -65,21 +51,8 @@ export function newECounselingAppointmentsLabel({
   bookingEnabled,
 }: CounselingDeliveryState): string {
   return online && bookingEnabled
-    ? "Available for scheduling, subject to Counselor Availability and booking settings"
+    ? "Available for scheduling"
     : "Unavailable";
-}
-
-export function counselingECounselingExplanation({
-  online,
-  bookingEnabled,
-}: CounselingDeliveryState): string {
-  if (!online) {
-    return "New E-Counseling appointments are unavailable because Online counseling is not enabled for this Service.";
-  }
-  if (!bookingEnabled) {
-    return "New E-Counseling appointments are unavailable because Appointment booking is not available for this Service.";
-  }
-  return "Scheduled Online Counseling appointments use the E-Counseling workspace.";
 }
 
 // Offered only to viewers who already hold Platform Operations access; it grants nothing new.

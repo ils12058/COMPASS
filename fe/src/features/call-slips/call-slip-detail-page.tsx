@@ -2,9 +2,10 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Download } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 
+import { CallSlipHelp } from "@/features/call-slips/call-slip-help";
+import { IconAction } from "@/components/ui/icon-action";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
@@ -74,7 +75,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <Field label="Date and time to report" value={formatInstitutionalDateTime(item.report_at)} />
       </RecordSection>
       <PanelSection title="Instruction" titleId="student-call-slip-instruction">
-        <p className="max-w-3xl text-sm leading-6 text-ink">Please show this permit to your instructor/professor and proceed to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
+        <p className="max-w-3xl text-sm leading-6 text-ink">Show this Call Slip to your instructor and report to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
       </PanelSection>
       <RecordSection title="Issuance and status">
         <Field label="Issuing Guidance Counselor" value={item.issued_by_name_snapshot} />
@@ -103,7 +104,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   return (
     <div className="space-y-5">
       {slip.isError ? <RefreshFailureNotice onRetry={() => void slip.refetch()} retrying={slip.isFetching} /> : null}
-      <CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" action={<CallSlipPdfDownload callSlipId={item.id} />} />
+      <CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" help={<CallSlipHelp />} action={<CallSlipPdfDownload callSlipId={item.id} />} />
       {item.state === CallSlipLifecycleStateValue.VOIDED ? (
         <Notice role="status" tone="warning" title={<span className="text-warning">Voided</span>}>
           <p className="whitespace-pre-wrap text-ink">{item.void_reason}</p>
@@ -121,7 +122,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         <Field label="Date and time to report" value={formatInstitutionalDateTime(item.report_at)} />
       </RecordSection>
       <PanelSection title="Source instruction" titleId="operational-call-slip-instruction">
-        <p className="max-w-3xl text-sm leading-6 text-ink">The Student should show this permit to their instructor/professor and proceed to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
+        <p className="max-w-3xl text-sm leading-6 text-ink">Show to the instructor; report to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
       </PanelSection>
       <RecordSection title="Issuance and recordkeeping">
         <Field label="Issuer name on Call Slip" value={item.issued_by_name_snapshot} />
@@ -188,7 +189,7 @@ function CallSlipPdfDownload({ callSlipId, studentFacing = false }: { callSlipId
     }
   }
 
-  return <div className="flex flex-col items-start gap-2 sm:items-end"><Button variant="secondary" onClick={() => void download()} disabled={pending}><Download aria-hidden="true" size={16} />{pending ? "Preparing…" : "Download Call Slip"}</Button>{error ? <p role="alert" className="max-w-sm text-sm text-danger">{error}</p> : null}</div>;
+  return <div className="flex flex-col items-start gap-2 sm:items-end"><IconAction action="download" label={pending ? "Preparing Call Slip…" : "Download Call Slip"} onClick={() => void download()} disabled={pending} aria-busy={pending} />{error ? <p role="alert" className="max-w-sm text-sm text-danger">{error}</p> : null}</div>;
 }
 
 function CallSlipLifecycleActions({ slip, onRefresh }: { slip: CallSlipOperationalResponse; onRefresh: () => Promise<CallSlipOperationalResponse | undefined> }) {
@@ -278,7 +279,7 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
   return (
     <div className="px-4 py-4 sm:px-5">
       <h3 className="font-semibold text-ink">Record interview end</h3>
-      <p className="mt-1 text-sm leading-6 text-muted">This records only the source Call Slip&apos;s interview-end time. Times use {INSTITUTION_TIME_ZONE_LABEL}. It does not complete an Appointment or Counseling record.</p>
+      <p className="mt-1 text-sm leading-6 text-muted">Record when the interview ended. Times use {INSTITUTION_TIME_ZONE_LABEL}.</p>
       <form className="mt-4 max-w-2xl space-y-3" onSubmit={prepare} aria-busy={mutation.isPending}>
         <div className="grid gap-2 sm:max-w-sm">
           <Label htmlFor="call-slip-interview-ended">Interview ended</Label>
@@ -287,7 +288,7 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
         {error && !confirmOpen ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
         {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
         <Button type="submit" variant="secondary" disabled={mutation.isPending || reconcileRequired}>{reconcileRequired ? "Refresh required" : "Review interview end"}</Button>
-        {reconcileRequired ? <Button type="button" variant="secondary" className="ml-2" onClick={() => void record()}>Refresh Call Slip</Button> : null}
+        {reconcileRequired ? <IconAction action="refresh" label="Refresh Call Slip" className="ml-2" onClick={() => void record()} /> : null}
       </form>
       <ConsequentialActionDialog
         open={confirmOpen}
@@ -300,7 +301,7 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
         onOpenChange={setConfirmOpen}
         onConfirm={() => void record()}
       >
-        <p>This source timestamp becomes immutable after it is recorded.</p>
+        <p>This time cannot be changed once saved. It does not complete a related Appointment or Counseling record.</p>
         <p className="font-semibold text-ink">
           {formatInstitutionalDateTime(institutionalDateTimeInputToISO(value))}{" "}
           {INSTITUTION_TIME_ZONE_LABEL}
@@ -382,7 +383,7 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
       <Button variant="danger" onClick={() => { setError(null); setNotice(null); setOpen(true); }}>Void Call Slip</Button>
       {error && !open ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
       {notice ? <p role="status" className="mt-3 text-sm text-muted">{notice}</p> : null}
-      {reconcileRequired ? <Button className="mt-3" variant="secondary" onClick={() => void confirmVoid()}>Refresh Call Slip state</Button> : null}
+      {reconcileRequired ? <IconAction className="mt-3" action="refresh" label="Refresh Call Slip" onClick={() => void confirmVoid()} /> : null}
       <ConsequentialActionDialog
         open={open}
         title="Void this Call Slip?"

@@ -1,5 +1,7 @@
 "use client";
 
+import { RetentionHelp } from "@/features/privacy-governance/retention/retention-help";
+
 import { Plus } from "lucide-react";
 
 import Link from "next/link";
@@ -36,6 +38,7 @@ export function RetentionRulesPage() {
   return (
     <section>
       <PrivacyPageHeader
+        help={<RetentionHelp />}
         title="Retention rules"
         backHref="/portal/privacy/retention"
         backLabel="Retention & Disposition"
@@ -48,7 +51,6 @@ export function RetentionRulesPage() {
       <Panel>
         <PanelHeader
           title="Institutional rules"
-          description="Use an approved institutional policy reference and duration. COMPASS provides no default retention period."
         />
         {rules.isPending ? (
           <PrivacyListSkeleton

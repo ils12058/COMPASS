@@ -38,7 +38,7 @@ export function PrivacyLanding() {
       ? [{
           href: "/portal/privacy/activity",
           title: "Privacy & Security Activity",
-          description: "A curated record of privacy-relevant events. It is not the full audit trail.",
+          description: "Privacy and security events.",
           icon: ShieldCheck,
         }]
       : []),

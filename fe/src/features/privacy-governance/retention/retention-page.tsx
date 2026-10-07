@@ -1,5 +1,7 @@
 "use client";
 
+import { RetentionHelp } from "@/features/privacy-governance/retention/retention-help";
+
 import { ListChecks } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -75,6 +77,7 @@ export function RetentionPage() {
   return (
     <section>
       <PrivacyPageHeader
+        help={<RetentionHelp />}
         title="Retention & Disposition"
         action={
           <PageActionLink
@@ -156,7 +159,6 @@ export function RetentionPage() {
       <Panel>
         <PanelHeader
           title="Disposition cases"
-          description="Each approval authorizes one fixed record. Eligibility alone never authorizes disposition."
         />
         {cases.isPending ? (
           <PrivacyListSkeleton

@@ -116,7 +116,7 @@ export function GoodMoralIssueSection({
     <>
       <GoodMoralSection
         title="Issuance review"
-        description="Review the certificate details before issuing. The issued certificate will record the approved form revision, issuance date, and issuing counselor."
+        description="Review certificate details before issuing."
       >
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
           <GoodMoralField label="Applicant name" value={item.applicant_name} />

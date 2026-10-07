@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
+import { InstitutionalFormsHelp } from "@/features/institution-configuration/forms-help";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Notice } from "@/components/ui/notice";
@@ -79,10 +80,9 @@ function InstitutionalFormsWorkspace({
     <>
       <PageHeader
         title="Institutional Forms"
-        description="Read-only reference of controlled-form identities recognized by COMPASS. This is not an inventory of every questionnaire, workflow, report, or downloadable PDF."
+        description="Controlled forms recognized by COMPASS."
+        help={<InstitutionalFormsHelp />}
       >
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Official code and revision identify an institutional controlled document. Current means the revision selected for new records. COMPASS support means this deployed software understands that exact revision; it does not grant institutional approval. Supported revisions are synchronized with the deployed version after confirmed form changes.</p>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Some confirmed source revisions retain former CNSC/GTA codes. Current UCN branding does not rewrite their controlled-document identities.</p>
       </PageHeader>
       {invalidFamilyNotice ? <Notice role="status" tone="warning" className="mb-5">The requested Form Family is unavailable. Choose an available family below.</Notice> : null}
 
@@ -111,9 +111,7 @@ function InstitutionalFormsWorkspace({
           </div>
         </div>
       ) : familyItems.length === 0 ? (
-        <Notice>
-          Institutional Form references are unavailable for this deployment. Supported Form Families have not been synchronized.
-        </Notice>
+        <Panel><PanelMessage>No Institutional Form references are available.</PanelMessage></Panel>
       ) : (
         <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
           <nav aria-labelledby="form-families-heading" className="min-w-0 rounded-sm border border-brand-line bg-surface-raised">
@@ -156,8 +154,8 @@ function InstitutionalFormsWorkspace({
                 </span>
               }
             />
-            {selectedFamily.configuration_state === FormFamilyConfigurationState.ACTIVE_UNSUPPORTED ? <p role="alert" className="border-b border-brand-line px-4 py-3 text-sm leading-6 text-danger sm:px-5">A revision is marked Current for new records, but this COMPASS version does not support its exact controlled-form identity.</p> : null}
-            {selectedFamily.configuration_state === FormFamilyConfigurationState.MISSING_REQUIRED_REVISION ? <p role="alert" className="border-b border-brand-line px-4 py-3 text-sm leading-6 text-danger sm:px-5">This Form Family requires a current supported revision, but none is configured.</p> : null}
+            {selectedFamily.configuration_state === FormFamilyConfigurationState.ACTIVE_UNSUPPORTED ? <p role="alert" className="border-b border-brand-line px-4 py-3 text-sm leading-6 text-danger sm:px-5">The Current revision is not supported by this version of COMPASS.</p> : null}
+            {selectedFamily.configuration_state === FormFamilyConfigurationState.MISSING_REQUIRED_REVISION ? <p role="alert" className="border-b border-brand-line px-4 py-3 text-sm leading-6 text-danger sm:px-5">A current supported revision is required for this form family.</p> : null}
 
             <h3 className="px-4 pb-3 pt-4 font-heading text-base font-semibold text-ink sm:px-5">
               Form Revisions
@@ -200,7 +198,7 @@ function InstitutionalFormsWorkspace({
                 />
               </>
             )}
-          </Panel> : <Notice>Choose a Form Family to view its revisions.</Notice>}
+          </Panel> : <Panel><PanelMessage>Choose a Form Family to view its revisions.</PanelMessage></Panel>}
         </div>
       )}
 

@@ -63,7 +63,7 @@ export function ReferralCallSlipSection({
           {currentItems[0] ? (
             <LinkedCallSlipSummary callSlip={currentItems[0]} />
           ) : (
-            <p className="mt-3 text-sm text-muted">No non-voided linked Call Slip is currently recorded.</p>
+            <p className="mt-3 text-sm text-muted">No current linked Call Slip.</p>
           )}
 
           {history.isError ? (
@@ -86,8 +86,8 @@ export function ReferralCallSlipSection({
             <div className="mt-5 border-t border-border pt-4">
               <p className="text-sm leading-6 text-muted">
                 {referralAction
-                  ? "The Referral source action is already recorded. Issuing a linked Call Slip will reuse it without adding another action timestamp."
-                  : "Issuing a linked Call Slip will also record the source Referral action in the same transaction."}
+                  ? "The Call Slip action is already recorded."
+                  : "Issuing also records the Call Slip action on this Referral."}
               </p>
               <Link href={`/portal/referrals/${referral.id}/issue-call-slip`} className={buttonVariants({ variant: "primary", className: "mt-3" })}>
                 {history.data?.data.items.some((item) => item.state === CallSlipLifecycleStateValue.VOIDED)
@@ -101,7 +101,7 @@ export function ReferralCallSlipSection({
                   referral={referral}
                   actionType={ReferralActionTypeValue.SEND_CALL_SLIP_INTERVIEW_PERMIT}
                   buttonLabel="Record action only"
-                  supportingText={'Records the Referral source action without creating or notifying a digital Call Slip.'}
+                  supportingText={'Records the action without issuing a digital Call Slip or notifying the student.'}
                   onRefresh={onRefresh}
                 />
               ) : null}

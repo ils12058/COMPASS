@@ -309,6 +309,7 @@ export function ServicesPageHeading({
   title,
   description,
   action,
+  help,
   backHref,
   backLabel,
   children,
@@ -316,6 +317,7 @@ export function ServicesPageHeading({
   title: string;
   description?: ReactNode;
   action?: ReactNode;
+  help?: ReactNode;
   backHref?: string;
   backLabel?: string;
   // Facts that belong under the title, such as the Service code and status.
@@ -325,7 +327,7 @@ export function ServicesPageHeading({
     <PageHeader
       title={title}
       description={description}
-      actions={action}
+      actions={action} help={help}
       back={backHref ? (
         <Link href={backHref} className={pageBackLinkClass}>
           ← {backLabel ?? "Services"}
