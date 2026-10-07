@@ -23,10 +23,16 @@ from compass.service_catalog.bootstrap import (
     canonical_counseling_readiness,
     sync_canonical_services,
 )
-from compass.service_catalog.models import Service, ServiceDeliveryMode, ServiceProviderRole
+from compass.service_catalog.models import (
+    Service,
+    ServiceCounselorProvider,
+    ServiceDeliveryMode,
+    ServiceProviderRole,
+)
 from compass.service_catalog.services import (
     CanonicalServiceRequired,
     CanonicalServiceReserved,
+    ServiceSchedulingConsequenceReviewRequired,
     create_service,
     set_service_active,
     update_service,
@@ -83,14 +89,14 @@ def test_fresh_sync_is_active_bookable_idempotent_and_audited_once():
     assert "created" in first_output.getvalue()
     assert service.name == "Counseling"
     assert service.is_active
-    assert service.appointment_policy == "OPTIONAL"
-    assert service.default_duration_minutes == 60
+    assert service.appointment_booking_enabled
+    assert service.default_appointment_duration_minutes == 60
     assert service.cancellation_cutoff_minutes == 30
     assert not service.requires_current_inventory
+    assert service.provider_coverage == "ALL_COUNSELORS"
     assert set(service.delivery_mode_assignments.values_list("mode", flat=True)) == {"IN_PERSON"}
-    assert set(service.provider_role_assignments.values_list("role__code", flat=True)) == {
-        "COUNSELOR"
-    }
+    # Counselor is the implicit provider class: no legacy role rows are written.
+    assert not ServiceProviderRole.objects.filter(service=service).exists()
     assert canonical_counseling_readiness() == (True, "ok")
     assert get_counseling_service().pk == service.pk
     events = service_events()
@@ -101,7 +107,6 @@ def test_fresh_sync_is_active_bookable_idempotent_and_audited_once():
     assert "unchanged" in second_output.getvalue()
     assert Service.objects.filter(code="COUNSELING").count() == 1
     assert ServiceDeliveryMode.objects.filter(service=service).count() == 1
-    assert ServiceProviderRole.objects.filter(service=service).count() == 1
     assert Service.objects.get(code="COUNSELING").pk == service.pk
     assert service_events() == events
 
@@ -123,7 +128,6 @@ def test_concurrent_sync_creates_one_complete_canonical_service():
     assert len({result.service_id for result in results}) == 1
     assert Service.objects.filter(code="COUNSELING").count() == 1
     assert ServiceDeliveryMode.objects.filter(service_id=results[0].service_id).count() == 1
-    assert ServiceProviderRole.objects.filter(service_id=results[0].service_id).count() == 1
 
 
 @pytest.mark.django_db
@@ -136,12 +140,13 @@ def test_existing_customization_and_references_survive_sync():
         code="COUNSELING",
         name="Guidance Counseling",
         description="Locally configured",
-        appointment_policy="REQUIRED",
-        default_duration_minutes=45,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=45,
         cancellation_cutoff_minutes=60,
         requires_current_inventory=True,
         delivery_modes=["IN_PERSON", "ONLINE"],
-        provider_roles=["COUNSELOR"],
+        provider_coverage="SELECTED_COUNSELORS",
+        selected_counselors=[counselor],
         context=AuditContext.user(admin),
     )
     set_service_active(service_id=service.pk, is_active=True, context=AuditContext.user(admin))
@@ -166,14 +171,21 @@ def test_existing_customization_and_references_survive_sync():
     assert result.service_id == appointment.service_id == service.pk
     assert service.name == "Guidance Counseling"
     assert service.description == "Locally configured"
-    assert service.appointment_policy == "REQUIRED"
-    assert service.default_duration_minutes == 45
+    assert service.appointment_booking_enabled
+    assert service.default_appointment_duration_minutes == 45
     assert service.cancellation_cutoff_minutes == 60
     assert service.requires_current_inventory
     assert set(service.delivery_mode_assignments.values_list("mode", flat=True)) == {
         "IN_PERSON",
         "ONLINE",
     }
+    # Sync never resets an institution's selected-provider coverage.
+    assert service.provider_coverage == "SELECTED_COUNSELORS"
+    assert list(
+        ServiceCounselorProvider.objects.filter(service=service).values_list(
+            "counselor_id", flat=True
+        )
+    ) == [counselor.pk]
     assert service_events() == before_events
 
 
@@ -185,12 +197,11 @@ def test_existing_required_drift_repairs_in_place_without_resetting_valid_settin
         code="COUNSELING",
         name="",
         description="Keep this description",
-        appointment_policy="OPTIONAL",
-        default_duration_minutes=None,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=None,
         cancellation_cutoff_minutes=45,
         requires_current_inventory=True,
         delivery_modes=[],
-        provider_roles=[],
         context=AuditContext.user(admin),
     )
     result = sync_canonical_services()
@@ -200,14 +211,11 @@ def test_existing_required_drift_repairs_in_place_without_resetting_valid_settin
     assert service.is_active
     assert service.name == "Counseling"
     assert service.description == "Keep this description"
-    assert service.default_duration_minutes == 60
+    assert service.default_appointment_duration_minutes == 60
     assert service.cancellation_cutoff_minutes == 45
     assert service.requires_current_inventory
     assert canonical_counseling_readiness() == (True, "ok")
     assert set(service.delivery_mode_assignments.values_list("mode", flat=True)) == {"IN_PERSON"}
-    assert set(service.provider_role_assignments.values_list("role__code", flat=True)) == {
-        "COUNSELOR"
-    }
     assert ("service.updated", "SYSTEM") in service_events()
     assert ("service.enabled", "SYSTEM") in service_events()
     before_events = service_events()
@@ -216,17 +224,15 @@ def test_existing_required_drift_repairs_in_place_without_resetting_valid_settin
 
 
 @pytest.mark.django_db
-def test_none_policy_cutoff_drift_is_normalized_without_reopening_booking():
+def test_booking_off_counseling_stays_off_and_unselected_coverage_is_reported():
     sync_policy()
     admin = user("admin@example.edu", "IT_ADMIN")
+    counselor = user("counselor@example.edu", "COUNSELOR")
     service = legacy_counseling_service(
         code="COUNSELING",
         name="Locally named Counseling",
-        appointment_policy="NONE",
-        default_duration_minutes=45,
-        cancellation_cutoff_minutes=30,
+        appointment_booking_enabled=False,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=AuditContext.user(admin),
     )
     result = sync_canonical_services()
@@ -235,10 +241,17 @@ def test_none_policy_cutoff_drift_is_normalized_without_reopening_booking():
     assert service.pk == result.service_id
     assert service.is_active
     assert service.name == "Locally named Counseling"
-    assert service.appointment_policy == "NONE"
-    assert service.default_duration_minutes == 45
-    assert service.cancellation_cutoff_minutes is None
+    assert service.appointment_booking_enabled is False
     assert canonical_counseling_readiness() == (True, "ok")
+
+    # A selection without any active Counselor is reported, never widened by sync.
+    Service.objects.filter(pk=service.pk).update(provider_coverage="SELECTED_COUNSELORS")
+    ServiceCounselorProvider.objects.create(service=service, counselor=counselor)
+    assert canonical_counseling_readiness() == (True, "ok")
+    User.objects.filter(pk=counselor.pk).update(is_active=False)
+    assert canonical_counseling_readiness() == (False, "selected_counselors_missing")
+    service.refresh_from_db()
+    assert service.provider_coverage == "SELECTED_COUNSELORS"
 
 
 @pytest.mark.django_db
@@ -271,36 +284,40 @@ def test_reserved_code_disable_provider_invariant_and_generic_services():
     admin = user("admin@example.edu", "IT_ADMIN")
     context = AuditContext.user(admin)
     with pytest.raises(CanonicalServiceReserved, match="system-managed"):
-        create_service(
-            code=" counseling ", name="Manual", appointment_policy="NONE", context=context
-        )
+        create_service(code=" counseling ", name="Manual", context=context)
     assert not Service.objects.filter(code="COUNSELING").exists()
 
     service = Service.objects.get(pk=sync_canonical_services().service_id)
     with pytest.raises(CanonicalServiceReserved, match="system-managed"):
-        create_service(
-            code="COUNSELING", name="Duplicate", appointment_policy="NONE", context=context
-        )
+        create_service(code="COUNSELING", name="Duplicate", context=context)
     with pytest.raises(CanonicalServiceRequired, match="cannot be disabled"):
         set_service_active(service_id=service.pk, is_active=False, context=context)
-    with pytest.raises(CanonicalServiceRequired, match="COUNSELOR"):
-        update_service(service_id=service.pk, changes={"provider_roles": []}, context=context)
     service.refresh_from_db()
     assert service.is_active
-    assert service.provider_role_assignments.filter(role__code="COUNSELOR").exists()
 
     changed = update_service(
         service_id=service.pk,
-        changes={"appointment_policy": "NONE", "cancellation_cutoff_minutes": None},
+        changes={"appointment_booking_enabled": False},
         context=context,
     )
-    assert changed.is_active and changed.appointment_policy == "NONE"
+    assert changed.is_active and changed.appointment_booking_enabled is False
+    assert changed.cancellation_cutoff_minutes is None
     assert canonical_counseling_readiness() == (True, "ok")
     assert sync_canonical_services().outcome == "unchanged"
+    # Enabling ONLINE Counseling is an explicit, acknowledged decision (E-Counseling provider
+    # readiness is managed separately).
+    with pytest.raises(ServiceSchedulingConsequenceReviewRequired) as review:
+        update_service(
+            service_id=service.pk,
+            changes={"delivery_modes": ["IN_PERSON", "ONLINE"]},
+            context=context,
+        )
+    assert review.value.counseling_online_enabled is True
     changed = update_service(
         service_id=service.pk,
         changes={"delivery_modes": ["IN_PERSON", "ONLINE"]},
         context=context,
+        acknowledge_scheduling_consequences=True,
     )
     assert set(changed.delivery_mode_assignments.values_list("mode", flat=True)) == {
         "IN_PERSON",
@@ -314,10 +331,8 @@ def test_reserved_code_disable_provider_invariant_and_generic_services():
     ordinary = create_service(
         code="OTHER_SERVICE",
         name="Other",
-        appointment_policy="NONE",
         context=context,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
     )
     assert not ordinary.is_active
     ordinary = set_service_active(service_id=ordinary.pk, is_active=True, context=context)
@@ -327,20 +342,25 @@ def test_reserved_code_disable_provider_invariant_and_generic_services():
 
 
 @pytest.mark.django_db
-def test_api_rejects_reserved_create_disable_and_provider_removal():
+def test_api_rejects_reserved_create_and_disable_and_retired_provider_roles():
     sync_policy()
     admin = user("admin@example.edu", "IT_ADMIN")
     client, headers = auth_client(admin)
     create_response = client.post(
         "/api/v1/services",
-        data=json.dumps({"code": "COUNSELING", "name": "Manual", "appointment_policy": "NONE"}),
+        data=json.dumps({"code": "COUNSELING", "name": "Manual"}),
         content_type="application/json",
         **headers,
     )
     assert create_response.status_code == 409
     assert create_response.json()["error"]["code"] == "canonical_service_reserved"
     service = Service.objects.get(pk=sync_canonical_services().service_id)
-    disabled = client.post(f"/api/v1/services/{service.pk}/disable", **headers)
+    disabled = client.post(
+        f"/api/v1/services/{service.pk}/disable",
+        data=json.dumps({}),
+        content_type="application/json",
+        **headers,
+    )
     assert disabled.status_code == 409
     assert disabled.json()["error"]["code"] == "canonical_service_required"
     removed = client.patch(
@@ -349,8 +369,8 @@ def test_api_rejects_reserved_create_disable_and_provider_removal():
         content_type="application/json",
         **headers,
     )
-    assert removed.status_code == 409
-    assert removed.json()["error"]["code"] == "canonical_service_required"
+    # Counselor is no longer a removable provider-role choice.
+    assert removed.status_code == 422
     service.refresh_from_db()
     assert service.is_active
 
@@ -363,7 +383,7 @@ def test_service_projection_marks_only_canonical_services_as_system_required():
     canonical = Service.objects.get(pk=sync_canonical_services().service_id)
     created = client.post(
         "/api/v1/services",
-        data=json.dumps({"code": "ADMISSION", "name": "Admission", "appointment_policy": "NONE"}),
+        data=json.dumps({"code": "ADMISSION", "name": "Admission"}),
         content_type="application/json",
         **headers,
     )
@@ -391,9 +411,8 @@ def test_student_booking_discovers_fresh_service_without_availability():
     assert len(rows) == 1
     assert rows[0]["id"] == str(service.pk)
     assert rows[0]["code"] == "COUNSELING"
-    assert rows[0]["appointment_policy"] == "OPTIONAL"
     assert rows[0]["delivery_modes"] == ["IN_PERSON"]
-    assert rows[0]["default_duration_minutes"] == 60
+    assert rows[0]["default_appointment_duration_minutes"] == 60
     assert not rows[0]["requires_current_inventory"]
 
 
@@ -413,20 +432,22 @@ def test_readiness_requires_canonical_configuration_but_not_daily(client):
     Service.objects.filter(pk=service.pk).update(is_active=False)
     assert client.get("/api/v1/health/ready").status_code == 503
     Service.objects.filter(pk=service.pk).update(is_active=True)
-    ServiceProviderRole.objects.filter(service=service).delete()
+    Service.objects.filter(pk=service.pk).update(provider_coverage="SELECTED_COUNSELORS")
     assert client.get("/api/v1/health/ready").status_code == 503
-    ServiceProviderRole.objects.create(service=service, role=Role.objects.get(code="COUNSELOR"))
+    Service.objects.filter(pk=service.pk).update(provider_coverage="ALL_COUNSELORS")
     ServiceDeliveryMode.objects.filter(service=service).delete()
     assert client.get("/api/v1/health/ready").status_code == 503
     ServiceDeliveryMode.objects.create(service=service, mode="IN_PERSON")
-    Service.objects.filter(pk=service.pk).update(default_duration_minutes=None)
+    Service.objects.filter(pk=service.pk).update(default_appointment_duration_minutes=None)
     assert client.get("/api/v1/health/ready").status_code == 503
-    Service.objects.filter(pk=service.pk).update(default_duration_minutes=60)
+    Service.objects.filter(pk=service.pk).update(default_appointment_duration_minutes=60)
     assert client.get("/api/v1/health/ready").status_code == 200
     ServiceDeliveryMode.objects.create(service=service, mode="ONLINE")
     assert client.get("/api/v1/health/ready").status_code == 200
     Service.objects.filter(pk=service.pk).update(
-        appointment_policy="NONE", cancellation_cutoff_minutes=None
+        appointment_booking_enabled=False,
+        default_appointment_duration_minutes=None,
+        cancellation_cutoff_minutes=None,
     )
     assert client.get("/api/v1/health/ready").status_code == 200
     assert "COUNSELING" not in json.dumps(client.get("/api/v1/health/ready").json())

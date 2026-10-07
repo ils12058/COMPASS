@@ -91,15 +91,13 @@ def active_service(
     code: str = "SYNTHETIC_SERVICE",
     duration: int | None = 60,
     delivery_modes=None,
-    provider_roles=None,
 ):
     service = create_service(
         code=code,
         name=code.replace("_", " ").title(),
-        appointment_policy="OPTIONAL" if duration is not None else "NONE",
-        default_duration_minutes=duration,
+        appointment_booking_enabled=duration is not None,
+        default_appointment_duration_minutes=duration,
         delivery_modes=delivery_modes or ["IN_PERSON", "ONLINE"],
-        provider_roles=provider_roles or ["COUNSELOR"],
         context=context(actor),
     )
     return set_service_active(service_id=service.pk, is_active=True, context=context(actor))
@@ -420,9 +418,8 @@ def test_effective_query_rejects_inactive_service_unsupported_mode_role_and_larg
     inactive_service = create_service(
         code="INACTIVE",
         name="Inactive",
-        appointment_policy="NONE",
+        appointment_booking_enabled=False,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=context(actor),
     )
     with pytest.raises(AvailabilityNotApplicable, match="inactive"):
@@ -438,7 +435,6 @@ def test_effective_query_rejects_inactive_service_unsupported_mode_role_and_larg
         actor,
         code="IN_PERSON_ONLY",
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
     )
     with pytest.raises(AvailabilityNotApplicable, match="delivery mode"):
         compute_base_availability(

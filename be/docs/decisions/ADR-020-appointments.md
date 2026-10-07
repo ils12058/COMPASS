@@ -1,5 +1,9 @@
 # ADR-020: Appointment foundation
 
+## Status
+
+Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) makes booking use two-state booking capability and Service-specific Counselor qualification, keeps College responsibility out of explicit Counselor choice, and lets existing Appointments be fulfilled as booked after later Catalog changes; rescheduling and reassignment follow current rules.
+
 ## Context
 
 COMPASS needs a shared reservation domain that records which Student reserved which Service, with

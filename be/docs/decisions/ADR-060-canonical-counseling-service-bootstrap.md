@@ -1,5 +1,9 @@
 # ADR-060: Bootstrap the system-required Counseling Service
 
+## Status
+
+Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) sets canonical COUNSELING to booking available with all-Counselor coverage, stops writing provider-role rows, and keeps sync from resetting institutional coverage. The bootstrap decision below otherwise stands.
+
 ## Context
 
 ADR-018 deliberately omitted production Service rows while institutional offerings were unknown,

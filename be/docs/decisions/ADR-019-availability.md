@@ -1,5 +1,9 @@
 # ADR-019: Availability foundation
 
+## Status
+
+Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) makes effective Service Availability depend on current Counselor qualification and applies the Appointment duration only to bookable Services. Raw Availability stays provider-centric.
+
 ## Context
 
 COMPASS needs a scheduling foundation that answers when the Guidance and Counseling Office and a specific operational provider can potentially deliver an active Service through a supported delivery mode. Availability is not an Appointment reservation and must not absorb Organization routing, Counseling encounter records, room scheduling, or e-Counseling delivery concerns.

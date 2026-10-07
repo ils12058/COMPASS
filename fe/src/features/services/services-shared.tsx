@@ -25,6 +25,11 @@ import {
   CompassApiError,
   readApiErrorCode,
 } from "@/lib/api/errors";
+import {
+  DeliveryMode,
+  ServiceActivationBlocker,
+  ServiceProviderCoverage,
+} from "@/lib/api/generated/model";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
@@ -39,15 +44,82 @@ const knownErrors: Record<string, string> = {
   canonical_service_reserved:
     "The COUNSELING code is reserved for the Counseling Service that COMPASS provides. Use a different Service code.",
   canonical_service_required:
-    "Counseling is required by COMPASS. It must stay active and allow Counselors.",
+    "Counseling is required by COMPASS and must stay active.",
   service_scheduling_consequence_review_required:
     "Review the scheduling consequences before saving this Service change.",
 };
 
 export type ServiceSchedulingConsequenceDetails = {
   existingAppointmentDependencyDetected: boolean;
+  providerDependencyDetected: boolean;
   counselingOnlineEnabled: boolean;
 };
+
+export function serviceDeliveryLabel(modes: DeliveryMode[]): string {
+  const labels = [
+    modes.includes(DeliveryMode.IN_PERSON) ? "In person" : null,
+    modes.includes(DeliveryMode.ONLINE) ? "Online" : null,
+  ].filter(Boolean);
+  return labels.length ? labels.join(", ") : "Not configured";
+}
+
+export function serviceBookingLabel(enabled: boolean): string {
+  return enabled ? "Available" : "Not available";
+}
+
+export const serviceCoverageLabels: Record<ServiceProviderCoverage, string> = {
+  [ServiceProviderCoverage.ALL_COUNSELORS]: "All active Counselors",
+  [ServiceProviderCoverage.SELECTED_COUNSELORS]: "Selected Counselors",
+};
+
+// Why an inactive Service cannot be enabled yet, as the backend reports it.
+export const activationBlockerLabels: Record<ServiceActivationBlocker, string> = {
+  [ServiceActivationBlocker.DELIVERY_MODE_MISSING]: "No delivery mode is selected.",
+  [ServiceActivationBlocker.APPOINTMENT_DURATION_MISSING]:
+    "Appointment booking is available but has no default Appointment duration.",
+  [ServiceActivationBlocker.SELECTED_COUNSELORS_MISSING]:
+    "Coverage is limited to selected Counselors, but no active Counselor is selected.",
+};
+
+// What a reviewed Service change means for Appointments that are already scheduled.
+export function ServiceConsequenceSummary({
+  details,
+}: {
+  details: ServiceSchedulingConsequenceDetails | null;
+}) {
+  if (!details) {
+    return (
+      <p>
+        One or more scheduling consequences require review. Existing Appointments are not
+        changed by this Service update.
+      </p>
+    );
+  }
+  return (
+    <>
+      {details.existingAppointmentDependencyDetected ? (
+        <p>
+          Some upcoming Appointments use a setting this change removes. They stay scheduled and
+          can still take place as booked, but rescheduling or reassigning them follows the new
+          settings.
+        </p>
+      ) : null}
+      {details.providerDependencyDetected ? (
+        <p>
+          Some upcoming Appointments are with a Counselor who would no longer provide this
+          Service. Those Appointments stay with that Counselor and can still take place; the
+          Counselor will not receive new Appointments for this Service.
+        </p>
+      ) : null}
+      {details.counselingOnlineEnabled ? (
+        <p>
+          Online Counseling may become bookable where Availability permits it. This does not
+          verify that the E-Counseling provider integration is ready.
+        </p>
+      ) : null}
+    </>
+  );
+}
 
 export function servicesErrorCode(error: unknown): string | undefined {
   return error instanceof CompassApiError
@@ -76,15 +148,24 @@ export function serviceSchedulingConsequenceDetails(
     "existing_appointment_dependency_detected" in details
       ? details.existing_appointment_dependency_detected
       : undefined;
+  const provider =
+    "provider_dependency_detected" in details
+      ? details.provider_dependency_detected
+      : undefined;
   const counselingOnline =
     "counseling_online_enabled" in details
       ? details.counseling_online_enabled
       : undefined;
-  if (typeof existing !== "boolean" || typeof counselingOnline !== "boolean") {
+  if (
+    typeof existing !== "boolean" ||
+    typeof provider !== "boolean" ||
+    typeof counselingOnline !== "boolean"
+  ) {
     return null;
   }
   return {
     existingAppointmentDependencyDetected: existing,
+    providerDependencyDetected: provider,
     counselingOnlineEnabled: counselingOnline,
   };
 }

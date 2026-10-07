@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
 import {
+  ServiceConsequenceSummary,
   ServicesDetailSkeleton,
   ServicesPageHeading,
   ServicesQueryError,
@@ -20,19 +20,24 @@ import {
   type ServiceSchedulingConsequenceDetails,
 } from "@/features/services/services-shared";
 import {
-  AppointmentPolicy,
-  ConfigurableProviderRoleCode,
+  ServiceProviderPicker,
+  type SelectedCounselor,
+} from "@/features/services/service-provider-picker";
+import {
   DeliveryMode,
-  ProviderRoleCode,
+  ServiceProviderCoverage,
   type ServiceCreateRequest,
+  type ServiceProvidersResponse,
   type ServiceResponse,
   type ServiceUpdateRequest,
 } from "@/lib/api/generated/model";
 import {
+  getServicesGetProvidersQueryKey,
   getServicesGetQueryKey,
   getServicesListQueryKey,
   useServicesCreate,
   useServicesGet,
+  useServicesGetProviders,
   useServicesUpdate,
 } from "@/lib/api/generated/services/services";
 
@@ -40,13 +45,14 @@ type ServiceFormState = {
   code: string;
   name: string;
   description: string;
-  appointmentPolicy: AppointmentPolicy;
+  bookingEnabled: boolean;
   defaultDuration: string;
   cancellationCutoff: string;
   requiresCurrentInventory: boolean;
   inPerson: boolean;
   online: boolean;
-  counselor: boolean;
+  providerCoverage: ServiceProviderCoverage;
+  selectedCounselors: SelectedCounselor[];
 };
 
 function nullableInteger(value: string): number | null {
@@ -67,16 +73,25 @@ function sameStringSet(left: string[], right: string[]): boolean {
   return left.every((value) => rightSet.has(value));
 }
 
-function initialFromService(service: ServiceResponse): ServiceFormState {
+function selectedIds(values: ServiceFormState): string[] {
+  return values.providerCoverage === ServiceProviderCoverage.SELECTED_COUNSELORS
+    ? values.selectedCounselors.map((item) => item.id)
+    : [];
+}
+
+function initialFromService(
+  service: ServiceResponse,
+  providers: ServiceProvidersResponse,
+): ServiceFormState {
   return {
     code: service.code,
     name: service.name,
     description: service.description,
-    appointmentPolicy: service.appointment_policy,
+    bookingEnabled: service.appointment_booking_enabled,
     defaultDuration:
-      service.default_duration_minutes === null
+      service.default_appointment_duration_minutes === null
         ? ""
-        : String(service.default_duration_minutes),
+        : String(service.default_appointment_duration_minutes),
     cancellationCutoff:
       service.cancellation_cutoff_minutes === null
         ? ""
@@ -84,18 +99,48 @@ function initialFromService(service: ServiceResponse): ServiceFormState {
     requiresCurrentInventory: service.requires_current_inventory,
     inPerson: service.delivery_modes.includes(DeliveryMode.IN_PERSON),
     online: service.delivery_modes.includes(DeliveryMode.ONLINE),
-    // A system-required Service must keep Counselor eligibility, so saving
-    // always sends it and repairs a row that lost it.
-    counselor:
-      service.is_system_required ||
-      service.provider_roles.includes(ProviderRoleCode.COUNSELOR),
+    providerCoverage: service.provider_coverage,
+    selectedCounselors: providers.counselors.map((item) => ({
+      id: item.id,
+      displayName: item.display_name,
+      isActive: item.is_active,
+    })),
   };
+}
+
+function ChoiceRadio({
+  name,
+  checked,
+  onSelect,
+  label,
+  description,
+}: {
+  name: string;
+  checked: boolean;
+  onSelect: () => void;
+  label: string;
+  description: string;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-sm border border-border px-3 py-2.5 has-[:checked]:border-brand has-[:checked]:bg-brand-wash">
+      <input
+        type="radio"
+        name={name}
+        className="mt-1 h-4 w-4 accent-brand"
+        checked={checked}
+        onChange={onSelect}
+      />
+      <span>
+        <span className="block text-sm font-semibold text-ink">{label}</span>
+        <span className="mt-0.5 block text-xs leading-5 text-muted">{description}</span>
+      </span>
+    </label>
+  );
 }
 
 function ServiceForm({
   initial,
   active,
-  legacyProviderAssignment = false,
   systemRequired = false,
   submitting,
   submitLabel,
@@ -106,7 +151,6 @@ function ServiceForm({
 }: {
   initial: ServiceFormState;
   active: boolean;
-  legacyProviderAssignment?: boolean;
   systemRequired?: boolean;
   submitting: boolean;
   submitLabel: string;
@@ -116,20 +160,21 @@ function ServiceForm({
   onSubmit: (values: ServiceFormState) => Promise<void>;
 }) {
   const [values, setValues] = useState(initial);
-  const appointmentEnabled =
-    values.appointmentPolicy !== AppointmentPolicy.NONE;
+  const bookingClearsSavedSettings = initial.bookingEnabled && !values.bookingEnabled;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await onSubmit(values);
   }
 
-  function setPolicy(next: AppointmentPolicy) {
+  function setBooking(enabled: boolean) {
+    // Appointment-only settings exist only while booking is available.
     setValues((current) => ({
       ...current,
-      appointmentPolicy: next,
-      cancellationCutoff:
-        next === AppointmentPolicy.NONE ? "" : current.cancellationCutoff,
+      bookingEnabled: enabled,
+      ...(enabled
+        ? {}
+        : { defaultDuration: "", cancellationCutoff: "", requiresCurrentInventory: false }),
     }));
   }
 
@@ -228,7 +273,8 @@ function ServiceForm({
             </label>
           </div>
           <p className="mt-2 text-xs leading-5 text-muted">
-            An active Service requires at least one delivery mode.
+            An active Service requires at least one delivery mode. Removing a mode
+            stops new work in that mode; existing Appointments keep theirs.
           </p>
           {systemRequired && values.online ? (
             <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">
@@ -239,35 +285,36 @@ function ServiceForm({
         </fieldset>
       </PanelSection>
 
-      <PanelSection title="Appointment settings" titleId="service-appointment-heading">
-        <div className="mt-4 grid gap-5 md:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="service-appointment-policy">
-              Appointment policy
-            </Label>
-            <Select
-              id="service-appointment-policy"
-              value={values.appointmentPolicy}
-              onChange={(event) =>
-                setPolicy(event.target.value as AppointmentPolicy)
-              }
-            >
-              <option value={AppointmentPolicy.NONE}>No appointment</option>
-              <option value={AppointmentPolicy.OPTIONAL}>
-                Appointment optional
-              </option>
-              <option value={AppointmentPolicy.REQUIRED}>
-                Appointment required
-              </option>
-            </Select>
-            <p className="text-xs leading-5 text-muted">
-              Services with an optional or required appointment policy can
-              both be booked as Appointments.
-            </p>
+      <PanelSection title="Appointment booking" titleId="service-appointment-heading">
+        <fieldset className="mt-4">
+          <legend className="sr-only">Appointment booking</legend>
+          <div className="grid gap-3 md:grid-cols-2">
+            <ChoiceRadio
+              name="service-booking"
+              checked={!values.bookingEnabled}
+              onSelect={() => setBooking(false)}
+              label="Not available"
+              description="Students cannot create new Appointments for this Service."
+            />
+            <ChoiceRadio
+              name="service-booking"
+              checked={values.bookingEnabled}
+              onSelect={() => setBooking(true)}
+              label="Available"
+              description="Students may schedule this Service through COMPASS Appointments when its booking requirements are met."
+            />
           </div>
+        </fieldset>
+        {bookingClearsSavedSettings ? (
+          <p className="mt-3 max-w-3xl text-xs leading-5 text-muted">
+            Saving clears this Service&rsquo;s Appointment duration, cutoff, and Inventory
+            requirement. Existing Appointments keep their saved timing and cutoff.
+          </p>
+        ) : null}
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="service-default-duration">
-              Default appointment duration
+              Default Appointment duration (minutes)
             </Label>
             <Input
               id="service-default-duration"
@@ -276,10 +323,8 @@ function ServiceForm({
               min={1}
               max={480}
               step={1}
-              required={
-                active &&
-                values.appointmentPolicy !== AppointmentPolicy.NONE
-              }
+              disabled={!values.bookingEnabled}
+              required={active && values.bookingEnabled}
               value={values.defaultDuration}
               onChange={(event) =>
                 setValues((current) => ({
@@ -289,13 +334,12 @@ function ServiceForm({
               }
             />
             <p className="text-xs leading-5 text-muted">
-              1–480 minutes when configured. Active optional or required
-              Services need a default duration.
+              1–480 minutes. Required before an active Service can be booked.
             </p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="service-cancellation-cutoff">
-              Student cancellation/rescheduling cutoff
+              Student cancellation/rescheduling cutoff (minutes)
             </Label>
             <Input
               id="service-cancellation-cutoff"
@@ -303,7 +347,7 @@ function ServiceForm({
               inputMode="numeric"
               min={0}
               step={1}
-              disabled={!appointmentEnabled}
+              disabled={!values.bookingEnabled}
               value={values.cancellationCutoff}
               onChange={(event) =>
                 setValues((current) => ({
@@ -313,22 +357,16 @@ function ServiceForm({
               }
             />
             <p className="text-xs leading-5 text-muted">
-              Minutes before the Appointment when Student self-service changes
-              stop. No appointment policy clears this value.
+              Optional. Student self-service changes stop this many minutes before the
+              Appointment.
             </p>
           </div>
         </div>
-        <p className="mt-4 max-w-3xl text-xs leading-5 text-muted">
-          Scheduling changes apply to future Appointments; existing
-          Appointments retain their saved timing and cancellation cutoff.
-        </p>
-      </PanelSection>
-
-      <PanelSection title="Student requirements" titleId="service-requirements-heading">
-        <label className="mt-4 flex max-w-3xl items-start gap-3 text-sm leading-6 text-ink">
+        <label className="mt-5 flex max-w-3xl items-start gap-3 text-sm leading-6 text-ink">
           <input
             type="checkbox"
             className="mt-1 h-4 w-4 shrink-0 accent-brand"
+            disabled={!values.bookingEnabled}
             checked={values.requiresCurrentInventory}
             onChange={(event) =>
               setValues((current) => ({
@@ -338,53 +376,63 @@ function ServiceForm({
             }
           />
           <span>
-            Require a submitted current Individual Inventory before appointment
-            booking
+            Require a submitted current Individual Inventory before a Student books
           </span>
         </label>
-        <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">
-          When the appointment policy is No appointment, this setting is kept
-          but has no booking effect.
+        <p className="mt-3 max-w-3xl text-xs leading-5 text-muted">
+          Booking settings apply to new Appointments; existing Appointments retain
+          their saved timing and cancellation cutoff.
         </p>
       </PanelSection>
 
-      <PanelSection title="Provider eligibility" titleId="service-provider-heading">
-        <label className="mt-4 inline-flex min-h-10 items-center gap-3 text-sm text-ink">
-          <input
-            type="checkbox"
-            className="h-4 w-4 accent-brand"
-            checked={values.counselor}
-            disabled={systemRequired}
-            aria-describedby={
-              systemRequired ? "service-counselor-required" : undefined
-            }
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                counselor: event.target.checked,
-              }))
-            }
-          />
-          Counselor
-        </label>
-        {systemRequired ? (
-          <p
-            id="service-counselor-required"
-            className="mt-1 max-w-3xl text-xs leading-5 text-muted"
-          >
-            COMPASS requires Counselors to remain eligible for Counseling.
-          </p>
-        ) : null}
-        <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">
-          Provider eligibility is role-level configuration. It does not assign
-          specific Counselors or define their availability.
-        </p>
-        {legacyProviderAssignment ? (
-          <p className="mt-3 max-w-3xl rounded-sm border border-warning/40 px-3 py-2 text-xs leading-5 text-muted">
-            This Service has a historical Guidance Services Staff provider
-            assignment. It can no longer be selected, and saving changes to
-            other settings leaves it in place.
-          </p>
+      <PanelSection title="Service providers" titleId="service-provider-heading">
+        <dl className="mt-4">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Provider type</dt>
+          <dd className="mt-1 text-sm text-ink">Counselor</dd>
+        </dl>
+        <fieldset className="mt-5">
+          <legend className="text-sm font-semibold text-ink">Who may provide this Service?</legend>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <ChoiceRadio
+              name="service-coverage"
+              checked={values.providerCoverage === ServiceProviderCoverage.ALL_COUNSELORS}
+              onSelect={() =>
+                setValues((current) => ({
+                  ...current,
+                  providerCoverage: ServiceProviderCoverage.ALL_COUNSELORS,
+                }))
+              }
+              label="All active Counselors"
+              description="Any active Counselor may provide new work for this Service."
+            />
+            <ChoiceRadio
+              name="service-coverage"
+              checked={values.providerCoverage === ServiceProviderCoverage.SELECTED_COUNSELORS}
+              onSelect={() =>
+                setValues((current) => ({
+                  ...current,
+                  providerCoverage: ServiceProviderCoverage.SELECTED_COUNSELORS,
+                }))
+              }
+              label="Selected Counselors"
+              description="Only the Counselors you select may provide new work for this Service."
+            />
+          </div>
+        </fieldset>
+        {values.providerCoverage === ServiceProviderCoverage.SELECTED_COUNSELORS ? (
+          <>
+            <p className="mt-3 max-w-3xl text-xs leading-5 text-muted">
+              Counselor College responsibility is not a restriction on Student choice.
+              This setting controls Service qualification only.
+            </p>
+            <ServiceProviderPicker
+              selected={values.selectedCounselors}
+              disabled={submitting}
+              onChange={(next) =>
+                setValues((current) => ({ ...current, selectedCounselors: next }))
+              }
+            />
+          </>
         ) : null}
       </PanelSection>
 
@@ -405,13 +453,14 @@ const emptyCreateState: ServiceFormState = {
   code: "",
   name: "",
   description: "",
-  appointmentPolicy: AppointmentPolicy.NONE,
+  bookingEnabled: false,
   defaultDuration: "",
   cancellationCutoff: "",
   requiresCurrentInventory: false,
   inPerson: false,
   online: false,
-  counselor: false,
+  providerCoverage: ServiceProviderCoverage.ALL_COUNSELORS,
+  selectedCounselors: [],
 };
 
 export function CreateServicePage() {
@@ -425,14 +474,17 @@ export function CreateServicePage() {
       code: values.code,
       name: values.name,
       description: values.description,
-      appointment_policy: values.appointmentPolicy,
-      default_duration_minutes: nullableInteger(values.defaultDuration),
-      cancellation_cutoff_minutes: nullableInteger(values.cancellationCutoff),
-      requires_current_inventory: values.requiresCurrentInventory,
+      appointment_booking_enabled: values.bookingEnabled,
+      default_appointment_duration_minutes: values.bookingEnabled
+        ? nullableInteger(values.defaultDuration)
+        : null,
+      cancellation_cutoff_minutes: values.bookingEnabled
+        ? nullableInteger(values.cancellationCutoff)
+        : null,
+      requires_current_inventory: values.bookingEnabled && values.requiresCurrentInventory,
       delivery_modes: configuredDeliveryModes(values),
-      provider_roles: values.counselor
-        ? [ConfigurableProviderRoleCode.COUNSELOR]
-        : [],
+      provider_coverage: values.providerCoverage,
+      selected_counselor_ids: selectedIds(values),
     };
     const response = await action.run(
       () => create.mutateAsync({ data }),
@@ -451,7 +503,7 @@ export function CreateServicePage() {
         title="Create Service"
         backHref="/portal/services"
         backLabel="Services"
-        description="New Services are created inactive. Review the configuration on the Service detail page, then enable it separately when ready."
+        description="New Services are created inactive and may be incomplete. Enable the Service separately from its detail page when it is ready."
       />
       <ServiceForm
         initial={emptyCreateState}
@@ -481,64 +533,75 @@ export function EditServicePage() {
   const detail = useServicesGet(serviceId, {
     query: { retry: false },
   });
+  const providers = useServicesGetProviders(serviceId, {
+    query: { retry: false },
+  });
   const update = useServicesUpdate();
   const action = useServicesAction();
   const [review, setReview] =
     useState<PendingServiceConsequenceReview | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
 
-  if (detail.isPending) return <ServicesDetailSkeleton />;
+  if (detail.isPending || providers.isPending) return <ServicesDetailSkeleton />;
 
-  if (detail.isError) {
+  if (detail.isError || providers.isError) {
     return (
       <ServicesQueryError
-        error={detail.error}
+        error={detail.error ?? providers.error}
         fallback="The Service could not be loaded."
-        onRetry={() => void detail.refetch()}
+        onRetry={() => {
+          void detail.refetch();
+          void providers.refetch();
+        }}
       />
     );
   }
 
   const service = detail.data.data;
-  const initial = initialFromService(service);
-  const hasLegacyProvider = service.provider_roles.includes(
-    ProviderRoleCode.GUIDANCE_SERVICES_STAFF,
-  );
+  const savedProviders = providers.data.data;
+  const initial = initialFromService(service, savedProviders);
 
   async function submit(values: ServiceFormState) {
     const changes: ServiceUpdateRequest = {};
-    const nextDuration = nullableInteger(values.defaultDuration);
-    const nextCutoff = nullableInteger(values.cancellationCutoff);
+    const nextDuration = values.bookingEnabled ? nullableInteger(values.defaultDuration) : null;
+    const nextCutoff = values.bookingEnabled ? nullableInteger(values.cancellationCutoff) : null;
+    const nextRequirement = values.bookingEnabled && values.requiresCurrentInventory;
     const nextModes = configuredDeliveryModes(values);
-    const hadCounselor = service.provider_roles.includes(
-      ProviderRoleCode.COUNSELOR,
-    );
+    const nextSelected = selectedIds(values);
 
     if (values.name !== service.name) changes.name = values.name;
     if (values.description !== service.description) {
       changes.description = values.description;
     }
-    if (values.appointmentPolicy !== service.appointment_policy) {
-      changes.appointment_policy = values.appointmentPolicy;
+    if (values.bookingEnabled !== service.appointment_booking_enabled) {
+      changes.appointment_booking_enabled = values.bookingEnabled;
     }
-    if (nextDuration !== service.default_duration_minutes) {
-      changes.default_duration_minutes = nextDuration;
-    }
-    if (nextCutoff !== service.cancellation_cutoff_minutes) {
-      changes.cancellation_cutoff_minutes = nextCutoff;
-    }
-    if (
-      values.requiresCurrentInventory !== service.requires_current_inventory
-    ) {
-      changes.requires_current_inventory = values.requiresCurrentInventory;
+    // Turning booking off clears Appointment-only settings on the server.
+    if (values.bookingEnabled) {
+      if (nextDuration !== service.default_appointment_duration_minutes) {
+        changes.default_appointment_duration_minutes = nextDuration;
+      }
+      if (nextCutoff !== service.cancellation_cutoff_minutes) {
+        changes.cancellation_cutoff_minutes = nextCutoff;
+      }
+      if (nextRequirement !== service.requires_current_inventory) {
+        changes.requires_current_inventory = nextRequirement;
+      }
     }
     if (!sameStringSet(nextModes, service.delivery_modes)) {
       changes.delivery_modes = nextModes;
     }
-    if (values.counselor !== hadCounselor) {
-      changes.provider_roles = values.counselor
-        ? [ConfigurableProviderRoleCode.COUNSELOR]
-        : [];
+    if (
+      values.providerCoverage !== savedProviders.provider_coverage ||
+      !sameStringSet(
+        nextSelected,
+        savedProviders.provider_coverage === ServiceProviderCoverage.SELECTED_COUNSELORS
+          ? savedProviders.counselors.map((item) => item.id)
+          : [],
+      )
+    ) {
+      changes.provider_coverage = values.providerCoverage;
+      changes.selected_counselor_ids = nextSelected;
     }
 
     if (Object.keys(changes).length === 0) {
@@ -572,6 +635,9 @@ export function EditServicePage() {
     await Promise.all([
       queryClient.invalidateQueries({
         queryKey: getServicesGetQueryKey(serviceId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: getServicesGetProvidersQueryKey(serviceId),
       }),
       queryClient.invalidateQueries({
         queryKey: getServicesListQueryKey(),
@@ -630,7 +696,6 @@ export function EditServicePage() {
       <ServiceForm
         initial={initial}
         active={service.is_active}
-        legacyProviderAssignment={hasLegacyProvider}
         systemRequired={service.is_system_required}
         submitting={update.isPending}
         submitLabel="Save changes"
@@ -655,26 +720,7 @@ export function EditServicePage() {
         onConfirm={() => void confirmConsequenceReview()}
       >
         <p>Review what this Service change means before saving it.</p>
-        {review?.details?.existingAppointmentDependencyDetected ? (
-          <p>
-            Existing Appointments will remain scheduled. This change may
-            prevent affected Appointments from being rescheduled or reassigned
-            while the Service no longer supports their saved configuration.
-          </p>
-        ) : null}
-        {review?.details?.counselingOnlineEnabled ? (
-          <p>
-            Online Counseling may become bookable where Availability permits
-            it. This does not verify that the E-Counseling provider integration
-            is ready.
-          </p>
-        ) : null}
-        {review && !review.details ? (
-          <p>
-            One or more scheduling consequences require review. Existing
-            Appointments are not changed automatically by this Service update.
-          </p>
-        ) : null}
+        <ServiceConsequenceSummary details={review?.details ?? null} />
       </ConsequentialActionDialog>
       {action.stepUpDialog}
     </section>

@@ -360,7 +360,7 @@ function BookingWorkspace() {
                         </span>
                         {item.description.trim() ? <span className="mt-1 block max-w-4xl text-sm leading-6 text-muted">{item.description}</span> : null}
                         <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-                          <span>{item.default_duration_minutes} minutes</span>
+                          <span>{item.default_appointment_duration_minutes} minutes</span>
                           <span>{item.delivery_modes.map(deliveryModeLabel).join(" · ")}</span>
                           {item.requires_current_inventory ? <span>Current-year Inventory required</span> : null}
                         </span>
@@ -508,7 +508,7 @@ function BookingWorkspace() {
                 <div><dt className="text-xs font-semibold text-muted">Counselor</dt><dd className="mt-1 text-sm text-ink">{selectedCounselor.display_name}{selectedCounselor.is_default ? " · Assigned counselor" : ""}</dd></div>
                 <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(deliveryMode)}</dd></div>
                 <div><dt className="text-xs font-semibold text-muted">Schedule</dt><dd className="mt-1 text-sm text-ink">{formatAppointmentDateTime(selectedSlot.starts_at, selectedSlot.ends_at, slots.data?.data.timezone)}</dd></div>
-                <div><dt className="text-xs font-semibold text-muted">Duration</dt><dd className="mt-1 text-sm text-ink">{slots.data?.data.duration_minutes ?? service.default_duration_minutes} minutes</dd></div>
+                <div><dt className="text-xs font-semibold text-muted">Duration</dt><dd className="mt-1 text-sm text-ink">{slots.data?.data.duration_minutes ?? service.default_appointment_duration_minutes} minutes</dd></div>
                 {service.cancellation_cutoff_minutes !== null ? (
                   <div><dt className="text-xs font-semibold text-muted">Self-service changes</dt><dd className="mt-1 text-sm text-ink">Available until {service.cancellation_cutoff_minutes} minutes before the Appointment.</dd></div>
                 ) : null}

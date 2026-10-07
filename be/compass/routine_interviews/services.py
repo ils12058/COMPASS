@@ -40,8 +40,7 @@ from compass.organization.academic_years import get_current_academic_year
 from compass.organization.models import AcademicYear
 from compass.service_catalog.models import DeliveryMode, Service
 from compass.service_catalog.services import (
-    provider_role_eligible,
-    service_allows_provider_role,
+    service_counselor_eligible,
     service_supports_delivery_mode,
 )
 
@@ -337,11 +336,13 @@ def _active_counseling_service(*, for_update: bool = False):
 
 
 def _validate_counseling_provider(*, service, counselor: User) -> None:
+    """NEW direct Routine Interviews follow CURRENT Service qualification (ADR-089)."""
+
     if service.code != "COUNSELING" or not service.is_active:
         raise RoutineInterviewAppointmentInvalid(
             "Routine Interview requires the active canonical COUNSELING Service."
         )
-    if not provider_role_eligible(service, counselor):
+    if not service_counselor_eligible(service, counselor):
         raise RoutineInterviewAppointmentInvalid(
             "The assigned provider is not eligible for the COUNSELING Service."
         )
@@ -428,11 +429,8 @@ def ensure_for_appointment(
             raise RoutineInterviewAppointmentInvalid(
                 "The Appointment does not use the canonical COUNSELING Service."
             )
-        _validate_counseling_service(
-            service=counseling_service,
-            counselor=counselor,
-            delivery_mode=appointment.delivery_mode,
-        )
+        # The saved Appointment anchors the Routine Interview: later changes to the Service's
+        # delivery modes or provider coverage do not undo it (ADR-089).
 
         initiation = _initiation_context(student)
         revision = _optional_form_revision()
@@ -614,19 +612,9 @@ def list_my_appointment_candidates(student: User) -> tuple[Appointment, ...]:
     _require_current_student(student)
     _optional_form_revision()
 
+    # Each scheduled Counseling Appointment includes a Routine Interview under its saved
+    # provenance, whatever the Service's current delivery modes or provider coverage (ADR-089).
     service = _active_counseling_service()
-    if not service_allows_provider_role(service, "COUNSELOR"):
-        raise RoutineInterviewAppointmentInvalid(
-            "The canonical COUNSELING Service does not permit Counselor providers."
-        )
-    delivery_modes = tuple(
-        service.delivery_mode_assignments.order_by("mode").values_list("mode", flat=True)
-    )
-    if not delivery_modes:
-        raise RoutineInterviewAppointmentInvalid(
-            "The canonical COUNSELING Service has no supported delivery mode."
-        )
-
     queryset = (
         Appointment.objects.select_related("provider", "provider__role", "service")
         .filter(
@@ -635,7 +623,6 @@ def list_my_appointment_candidates(student: User) -> tuple[Appointment, ...]:
             service_id=service.pk,
             provider__is_active=True,
             provider__role__code="COUNSELOR",
-            delivery_mode__in=delivery_modes,
             routine_interview__isnull=True,
         )
         .order_by("starts_at", "id")

@@ -1,5 +1,9 @@
 # ADR-024: Appointment-backed E-Counseling with Daily.co
 
+## Status
+
+Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md): an existing ONLINE Counseling Appointment stays eligible even if ONLINE, the Counselor's coverage, or booking is later removed from the Service; current account, relationship, lifecycle, and Daily readiness rules still apply.
+
 ## Context
 
 COMPASS needs a secure online counseling workspace without inventing a second counseling service or

@@ -40,12 +40,11 @@ def make_counseling_service(admin: User):
     service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
-        appointment_policy="OPTIONAL",
-        default_duration_minutes=60,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         requires_current_inventory=False,
         delivery_modes=["IN_PERSON"],
-        provider_roles=["COUNSELOR"],
         context=context(admin),
     )
     return set_service_active(

@@ -35,11 +35,12 @@ from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
-from compass.service_catalog.models import AppointmentPolicy, DeliveryMode, Service
+from compass.service_catalog.models import DeliveryMode, Service
 from compass.service_catalog.services import (
     ELIGIBLE_PROVIDER_ROLE_CODES,
-    provider_role_eligible,
-    service_allows_provider_role,
+    service_counselor_eligible,
+    service_eligible_counselors,
+    service_has_eligible_counselor_q,
     service_supports_delivery_mode,
 )
 
@@ -137,6 +138,10 @@ class AppointmentTimeConflict(AppointmentError):
 
 class AppointmentDefaultProviderUnresolved(AppointmentError):
     pass
+
+
+class AppointmentDefaultProviderNotQualified(AppointmentError):
+    """The Student's default Counselor does not provide the Service; the caller must choose."""
 
 
 class AppointmentCancellationConflict(AppointmentError):
@@ -480,10 +485,10 @@ def list_booking_services(
     page, page_size = _pagination(page, page_size)
     qs = (
         Service.objects.filter(
+            service_has_eligible_counselor_q(),
             is_active=True,
-            appointment_policy__in=(AppointmentPolicy.OPTIONAL, AppointmentPolicy.REQUIRED),
-            default_duration_minutes__isnull=False,
-            provider_role_assignments__role__code__in=ELIGIBLE_PROVIDER_ROLE_CODES,
+            appointment_booking_enabled=True,
+            default_appointment_duration_minutes__isnull=False,
             delivery_mode_assignments__mode__in=DeliveryMode.values,
         )
         .prefetch_related("delivery_mode_assignments")
@@ -521,16 +526,18 @@ def get_appointment_for_actor(*, appointment_id: UUID, actor: User) -> Appointme
 
 
 def _validate_booking_service(service: Service, provider: User, delivery_mode: str) -> None:
+    """Current Service rules for NEW booking (ADR-089); College scope is never consulted."""
+
     if not service.is_active:
         raise AppointmentNotSchedulable("The selected Service is inactive.")
-    if service.appointment_policy == AppointmentPolicy.NONE:
+    if not service.appointment_booking_enabled:
         raise AppointmentNotSchedulable("The selected Service does not accept Appointments.")
-    if service.default_duration_minutes is None:
+    if service.default_appointment_duration_minutes is None:
         raise AppointmentNotSchedulable("The selected Service has no schedulable duration.")
     if not service_supports_delivery_mode(service, delivery_mode):
         raise AppointmentNotSchedulable("The Service does not support the requested delivery mode.")
-    if not provider_role_eligible(service, provider):
-        raise AppointmentNotSchedulable("The selected Counselor is not eligible for this Service.")
+    if not service_counselor_eligible(service, provider):
+        raise AppointmentNotSchedulable("The selected Counselor does not provide this Service.")
 
 
 def _validate_inventory_prerequisite(service: Service, student: User) -> None:
@@ -729,8 +736,8 @@ def list_bookable_slots(
         raise AppointmentNotSchedulable("The selected Service was not found.")
     _validate_booking_service(service, provider, normalized_mode)
     _validate_inventory_prerequisite(service, student)
-    assert service.default_duration_minutes is not None
-    duration = timedelta(minutes=service.default_duration_minutes)
+    assert service.default_appointment_duration_minutes is not None
+    duration = timedelta(minutes=service.default_appointment_duration_minutes)
     base = _base_slot_windows(
         provider_id=provider.pk,
         service_id=service.pk,
@@ -740,7 +747,7 @@ def list_bookable_slots(
     return BookableSlotList(
         date=target_date,
         timezone_name=base.timezone_name,
-        duration_minutes=service.default_duration_minutes,
+        duration_minutes=service.default_appointment_duration_minutes,
         items=_candidate_slots(
             windows=base.windows,
             duration=duration,
@@ -782,23 +789,32 @@ def _require_management_access(*, actor: User, item: Appointment) -> None:
         raise AppointmentNotFound("The requested Appointment was not found.")
 
 
+def _validate_current_scheduling(*, service: Service, delivery_mode: str) -> None:
+    """Changing a saved reservation brings it back under CURRENT Service rules (ADR-089).
+
+    Fulfilling the Appointment as booked never calls this: its saved provenance stands.
+    """
+
+    if not service.is_active or not service.appointment_booking_enabled:
+        raise AppointmentNotSchedulable(
+            "The Appointment Service is no longer operationally schedulable."
+        )
+    if not service_supports_delivery_mode(service, delivery_mode):
+        raise AppointmentNotSchedulable(
+            "The Service no longer supports the Appointment delivery mode."
+        )
+
+
 def _validate_existing_service(
     *,
     service: Service,
     provider: User,
     delivery_mode: str,
 ) -> None:
-    if not service.is_active or service.appointment_policy == AppointmentPolicy.NONE:
-        raise AppointmentNotSchedulable(
-            "The Appointment Service is no longer operationally schedulable."
-        )
+    _validate_current_scheduling(service=service, delivery_mode=delivery_mode)
     if not provider.is_active or provider.role.code != "COUNSELOR":
         raise AppointmentNotSchedulable("The assigned provider is no longer an active Counselor.")
-    if not service_supports_delivery_mode(service, delivery_mode):
-        raise AppointmentNotSchedulable(
-            "The Service no longer supports the Appointment delivery mode."
-        )
-    if not provider_role_eligible(service, provider):
+    if not service_counselor_eligible(service, provider):
         raise AppointmentNotSchedulable(
             "The assigned Counselor is no longer eligible for this Service."
         )
@@ -872,10 +888,14 @@ def create_student_appointment(
         service = Service.objects.select_for_update().filter(pk=service_id).first()
         if service is None:
             raise AppointmentNotSchedulable("The selected Service was not found.")
+        if provider_id is None and not service_counselor_eligible(service, locked_provider):
+            raise AppointmentDefaultProviderNotQualified(
+                "Your default Counselor does not provide this Service. Choose a Counselor."
+            )
         _validate_booking_service(service, locked_provider, normalized_mode)
         _validate_inventory_prerequisite(service, locked_student)
 
-        ends_at = normalized_start + timedelta(minutes=service.default_duration_minutes)
+        ends_at = normalized_start + timedelta(minutes=service.default_appointment_duration_minutes)
         if not _interval_is_available(
             provider_id=locked_provider.pk,
             service_id=service.pk,
@@ -1404,22 +1424,17 @@ def list_reassignment_candidates(
     _require_management_access(actor=actor, item=item)
     _require_scheduled_before_start(item, now=current)
     _require_reassignment_relationships_clear(item)
-    _validate_existing_service(
-        service=item.service,
-        provider=item.provider,
-        delivery_mode=item.delivery_mode,
-    )
+    # The current provider may no longer be qualified (that can be why it is being reassigned);
+    # only the replacement must satisfy current Service qualification.
+    _validate_current_scheduling(service=item.service, delivery_mode=item.delivery_mode)
 
     candidates: list[AppointmentReassignmentCandidate] = []
     providers = (
-        User.objects.filter(is_active=True, role__code="COUNSELOR")
+        service_eligible_counselors(item.service)
         .exclude(pk=item.provider_id)
-        .select_related("role")
         .order_by("last_name", "first_name", "id")
     )
     for provider in providers:
-        if not provider_role_eligible(item.service, provider):
-            continue
         if not _interval_is_available(
             provider_id=provider.pk,
             service_id=item.service_id,
@@ -1642,19 +1657,19 @@ def list_eligible_counselors(
     service = Service.objects.filter(pk=service_id).first()
     if service is None or not service.is_active:
         raise AppointmentNotSchedulable("The selected Service is not bookable.")
-    if service.appointment_policy == AppointmentPolicy.NONE:
+    if not service.appointment_booking_enabled:
         raise AppointmentNotSchedulable("The selected Service does not accept Appointments.")
     if not service_supports_delivery_mode(service, normalized_mode):
         raise AppointmentNotSchedulable("The Service does not support the requested delivery mode.")
-    if not service_allows_provider_role(service, "COUNSELOR"):
-        return ()
 
+    # Service qualification decides the candidates; College responsibility only marks the
+    # default, and only when that Counselor actually provides this Service (ADR-089, ADR-020).
     default_resolution = resolve_default_counselor_for_student(student)
     default_id = default_resolution.counselor.pk if default_resolution.counselor else None
     counselors = list(
-        User.objects.filter(is_active=True, role__code="COUNSELOR")
-        .select_related("role")
-        .order_by("last_name", "first_name", "id")[:MAX_ELIGIBLE_COUNSELORS]
+        service_eligible_counselors(service).order_by("last_name", "first_name", "id")[
+            :MAX_ELIGIBLE_COUNSELORS
+        ]
     )
     return tuple(
         EligibleCounselor(user=item, is_default=item.pk == default_id) for item in counselors

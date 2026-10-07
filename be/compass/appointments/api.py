@@ -25,7 +25,7 @@ from compass.common.idempotency import (
     abandon_after_unexpected_failure,
     request_fingerprint,
 )
-from compass.service_catalog.api import AppointmentPolicy, DeliveryMode
+from compass.service_catalog.api import DeliveryMode
 
 from .services import (
     DEFAULT_PAGE_SIZE,
@@ -36,6 +36,7 @@ from .services import (
     AppointmentCurrentAcademicYearNotConfigured,
     AppointmentCurrentInventoryRequired,
     AppointmentCurrentStudentRequired,
+    AppointmentDefaultProviderNotQualified,
     AppointmentDefaultProviderUnresolved,
     AppointmentECounselingAccessOpen,
     AppointmentECounselingAccessStarted,
@@ -130,9 +131,8 @@ class AppointmentBookingServiceSummary(StrictSchema):
     code: str
     name: str
     description: str
-    appointment_policy: AppointmentPolicy
     delivery_modes: list[DeliveryMode]
-    default_duration_minutes: int
+    default_appointment_duration_minutes: int
     cancellation_cutoff_minutes: int | None
     requires_current_inventory: bool
 
@@ -276,6 +276,8 @@ def _raise(exc: AppointmentError) -> NoReturn:
         raise APIError(422, "invalid_appointment_request", str(exc)) from exc
     if isinstance(exc, AppointmentDefaultProviderUnresolved):
         raise APIError(409, "appointment_default_provider_unresolved", str(exc)) from exc
+    if isinstance(exc, AppointmentDefaultProviderNotQualified):
+        raise APIError(409, "appointment_default_provider_not_qualified", str(exc)) from exc
     if isinstance(exc, AppointmentTimeUnavailable):
         raise APIError(409, "appointment_time_unavailable", str(exc)) from exc
     if isinstance(exc, AppointmentTimeConflict):
@@ -344,9 +346,8 @@ def _booking_service(item) -> dict[str, object]:
         "code": item.code,
         "name": item.name,
         "description": item.description,
-        "appointment_policy": item.appointment_policy,
         "delivery_modes": [assignment.mode for assignment in item.delivery_mode_assignments.all()],
-        "default_duration_minutes": item.default_duration_minutes,
+        "default_appointment_duration_minutes": item.default_appointment_duration_minutes,
         "cancellation_cutoff_minutes": item.cancellation_cutoff_minutes,
         "requires_current_inventory": item.requires_current_inventory,
     }

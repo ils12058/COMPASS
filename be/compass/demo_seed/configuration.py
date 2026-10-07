@@ -192,10 +192,13 @@ def ensure_counseling_configuration(session: SeedSession) -> None:
     if DeliveryMode.ONLINE not in modes:
         # ADR-060 leaves ONLINE as an explicit deployment choice; the demo makes that choice so
         # the E-Counseling workspace has an eligible Appointment. Daily stays lazy.
+        # Enabling ONLINE Counseling is a reviewed consequence (provider readiness is managed
+        # separately); the demo acknowledges that one known consequence explicitly.
         update_service(
             service_id=service.pk,
             changes={"delivery_modes": sorted({*modes, DeliveryMode.ONLINE})},
             context=context,
+            acknowledge_scheduling_consequences=True,
         )
     session.record("Counseling delivery modes", created=DeliveryMode.ONLINE not in modes)
 

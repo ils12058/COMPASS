@@ -3,7 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -11,17 +11,24 @@ import { Notice } from "@/components/ui/notice";
 import { Panel, PanelSection } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
+  activationBlockerLabels,
+  ServiceConsequenceSummary,
+  serviceBookingLabel,
+  serviceCoverageLabels,
+  serviceDeliveryLabel,
+  serviceSchedulingConsequenceDetails,
   ServicesDetailSkeleton,
   ServicesPageHeading,
   ServicesQueryError,
   ServicesStatusBadge,
   ServicesSystemRequiredBadge,
   useServicesAction,
+  type ServiceSchedulingConsequenceDetails,
 } from "@/features/services/services-shared";
 import {
-  AppointmentPolicy,
   DeliveryMode,
-  ProviderRoleCode,
+  ServiceProviderCoverage,
+  type ServiceResponse,
 } from "@/lib/api/generated/model";
 import {
   getServicesGetQueryKey,
@@ -29,20 +36,87 @@ import {
   useServicesDisable,
   useServicesEnable,
   useServicesGet,
+  useServicesGetProviders,
 } from "@/lib/api/generated/services/services";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
-function policyLabel(policy: AppointmentPolicy): string {
-  if (policy === AppointmentPolicy.NONE) return "No appointment";
-  if (policy === AppointmentPolicy.OPTIONAL) return "Appointment optional";
-  return "Appointment required";
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</dt>
+      <dd className="mt-1 text-sm text-ink">{children}</dd>
+    </div>
+  );
 }
 
-function policyDescription(policy: AppointmentPolicy): string {
-  if (policy === AppointmentPolicy.NONE) {
-    return "This Service does not accept Appointment scheduling.";
+function BookingFacts({ service }: { service: ServiceResponse }) {
+  if (!service.appointment_booking_enabled) {
+    return (
+      <dl className="mt-4">
+        <Fact label="Appointment booking">Not available</Fact>
+        <p className="mt-2 max-w-4xl text-sm leading-6 text-muted">
+          Students cannot create new Appointments for this Service.
+        </p>
+      </dl>
+    );
   }
-  return "Appointments can be scheduled for this Service when its booking requirements are met.";
+  return (
+    <dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <Fact label="Appointment booking">{serviceBookingLabel(true)}</Fact>
+      <Fact label="Default Appointment duration">
+        {service.default_appointment_duration_minutes === null
+          ? "Not configured"
+          : service.default_appointment_duration_minutes + " minutes"}
+      </Fact>
+      <Fact label="Student cancellation/rescheduling cutoff">
+        {service.cancellation_cutoff_minutes === null
+          ? "None"
+          : service.cancellation_cutoff_minutes + " minutes before"}
+      </Fact>
+      <Fact label="Booking requirement">
+        {service.requires_current_inventory
+          ? "Submitted current Individual Inventory"
+          : "None"}
+      </Fact>
+    </dl>
+  );
+}
+
+function SelectedProviders({ serviceId }: { serviceId: string }) {
+  const providers = useServicesGetProviders(serviceId, { query: { retry: false } });
+  if (providers.isPending) {
+    return <p className="mt-3 text-sm text-muted">Loading selected Counselors…</p>;
+  }
+  if (providers.isError) {
+    return (
+      <p role="alert" className="mt-3 text-sm text-danger">
+        Selected Counselors could not be loaded.{" "}
+        <button
+          type="button"
+          className="font-semibold underline"
+          onClick={() => void providers.refetch()}
+        >
+          Retry
+        </button>
+      </p>
+    );
+  }
+  const counselors = providers.data.data.counselors;
+  if (counselors.length === 0) {
+    return <p className="mt-3 text-sm text-muted">No Counselors are selected.</p>;
+  }
+  return (
+    <ul className="mt-3 divide-y divide-border rounded-sm border border-border">
+      {counselors.map((counselor) => (
+        <li key={counselor.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm text-ink">
+          {counselor.display_name}
+          {!counselor.is_active ? (
+            <span className="text-xs text-muted">Inactive account · not eligible</span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function formatDate(value: string): string {
@@ -63,6 +137,10 @@ export function ServiceDetailPage() {
   const disable = useServicesDisable();
   const action = useServicesAction();
   const [lifecycleOpen, setLifecycleOpen] = useState(false);
+  // Set when disabling needs the operator to review its effect on scheduled Appointments.
+  const [disableReview, setDisableReview] =
+    useState<ServiceSchedulingConsequenceDetails | null>(null);
+  const [disableReviewRequired, setDisableReviewRequired] = useState(false);
 
   if (detail.isPending) return <ServicesDetailSkeleton />;
 
@@ -87,13 +165,8 @@ export function ServiceDetailPage() {
 
   const service = detail.data.data;
   const lifecyclePending = enable.isPending || disable.isPending;
-  const hasCounselor = service.provider_roles.includes(
-    ProviderRoleCode.COUNSELOR,
-  );
-  const hasLegacyGss = service.provider_roles.includes(
-    ProviderRoleCode.GUIDANCE_SERVICES_STAFF,
-  );
   const systemRequired = service.is_system_required;
+  const blockers = service.activation_blockers;
 
   async function refresh() {
     await Promise.all([
@@ -106,21 +179,38 @@ export function ServiceDetailPage() {
     ]);
   }
 
+  function closeLifecycle() {
+    setLifecycleOpen(false);
+    setDisableReview(null);
+    setDisableReviewRequired(false);
+    action.setError(null);
+  }
+
   async function confirmLifecycle() {
     const wasActive = service.is_active;
+    const acknowledged = disableReviewRequired;
     const response = await action.run(
       () =>
         wasActive
-          ? disable.mutateAsync({ serviceId })
+          ? disable.mutateAsync({
+              serviceId,
+              data: { acknowledge_scheduling_consequences: acknowledged },
+            })
           : enable.mutateAsync({ serviceId }),
       "The service status could not be changed.",
       {
         onStepUpRequired: () => setLifecycleOpen(false),
         onStepUpVerified: () => setLifecycleOpen(true),
+        onError: (caught, code) => {
+          if (code !== "service_scheduling_consequence_review_required") return false;
+          setDisableReview(serviceSchedulingConsequenceDetails(caught));
+          setDisableReviewRequired(true);
+          return true;
+        },
       },
     );
     if (!response) return;
-    setLifecycleOpen(false);
+    closeLifecycle();
     action.setNotice(wasActive ? "Service disabled." : "Service enabled.");
     await refresh();
   }
@@ -153,8 +243,7 @@ export function ServiceDetailPage() {
         {systemRequired ? (
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
             COMPASS uses this Service for Counseling, Routine Interviews, and
-            E-Counseling, so it must stay active and always allow Counselors. Its
-            other settings can be changed.
+            E-Counseling, so it must stay active. Its other settings can be changed.
           </p>
         ) : null}
       </ServicesPageHeading>
@@ -169,7 +258,17 @@ export function ServiceDetailPage() {
           Service updated.
         </Notice>
       ) : null}
-      {action.notice || action.error ? action.messages : null}
+      {action.notice || (action.error && !lifecycleOpen) ? action.messages : null}
+
+      {canManage && !service.is_active && blockers.length > 0 ? (
+        <Notice role="status" tone="warning" className="mt-5" title="Needs configuration before it can be enabled">
+          <ul className="mt-1 list-disc pl-5">
+            {blockers.map((blocker) => (
+              <li key={blocker}>{activationBlockerLabels[blocker]}</li>
+            ))}
+          </ul>
+        </Notice>
+      ) : null}
 
       <Panel as="div" className="mt-5">
         {service.description.trim() ? <PanelSection title="Description" titleId="service-description-heading">
@@ -182,16 +281,7 @@ export function ServiceDetailPage() {
           <p className="mt-3 text-sm text-ink">
             {service.delivery_modes.length === 0
               ? "No delivery mode configured."
-              : [
-                  service.delivery_modes.includes(DeliveryMode.IN_PERSON)
-                    ? "In person"
-                    : null,
-                  service.delivery_modes.includes(DeliveryMode.ONLINE)
-                    ? "Online"
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(", ")}
+              : serviceDeliveryLabel(service.delivery_modes)}
           </p>
           {systemRequired &&
           service.delivery_modes.includes(DeliveryMode.ONLINE) ? (
@@ -202,114 +292,35 @@ export function ServiceDetailPage() {
           ) : null}
         </PanelSection>
 
-        <PanelSection title="Appointment settings" titleId="service-appointment-heading">
-          <dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Policy
-              </dt>
-              <dd className="mt-1 text-sm font-medium text-ink">
-                {policyLabel(service.appointment_policy)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Default appointment duration
-              </dt>
-              <dd className="mt-1 text-sm text-ink">
-                {service.default_duration_minutes === null
-                  ? "Not configured"
-                  : service.default_duration_minutes + " minutes"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Student cancellation/rescheduling cutoff
-              </dt>
-              <dd className="mt-1 text-sm text-ink">
-                {service.appointment_policy === AppointmentPolicy.NONE
-                  ? "Not applicable"
-                  : service.cancellation_cutoff_minutes === null
-                    ? "Not configured"
-                    : service.cancellation_cutoff_minutes + " minutes before"}
-              </dd>
-            </div>
-          </dl>
-          <p className="mt-4 max-w-4xl text-sm leading-6 text-muted">
-            {policyDescription(service.appointment_policy)}
-          </p>
+        <PanelSection title="Appointment booking" titleId="service-appointment-heading">
+          <BookingFacts service={service} />
           {canManage ? (
-            <p className="mt-2 max-w-4xl text-xs leading-5 text-muted">
-              Service scheduling changes apply to future Appointments. Existing
-              Appointments retain their saved timing and cancellation cutoff.
+            <p className="mt-4 max-w-4xl text-xs leading-5 text-muted">
+              Booking settings apply to new Appointments. Existing Appointments keep
+              their saved time, duration, cutoff, provider, and delivery mode.
             </p>
           ) : null}
         </PanelSection>
 
-        <PanelSection title="Student requirements" titleId="service-requirements-heading">
-          <p className="mt-3 text-sm leading-6 text-ink">
-            {service.requires_current_inventory
-              ? "A submitted current Individual Inventory is required before appointment booking for this Service."
-              : "This Service does not require a submitted current Individual Inventory before appointment booking."}
-          </p>
-        </PanelSection>
-
-        <PanelSection title="Provider eligibility" titleId="service-provider-heading">
-          {canManage ? (
-            <div className="mt-3 space-y-2 text-sm leading-6 text-ink">
-              {hasCounselor ? <p>Counselor</p> : null}
-              {hasLegacyGss ? (
-                <p>
-                  Guidance Services Staff (historical assignment; can no longer
-                  be selected)
-                </p>
-              ) : null}
-              {!hasCounselor && !hasLegacyGss ? (
-                <p>No provider role configured.</p>
-              ) : null}
-              <p className="text-xs text-muted">
-                This is role-level eligibility only. Specific Counselor
-                assignment and Availability are managed elsewhere.
-              </p>
-            </div>
-          ) : (
-            <p className="mt-3 text-sm leading-6 text-ink">
-              {hasCounselor
-                ? "Counselors may provide this Service."
-                : hasLegacyGss
-                  ? "This Service contains a historical provider configuration maintained by the Guidance and Counseling Office."
-                  : "Provider eligibility is not configured."}
-            </p>
-          )}
+        <PanelSection title="Service providers" titleId="service-provider-heading">
+          <dl className="mt-4 grid gap-5 sm:grid-cols-2">
+            <Fact label="Provider type">Counselor</Fact>
+            <Fact label="Coverage">{serviceCoverageLabels[service.provider_coverage]}</Fact>
+          </dl>
+          {canManage &&
+          service.provider_coverage === ServiceProviderCoverage.SELECTED_COUNSELORS ? (
+            <SelectedProviders serviceId={service.id} />
+          ) : null}
         </PanelSection>
 
         {canManage ? (
           <PanelSection title="Service status" titleId="service-lifecycle-heading">
             <dl className="mt-4 grid gap-5 sm:grid-cols-3">
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
-                  Status
-                </dt>
-                <dd className="mt-1">
-                  <ServicesStatusBadge active={service.is_active} />
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
-                  Created
-                </dt>
-                <dd className="mt-1 text-sm text-ink">
-                  {formatDate(service.created_at)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
-                  Updated
-                </dt>
-                <dd className="mt-1 text-sm text-ink">
-                  {formatDate(service.updated_at)}
-                </dd>
-              </div>
+              <Fact label="Status">
+                <ServicesStatusBadge active={service.is_active} />
+              </Fact>
+              <Fact label="Created">{formatDate(service.created_at)}</Fact>
+              <Fact label="Updated">{formatDate(service.updated_at)}</Fact>
             </dl>
             <div className="mt-5">
               {systemRequired && service.is_active ? (
@@ -319,6 +330,7 @@ export function ServiceDetailPage() {
               ) : (
                 <Button
                   variant={service.is_active ? "danger" : "primary"}
+                  disabled={!service.is_active && blockers.length > 0}
                   onClick={() => {
                     action.setError(null);
                     action.setNotice(null);
@@ -346,16 +358,17 @@ export function ServiceDetailPage() {
         error={action.error}
         variant={service.is_active ? "danger" : "primary"}
         onOpenChange={(open) => {
-          setLifecycleOpen(open);
-          if (!open) action.setError(null);
+          if (open) setLifecycleOpen(true);
+          else closeLifecycle();
         }}
         onConfirm={() => void confirmLifecycle()}
       >
         <p>
           {service.is_active
-            ? "The Service will no longer be available for new Appointment scheduling. Scheduling changes such as rescheduling or reassignment may also be unavailable while it remains inactive. Existing Appointment records will remain."
-            : "This service will become available for new appointment scheduling once enabled."}
+            ? "This Service will no longer be available for new work. Existing records and Appointments are preserved."
+            : "This Service will become operational for workflows that support it. Appointment booking is available only when it is enabled in this Service's booking settings."}
         </p>
+        {disableReviewRequired ? <ServiceConsequenceSummary details={disableReview} /> : null}
       </ConsequentialActionDialog>
 
       {action.stepUpDialog}

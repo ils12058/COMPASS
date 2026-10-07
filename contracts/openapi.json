@@ -1271,9 +1271,6 @@
       "AppointmentBookingServiceSummary": {
         "additionalProperties": false,
         "properties": {
-          "appointment_policy": {
-            "$ref": "#/components/schemas/AppointmentPolicy"
-          },
           "cancellation_cutoff_minutes": {
             "anyOf": [
               {
@@ -1289,8 +1286,8 @@
             "title": "Code",
             "type": "string"
           },
-          "default_duration_minutes": {
-            "title": "Default Duration Minutes",
+          "default_appointment_duration_minutes": {
+            "title": "Default Appointment Duration Minutes",
             "type": "integer"
           },
           "delivery_modes": {
@@ -1323,9 +1320,8 @@
           "code",
           "name",
           "description",
-          "appointment_policy",
           "delivery_modes",
-          "default_duration_minutes",
+          "default_appointment_duration_minutes",
           "cancellation_cutoff_minutes",
           "requires_current_inventory"
         ],
@@ -1710,15 +1706,6 @@
         ],
         "title": "AppointmentPageResponse",
         "type": "object"
-      },
-      "AppointmentPolicy": {
-        "enum": [
-          "NONE",
-          "OPTIONAL",
-          "REQUIRED"
-        ],
-        "title": "AppointmentPolicy",
-        "type": "string"
       },
       "AppointmentReassignRequest": {
         "additionalProperties": false,
@@ -3567,14 +3554,6 @@
         ],
         "title": "CollegeSummary",
         "type": "object"
-      },
-      "ConfigurableProviderRoleCode": {
-        "description": "ADR-050 provider configuration accepted for new Service mutations.",
-        "enum": [
-          "COUNSELOR"
-        ],
-        "title": "ConfigurableProviderRoleCode",
-        "type": "string"
       },
       "ConsentDecisionRequest": {
         "additionalProperties": false,
@@ -16943,15 +16922,6 @@
         "title": "ProviderReadiness",
         "type": "object"
       },
-      "ProviderRoleCode": {
-        "description": "Response compatibility for historical provider-role assignments.",
-        "enum": [
-          "COUNSELOR",
-          "GUIDANCE_SERVICES_STAFF"
-        ],
-        "title": "ProviderRoleCode",
-        "type": "string"
-      },
       "ProviderSummaryResponse": {
         "additionalProperties": false,
         "properties": {
@@ -19959,11 +19929,22 @@
         "title": "SelfAssessmentRatingResponse",
         "type": "object"
       },
+      "ServiceActivationBlocker": {
+        "enum": [
+          "DELIVERY_MODE_MISSING",
+          "APPOINTMENT_DURATION_MISSING",
+          "SELECTED_COUNSELORS_MISSING"
+        ],
+        "title": "ServiceActivationBlocker",
+        "type": "string"
+      },
       "ServiceCreateRequest": {
         "additionalProperties": false,
         "properties": {
-          "appointment_policy": {
-            "$ref": "#/components/schemas/AppointmentPolicy"
+          "appointment_booking_enabled": {
+            "default": false,
+            "title": "Appointment Booking Enabled",
+            "type": "boolean"
           },
           "cancellation_cutoff_minutes": {
             "anyOf": [
@@ -19980,7 +19961,7 @@
             "title": "Code",
             "type": "string"
           },
-          "default_duration_minutes": {
+          "default_appointment_duration_minutes": {
             "anyOf": [
               {
                 "type": "integer"
@@ -19989,7 +19970,7 @@
                 "type": "null"
               }
             ],
-            "title": "Default Duration Minutes"
+            "title": "Default Appointment Duration Minutes"
           },
           "delivery_modes": {
             "items": {
@@ -20007,25 +19988,45 @@
             "title": "Name",
             "type": "string"
           },
-          "provider_roles": {
-            "items": {
-              "$ref": "#/components/schemas/ConfigurableProviderRoleCode"
-            },
-            "title": "Provider Roles",
-            "type": "array"
+          "provider_coverage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ServiceProviderCoverage"
+              }
+            ],
+            "default": "ALL_COUNSELORS"
           },
           "requires_current_inventory": {
             "default": false,
             "title": "Requires Current Inventory",
             "type": "boolean"
+          },
+          "selected_counselor_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Selected Counselor Ids",
+            "type": "array"
           }
         },
         "required": [
           "code",
-          "name",
-          "appointment_policy"
+          "name"
         ],
         "title": "ServiceCreateRequest",
+        "type": "object"
+      },
+      "ServiceDisableRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "acknowledge_scheduling_consequences": {
+            "default": false,
+            "title": "Acknowledge Scheduling Consequences",
+            "type": "boolean"
+          }
+        },
+        "title": "ServiceDisableRequest",
         "type": "object"
       },
       "ServiceListResponse": {
@@ -20060,11 +20061,126 @@
         "title": "ServiceListResponse",
         "type": "object"
       },
+      "ServiceProviderCandidate": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "ServiceProviderCandidate",
+        "type": "object"
+      },
+      "ServiceProviderCandidatePage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceProviderCandidate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "ServiceProviderCandidatePage",
+        "type": "object"
+      },
+      "ServiceProviderCounselor": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "is_active"
+        ],
+        "title": "ServiceProviderCounselor",
+        "type": "object"
+      },
+      "ServiceProviderCoverage": {
+        "description": "Which active Counselors may provide new work. Counselor is the one provider class.",
+        "enum": [
+          "ALL_COUNSELORS",
+          "SELECTED_COUNSELORS"
+        ],
+        "title": "ServiceProviderCoverage",
+        "type": "string"
+      },
+      "ServiceProvidersResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "counselors": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceProviderCounselor"
+            },
+            "title": "Counselors",
+            "type": "array"
+          },
+          "provider_coverage": {
+            "$ref": "#/components/schemas/ServiceProviderCoverage"
+          }
+        },
+        "required": [
+          "provider_coverage",
+          "counselors"
+        ],
+        "title": "ServiceProvidersResponse",
+        "type": "object"
+      },
       "ServiceResponse": {
         "additionalProperties": false,
         "properties": {
-          "appointment_policy": {
-            "$ref": "#/components/schemas/AppointmentPolicy"
+          "activation_blockers": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceActivationBlocker"
+            },
+            "title": "Activation Blockers",
+            "type": "array"
+          },
+          "appointment_booking_enabled": {
+            "title": "Appointment Booking Enabled",
+            "type": "boolean"
           },
           "cancellation_cutoff_minutes": {
             "anyOf": [
@@ -20086,7 +20202,7 @@
             "title": "Created At",
             "type": "string"
           },
-          "default_duration_minutes": {
+          "default_appointment_duration_minutes": {
             "anyOf": [
               {
                 "type": "integer"
@@ -20095,7 +20211,7 @@
                 "type": "null"
               }
             ],
-            "title": "Default Duration Minutes"
+            "title": "Default Appointment Duration Minutes"
           },
           "delivery_modes": {
             "items": {
@@ -20125,12 +20241,8 @@
             "title": "Name",
             "type": "string"
           },
-          "provider_roles": {
-            "items": {
-              "$ref": "#/components/schemas/ProviderRoleCode"
-            },
-            "title": "Provider Roles",
-            "type": "array"
+          "provider_coverage": {
+            "$ref": "#/components/schemas/ServiceProviderCoverage"
           },
           "requires_current_inventory": {
             "title": "Requires Current Inventory",
@@ -20147,14 +20259,15 @@
           "code",
           "name",
           "description",
-          "appointment_policy",
-          "default_duration_minutes",
+          "appointment_booking_enabled",
+          "default_appointment_duration_minutes",
           "cancellation_cutoff_minutes",
           "requires_current_inventory",
           "delivery_modes",
-          "provider_roles",
+          "provider_coverage",
           "is_active",
           "is_system_required",
+          "activation_blockers",
           "created_at",
           "updated_at"
         ],
@@ -20194,13 +20307,10 @@
             "title": "Acknowledge Scheduling Consequences",
             "type": "boolean"
           },
-          "appointment_policy": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AppointmentPolicy"
-              }
-            ],
-            "default": "NONE"
+          "appointment_booking_enabled": {
+            "default": false,
+            "title": "Appointment Booking Enabled",
+            "type": "boolean"
           },
           "cancellation_cutoff_minutes": {
             "anyOf": [
@@ -20213,7 +20323,7 @@
             ],
             "title": "Cancellation Cutoff Minutes"
           },
-          "default_duration_minutes": {
+          "default_appointment_duration_minutes": {
             "anyOf": [
               {
                 "type": "integer"
@@ -20222,7 +20332,7 @@
                 "type": "null"
               }
             ],
-            "title": "Default Duration Minutes"
+            "title": "Default Appointment Duration Minutes"
           },
           "delivery_modes": {
             "items": {
@@ -20241,17 +20351,26 @@
             "title": "Name",
             "type": "string"
           },
-          "provider_roles": {
-            "items": {
-              "$ref": "#/components/schemas/ConfigurableProviderRoleCode"
-            },
-            "title": "Provider Roles",
-            "type": "array"
+          "provider_coverage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ServiceProviderCoverage"
+              }
+            ],
+            "default": "ALL_COUNSELORS"
           },
           "requires_current_inventory": {
             "default": false,
             "title": "Requires Current Inventory",
             "type": "boolean"
+          },
+          "selected_counselor_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Selected Counselor Ids",
+            "type": "array"
           }
         },
         "title": "ServiceUpdateRequest",
@@ -49848,17 +49967,18 @@
           },
           {
             "in": "query",
-            "name": "appointment_policy",
+            "name": "appointment_booking_enabled",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/AppointmentPolicy"
+                  "type": "boolean"
                 },
                 {
                   "type": "null"
                 }
-              ]
+              ],
+              "title": "Appointment Booking Enabled"
             }
           },
           {
@@ -50005,6 +50125,101 @@
           }
         ],
         "summary": "Services Create",
+        "tags": [
+          "services"
+        ]
+      }
+    },
+    "/api/v1/services/provider-candidates": {
+      "get": {
+        "description": "Active Counselors that may be selected as Service providers (no College filtering).",
+        "operationId": "servicesListProviderCandidates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProviderCandidatePage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Services List Provider Candidates",
         "tags": [
           "services"
         ]
@@ -50199,6 +50414,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceDisableRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -50355,6 +50580,84 @@
           }
         ],
         "summary": "Services Enable",
+        "tags": [
+          "services"
+        ]
+      }
+    },
+    "/api/v1/services/{service_id}/providers": {
+      "get": {
+        "operationId": "servicesGetProviders",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Service Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProvidersResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Services Get Providers",
         "tags": [
           "services"
         ]

@@ -89,8 +89,8 @@ def make_service(code: str = "OVERVIEW_SERVICE") -> Service:
     return Service.objects.create(
         code=code,
         name=code.replace("_", " ").title(),
-        appointment_policy="OPTIONAL",
-        default_duration_minutes=60,
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         is_active=True,
     )

@@ -36,7 +36,6 @@ from compass.integrations.daily import (
 )
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.models import DeliveryMode
-from compass.service_catalog.services import provider_role_eligible, service_supports_delivery_mode
 
 from .models import DailyWebhookReceipt, ECounselingRoom
 
@@ -142,13 +141,12 @@ def _load_eligible_appointment(appointment_id: UUID) -> Appointment:
         raise ECounselingAppointmentNotEligible("The Appointment is not ONLINE Counseling.")
     if appointment.status != AppointmentStatus.SCHEDULED:
         raise ECounselingAppointmentNotEligible("The Appointment is not SCHEDULED.")
-    if (
-        appointment.provider.role.code != "COUNSELOR"
-        or not provider_role_eligible(counseling_service, appointment.provider)
-        or not service_supports_delivery_mode(counseling_service, DeliveryMode.ONLINE)
-    ):
+    # The saved ONLINE Appointment is the authority: removing ONLINE from the Service, changing
+    # its provider coverage, or disabling booking later never denies it (ADR-089). Current
+    # account rules still apply.
+    if not appointment.provider.is_active or appointment.provider.role.code != "COUNSELOR":
         raise ECounselingAppointmentNotEligible(
-            "The assigned provider is not currently eligible for ONLINE Counseling."
+            "The assigned provider is not currently an active Counselor."
         )
     if not appointment.student.is_active or appointment.student.role.code != "STUDENT":
         raise ECounselingAppointmentNotEligible("The Appointment Student is not active.")

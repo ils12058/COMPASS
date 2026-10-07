@@ -40,6 +40,8 @@ const knownErrors: Record<string, string> = {
   invalid_appointment_request: "The Appointment request contains a value that is not accepted.",
   appointment_default_provider_unresolved:
     "A Counselor could not be resolved. Choose an eligible Counselor and try again.",
+  appointment_default_provider_not_qualified:
+    "Your default Counselor does not provide this Service. Choose one of the listed Counselors.",
   appointment_time_unavailable: "That time was just taken. Choose another available time.",
   appointment_time_conflict: "That time was just taken. Choose another available time.",
   appointment_lifecycle_conflict:
