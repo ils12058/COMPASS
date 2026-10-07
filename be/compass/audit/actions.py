@@ -87,6 +87,7 @@ EXIT_INTERVIEW_OPPORTUNITY_REVOKED = "exit_interview.opportunity_revoked"
 EXIT_INTERVIEW_OPPORTUNITY_COMPLETED = "exit_interview.opportunity_completed"
 ROUTINE_INTERVIEW_CREATED = "routine_interview.created"
 ROUTINE_INTERVIEW_INTAKE_SUBMITTED = "routine_interview.intake_submitted"
+ROUTINE_INTERVIEW_ENCOUNTER_LINKED = "routine_interview.encounter_linked"
 ROUTINE_INTERVIEW_EVALUATION_FINALIZED = "routine_interview.evaluation_finalized"
 REFERRAL_CREATED = "referral.created"
 REFERRAL_ACTION_RECORDED = "referral.action_recorded"
@@ -297,6 +298,7 @@ __all__ = [
     "EXIT_INTERVIEW_OPPORTUNITY_COMPLETED",
     "ROUTINE_INTERVIEW_CREATED",
     "ROUTINE_INTERVIEW_INTAKE_SUBMITTED",
+    "ROUTINE_INTERVIEW_ENCOUNTER_LINKED",
     "ROUTINE_INTERVIEW_EVALUATION_FINALIZED",
     "REFERRAL_CREATED",
     "REFERRAL_ACTION_RECORDED",

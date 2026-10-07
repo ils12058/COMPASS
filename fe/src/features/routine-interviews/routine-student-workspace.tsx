@@ -45,13 +45,15 @@ export function StudentRoutineWorkspace({
   const candidates = useRoutineInterviewsListMyAppointmentCandidates({
     query: { enabled: access.canManageSelf, retry: false },
   });
+  // Every scheduled Counseling Appointment includes a Routine Interview. Opening it runs the
+  // backend's idempotent ensure, which returns the Appointment's one Routine Interview.
   const ensure = useMutation({
     mutationKey: getRoutineInterviewsEnsureMyForAppointmentMutationKey(),
     mutationFn: (appointmentId: string) =>
       routineInterviewsEnsureMyForAppointment({ appointment_id: appointmentId }),
   });
 
-  async function startRoutine(appointmentId: string) {
+  async function openRoutine(appointmentId: string) {
     try {
       const response = await ensure.mutateAsync(appointmentId);
       const routine = response.data;
@@ -68,9 +70,9 @@ export function StudentRoutineWorkspace({
 
   const routineItems = routines.data?.data.items ?? [];
   const appointmentItems = candidates.data?.data.items ?? [];
-  const startError = ensure.error;
+  const openError = ensure.error;
   const inventoryRequired = routineErrorCode(candidates.error) === "routine_interview_inventory_required";
-  const startInventoryRequired = routineErrorCode(startError) === "routine_interview_inventory_required";
+  const openInventoryRequired = routineErrorCode(openError) === "routine_interview_inventory_required";
 
   return (
     <div>
@@ -81,9 +83,9 @@ export function StudentRoutineWorkspace({
       {access.canManageSelf ? (
         <Panel aria-labelledby="routine-appointment-candidates" className="mb-5">
           <PanelHeader
-            title="Counseling Appointments"
+            title="Routine Interviews to complete"
             titleId="routine-appointment-candidates"
-            description="Start a Routine Interview for an eligible scheduled Appointment."
+            description="Complete the Routine Interview for each scheduled Counseling Appointment before your session."
             actions={candidates.isSuccess ? (
               <Button variant="secondary" onClick={() => void candidates.refetch()} disabled={candidates.isFetching}>
                 Refresh
@@ -108,14 +110,14 @@ export function StudentRoutineWorkspace({
                 </>
               }
             >
-              Eligible Appointments could not be loaded.{" "}
+              Your Counseling Appointments could not be checked.{" "}
               {inventoryRequired
-                ? "Submit your Individual Inventory for the current Academic Year before starting an Appointment-backed Routine Interview."
+                ? "Submit your Individual Inventory for the current Academic Year to complete the Routine Interview for your Counseling Appointments."
                 : routineErrorMessage(candidates.error, "Try again in a moment.")}
             </PanelMessage>
           ) : appointmentItems.length === 0 ? (
             <PanelMessage>
-              No scheduled Counseling Appointments currently need a Routine Interview.
+              No Counseling Appointment is waiting for a Routine Interview.
             </PanelMessage>
           ) : (
             <ul className="divide-y divide-border">
@@ -128,20 +130,21 @@ export function StudentRoutineWorkspace({
                     </p>
                   </div>
                   <Button
-                    onClick={() => void startRoutine(appointment.id)}
+                    onClick={() => void openRoutine(appointment.id)}
                     disabled={ensure.isPending}
-                    aria-busy={ensure.isPending}
+                    aria-busy={ensure.isPending && ensure.variables === appointment.id}
                   >
-                    {ensure.isPending ? "Starting…" : "Start Routine Interview"}
+                    {ensure.isPending && ensure.variables === appointment.id ? "Opening…" : "Complete Routine Interview"}
+                    <span className="sr-only"> for {appointment.reference_code}</span>
                   </Button>
                 </li>
               ))}
             </ul>
           )}
-          {startError ? (
+          {openError ? (
             <div role="alert" className="border-t border-border px-4 py-3 text-sm text-danger sm:px-5">
-              <p>{routineErrorMessage(startError, "The Routine Interview could not be started. The eligible Appointment list has been refreshed; review it and try again.")}</p>
-              {startInventoryRequired ? (
+              <p>{routineErrorMessage(openError, "The Routine Interview could not be opened. Your Counseling Appointments have been checked again; try again.")}</p>
+              {openInventoryRequired ? (
                 <Link className="mt-2 inline-block font-semibold underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/portal/inventory">Go to Individual Inventory</Link>
               ) : null}
             </div>
@@ -160,7 +163,7 @@ export function StudentRoutineWorkspace({
             </PanelMessage>
           ) : routineItems.length === 0 ? (
             <PanelMessage>
-              You do not have any Routine Interviews yet. Eligible Appointment-backed interviews will appear here, as will interviews created by your Counselor.
+              You do not have any Routine Interviews yet. Routine Interviews you open for your Counseling Appointments appear here, as do interviews created by your Counselor.
             </PanelMessage>
           ) : (
             <div className={dataTable.scroll}>

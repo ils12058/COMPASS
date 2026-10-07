@@ -27,8 +27,11 @@ from .services import (
     CounselingFeedbackProvenanceConflict,
     CounselingFinalizedRoutineConflict,
     CounselingInvalidTime,
+    CounselingLinkedRoutineConflict,
     CounselingNotFound,
     CounselingNotPermitted,
+    CounselingRoutineInterviewAlreadyLinked,
+    CounselingRoutineInterviewMismatch,
     InvalidCounselingInput,
     _institution_zone,
     create_encounter,
@@ -74,6 +77,9 @@ class CounselingCreateRequest(StrictSchema):
     appointment_id: UUID | None = None
     student_id: UUID | None = None
     delivery_mode: DeliveryMode | None = None
+    # Set when the interaction is recorded from this Routine Interview's Counseling context. The
+    # Encounter must match it and is linked to it with the recording, or nothing is recorded.
+    routine_interview_id: UUID | None = None
     started_at: datetime
     ended_at: datetime
 
@@ -257,6 +263,12 @@ def _raise(exc: CounselingError) -> NoReturn:
         raise APIError(409, "counseling_appointment_invalid", str(exc)) from exc
     if isinstance(exc, CounselingFinalizedRoutineConflict):
         raise APIError(409, "counseling_finalized_routine_conflict", str(exc)) from exc
+    if isinstance(exc, CounselingLinkedRoutineConflict):
+        raise APIError(409, "counseling_linked_routine_conflict", str(exc)) from exc
+    if isinstance(exc, CounselingRoutineInterviewAlreadyLinked):
+        raise APIError(409, "counseling_routine_interview_already_linked", str(exc)) from exc
+    if isinstance(exc, CounselingRoutineInterviewMismatch):
+        raise APIError(409, "counseling_routine_interview_mismatch", str(exc)) from exc
     if isinstance(exc, CounselingFeedbackChronologyConflict):
         raise APIError(409, "counseling_feedback_chronology_conflict", str(exc)) from exc
     if isinstance(exc, CounselingFeedbackProvenanceConflict):
@@ -555,6 +567,9 @@ def counseling_get_my_shared_summary(request, summary_id: UUID):
 )
 def counseling_create_encounter(request, payload: CounselingCreateRequest):
     _require_counselor(request, "counseling.manage_assigned")
+    if payload.routine_interview_id is not None:
+        # Linking changes the assigned Routine Interview, so its management capability applies.
+        _require_counselor(request, "routine_interviews.manage_assigned")
     try:
         item = create_encounter(
             counselor=request.auth_user,
@@ -562,6 +577,7 @@ def counseling_create_encounter(request, payload: CounselingCreateRequest):
             appointment_id=payload.appointment_id,
             student_id=payload.student_id,
             delivery_mode=payload.delivery_mode.value if payload.delivery_mode else None,
+            routine_interview_id=payload.routine_interview_id,
             started_at=payload.started_at,
             ended_at=payload.ended_at,
             context=_context(request),

@@ -47,6 +47,8 @@ export type EncounterOriginPreset = {
   institutionalId?: string | null;
   appointmentId?: string;
   appointmentReference?: string;
+  // Recording from this Routine Interview's workspace links the Encounter to it.
+  routineInterviewId?: string;
   deliveryMode: DeliveryMode;
 };
 
@@ -55,13 +57,39 @@ type RecordEncounterFormProps = {
   onCancel?: () => void;
   onCreated?: (encounterId: string) => void;
   onUncertain?: () => void;
+  // The Routine Interview already has its Encounter; the caller reloads what it shows.
+  onAlreadyRecorded?: () => void;
 };
+
+export function encounterCreatePayload(
+  origin: EncounterOriginPreset,
+  startedAt: string,
+  endedAt: string,
+): CounselingCreateRequest {
+  const routine = origin.routineInterviewId ? { routine_interview_id: origin.routineInterviewId } : {};
+  return origin.entryMode === "APPOINTMENT"
+    ? {
+        appointment_id: origin.appointmentId,
+        entry_mode: "APPOINTMENT",
+        ...routine,
+        started_at: startedAt,
+        ended_at: endedAt,
+      }
+    : {
+        student_id: origin.studentId,
+        entry_mode: origin.entryMode,
+        delivery_mode: origin.deliveryMode,
+        ...routine,
+        started_at: startedAt,
+        ended_at: endedAt,
+      };
+}
 
 function statusLabel(value: string): string {
   return value.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }: RecordEncounterFormProps) {
+export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, onAlreadyRecorded }: RecordEncounterFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [source, setSource] = useState<Source | null>(null);
@@ -180,20 +208,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
       return;
     }
 
-    const payload: CounselingCreateRequest = selectedOrigin.entryMode === "APPOINTMENT"
-      ? {
-          appointment_id: selectedOrigin.appointmentId,
-          entry_mode: "APPOINTMENT",
-          started_at: started,
-          ended_at: ended,
-        }
-      : {
-          student_id: selectedOrigin.studentId,
-          entry_mode: selectedOrigin.entryMode,
-          delivery_mode: selectedOrigin.deliveryMode,
-          started_at: started,
-          ended_at: ended,
-        };
+    const payload = encounterCreatePayload(selectedOrigin, started, ended);
 
     try {
       const response = await create.mutateAsync({ data: payload });
@@ -214,6 +229,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain }
         setError(null);
       } else {
         setError(counselingErrorMessage(caught, "The Counseling Encounter could not be recorded. Review the values and try again."));
+        if (counselingErrorCode(caught) === "counseling_routine_interview_already_linked") onAlreadyRecorded?.();
         if (counselingErrorCode(caught) === "counseling_appointment_already_used") {
           setSelectedAppointmentId("");
           setSelectedAppointmentRecord(null);

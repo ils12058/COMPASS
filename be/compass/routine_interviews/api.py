@@ -28,6 +28,7 @@ from .services import (
     RoutineInterviewAppointmentInvalid,
     RoutineInterviewCreationConflict,
     RoutineInterviewCurrentStudentRequired,
+    RoutineInterviewEncounterConflict,
     RoutineInterviewEncounterMismatch,
     RoutineInterviewEncounterRequired,
     RoutineInterviewError,
@@ -148,6 +149,9 @@ class RoutineEvaluationPayload(StrictSchema):
 
 
 class RoutineFinalizeRequest(StrictSchema):
+    # Only for recovery: a direct Routine Interview with no linked Encounter names the Encounter
+    # recorded outside its Counseling context. A linked Routine Interview finalizes against its
+    # link, and an Appointment-backed one against its Appointment's Encounter.
     encounter_id: UUID | None = None
 
 
@@ -359,6 +363,8 @@ def _raise(exc: Exception) -> NoReturn:
         raise APIError(409, "routine_interview_evaluation_finalized", str(exc)) from exc
     if isinstance(exc, RoutineInterviewEncounterRequired):
         raise APIError(409, "routine_interview_encounter_required", str(exc)) from exc
+    if isinstance(exc, RoutineInterviewEncounterConflict):
+        raise APIError(409, "routine_interview_encounter_conflict", str(exc)) from exc
     if isinstance(exc, RoutineInterviewEncounterMismatch):
         raise APIError(409, "routine_interview_encounter_mismatch", str(exc)) from exc
     if isinstance(exc, RoutineInterviewFormRevisionUnsupported):
@@ -517,7 +523,9 @@ def _student_summary(item) -> dict[str, object]:
         "intake_submitted_at": item.intake_submitted_at,
         "form_revision": _revision(item),
         "appointment": _appointment(item),
-        "counseling_encounter": _encounter(item),
+        # Students see the Encounter once it backs a finalized Evaluation, as before COMPASS
+        # began linking it as soon as the relationship is known.
+        "counseling_encounter": _encounter(item) if item.evaluation_finalized_at else None,
         "created_at": item.created_at,
     }
 

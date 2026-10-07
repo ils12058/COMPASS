@@ -96,9 +96,9 @@ const routineErrors: Record<string, string> = {
   routine_interview_not_permitted:
     "This Routine Interview is unavailable to this account.",
   routine_interview_inventory_required:
-    "A submitted Individual Inventory for the current Academic Year is required before starting an Appointment-backed Routine Interview.",
+    "A submitted Individual Inventory for the current Academic Year is required before you can complete a Routine Interview for a Counseling Appointment.",
   routine_interview_appointment_invalid:
-    "This Appointment is no longer eligible for a Routine Interview. Refresh the candidates and try again.",
+    "This Appointment no longer has a Routine Interview to complete, for example because it was cancelled.",
   routine_interview_closed_by_appointment:
     "This Routine Interview is historical and no longer accepts Intake or Evaluation changes because its Appointment ended without a completed interaction.",
   routine_interview_intake_already_submitted:
@@ -110,7 +110,9 @@ const routineErrors: Record<string, string> = {
   routine_interview_encounter_required:
     "A matching completed Counseling Encounter is required before finalization.",
   routine_interview_encounter_mismatch:
-    "That Counseling Encounter no longer matches this Routine Interview. Refresh the available encounters and choose again.",
+    "That Counseling Encounter does not match this Routine Interview. The available encounters have been reloaded.",
+  routine_interview_encounter_conflict:
+    "A different Counseling Encounter is already linked to this Routine Interview. The latest details are now shown.",
   routine_interview_form_revision_unsupported:
     "The configured Routine Interview form revision is not supported for new records.",
   idempotency_key_conflict:

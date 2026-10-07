@@ -17,6 +17,7 @@ from compass.accounts.services import is_current_student
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.audit.actions import (
     ROUTINE_INTERVIEW_CREATED,
+    ROUTINE_INTERVIEW_ENCOUNTER_LINKED,
     ROUTINE_INTERVIEW_EVALUATION_FINALIZED,
     ROUTINE_INTERVIEW_INTAKE_SUBMITTED,
 )
@@ -61,8 +62,10 @@ from .content import (
 )
 from .errors import RoutineInterviewError
 from .matching import (
+    RoutineEncounterFacts,
     RoutineEncounterMatchIssue,
     routine_interview_encounter_match_issue,
+    routine_interview_encounter_match_issue_for_facts,
     routine_interview_encounter_matches,
 )
 from .models import RoutineConcern, RoutineInterview
@@ -128,12 +131,31 @@ class RoutineInterviewEncounterMismatch(RoutineInterviewError):
     pass
 
 
+class RoutineInterviewEncounterConflict(RoutineInterviewEncounterMismatch):
+    """A different Encounter is already linked, or the Encounter belongs to another Routine."""
+
+
 class RoutineInterviewCreationConflict(RoutineInterviewError):
     pass
 
 
 class RoutineInterviewFormRevisionUnsupported(RoutineInterviewError):
     pass
+
+
+class RoutineEncounterLinkSource(StrEnum):
+    """How a Routine Interview's Counseling Encounter link was established (audit metadata)."""
+
+    # Automatic: the Routine Interview and the Encounter share one Counseling Appointment.
+    APPOINTMENT = "APPOINTMENT"
+    # Automatic: the Encounter was recorded from this Routine Interview's Counseling context.
+    ROUTINE_INTERVIEW_CONTEXT = "ROUTINE_INTERVIEW_CONTEXT"
+    # Compatibility: an Appointment-backed record from before automatic linking, reconciled at
+    # finalization against the single Encounter its Appointment admits.
+    APPOINTMENT_RECONCILIATION = "APPOINTMENT_RECONCILIATION"
+    # Exceptional recovery: a direct record whose Encounter was recorded outside its Routine
+    # context, named explicitly by the assigned Counselor at finalization.
+    COUNSELOR_RECOVERY = "COUNSELOR_RECOVERY"
 
 
 class RoutineWorkflowState(StrEnum):
@@ -436,6 +458,19 @@ def ensure_for_appointment(
                 ).get(pk=item.pk)
             ),
         )
+
+        # An Encounter already recorded for this Appointment belongs to this Routine Interview.
+        # SKIP LOCKED, because an Encounter correction holds that row while it waits for this
+        # Appointment lock; it links the Encounter itself after this commits. In the rare case
+        # another writer holds it, finalization reconciles the Appointment's single Encounter.
+        encounter = (
+            CounselingEncounter.objects.select_for_update(of=("self",), skip_locked=True)
+            .select_related("service")
+            .filter(appointment_id=appointment.pk)
+            .first()
+        )
+        if encounter is not None:
+            link_appointment_encounter(item=item, encounter=encounter, context=context)
         return _queryset().get(pk=item.pk)
 
 
@@ -691,6 +726,10 @@ def list_encounter_candidates(
         raise RoutineInterviewEvaluationFinalized(
             "The Counselor Evaluation is finalized and locked."
         )
+    # Candidates exist only for reconciliation and recovery. A linked Routine Interview's
+    # Encounter is already decided, so there is nothing to choose.
+    if item.counseling_encounter_id is not None:
+        return RoutineEncounterCandidatePage((), page, page_size, False)
 
     now = timezone.now()
     queryset = CounselingEncounter.objects.select_related(
@@ -1036,23 +1075,22 @@ def replace_assigned_evaluation(
         return _queryset().get(pk=item.pk)
 
 
-def _validate_encounter_match(*, item: RoutineInterview, encounter: CounselingEncounter) -> None:
-    issue = routine_interview_encounter_match_issue(item=item, encounter=encounter)
-    messages = {
-        RoutineEncounterMatchIssue.STUDENT: "The Counseling Encounter belongs to another Student.",
-        RoutineEncounterMatchIssue.COUNSELOR: (
-            "The Counseling Encounter belongs to another Counselor."
-        ),
-        RoutineEncounterMatchIssue.SERVICE: (
-            "The Counseling Encounter does not use the canonical COUNSELING Service."
-        ),
-        RoutineEncounterMatchIssue.DELIVERY_MODE: (
-            "The Counseling Encounter delivery mode does not match the Routine Interview."
-        ),
-        RoutineEncounterMatchIssue.NOT_COMPLETED: (
-            "The Counseling Encounter must represent a completed interaction."
-        ),
-    }
+_MATCH_ISSUE_MESSAGES = {
+    RoutineEncounterMatchIssue.STUDENT: "The Counseling Encounter belongs to another Student.",
+    RoutineEncounterMatchIssue.COUNSELOR: "The Counseling Encounter belongs to another Counselor.",
+    RoutineEncounterMatchIssue.SERVICE: (
+        "The Counseling Encounter does not use the canonical COUNSELING Service."
+    ),
+    RoutineEncounterMatchIssue.DELIVERY_MODE: (
+        "The Counseling Encounter delivery mode does not match the Routine Interview."
+    ),
+    RoutineEncounterMatchIssue.NOT_COMPLETED: (
+        "The Counseling Encounter must represent a completed interaction."
+    ),
+}
+
+
+def _raise_match_issue(item: RoutineInterview, issue: RoutineEncounterMatchIssue | None) -> None:
     if issue == RoutineEncounterMatchIssue.ENTRY_MODE:
         if item.appointment_id is not None:
             raise RoutineInterviewEncounterMismatch(
@@ -1070,7 +1108,178 @@ def _validate_encounter_match(*, item: RoutineInterview, encounter: CounselingEn
             "The Counseling Encounter Appointment does not match the Routine Interview."
         )
     if issue is not None:
-        raise RoutineInterviewEncounterMismatch(messages[issue])
+        raise RoutineInterviewEncounterMismatch(_MATCH_ISSUE_MESSAGES[issue])
+
+
+def _validate_encounter_match(*, item: RoutineInterview, encounter: CounselingEncounter) -> None:
+    _raise_match_issue(
+        item, routine_interview_encounter_match_issue(item=item, encounter=encounter)
+    )
+
+
+def _link_encounter(
+    *,
+    item: RoutineInterview,
+    encounter: CounselingEncounter,
+    source: RoutineEncounterLinkSource,
+    context: AuditContext,
+) -> bool:
+    """Persist ``item.counseling_encounter`` inside the caller's transaction.
+
+    The caller holds the Routine row lock and loaded ``encounter.service``. Linking the Encounter
+    that is already linked is a no-op (``False``). A different existing link, or an Encounter that
+    belongs to another Routine Interview, is rejected and never replaced.
+    """
+
+    if item.counseling_encounter_id == encounter.pk:
+        return False
+    if item.counseling_encounter_id is not None:
+        raise RoutineInterviewEncounterConflict(
+            "This Routine Interview is already linked to a different Counseling Encounter."
+        )
+    _validate_encounter_match(item=item, encounter=encounter)
+    already_owned = RoutineInterview.objects.filter(counseling_encounter_id=encounter.pk).exclude(
+        pk=item.pk
+    )
+    if already_owned.exists():
+        raise RoutineInterviewEncounterConflict(
+            "The Counseling Encounter is already linked to another Routine Interview."
+        )
+    try:
+        # The one-to-one constraint stays authoritative for a concurrent link elsewhere.
+        with transaction.atomic():
+            item.counseling_encounter = encounter
+            item.save(update_fields=["counseling_encounter", "updated_at"])
+    except IntegrityError as exc:
+        item.counseling_encounter = None
+        raise RoutineInterviewEncounterConflict(
+            "The Counseling Encounter is already linked to another Routine Interview."
+        ) from exc
+
+    record_event(
+        context=context,
+        action=ROUTINE_INTERVIEW_ENCOUNTER_LINKED,
+        outcome=AuditOutcome.SUCCESS,
+        target_type="routine.interview",
+        target_id=item.pk,
+        metadata={
+            "link_source": source.value,
+            "entry_mode": item.entry_mode,
+            "appointment_id": str(item.appointment_id) if item.appointment_id else None,
+            "encounter_id": str(encounter.pk),
+        },
+    )
+    return True
+
+
+def lock_routine_for_encounter_recording(
+    *,
+    counselor: User,
+    routine_interview_id: UUID | None,
+    appointment_id: UUID | None,
+) -> RoutineInterview | None:
+    """Lock the Routine Interview a new Counseling Encounter will belong to, if one is known.
+
+    Called before the Encounter's Appointment is locked, matching the Routine → Appointment
+    order of every Routine mutation. An explicit Routine context must be assigned to the
+    recording Counselor; otherwise it is reported as not found.
+    """
+
+    if routine_interview_id is not None:
+        item = (
+            RoutineInterview.objects.select_for_update(of=("self",))
+            .filter(pk=routine_interview_id, counselor_id=counselor.pk)
+            .first()
+        )
+        if item is None:
+            raise RoutineInterviewNotFound("The requested Routine Interview was not found.")
+        return item
+    if appointment_id is None:
+        return None
+    # A Routine Interview's Appointment never changes after creation, so this unlocked lookup
+    # identifies the row to lock.
+    routine_id = (
+        RoutineInterview.objects.filter(appointment_id=appointment_id)
+        .values_list("pk", flat=True)
+        .first()
+    )
+    if routine_id is None:
+        return None
+    return RoutineInterview.objects.select_for_update(of=("self",)).filter(pk=routine_id).first()
+
+
+def validate_encounter_for_routine_context(
+    *,
+    item: RoutineInterview,
+    facts: RoutineEncounterFacts,
+) -> None:
+    """Reject an Encounter about to be recorded from ``item``'s context before it is written."""
+
+    if item.counseling_encounter_id is not None:
+        raise RoutineInterviewEncounterConflict(
+            "A Counseling Encounter is already linked to this Routine Interview."
+        )
+    _require_actionable_parent(item)
+    _raise_match_issue(
+        item, routine_interview_encounter_match_issue_for_facts(item=item, facts=facts)
+    )
+
+
+def link_routine_context_encounter(
+    *,
+    item: RoutineInterview,
+    encounter: CounselingEncounter,
+    context: AuditContext,
+) -> None:
+    """Link an Encounter recorded from ``item``'s context; every failure fails the recording."""
+
+    _link_encounter(
+        item=item,
+        encounter=encounter,
+        source=RoutineEncounterLinkSource.ROUTINE_INTERVIEW_CONTEXT,
+        context=context,
+    )
+
+
+def link_appointment_encounter(
+    *,
+    item: RoutineInterview | None,
+    encounter: CounselingEncounter,
+    context: AuditContext,
+) -> bool:
+    """Link an Appointment's Encounter to the same Appointment's Routine Interview.
+
+    Sharing the Appointment makes the relationship deterministic, so COMPASS records it as soon
+    as both exist. An Encounter that does not satisfy the Routine matching rules (for example a
+    non-APPOINTMENT entry mode) stays independent: recording counseling never depends on the
+    Routine Interview, and finalization still reports the mismatch. An existing different link is
+    never replaced.
+    """
+
+    if encounter.appointment_id is None:
+        return False
+    if item is None:
+        # The Routine Interview was created after the caller looked for it, before the caller
+        # locked the Appointment. Lock it now; the Appointment lock keeps the set stable.
+        item = (
+            RoutineInterview.objects.select_for_update(of=("self",))
+            .filter(appointment_id=encounter.appointment_id)
+            .first()
+        )
+        if item is None:
+            return False
+    if item.appointment_id != encounter.appointment_id:
+        return False
+    if item.counseling_encounter_id == encounter.pk:
+        return False
+    if routine_interview_encounter_match_issue(item=item, encounter=encounter) is not None:
+        return False
+    return _link_encounter(
+        item=item,
+        encounter=encounter,
+        source=RoutineEncounterLinkSource.APPOINTMENT,
+        context=context,
+    )
 
 
 def finalize_assigned_evaluation(
@@ -1100,13 +1309,21 @@ def finalize_assigned_evaluation(
 
         # Finalization locks the Evaluation permanently, so prove it is readable and valid first.
         _validate_evaluation_values(read_evaluation(item))
-        if item.appointment_id is not None:
-            encounter = (
-                CounselingEncounter.objects.select_for_update(of=("self",))
-                .select_related("service")
-                .filter(appointment_id=item.appointment_id)
-                .first()
-            )
+        encounters = CounselingEncounter.objects.select_for_update(of=("self",)).select_related(
+            "service"
+        )
+        if item.counseling_encounter_id is not None:
+            # Normal path: COMPASS linked the Encounter when the relationship became known.
+            if encounter_id is not None and encounter_id != item.counseling_encounter_id:
+                raise RoutineInterviewEncounterConflict(
+                    "This Routine Interview is already linked to a different Counseling Encounter."
+                )
+            encounter = encounters.get(pk=item.counseling_encounter_id)
+            _validate_encounter_match(item=item, encounter=encounter)
+        elif item.appointment_id is not None:
+            # Compatibility for records from before automatic linking. An Appointment admits at
+            # most one Encounter, so the relationship is still deterministic.
+            encounter = encounters.filter(appointment_id=item.appointment_id).first()
             if encounter is None:
                 raise RoutineInterviewEncounterRequired(
                     "A completed Counseling Encounter for this Appointment is required."
@@ -1115,38 +1332,34 @@ def finalize_assigned_evaluation(
                 raise RoutineInterviewEncounterMismatch(
                     "The supplied Counseling Encounter does not match the Appointment."
                 )
+            _link_encounter(
+                item=item,
+                encounter=encounter,
+                source=RoutineEncounterLinkSource.APPOINTMENT_RECONCILIATION,
+                context=context,
+            )
         else:
+            # Exceptional recovery: the Encounter was recorded outside this direct Routine
+            # Interview's context. COMPASS never chooses among matching Encounters itself.
             if encounter_id is None:
                 raise RoutineInterviewEncounterRequired(
-                    "encounter_id is required for a direct Routine Interview."
+                    "No Counseling Encounter is linked to this Routine Interview. Record it from "
+                    "the Routine Interview's Counseling workspace or name the recorded Encounter."
                 )
-            encounter = (
-                CounselingEncounter.objects.select_for_update(of=("self",))
-                .select_related("service")
-                .filter(pk=encounter_id)
-                .first()
-            )
+            encounter = encounters.filter(pk=encounter_id).first()
             if encounter is None:
                 raise RoutineInterviewEncounterRequired(
                     "The supplied Counseling Encounter was not found."
                 )
-
-        _validate_encounter_match(item=item, encounter=encounter)
-        try:
-            item.counseling_encounter = encounter
-            item.evaluation_finalized_at = timezone.now()
-            item.save(
-                update_fields=[
-                    "counseling_encounter",
-                    "evaluation_finalized_at",
-                    "updated_at",
-                ]
+            _link_encounter(
+                item=item,
+                encounter=encounter,
+                source=RoutineEncounterLinkSource.COUNSELOR_RECOVERY,
+                context=context,
             )
-        except IntegrityError as exc:
-            raise RoutineInterviewEncounterMismatch(
-                "The Counseling Encounter is already linked to another Routine Interview."
-            ) from exc
 
+        item.evaluation_finalized_at = timezone.now()
+        item.save(update_fields=["evaluation_finalized_at", "updated_at"])
         record_event(
             context=context,
             action=ROUTINE_INTERVIEW_EVALUATION_FINALIZED,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from uuid import UUID
@@ -74,6 +76,18 @@ class CounselingInvalidTime(CounselingError):
 
 
 class CounselingFinalizedRoutineConflict(CounselingError):
+    pass
+
+
+class CounselingLinkedRoutineConflict(CounselingError):
+    pass
+
+
+class CounselingRoutineInterviewMismatch(CounselingError):
+    pass
+
+
+class CounselingRoutineInterviewAlreadyLinked(CounselingError):
     pass
 
 
@@ -349,6 +363,73 @@ def _create_row(
     return encounter
 
 
+@contextmanager
+def _routine_link_errors() -> Iterator[None]:
+    """Report Routine Interview linking failures as Counseling errors, after rollback."""
+
+    from compass.routine_interviews.services import (
+        RoutineInterviewEncounterConflict,
+        RoutineInterviewEncounterMismatch,
+        RoutineInterviewNotFound,
+        RoutineInterviewParentClosed,
+    )
+
+    try:
+        yield
+    except RoutineInterviewNotFound as exc:
+        raise CounselingNotFound("The requested Routine Interview was not found.") from exc
+    except RoutineInterviewEncounterConflict as exc:
+        raise CounselingRoutineInterviewAlreadyLinked(str(exc)) from exc
+    except (RoutineInterviewEncounterMismatch, RoutineInterviewParentClosed) as exc:
+        raise CounselingRoutineInterviewMismatch(str(exc)) from exc
+
+
+def _validate_routine_context(
+    routine,
+    *,
+    student_id: UUID,
+    counselor_id: UUID,
+    service: Service,
+    delivery_mode: str,
+    ended_at: datetime,
+    entry_mode: str,
+    appointment_id: UUID | None,
+) -> None:
+    from compass.routine_interviews.matching import RoutineEncounterFacts
+    from compass.routine_interviews.services import validate_encounter_for_routine_context
+
+    validate_encounter_for_routine_context(
+        item=routine,
+        facts=RoutineEncounterFacts(
+            student_id=student_id,
+            counselor_id=counselor_id,
+            service_code=service.code,
+            delivery_mode=delivery_mode,
+            ended_at=ended_at,
+            entry_mode=entry_mode,
+            appointment_id=appointment_id,
+        ),
+    )
+
+
+def _link_recorded_encounter(
+    *,
+    routine,
+    encounter: CounselingEncounter,
+    routine_context: bool,
+    context: AuditContext,
+) -> None:
+    from compass.routine_interviews.services import (
+        link_appointment_encounter,
+        link_routine_context_encounter,
+    )
+
+    if routine_context:
+        link_routine_context_encounter(item=routine, encounter=encounter, context=context)
+    elif encounter.appointment_id is not None:
+        link_appointment_encounter(item=routine, encounter=encounter, context=context)
+
+
 def create_encounter(
     *,
     counselor: User,
@@ -358,14 +439,32 @@ def create_encounter(
     student_id: UUID | None = None,
     delivery_mode: str | None = None,
     appointment_id: UUID | None = None,
+    routine_interview_id: UUID | None = None,
     context: AuditContext,
     now: datetime | None = None,
 ) -> CounselingEncounter:
+    """Record a completed Counseling interaction.
+
+    With ``routine_interview_id`` the interaction is recorded from that Routine Interview's
+    Counseling context: the Encounter must match it and is linked to it in the same transaction,
+    or nothing is recorded. An Appointment Encounter is linked to the same Appointment's Routine
+    Interview automatically. Without either, the Encounter is independent; COMPASS never links it
+    by similarity.
+    """
+
+    from compass.routine_interviews.services import lock_routine_for_encounter_recording
+
     normalized_entry = _normalize_entry_mode(entry_mode)
     normalized_start, normalized_end = _normalize_actual_times(started_at, ended_at, now=now)
+    routine_context = routine_interview_id is not None
 
     if appointment_id is not None:
-        with transaction.atomic():
+        with _routine_link_errors(), transaction.atomic():
+            routine = lock_routine_for_encounter_recording(
+                counselor=counselor,
+                routine_interview_id=routine_interview_id,
+                appointment_id=appointment_id,
+            )
             appointment = Appointment.objects.select_for_update().filter(pk=appointment_id).first()
             if appointment is None:
                 raise CounselingAppointmentInvalid("The linked Appointment was not found.")
@@ -402,6 +501,17 @@ def create_encounter(
                 service_id=service.pk,
                 delivery_mode=normalized_mode,
             )
+            if routine_context:
+                _validate_routine_context(
+                    routine,
+                    student_id=locked_student.pk,
+                    counselor_id=locked_counselor.pk,
+                    service=service,
+                    delivery_mode=normalized_mode,
+                    ended_at=normalized_end,
+                    entry_mode=normalized_entry,
+                    appointment_id=appointment.pk,
+                )
             encounter = _create_row(
                 student=locked_student,
                 counselor=locked_counselor,
@@ -411,6 +521,12 @@ def create_encounter(
                 delivery_mode=normalized_mode,
                 started_at=normalized_start,
                 ended_at=normalized_end,
+                context=context,
+            )
+            _link_recorded_encounter(
+                routine=routine,
+                encounter=encounter,
+                routine_context=routine_context,
                 context=context,
             )
         return _encounter_queryset().get(pk=encounter.pk)
@@ -423,7 +539,12 @@ def create_encounter(
         raise InvalidCounselingInput("delivery_mode is required without an Appointment.")
     normalized_mode = _normalize_delivery_mode(delivery_mode)
 
-    with transaction.atomic():
+    with _routine_link_errors(), transaction.atomic():
+        routine = lock_routine_for_encounter_recording(
+            counselor=counselor,
+            routine_interview_id=routine_interview_id,
+            appointment_id=None,
+        )
         locked = _lock_users(counselor.pk, student_id)
         locked_counselor = locked[counselor.pk]
         locked_student = locked[student_id]
@@ -435,6 +556,17 @@ def create_encounter(
             counselor=locked_counselor,
             delivery_mode=normalized_mode,
         )
+        if routine_context:
+            _validate_routine_context(
+                routine,
+                student_id=locked_student.pk,
+                counselor_id=locked_counselor.pk,
+                service=service,
+                delivery_mode=normalized_mode,
+                ended_at=normalized_end,
+                entry_mode=normalized_entry,
+                appointment_id=None,
+            )
         encounter = _create_row(
             student=locked_student,
             counselor=locked_counselor,
@@ -444,6 +576,12 @@ def create_encounter(
             delivery_mode=normalized_mode,
             started_at=normalized_start,
             ended_at=normalized_end,
+            context=context,
+        )
+        _link_recorded_encounter(
+            routine=routine,
+            encounter=encounter,
+            routine_context=routine_context,
             context=context,
         )
     return _encounter_queryset().get(pk=encounter.pk)
@@ -650,28 +788,46 @@ def list_students(
     return StudentPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
 
 
-def _lock_finalized_routine_dependency(encounter_id: UUID):
-    """Lock an already-finalized Routine before its Encounter to preserve lock ordering."""
+def _lock_routine_dependencies(encounter_id: UUID, changes: dict[str, object]):
+    """Lock, before the Encounter, the Routine Interview linked to it and the Routine Interview
+    of the Appointment it will be attached to, preserving the Routine-first lock order.
+
+    Returns ``(linked, anchored)``. A Routine Interview's Appointment never changes and a link is
+    never removed, so the unlocked lookups identify the rows to lock.
+    """
 
     from compass.routine_interviews.models import RoutineInterview
 
-    return (
-        RoutineInterview.objects.select_for_update(of=("self",))
-        .filter(
-            counseling_encounter_id=encounter_id,
-            evaluation_finalized_at__isnull=False,
-        )
+    linked_id = (
+        RoutineInterview.objects.filter(counseling_encounter_id=encounter_id)
+        .values_list("pk", flat=True)
         .first()
     )
-
-
-def _finalized_routine_dependency(encounter_id: UUID):
-    from compass.routine_interviews.models import RoutineInterview
-
-    return RoutineInterview.objects.filter(
-        counseling_encounter_id=encounter_id,
-        evaluation_finalized_at__isnull=False,
-    ).first()
+    if "appointment_id" in changes:
+        appointment_id = changes["appointment_id"]
+        if not isinstance(appointment_id, UUID):
+            appointment_id = None
+    else:
+        appointment_id = (
+            CounselingEncounter.objects.filter(pk=encounter_id)
+            .values_list("appointment_id", flat=True)
+            .first()
+        )
+    anchored_id = (
+        RoutineInterview.objects.filter(appointment_id=appointment_id)
+        .values_list("pk", flat=True)
+        .first()
+        if appointment_id is not None
+        else None
+    )
+    ids = sorted({pk for pk in (linked_id, anchored_id) if pk is not None}, key=str)
+    locked = {
+        row.pk: row
+        for row in RoutineInterview.objects.select_for_update(of=("self",))
+        .filter(pk__in=ids)
+        .order_by("pk")
+    }
+    return locked.get(linked_id), locked.get(anchored_id)
 
 
 def update_encounter(
@@ -689,8 +845,8 @@ def update_encounter(
             "Unsupported Counseling correction fields: " + ", ".join(sorted(unknown))
         )
 
-    with transaction.atomic():
-        finalized_routine = _lock_finalized_routine_dependency(encounter_id)
+    with _routine_link_errors(), transaction.atomic():
+        linked_routine, anchored_routine = _lock_routine_dependencies(encounter_id, changes)
         item = CounselingEncounter.objects.select_for_update().filter(pk=encounter_id).first()
         if item is None or item.counselor_id != counselor.pk:
             raise CounselingNotFound("The requested Counseling Encounter was not found.")
@@ -783,20 +939,26 @@ def update_encounter(
         if not changed_fields:
             return _encounter_queryset().get(pk=item.pk)
 
-        # If finalization committed before this transaction acquired the Encounter lock,
-        # observe it now. If finalization is still waiting on this Encounter, it will
-        # validate the corrected facts after this transaction commits.
-        if finalized_routine is None:
-            finalized_routine = _finalized_routine_dependency(item.pk)
-        finalized_routine_checked = finalized_routine is not None
-        if finalized_routine is not None:
+        # A link committed before this transaction locked the Encounter is visible now. If a
+        # Routine transaction is still waiting on this Encounter, it validates the corrected
+        # facts after this commits.
+        if linked_routine is None:
+            from compass.routine_interviews.models import RoutineInterview
+
+            linked_routine = RoutineInterview.objects.filter(
+                counseling_encounter_id=item.pk
+            ).first()
+        finalized_routine_checked = (
+            linked_routine is not None and linked_routine.evaluation_finalized_at is not None
+        )
+        if linked_routine is not None:
             from compass.routine_interviews.matching import (
                 RoutineEncounterFacts,
                 routine_interview_encounter_match_issue_for_facts,
             )
 
             issue = routine_interview_encounter_match_issue_for_facts(
-                item=finalized_routine,
+                item=linked_routine,
                 facts=RoutineEncounterFacts(
                     student_id=item.student_id,
                     counselor_id=item.counselor_id,
@@ -808,9 +970,13 @@ def update_encounter(
                 ),
                 now=now,
             )
-            if issue is not None:
+            if issue is not None and finalized_routine_checked:
                 raise CounselingFinalizedRoutineConflict(
                     "The corrected Encounter would no longer match its finalized Routine Interview."
+                )
+            if issue is not None:
+                raise CounselingLinkedRoutineConflict(
+                    "The corrected Encounter would no longer match its linked Routine Interview."
                 )
 
         try:
@@ -838,6 +1004,19 @@ def update_encounter(
                 "changed_fields": sorted(changed_fields),
                 "feedback_opportunity_reconciled": feedback_reconciled,
                 "finalized_routine_dependency_checked": finalized_routine_checked,
+                "linked_routine_dependency_checked": linked_routine is not None,
             },
         )
+        # A correction can attach the Encounter to an Appointment, or make it satisfy that
+        # Appointment's Routine Interview; the shared Appointment then decides the link.
+        if linked_routine is None and item.appointment_id is not None:
+            from compass.routine_interviews.services import link_appointment_encounter
+
+            if (
+                anchored_routine is not None
+                and anchored_routine.appointment_id != item.appointment_id
+            ):
+                anchored_routine = None
+            item.service = service
+            link_appointment_encounter(item=anchored_routine, encounter=item, context=context)
     return _encounter_queryset().get(pk=item.pk)
