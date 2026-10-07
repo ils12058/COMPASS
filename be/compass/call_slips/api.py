@@ -37,6 +37,7 @@ from .services import (
     CallSlipInterviewEndConflict,
     CallSlipNotFound,
     CallSlipNotPermitted,
+    CallSlipOrdering,
     CallSlipReferralConflict,
     CallSlipVoidConflict,
     InvalidCallSlipInput,
@@ -198,6 +199,8 @@ class CallSlipOperationalPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the default for the selected state.
+    ordering: CallSlipOrdering
     filter_options: CollectionFilterOptions
 
 
@@ -482,6 +485,7 @@ def call_slips_list(
     include_voided: bool = False,
     state: CallSlipLifecycleStateValue | None = None,
     form_revision_id: UUID | None = None,
+    ordering: CallSlipOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -499,6 +503,7 @@ def call_slips_list(
             include_voided=include_voided,
             state=state.value if state is not None else None,
             form_revision_id=form_revision_id,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -509,6 +514,7 @@ def call_slips_list(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
         "filter_options": project_filter_options(result.form_revisions),
     }
 

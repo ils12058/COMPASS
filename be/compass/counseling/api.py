@@ -22,6 +22,7 @@ from .services import (
     CounselingAppointmentAlreadyUsed,
     CounselingAppointmentInvalid,
     CounselingConfigurationConflict,
+    CounselingEncounterOrdering,
     CounselingError,
     CounselingFeedbackChronologyConflict,
     CounselingFeedbackProvenanceConflict,
@@ -139,6 +140,8 @@ class CounselingEncounterPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the latest Encounter first.
+    ordering: CounselingEncounterOrdering
 
 
 class CounselingStudentResponse(StrictSchema):
@@ -473,6 +476,7 @@ def counseling_list_my_encounters(
     to_date: date | None = None,
     student_id: UUID | None = None,
     search: str | None = None,
+    ordering: CounselingEncounterOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -486,12 +490,14 @@ def counseling_list_my_encounters(
             to_date=to_date,
             student_id=student_id,
             search=search,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
     except CounselingError as exc:
         _raise(exc)
     return {
+        "ordering": result.ordering,
         "items": [
             {
                 **_encounter(item),

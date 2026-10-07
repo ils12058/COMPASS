@@ -37,6 +37,7 @@ from .services import (
     RoutineInterviewIntakeSubmitted,
     RoutineInterviewNotFound,
     RoutineInterviewNotPermitted,
+    RoutineInterviewOrdering,
     RoutineInterviewParentClosed,
     RoutineWorkflowState,
     create_direct,
@@ -304,6 +305,8 @@ class CounselorRoutinePageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the default for the selected population.
+    ordering: RoutineInterviewOrdering
 
 
 class CounselorRoutineDetailResponse(StrictSchema):
@@ -848,6 +851,7 @@ def routine_interviews_list_assigned(
     intake_status: RoutineIntakeStatus | None = None,
     evaluation_status: RoutineEvaluationStatus | None = None,
     search: str | None = None,
+    ordering: RoutineInterviewOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -861,6 +865,7 @@ def routine_interviews_list_assigned(
             intake_status=intake_status.value if intake_status is not None else None,
             evaluation_status=(evaluation_status.value if evaluation_status is not None else None),
             search=search,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -871,6 +876,7 @@ def routine_interviews_list_assigned(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
     }
 
 

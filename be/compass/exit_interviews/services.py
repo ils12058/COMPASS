@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
+from enum import StrEnum
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 
 from compass.accounts.confidential_profile import AccountProfileConfidentialContentUnavailable
@@ -25,6 +26,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.ordering import parse_ordering
 from compass.inventory.services import (
     CurrentAcademicYearNotConfigured,
     InventoryConflict,
@@ -141,12 +143,45 @@ class ExitInterviewCurrentAcademicYearNotConfigured(ExitInterviewError):
     pass
 
 
+class ExitInterviewOrdering(StrEnum):
+    """Closed operational Exit Interview orderings (ADR-090).
+
+    Submitted Exit Interviews read as history by their latest submission. Drafts and mixed lists
+    follow the last update, which is what changes while a Student is still working.
+    """
+
+    RECENTLY_UPDATED = "RECENTLY_UPDATED"
+    NEWEST_SUBMITTED = "NEWEST_SUBMITTED"
+    OLDEST_SUBMITTED = "OLDEST_SUBMITTED"
+    STUDENT_ASC = "STUDENT_ASC"
+    STUDENT_DESC = "STUDENT_DESC"
+
+
+_EXIT_STUDENT_NAME = ("student__last_name", "student__first_name")
+_EXIT_ORDER_BY: dict[ExitInterviewOrdering, tuple] = {
+    ExitInterviewOrdering.RECENTLY_UPDATED: ("-updated_at", "-id"),
+    ExitInterviewOrdering.NEWEST_SUBMITTED: (
+        F("last_submitted_at").desc(nulls_last=True),
+        "-updated_at",
+        "-id",
+    ),
+    ExitInterviewOrdering.OLDEST_SUBMITTED: (
+        F("last_submitted_at").asc(nulls_last=True),
+        "updated_at",
+        "id",
+    ),
+    ExitInterviewOrdering.STUDENT_ASC: (*_EXIT_STUDENT_NAME, "id"),
+    ExitInterviewOrdering.STUDENT_DESC: (*(f"-{field}" for field in _EXIT_STUDENT_NAME), "-id"),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class ExitInterviewPage:
     items: tuple[ExitInterview, ...]
     page: int
     page_size: int
     has_next: bool
+    ordering: ExitInterviewOrdering | None = None
 
 
 def _summary_queryset():
@@ -974,11 +1009,22 @@ def list_for_head(
     status: str | None = None,
     search: str | None = None,
     student_id: UUID | None = None,
+    ordering: str | ExitInterviewOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ExitInterviewPage:
     _validate_head(actor, "exit_interviews.view")
     page, page_size = _pagination(page, page_size)
+    resolved = parse_ordering(
+        ordering,
+        ExitInterviewOrdering,
+        default=(
+            ExitInterviewOrdering.NEWEST_SUBMITTED
+            if status == ExitInterviewStatus.SUBMITTED
+            else ExitInterviewOrdering.RECENTLY_UPDATED
+        ),
+        error=InvalidExitInterviewInput,
+    )
     term = _clean_search(search)
     qs = _summary_queryset()
     if student_id is not None:
@@ -997,10 +1043,12 @@ def list_for_head(
             | Q(student__last_name__icontains=term)
             | Q(student_name_snapshot__icontains=term)
         )
-    qs = qs.order_by("-created_at", "id")
+    qs = qs.order_by(*_EXIT_ORDER_BY[resolved])
     offset = (page - 1) * page_size
     rows = list(qs[offset : offset + page_size + 1])
-    return ExitInterviewPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
+    return ExitInterviewPage(
+        tuple(rows[:page_size]), page, page_size, len(rows) > page_size, resolved
+    )
 
 
 def get_for_head(*, actor: User, exit_interview_id: UUID) -> ExitInterview:

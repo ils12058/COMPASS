@@ -43,6 +43,7 @@ from .services import (
     GoodMoralNotFound,
     GoodMoralNotPermitted,
     GoodMoralNotReady,
+    GoodMoralOrdering,
     GoodMoralPreparationChanged,
     InvalidGoodMoralInput,
     cancel_request,
@@ -223,6 +224,8 @@ class GoodMoralPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the default for the selected status.
+    ordering: GoodMoralOrdering
     filter_options: CollectionFilterOptions
 
 
@@ -618,6 +621,7 @@ def good_moral_list_requests(
     search: str | None = None,
     form_revision_id: UUID | None = None,
     academic_year_id: UUID | None = None,
+    ordering: GoodMoralOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -631,6 +635,7 @@ def good_moral_list_requests(
             search=search,
             form_revision_id=form_revision_id,
             academic_year_id=academic_year_id,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -641,6 +646,7 @@ def good_moral_list_requests(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
         "filter_options": project_filter_options(result.form_revisions),
     }
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, replace
 from datetime import date, datetime
+from enum import StrEnum
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -23,6 +24,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.ordering import parse_ordering
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 from compass.institutional_forms.filter_options import represented_form_revisions
 from compass.institutional_forms.models import FormRevision
@@ -102,6 +104,32 @@ class ReferralDocumentUnavailable(ReferralError):
     pass
 
 
+class ReferralOrdering(StrEnum):
+    """Closed Referral orderings (ADR-090).
+
+    ``referred_on`` is the canonical chronology: the date on the Referral, which the date filters
+    also use. Entry time breaks ties, so back-entered Referrals sit at their real date.
+    """
+
+    NEWEST_REFERRED = "NEWEST_REFERRED"
+    OLDEST_REFERRED = "OLDEST_REFERRED"
+    STUDENT_ASC = "STUDENT_ASC"
+    STUDENT_DESC = "STUDENT_DESC"
+
+
+_REFERRAL_STUDENT_NAME = ("student__last_name", "student__first_name")
+_REFERRAL_ORDER_BY: dict[ReferralOrdering, tuple[str, ...]] = {
+    ReferralOrdering.NEWEST_REFERRED: ("-referred_on", "-created_at", "-id"),
+    ReferralOrdering.OLDEST_REFERRED: ("referred_on", "created_at", "id"),
+    ReferralOrdering.STUDENT_ASC: (*_REFERRAL_STUDENT_NAME, "-referred_on", "id"),
+    ReferralOrdering.STUDENT_DESC: (
+        *(f"-{field}" for field in _REFERRAL_STUDENT_NAME),
+        "-referred_on",
+        "-id",
+    ),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class ReferralPage:
     items: tuple[Referral, ...]
@@ -109,6 +137,7 @@ class ReferralPage:
     page_size: int
     has_next: bool
     form_revisions: tuple[FormRevision, ...] = ()
+    ordering: ReferralOrdering | None = None
 
 
 def _institution_zone() -> ZoneInfo:
@@ -455,11 +484,18 @@ def list_referrals(
     to_date: date | None = None,
     include_voided: bool = False,
     form_revision_id: UUID | None = None,
+    ordering: str | ReferralOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ReferralPage:
     _validate_operational_actor(actor)
     page, page_size = _pagination(page, page_size)
+    resolved = parse_ordering(
+        ordering,
+        ReferralOrdering,
+        default=ReferralOrdering.NEWEST_REFERRED,
+        error=InvalidReferralInput,
+    )
     if from_date is not None:
         _validate_date(from_date, "from_date")
     if to_date is not None:
@@ -489,10 +525,12 @@ def list_referrals(
         qs = qs.filter(referred_on__gte=from_date)
     if to_date is not None:
         qs = qs.filter(referred_on__lte=to_date)
-    qs = qs.order_by("-created_at", "reference_code", "id")
+    qs = qs.order_by(*_REFERRAL_ORDER_BY[resolved])
     offset = (page - 1) * page_size
     rows = list(qs[offset : offset + page_size + 1])
-    return ReferralPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size, revisions)
+    return ReferralPage(
+        tuple(rows[:page_size]), page, page_size, len(rows) > page_size, revisions, resolved
+    )
 
 
 def list_eligible_students(

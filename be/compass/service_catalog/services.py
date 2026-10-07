@@ -5,10 +5,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
 from django.db.models import Exists, OuterRef, Q, QuerySet
+from django.db.models.functions import Lower
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -21,6 +23,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.ordering import parse_ordering
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import (
     MAX_SERVICE_DURATION_MINUTES,
@@ -90,12 +93,30 @@ class CanonicalServiceReserved(ServiceCatalogConflict):
     """The canonical code can only be provisioned by deployment synchronization."""
 
 
+class ServiceOrdering(StrEnum):
+    """Closed Service Catalog orderings (ADR-090); the catalog reads by code A–Z."""
+
+    CODE_ASC = "CODE_ASC"
+    CODE_DESC = "CODE_DESC"
+    NAME_ASC = "NAME_ASC"
+    NAME_DESC = "NAME_DESC"
+
+
+_SERVICE_ORDER_BY: dict[ServiceOrdering, tuple] = {
+    ServiceOrdering.CODE_ASC: ("code", "id"),
+    ServiceOrdering.CODE_DESC: ("-code", "-id"),
+    ServiceOrdering.NAME_ASC: (Lower("name"), "code", "id"),
+    ServiceOrdering.NAME_DESC: (Lower("name").desc(), "-code", "-id"),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class ServicePage:
     items: tuple[Service, ...]
     page: int
     page_size: int
     has_next: bool
+    ordering: ServiceOrdering | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -544,6 +565,7 @@ def list_services(
     include_inactive: bool = False,
     search: str | None = None,
     appointment_booking_enabled: bool | None = None,
+    ordering: str | ServiceOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ServicePage:
@@ -551,7 +573,13 @@ def list_services(
         raise InvalidServiceCatalogInput("page must be a positive integer")
     if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
         raise InvalidServiceCatalogInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
-    qs = _service_queryset().order_by("code", "id")
+    resolved = parse_ordering(
+        ordering,
+        ServiceOrdering,
+        default=ServiceOrdering.CODE_ASC,
+        error=InvalidServiceCatalogInput,
+    )
+    qs = _service_queryset().order_by(*_SERVICE_ORDER_BY[resolved])
     if not include_inactive:
         qs = qs.filter(is_active=True)
     if search and search.strip():
@@ -565,7 +593,7 @@ def list_services(
         )
     offset = (page - 1) * page_size
     rows = list(qs[offset : offset + page_size + 1])
-    return ServicePage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
+    return ServicePage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size, resolved)
 
 
 def get_service(service_id: UUID) -> Service:

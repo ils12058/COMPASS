@@ -63,6 +63,7 @@ from .services import (
     ExitInterviewOpportunityConflict,
     ExitInterviewOpportunityNotOpen,
     ExitInterviewOpportunityRequired,
+    ExitInterviewOrdering,
     InvalidExitInterviewInput,
     ensure_my_current,
     get_for_head,
@@ -322,6 +323,8 @@ class ExitInterviewPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the default for the selected status.
+    ordering: ExitInterviewOrdering
 
 
 class ExitInterviewStudentOpportunityResponse(StrictSchema):
@@ -989,6 +992,7 @@ def exit_interviews_list(
     status: ExitInterviewStatusValue | None = None,
     search: str | None = None,
     student_id: UUID | None = None,
+    ordering: ExitInterviewOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -1000,6 +1004,7 @@ def exit_interviews_list(
             status=status.value if status is not None else None,
             search=search,
             student_id=student_id,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -1010,6 +1015,7 @@ def exit_interviews_list(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
     }
 
 

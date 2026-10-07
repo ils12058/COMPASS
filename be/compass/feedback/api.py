@@ -54,6 +54,7 @@ from .services import (
     FeedbackNotFound,
     FeedbackNotPermitted,
     FeedbackOpportunityNotFound,
+    FeedbackResponseOrdering,
     InvalidFeedbackInput,
     create_csm_response,
     create_customer_feedback,
@@ -231,6 +232,8 @@ class CustomerFeedbackPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the newest submission first.
+    ordering: FeedbackResponseOrdering
     filter_options: CollectionFilterOptions
 
 
@@ -290,6 +293,8 @@ class CSMPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the newest submission first.
+    ordering: FeedbackResponseOrdering
 
 
 def _context(request) -> AuditContext:
@@ -621,6 +626,7 @@ def feedback_list_customer_feedback_responses(
     submitted_from: date | None = None,
     submitted_to: date | None = None,
     form_revision_id: UUID | None = None,
+    ordering: FeedbackResponseOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -633,6 +639,7 @@ def feedback_list_customer_feedback_responses(
             submitted_from=submitted_from,
             submitted_to=submitted_to,
             form_revision_id=form_revision_id,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -643,6 +650,7 @@ def feedback_list_customer_feedback_responses(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
         "filter_options": project_filter_options(result.form_revisions),
     }
 
@@ -726,6 +734,7 @@ def feedback_list_csm_responses(
     service: str | None = None,
     submitted_from: date | None = None,
     submitted_to: date | None = None,
+    ordering: FeedbackResponseOrdering | None = None,
 ):
     _require_viewer(request, "feedback.view_csm")
     try:
@@ -737,6 +746,7 @@ def feedback_list_csm_responses(
             service=service,
             submitted_from=submitted_from,
             submitted_to=submitted_to,
+            ordering=ordering,
         )
     except FeedbackError as exc:
         _raise(exc)
@@ -745,6 +755,7 @@ def feedback_list_csm_responses(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
     }
 
 

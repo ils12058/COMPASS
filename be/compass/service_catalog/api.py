@@ -24,6 +24,7 @@ from compass.service_catalog.services import (
     ServiceCatalogConflict,
     ServiceCatalogError,
     ServiceCatalogNotFound,
+    ServiceOrdering,
     ServiceSchedulingConsequenceReviewRequired,
     activation_blockers,
     create_service,
@@ -118,6 +119,8 @@ class ServiceListResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or code A–Z.
+    ordering: ServiceOrdering
 
 
 class ServiceProviderCounselor(StrictSchema):
@@ -228,6 +231,7 @@ def services_list(
     include_inactive: bool = False,
     search: str | None = None,
     appointment_booking_enabled: bool | None = None,
+    ordering: ServiceOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -239,6 +243,7 @@ def services_list(
             include_inactive=include_inactive,
             search=search,
             appointment_booking_enabled=appointment_booking_enabled,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -249,6 +254,7 @@ def services_list(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
     }
 
 

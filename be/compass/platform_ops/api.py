@@ -40,6 +40,7 @@ from .email_operations import (
     EmailDeliveryNotFound,
     EmailDeliveryNotRetryable,
     EmailDeliveryOperationsError,
+    EmailDeliveryOrdering,
     EmailDeliveryPaginationError,
     EmailDeliveryRetryBlocker,
     get_email_delivery_summary,
@@ -181,6 +182,8 @@ class EmailDeliveryPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the default for the selected status.
+    ordering: EmailDeliveryOrdering
 
 
 class TechnicalActivityItemResponse(StrictSchema):
@@ -500,6 +503,7 @@ def platform_email_deliveries(
     page: int = 1,
     page_size: int = EMAIL_DEFAULT_PAGE_SIZE,
     status: EmailDeliveryStatusValue | None = None,
+    ordering: EmailDeliveryOrdering | None = None,
 ):
     _require(request, "platform_operations.view")
     try:
@@ -507,6 +511,7 @@ def platform_email_deliveries(
             page=page,
             page_size=page_size,
             status=status.value if status is not None else None,
+            ordering=ordering,
         )
     except EmailDeliveryOperationsError as exc:
         _raise_email_error(exc)
@@ -515,6 +520,7 @@ def platform_email_deliveries(
         page=result.page,
         page_size=result.page_size,
         has_next=result.has_next,
+        ordering=result.ordering,
     )
 
 

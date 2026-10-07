@@ -9,7 +9,7 @@ from enum import StrEnum
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 
 from compass.accounts.models import StudentLifecycleStatus, User
@@ -24,6 +24,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.ordering import parse_ordering
 from compass.counseling.models import CounselingEncounter, CounselingEntryMode
 from compass.counseling.services import (
     CounselingConfigurationConflict,
@@ -155,12 +156,73 @@ class RoutineWorkflowState(StrEnum):
     CLOSED_APPOINTMENT_NO_SHOW = "CLOSED_APPOINTMENT_NO_SHOW"
 
 
+class RoutineInterviewOrdering(StrEnum):
+    """Closed orderings for a Counselor's assigned Routine Interviews (ADR-090).
+
+    Pending evaluations are an action queue: waiting is measured from intake submission, so newer
+    submissions never bury older unfinished evaluations.
+    """
+
+    OLDEST_WAITING = "OLDEST_WAITING"
+    NEWEST_SUBMITTED = "NEWEST_SUBMITTED"
+    RECENTLY_FINALIZED = "RECENTLY_FINALIZED"
+    NEWEST_CREATED = "NEWEST_CREATED"
+    STUDENT_ASC = "STUDENT_ASC"
+    STUDENT_DESC = "STUDENT_DESC"
+
+
+_ROUTINE_STUDENT_NAME = ("student__last_name", "student__first_name", "student__middle_name")
+_ROUTINE_ORDER_BY: dict[RoutineInterviewOrdering, tuple] = {
+    RoutineInterviewOrdering.OLDEST_WAITING: (
+        F("intake_submitted_at").asc(nulls_last=True),
+        "created_at",
+        "id",
+    ),
+    RoutineInterviewOrdering.NEWEST_SUBMITTED: (
+        F("intake_submitted_at").desc(nulls_last=True),
+        "-created_at",
+        "-id",
+    ),
+    RoutineInterviewOrdering.RECENTLY_FINALIZED: (
+        F("evaluation_finalized_at").desc(nulls_last=True),
+        F("intake_submitted_at").desc(nulls_last=True),
+        "-id",
+    ),
+    RoutineInterviewOrdering.NEWEST_CREATED: ("-created_at", "-id"),
+    RoutineInterviewOrdering.STUDENT_ASC: (*_ROUTINE_STUDENT_NAME, "id"),
+    RoutineInterviewOrdering.STUDENT_DESC: (
+        *(f"-{field}" for field in _ROUTINE_STUDENT_NAME),
+        "-id",
+    ),
+}
+
+
+def _routine_list_ordering(
+    value: str | RoutineInterviewOrdering | None,
+    *,
+    intake_status: str | None,
+    evaluation_status: str | None,
+) -> RoutineInterviewOrdering:
+    """Finalized evaluations read as history; submitted intakes awaiting evaluation as a queue."""
+
+    if evaluation_status == "FINALIZED":
+        default = RoutineInterviewOrdering.RECENTLY_FINALIZED
+    elif intake_status == "SUBMITTED":
+        default = RoutineInterviewOrdering.OLDEST_WAITING
+    else:
+        default = RoutineInterviewOrdering.NEWEST_CREATED
+    return parse_ordering(
+        value, RoutineInterviewOrdering, default=default, error=InvalidRoutineInterviewInput
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class RoutineInterviewPage:
     items: tuple[RoutineInterview, ...]
     page: int
     page_size: int
     has_next: bool
+    ordering: RoutineInterviewOrdering | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -836,6 +898,7 @@ def list_assigned(
     intake_status: str | None = None,
     evaluation_status: str | None = None,
     search: str | None = None,
+    ordering: str | RoutineInterviewOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> RoutineInterviewPage:
@@ -885,7 +948,10 @@ def list_assigned(
             | Q(student__last_name__icontains=token)
             | Q(appointment__reference_code__icontains=token)
         )
-    queryset = queryset.order_by("-created_at", "id")
+    resolved = _routine_list_ordering(
+        ordering, intake_status=intake_status, evaluation_status=evaluation_status
+    )
+    queryset = queryset.order_by(*_ROUTINE_ORDER_BY[resolved])
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
     return RoutineInterviewPage(
@@ -893,6 +959,7 @@ def list_assigned(
         page,
         page_size,
         len(rows) > page_size,
+        resolved,
     )
 
 

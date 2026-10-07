@@ -22,7 +22,9 @@ from .services import (
     InvalidResourceInput,
     ResourceConflict,
     ResourceError,
+    ResourceManagementOrdering,
     ResourceNotFound,
+    ResourceOrdering,
     ResourcePublicationConsequenceReviewRequired,
     ResourceStorageError,
     archive_resource,
@@ -122,6 +124,8 @@ class ResourceReaderPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the curated RECOMMENDED order.
+    ordering: ResourceOrdering
 
 
 class ResourceManagementPageResponse(StrictSchema):
@@ -129,6 +133,8 @@ class ResourceManagementPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the most recently updated first.
+    ordering: ResourceManagementOrdering
 
 
 class ResourceDownloadResponse(StrictSchema):
@@ -242,6 +248,7 @@ def resources_list_managed(
     category: ResourceCategoryValue | None = None,
     kind: ResourceKindValue | None = None,
     search: str | None = None,
+    ordering: ResourceManagementOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -253,6 +260,7 @@ def resources_list_managed(
             category=category.value if category is not None else None,
             kind=kind.value if kind is not None else None,
             search=search,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -263,6 +271,7 @@ def resources_list_managed(
         page=result.page,
         page_size=result.page_size,
         has_next=result.has_next,
+        ordering=result.ordering,
     )
 
 
@@ -450,6 +459,7 @@ def resources_list_visible(
     category: ResourceCategoryValue | None = None,
     kind: ResourceKindValue | None = None,
     search: str | None = None,
+    ordering: ResourceOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -459,6 +469,7 @@ def resources_list_visible(
             category=category.value if category is not None else None,
             kind=kind.value if kind is not None else None,
             search=search,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -469,6 +480,7 @@ def resources_list_visible(
         page=result.page,
         page_size=result.page_size,
         has_next=result.has_next,
+        ordering=result.ordering,
     )
 
 
@@ -513,6 +525,7 @@ def resources_list_public(
     category: ResourceCategoryValue | None = None,
     kind: ResourceKindValue | None = None,
     search: str | None = None,
+    ordering: ResourceOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -521,6 +534,7 @@ def resources_list_public(
             category=category.value if category is not None else None,
             kind=kind.value if kind is not None else None,
             search=search,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -531,6 +545,7 @@ def resources_list_public(
         page=result.page,
         page_size=result.page_size,
         has_next=result.has_next,
+        ordering=result.ordering,
     )
 
 

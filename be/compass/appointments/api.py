@@ -192,6 +192,8 @@ class AppointmentPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the default for the selected population.
+    ordering: AppointmentListOrdering
 
 
 class BookableSlotResponse(StrictSchema):
@@ -399,7 +401,7 @@ def appointments_list_my(
     to_date: date | None = None,
     search: str | None = None,
     upcoming: bool = False,
-    ordering: AppointmentListOrdering = AppointmentListOrdering.START_DESC,
+    ordering: AppointmentListOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -423,6 +425,7 @@ def appointments_list_my(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
     }
 
 
@@ -644,7 +647,7 @@ def appointments_list_managed(
     to_date: date | None = None,
     search: str | None = None,
     upcoming: bool = False,
-    ordering: AppointmentListOrdering = AppointmentListOrdering.START_DESC,
+    ordering: AppointmentListOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -672,6 +675,7 @@ def appointments_list_managed(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
     }
 
 

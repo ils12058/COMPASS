@@ -44,6 +44,7 @@ from .services import (
     ReferralError,
     ReferralNotFound,
     ReferralNotPermitted,
+    ReferralOrdering,
     ReferralReferenceConflict,
     ReferralVoidConflict,
     create_referral,
@@ -180,6 +181,8 @@ class ReferralPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or newest referred first.
+    ordering: ReferralOrdering
     filter_options: CollectionFilterOptions
 
 
@@ -411,6 +414,7 @@ def referrals_list(
     to_date: date | None = None,
     include_voided: bool = False,
     form_revision_id: UUID | None = None,
+    ordering: ReferralOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -424,6 +428,7 @@ def referrals_list(
             to_date=to_date,
             include_voided=include_voided,
             form_revision_id=form_revision_id,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -434,6 +439,7 @@ def referrals_list(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
         "filter_options": project_filter_options(result.form_revisions),
     }
 

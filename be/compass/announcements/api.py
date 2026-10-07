@@ -20,7 +20,9 @@ from .services import (
     DEFAULT_PAGE_SIZE,
     AnnouncementConflict,
     AnnouncementError,
+    AnnouncementManagementOrdering,
     AnnouncementNotFound,
+    AnnouncementOrdering,
     AnnouncementPublicationConsequenceReviewRequired,
     InvalidAnnouncementInput,
     archive_announcement,
@@ -91,6 +93,8 @@ class AnnouncementReaderPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the editorial RECOMMENDED order.
+    ordering: AnnouncementOrdering
 
 
 class AnnouncementManagementPageResponse(StrictSchema):
@@ -98,6 +102,8 @@ class AnnouncementManagementPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the most recently updated first.
+    ordering: AnnouncementManagementOrdering
 
 
 class AnnouncementCreateRequest(StrictSchema):
@@ -193,6 +199,7 @@ def announcements_list_managed(
     status: AnnouncementStatusValue | None = None,
     audience: AnnouncementAudienceValue | None = None,
     search: str | None = None,
+    ordering: AnnouncementManagementOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -202,6 +209,7 @@ def announcements_list_managed(
             status=status.value if status is not None else None,
             audience=audience.value if audience is not None else None,
             search=search,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -212,6 +220,7 @@ def announcements_list_managed(
         page=result.page,
         page_size=result.page_size,
         has_next=result.has_next,
+        ordering=result.ordering,
     )
 
 
@@ -338,6 +347,7 @@ def announcements_list_visible(
     request,
     pinned: bool | None = None,
     search: str | None = None,
+    ordering: AnnouncementOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -346,6 +356,7 @@ def announcements_list_visible(
             actor=request.auth_user,
             pinned=pinned,
             search=search,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -356,6 +367,7 @@ def announcements_list_visible(
         page=result.page,
         page_size=result.page_size,
         has_next=result.has_next,
+        ordering=result.ordering,
     )
 
 
@@ -385,6 +397,7 @@ def announcements_list_public(
     request,
     pinned: bool | None = None,
     search: str | None = None,
+    ordering: AnnouncementOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -392,6 +405,7 @@ def announcements_list_public(
         result = list_public_announcements(
             pinned=pinned,
             search=search,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -402,6 +416,7 @@ def announcements_list_public(
         page=result.page,
         page_size=result.page_size,
         has_next=result.has_next,
+        ordering=result.ordering,
     )
 
 

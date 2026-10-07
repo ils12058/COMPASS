@@ -26,6 +26,7 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.availability.services import AvailabilityError, compute_base_availability
 from compass.common.institutional_time import institution_zone
+from compass.common.ordering import parse_ordering
 from compass.inventory.services import (
     CurrentAcademicYearNotConfigured,
     InventoryStatus,
@@ -63,8 +64,10 @@ PROVIDER_ROLE_CODES = ELIGIBLE_PROVIDER_ROLE_CODES
 
 
 class AppointmentListOrdering(StrEnum):
-    START_ASC = "START_ASC"
-    START_DESC = "START_DESC"
+    """Closed Appointment list orderings (ADR-090); start time is the primary dimension."""
+
+    EARLIEST_START = "EARLIEST_START"
+    LATEST_START = "LATEST_START"
 
 
 class AppointmentActionBlocker(StrEnum):
@@ -194,6 +197,7 @@ class AppointmentPage:
     page: int
     page_size: int
     has_next: bool
+    ordering: AppointmentListOrdering | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -260,19 +264,32 @@ def _normalized_status(value: str | AppointmentStatus | None) -> str | None:
 
 
 def _normalized_list_ordering(
-    value: str | AppointmentListOrdering,
+    value: str | AppointmentListOrdering | None,
+    *,
+    status: str | None,
+    upcoming: bool,
 ) -> AppointmentListOrdering:
-    normalized = value.value if isinstance(value, AppointmentListOrdering) else value
-    try:
-        return AppointmentListOrdering(normalized)
-    except (TypeError, ValueError) as exc:
-        raise InvalidAppointmentInput("ordering must be START_ASC or START_DESC") from exc
+    """Resolve the requested ordering, or the default for the selected population.
+
+    Scheduled and upcoming Appointments default to the earliest start. Completed, cancelled,
+    no-show, and unfiltered (all-status) lists are history and default to the latest start.
+    """
+
+    default = (
+        AppointmentListOrdering.EARLIEST_START
+        if upcoming or status == AppointmentStatus.SCHEDULED
+        else AppointmentListOrdering.LATEST_START
+    )
+    return parse_ordering(
+        value, AppointmentListOrdering, default=default, error=InvalidAppointmentInput
+    )
 
 
-def _ordering_fields(ordering: AppointmentListOrdering) -> tuple[str, str]:
-    if ordering == AppointmentListOrdering.START_ASC:
-        return "starts_at", "reference_code"
-    return "-starts_at", "reference_code"
+def _ordering_fields(ordering: AppointmentListOrdering) -> tuple[str, str, str]:
+    # reference_code is unique, so equal start times still have one global order.
+    if ordering == AppointmentListOrdering.EARLIEST_START:
+        return "starts_at", "reference_code", "id"
+    return "-starts_at", "-reference_code", "-id"
 
 
 def _pagination(page: int, page_size: int) -> tuple[int, int]:
@@ -327,11 +344,19 @@ def _apply_date_filters(queryset, *, from_date: date | None, to_date: date | Non
     return queryset
 
 
-def _page(queryset, *, page: int, page_size: int) -> AppointmentPage:
+def _page(
+    queryset,
+    *,
+    page: int,
+    page_size: int,
+    ordering: AppointmentListOrdering | None = None,
+) -> AppointmentPage:
     page, page_size = _pagination(page, page_size)
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
-    return AppointmentPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
+    return AppointmentPage(
+        tuple(rows[:page_size]), page, page_size, len(rows) > page_size, ordering
+    )
 
 
 def count_upcoming_self_appointments(
@@ -390,13 +415,15 @@ def list_my_appointments(
     to_date: date | None = None,
     search: str | None = None,
     upcoming: bool = False,
-    ordering: str | AppointmentListOrdering = AppointmentListOrdering.START_DESC,
+    ordering: str | AppointmentListOrdering | None = None,
     page: int = DEFAULT_PAGE_SIZE // DEFAULT_PAGE_SIZE,
     page_size: int = DEFAULT_PAGE_SIZE,
     now: datetime | None = None,
 ) -> AppointmentPage:
     normalized_status = _normalized_status(status)
-    normalized_ordering = _normalized_list_ordering(ordering)
+    normalized_ordering = _normalized_list_ordering(
+        ordering, status=normalized_status, upcoming=upcoming
+    )
     qs = _appointment_queryset()
     if actor.role.code == "STUDENT":
         qs = qs.filter(student_id=actor.pk)
@@ -420,6 +447,7 @@ def list_my_appointments(
         qs.order_by(*_ordering_fields(normalized_ordering)),
         page=page,
         page_size=page_size,
+        ordering=normalized_ordering,
     )
 
 
@@ -435,13 +463,15 @@ def list_managed_appointments(
     to_date: date | None = None,
     search: str | None = None,
     upcoming: bool = False,
-    ordering: str | AppointmentListOrdering = AppointmentListOrdering.START_DESC,
+    ordering: str | AppointmentListOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     now: datetime | None = None,
 ) -> AppointmentPage:
     normalized_status = _normalized_status(status)
-    normalized_ordering = _normalized_list_ordering(ordering)
+    normalized_ordering = _normalized_list_ordering(
+        ordering, status=normalized_status, upcoming=upcoming
+    )
     normalized_mode = (
         _normalized_delivery_mode(delivery_mode) if delivery_mode is not None else None
     )
@@ -473,6 +503,7 @@ def list_managed_appointments(
         qs.order_by(*_ordering_fields(normalized_ordering)),
         page=page,
         page_size=page_size,
+        ordering=normalized_ordering,
     )
 
 
