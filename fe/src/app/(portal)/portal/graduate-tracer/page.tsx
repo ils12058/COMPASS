@@ -5,7 +5,7 @@ import { GraduateTracerStudentWorkspaceSkeleton } from "@/features/graduate-trac
 import { GraduateTracerWorkspacePage } from "@/features/graduate-tracer/graduate-tracer-workspace-page";
 import type { GraduateTracerOperationalFilters } from "@/features/graduate-tracer/graduate-tracer-operational-list";
 import { GraduateTracerOrdering, GTSEmploymentStateValue } from "@/lib/api/generated/model";
-import { readOrdering } from "@/features/portal/components/list-ordering";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
 
 type SearchValue = string | string[] | undefined;
 

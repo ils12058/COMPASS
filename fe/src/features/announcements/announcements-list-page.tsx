@@ -10,7 +10,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
-import { readOrdering } from "@/features/portal/components/list-ordering";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";

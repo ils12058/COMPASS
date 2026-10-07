@@ -1,27 +1,11 @@
-// No "use client": route pages read the parameter on the server, and the hook only runs in
-// client components.
+"use client";
+
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-// URL state for a collection's ordering (ADR-090). The `ordering` parameter holds one value of the
-// collection's closed, generated enum, or is absent. Absent means "the default for these
-// filters", which the backend resolves and reports in the page it returns, so the frontend never
-// re-derives a default that could disagree with the server.
-export function readOrdering<T extends string>(
-  value: string | null,
-  values: Record<string, T>,
-): T | undefined {
-  return Object.values(values).find((candidate) => candidate === value);
-}
+import { readOrdering, withOrdering } from "@/features/portal/components/list-ordering-params";
 
-// Choosing an ordering keeps search and filters and returns to page 1, because the old page number
-// no longer points at the same rows.
-export function withOrdering(current: URLSearchParams, next: string): URLSearchParams {
-  const params = new URLSearchParams(current);
-  params.set("ordering", next);
-  params.delete("page");
-  return params;
-}
-
+// The reader's chosen ordering for a client-rendered collection, read from and written to the URL
+// (ADR-090). Route pages that parse parameters on the server use list-ordering-params directly.
 export function useListOrdering<T extends string>(values: Record<string, T>) {
   const router = useRouter();
   const pathname = usePathname();

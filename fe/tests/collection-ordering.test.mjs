@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { withNextRouter } from "./support/next-router.mjs";
 import { SortField } from "../src/components/ui/sort-field.tsx";
 import { SortableColumnHeader } from "../src/components/ui/sortable-column-header.tsx";
-import { readOrdering, withOrdering } from "../src/features/portal/components/list-ordering.ts";
+import { readOrdering, withOrdering } from "../src/features/portal/components/list-ordering-params.ts";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
 import { GoodMoralOperationalList } from "../src/features/good-moral/good-moral-operational-list.tsx";
 import { AccountsList } from "../src/features/accounts/list/accounts-list.tsx";

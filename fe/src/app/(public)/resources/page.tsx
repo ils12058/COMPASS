@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ResourceList } from "@/features/public/resources/resource-list";
 import { PublicPageHeader } from "@/features/public/shared/public-page-header";
 import { isResourceCategory, isResourceKind } from "@/features/public/shared/presentation";
-import { readOrdering } from "@/features/portal/components/list-ordering";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
 import { ResourceOrdering } from "@/lib/api/generated/model";
 
 export const metadata: Metadata = { title: "Resources" };

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { AnnouncementList } from "@/features/public/announcements/announcement-list";
-import { readOrdering } from "@/features/portal/components/list-ordering";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
 import { AnnouncementOrdering } from "@/lib/api/generated/model";
 import { PublicPageHeader } from "@/features/public/shared/public-page-header";
 

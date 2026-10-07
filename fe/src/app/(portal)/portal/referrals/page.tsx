@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { readOrdering } from "@/features/portal/components/list-ordering";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
 import { ReferralOrdering } from "@/lib/api/generated/model";
 import { Suspense } from "react";
 

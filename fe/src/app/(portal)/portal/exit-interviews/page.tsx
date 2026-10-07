@@ -6,7 +6,7 @@ import { ExitInterviewWorkspacePage } from "@/features/exit-interviews/exit-inte
 import type { ExitInterviewOperationalFilters } from "@/features/exit-interviews/exit-interview-operational-list";
 import type { ExitInterviewsListOpportunitiesParams } from "@/lib/api/generated/model";
 import { ExitInterviewOrdering, ExitInterviewStatusValue } from "@/lib/api/generated/model";
-import { readOrdering } from "@/features/portal/components/list-ordering";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
 
 type SearchValue = string | string[] | undefined;
 

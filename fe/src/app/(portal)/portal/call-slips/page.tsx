@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { CallSlipListSkeleton } from "@/features/call-slips/call-slips-shared";
 import { CallSlipsPage, type CallSlipListFilters, type CallSlipStudentListFilters } from "@/features/call-slips/call-slips-page";
-import { readOrdering } from "@/features/portal/components/list-ordering";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
 import { CallSlipDestinationTypeValue, CallSlipLifecycleStateValue, CallSlipOrdering } from "@/lib/api/generated/model";
 
 type SearchValue = string | string[] | undefined;

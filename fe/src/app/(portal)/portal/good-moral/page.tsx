@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { GoodMoralListSkeleton } from "@/features/good-moral/good-moral-shared";
 import { GoodMoralWorkspacePage } from "@/features/good-moral/good-moral-page";
 import type { GoodMoralOperationalFilters } from "@/features/good-moral/good-moral-operational-list";
-import { readOrdering } from "@/features/portal/components/list-ordering";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
 import { GoodMoralOrdering, GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
 
 type SearchValue = string | string[] | undefined;
