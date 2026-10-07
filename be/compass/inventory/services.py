@@ -10,7 +10,7 @@ from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Exists, F, OuterRef, Q, Subquery
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -24,6 +24,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.ordering import parse_ordering
 from compass.institutional_forms.filter_options import represented_form_revisions
 from compass.institutional_forms.models import FormRevision
 from compass.institutional_forms.services import (
@@ -217,6 +218,14 @@ class InventoryRosterRow:
     inventory: StudentInventory | None
 
 
+class InventoryRosterOrdering(StrEnum):
+    """Closed Individual Inventory roster orderings (ADR-090); the roster is a Student directory."""
+
+    STUDENT_ASC = "STUDENT_ASC"
+    STUDENT_DESC = "STUDENT_DESC"
+    RECENTLY_SUBMITTED = "RECENTLY_SUBMITTED"
+
+
 @dataclass(frozen=True, slots=True)
 class InventoryRosterPage:
     items: tuple[InventoryRosterRow, ...]
@@ -224,6 +233,7 @@ class InventoryRosterPage:
     page_size: int
     has_next: bool
     form_revisions: tuple[FormRevision, ...] = ()
+    ordering: InventoryRosterOrdering | None = None
 
 
 SCALAR_FIELDS = (
@@ -1382,11 +1392,18 @@ def list_inventory_students(
     search: str | None = None,
     student_id: UUID | None = None,
     form_revision_id: UUID | None = None,
+    ordering: str | InventoryRosterOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> InventoryRosterPage:
     _validate_counselor(actor, "inventory.view")
     page, page_size = _pagination(page, page_size)
+    resolved = parse_ordering(
+        ordering,
+        InventoryRosterOrdering,
+        default=InventoryRosterOrdering.STUDENT_ASC,
+        error=InvalidInventoryInput,
+    )
     year = _resolve_roster_year(academic_year_id)
     term = _clean_search(search)
     _validate_roster_filters(
@@ -1464,7 +1481,21 @@ def list_inventory_students(
                 individual_inventories__year_level=year_level,
             )
 
-        queryset = queryset.order_by("last_name", "first_name", "id").distinct()
+        if resolved == InventoryRosterOrdering.RECENTLY_SUBMITTED:
+            queryset = queryset.annotate(
+                year_submitted_at=Subquery(
+                    StudentInventory.objects.filter(
+                        student_id=OuterRef("pk"), academic_year_id=year.pk
+                    ).values("submitted_at")[:1]
+                )
+            ).order_by(
+                F("year_submitted_at").desc(nulls_last=True), "last_name", "first_name", "id"
+            )
+        elif resolved == InventoryRosterOrdering.STUDENT_DESC:
+            queryset = queryset.order_by("-last_name", "-first_name", "-id")
+        else:
+            queryset = queryset.order_by("last_name", "first_name", "id")
+        queryset = queryset.distinct()
         offset = (page - 1) * page_size
         students = list(queryset[offset : offset + page_size + 1])
         selected = students[:page_size]
@@ -1479,7 +1510,9 @@ def list_inventory_students(
             InventoryRosterRow(student, year, inventory_by_student.get(student.pk))
             for student in selected
         )
-        return InventoryRosterPage(rows, page, page_size, len(students) > page_size, revisions)
+        return InventoryRosterPage(
+            rows, page, page_size, len(students) > page_size, revisions, resolved
+        )
 
     queryset = authorized_inventories
     if form_revision_id is not None:
@@ -1497,11 +1530,17 @@ def list_inventory_students(
     elif normalized_status == InventoryStatus.SUBMITTED:
         queryset = queryset.filter(submitted_at__isnull=False)
     queryset = _identity_search(queryset, term, prefix="student__")
-    queryset = queryset.order_by("student__last_name", "student__first_name", "student_id", "id")
+    student_name = ("student__last_name", "student__first_name", "student_id", "id")
+    if resolved == InventoryRosterOrdering.RECENTLY_SUBMITTED:
+        queryset = queryset.order_by(F("submitted_at").desc(nulls_last=True), *student_name)
+    elif resolved == InventoryRosterOrdering.STUDENT_DESC:
+        queryset = queryset.order_by(*(f"-{field}" for field in student_name))
+    else:
+        queryset = queryset.order_by(*student_name)
     offset = (page - 1) * page_size
     items = list(queryset[offset : offset + page_size + 1])
     rows = tuple(InventoryRosterRow(item.student, year, item) for item in items[:page_size])
-    return InventoryRosterPage(rows, page, page_size, len(items) > page_size, revisions)
+    return InventoryRosterPage(rows, page, page_size, len(items) > page_size, revisions, resolved)
 
 
 def get_inventory_for_counselor(*, actor: User, inventory_id: UUID) -> StudentInventory:

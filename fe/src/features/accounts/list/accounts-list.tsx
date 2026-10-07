@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
 import { dataTable } from "@/components/ui/data-table";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
@@ -24,12 +26,14 @@ import {
   isRoleCode,
   roleLabels,
   roles,
+  accountOrderingOptions,
 } from "@/features/accounts/presentation";
 import { managedAccountError } from "@/features/accounts/components/account-action";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import { useAccountsList } from "@/lib/api/generated/accounts/accounts";
-import type { AccountsListParams } from "@/lib/api/generated/model";
+import { AccountOrdering, type AccountsListParams } from "@/lib/api/generated/model";
 
 const pageSize = 20;
 
@@ -81,9 +85,11 @@ export function AccountsList() {
   const status = searchParams.get("is_active") ?? "";
   const verified = searchParams.get("email_verified") ?? "";
   const search = (searchParams.get("search") ?? "").slice(0, 254).trim();
+  const { requested: requestedOrdering, setOrdering } = useListOrdering(AccountOrdering);
   const filters: AccountsListParams = {
     page,
     page_size: pageSize,
+    ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
     ...(isRoleCode(role) ? { role } : {}),
     ...(isDesignationCode(designation) ? { designation } : {}),
     ...(status === "true" || status === "false"
@@ -103,6 +109,11 @@ export function AccountsList() {
       filters.email_verified !== undefined ||
       search,
   );
+
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = requestedOrdering ?? confirmed?.data.ordering;
+  // Clearing the filters keeps the chosen order; sorting is not a filter.
+  const clearedHref = requestedOrdering ? `${pathname}?ordering=${requestedOrdering}` : pathname;
 
   function hrefWith(key: string, value: string, resetPage = true): string {
     const next = new URLSearchParams(searchParams.toString());
@@ -152,7 +163,7 @@ export function AccountsList() {
           }
           clear={
             filtered ? (
-              <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>
+              <Button variant="quiet" onClick={() => router.replace(clearedHref, { scroll: false })}>
                 Clear filters
               </Button>
             ) : undefined
@@ -235,6 +246,14 @@ export function AccountsList() {
         <PanelHeader
           title="Managed accounts"
           titleId="accounts-results-heading"
+          actions={
+            <SortField
+              id="accounts-sort"
+              value={ordering}
+              options={accountOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
           context={
             list.isFetching && !list.isPending
               ? "Refreshing accounts…"
@@ -269,7 +288,7 @@ export function AccountsList() {
               <PanelMessage
                 action={
                   filtered ? (
-                    <Button variant="secondary" onClick={() => router.replace(pathname, { scroll: false })}>
+                    <Button variant="secondary" onClick={() => router.replace(clearedHref, { scroll: false })}>
                       Clear filters
                     </Button>
                   ) : undefined
@@ -287,9 +306,16 @@ export function AccountsList() {
                   <caption className="sr-only">Managed accounts</caption>
                   <thead className={dataTable.head}>
                     <tr>
-                      <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>
-                        Account
-                      </th>
+                      <SortableColumnHeader
+                        label="Account"
+                        ascending={AccountOrdering.NAME_ASC}
+                        descending={AccountOrdering.NAME_DESC}
+                        ascendingLabel="Last name A–Z"
+                        descendingLabel="Last name Z–A"
+                        current={ordering}
+                        onSort={setOrdering}
+                        className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}
+                      />
                       <th scope="col" className={dataTable.headerCell}>
                         Role
                       </th>

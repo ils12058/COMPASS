@@ -12,18 +12,22 @@ import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { Select } from "@/components/ui/select";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { describeResultPage } from "@/features/portal/components/result-context";
-import { EMPLOYMENT_STATE_CHOICES, formatGraduateTracerDateTime } from "@/features/graduate-tracer/graduate-tracer-presentation";
+import { EMPLOYMENT_STATE_CHOICES, formatGraduateTracerDateTime, graduateTracerOrderingOptions } from "@/features/graduate-tracer/graduate-tracer-presentation";
 import { GraduateTracerError, GraduateTracerHeading, graduateTracerErrorMessage } from "@/features/graduate-tracer/graduate-tracer-shared";
 import { useGraduateTracerListResponses } from "@/lib/api/generated/graduate-tracer/graduate-tracer";
-import type { GTSEmploymentStateValue } from "@/lib/api/generated/model";
+import { GraduateTracerOrdering, type GTSEmploymentStateValue } from "@/lib/api/generated/model";
 
 export type GraduateTracerOperationalFilters = {
   search: string;
   submittedFrom: string;
   submittedTo: string;
   employmentState: GTSEmploymentStateValue | "";
+  // A chosen order; absent means the newest submission first (ADR-090).
+  ordering?: GraduateTracerOrdering;
   page: number;
   pageSize?: number;
 };
@@ -34,6 +38,7 @@ function pageHref(filters: GraduateTracerOperationalFilters, page: number, pageS
   if (filters.submittedFrom) params.set("submitted_from", filters.submittedFrom);
   if (filters.submittedTo) params.set("submitted_to", filters.submittedTo);
   if (filters.employmentState) params.set("current_employment_state", filters.employmentState);
+  if (filters.ordering) params.set("ordering", filters.ordering);
   const effectivePageSize = pageSize ?? filters.pageSize;
   if (effectivePageSize) params.set("page_size", String(effectivePageSize));
   if (page > 1) params.set("page", String(page));
@@ -53,6 +58,7 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
     ...(filters.submittedFrom ? { submitted_from: filters.submittedFrom } : {}),
     ...(filters.submittedTo ? { submitted_to: filters.submittedTo } : {}),
     ...(filters.employmentState ? { current_employment_state: filters.employmentState } : {}),
+    ...(filters.ordering ? { ordering: filters.ordering } : {}),
     page: filters.page,
     ...(filters.pageSize ? { page_size: filters.pageSize } : {}),
   };
@@ -62,6 +68,10 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
   const hideCached = queue.isError && hideCachedResults(queue.error);
   const clearHref = pageHref({ ...filters, search: "", submittedFrom: "", submittedTo: "", employmentState: "" }, 1);
   const advancedCount = [filters.submittedFrom, filters.submittedTo, filters.employmentState].filter(Boolean).length;
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = filters.ordering ?? page?.ordering;
+  const setOrdering = (next: GraduateTracerOrdering) =>
+    router.push(pageHref({ ...filters, ordering: next }, 1), { scroll: false });
 
   return (
     <section className="space-y-5" aria-labelledby="graduate-tracer-queue-heading">
@@ -73,6 +83,7 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
 
       <form action="/portal/graduate-tracer" method="get" role="search" aria-label="Graduate Tracer responses" key={JSON.stringify(filters)}>
         {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
+        {filters.ordering ? <input type="hidden" name="ordering" value={filters.ordering} /> : null}
         <FloatingListTools
           submits
           filterCount={advancedCount}
@@ -106,6 +117,14 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
           <PanelHeader
             title="Submitted responses"
             titleId="graduate-tracer-results-heading"
+            actions={
+              <SortField
+                id="graduate-tracer-sort"
+                value={ordering}
+                options={graduateTracerOrderingOptions}
+                onChange={setOrdering}
+              />
+            }
             context={queue.isFetching && !queue.isPending
               ? "Refreshing submitted responses…"
               : page && !queue.isError
@@ -134,9 +153,28 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
                 <caption className="sr-only">Submitted Graduate Tracer responses</caption>
                 <thead className={dataTable.head}>
                   <tr>
-                    <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell} min-w-56`}>Graduate</th>
+                    <SortableColumnHeader
+                      label="Graduate"
+                      ascending={GraduateTracerOrdering.GRADUATE_ASC}
+                      descending={GraduateTracerOrdering.GRADUATE_DESC}
+                      ascendingLabel="Graduate A–Z"
+                      descendingLabel="Graduate Z–A"
+                      current={ordering}
+                      onSort={setOrdering}
+                      className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell} min-w-56`}
+                    />
                     <th scope="col" className={`${dataTable.headerCell} min-w-44`}>Employment</th>
-                    <th scope="col" className={`${dataTable.headerCell} min-w-48`}>Submitted</th>
+                    <SortableColumnHeader
+                      label="Submitted"
+                      ascending={GraduateTracerOrdering.OLDEST_SUBMITTED}
+                      descending={GraduateTracerOrdering.NEWEST_SUBMITTED}
+                      ascendingLabel="Oldest submitted first"
+                      descendingLabel="Newest submitted first"
+                      firstDirection="descending"
+                      current={ordering}
+                      onSort={setOrdering}
+                      className={`${dataTable.headerCell} min-w-48`}
+                    />
                   </tr>
                 </thead>
                 <tbody className={dataTable.body}>

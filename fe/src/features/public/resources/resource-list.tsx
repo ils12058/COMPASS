@@ -2,12 +2,15 @@
 
 import { keepPreviousData } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Panel, PanelMessage } from "@/components/ui/panel";
+import { SortField } from "@/components/ui/sort-field";
+import { resourceReaderOrderingOptions } from "@/features/resources/resource-presentation";
 
-import { ResourceFilters } from "@/features/public/resources/resource-filters";
+import { ResourceFilters, resourceFiltersHref } from "@/features/public/resources/resource-filters";
 import { ResourceIcon } from "@/features/public/resources/resource-icon";
 import {
   formatPublicDate,
@@ -23,7 +26,7 @@ import {
   useSessionRecheck,
 } from "@/features/public/shared/use-reader-audience";
 import { useResourcesListPublic, useResourcesListVisible } from "@/lib/api/generated/resources/resources";
-import type { ResourceCategoryValue, ResourceKindValue } from "@/lib/api/generated/model";
+import type { ResourceCategoryValue, ResourceKindValue, ResourceOrdering } from "@/lib/api/generated/model";
 
 type ResourceListProps =
   | { mode: "preview" }
@@ -32,6 +35,7 @@ type ResourceListProps =
       category?: ResourceCategoryValue;
       kind?: ResourceKindValue;
       search?: string;
+      ordering?: ResourceOrdering;
       page: number;
     };
 
@@ -41,13 +45,24 @@ export function ResourceList(props: ResourceListProps) {
   const kind = isPreview ? undefined : props.kind;
   const search = isPreview ? undefined : props.search;
   const page = isPreview ? 1 : props.page;
+  // The landing preview always shows the curated order; only the full library can be re-sorted.
+  const requestedOrdering = isPreview ? undefined : props.ordering;
+  const router = useRouter();
   const detailParams = new URLSearchParams();
   if (search) detailParams.set("search", search);
   if (category) detailParams.set("category", category);
   if (kind) detailParams.set("kind", kind);
+  if (requestedOrdering) detailParams.set("ordering", requestedOrdering);
   if (!isPreview && page > 1) detailParams.set("page", String(page));
   const detailQuery = detailParams.toString();
-  const params = { category, kind, ...(search ? { search } : {}), page, page_size: isPreview ? 3 : 9 };
+  const params = {
+    category,
+    kind,
+    ...(search ? { search } : {}),
+    ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
+    page,
+    page_size: isPreview ? 3 : 9,
+  };
   const audience = useReaderAudience();
   const account = useResourcesListVisible(params, {
     query: { enabled: audience === "account", placeholderData: keepPreviousData, retry: false },
@@ -61,14 +76,15 @@ export function ResourceList(props: ResourceListProps) {
   const query = readsAccount ? account : publicQuery;
   const loading = audience === "pending" || query.isPending;
 
-  const buildPageHref = (nextPage: number) => {
-    const params = new URLSearchParams();
-    if (search) params.set("search", search);
-    if (category) params.set("category", category);
-    if (kind) params.set("kind", kind);
-    params.set("page", String(nextPage));
-    return `/resources?${params.toString()}`;
-  };
+  const buildPageHref = (nextPage: number) =>
+    resourceFiltersHref({
+      search: search ?? "",
+      category: category ?? "",
+      kind: kind ?? "",
+      ordering: requestedOrdering,
+      page: nextPage,
+    });
+  const ordering = requestedOrdering ?? query.data?.data.ordering;
 
   const filtered = Boolean(search || category || kind);
   let content: ReactNode = null;
@@ -86,7 +102,10 @@ export function ResourceList(props: ResourceListProps) {
     content = (
       <PanelMessage
         action={filtered ? (
-          <Link className={buttonVariants({ variant: "secondary" })} href="/resources">
+          <Link
+            className={buttonVariants({ variant: "secondary" })}
+            href={resourceFiltersHref({ search: "", category: "", kind: "", ordering: requestedOrdering })}
+          >
             Clear filters
           </Link>
         ) : undefined}
@@ -166,8 +185,27 @@ export function ResourceList(props: ResourceListProps) {
 
   return (
     <div className="grid gap-5">
-      <ResourceFilters search={search} category={category} kind={kind} />
-      <Panel as="div">{content}</Panel>
+      <ResourceFilters search={search} category={category} kind={kind} ordering={requestedOrdering} />
+      <div className="grid gap-2">
+        <SortField
+          id="resource-sort"
+          value={ordering}
+          options={resourceReaderOrderingOptions}
+          onChange={(next) =>
+            router.push(
+              resourceFiltersHref({
+                search: search ?? "",
+                category: category ?? "",
+                kind: kind ?? "",
+                ordering: next,
+              }),
+              { scroll: false },
+            )
+          }
+          className="justify-self-end"
+        />
+        <Panel as="div">{content}</Panel>
+      </div>
     </div>
   );
 }

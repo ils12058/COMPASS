@@ -50,6 +50,7 @@ from .services import (
     DEFAULT_PAGE_SIZE,
     AccountManagementError,
     AccountNotFound,
+    AccountOrdering,
     AppointmentRelationshipConflict,
     AvailabilityRelationshipConflict,
     CapabilityDependencyConflict,
@@ -121,6 +122,8 @@ class AccountListResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or name A–Z.
+    ordering: AccountOrdering
 
 
 class AccountCreateRequest(StrictSchema):
@@ -424,6 +427,7 @@ def accounts(
     designation: DesignationCode | None = None,
     email_verified: bool | None = None,
     search: str | None = None,
+    ordering: AccountOrdering | None = None,
 ):
     _require_management(request, recent_mfa=False)
     try:
@@ -435,6 +439,7 @@ def accounts(
             designation=designation.value if designation is not None else None,
             email_verified=email_verified,
             search=search,
+            ordering=ordering,
         )
     except AccountManagementError as exc:
         _raise_management_error(exc)
@@ -443,6 +448,7 @@ def accounts(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
     }
 
 

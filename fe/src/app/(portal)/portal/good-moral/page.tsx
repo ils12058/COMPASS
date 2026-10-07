@@ -4,7 +4,8 @@ import { Suspense } from "react";
 import { GoodMoralListSkeleton } from "@/features/good-moral/good-moral-shared";
 import { GoodMoralWorkspacePage } from "@/features/good-moral/good-moral-page";
 import type { GoodMoralOperationalFilters } from "@/features/good-moral/good-moral-operational-list";
-import { GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
+import { GoodMoralOrdering, GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
 
 type SearchValue = string | string[] | undefined;
 
@@ -41,6 +42,7 @@ export default async function Page({
     status: statusValue === GoodMoralStatusValue.READY_FOR_ISSUANCE || statusValue === GoodMoralStatusValue.REQUESTED || statusValue === GoodMoralStatusValue.ISSUED || statusValue === GoodMoralStatusValue.CANCELLED
       ? statusValue
       : "",
+    ordering: readOrdering(singleValue(query.ordering), GoodMoralOrdering),
     page: pageNumber(singleValue(query.page)),
     pageSize: positiveInteger(singleValue(query.page_size)),
   };

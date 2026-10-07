@@ -167,7 +167,8 @@ def list_supervised_staff(*, actor, page=1, page_size=DEFAULT_PAGE_SIZE):
             "staff__last_name",
             "staff__suffix",
         )
-        .order_by("staff__first_name", "staff__last_name", "staff_id")[
+        # A directory of people reads by last name, then first name (ADR-090).
+        .order_by("staff__last_name", "staff__first_name", "staff_id")[
             offset : offset + page_size + 1
         ]
     )

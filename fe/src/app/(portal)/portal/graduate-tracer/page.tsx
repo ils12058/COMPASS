@@ -4,7 +4,8 @@ import { Suspense } from "react";
 import { GraduateTracerStudentWorkspaceSkeleton } from "@/features/graduate-tracer/graduate-tracer-student-workspace";
 import { GraduateTracerWorkspacePage } from "@/features/graduate-tracer/graduate-tracer-workspace-page";
 import type { GraduateTracerOperationalFilters } from "@/features/graduate-tracer/graduate-tracer-operational-list";
-import { GTSEmploymentStateValue } from "@/lib/api/generated/model";
+import { GraduateTracerOrdering, GTSEmploymentStateValue } from "@/lib/api/generated/model";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
 
 type SearchValue = string | string[] | undefined;
 
@@ -42,6 +43,7 @@ export default async function Page({
     submittedFrom: validCalendarDate(singleValue(query.submitted_from)),
     submittedTo: validCalendarDate(singleValue(query.submitted_to)),
     employmentState: Object.values(GTSEmploymentStateValue).find((value) => value === employmentValue) ?? "",
+    ordering: readOrdering(singleValue(query.ordering), GraduateTracerOrdering),
     page: positiveInteger(singleValue(query.page)) ?? 1,
     pageSize: pageSize(singleValue(query.page_size)),
   };

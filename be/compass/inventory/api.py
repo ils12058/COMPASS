@@ -72,6 +72,7 @@ from .services import (
     InventoryNotPermitted,
     InventoryNotSubmitted,
     InventoryPSGCUnavailable,
+    InventoryRosterOrdering,
     InventoryStatus,
     ensure_current_inventory,
     get_current_inventory,
@@ -563,6 +564,8 @@ class CounselorInventoryRosterPage(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or Student A–Z.
+    ordering: InventoryRosterOrdering
     filter_options: CollectionFilterOptions
 
 
@@ -1188,6 +1191,7 @@ def inventory_list_students(
     search: str | None = None,
     student_id: UUID | None = None,
     form_revision_id: UUID | None = None,
+    ordering: InventoryRosterOrdering | None = None,
     page: int = 1,
     page_size: int = 20,
 ):
@@ -1203,6 +1207,7 @@ def inventory_list_students(
             search=search,
             student_id=student_id,
             form_revision_id=form_revision_id,
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -1213,6 +1218,7 @@ def inventory_list_students(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
         "filter_options": project_filter_options(result.form_revisions),
     }
 

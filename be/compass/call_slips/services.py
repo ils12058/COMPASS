@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from enum import StrEnum
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -22,6 +23,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.ordering import parse_ordering
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 from compass.institutional_forms.filter_options import represented_form_revisions
 from compass.institutional_forms.models import FormRevision
@@ -108,6 +110,44 @@ class CallSlipDocumentUnavailable(CallSlipError):
     pass
 
 
+class CallSlipOrdering(StrEnum):
+    """Closed Call Slip orderings (ADR-090).
+
+    ``report_at`` is when the Student is expected to report. Active Call Slips are a schedule and
+    default to the earliest report time; completed, voided, and mixed lists are history and
+    default to the latest.
+    """
+
+    EARLIEST_REPORT = "EARLIEST_REPORT"
+    LATEST_REPORT = "LATEST_REPORT"
+    STUDENT_ASC = "STUDENT_ASC"
+    STUDENT_DESC = "STUDENT_DESC"
+
+
+_CALL_SLIP_STUDENT_NAME = ("student__last_name", "student__first_name")
+_CALL_SLIP_ORDER_BY: dict[CallSlipOrdering, tuple[str, ...]] = {
+    CallSlipOrdering.EARLIEST_REPORT: ("report_at", "created_at", "id"),
+    CallSlipOrdering.LATEST_REPORT: ("-report_at", "-created_at", "-id"),
+    CallSlipOrdering.STUDENT_ASC: (*_CALL_SLIP_STUDENT_NAME, "report_at", "id"),
+    CallSlipOrdering.STUDENT_DESC: (
+        *(f"-{field}" for field in _CALL_SLIP_STUDENT_NAME),
+        "-report_at",
+        "-id",
+    ),
+}
+
+
+def _call_slip_ordering(
+    value: str | CallSlipOrdering | None, *, state: str | CallSlipLifecycleState | None
+) -> CallSlipOrdering:
+    default = (
+        CallSlipOrdering.EARLIEST_REPORT
+        if state == CallSlipLifecycleState.ACTIVE
+        else CallSlipOrdering.LATEST_REPORT
+    )
+    return parse_ordering(value, CallSlipOrdering, default=default, error=InvalidCallSlipInput)
+
+
 @dataclass(frozen=True, slots=True)
 class CallSlipPage:
     items: tuple[CallSlip, ...]
@@ -115,6 +155,7 @@ class CallSlipPage:
     page_size: int
     has_next: bool
     form_revisions: tuple[FormRevision, ...] = ()
+    ordering: CallSlipOrdering | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -349,13 +390,18 @@ def _apply_state_filter(queryset, state: str | CallSlipLifecycleState | None):
 
 
 def _page(
-    queryset, *, page: int, page_size: int, form_revisions: tuple[FormRevision, ...] = ()
+    queryset,
+    *,
+    page: int,
+    page_size: int,
+    ordering: CallSlipOrdering,
+    form_revisions: tuple[FormRevision, ...] = (),
 ) -> CallSlipPage:
     page, page_size = _pagination(page, page_size)
     offset = (page - 1) * page_size
-    rows = list(queryset[offset : offset + page_size + 1])
+    rows = list(queryset.order_by(*_CALL_SLIP_ORDER_BY[ordering])[offset : offset + page_size + 1])
     return CallSlipPage(
-        tuple(rows[:page_size]), page, page_size, len(rows) > page_size, form_revisions
+        tuple(rows[:page_size]), page, page_size, len(rows) > page_size, form_revisions, ordering
     )
 
 
@@ -778,10 +824,12 @@ def list_call_slips(
     include_voided: bool = False,
     state: str | CallSlipLifecycleState | None = None,
     form_revision_id: UUID | None = None,
+    ordering: str | CallSlipOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> CallSlipPage:
     _validate_operational_actor(actor)
+    resolved = _call_slip_ordering(ordering, state=state)
     qs = _scope_queryset(_queryset(), actor)
     revisions = represented_form_revisions(qs, family_keys=("call_slip",))
     if form_revision_id is not None:
@@ -816,9 +864,10 @@ def list_call_slips(
             )
     qs = _apply_date_filters(qs, from_date=from_date, to_date=to_date)
     return _page(
-        qs.order_by("-report_at", "-created_at", "id"),
+        qs,
         page=page,
         page_size=page_size,
+        ordering=resolved,
         form_revisions=revisions,
     )
 
@@ -836,10 +885,12 @@ def list_my_call_slips(
     qs = _queryset().filter(student_id=actor.pk)
     qs = _apply_state_filter(qs, state)
     qs = _apply_date_filters(qs, from_date=from_date, to_date=to_date)
+    # A Student's own list keeps the population default and offers no other order.
     return _page(
-        qs.order_by("-report_at", "-created_at", "id"),
+        qs,
         page=page,
         page_size=page_size,
+        ordering=_call_slip_ordering(None, state=state),
     )
 
 

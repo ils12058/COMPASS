@@ -12,6 +12,9 @@ import { dataTable } from "@/components/ui/data-table";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
+import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { Select } from "@/components/ui/select";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { describeResultPage } from "@/features/portal/components/result-context";
@@ -32,11 +35,13 @@ import {
   RoutineInterviewListSkeleton,
   RoutinePageHeading,
   RoutineStatus,
+  routineOrderingOptions,
 } from "@/features/routine-interviews/routine-interviews-shared";
 import {
   DeliveryMode,
   RoutineEvaluationStatus,
   RoutineIntakeStatus,
+  RoutineInterviewOrdering,
   type AcademicYearResponse,
 } from "@/lib/api/generated/model";
 import { useAcademicYearsList } from "@/lib/api/generated/academic-years/academic-years";
@@ -244,12 +249,14 @@ export function CounselorRoutineWorkspace({
   const intakeParam = enumParam(searchParams.get("intake_status"), RoutineIntakeStatus);
   const evaluationParam = enumParam(searchParams.get("evaluation_status"), RoutineEvaluationStatus);
   const page = positivePage(searchParams.get("page"));
+  const { requested: requestedOrdering, setOrdering } = useListOrdering(RoutineInterviewOrdering);
   const filters = {
     ...(search.trim() ? { search: search.trim() } : {}),
     ...(academicYearId ? { academic_year_id: academicYearId } : {}),
     ...(deliveryParam ? { delivery_mode: deliveryParam } : {}),
     ...(intakeParam ? { intake_status: intakeParam } : {}),
     ...(evaluationParam ? { evaluation_status: evaluationParam } : {}),
+    ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
     page,
     page_size: 20,
   };
@@ -259,6 +266,10 @@ export function CounselorRoutineWorkspace({
   const pageData = queue.data?.data;
   const items = pageData?.items ?? [];
   const hasFilters = Boolean(search || academicYearId || deliveryParam || intakeParam || evaluationParam);
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = requestedOrdering ?? pageData?.ordering;
+  // Clearing the filters keeps the chosen order; sorting is not a filter.
+  const clearedHref = requestedOrdering ? `${pathname}?ordering=${requestedOrdering}` : pathname;
   const resultContext = pageData && !queue.isError
     ? describeResultPage({
         count: items.length,
@@ -316,7 +327,7 @@ export function CounselorRoutineWorkspace({
         yearsPending={academicYears.isPending}
         yearsFailed={academicYears.isError}
         onApply={applyFilters}
-        onClear={() => router.replace(pathname, { scroll: false })}
+        onClear={() => router.replace(clearedHref, { scroll: false })}
       />
 
       <Panel aria-labelledby="assigned-routine-interviews">
@@ -324,6 +335,14 @@ export function CounselorRoutineWorkspace({
           title="Assigned Routine Interviews"
           titleId="assigned-routine-interviews"
           context={resultContext}
+          actions={
+            <SortField
+              id="routine-queue-sort"
+              value={ordering}
+              options={routineOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
         />
         {queue.isPending ? (
           <RoutineInterviewListSkeleton label="Loading assigned Routine Interviews…" framed={false} />
@@ -342,7 +361,7 @@ export function CounselorRoutineWorkspace({
         ) : items.length === 0 ? (
           <PanelMessage
             action={hasFilters ? (
-              <Button variant="secondary" onClick={() => router.replace(pathname, { scroll: false })}>
+              <Button variant="secondary" onClick={() => router.replace(clearedHref, { scroll: false })}>
                 Clear filters
               </Button>
             ) : undefined}
@@ -357,11 +376,36 @@ export function CounselorRoutineWorkspace({
               <caption className="sr-only">Routine Interviews assigned to you</caption>
               <thead className={dataTable.head}>
                 <tr>
-                  <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Student</th>
+                  <SortableColumnHeader
+                    label="Student"
+                    ascending={RoutineInterviewOrdering.STUDENT_ASC}
+                    descending={RoutineInterviewOrdering.STUDENT_DESC}
+                    ascendingLabel="Student A–Z"
+                    descendingLabel="Student Z–A"
+                    current={ordering}
+                    onSort={setOrdering}
+                    className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}
+                  />
                   <th scope="col" className={dataTable.headerCell}>Academic Year / Program</th>
                   <th scope="col" className={dataTable.headerCell}>Visit / delivery</th>
-                  <th scope="col" className={dataTable.headerCell}>Student Intake</th>
-                  <th scope="col" className={dataTable.headerCell}>Counselor Evaluation</th>
+                  <SortableColumnHeader
+                    label="Student Intake"
+                    ascending={RoutineInterviewOrdering.OLDEST_WAITING}
+                    descending={RoutineInterviewOrdering.NEWEST_SUBMITTED}
+                    ascendingLabel="Oldest waiting first"
+                    descendingLabel="Newest submitted first"
+                    current={ordering}
+                    onSort={setOrdering}
+                    className={dataTable.headerCell}
+                  />
+                  <SortableColumnHeader
+                    label="Counselor Evaluation"
+                    descending={RoutineInterviewOrdering.RECENTLY_FINALIZED}
+                    descendingLabel="Recently finalized first"
+                    current={ordering}
+                    onSort={setOrdering}
+                    className={dataTable.headerCell}
+                  />
                   <th scope="col" className={dataTable.headerCell}>Appointment</th>
                 </tr>
               </thead>

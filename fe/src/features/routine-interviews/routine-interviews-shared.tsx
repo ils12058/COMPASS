@@ -18,6 +18,8 @@ import type {
   RoutinePersonSummary,
 } from "@/lib/api/generated/model";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
+import { RoutineInterviewOrdering } from "@/lib/api/generated/model";
+import type { SortOption } from "@/components/ui/sort-field";
 import {
   formatInstitutionalDateTime,
   INSTITUTION_TIME_ZONE,
@@ -90,6 +92,17 @@ const routineEvaluationStatusLabels: Record<RoutineEvaluationStatus, string> = {
   DRAFT: "Draft",
   FINALIZED: "Finalized",
 };
+
+// Submitted intakes awaiting evaluation default to the oldest waiting, so newer submissions never
+// bury older unfinished work; finalized evaluations default to the most recent (ADR-090).
+export const routineOrderingOptions: readonly SortOption<RoutineInterviewOrdering>[] = [
+  { value: RoutineInterviewOrdering.OLDEST_WAITING, label: "Oldest waiting first" },
+  { value: RoutineInterviewOrdering.NEWEST_SUBMITTED, label: "Newest submitted first" },
+  { value: RoutineInterviewOrdering.RECENTLY_FINALIZED, label: "Recently finalized first" },
+  { value: RoutineInterviewOrdering.NEWEST_CREATED, label: "Newest created first" },
+  { value: RoutineInterviewOrdering.STUDENT_ASC, label: "Student A–Z" },
+  { value: RoutineInterviewOrdering.STUDENT_DESC, label: "Student Z–A" },
+];
 
 export function routineIntakeStatusLabel(status: RoutineIntakeStatus): string {
   return routineIntakeStatusLabels[status];

@@ -1,8 +1,10 @@
 import {
+  AccountOrdering,
   DesignationCode,
   RoleCode,
   StudentLifecycleCode,
 } from "@/lib/api/generated/model";
+import type { SortOption } from "@/components/ui/sort-field";
 import type {
   AccountDetailResponse,
   AccountSummaryResponse,
@@ -39,6 +41,16 @@ export function isRoleCode(value: string): value is RoleCode {
 export function isDesignationCode(value: string): value is DesignationCode {
   return designations.some((designation) => designation === value);
 }
+
+// The account list is a directory, so it reads by last name (ADR-090); creation and update
+// chronology stay available for operational review.
+export const accountOrderingOptions: readonly SortOption<AccountOrdering>[] = [
+  { value: AccountOrdering.NAME_ASC, label: "Last name A–Z" },
+  { value: AccountOrdering.NAME_DESC, label: "Last name Z–A" },
+  { value: AccountOrdering.NEWEST_CREATED, label: "Newest accounts first" },
+  { value: AccountOrdering.OLDEST_CREATED, label: "Oldest accounts first" },
+  { value: AccountOrdering.RECENTLY_UPDATED, label: "Recently updated first" },
+];
 
 export function accountName(
   account: AccountSummaryResponse | AccountDetailResponse,

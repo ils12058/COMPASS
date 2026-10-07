@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q
+from django.db.models.functions import Lower
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -20,6 +22,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.ordering import parse_ordering
 from compass.publications import PublicationAudience, PublicationStatus, eligible_audiences_for
 
 from .models import Announcement
@@ -52,12 +55,74 @@ class InvalidAnnouncementInput(AnnouncementError):
     pass
 
 
+class AnnouncementOrdering(StrEnum):
+    """Closed reader orderings (ADR-090).
+
+    RECOMMENDED is the editorial order: pinned first, then the newest published. The other values
+    let a reader browse the full index in another order; Overview always uses RECOMMENDED.
+    """
+
+    RECOMMENDED = "RECOMMENDED"
+    NEWEST = "NEWEST"
+    OLDEST = "OLDEST"
+    TITLE_ASC = "TITLE_ASC"
+    TITLE_DESC = "TITLE_DESC"
+
+
+class AnnouncementManagementOrdering(StrEnum):
+    """Closed orderings for Announcement management (ADR-090); recent edits come first."""
+
+    RECENTLY_UPDATED = "RECENTLY_UPDATED"
+    OLDEST_UPDATED = "OLDEST_UPDATED"
+    NEWEST_PUBLISHED = "NEWEST_PUBLISHED"
+    OLDEST_PUBLISHED = "OLDEST_PUBLISHED"
+    TITLE_ASC = "TITLE_ASC"
+    TITLE_DESC = "TITLE_DESC"
+
+
+_READER_ORDER_BY: dict[AnnouncementOrdering, tuple] = {
+    AnnouncementOrdering.RECOMMENDED: ("-is_pinned", "-published_at", "-id"),
+    AnnouncementOrdering.NEWEST: ("-published_at", "-id"),
+    AnnouncementOrdering.OLDEST: ("published_at", "id"),
+    AnnouncementOrdering.TITLE_ASC: (Lower("title"), "-published_at", "id"),
+    AnnouncementOrdering.TITLE_DESC: (Lower("title").desc(), "-published_at", "-id"),
+}
+
+_MANAGEMENT_ORDER_BY: dict[AnnouncementManagementOrdering, tuple] = {
+    AnnouncementManagementOrdering.RECENTLY_UPDATED: ("-updated_at", "-id"),
+    AnnouncementManagementOrdering.OLDEST_UPDATED: ("updated_at", "id"),
+    # Drafts have no publication time and follow the published Announcements.
+    AnnouncementManagementOrdering.NEWEST_PUBLISHED: (
+        F("published_at").desc(nulls_last=True),
+        "-updated_at",
+        "-id",
+    ),
+    AnnouncementManagementOrdering.OLDEST_PUBLISHED: (
+        F("published_at").asc(nulls_last=True),
+        "updated_at",
+        "id",
+    ),
+    AnnouncementManagementOrdering.TITLE_ASC: (Lower("title"), "-updated_at", "id"),
+    AnnouncementManagementOrdering.TITLE_DESC: (Lower("title").desc(), "-updated_at", "-id"),
+}
+
+
+def _reader_ordering(value: str | AnnouncementOrdering | None) -> AnnouncementOrdering:
+    return parse_ordering(
+        value,
+        AnnouncementOrdering,
+        default=AnnouncementOrdering.RECOMMENDED,
+        error=InvalidAnnouncementInput,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class AnnouncementPage:
     items: tuple[Announcement, ...]
     page: int
     page_size: int
     has_next: bool
+    ordering: AnnouncementOrdering | AnnouncementManagementOrdering | None = None
 
 
 def _clean_title(value: str, *, require_nonblank: bool = False) -> str:
@@ -130,7 +195,13 @@ def _apply_search(queryset, search: str | None):
     return queryset.filter(Q(title__icontains=term) | Q(body_markdown__icontains=term))
 
 
-def _page(queryset, *, page: int, page_size: int) -> AnnouncementPage:
+def _page(
+    queryset,
+    *,
+    page: int,
+    page_size: int,
+    ordering: AnnouncementOrdering | AnnouncementManagementOrdering | None = None,
+) -> AnnouncementPage:
     page, page_size = _clean_page(page, page_size)
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
@@ -139,6 +210,7 @@ def _page(queryset, *, page: int, page_size: int) -> AnnouncementPage:
         page=page,
         page_size=page_size,
         has_next=len(rows) > page_size,
+        ordering=ordering,
     )
 
 
@@ -167,18 +239,21 @@ def list_public_announcements(
     *,
     pinned: bool | None = None,
     search: str | None = None,
+    ordering: str | AnnouncementOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     now: datetime | None = None,
 ) -> AnnouncementPage:
+    resolved = _reader_ordering(ordering)
     queryset = _public_queryset(now=now)
     if pinned is not None:
         queryset = queryset.filter(is_pinned=bool(pinned))
     queryset = _apply_search(queryset, search)
     return _page(
-        queryset.order_by("-is_pinned", "-published_at", "-id"),
+        queryset.order_by(*_READER_ORDER_BY[resolved]),
         page=page,
         page_size=page_size,
+        ordering=resolved,
     )
 
 
@@ -198,16 +273,18 @@ def list_visible_announcements(
     actor: User,
     pinned: bool | None = None,
     search: str | None = None,
+    ordering: str | AnnouncementOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     now: datetime | None = None,
 ) -> AnnouncementPage:
+    resolved = _reader_ordering(ordering)
     queryset = _visible_queryset(actor, now=now)
     if pinned is not None:
         queryset = queryset.filter(is_pinned=bool(pinned))
     queryset = _apply_search(queryset, search)
-    queryset = queryset.order_by("-is_pinned", "-published_at", "-id")
-    return _page(queryset, page=page, page_size=page_size)
+    queryset = queryset.order_by(*_READER_ORDER_BY[resolved])
+    return _page(queryset, page=page, page_size=page_size, ordering=resolved)
 
 
 def get_visible_announcement(
@@ -227,9 +304,16 @@ def list_managed_announcements(
     status: str | None = None,
     audience: str | None = None,
     search: str | None = None,
+    ordering: str | AnnouncementManagementOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> AnnouncementPage:
+    resolved = parse_ordering(
+        ordering,
+        AnnouncementManagementOrdering,
+        default=AnnouncementManagementOrdering.RECENTLY_UPDATED,
+        error=InvalidAnnouncementInput,
+    )
     queryset = Announcement.objects.select_related("created_by", "updated_by", "published_by").all()
     if status is not None:
         if status not in PublicationStatus.values:
@@ -239,9 +323,10 @@ def list_managed_announcements(
         queryset = queryset.filter(audience=_clean_audience(audience))
     queryset = _apply_search(queryset, search)
     return _page(
-        queryset.order_by("-updated_at", "-id"),
+        queryset.order_by(*_MANAGEMENT_ORDER_BY[resolved]),
         page=page,
         page_size=page_size,
+        ordering=resolved,
     )
 
 

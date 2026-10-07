@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -66,6 +67,7 @@ from compass.authentication.sessions import (
     revoke_all_auth_sessions,
     revoke_all_trusted_sessions,
 )
+from compass.common.ordering import parse_ordering
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 
@@ -160,12 +162,33 @@ class DesignationRoleConflict(AccountManagementError):
     """The requested role/designation combination is incompatible with canonical policy."""
 
 
+class AccountOrdering(StrEnum):
+    """Closed managed-account orderings (ADR-090); the account list is a directory, A–Z."""
+
+    NAME_ASC = "NAME_ASC"
+    NAME_DESC = "NAME_DESC"
+    NEWEST_CREATED = "NEWEST_CREATED"
+    OLDEST_CREATED = "OLDEST_CREATED"
+    RECENTLY_UPDATED = "RECENTLY_UPDATED"
+
+
+_ACCOUNT_NAME = ("last_name", "first_name", "middle_name")
+_ACCOUNT_ORDER_BY: dict[AccountOrdering, tuple[str, ...]] = {
+    AccountOrdering.NAME_ASC: (*_ACCOUNT_NAME, "id"),
+    AccountOrdering.NAME_DESC: (*(f"-{field}" for field in _ACCOUNT_NAME), "-id"),
+    AccountOrdering.NEWEST_CREATED: ("-created_at", "-id"),
+    AccountOrdering.OLDEST_CREATED: ("created_at", "id"),
+    AccountOrdering.RECENTLY_UPDATED: ("-updated_at", "-id"),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class AccountPage:
     items: tuple[User, ...]
     page: int
     page_size: int
     has_next: bool
+    ordering: AccountOrdering | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -469,12 +492,19 @@ def list_accounts(
     designation: str | None = None,
     email_verified: bool | None = None,
     search: str | None = None,
+    ordering: str | AccountOrdering | None = None,
 ) -> AccountPage:
     page, page_size = _validate_pagination(page=page, page_size=page_size)
+    resolved = parse_ordering(
+        ordering,
+        AccountOrdering,
+        default=AccountOrdering.NAME_ASC,
+        error=InvalidManagementInput,
+    )
     queryset = (
         User.objects.select_related("role")
         .prefetch_related("designations")
-        .order_by("-created_at", "-id")
+        .order_by(*_ACCOUNT_ORDER_BY[resolved])
     )
     if role is not None:
         queryset = queryset.filter(role__code=_canonical_role_code(role))
@@ -510,6 +540,7 @@ def list_accounts(
         page=page,
         page_size=page_size,
         has_next=has_next,
+        ordering=resolved,
     )
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from enum import StrEnum
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
@@ -19,6 +20,7 @@ from compass.audit.actions import GRADUATE_TRACER_DRAFT_CREATED, GRADUATE_TRACER
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.ordering import parse_ordering
 
 from .confidential_content import (
     FIELDS,
@@ -150,12 +152,31 @@ def _require_personal_response_available(student):
         )
 
 
+class GraduateTracerOrdering(StrEnum):
+    """Closed orderings for submitted Graduate Tracer responses (ADR-090); newest first."""
+
+    NEWEST_SUBMITTED = "NEWEST_SUBMITTED"
+    OLDEST_SUBMITTED = "OLDEST_SUBMITTED"
+    GRADUATE_ASC = "GRADUATE_ASC"
+    GRADUATE_DESC = "GRADUATE_DESC"
+
+
+_GRADUATE_NAME = ("student__last_name", "student__first_name")
+_GRADUATE_ORDER_BY: dict[GraduateTracerOrdering, tuple[str, ...]] = {
+    GraduateTracerOrdering.NEWEST_SUBMITTED: ("-submitted_at", "-id"),
+    GraduateTracerOrdering.OLDEST_SUBMITTED: ("submitted_at", "id"),
+    GraduateTracerOrdering.GRADUATE_ASC: (*_GRADUATE_NAME, "id"),
+    GraduateTracerOrdering.GRADUATE_DESC: (*(f"-{field}" for field in _GRADUATE_NAME), "-id"),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class GraduateTracerPage:
     items: tuple[GraduateTracerResponse, ...]
     page: int
     page_size: int
     has_next: bool
+    ordering: GraduateTracerOrdering | None = None
 
 
 def _queryset():
@@ -915,11 +936,18 @@ def list_submitted_for_head(
     submitted_from: date | None = None,
     submitted_to: date | None = None,
     current_employment_state: str | None = None,
+    ordering: str | GraduateTracerOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> GraduateTracerPage:
     _validate_viewer(actor)
     page, page_size = _pagination(page, page_size)
+    resolved = parse_ordering(
+        ordering,
+        GraduateTracerOrdering,
+        default=GraduateTracerOrdering.NEWEST_SUBMITTED,
+        error=InvalidGraduateTracerInput,
+    )
     term = _clean_search(search)
     if submitted_from is not None and submitted_to is not None and submitted_from > submitted_to:
         raise InvalidGraduateTracerInput("submitted_from must be on or before submitted_to.")
@@ -947,7 +975,7 @@ def list_submitted_for_head(
             "current_employment_state",
         )
         queryset = queryset.filter(current_employment_state=employment_state)
-    queryset = queryset.order_by("-submitted_at", "id")
+    queryset = queryset.order_by(*_GRADUATE_ORDER_BY[resolved])
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
     return GraduateTracerPage(
@@ -955,6 +983,7 @@ def list_submitted_for_head(
         page,
         page_size,
         len(rows) > page_size,
+        resolved,
     )
 
 

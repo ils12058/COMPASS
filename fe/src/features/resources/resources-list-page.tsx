@@ -6,11 +6,14 @@ import Link from "next/link";
 
 import { PageActionLink } from "@/components/ui/page-action";
 import { Select } from "@/components/ui/select";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -38,8 +41,9 @@ import {
   resourceKindLabels,
 } from "@/features/public/shared/presentation";
 import { resourceErrorMessage } from "@/features/resources/resource-errors";
+import { resourceManagementOrderingOptions } from "@/features/resources/resource-presentation";
 import { useResourcesListManaged } from "@/lib/api/generated/resources/resources";
-import { ResourceCategoryValue, ResourceKindValue } from "@/lib/api/generated/model";
+import { ResourceCategoryValue, ResourceKindValue, ResourceManagementOrdering } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 
@@ -64,6 +68,8 @@ export function ResourcesListPage() {
   if (audience) detailParams.set("audience", audience);
   if (category) detailParams.set("category", category);
   if (kind) detailParams.set("kind", kind);
+  const requestedOrdering = readOrdering(searchParams.get("ordering"), ResourceManagementOrdering);
+  if (requestedOrdering) detailParams.set("ordering", requestedOrdering);
   if (page > 1) detailParams.set("page", String(page));
   const detailQuery = detailParams.toString();
 
@@ -74,12 +80,16 @@ export function ResourcesListPage() {
       ...(category ? { category } : {}),
       ...(kind ? { kind } : {}),
       ...(search ? { search } : {}),
+      ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
       page,
       page_size: 20,
     },
     { query: { retry: false } },
   );
   const result = safeQueryData(list)?.data;
+  // The order the records are in: the reader's choice, or the default the backend applied.
+  const ordering = requestedOrdering ?? result?.ordering;
+  const setOrdering = (next: ResourceManagementOrdering) => update({ ordering: next });
 
   return (
     <section aria-labelledby="resources-heading">
@@ -181,6 +191,19 @@ export function ResourcesListPage() {
         <PanelHeader
           title="Resource records"
           titleId="resource-results-heading"
+          description={
+            ordering === ResourceManagementOrdering.DISPLAY_ORDER
+              ? "Readers see Resources in this order: lower display order first, then the newest published."
+              : undefined
+          }
+          actions={
+            <SortField
+              id="resource-management-sort"
+              value={ordering}
+              options={resourceManagementOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
           context={list.isFetching && !list.isPending
             ? "Refreshing Resources…"
             : result
@@ -221,12 +244,38 @@ export function ResourcesListPage() {
               <caption className="sr-only">Managed Resources</caption>
               <thead className={dataTable.head}>
                 <tr>
-                  <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Resource</th>
+                  <SortableColumnHeader
+                    label="Resource"
+                    ascending={ResourceManagementOrdering.TITLE_ASC}
+                    descending={ResourceManagementOrdering.TITLE_DESC}
+                    ascendingLabel="Title A–Z"
+                    descendingLabel="Title Z–A"
+                    current={ordering}
+                    onSort={setOrdering}
+                    className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}
+                  />
                   <th scope="col" className={dataTable.headerCell}>Category</th>
                   <th scope="col" className={dataTable.headerCell}>Audience</th>
                   <th scope="col" className={dataTable.headerCell}>Status</th>
-                  <th scope="col" className={`${dataTable.headerCell} text-right`}>Order</th>
-                  <th scope="col" className={dataTable.headerCell}>Last updated</th>
+                  <SortableColumnHeader
+                    label="Order"
+                    ascending={ResourceManagementOrdering.DISPLAY_ORDER}
+                    ascendingLabel="Display order, as readers see it"
+                    current={ordering}
+                    onSort={setOrdering}
+                    className={`${dataTable.headerCell} text-right`}
+                  />
+                  <SortableColumnHeader
+                    label="Last updated"
+                    ascending={ResourceManagementOrdering.OLDEST_UPDATED}
+                    descending={ResourceManagementOrdering.RECENTLY_UPDATED}
+                    ascendingLabel="Oldest updated first"
+                    descendingLabel="Recently updated first"
+                    firstDirection="descending"
+                    current={ordering}
+                    onSort={setOrdering}
+                    className={dataTable.headerCell}
+                  />
                 </tr>
               </thead>
               <tbody className={dataTable.body}>

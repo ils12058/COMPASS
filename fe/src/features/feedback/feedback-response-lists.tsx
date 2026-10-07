@@ -8,6 +8,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
+import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { dataTable } from "@/components/ui/data-table";
 import { FormRevisionFilter } from "@/features/institutional-forms/form-revision-filter";
 import { FilterField } from "@/components/ui/filter-toolbar";
@@ -18,10 +21,10 @@ import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notic
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
-import { FeedbackListSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackPageHeading, feedbackErrorMessage } from "@/features/feedback/feedback-shared";
+import { FeedbackListSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackPageHeading, feedbackErrorMessage, feedbackResponseOrderingOptions } from "@/features/feedback/feedback-shared";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import { useFeedbackListCustomerFeedbackResponses, useFeedbackListCsmResponses } from "@/lib/api/generated/feedback/feedback";
-import { CSMClientTypeValue, CustomerFeedbackServiceValue } from "@/lib/api/generated/model";
+import { CSMClientTypeValue, CustomerFeedbackServiceValue, FeedbackResponseOrdering } from "@/lib/api/generated/model";
 
 const feedbackServices = [
   [CustomerFeedbackServiceValue.COUNSELING, "Counseling"],
@@ -79,7 +82,8 @@ export function CustomerFeedbackResponseList() {
   const serviceParam = params.get("service") ?? "";
   const service = Object.values(CustomerFeedbackServiceValue).includes(serviceParam as CustomerFeedbackServiceValue) ? serviceParam as CustomerFeedbackServiceValue : undefined;
   const page = getPage(params);
-  const list = useFeedbackListCustomerFeedbackResponses({ ...(formRevisionId ? { form_revision_id: formRevisionId } : {}), ...(search ? { search } : {}), ...(service ? { service } : {}), ...(params.get("submitted_from") ? { submitted_from: params.get("submitted_from")! } : {}), ...(params.get("submitted_to") ? { submitted_to: params.get("submitted_to")! } : {}), page, page_size: 25 }, { query: { retry: false, enabled: access.canViewCustomerFeedback } });
+  const { requested: requestedOrdering, setOrdering } = useListOrdering(FeedbackResponseOrdering);
+  const list = useFeedbackListCustomerFeedbackResponses({ ...(formRevisionId ? { form_revision_id: formRevisionId } : {}), ...(search ? { search } : {}), ...(service ? { service } : {}), ...(params.get("submitted_from") ? { submitted_from: params.get("submitted_from")! } : {}), ...(params.get("submitted_to") ? { submitted_to: params.get("submitted_to")! } : {}), ...(requestedOrdering ? { ordering: requestedOrdering } : {}), page, page_size: 25 }, { query: { retry: false, enabled: access.canViewCustomerFeedback } });
 
   if (!access.canViewCustomerFeedback) return <FeedbackAccessUnavailable title="Customer Feedback responses unavailable" />;
 
@@ -98,17 +102,21 @@ export function CustomerFeedbackResponseList() {
       const value = String(data.get(key) ?? "").trim();
       if (value) next.set(key, value);
     }
+    // Applying filters keeps the reader's chosen order.
+    if (requestedOrdering) next.set("ordering", requestedOrdering);
     next.set("page", "1");
     router.push(`${pathname}${queryString(next)}`);
   }
 
   function clearFilters() {
     setFilterError(null);
-    router.push(pathname);
+    router.push(requestedOrdering ? `${pathname}?ordering=${requestedOrdering}` : pathname);
   }
 
   const hasFilters = Boolean(formRevisionId || search || service || params.get("submitted_from") || params.get("submitted_to"));
   const rows = safeQueryData(list)?.data;
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = requestedOrdering ?? rows?.ordering;
 
   return (
     <section aria-labelledby="customer-feedback-responses-heading">
@@ -134,13 +142,21 @@ export function CustomerFeedbackResponseList() {
         <PanelHeader
           title="Responses"
           titleId="customer-feedback-results-heading"
+          actions={
+            <SortField
+              id="customer-feedback-sort"
+              value={ordering}
+              options={feedbackResponseOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
           context={list.isFetching && !list.isPending ? "Refreshing responses…" : rows ? describeResultPage({ count: rows.items.length, page: rows.page, hasNext: rows.has_next, noun: { one: "response", other: "responses" }, filtered: hasFilters }) : null}
         />
         {list.isPending ? <FeedbackListSkeleton label="Loading Customer Feedback responses…" /> : !rows ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>{feedbackErrorMessage(list.error, "Customer Feedback responses could not be loaded.")}</PanelMessage> : rows.items.length === 0 ? <PanelMessage>{hasFilters ? "No Customer Feedback responses match the current search or filters." : "No Customer Feedback responses have been submitted."}</PanelMessage> : (
           <div className={dataTable.scroll}>
             <table className={responseTable}>
               <caption className="sr-only">Customer Feedback response list</caption>
-              <thead className={dataTable.head}><tr><th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Respondent</th><th scope="col" className={dataTable.headerCell}>Services received</th><th scope="col" className={dataTable.headerCell}>Submitted</th></tr></thead>
+              <thead className={dataTable.head}><tr><th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Respondent</th><th scope="col" className={dataTable.headerCell}>Services received</th><SortableColumnHeader label="Submitted" ascending={FeedbackResponseOrdering.OLDEST_SUBMITTED} descending={FeedbackResponseOrdering.NEWEST_SUBMITTED} ascendingLabel="Oldest submitted first" descendingLabel="Newest submitted first" firstDirection="descending" current={ordering} onSort={setOrdering} className={dataTable.headerCell} /></tr></thead>
               <tbody className={dataTable.body}>{rows.items.map((item) => <tr key={item.id} className={dataTable.row}><th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-semibold text-ink`}><Link href={`/portal/feedback/customer-feedback/responses/${item.id}`} className="text-brand underline hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{item.respondent_name || "Name not provided"}</Link></th><td className={`${dataTable.cell} max-w-md text-muted`}>{item.services_received.map((value) => feedbackServices.find(([candidate]) => candidate === value)?.[1] ?? value).join(", ")}</td><td className={`${dataTable.cell} whitespace-nowrap text-muted`}><FeedbackDate value={item.submitted_at} /></td></tr>)}</tbody>
             </table>
           </div>
@@ -163,7 +179,8 @@ export function CsmResponseList() {
   const clientType = Object.values(CSMClientTypeValue).includes(clientParam as CSMClientTypeValue) ? clientParam as CSMClientTypeValue : undefined;
   const service = (params.get("service") ?? "").trim();
   const page = getPage(params);
-  const list = useFeedbackListCsmResponses({ ...(clientType ? { client_type: clientType } : {}), ...(service ? { service } : {}), ...(params.get("submitted_from") ? { submitted_from: params.get("submitted_from")! } : {}), ...(params.get("submitted_to") ? { submitted_to: params.get("submitted_to")! } : {}), page, page_size: 25 }, { query: { retry: false, enabled: access.canViewCsm } });
+  const { requested: requestedOrdering, setOrdering } = useListOrdering(FeedbackResponseOrdering);
+  const list = useFeedbackListCsmResponses({ ...(clientType ? { client_type: clientType } : {}), ...(service ? { service } : {}), ...(params.get("submitted_from") ? { submitted_from: params.get("submitted_from")! } : {}), ...(params.get("submitted_to") ? { submitted_to: params.get("submitted_to")! } : {}), ...(requestedOrdering ? { ordering: requestedOrdering } : {}), page, page_size: 25 }, { query: { retry: false, enabled: access.canViewCsm } });
 
   if (!access.canViewCsm) return <FeedbackAccessUnavailable title="CSM responses unavailable" />;
 
@@ -182,13 +199,20 @@ export function CsmResponseList() {
       const value = String(data.get(key) ?? "").trim();
       if (value) next.set(key, value);
     }
+    // Applying filters keeps the reader's chosen order.
+    if (requestedOrdering) next.set("ordering", requestedOrdering);
     next.set("page", "1");
     router.push(`${pathname}${queryString(next)}`);
   }
 
-  function clearFilters() { setFilterError(null); router.push(pathname); }
+  function clearFilters() {
+    setFilterError(null);
+    router.push(requestedOrdering ? `${pathname}?ordering=${requestedOrdering}` : pathname);
+  }
   const hasFilters = Boolean(clientType || service || params.get("submitted_from") || params.get("submitted_to"));
   const rows = safeQueryData(list)?.data;
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = requestedOrdering ?? rows?.ordering;
 
   return (
     <section aria-labelledby="csm-responses-heading">
@@ -213,13 +237,21 @@ export function CsmResponseList() {
         <PanelHeader
           title="Responses"
           titleId="csm-results-heading"
+          actions={
+            <SortField
+              id="csm-sort"
+              value={ordering}
+              options={feedbackResponseOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
           context={list.isFetching && !list.isPending ? "Refreshing responses…" : rows ? describeResultPage({ count: rows.items.length, page: rows.page, hasNext: rows.has_next, noun: { one: "response", other: "responses" }, filtered: hasFilters }) : null}
         />
         {list.isPending ? <FeedbackListSkeleton label="Loading CSM responses…" /> : !rows ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>{feedbackErrorMessage(list.error, "CSM responses could not be loaded.")}</PanelMessage> : rows.items.length === 0 ? <PanelMessage>{hasFilters ? "No CSM responses match the current filters." : "No CSM responses have been submitted."}</PanelMessage> : (
           <div className={dataTable.scroll}>
             <table className={responseTable}>
               <caption className="sr-only">Client Satisfaction Measurement response list</caption>
-              <thead className={dataTable.head}><tr><th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Client type</th><th scope="col" className={dataTable.headerCell}>Service availed</th><th scope="col" className={dataTable.headerCell}>Submitted</th></tr></thead>
+              <thead className={dataTable.head}><tr><th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Client type</th><th scope="col" className={dataTable.headerCell}>Service availed</th><SortableColumnHeader label="Submitted" ascending={FeedbackResponseOrdering.OLDEST_SUBMITTED} descending={FeedbackResponseOrdering.NEWEST_SUBMITTED} ascendingLabel="Oldest submitted first" descendingLabel="Newest submitted first" firstDirection="descending" current={ordering} onSort={setOrdering} className={dataTable.headerCell} /></tr></thead>
               <tbody className={dataTable.body}>{rows.items.map((item) => <tr key={item.id} className={dataTable.row}><th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-semibold text-ink`}><Link href={`/portal/feedback/csm/responses/${item.id}`} className="text-brand underline hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{clientTypes.find(([candidate]) => candidate === item.client_type)?.[1] ?? item.client_type}</Link></th><td className={`${dataTable.cell} max-w-md text-muted`}>{item.service_availed || "Not provided"}</td><td className={`${dataTable.cell} whitespace-nowrap text-muted`}><FeedbackDate value={item.submitted_at} /></td></tr>)}</tbody>
             </table>
           </div>

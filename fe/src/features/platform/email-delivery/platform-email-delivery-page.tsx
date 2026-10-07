@@ -8,6 +8,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { PageAction } from "@/components/ui/page-action";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { SortField, type SortOption } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
+import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { dataTable } from "@/components/ui/data-table";
 import { FloatingListTools, ListToolField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -34,6 +37,7 @@ import {
   EmailDeliveryRetryBlocker,
   EmailDeliveryStatusValue,
   type EmailDeliveryItemResponse,
+  EmailDeliveryOrdering,
 } from "@/lib/api/generated/model";
 import {
   getPlatformOperationsGetEmailDeliverySummaryQueryKey,
@@ -92,12 +96,18 @@ function Timing({ delivery }: { delivery: EmailDeliveryItemResponse }) {
   );
 }
 
+const emailDeliveryOrderingOptions: readonly SortOption<EmailDeliveryOrdering>[] = [
+  { value: EmailDeliveryOrdering.OLDEST, label: "Oldest first" },
+  { value: EmailDeliveryOrdering.NEWEST, label: "Newest first" },
+];
+
 export function PlatformEmailDeliveryPage() {
   const { user } = usePortalSession();
   const canManage = hasPlatformManage(user);
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<StatusFilter>("ALL");
   const [page, setPage] = useState(1);
+  const { requested: requestedOrdering, setOrdering: setUrlOrdering } = useListOrdering(EmailDeliveryOrdering);
   const [selectedDelivery, setSelectedDelivery] =
     useState<EmailDeliveryItemResponse | null>(null);
   const [selectedDeliveryAt, setSelectedDeliveryAt] = useState(0);
@@ -108,6 +118,7 @@ export function PlatformEmailDeliveryPage() {
     page,
     page_size: PAGE_SIZE,
     ...(status === "ALL" ? {} : { status }),
+    ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
   };
   const deliveries = usePlatformOperationsListEmailDeliveries(params, {
     query: { retry: false, staleTime: 15_000 },
@@ -117,6 +128,12 @@ export function PlatformEmailDeliveryPage() {
   const summaryData = summary.isError && !canShowLastKnownData(summary) ? undefined : summary.data?.data;
   const deliveryPage = deliveries.isError && !canShowLastKnownData(deliveries) ? undefined : deliveries.data?.data;
   const rowsStale = deliveries.isError && Boolean(deliveryPage);
+  // Failed and pending work defaults to the oldest first; history to the newest (ADR-090).
+  const ordering = requestedOrdering ?? deliveryPage?.ordering;
+  function setOrdering(next: EmailDeliveryOrdering) {
+    setPage(1);
+    setUrlOrdering(next);
+  }
 
   async function refreshEmailDelivery() {
     await Promise.all([summary.refetch(), deliveries.refetch()]);
@@ -272,6 +289,14 @@ export function PlatformEmailDeliveryPage() {
         <PanelHeader
           title="Deliveries"
           titleId="email-list-heading"
+          actions={
+            <SortField
+              id="email-delivery-sort"
+              value={ordering}
+              options={emailDeliveryOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
           context={
             deliveries.isFetching && !deliveries.isPending
               ? "Refreshing email deliveries…"
@@ -309,7 +334,16 @@ export function PlatformEmailDeliveryPage() {
                     </th>
                     <th scope="col" className={dataTable.headerCell}>Status</th>
                     <th scope="col" className={dataTable.headerCell}>Attempts</th>
-                    <th scope="col" className={dataTable.headerCell}>Created</th>
+                    <SortableColumnHeader
+                      label="Created"
+                      ascending={EmailDeliveryOrdering.OLDEST}
+                      descending={EmailDeliveryOrdering.NEWEST}
+                      ascendingLabel="Oldest first"
+                      descendingLabel="Newest first"
+                      current={ordering}
+                      onSort={setOrdering}
+                      className={dataTable.headerCell}
+                    />
                     <th scope="col" className={dataTable.headerCell}>Timing</th>
                     {canManage ? (
                       <th scope="col" className={dataTable.headerCell}>Action</th>

@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from enum import StrEnum
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -20,6 +21,7 @@ from compass.audit.actions import COUNSELING_ENCOUNTER_CREATED, COUNSELING_ENCOU
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.ordering import parse_ordering
 from compass.feedback.models import CustomerFeedbackService, FeedbackOpportunitySourceType
 from compass.feedback.services import (
     FeedbackChronologyConflict,
@@ -105,6 +107,29 @@ class CounselingPage:
     page: int
     page_size: int
     has_next: bool
+    ordering: CounselingEncounterOrdering | None = None
+
+
+class CounselingEncounterOrdering(StrEnum):
+    """Closed orderings for a Counselor's Encounter history (ADR-090); the latest comes first."""
+
+    LATEST_ENCOUNTER = "LATEST_ENCOUNTER"
+    OLDEST_ENCOUNTER = "OLDEST_ENCOUNTER"
+    STUDENT_ASC = "STUDENT_ASC"
+    STUDENT_DESC = "STUDENT_DESC"
+
+
+_ENCOUNTER_STUDENT_NAME = ("student__last_name", "student__first_name", "student__middle_name")
+_ENCOUNTER_ORDER_BY: dict[CounselingEncounterOrdering, tuple[str, ...]] = {
+    CounselingEncounterOrdering.LATEST_ENCOUNTER: ("-started_at", "-id"),
+    CounselingEncounterOrdering.OLDEST_ENCOUNTER: ("started_at", "id"),
+    CounselingEncounterOrdering.STUDENT_ASC: (*_ENCOUNTER_STUDENT_NAME, "-started_at", "id"),
+    CounselingEncounterOrdering.STUDENT_DESC: (
+        *(f"-{field}" for field in _ENCOUNTER_STUDENT_NAME),
+        "-started_at",
+        "-id",
+    ),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -736,10 +761,17 @@ def list_my_encounters(
     to_date: date | None = None,
     student_id: UUID | None = None,
     search: str | None = None,
+    ordering: str | CounselingEncounterOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> CounselingPage:
     page, page_size = _validate_page(page, page_size)
+    resolved = parse_ordering(
+        ordering,
+        CounselingEncounterOrdering,
+        default=CounselingEncounterOrdering.LATEST_ENCOUNTER,
+        error=InvalidCounselingInput,
+    )
     qs = _encounter_queryset().filter(counselor_id=counselor.pk)
     if entry_mode is not None:
         qs = qs.filter(entry_mode=_normalize_entry_mode(entry_mode))
@@ -761,8 +793,8 @@ def list_my_encounters(
             | Q(appointment__reference_code__icontains=token)
         )
     offset = (page - 1) * page_size
-    rows = list(qs.order_by("-started_at", "id")[offset : offset + page_size + 1])
-    return CounselingPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
+    rows = list(qs.order_by(*_ENCOUNTER_ORDER_BY[resolved])[offset : offset + page_size + 1])
+    return CounselingPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size, resolved)
 
 
 def get_encounter_for_actor(*, encounter_id: UUID, actor: User) -> CounselingEncounter:

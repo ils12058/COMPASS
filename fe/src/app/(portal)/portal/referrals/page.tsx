@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
+import { ReferralOrdering } from "@/lib/api/generated/model";
 import { Suspense } from "react";
 
 import { ReferralListSkeleton } from "@/features/referrals/referrals-shared";
@@ -29,6 +31,7 @@ export default async function Page({
     fromDate: singleValue(query.from_date),
     toDate: singleValue(query.to_date),
     includeVoided: singleValue(query.include_voided) === "true",
+    ordering: readOrdering(singleValue(query.ordering), ReferralOrdering),
     page: pageNumber(singleValue(query.page)),
   };
 

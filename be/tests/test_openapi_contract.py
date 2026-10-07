@@ -368,6 +368,63 @@ def _response_statuses(operation: dict) -> set[int]:
     return {int(status) for status in operation["responses"]}
 
 
+def _response_schema(schema: dict, operation: dict) -> str:
+    content = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    return content["$ref"].rsplit("/", 1)[-1]
+
+
+# Every user-sortable collection and its closed ordering enum (ADR-090).
+SORTABLE_COLLECTIONS = {
+    "accountsList": "AccountOrdering",
+    "announcementsListManaged": "AnnouncementManagementOrdering",
+    "announcementsListPublic": "AnnouncementOrdering",
+    "announcementsListVisible": "AnnouncementOrdering",
+    "appointmentsListManaged": "AppointmentListOrdering",
+    "appointmentsListMy": "AppointmentListOrdering",
+    "callSlipsList": "CallSlipOrdering",
+    "counselingListMyEncounters": "CounselingEncounterOrdering",
+    "exitInterviewsList": "ExitInterviewOrdering",
+    "feedbackListCsmResponses": "FeedbackResponseOrdering",
+    "feedbackListCustomerFeedbackResponses": "FeedbackResponseOrdering",
+    "goodMoralListRequests": "GoodMoralOrdering",
+    "graduateTracerListResponses": "GraduateTracerOrdering",
+    "inventoryListStudents": "InventoryRosterOrdering",
+    "platformOperationsListEmailDeliveries": "EmailDeliveryOrdering",
+    "referralsList": "ReferralOrdering",
+    "resourcesListManaged": "ResourceManagementOrdering",
+    "resourcesListPublic": "ResourceOrdering",
+    "resourcesListVisible": "ResourceOrdering",
+    "routineInterviewsListAssigned": "RoutineInterviewOrdering",
+    "servicesList": "ServiceOrdering",
+}
+
+
+def test_sortable_collections_use_closed_orderings_and_report_the_applied_one() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    found: dict[str, str] = {}
+    for operations in schema["paths"].values():
+        for operation in operations.values():
+            parameters = {item["name"]: item for item in operation.get("parameters", [])}
+            if "ordering" not in parameters:
+                continue
+            parameter = parameters["ordering"]
+            assert parameter["in"] == "query"
+            assert parameter["required"] is False
+            # No generic sort/direction pair and no field names: only the closed enum, or omitted.
+            assert not {"sort", "direction", "order_by"} & set(parameters)
+            choices = [item.get("$ref") for item in parameter["schema"]["anyOf"]]
+            enum_name = next(ref for ref in choices if ref).rsplit("/", 1)[-1]
+            assert {"type": "null"} in parameter["schema"]["anyOf"]
+            assert "default" not in parameter["schema"]
+            response = schemas[_response_schema(schema, operation)]
+            assert "ordering" in response["required"]
+            assert response["properties"]["ordering"]["$ref"].endswith("/" + enum_name)
+            assert all(value == value.upper() for value in schemas[enum_name]["enum"])
+            found[operation["operationId"]] = enum_name
+    assert found == SORTABLE_COLLECTIONS
+
+
 def test_publication_update_contract_exposes_consequence_acknowledgement() -> None:
     schema = _generated_schema()
     schemas = schema["components"]["schemas"]
@@ -708,6 +765,7 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
             "year_level",
             "search",
             "student_id",
+            "ordering",
             "page",
             "page_size",
         },
@@ -716,6 +774,7 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
             "status",
             "search",
             "student_id",
+            "ordering",
             "page",
             "page_size",
         },
@@ -725,6 +784,7 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
             "submitted_from",
             "submitted_to",
             "current_employment_state",
+            "ordering",
             "page",
             "page_size",
         },
@@ -735,6 +795,7 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
             "from_date",
             "to_date",
             "include_voided",
+            "ordering",
             "page",
             "page_size",
         },
@@ -744,6 +805,7 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
             "service",
             "submitted_from",
             "submitted_to",
+            "ordering",
             "page",
             "page_size",
         },
@@ -752,6 +814,7 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
             "service",
             "submitted_from",
             "submitted_to",
+            "ordering",
             "page",
             "page_size",
         },
@@ -2149,7 +2212,7 @@ def test_appointment_list_ordering_openapi_contract() -> None:
     schemas = schema["components"]["schemas"]
 
     ordering_schema = schemas["AppointmentListOrdering"]
-    assert ordering_schema["enum"] == ["START_ASC", "START_DESC"]
+    assert ordering_schema["enum"] == ["EARLIEST_START", "LATEST_START"]
 
     for path, operation_id in (
         ("/api/v1/appointments/me", "appointmentsListMy"),
@@ -2163,8 +2226,14 @@ def test_appointment_list_ordering_openapi_contract() -> None:
         ordering = parameters["ordering"]
         assert ordering["in"] == "query"
         assert ordering["required"] is False
+        # Omitted, the backend resolves the default for the selected population (ADR-090).
         ordering_parameter_schema = ordering["schema"]
-        assert ordering_parameter_schema.get("default") == "START_DESC"
+        assert "default" not in ordering_parameter_schema
+        response = _response_schema(schema, operation)
+        assert schemas[response]["properties"]["ordering"]["$ref"].endswith(
+            "/AppointmentListOrdering"
+        )
+        assert "ordering" in schemas[response]["required"]
 
 
 def test_inventory_frontend_readiness_openapi_contract() -> None:

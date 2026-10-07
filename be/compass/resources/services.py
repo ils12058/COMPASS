@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
+from enum import StrEnum
 from io import BytesIO
 from pathlib import PurePosixPath
 from urllib.parse import urlparse
@@ -12,7 +13,8 @@ from uuid import UUID
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q
+from django.db.models.functions import Lower
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -27,6 +29,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.ordering import parse_ordering
 from compass.integrations.storage import ObjectStorage
 from compass.publications import PublicationAudience, PublicationStatus, eligible_audiences_for
 
@@ -68,12 +71,77 @@ class InvalidResourceInput(ResourceError):
     pass
 
 
+class ResourceOrdering(StrEnum):
+    """Closed reader orderings (ADR-090).
+
+    RECOMMENDED is the curated order: ``display_order`` first, then the newest published. The
+    other values let a reader browse the full library in another order.
+    """
+
+    RECOMMENDED = "RECOMMENDED"
+    NEWEST = "NEWEST"
+    OLDEST = "OLDEST"
+    TITLE_ASC = "TITLE_ASC"
+    TITLE_DESC = "TITLE_DESC"
+
+
+class ResourceManagementOrdering(StrEnum):
+    """Closed orderings for Resource management (ADR-090); recent edits come first."""
+
+    DISPLAY_ORDER = "DISPLAY_ORDER"
+    RECENTLY_UPDATED = "RECENTLY_UPDATED"
+    OLDEST_UPDATED = "OLDEST_UPDATED"
+    NEWEST_PUBLISHED = "NEWEST_PUBLISHED"
+    OLDEST_PUBLISHED = "OLDEST_PUBLISHED"
+    TITLE_ASC = "TITLE_ASC"
+    TITLE_DESC = "TITLE_DESC"
+
+
+_READER_ORDER_BY: dict[ResourceOrdering, tuple] = {
+    ResourceOrdering.RECOMMENDED: ("display_order", "-published_at", "-id"),
+    ResourceOrdering.NEWEST: ("-published_at", "-id"),
+    ResourceOrdering.OLDEST: ("published_at", "id"),
+    ResourceOrdering.TITLE_ASC: (Lower("title"), "-published_at", "id"),
+    ResourceOrdering.TITLE_DESC: (Lower("title").desc(), "-published_at", "-id"),
+}
+
+_MANAGEMENT_ORDER_BY: dict[ResourceManagementOrdering, tuple] = {
+    # The same curated order readers see; unpublished Resources follow at each position.
+    ResourceManagementOrdering.DISPLAY_ORDER: (
+        "display_order",
+        F("published_at").desc(nulls_last=True),
+        "-id",
+    ),
+    ResourceManagementOrdering.RECENTLY_UPDATED: ("-updated_at", "-id"),
+    ResourceManagementOrdering.OLDEST_UPDATED: ("updated_at", "id"),
+    ResourceManagementOrdering.NEWEST_PUBLISHED: (
+        F("published_at").desc(nulls_last=True),
+        "-updated_at",
+        "-id",
+    ),
+    ResourceManagementOrdering.OLDEST_PUBLISHED: (
+        F("published_at").asc(nulls_last=True),
+        "updated_at",
+        "id",
+    ),
+    ResourceManagementOrdering.TITLE_ASC: (Lower("title"), "-updated_at", "id"),
+    ResourceManagementOrdering.TITLE_DESC: (Lower("title").desc(), "-updated_at", "-id"),
+}
+
+
+def _reader_ordering(value: str | ResourceOrdering | None) -> ResourceOrdering:
+    return parse_ordering(
+        value, ResourceOrdering, default=ResourceOrdering.RECOMMENDED, error=InvalidResourceInput
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class ResourcePage:
     items: tuple[Resource, ...]
     page: int
     page_size: int
     has_next: bool
+    ordering: ResourceOrdering | ResourceManagementOrdering | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,7 +226,13 @@ def _apply_search(queryset, search: str | None):
     return queryset.filter(Q(title__icontains=term) | Q(body_markdown__icontains=term))
 
 
-def _page(queryset, *, page: int, page_size: int) -> ResourcePage:
+def _page(
+    queryset,
+    *,
+    page: int,
+    page_size: int,
+    ordering: ResourceOrdering | ResourceManagementOrdering | None = None,
+) -> ResourcePage:
     page, page_size = _clean_page(page, page_size)
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
@@ -167,6 +241,7 @@ def _page(queryset, *, page: int, page_size: int) -> ResourcePage:
         page=page,
         page_size=page_size,
         has_next=len(rows) > page_size,
+        ordering=ordering,
     )
 
 
@@ -194,9 +269,11 @@ def list_public_resources(
     category: str | None = None,
     kind: str | None = None,
     search: str | None = None,
+    ordering: str | ResourceOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ResourcePage:
+    resolved = _reader_ordering(ordering)
     queryset = _public_queryset()
     if category is not None:
         queryset = queryset.filter(category=_choice(category, ResourceCategory, "category"))
@@ -204,9 +281,10 @@ def list_public_resources(
         queryset = queryset.filter(kind=_choice(kind, ResourceKind, "kind"))
     queryset = _apply_search(queryset, search)
     return _page(
-        queryset.order_by("display_order", "-published_at", "-id"),
+        queryset.order_by(*_READER_ORDER_BY[resolved]),
         page=page,
         page_size=page_size,
+        ordering=resolved,
     )
 
 
@@ -223,9 +301,11 @@ def list_visible_resources(
     category: str | None = None,
     kind: str | None = None,
     search: str | None = None,
+    ordering: str | ResourceOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ResourcePage:
+    resolved = _reader_ordering(ordering)
     queryset = _visible_queryset(actor)
     if category is not None:
         queryset = queryset.filter(category=_choice(category, ResourceCategory, "category"))
@@ -233,9 +313,10 @@ def list_visible_resources(
         queryset = queryset.filter(kind=_choice(kind, ResourceKind, "kind"))
     queryset = _apply_search(queryset, search)
     return _page(
-        queryset.order_by("display_order", "-published_at", "-id"),
+        queryset.order_by(*_READER_ORDER_BY[resolved]),
         page=page,
         page_size=page_size,
+        ordering=resolved,
     )
 
 
@@ -253,9 +334,16 @@ def list_managed_resources(
     category: str | None = None,
     kind: str | None = None,
     search: str | None = None,
+    ordering: str | ResourceManagementOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> ResourcePage:
+    resolved = parse_ordering(
+        ordering,
+        ResourceManagementOrdering,
+        default=ResourceManagementOrdering.RECENTLY_UPDATED,
+        error=InvalidResourceInput,
+    )
     queryset = Resource.objects.select_related("created_by", "updated_by", "published_by").all()
     if status is not None:
         queryset = queryset.filter(status=_choice(status, PublicationStatus, "status"))
@@ -267,9 +355,10 @@ def list_managed_resources(
         queryset = queryset.filter(kind=_choice(kind, ResourceKind, "kind"))
     queryset = _apply_search(queryset, search)
     return _page(
-        queryset.order_by("-updated_at", "-id"),
+        queryset.order_by(*_MANAGEMENT_ORDER_BY[resolved]),
         page=page,
         page_size=page_size,
+        ordering=resolved,
     )
 
 

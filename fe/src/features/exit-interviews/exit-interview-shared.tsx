@@ -5,7 +5,18 @@ import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
-import type { ExitInterviewStatusValue } from "@/lib/api/generated/model";
+import { ExitInterviewOrdering, type ExitInterviewStatusValue } from "@/lib/api/generated/model";
+import type { SortOption } from "@/components/ui/sort-field";
+
+// Submitted Exit Interviews read by their latest submission; drafts and mixed lists by the last
+// update, which is what changes while a Student is still working (ADR-090).
+export const exitInterviewOrderingOptions: readonly SortOption<ExitInterviewOrdering>[] = [
+  { value: ExitInterviewOrdering.RECENTLY_UPDATED, label: "Recently updated first" },
+  { value: ExitInterviewOrdering.NEWEST_SUBMITTED, label: "Newest submitted first" },
+  { value: ExitInterviewOrdering.OLDEST_SUBMITTED, label: "Oldest submitted first" },
+  { value: ExitInterviewOrdering.STUDENT_ASC, label: "Student A–Z" },
+  { value: ExitInterviewOrdering.STUDENT_DESC, label: "Student Z–A" },
+];
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";

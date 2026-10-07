@@ -7,20 +7,33 @@ import type { FormEvent } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FilterField, FilterToolbar } from "@/components/ui/filter-toolbar";
 import { Input } from "@/components/ui/input";
+import type { AnnouncementOrdering } from "@/lib/api/generated/model";
 
 // The canonical list URL for a submitted search: trimmed, without a page, and without the
-// parameter when the search is blank.
-export function announcementSearchHref(term: string): string {
+// parameter when the search is blank. A chosen order is kept; sorting is not a filter.
+export function announcementSearchHref(term: string, ordering?: AnnouncementOrdering): string {
+  const params = new URLSearchParams();
   const value = term.trim();
-  return value ? `/announcements?${new URLSearchParams({ search: value }).toString()}` : "/announcements";
+  if (value) params.set("search", value);
+  if (ordering) params.set("ordering", ordering);
+  const query = params.toString();
+  return query ? `/announcements?${query}` : "/announcements";
 }
 
-export function AnnouncementSearch({ search }: { search?: string }) {
+export function AnnouncementSearch({
+  search,
+  ordering,
+}: {
+  search?: string;
+  ordering?: AnnouncementOrdering;
+}) {
   const router = useRouter();
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    router.push(announcementSearchHref(String(new FormData(event.currentTarget).get("search") ?? "")));
+    router.push(
+      announcementSearchHref(String(new FormData(event.currentTarget).get("search") ?? ""), ordering),
+    );
   }
 
   return (
@@ -28,7 +41,7 @@ export function AnnouncementSearch({ search }: { search?: string }) {
       <FilterToolbar
         fieldsClassName="sm:grid-cols-1 lg:grid-cols-[minmax(0,28rem)]"
         actions={<>
-          {search ? <Link href="/announcements" className={buttonVariants({ variant: "quiet" })}>Clear search</Link> : null}
+          {search ? <Link href={announcementSearchHref("", ordering)} className={buttonVariants({ variant: "quiet" })}>Clear search</Link> : null}
           <Button type="submit">Search</Button>
         </>}
       >

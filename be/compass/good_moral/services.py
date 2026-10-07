@@ -7,10 +7,12 @@ import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
+from enum import StrEnum
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Case, F, Q, When
+from django.db.models.functions import Coalesce, Lower
 from django.utils import timezone
 
 from compass.accounts.models import StudentLifecycleStatus, User
@@ -27,6 +29,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.ordering import parse_ordering
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 from compass.documents.template_specs import (
     LayoutFamily,
@@ -130,6 +133,58 @@ class InvalidGoodMoralInput(GoodMoralError):
     pass
 
 
+class GoodMoralOrdering(StrEnum):
+    """Closed operational Good Moral orderings (ADR-090).
+
+    Chronology is the time a request reached its current status: requested, ready for issuance,
+    issued, or cancelled. Requested and ready requests are queues and default to the oldest
+    waiting; issued and cancelled ones are history and default to the newest.
+    """
+
+    OLDEST_FIRST = "OLDEST_FIRST"
+    NEWEST_FIRST = "NEWEST_FIRST"
+    APPLICANT_ASC = "APPLICANT_ASC"
+    APPLICANT_DESC = "APPLICANT_DESC"
+
+
+_GOOD_MORAL_QUEUE_STATUSES = frozenset(
+    {GoodMoralStatus.REQUESTED, GoodMoralStatus.READY_FOR_ISSUANCE}
+)
+
+
+def _good_moral_status_since():
+    """When each request reached its current status, falling back to the request time."""
+
+    return Coalesce(
+        Case(
+            When(status=GoodMoralStatus.READY_FOR_ISSUANCE, then=F("prepared_at")),
+            When(status=GoodMoralStatus.ISSUED, then=F("issued_at")),
+            When(status=GoodMoralStatus.CANCELLED, then=F("cancelled_at")),
+            default=F("created_at"),
+        ),
+        F("created_at"),
+    )
+
+
+_GOOD_MORAL_ORDER_BY: dict[GoodMoralOrdering, tuple] = {
+    GoodMoralOrdering.OLDEST_FIRST: ("status_since", "created_at", "id"),
+    GoodMoralOrdering.NEWEST_FIRST: ("-status_since", "-created_at", "-id"),
+    GoodMoralOrdering.APPLICANT_ASC: (Lower("applicant_name_snapshot"), "id"),
+    GoodMoralOrdering.APPLICANT_DESC: (Lower("applicant_name_snapshot").desc(), "-id"),
+}
+
+
+def _good_moral_ordering(
+    value: str | GoodMoralOrdering | None, *, status: str | None
+) -> GoodMoralOrdering:
+    default = (
+        GoodMoralOrdering.OLDEST_FIRST
+        if status in _GOOD_MORAL_QUEUE_STATUSES
+        else GoodMoralOrdering.NEWEST_FIRST
+    )
+    return parse_ordering(value, GoodMoralOrdering, default=default, error=InvalidGoodMoralInput)
+
+
 @dataclass(frozen=True, slots=True)
 class GoodMoralPage:
     items: tuple[GoodMoralRequest, ...]
@@ -137,6 +192,7 @@ class GoodMoralPage:
     page_size: int
     has_next: bool
     form_revisions: tuple[FormRevision, ...] = ()
+    ordering: GoodMoralOrdering | None = None
 
 
 def _queryset():
@@ -585,6 +641,7 @@ def list_requests(
     search: str | None = None,
     form_revision_id: UUID | None = None,
     academic_year_id: UUID | None = None,
+    ordering: str | GoodMoralOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> GoodMoralPage:
@@ -625,10 +682,15 @@ def list_requests(
                     | Q(applicant_name_snapshot__icontains=token)
                 )
             queryset = queryset.filter(identity | Q(official_receipt_number__icontains=term))
-    queryset = queryset.order_by("-created_at", "id")
+    resolved = _good_moral_ordering(ordering, status=status)
+    queryset = queryset.annotate(status_since=_good_moral_status_since()).order_by(
+        *_GOOD_MORAL_ORDER_BY[resolved]
+    )
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
-    return GoodMoralPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size, revisions)
+    return GoodMoralPage(
+        tuple(rows[:page_size]), page, page_size, len(rows) > page_size, revisions, resolved
+    )
 
 
 def get_request(*, actor: User, request_id: UUID) -> GoodMoralRequest:

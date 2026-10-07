@@ -114,7 +114,7 @@ def test_my_appointment_reference_search_refines_self_filters_before_pagination(
                 "upcoming": True,
                 "from_date": start.date(),
                 "to_date": start.date(),
-                "ordering": "START_ASC",
+                "ordering": "EARLIEST_START",
                 "page_size": 1,
             },
         )

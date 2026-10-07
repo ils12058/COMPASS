@@ -43,6 +43,7 @@ from .services import (
     GraduateTracerGraduatedStudentRequired,
     GraduateTracerNotFound,
     GraduateTracerNotPermitted,
+    GraduateTracerOrdering,
     InvalidGraduateTracerInput,
     ensure_my_response,
     get_my_response,
@@ -348,6 +349,8 @@ class GraduateTracerPageResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or the newest submission first.
+    ordering: GraduateTracerOrdering
 
 
 def _context(request) -> AuditContext:
@@ -629,6 +632,7 @@ def graduate_tracer_list_responses(
     submitted_from: date | None = None,
     submitted_to: date | None = None,
     current_employment_state: GTSEmploymentStateValue | None = None,
+    ordering: GraduateTracerOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
@@ -643,6 +647,7 @@ def graduate_tracer_list_responses(
             current_employment_state=(
                 current_employment_state.value if current_employment_state is not None else None
             ),
+            ordering=ordering,
             page=page,
             page_size=page_size,
         )
@@ -653,6 +658,7 @@ def graduate_tracer_list_responses(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
     }
 
 

@@ -11,6 +11,8 @@ import { WorkspaceUnavailable } from "@/features/portal/components/workspace-una
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { Notice } from "@/components/ui/notice";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
+import type { SortOption } from "@/components/ui/sort-field";
+import { ReferralOrdering } from "@/lib/api/generated/model";
 
 const knownReferralErrors: Record<string, string> = {
   permission_denied: "You do not have permission to use this Referral workspace.",
@@ -24,6 +26,14 @@ const knownReferralErrors: Record<string, string> = {
   referral_completed_call_slip_conflict: "This Referral cannot be voided because its linked Call Slip records a completed interview.",
   idempotency_key_conflict: "This creation attempt no longer matches its original details. Review the form and submit again.",
 };
+
+// The date on the Referral is the canonical chronology; the newest referred comes first (ADR-090).
+export const referralOrderingOptions: readonly SortOption<ReferralOrdering>[] = [
+  { value: ReferralOrdering.NEWEST_REFERRED, label: "Newest referred first" },
+  { value: ReferralOrdering.OLDEST_REFERRED, label: "Oldest referred first" },
+  { value: ReferralOrdering.STUDENT_ASC, label: "Student A–Z" },
+  { value: ReferralOrdering.STUDENT_DESC, label: "Student Z–A" },
+];
 
 export function referralErrorCode(error: unknown): string | undefined {
   return error instanceof CompassApiError ? readApiErrorCode(error.body) : undefined;

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
 import { AnnouncementList } from "@/features/public/announcements/announcement-list";
+import { readOrdering } from "@/features/portal/components/list-ordering-params";
+import { AnnouncementOrdering } from "@/lib/api/generated/model";
 import { PublicPageHeader } from "@/features/public/shared/public-page-header";
 
 export const metadata: Metadata = { title: "Announcements" };
@@ -17,9 +19,13 @@ function first(value: string | string[] | undefined): string | undefined {
 export default async function AnnouncementsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string | string[]; search?: string | string[] }>;
+  searchParams: Promise<{
+    page?: string | string[];
+    search?: string | string[];
+    ordering?: string | string[];
+  }>;
 }) {
-  const { page, search } = await searchParams;
+  const { page, search, ordering } = await searchParams;
 
   return (
     <main>
@@ -31,7 +37,12 @@ export default async function AnnouncementsPage({
       {/* Same left edge as the page title; the list keeps a readable width. */}
       <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8 sm:py-9">
         <div className="max-w-4xl">
-          <AnnouncementList mode="index" page={readPage(page)} search={first(search)?.trim() || undefined} />
+          <AnnouncementList
+            mode="index"
+            page={readPage(page)}
+            search={first(search)?.trim() || undefined}
+            ordering={readOrdering(first(ordering) ?? null, AnnouncementOrdering)}
+          />
         </div>
       </div>
     </main>

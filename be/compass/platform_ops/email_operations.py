@@ -17,6 +17,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.common.correlation import get_current_request_id
+from compass.common.ordering import parse_ordering
 from compass.notifications.models import EmailDelivery, EmailDeliveryStatus
 
 DEFAULT_PAGE_SIZE = 20
@@ -98,12 +99,34 @@ class EmailDeliveryItem:
     manual_retry_blocker: EmailDeliveryRetryBlocker | None
 
 
+class EmailDeliveryOrdering(StrEnum):
+    """Closed EmailDelivery orderings (ADR-090).
+
+    Pending, processing, and failed deliveries are operational work and default to the oldest
+    first, like the summary's "oldest pending". Sent, cancelled, and unfiltered lists are history
+    and default to the newest first.
+    """
+
+    NEWEST = "NEWEST"
+    OLDEST = "OLDEST"
+
+
+_ACTIONABLE_EMAIL_STATUSES = frozenset(
+    {EmailDeliveryStatus.PENDING, EmailDeliveryStatus.PROCESSING, EmailDeliveryStatus.FAILED}
+)
+_EMAIL_ORDER_BY: dict[EmailDeliveryOrdering, tuple[str, ...]] = {
+    EmailDeliveryOrdering.NEWEST: ("-created_at", "-id"),
+    EmailDeliveryOrdering.OLDEST: ("created_at", "id"),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class EmailDeliveryPage:
     items: tuple[EmailDeliveryItem, ...]
     page: int
     page_size: int
     has_next: bool
+    ordering: EmailDeliveryOrdering | None = None
 
 
 def _safe_failure_code(value: str) -> EmailDeliveryFailureCode | None:
@@ -214,14 +237,25 @@ def list_email_deliveries(
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     status: str | None = None,
+    ordering: str | EmailDeliveryOrdering | None = None,
 ) -> EmailDeliveryPage:
     page, page_size = _validate_page(page=page, page_size=page_size)
     normalized_status = _normalize_status(status)
+    resolved = parse_ordering(
+        ordering,
+        EmailDeliveryOrdering,
+        default=(
+            EmailDeliveryOrdering.OLDEST
+            if normalized_status in _ACTIONABLE_EMAIL_STATUSES
+            else EmailDeliveryOrdering.NEWEST
+        ),
+        error=EmailDeliveryPaginationError,
+    )
 
     queryset = (
         EmailDelivery.objects.select_related("notification")
         .annotate(recipient_active=F("notification__recipient__is_active"))
-        .order_by("-created_at", "-id")
+        .order_by(*_EMAIL_ORDER_BY[resolved])
     )
     if normalized_status is not None:
         queryset = queryset.filter(status=normalized_status)
@@ -237,6 +271,7 @@ def list_email_deliveries(
         page=page,
         page_size=page_size,
         has_next=has_next,
+        ordering=resolved,
     )
 
 

@@ -1361,14 +1361,24 @@ def test_self_appointment_list_ordering_defaults_filters_and_paginates_before_sl
     expected_desc = list(reversed(expected_asc))
 
     student_client = auth_client(student)
-    default_rows = student_client.get("/api/v1/appointments/me").json()["items"]
+    # All statuses read as history (latest first); scheduled ones read as a schedule.
+    default_page = student_client.get("/api/v1/appointments/me").json()
+    assert default_page["ordering"] == "LATEST_START"
+    default_rows = default_page["items"]
+    scheduled_page = student_client.get("/api/v1/appointments/me", {"status": "SCHEDULED"}).json()
+    assert scheduled_page["ordering"] == "EARLIEST_START"
+    assert [row["id"] for row in scheduled_page["items"]] == expected_asc
+    upcoming_page = student_client.get("/api/v1/appointments/me", {"upcoming": "true"}).json()
+    assert upcoming_page["ordering"] == "EARLIEST_START"
+    history_page = student_client.get("/api/v1/appointments/me", {"status": "COMPLETED"}).json()
+    assert history_page["ordering"] == "LATEST_START"
     explicit_desc = student_client.get(
         "/api/v1/appointments/me",
-        {"ordering": "START_DESC"},
+        {"ordering": "LATEST_START"},
     ).json()["items"]
     asc_rows = student_client.get(
         "/api/v1/appointments/me",
-        {"ordering": "START_ASC"},
+        {"ordering": "EARLIEST_START"},
     ).json()["items"]
     assert [row["id"] for row in default_rows] == expected_desc
     assert [row["id"] for row in explicit_desc] == expected_desc
@@ -1378,7 +1388,7 @@ def test_self_appointment_list_ordering_defaults_filters_and_paginates_before_sl
         auth_client(provider)
         .get(
             "/api/v1/appointments/me",
-            {"ordering": "START_ASC"},
+            {"ordering": "EARLIEST_START"},
         )
         .json()["items"]
     )
@@ -1386,11 +1396,11 @@ def test_self_appointment_list_ordering_defaults_filters_and_paginates_before_sl
 
     first_page = student_client.get(
         "/api/v1/appointments/me",
-        {"ordering": "START_ASC", "page": 1, "page_size": 2},
+        {"ordering": "EARLIEST_START", "page": 1, "page_size": 2},
     ).json()
     second_page = student_client.get(
         "/api/v1/appointments/me",
-        {"ordering": "START_ASC", "page": 2, "page_size": 2},
+        {"ordering": "EARLIEST_START", "page": 2, "page_size": 2},
     ).json()
     assert [row["id"] for row in first_page["items"]] == expected_asc[:2]
     assert [row["id"] for row in second_page["items"]] == expected_asc[2:]
@@ -1399,11 +1409,11 @@ def test_self_appointment_list_ordering_defaults_filters_and_paginates_before_sl
 
     desc_first = student_client.get(
         "/api/v1/appointments/me",
-        {"ordering": "START_DESC", "page": 1, "page_size": 2},
+        {"ordering": "LATEST_START", "page": 1, "page_size": 2},
     ).json()
     desc_second = student_client.get(
         "/api/v1/appointments/me",
-        {"ordering": "START_DESC", "page": 2, "page_size": 2},
+        {"ordering": "LATEST_START", "page": 2, "page_size": 2},
     ).json()
     assert [row["id"] for row in desc_first["items"]] == expected_desc[:2]
     assert [row["id"] for row in desc_second["items"]] == expected_desc[2:]
@@ -1414,7 +1424,7 @@ def test_self_appointment_list_ordering_defaults_filters_and_paginates_before_sl
             "status": "SCHEDULED",
             "from_date": start.date().isoformat(),
             "to_date": start.date().isoformat(),
-            "ordering": "START_ASC",
+            "ordering": "EARLIEST_START",
         },
     ).json()
     assert [row["id"] for row in filtered["items"]] == expected_asc
@@ -1494,8 +1504,8 @@ def test_managed_appointment_ordering_composes_with_search_filters_and_scope():
     client = auth_client(provider)
 
     for ordering, expected in (
-        ("START_ASC", expected_asc),
-        ("START_DESC", expected_desc),
+        ("EARLIEST_START", expected_asc),
+        ("LATEST_START", expected_desc),
     ):
         page_one = client.get(
             "/api/v1/appointments",
@@ -1538,7 +1548,7 @@ def test_managed_appointment_ordering_composes_with_search_filters_and_scope():
     direct = list_managed_appointments(
         actor=provider,
         search="2026-ORDER",
-        ordering=AppointmentListOrdering.START_ASC,
+        ordering=AppointmentListOrdering.EARLIEST_START,
     )
     assert [row.pk for row in direct.items] == [
         item.pk for item in sorted(visible, key=lambda row: row.starts_at)

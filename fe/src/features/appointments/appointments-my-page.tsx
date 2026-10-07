@@ -10,7 +10,10 @@ import { FloatingListTools, ListSearchField } from "@/components/ui/floating-lis
 import { Input } from "@/components/ui/input";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import {
   AppointmentListSkeleton,
@@ -19,6 +22,7 @@ import {
   AppointmentsPageHeading,
   AppointmentsUnavailable,
   appointmentErrorMessage,
+  appointmentOrderingOptions,
   deliveryModeLabel,
   formatAppointmentDateTime,
   UPCOMING_APPOINTMENTS_VIEW,
@@ -34,10 +38,6 @@ import { useAppointmentsListMy } from "@/lib/api/generated/appointments/appointm
 
 function isStatus(value: string | null): value is AppointmentStatus {
   return value !== null && Object.values(AppointmentStatus).includes(value as AppointmentStatus);
-}
-
-function isOrdering(value: string | null): value is AppointmentListOrdering {
-  return value !== null && Object.values(AppointmentListOrdering).includes(value as AppointmentListOrdering);
 }
 
 function pageValue(value: string | null): number {
@@ -59,10 +59,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
       : AppointmentStatus.SCHEDULED;
   const fromDate = searchParams.get("from") ?? "";
   const toDate = searchParams.get("to") ?? "";
-  const orderingParam = searchParams.get("ordering");
-  const ordering = isOrdering(orderingParam)
-    ? orderingParam
-    : AppointmentListOrdering.START_ASC;
+  const { requested: requestedOrdering, setOrdering } = useListOrdering(AppointmentListOrdering);
   const page = pageValue(searchParams.get("page"));
   const search = searchParams.get("search") ?? "";
 
@@ -73,7 +70,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
       ...(upcoming ? { upcoming: true } : {}),
       ...(fromDate ? { from_date: fromDate } : {}),
       ...(toDate ? { to_date: toDate } : {}),
-      ordering,
+      ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
       page,
       page_size: 20,
     },
@@ -94,19 +91,21 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
 
   const pageData = list.data?.data;
   const items = pageData?.items ?? [];
-  const filtering = Boolean(search || ordering !== AppointmentListOrdering.START_ASC || fromDate || toDate || (statusParam !== null && statusParam !== "ALL"));
-  // Status and Order count only when they differ from the list's defaults.
+  const filtering = Boolean(search || fromDate || toDate || (statusParam !== null && statusParam !== "ALL"));
+  // Status counts only when it differs from the list's default. Sorting is not a filter, and
+  // clearing the filters keeps the chosen order.
   const filterCount = [
     status !== AppointmentStatus.SCHEDULED,
     fromDate,
     toDate,
-    ordering !== AppointmentListOrdering.START_ASC,
   ].filter(Boolean).length;
   const clearHref = updateAppointmentQuery(
     pathname,
     new URLSearchParams(searchParams.toString()),
-    { search: "", status: "ALL", from: "", to: "", ordering: "" },
+    { search: "", status: "ALL", from: "", to: "" },
   );
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = requestedOrdering ?? pageData?.ordering;
 
   return (
     <section aria-labelledby="my-appointments-heading">
@@ -122,6 +121,8 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
       />
 
       <form action={pathname} method="get" key={searchParams.toString()} role="search" aria-label="My Appointments">
+      {/* Applying filters keeps the reader's chosen order. */}
+      {requestedOrdering ? <input type="hidden" name="ordering" value={requestedOrdering} /> : null}
       <FloatingListTools
         submits
         label="Appointment filters"
@@ -159,15 +160,6 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
             name="to" defaultValue={toDate}
           />
         </FilterField>
-        <FilterField label="Order" htmlFor="my-appointment-order">
-          <Select
-            id="my-appointment-order"
-            name="ordering" defaultValue={ordering}
-          >
-            <option value={AppointmentListOrdering.START_ASC}>Earliest start first</option>
-            <option value={AppointmentListOrdering.START_DESC}>Latest start first</option>
-          </Select>
-        </FilterField>
         </>}
       >
         <ListSearchField id="my-appointment-search" name="search" label="Search by Appointment reference" placeholder="Search by Appointment reference" defaultValue={search} maxLength={160} />
@@ -178,6 +170,14 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
         <PanelHeader
           title="Appointments"
           titleId="my-appointments-results-heading"
+          actions={
+            <SortField
+              id="my-appointment-sort"
+              value={ordering}
+              options={appointmentOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
           context={
             list.isFetching && !list.isPending
               ? "Refreshing Appointments…"
@@ -232,7 +232,16 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
                   <tr>
                     <th scope="col" className={dataTable.headerCell}>{access.isStudent ? "Service" : "Student"}</th>
                     <th scope="col" className={dataTable.headerCell}>{access.isStudent ? "Counselor" : "Service"}</th>
-                    <th scope="col" className={dataTable.headerCell}>Date and time</th>
+                    <SortableColumnHeader
+                      label="Date and time"
+                      ascending={AppointmentListOrdering.EARLIEST_START}
+                      descending={AppointmentListOrdering.LATEST_START}
+                      ascendingLabel="Earliest start first"
+                      descendingLabel="Latest start first"
+                      current={ordering}
+                      onSort={setOrdering}
+                      className={dataTable.headerCell}
+                    />
                     <th scope="col" className={dataTable.headerCell}>Delivery</th>
                     <th scope="col" className={dataTable.headerCell}>Status</th>
                   </tr>

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from enum import StrEnum
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
@@ -18,6 +19,7 @@ from compass.audit.actions import CSM_SUBMITTED, CUSTOMER_FEEDBACK_SUBMITTED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.ordering import parse_ordering
 from compass.institutional_forms.filter_options import represented_form_revisions
 from compass.institutional_forms.models import FormRevision
 from compass.institutional_forms.services import (
@@ -91,6 +93,30 @@ class InvalidFeedbackInput(FeedbackError):
     pass
 
 
+class FeedbackResponseOrdering(StrEnum):
+    """Closed orderings for submitted Feedback and CSM responses (ADR-090); newest first."""
+
+    NEWEST_SUBMITTED = "NEWEST_SUBMITTED"
+    OLDEST_SUBMITTED = "OLDEST_SUBMITTED"
+
+
+_FEEDBACK_ORDER_BY: dict[FeedbackResponseOrdering, tuple[str, ...]] = {
+    FeedbackResponseOrdering.NEWEST_SUBMITTED: ("-submitted_at", "-id"),
+    FeedbackResponseOrdering.OLDEST_SUBMITTED: ("submitted_at", "id"),
+}
+
+
+def _feedback_response_ordering(
+    value: str | FeedbackResponseOrdering | None,
+) -> FeedbackResponseOrdering:
+    return parse_ordering(
+        value,
+        FeedbackResponseOrdering,
+        default=FeedbackResponseOrdering.NEWEST_SUBMITTED,
+        error=InvalidFeedbackInput,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class FeedbackPage:
     items: tuple[object, ...]
@@ -98,6 +124,7 @@ class FeedbackPage:
     page_size: int
     has_next: bool
     form_revisions: tuple[FormRevision, ...] = ()
+    ordering: FeedbackResponseOrdering | None = None
 
 
 def _validate_student_account(actor: User) -> None:
@@ -633,11 +660,13 @@ def list_customer_feedback(
     submitted_from: date | None = None,
     submitted_to: date | None = None,
     form_revision_id: UUID | None = None,
+    ordering: str | FeedbackResponseOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> FeedbackPage:
     _validate_viewer(actor, "feedback.view_customer_feedback")
     page, page_size = _pagination(page, page_size)
+    resolved = _feedback_response_ordering(ordering)
     term = _optional_text(search, "search", MAX_SEARCH_LENGTH)
     _validate_submission_range(submitted_from, submitted_to)
     queryset = _customer_queryset()
@@ -659,10 +688,12 @@ def list_customer_feedback(
         queryset = queryset.filter(
             submitted_at__lt=_submission_boundary(submitted_to, following_day=True)
         )
-    queryset = queryset.order_by("-submitted_at", "id")
+    queryset = queryset.order_by(*_FEEDBACK_ORDER_BY[resolved])
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
-    return FeedbackPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size, revisions)
+    return FeedbackPage(
+        tuple(rows[:page_size]), page, page_size, len(rows) > page_size, revisions, resolved
+    )
 
 
 def get_customer_feedback(*, actor: User, response_id: UUID) -> CustomerFeedbackResponse:
@@ -682,9 +713,11 @@ def list_csm_responses(
     service: str | None = None,
     submitted_from: date | None = None,
     submitted_to: date | None = None,
+    ordering: str | FeedbackResponseOrdering | None = None,
 ) -> FeedbackPage:
     _validate_viewer(actor, "feedback.view_csm")
     page, page_size = _pagination(page, page_size)
+    resolved = _feedback_response_ordering(ordering)
     service_term = _optional_text(
         service,
         "service",
@@ -703,10 +736,12 @@ def list_csm_responses(
         queryset = queryset.filter(
             submitted_at__lt=_submission_boundary(submitted_to, following_day=True)
         )
-    queryset = queryset.order_by("-submitted_at", "id")
+    queryset = queryset.order_by(*_FEEDBACK_ORDER_BY[resolved])
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
-    return FeedbackPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
+    return FeedbackPage(
+        tuple(rows[:page_size]), page, page_size, len(rows) > page_size, ordering=resolved
+    )
 
 
 def get_csm_response(*, actor: User, response_id: UUID) -> ClientSatisfactionResponse:

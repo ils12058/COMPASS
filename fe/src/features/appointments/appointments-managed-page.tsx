@@ -11,7 +11,10 @@ import { FloatingListTools, ListSearchField } from "@/components/ui/floating-lis
 import { Input } from "@/components/ui/input";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import {
   AppointmentListSkeleton,
@@ -25,7 +28,7 @@ import {
   UPCOMING_APPOINTMENTS_VIEW,
   updateAppointmentQuery,
 } from "@/features/appointments/appointments-shared";
-import { AppointmentsUnavailable } from "@/features/appointments/appointments-shared";
+import { AppointmentsUnavailable, appointmentOrderingOptions } from "@/features/appointments/appointments-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   AppointmentListOrdering,
@@ -43,10 +46,6 @@ function isDeliveryMode(value: string | null): value is DeliveryMode {
   return value !== null && Object.values(DeliveryMode).includes(value as DeliveryMode);
 }
 
-function isOrdering(value: string | null): value is AppointmentListOrdering {
-  return value !== null && Object.values(AppointmentListOrdering).includes(value as AppointmentListOrdering);
-}
-
 const UUID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 function pageValue(value: string | null): number {
@@ -61,7 +60,6 @@ type ManagedFilters = {
   mode: string;
   from: string;
   to: string;
-  ordering: string;
 };
 
 // Search and filters apply together through one Apply action. The parent remounts this form when
@@ -87,14 +85,13 @@ function ManagedAppointmentFilters({
 }) {
   const [draft, setDraft] = useState(applied);
   const appliedServiceKnown = serviceOptions.some((service) => service.id === applied.service);
-  // Status and Order count only when they differ from the queue's defaults.
+  // Status counts only when it differs from the queue's default. Sorting is not a filter.
   const advancedCount = [
     canFilterService ? applied.service : "",
     applied.status !== AppointmentStatus.SCHEDULED ? applied.status : "",
     applied.mode,
     applied.from,
     applied.to,
-    applied.ordering !== AppointmentListOrdering.START_ASC ? applied.ordering : "",
   ].filter(Boolean).length;
 
   function set(name: keyof ManagedFilters, value: string) {
@@ -170,12 +167,6 @@ function ManagedAppointmentFilters({
         <FilterField label="To" htmlFor="managed-appointment-to">
           <Input id="managed-appointment-to" type="date" value={draft.to} onChange={(event) => set("to", event.target.value)} />
         </FilterField>
-        <FilterField label="Order" htmlFor="managed-appointment-order">
-          <Select id="managed-appointment-order" value={draft.ordering} onChange={(event) => set("ordering", event.target.value)}>
-            <option value={AppointmentListOrdering.START_ASC}>Earliest start first</option>
-            <option value={AppointmentListOrdering.START_DESC}>Latest start first</option>
-          </Select>
-        </FilterField>
           </>
         }
       >
@@ -208,10 +199,7 @@ function ManagedAppointmentsList() {
   const mode = isDeliveryMode(modeParam) ? modeParam : undefined;
   const fromDate = searchParams.get("from") ?? "";
   const toDate = searchParams.get("to") ?? "";
-  const orderingParam = searchParams.get("ordering");
-  const ordering = isOrdering(orderingParam)
-    ? orderingParam
-    : AppointmentListOrdering.START_ASC;
+  const { requested: requestedOrdering, setOrdering } = useListOrdering(AppointmentListOrdering);
   const page = pageValue(searchParams.get("page"));
   // Service choices come from the Service Catalog, which every Appointment
   // manager can read; the list shows Service names, never identifiers.
@@ -233,7 +221,7 @@ function ManagedAppointmentsList() {
       ...(mode ? { delivery_mode: mode } : {}),
       ...(fromDate ? { from_date: fromDate } : {}),
       ...(toDate ? { to_date: toDate } : {}),
-      ordering,
+      ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
       page,
       page_size: 20,
     },
@@ -252,7 +240,6 @@ function ManagedAppointmentsList() {
           mode: next.mode,
           from: next.from,
           to: next.to,
-          ordering: next.ordering,
         },
       ),
       { scroll: false },
@@ -274,6 +261,8 @@ function ManagedAppointmentsList() {
   const pageData = list.data?.data;
   const items = pageData?.items ?? [];
   const hasFilters = Boolean(search || serviceId || mode || fromDate || toDate || (statusParam !== null && statusParam !== "ALL"));
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = requestedOrdering ?? pageData?.ordering;
 
   return (
     <section aria-labelledby="manage-appointments-heading">
@@ -292,7 +281,6 @@ function ManagedAppointmentsList() {
           mode: mode ?? "",
           from: fromDate,
           to: toDate,
-          ordering,
         }}
         hasFilters={hasFilters}
         canFilterService={canFilterService}
@@ -314,6 +302,14 @@ function ManagedAppointmentsList() {
         <PanelHeader
           title="Appointments"
           titleId="managed-appointments-results-heading"
+          actions={
+            <SortField
+              id="managed-appointment-sort"
+              value={ordering}
+              options={appointmentOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
           context={
             list.isFetching && !list.isPending
               ? "Refreshing Appointments…"
@@ -370,7 +366,16 @@ function ManagedAppointmentsList() {
                     <th scope="col" className={dataTable.headerCell}>Student</th>
                     <th scope="col" className={dataTable.headerCell}>Service</th>
                     <th scope="col" className={dataTable.headerCell}>Counselor</th>
-                    <th scope="col" className={dataTable.headerCell}>Date and time</th>
+                    <SortableColumnHeader
+                      label="Date and time"
+                      ascending={AppointmentListOrdering.EARLIEST_START}
+                      descending={AppointmentListOrdering.LATEST_START}
+                      ascendingLabel="Earliest start first"
+                      descendingLabel="Latest start first"
+                      current={ordering}
+                      onSort={setOrdering}
+                      className={dataTable.headerCell}
+                    />
                     <th scope="col" className={dataTable.headerCell}>Delivery</th>
                     <th scope="col" className={dataTable.headerCell}>Status</th>
                   </tr>

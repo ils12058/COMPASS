@@ -13,6 +13,9 @@ import { FloatingListTools, ListSearchField } from "@/components/ui/floating-lis
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { Select } from "@/components/ui/select";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
+import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
@@ -21,11 +24,12 @@ import {
   InventoryHeading,
   InventoryStatus,
   inventoryErrorMessage,
+  inventoryRosterOrderingOptions,
 } from "@/features/inventory/inventory-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useAcademicYearsList } from "@/lib/api/generated/academic-years/academic-years";
 import { useInventoryListStudents } from "@/lib/api/generated/inventory/inventory";
-import { InventoryStatusValue, type AcademicYearResponse } from "@/lib/api/generated/model";
+import { InventoryRosterOrdering, InventoryStatusValue, type AcademicYearResponse } from "@/lib/api/generated/model";
 
 const pageSize = 20;
 
@@ -183,6 +187,7 @@ export function CounselorInventoryRoster() {
   const formRevisionId = params.get("form_revision_id") ?? "";
   const requestedPage = Number.parseInt(params.get("page") ?? "1", 10);
   const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const { requested: requestedOrdering, setOrdering } = useListOrdering(InventoryRosterOrdering);
   const canFilterYear = user.capabilities.includes("academic_years.view");
   const academicYears = useAcademicYearsList({
     query: { enabled: access.canViewRoster && canFilterYear, retry: false },
@@ -204,6 +209,7 @@ export function CounselorInventoryRoster() {
       ...(yearLevel ? { year_level: yearLevel } : {}),
       ...(search ? { search } : {}),
       ...(formRevisionId ? { form_revision_id: formRevisionId } : {}),
+      ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
       page,
       page_size: pageSize,
     },
@@ -211,6 +217,8 @@ export function CounselorInventoryRoster() {
   );
   const response = roster.data?.data;
   const hasFilters = Boolean(formRevisionId || validAcademicYearId || status || yearLevel || search);
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = requestedOrdering ?? response?.ordering;
 
   useEffect(() => {
     const next = new URLSearchParams(paramsString);
@@ -276,7 +284,12 @@ export function CounselorInventoryRoster() {
         yearsFailed={academicYears.isError}
         appliedYearKnown={Boolean(selectedYear)}
         onApply={applyFilters}
-        onClear={() => router.replace(pathname, { scroll: false })}
+        // Clearing the filters keeps the chosen order; sorting is not a filter.
+        onClear={() =>
+          router.replace(requestedOrdering ? `${pathname}?ordering=${requestedOrdering}` : pathname, {
+            scroll: false,
+          })
+        }
         notes={academicYears.isError && canFilterYear || missingYearUnresolved || suppressMissing ? (
           <>
             {academicYears.isError && canFilterYear ? (
@@ -296,6 +309,14 @@ export function CounselorInventoryRoster() {
         <PanelHeader
           title="Students"
           titleId="inventory-roster-results-heading"
+          actions={
+            <SortField
+              id="inventory-roster-sort"
+              value={ordering}
+              options={inventoryRosterOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
           context={roster.isFetching && !roster.isPending
             ? "Refreshing roster…"
             : response && !roster.isError
@@ -322,12 +343,28 @@ export function CounselorInventoryRoster() {
               <caption className="sr-only">Counselor-scoped annual Student Individual Inventory roster</caption>
               <thead className={dataTable.head}>
                 <tr>
-                  <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell} min-w-64`}>Student</th>
+                  <SortableColumnHeader
+                    label="Student"
+                    ascending={InventoryRosterOrdering.STUDENT_ASC}
+                    descending={InventoryRosterOrdering.STUDENT_DESC}
+                    ascendingLabel="Student A–Z"
+                    descendingLabel="Student Z–A"
+                    current={ordering}
+                    onSort={setOrdering}
+                    className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell} min-w-64`}
+                  />
                   <th scope="col" className={`${dataTable.headerCell} min-w-32`}>Academic Year</th>
                   <th scope="col" className={`${dataTable.headerCell} min-w-48`}>Program</th>
                   <th scope="col" className={`${dataTable.headerCell} min-w-24`}>Year Level</th>
                   <th scope="col" className={`${dataTable.headerCell} min-w-44`}>Status</th>
-                  <th scope="col" className={`${dataTable.headerCell} min-w-40`}>Submitted</th>
+                  <SortableColumnHeader
+                    label="Submitted"
+                    descending={InventoryRosterOrdering.RECENTLY_SUBMITTED}
+                    descendingLabel="Recently submitted first"
+                    current={ordering}
+                    onSort={setOrdering}
+                    className={`${dataTable.headerCell} min-w-40`}
+                  />
                 </tr>
               </thead>
               <tbody className={dataTable.body}>

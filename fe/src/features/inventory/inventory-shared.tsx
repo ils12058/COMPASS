@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
+import { InventoryRosterOrdering } from "@/lib/api/generated/model";
+import type { SortOption } from "@/components/ui/sort-field";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
@@ -187,3 +189,11 @@ export function DefinitionValue({
     </div>
   );
 }
+
+// The roster is a Student directory, A–Z by last name. Academic Year and status stay filters
+// (ADR-090).
+export const inventoryRosterOrderingOptions: readonly SortOption<InventoryRosterOrdering>[] = [
+  { value: InventoryRosterOrdering.STUDENT_ASC, label: "Student A–Z" },
+  { value: InventoryRosterOrdering.STUDENT_DESC, label: "Student Z–A" },
+  { value: InventoryRosterOrdering.RECENTLY_SUBMITTED, label: "Recently submitted first" },
+];

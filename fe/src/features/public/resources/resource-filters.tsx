@@ -14,20 +14,40 @@ import {
   ResourceKindValue,
   type ResourceCategoryValue as ResourceCategory,
   type ResourceKindValue as ResourceKind,
+  type ResourceOrdering,
 } from "@/lib/api/generated/model";
 
 // The canonical list URL for submitted filters: every applied filter together, a trimmed search,
 // and no page, so a new set of filters starts on page 1.
-export function resourceFiltersHref(values: { search: string; category: string; kind: string }): string {
+// A chosen order is kept; sorting is not a filter.
+export function resourceFiltersHref(values: {
+  search: string;
+  category: string;
+  kind: string;
+  ordering?: ResourceOrdering;
+  page?: number;
+}): string {
   const params = new URLSearchParams();
   const term = values.search.trim();
   if (term) params.set("search", term);
   if (values.category) params.set("category", values.category);
   if (values.kind) params.set("kind", values.kind);
+  if (values.ordering) params.set("ordering", values.ordering);
+  if (values.page !== undefined) params.set("page", String(values.page));
   return params.size ? `/resources?${params.toString()}` : "/resources";
 }
 
-export function ResourceFilters({ search, category, kind }: { search?: string; category?: ResourceCategory; kind?: ResourceKind }) {
+export function ResourceFilters({
+  search,
+  category,
+  kind,
+  ordering,
+}: {
+  search?: string;
+  category?: ResourceCategory;
+  kind?: ResourceKind;
+  ordering?: ResourceOrdering;
+}) {
   const router = useRouter();
   const filtered = Boolean(search || category || kind);
 
@@ -38,6 +58,7 @@ export function ResourceFilters({ search, category, kind }: { search?: string; c
       search: String(form.get("search") ?? ""),
       category: String(form.get("category") ?? ""),
       kind: String(form.get("kind") ?? ""),
+      ordering,
     }));
   }
 
@@ -46,7 +67,7 @@ export function ResourceFilters({ search, category, kind }: { search?: string; c
       <FilterToolbar
         fieldsClassName="lg:grid-cols-[minmax(0,1fr)_repeat(2,minmax(0,13rem))]"
         actions={<>
-          {filtered ? <Link href="/resources" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
+          {filtered ? <Link href={resourceFiltersHref({ search: "", category: "", kind: "", ordering })} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : null}
           <Button type="submit">Apply filters</Button>
         </>}
       >
