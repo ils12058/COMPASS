@@ -16,7 +16,6 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
-from compass.inventory.services import CurrentAcademicYearNotConfigured
 from compass.service_catalog.api import DeliveryMode
 
 from .content import read_evaluation, read_intake
@@ -36,7 +35,6 @@ from .services import (
     RoutineInterviewFormRevisionUnsupported,
     RoutineInterviewIntakeRequired,
     RoutineInterviewIntakeSubmitted,
-    RoutineInterviewInventoryRequired,
     RoutineInterviewNotFound,
     RoutineInterviewNotPermitted,
     RoutineInterviewParentClosed,
@@ -173,11 +171,18 @@ class RoutinePersonSummary(StrictSchema):
 
 
 class RoutineInventoryContext(StrictSchema):
+    """The submitted Individual Inventory bound when the Routine Interview began (ADR-088).
+
+    It identifies that annual record; it is not a frozen copy. While the record is reopened for
+    correction, ``available`` is false and its draft values are withheld.
+    """
+
     id: UUID
     academic_year: RoutineAcademicYearSummary
-    full_name: str
-    course: str
-    major: str
+    available: bool
+    full_name: str | None
+    course: str | None
+    major: str | None
 
 
 class RoutineAppointmentSummary(StrictSchema):
@@ -221,7 +226,8 @@ class RoutineDirectStudentCandidate(StrictSchema):
     id: UUID
     institutional_id: str | None
     display_name: str
-    inventory_context: RoutineInventoryContext
+    # The current year's submitted Inventory, if any; a Student without one is still eligible.
+    inventory_context: RoutineInventoryContext | None
 
 
 class RoutineDirectStudentCandidatePage(StrictSchema):
@@ -251,7 +257,10 @@ class StudentRoutineSummaryResponse(StrictSchema):
     id: UUID
     workflow_state: RoutineWorkflowState
     counselor: RoutinePersonSummary
-    inventory_context: RoutineInventoryContext
+    # The Academic Year configured when the Routine Interview began, if any.
+    academic_year: RoutineAcademicYearSummary | None
+    # Null when no submitted Individual Inventory was available at initiation.
+    inventory_context: RoutineInventoryContext | None
     entry_mode: RoutineEntryMode
     delivery_mode: DeliveryMode
     intake_status: RoutineIntakeStatus
@@ -274,7 +283,10 @@ class CounselorRoutineSummaryResponse(StrictSchema):
     id: UUID
     workflow_state: RoutineWorkflowState
     student: RoutinePersonSummary
-    inventory_context: RoutineInventoryContext
+    # The Academic Year configured when the Routine Interview began, if any.
+    academic_year: RoutineAcademicYearSummary | None
+    # Null when no submitted Individual Inventory was available at initiation.
+    inventory_context: RoutineInventoryContext | None
     entry_mode: RoutineEntryMode
     delivery_mode: DeliveryMode
     intake_status: RoutineIntakeStatus
@@ -298,7 +310,10 @@ class CounselorRoutineDetailResponse(StrictSchema):
     id: UUID
     workflow_state: RoutineWorkflowState
     student: RoutinePersonSummary
-    inventory_context: RoutineInventoryContext
+    # The Academic Year configured when the Routine Interview began, if any.
+    academic_year: RoutineAcademicYearSummary | None
+    # Null when no submitted Individual Inventory was available at initiation.
+    inventory_context: RoutineInventoryContext | None
     entry_mode: RoutineEntryMode
     delivery_mode: DeliveryMode
     intake_status: RoutineIntakeStatus
@@ -341,16 +356,12 @@ def _require_counselor(request, capability: str) -> None:
 
 
 def _raise(exc: Exception) -> NoReturn:
-    if isinstance(exc, CurrentAcademicYearNotConfigured):
-        raise APIError(409, "current_academic_year_not_configured", str(exc)) from exc
     if isinstance(exc, RoutineInterviewCurrentStudentRequired):
         raise APIError(409, "current_student_required", str(exc)) from exc
     if isinstance(exc, RoutineInterviewNotFound):
         raise APIError(404, "routine_interview_not_found", str(exc)) from exc
     if isinstance(exc, RoutineInterviewNotPermitted):
         raise APIError(403, "routine_interview_not_permitted", str(exc)) from exc
-    if isinstance(exc, RoutineInterviewInventoryRequired):
-        raise APIError(409, "routine_interview_inventory_required", str(exc)) from exc
     if isinstance(exc, RoutineInterviewAppointmentInvalid):
         raise APIError(409, "routine_interview_appointment_invalid", str(exc)) from exc
     if isinstance(exc, RoutineInterviewParentClosed):
@@ -413,31 +424,31 @@ def _person(user) -> dict[str, object]:
     return {"id": user.pk, "display_name": user.get_full_name()}
 
 
-def _inventory_context(item) -> dict[str, object]:
-    inventory = item.inventory
+def _academic_year(academic_year) -> dict[str, object] | None:
+    if academic_year is None:
+        return None
+    return {"id": academic_year.pk, "label": academic_year.label}
+
+
+def _inventory_payload(inventory, student) -> dict[str, object]:
+    # A reopened Inventory is a draft again: its values follow the draft privacy boundary.
+    available = inventory.submitted_at is not None
     return {
         "id": inventory.pk,
-        "academic_year": {
-            "id": inventory.academic_year_id,
-            "label": inventory.academic_year.label,
-        },
-        "full_name": inventory.full_name_snapshot or item.student.get_full_name(),
-        "course": inventory.course_currently_enrolled,
-        "major": inventory.major,
+        "academic_year": _academic_year(inventory.academic_year),
+        "available": available,
+        "full_name": (inventory.full_name_snapshot or student.get_full_name())
+        if available
+        else None,
+        "course": inventory.course_currently_enrolled if available else None,
+        "major": inventory.major if available else None,
     }
 
 
-def _inventory_candidate_context(inventory, student) -> dict[str, object]:
-    return {
-        "id": inventory.pk,
-        "academic_year": {
-            "id": inventory.academic_year_id,
-            "label": inventory.academic_year.label,
-        },
-        "full_name": inventory.full_name_snapshot or student.get_full_name(),
-        "course": inventory.course_currently_enrolled,
-        "major": inventory.major,
-    }
+def _inventory_context(item) -> dict[str, object] | None:
+    if item.inventory_id is None:
+        return None
+    return _inventory_payload(item.inventory, item.student)
 
 
 def _appointment(item) -> dict[str, object] | None:
@@ -479,7 +490,9 @@ def _direct_student_candidate(item) -> dict[str, object]:
         "id": item.student.pk,
         "institutional_id": item.student.institutional_id,
         "display_name": item.student.get_full_name(),
-        "inventory_context": _inventory_candidate_context(item.inventory, item.student),
+        "inventory_context": (
+            _inventory_payload(item.inventory, item.student) if item.inventory is not None else None
+        ),
     }
 
 
@@ -516,6 +529,7 @@ def _student_summary(item) -> dict[str, object]:
         "id": item.pk,
         "workflow_state": routine_workflow_state(item),
         "counselor": _person(item.counselor),
+        "academic_year": _academic_year(item.academic_year),
         "inventory_context": _inventory_context(item),
         "entry_mode": item.entry_mode,
         "delivery_mode": item.delivery_mode,
@@ -540,6 +554,7 @@ def _counselor_summary(item) -> dict[str, object]:
         "id": item.pk,
         "workflow_state": routine_workflow_state(item),
         "student": _person(item.student),
+        "academic_year": _academic_year(item.academic_year),
         "inventory_context": _inventory_context(item),
         "entry_mode": item.entry_mode,
         "delivery_mode": item.delivery_mode,
@@ -578,6 +593,7 @@ def _counselor_detail(item, *, actor) -> dict[str, object]:
         "id": item.pk,
         "workflow_state": routine_workflow_state(item),
         "student": _person(item.student),
+        "academic_year": _academic_year(item.academic_year),
         "inventory_context": _inventory_context(item),
         "entry_mode": item.entry_mode,
         "delivery_mode": item.delivery_mode,
@@ -620,7 +636,7 @@ def routine_interviews_ensure_my_for_appointment(
             appointment_id=payload.appointment_id,
             context=_context(request),
         )
-    except (RoutineInterviewError, CurrentAcademicYearNotConfigured) as exc:
+    except RoutineInterviewError as exc:
         _raise(exc)
     return _student_detail(item)
 
@@ -660,7 +676,7 @@ def routine_interviews_create_direct(
             request_fingerprint=fingerprint,
             context=_context(request),
         )
-    except (RoutineInterviewError, CurrentAcademicYearNotConfigured) as exc:
+    except RoutineInterviewError as exc:
         _raise(exc)
     return 201, {"id": item.pk}
 
@@ -680,7 +696,7 @@ def routine_interviews_list_my_appointment_candidates(request):
     _require_student(request, "routine_interviews.manage_self")
     try:
         items = list_my_appointment_candidates(request.auth_user)
-    except (RoutineInterviewError, CurrentAcademicYearNotConfigured) as exc:
+    except RoutineInterviewError as exc:
         _raise(exc)
     return {"items": [_appointment_candidate(item) for item in items]}
 
@@ -808,7 +824,7 @@ def routine_interviews_list_direct_student_candidates(
             page=page,
             page_size=page_size,
         )
-    except (RoutineInterviewError, CurrentAcademicYearNotConfigured) as exc:
+    except RoutineInterviewError as exc:
         _raise(exc)
     return {
         "items": [_direct_student_candidate(item) for item in result.items],

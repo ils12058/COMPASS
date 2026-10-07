@@ -129,7 +129,9 @@ reconcile deterministically at finalization, and direct ones keep explicit Couns
 
 ## Not changed
 
-The Individual Inventory prerequisite for creating a Routine Interview is unchanged:
+[ADR-088](ADR-088-routine-interview-inventory-decoupling.md) later made the Individual Inventory
+optional initiation-time provenance; the linking rules here apply whether or not an Inventory is
+bound. At the time of this decision, the Individual Inventory prerequisite was unchanged:
 `RoutineInterview.inventory` stays required, `require_current_submitted_inventory()` still gates
 creation, and there are no pending or Inventory-less Routine Interviews. When the prerequisite is
 unmet, ensuring still fails with `routine_interview_inventory_required` and the Encounter is still

@@ -23,6 +23,7 @@ import {
   formatRoutineDateTime,
   routineErrorMessage,
 } from "@/features/routine-interviews/routine-interviews-shared";
+import { userDisplayName } from "@/features/portal/components/portal-presentation";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { RoutineWorkflowState } from "@/lib/api/generated/model";
 import {
@@ -66,7 +67,7 @@ export function RoutineInterviewDetailPage({
   const access = getRoutineInterviewAccess(user);
 
   if (access.isStudent && access.canViewSelf) {
-    return <StudentRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageSelf} />;
+    return <StudentRoutineDetail routineInterviewId={routineInterviewId} studentName={userDisplayName(user)} canManage={access.canManageSelf} />;
   }
   if (access.isCounselor && access.canViewAssigned) {
     return <CounselorRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageAssigned} />;
@@ -76,9 +77,11 @@ export function RoutineInterviewDetailPage({
 
 function StudentRoutineDetail({
   routineInterviewId,
+  studentName,
   canManage,
 }: {
   routineInterviewId: string;
+  studentName: string;
   canManage: boolean;
 }) {
   const query = useRoutineInterviewsGetMine(routineInterviewId, {
@@ -107,7 +110,8 @@ function StudentRoutineDetail({
         back={<RoutineBackLink />}
       />
       <RoutineContextSummary
-        personName={detail.inventory_context.full_name}
+        personName={detail.inventory_context?.full_name ?? studentName}
+        academicYear={detail.academic_year}
         inventoryContext={detail.inventory_context}
         counselor={detail.counselor}
         appointment={detail.appointment}
@@ -188,7 +192,8 @@ function CounselorRoutineDetail({
         action={workspaceHref ? <GuardedPortalLink href={workspaceHref} className={buttonVariants({ variant: "secondary" })}>Open Counseling workspace</GuardedPortalLink> : undefined}
       />
       <RoutineContextSummary
-        personName={detail.inventory_context.full_name}
+        personName={detail.inventory_context?.full_name ?? detail.student.display_name}
+        academicYear={detail.academic_year}
         inventoryContext={detail.inventory_context}
         appointment={detail.appointment}
         encounter={detail.counseling_encounter}

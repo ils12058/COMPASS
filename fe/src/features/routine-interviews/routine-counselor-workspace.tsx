@@ -23,7 +23,10 @@ import {
   formatRoutineDateTimeRange,
   routineDeliveryModeLabel,
   routineEntryModeLabel,
+  routineAcademicYearLabel,
   routineErrorMessage,
+  routineInventoryNote,
+  routineProgramLabel,
   routineEvaluationStatusLabel,
   routineIntakeStatusLabel,
   RoutineInterviewListSkeleton,
@@ -372,7 +375,7 @@ export function CounselorRoutineWorkspace({
                       <span className="mt-1 block text-xs text-muted">Created {formatRoutineDateTime(routine.created_at)}</span>
                       {routine.intake_submitted_at ? <span className="block text-xs text-muted">Intake submitted {formatRoutineDateTime(routine.intake_submitted_at)}</span> : null}
                     </th>
-                    <td className={dataTable.cell}>{routine.inventory_context.academic_year.label}<span className="mt-1 block text-muted">{routine.inventory_context.course}{routine.inventory_context.major.trim() ? ` · ${routine.inventory_context.major}` : ""}</span></td>
+                    <td className={dataTable.cell}>{routineAcademicYearLabel(routine.academic_year)}<span className="mt-1 block text-muted">{routineProgramLabel(routine.inventory_context) ?? `Individual Inventory: ${routineInventoryNote(routine.inventory_context)}`}</span></td>
                     <td className={dataTable.cell}>{routineEntryModeLabel(routine.entry_mode)}<span className="mt-1 block text-muted">{routineDeliveryModeLabel(routine.delivery_mode)}</span></td>
                     <td className={dataTable.cell}><RoutineStatus complete={routine.intake_status === "SUBMITTED"}>{routineIntakeStatusLabel(routine.intake_status)}</RoutineStatus></td>
                     <td className={dataTable.cell}><RoutineStatus complete={routine.evaluation_status === "FINALIZED"}>{routineEvaluationStatusLabel(routine.evaluation_status)}</RoutineStatus>{routine.evaluation_finalized_at ? <span className="mt-1 block text-xs text-muted">{formatRoutineDateTime(routine.evaluation_finalized_at)}</span> : null}</td>

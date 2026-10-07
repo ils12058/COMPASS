@@ -11,6 +11,7 @@ from compass.appointments.models import Appointment
 from compass.counseling.models import CounselingEncounter, CounselingEntryMode
 from compass.institutional_forms.models import FormRevision
 from compass.inventory.models import StudentInventory
+from compass.organization.models import AcademicYear
 from compass.service_catalog.models import DeliveryMode
 
 
@@ -41,10 +42,24 @@ class RoutineInterview(models.Model):
         on_delete=models.PROTECT,
         related_name="counselor_routine_interviews",
     )
+    # The submitted annual Inventory available when this Routine Interview began, kept as
+    # provenance (ADR-088). It identifies the source record, not a frozen copy of its fields, and
+    # is never attached later: NULL means no submitted Inventory was available at initiation.
     inventory = models.ForeignKey(
         StudentInventory,
         on_delete=models.PROTECT,
         related_name="routine_interviews",
+        null=True,
+        blank=True,
+    )
+    # The configured current Academic Year at initiation, or NULL when none was configured. It
+    # matches the bound Inventory's year and is never rewritten by a later Academic Year switch.
+    academic_year = models.ForeignKey(
+        AcademicYear,
+        on_delete=models.PROTECT,
+        related_name="routine_interviews",
+        null=True,
+        blank=True,
     )
     appointment = models.OneToOneField(
         Appointment,

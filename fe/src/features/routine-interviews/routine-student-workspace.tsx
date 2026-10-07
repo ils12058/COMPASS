@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
@@ -12,9 +12,9 @@ import type { RoutineInterviewAccess } from "@/features/routine-interviews/routi
 import {
   formatRoutineDateTime,
   formatRoutineDateTimeRange,
+  routineAcademicYearLabel,
   routineDeliveryModeLabel,
   routineEntryModeLabel,
-  routineErrorCode,
   routineErrorMessage,
   routineIntakeStatusLabel,
   RoutinePageHeading,
@@ -71,8 +71,6 @@ export function StudentRoutineWorkspace({
   const routineItems = routines.data?.data.items ?? [];
   const appointmentItems = candidates.data?.data.items ?? [];
   const openError = ensure.error;
-  const inventoryRequired = routineErrorCode(candidates.error) === "routine_interview_inventory_required";
-  const openInventoryRequired = routineErrorCode(openError) === "routine_interview_inventory_required";
 
   return (
     <div>
@@ -99,21 +97,10 @@ export function StudentRoutineWorkspace({
             <PanelMessage
               role="alert"
               tone="danger"
-              action={
-                <>
-                  {inventoryRequired ? (
-                    <Link className={buttonVariants({ variant: "secondary" })} href="/portal/inventory">
-                      Go to Individual Inventory
-                    </Link>
-                  ) : null}
-                  <Button variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>
-                </>
-              }
+              action={<Button variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>}
             >
               Your Counseling Appointments could not be checked.{" "}
-              {inventoryRequired
-                ? "Submit your Individual Inventory for the current Academic Year to complete the Routine Interview for your Counseling Appointments."
-                : routineErrorMessage(candidates.error, "Try again in a moment.")}
+              {routineErrorMessage(candidates.error, "Try again in a moment.")}
             </PanelMessage>
           ) : appointmentItems.length === 0 ? (
             <PanelMessage>
@@ -144,9 +131,6 @@ export function StudentRoutineWorkspace({
           {openError ? (
             <div role="alert" className="border-t border-border px-4 py-3 text-sm text-danger sm:px-5">
               <p>{routineErrorMessage(openError, "The Routine Interview could not be opened. Your Counseling Appointments have been checked again; try again.")}</p>
-              {openInventoryRequired ? (
-                <Link className="mt-2 inline-block font-semibold underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/portal/inventory">Go to Individual Inventory</Link>
-              ) : null}
             </div>
           ) : null}
         </Panel>
@@ -190,7 +174,7 @@ export function StudentRoutineWorkspace({
                           <span className="mt-1 block text-xs text-muted">Submitted {formatRoutineDateTime(routine.intake_submitted_at)}</span>
                         ) : null}
                       </th>
-                      <td className={cell}>{routine.inventory_context.academic_year.label}</td>
+                      <td className={cell}>{routineAcademicYearLabel(routine.academic_year)}</td>
                       <td className={cell}>{routine.counselor.display_name}</td>
                       <td className={cell}>{routineEntryModeLabel(routine.entry_mode)}<span className="block text-muted">{routineDeliveryModeLabel(routine.delivery_mode)}</span></td>
                       <td className={cell}>

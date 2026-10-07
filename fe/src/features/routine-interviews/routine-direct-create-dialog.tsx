@@ -22,6 +22,7 @@ import {
   routineEntryModeLabel,
   routineErrorCode,
   routineErrorMessage,
+  routineProgramLabel,
 } from "@/features/routine-interviews/routine-interviews-shared";
 import {
   DeliveryMode,
@@ -204,9 +205,9 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
 
           <form className="grid gap-5" onSubmit={(event) => void submit(event)}>
             <fieldset className="min-w-0">
-            <legend className="mb-2 text-sm font-medium text-ink">Qualified Students</legend>
+            <legend className="mb-2 text-sm font-medium text-ink">Students</legend>
             {candidates.isPending ? (
-              <LoadingRegion label="Loading qualified Students…" className="space-y-2">
+              <LoadingRegion label="Loading Students…" className="space-y-2">
                 <Skeleton className="h-16 w-full" />
                 <Skeleton className="h-16 w-full" />
               </LoadingRegion>
@@ -231,8 +232,9 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
                       <span className="block font-semibold text-ink">{candidate.display_name}</span>
                       <span className="mt-1 block text-xs text-muted">
                         {candidate.institutional_id ? `Institutional ID ${candidate.institutional_id} · ` : ""}
-                        {candidate.inventory_context.academic_year.label} · {candidate.inventory_context.course}
-                        {candidate.inventory_context.major.trim() ? ` · ${candidate.inventory_context.major}` : ""}
+                        {candidate.inventory_context
+                          ? `${candidate.inventory_context.academic_year.label} · ${routineProgramLabel(candidate.inventory_context) ?? "Course not provided"}`
+                          : "No submitted Individual Inventory"}
                       </span>
                     </span>
                   </label>
@@ -240,7 +242,7 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
               </div>
             ) : (
               <p className="rounded-sm bg-surface-subtle px-4 py-3 text-sm text-muted">
-                {candidateSearch ? "No qualified students match this search." : "No qualified student candidates are available."}
+                {candidateSearch ? "No current Students match this search." : "No current Students are available."}
               </p>
             )}
             {pageData ? (
@@ -249,7 +251,7 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
                 page={pageData.page}
                 hasNext={pageData.has_next}
                 disabled={candidates.isFetching}
-                label="Qualified Student pages"
+                label="Student pages"
                 onPageChange={setCandidatePage}
               />
             ) : null}
