@@ -6029,6 +6029,16 @@
       "CounselorRoutineDetailResponse": {
         "additionalProperties": false,
         "properties": {
+          "academic_year": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineAcademicYearSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "appointment": {
             "anyOf": [
               {
@@ -6123,7 +6133,14 @@
             "title": "Intake Submitted At"
           },
           "inventory_context": {
-            "$ref": "#/components/schemas/RoutineInventoryContext"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineInventoryContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "student": {
             "$ref": "#/components/schemas/RoutinePersonSummary"
@@ -6136,6 +6153,7 @@
           "id",
           "workflow_state",
           "student",
+          "academic_year",
           "inventory_context",
           "entry_mode",
           "delivery_mode",
@@ -6189,6 +6207,16 @@
       "CounselorRoutineSummaryResponse": {
         "additionalProperties": false,
         "properties": {
+          "academic_year": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineAcademicYearSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "appointment": {
             "anyOf": [
               {
@@ -6266,7 +6294,14 @@
             "title": "Intake Submitted At"
           },
           "inventory_context": {
-            "$ref": "#/components/schemas/RoutineInventoryContext"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineInventoryContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "student": {
             "$ref": "#/components/schemas/RoutinePersonSummary"
@@ -6279,6 +6314,7 @@
           "id",
           "workflow_state",
           "student",
+          "academic_year",
           "inventory_context",
           "entry_mode",
           "delivery_mode",
@@ -19305,7 +19341,14 @@
             "title": "Institutional Id"
           },
           "inventory_context": {
-            "$ref": "#/components/schemas/RoutineInventoryContext"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineInventoryContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -19724,17 +19767,36 @@
       },
       "RoutineInventoryContext": {
         "additionalProperties": false,
+        "description": "The submitted Individual Inventory bound when the Routine Interview began (ADR-088).\n\nIt identifies that annual record; it is not a frozen copy. While the record is reopened for\ncorrection, ``available`` is false and its draft values are withheld.",
         "properties": {
           "academic_year": {
             "$ref": "#/components/schemas/RoutineAcademicYearSummary"
           },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
           "course": {
-            "title": "Course",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course"
           },
           "full_name": {
-            "title": "Full Name",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
           },
           "id": {
             "format": "uuid",
@@ -19742,13 +19804,21 @@
             "type": "string"
           },
           "major": {
-            "title": "Major",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Major"
           }
         },
         "required": [
           "id",
           "academic_year",
+          "available",
           "full_name",
           "course",
           "major"
@@ -20658,6 +20728,16 @@
       "StudentRoutineDetailResponse": {
         "additionalProperties": false,
         "properties": {
+          "academic_year": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineAcademicYearSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "appointment": {
             "anyOf": [
               {
@@ -20726,7 +20806,14 @@
             "title": "Intake Submitted At"
           },
           "inventory_context": {
-            "$ref": "#/components/schemas/RoutineInventoryContext"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineInventoryContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "workflow_state": {
             "$ref": "#/components/schemas/RoutineWorkflowState"
@@ -20736,6 +20823,7 @@
           "id",
           "workflow_state",
           "counselor",
+          "academic_year",
           "inventory_context",
           "entry_mode",
           "delivery_mode",
@@ -20770,6 +20858,16 @@
       "StudentRoutineSummaryResponse": {
         "additionalProperties": false,
         "properties": {
+          "academic_year": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineAcademicYearSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "appointment": {
             "anyOf": [
               {
@@ -20835,7 +20933,14 @@
             "title": "Intake Submitted At"
           },
           "inventory_context": {
-            "$ref": "#/components/schemas/RoutineInventoryContext"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineInventoryContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "workflow_state": {
             "$ref": "#/components/schemas/RoutineWorkflowState"
@@ -20845,6 +20950,7 @@
           "id",
           "workflow_state",
           "counselor",
+          "academic_year",
           "inventory_context",
           "entry_mode",
           "delivery_mode",

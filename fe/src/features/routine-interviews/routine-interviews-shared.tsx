@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import type {
   DeliveryMode,
+  RoutineAcademicYearSummary,
   RoutineAppointmentSummary,
   RoutineEncounterSummary,
   RoutineEntryMode,
@@ -57,6 +58,25 @@ export function routineEntryModeLabel(mode: RoutineEntryMode): string {
   }
 }
 
+// The Academic Year configured when the Routine Interview began, if any.
+export function routineAcademicYearLabel(academicYear: RoutineAcademicYearSummary | null): string {
+  return academicYear?.label ?? "Not recorded";
+}
+
+// Course and major from the bound Inventory, only while it is submitted (ADR-088).
+export function routineProgramLabel(context: RoutineInventoryContext | null): string | null {
+  if (!context?.available || !context.course) return null;
+  const major = context.major?.trim();
+  return major ? `${context.course} · ${major}` : context.course;
+}
+
+// Shown only when the Routine Interview has no submitted Inventory context to display.
+export function routineInventoryNote(context: RoutineInventoryContext | null): string | null {
+  if (!context) return "Not available at initiation";
+  if (!context.available) return "Being corrected";
+  return null;
+}
+
 export function routineDeliveryModeLabel(mode: DeliveryMode): string {
   return mode === "ONLINE" ? "Online" : "In person";
 }
@@ -95,8 +115,6 @@ const routineErrors: Record<string, string> = {
     "This Routine Interview is unavailable to this account.",
   routine_interview_not_permitted:
     "This Routine Interview is unavailable to this account.",
-  routine_interview_inventory_required:
-    "A submitted Individual Inventory for the current Academic Year is required before you can complete a Routine Interview for a Counseling Appointment.",
   routine_interview_appointment_invalid:
     "This Appointment no longer has a Routine Interview to complete, for example because it was cancelled.",
   routine_interview_closed_by_appointment:
@@ -194,6 +212,7 @@ function formRevisionLabel(
 
 export function RoutineContextSummary({
   personName,
+  academicYear,
   inventoryContext,
   counselor,
   appointment,
@@ -209,7 +228,8 @@ export function RoutineContextSummary({
   studentFacing = false,
 }: {
   personName: string;
-  inventoryContext: RoutineInventoryContext;
+  academicYear: RoutineAcademicYearSummary | null;
+  inventoryContext: RoutineInventoryContext | null;
   counselor?: RoutinePersonSummary;
   appointment: RoutineAppointmentSummary | null;
   encounter: RoutineEncounterSummary | null;
@@ -224,17 +244,16 @@ export function RoutineContextSummary({
   studentFacing?: boolean;
 }) {
   const revision = formRevisionLabel(formRevision);
-  const major = inventoryContext.major.trim();
+  const program = routineProgramLabel(inventoryContext);
+  const inventoryNote = routineInventoryNote(inventoryContext);
 
   return (
     <Panel aria-label="Routine Interview context" className="mb-5">
       <dl className="grid gap-x-7 gap-y-4 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-3">
         <MetadataItem label="Student" value={personName} />
-        <MetadataItem label="Academic Year" value={inventoryContext.academic_year.label} />
-        <MetadataItem
-          label="Course and major"
-          value={major ? inventoryContext.course + " · " + major : inventoryContext.course}
-        />
+        <MetadataItem label="Academic Year" value={routineAcademicYearLabel(academicYear)} />
+        {program ? <MetadataItem label="Course and major" value={program} /> : null}
+        {inventoryNote ? <MetadataItem label="Individual Inventory" value={inventoryNote} /> : null}
         {counselor ? (
           <MetadataItem label="Counselor" value={counselor.display_name} />
         ) : null}

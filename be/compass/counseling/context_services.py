@@ -150,7 +150,9 @@ def _inventory_source(
     access: CounselingContextAccess,
 ) -> tuple[str, StudentInventory | None]:
     routine = _routine_interview(access)
-    if routine is not None:
+    if routine is not None and routine.inventory_id is not None:
+        # The Inventory bound when the Routine Interview began, under its current
+        # submitted/draft state.
         inventory = (
             _full_inventory_queryset()
             .filter(pk=routine.inventory_id, student_id=access.student_id)
@@ -162,6 +164,9 @@ def _inventory_source(
             return InventoryStatus.DRAFT, None
         return InventoryStatus.SUBMITTED, inventory
 
+    # No Routine Interview, or one that began without an Inventory (ADR-088): general context
+    # enrichment from the Student's current Inventory. It never binds that Inventory to the
+    # Routine Interview, whose provenance stays unbound.
     status = get_current_inventory_status(_student(access))
     if status.status != InventoryStatus.SUBMITTED or status.inventory is None:
         return status.status, None

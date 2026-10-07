@@ -4,8 +4,12 @@
 
 Accepted. [ADR-087](ADR-087-deterministic-routine-encounter-linking.md) refines "Encounter matching
 and finalization": COMPASS links the Counseling Encounter when the relationship becomes
-deterministic instead of at finalization. The rest of this decision, including independent
-Encounter recording and the Individual Inventory prerequisite, is unchanged.
+deterministic instead of at finalization.
+[ADR-088](ADR-088-routine-interview-inventory-decoupling.md) supersedes the Individual Inventory
+prerequisite below: a submitted current-year Inventory is now optional initiation-time provenance,
+and the Routine Interview records its own Academic Year. The rest of this decision, including
+independent Encounter recording, is unchanged and the original prerequisite is preserved below as
+history.
 
 ## Context
 

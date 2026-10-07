@@ -51,7 +51,6 @@ from compass.routine_interviews.services import (
     RoutineInterviewFormRevisionUnsupported,
     RoutineInterviewIntakeRequired,
     RoutineInterviewIntakeSubmitted,
-    RoutineInterviewInventoryRequired,
     create_direct,
     ensure_for_appointment,
     finalize_assigned_evaluation,
@@ -199,46 +198,50 @@ def test_routine_form_family_and_capabilities_are_explicit_without_fake_qms_revi
 
 
 @pytest.mark.django_db
-def test_inventory_prerequisite_applies_to_appointment_and_direct_creation():
+def test_inventory_is_optional_provenance_for_appointment_and_direct_creation():
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     student = make_user("student@example.edu", "STUDENT")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
-    configure_year(admin)
+    year = configure_year(admin)
     service = create_counseling_service(admin)
-    appointment = make_appointment(student=student, counselor=counselor, service=service)
 
-    with pytest.raises(RoutineInterviewInventoryRequired):
-        ensure_for_appointment(
-            student=student,
-            appointment_id=appointment.pk,
-            context=context(student),
-        )
-    with pytest.raises(RoutineInterviewInventoryRequired):
-        direct_routine(counselor=counselor, student=student)
+    # Missing Inventory binds nothing but still records the Academic Year.
+    missing = ensure_for_appointment(
+        student=student,
+        appointment_id=make_appointment(student=student, counselor=counselor, service=service).pk,
+        context=context(student),
+    )
+    assert missing.inventory_id is None
+    assert missing.academic_year_id == year.pk
 
+    # A draft is never bound as provenance.
     ensure_current_inventory(student=student, context=context(student))
-    with pytest.raises(RoutineInterviewInventoryRequired):
-        ensure_for_appointment(
-            student=student,
-            appointment_id=appointment.pk,
-            context=context(student),
-        )
+    draft = direct_routine(counselor=counselor, student=student, key="key-1")
+    assert draft.inventory_id is None
+    assert draft.academic_year_id == year.pk
 
     program = configure_program()
     replace_current_inventory(
         student=student,
         values=minimum_normalized_inventory_values(program_id=program.pk),
     )
-    submit_current_inventory(student=student, context=context(student))
+    submitted_inventory = submit_current_inventory(student=student, context=context(student))
     scheduled = ensure_for_appointment(
         student=student,
-        appointment_id=appointment.pk,
+        appointment_id=make_appointment(student=student, counselor=counselor, service=service).pk,
         context=context(student),
     )
-    direct = direct_routine(counselor=counselor, student=student)
-    assert scheduled.inventory.submitted_at is not None
-    assert direct.inventory_id == scheduled.inventory_id
+    direct = direct_routine(counselor=counselor, student=student, key="key-2")
+    assert scheduled.inventory_id == submitted_inventory.pk
+    assert direct.inventory_id == submitted_inventory.pk
+    assert scheduled.academic_year_id == direct.academic_year_id == year.pk
+
+    # Earlier records are never attached to the Inventory submitted after they began.
+    missing.refresh_from_db()
+    draft.refresh_from_db()
+    assert missing.inventory_id is None
+    assert draft.inventory_id is None
 
 
 @pytest.mark.django_db
@@ -1056,33 +1059,30 @@ def test_student_appointment_candidate_discovery_is_routine_owned_filtered_priva
 
 
 @pytest.mark.django_db
-def test_student_appointment_candidate_prerequisite_conflicts_are_not_silent_empty_lists():
+def test_student_appointment_candidates_do_not_depend_on_inventory_or_academic_year():
     sync_policy()
     admin = make_user("prereq-admin@example.edu", "IT_ADMIN")
     student = make_user("prereq.student@example.edu", "STUDENT")
     counselor = make_user("prereq.counselor@example.edu", "COUNSELOR")
     service = create_counseling_service(admin)
-    make_appointment(student=student, counselor=counselor, service=service)
+    appointment = make_appointment(student=student, counselor=counselor, service=service)
     client = auth_client(student)
 
-    no_year = client.get("/api/v1/routine-interviews/me/appointment-candidates")
-    assert no_year.status_code == 409
-    assert no_year.json()["error"]["code"] == "current_academic_year_not_configured"
+    def listed():
+        response = client.get("/api/v1/routine-interviews/me/appointment-candidates")
+        assert response.status_code == 200
+        return [row["id"] for row in response.json()["items"]]
 
+    assert listed() == [str(appointment.pk)]  # no Academic Year configured
     configure_year(admin)
-    missing_inventory = client.get("/api/v1/routine-interviews/me/appointment-candidates")
-    assert missing_inventory.status_code == 409
-    assert missing_inventory.json()["error"]["code"] == "routine_interview_inventory_required"
-
+    assert listed() == [str(appointment.pk)]  # Inventory missing
     ensure_current_inventory(student=student, context=context(student))
     program = configure_program()
     replace_current_inventory(
         student=student,
         values=minimum_normalized_inventory_values(program_id=program.pk),
     )
-    draft_inventory = client.get("/api/v1/routine-interviews/me/appointment-candidates")
-    assert draft_inventory.status_code == 409
-    assert draft_inventory.json()["error"]["code"] == "routine_interview_inventory_required"
+    assert listed() == [str(appointment.pk)]  # Inventory draft
 
     student.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
     student.save(update_fields=["student_lifecycle_status", "updated_at"])
@@ -1092,7 +1092,6 @@ def test_student_appointment_candidate_prerequisite_conflicts_are_not_silent_emp
 
     student.student_lifecycle_status = StudentLifecycleStatus.CURRENT
     student.save(update_fields=["student_lifecycle_status", "updated_at"])
-    submit_current_inventory(student=student, context=context(student))
     family = FormFamily.objects.get(key="routine_interview")
     FormRevision.objects.create(
         family=family,
@@ -1177,10 +1176,12 @@ def test_direct_options_and_student_candidates_preserve_create_direct_authority_
     assert set(row["inventory_context"]) == {
         "id",
         "academic_year",
+        "available",
         "full_name",
         "course",
         "major",
     }
+    assert row["inventory_context"]["available"] is True
     serialized = json.dumps(listing.json())
     for forbidden in (
         student.email,
@@ -1194,10 +1195,12 @@ def test_direct_options_and_student_candidates_preserve_create_direct_authority_
 
     unfiltered = client.get("/api/v1/routine-interviews/direct/student-candidates")
     assert unfiltered.status_code == 200
-    ids = {row["id"] for row in unfiltered.json()["items"]}
-    assert str(student.pk) in ids
-    assert str(missing.pk) not in ids
-    assert str(draft.pk) not in ids
+    rows = {row["id"]: row for row in unfiltered.json()["items"]}
+    ids = set(rows)
+    # Eligibility comes from the current Student account; Inventory is optional context.
+    assert {str(student.pk), str(missing.pk), str(draft.pk)} <= ids
+    assert rows[str(missing.pk)]["inventory_context"] is None
+    assert rows[str(draft.pk)]["inventory_context"] is None
     assert str(graduated.pk) not in ids
     assert str(former.pk) not in ids
     assert str(inactive.pk) not in ids

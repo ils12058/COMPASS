@@ -808,6 +808,8 @@ def test_rotation_rejects_an_unbounded_batch_size():
 BEFORE = [("routine_interviews", "0001_initial")]
 BACKFILLED = [("routine_interviews", "0002_encrypt_routine_content")]
 AFTER = [("routine_interviews", "0003_remove_plaintext_routine_content")]
+# The current model includes later fields, so checks through it and cleanup use the latest state.
+LATEST = [("routine_interviews", "0004_optional_inventory_and_academic_year")]
 
 
 def _legacy_participants():
@@ -877,7 +879,7 @@ def test_migration_encrypts_verifies_drops_plaintext_and_rolls_back_exactly():
     updated_at = {sensitive.pk: sensitive.updated_at, blank.pk: blank.updated_at}
 
     try:
-        MigrationExecutor(connection).migrate(AFTER)
+        MigrationExecutor(connection).migrate(LATEST)
 
         columns, constraints = _table_shape()
         assert columns.isdisjoint({*INTAKE_FIELDS, *EVALUATION_FIELDS})
@@ -914,7 +916,7 @@ def test_migration_encrypts_verifies_drops_plaintext_and_rolls_back_exactly():
             assert getattr(restored, field) == value
         assert "student_intake_ciphertext" not in _table_shape()[0]
     finally:
-        MigrationExecutor(connection).migrate(AFTER)
+        MigrationExecutor(connection).migrate(LATEST)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -946,7 +948,7 @@ def test_migration_reencrypts_plaintext_written_after_the_backfill():
         )
         assert late.student_intake_ciphertext is None
 
-        MigrationExecutor(connection).migrate(AFTER)
+        MigrationExecutor(connection).migrate(LATEST)
         assert read_intake(RoutineInterview.objects.get(pk=early.pk))["career_goals"] == (
             "Changed after the backfill"
         )
@@ -954,7 +956,7 @@ def test_migration_reencrypts_plaintext_written_after_the_backfill():
         assert read_intake(refreshed)["coping_remarks"] == "Created after the backfill"
         assert read_evaluation(refreshed)["special_concern"] == "Counselor-only special concern"
     finally:
-        MigrationExecutor(connection).migrate(AFTER)
+        MigrationExecutor(connection).migrate(LATEST)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -989,4 +991,4 @@ def test_migration_aborts_before_dropping_plaintext_when_content_or_keyring_is_i
         assert "student_intake_ciphertext" not in _table_shape()[0]
     finally:
         Legacy.objects.filter(pk=invalid.pk).delete()
-        MigrationExecutor(connection).migrate(AFTER)
+        MigrationExecutor(connection).migrate(LATEST)

@@ -30,7 +30,6 @@ from compass.routine_interviews.models import RoutineInterview
 from compass.routine_interviews.services import (
     RoutineInterviewEncounterConflict,
     RoutineInterviewEncounterRequired,
-    RoutineInterviewInventoryRequired,
     ensure_for_appointment,
     finalize_assigned_evaluation,
     list_encounter_candidates,
@@ -146,20 +145,18 @@ def test_appointment_routine_is_ensured_once_through_the_existing_endpoint():
 
 
 @pytest.mark.django_db
-def test_inventory_prerequisite_still_gates_the_routine_but_never_the_encounter():
-    _, student, counselor, service = setup_domain("inventory-gate", inventory=False)
+def test_routine_without_inventory_links_its_appointment_encounter():
+    _, student, counselor, service = setup_domain("no-inventory", inventory=False)
     appointment = make_appointment(student=student, counselor=counselor, service=service)
 
-    with pytest.raises(RoutineInterviewInventoryRequired):
-        ensure_for_appointment(
-            student=student, appointment_id=appointment.pk, context=context(student)
-        )
-    assert not RoutineInterview.objects.exists()
-
+    routine = ensure_for_appointment(
+        student=student, appointment_id=appointment.pk, context=context(student)
+    )
+    assert routine.inventory_id is None
     encounter = record(counselor, entry_mode="APPOINTMENT", appointment_id=appointment.pk)
-    assert encounter.appointment_id == appointment.pk
-    assert not RoutineInterview.objects.exists()
-    assert not AuditEvent.objects.filter(action=LINKED).exists()
+    routine.refresh_from_db()
+    assert routine.counseling_encounter_id == encounter.pk
+    assert routine.inventory_id is None
 
 
 # Appointment-backed Encounter -----------------------------------------------------------------

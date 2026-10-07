@@ -34,14 +34,10 @@ from compass.institutional_forms.services import (
     get_active_supported_form_revision,
 )
 from compass.inventory.models import StudentInventory
-from compass.inventory.services import (
-    CurrentAcademicYearNotConfigured,
-    InventoryConflict,
-    require_current_submitted_inventory,
-)
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.academic_years import get_current_academic_year
+from compass.organization.models import AcademicYear
 from compass.service_catalog.models import DeliveryMode, Service
 from compass.service_catalog.services import (
     provider_role_eligible,
@@ -100,10 +96,6 @@ class RoutineInterviewAppointmentInvalid(RoutineInterviewError):
 
 
 class RoutineInterviewParentClosed(RoutineInterviewError):
-    pass
-
-
-class RoutineInterviewInventoryRequired(RoutineInterviewError):
     pass
 
 
@@ -181,7 +173,14 @@ class RoutineDirectCreationOptions:
 @dataclass(frozen=True, slots=True)
 class RoutineDirectStudentCandidate:
     student: User
-    inventory: StudentInventory
+    # The current Academic Year's submitted Inventory, when one exists. Never a draft.
+    inventory: StudentInventory | None
+
+
+@dataclass(frozen=True, slots=True)
+class RoutineInitiationContext:
+    academic_year: AcademicYear | None
+    inventory: StudentInventory | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,6 +207,7 @@ def _queryset():
         "counselor__role",
         "inventory",
         "inventory__academic_year",
+        "academic_year",
         "appointment",
         "appointment__service",
         "counseling_encounter",
@@ -301,15 +301,23 @@ def _normalize_direct_entry_mode(value: str | CounselingEntryMode) -> str:
     return str(normalized)
 
 
-def _submitted_inventory(student: User):
-    try:
-        return require_current_submitted_inventory(student)
-    except CurrentAcademicYearNotConfigured:
-        raise
-    except InventoryConflict as exc:
-        raise RoutineInterviewInventoryRequired(
-            "A submitted Individual Inventory for the current Academic Year is required."
-        ) from exc
+def _initiation_context(student: User) -> RoutineInitiationContext:
+    """Resolve the optional context a new Routine Interview records at initiation (ADR-088).
+
+    The configured current Academic Year, if any, and that year's submitted Inventory, if any.
+    Neither is a prerequisite: a missing year, or a missing, draft, or reopened Inventory, binds
+    nothing. The submitted row is locked so a concurrent reopen cannot make the binding false.
+    """
+
+    current = get_current_academic_year()
+    if current is None:
+        return RoutineInitiationContext(academic_year=None, inventory=None)
+    inventory = (
+        StudentInventory.objects.select_for_update(of=("self",))
+        .filter(student_id=student.pk, academic_year_id=current.pk, submitted_at__isnull=False)
+        .first()
+    )
+    return RoutineInitiationContext(academic_year=current, inventory=inventory)
 
 
 def _optional_form_revision():
@@ -368,11 +376,16 @@ def _clean_search(search: str | None) -> str:
     return cleaned
 
 
+def _academic_year_label(item: RoutineInterview) -> str | None:
+    return item.academic_year.label if item.academic_year_id is not None else None
+
+
 def _safe_creation_metadata(item: RoutineInterview) -> dict[str, object]:
     revision = item.form_revision
     return {
         "entry_mode": item.entry_mode,
-        "academic_year": item.inventory.academic_year.label,
+        "academic_year": _academic_year_label(item),
+        "inventory_bound": item.inventory_id is not None,
         "appointment_id": str(item.appointment_id) if item.appointment_id else None,
         "form_revision_id": str(revision.pk) if revision is not None else None,
     }
@@ -421,7 +434,7 @@ def ensure_for_appointment(
             delivery_mode=appointment.delivery_mode,
         )
 
-        inventory = _submitted_inventory(student)
+        initiation = _initiation_context(student)
         revision = _optional_form_revision()
         routine_interview_id = uuid.uuid4()
         try:
@@ -430,7 +443,8 @@ def ensure_for_appointment(
                     id=routine_interview_id,
                     student=student,
                     counselor=counselor,
-                    inventory=inventory,
+                    inventory=initiation.inventory,
+                    academic_year=initiation.academic_year,
                     appointment=appointment,
                     form_revision=revision,
                     entry_mode=CounselingEntryMode.APPOINTMENT,
@@ -453,9 +467,9 @@ def ensure_for_appointment(
             target_type="routine.interview",
             target_id=item.pk,
             metadata=_safe_creation_metadata(
-                RoutineInterview.objects.select_related(
-                    "inventory__academic_year", "form_revision"
-                ).get(pk=item.pk)
+                RoutineInterview.objects.select_related("academic_year", "form_revision").get(
+                    pk=item.pk
+                )
             ),
         )
 
@@ -537,7 +551,7 @@ def create_direct(
             counselor=locked_counselor,
             delivery_mode=normalized_delivery,
         )
-        inventory = _submitted_inventory(student)
+        initiation = _initiation_context(student)
         revision = _optional_form_revision()
         routine_interview_id = uuid.uuid4()
 
@@ -549,7 +563,8 @@ def create_direct(
                     id=routine_interview_id,
                     student=student,
                     counselor=locked_counselor,
-                    inventory=inventory,
+                    inventory=initiation.inventory,
+                    academic_year=initiation.academic_year,
                     appointment=None,
                     form_revision=revision,
                     entry_mode=normalized_entry,
@@ -573,7 +588,7 @@ def create_direct(
             return _queryset().get(pk=concurrent.pk)
 
         item_for_audit = RoutineInterview.objects.select_related(
-            "inventory__academic_year", "form_revision"
+            "academic_year", "form_revision"
         ).get(pk=item.pk)
         record_event(
             context=context,
@@ -597,7 +612,6 @@ def create_direct(
 def list_my_appointment_candidates(student: User) -> tuple[Appointment, ...]:
     _validate_student(student)
     _require_current_student(student)
-    _submitted_inventory(student)
     _optional_form_revision()
 
     service = _active_counseling_service()
@@ -657,40 +671,41 @@ def list_direct_student_candidates(
     page, page_size = _validate_page(page, page_size)
     term = _clean_search(search)
 
-    current = get_current_academic_year()
-    if current is None:
-        raise CurrentAcademicYearNotConfigured("No current Academic Year is configured.")
-
-    queryset = StudentInventory.objects.select_related(
-        "student",
-        "student__role",
-        "academic_year",
-    ).filter(
-        academic_year_id=current.pk,
-        submitted_at__isnull=False,
-        student__is_active=True,
-        student__role__code="STUDENT",
-        student__student_lifecycle_status=StudentLifecycleStatus.CURRENT,
+    # Eligibility comes from the Student account, never from an Inventory (ADR-088).
+    queryset = User.objects.select_related("role").filter(
+        is_active=True,
+        role__code="STUDENT",
+        student_lifecycle_status=StudentLifecycleStatus.CURRENT,
     )
     for token in term.split():
         queryset = queryset.filter(
-            Q(student__institutional_id__icontains=token)
-            | Q(student__first_name__icontains=token)
-            | Q(student__middle_name__icontains=token)
-            | Q(student__last_name__icontains=token)
+            Q(institutional_id__icontains=token)
+            | Q(first_name__icontains=token)
+            | Q(middle_name__icontains=token)
+            | Q(last_name__icontains=token)
         )
-    queryset = queryset.order_by(
-        "student__last_name",
-        "student__first_name",
-        "student__middle_name",
-        "student_id",
-    )
+    queryset = queryset.order_by("last_name", "first_name", "middle_name", "pk")
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
+    students = rows[:page_size]
+
+    # Optional context only: the current year's submitted Inventory. Drafts and reopened
+    # Inventories contribute nothing, and Program is never derived from affiliation.
+    submitted: dict[UUID, StudentInventory] = {}
+    current = get_current_academic_year()
+    if current is not None and students:
+        submitted = {
+            item.student_id: item
+            for item in StudentInventory.objects.select_related("academic_year").filter(
+                academic_year_id=current.pk,
+                submitted_at__isnull=False,
+                student_id__in=[student.pk for student in students],
+            )
+        }
     return RoutineDirectStudentCandidatePage(
         tuple(
-            RoutineDirectStudentCandidate(student=row.student, inventory=row)
-            for row in rows[:page_size]
+            RoutineDirectStudentCandidate(student=student, inventory=submitted.get(student.pk))
+            for student in students
         ),
         page,
         page_size,
@@ -856,7 +871,7 @@ def list_assigned(
     if student_id is not None:
         queryset = queryset.filter(student_id=student_id)
     if academic_year_id is not None:
-        queryset = queryset.filter(inventory__academic_year_id=academic_year_id)
+        queryset = queryset.filter(academic_year_id=academic_year_id)
     if delivery_mode is not None:
         queryset = queryset.filter(delivery_mode=_normalize_delivery_mode(delivery_mode))
     if intake_status is not None:
@@ -992,7 +1007,7 @@ def submit_my_intake(
     with transaction.atomic():
         item = (
             RoutineInterview.objects.select_for_update(of=("self",))
-            .select_related("inventory__academic_year")
+            .select_related("academic_year")
             .filter(pk=routine_interview_id, student_id=student.pk)
             .first()
         )
@@ -1001,10 +1016,8 @@ def submit_my_intake(
         _require_actionable_parent(item, lock_parent=True)
         if item.intake_submitted_at is not None:
             return _queryset().get(pk=item.pk)
-        if item.inventory.student_id != student.pk or item.inventory.submitted_at is None:
-            raise RoutineInterviewInventoryRequired(
-                "The bound submitted Individual Inventory is inconsistent."
-            )
+        # The Routine lifecycle is its own: a bound Inventory being reopened, resubmitted, or
+        # absent never blocks the Intake (ADR-088).
         _validate_intake_submission(read_intake(item))
         item.intake_submitted_at = timezone.now()
         item.save(update_fields=["intake_submitted_at", "updated_at"])
@@ -1016,7 +1029,7 @@ def submit_my_intake(
             target_id=item.pk,
             metadata={
                 "entry_mode": item.entry_mode,
-                "academic_year": item.inventory.academic_year.label,
+                "academic_year": _academic_year_label(item),
                 "appointment_id": str(item.appointment_id) if item.appointment_id else None,
             },
         )
@@ -1293,7 +1306,7 @@ def finalize_assigned_evaluation(
     with transaction.atomic():
         item = (
             RoutineInterview.objects.select_for_update(of=("self",))
-            .select_related("inventory__academic_year")
+            .select_related("academic_year")
             .filter(pk=routine_interview_id, counselor_id=counselor.pk)
             .first()
         )
@@ -1368,7 +1381,7 @@ def finalize_assigned_evaluation(
             target_id=item.pk,
             metadata={
                 "entry_mode": item.entry_mode,
-                "academic_year": item.inventory.academic_year.label,
+                "academic_year": _academic_year_label(item),
                 "appointment_id": str(item.appointment_id) if item.appointment_id else None,
                 "encounter_id": str(encounter.pk),
             },
