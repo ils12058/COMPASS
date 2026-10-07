@@ -190,6 +190,31 @@ def test_existing_customization_and_references_survive_sync():
 
 
 @pytest.mark.django_db
+def test_any_valid_counseling_delivery_mode_set_is_ready_and_kept_by_sync():
+    """IN_PERSON is only the fresh default; ONLINE is an institution choice, never required."""
+
+    sync_policy()
+    admin = user("admin@example.edu", "IT_ADMIN")
+    service = Service.objects.get(pk=sync_canonical_services().service_id)
+
+    def modes():
+        return set(service.delivery_mode_assignments.values_list("mode", flat=True))
+
+    assert modes() == {"IN_PERSON"}
+    assert canonical_counseling_readiness() == (True, "ok")
+    for configured in (["IN_PERSON", "ONLINE"], ["ONLINE"], ["IN_PERSON"]):
+        update_service(
+            service_id=service.pk,
+            changes={"delivery_modes": configured},
+            context=AuditContext.user(admin),
+            acknowledge_scheduling_consequences=True,
+        )
+        assert sync_canonical_services().outcome == "unchanged"
+        assert modes() == set(configured)
+        assert canonical_counseling_readiness() == (True, "ok")
+
+
+@pytest.mark.django_db
 def test_existing_required_drift_repairs_in_place_without_resetting_valid_settings():
     sync_policy()
     admin = user("admin@example.edu", "IT_ADMIN")

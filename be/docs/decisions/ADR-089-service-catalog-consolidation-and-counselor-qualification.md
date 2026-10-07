@@ -202,6 +202,52 @@ A selected coverage with no active Counselor is reported by readiness
 disabled. Daily readiness is not a Catalog dependency, and ONLINE remains a delivery mode of
 Counseling, not a separate Service.
 
+### Online counseling and E-Counseling
+
+Four concepts stay separate:
+
+| Concept | Meaning |
+| --- | --- |
+| Service delivery mode `ONLINE` | A business capability: new online work for this Service may start. |
+| `Appointment.delivery_mode` | The saved modality of one reservation. |
+| E-Counseling | The workflow of an Appointment-backed `ONLINE` canonical Counseling Appointment. |
+| Daily.co | The video provider E-Counseling uses. Its readiness is a platform concern. |
+
+**For canonical COUNSELING:**
+
+- **`ONLINE` present:**
+  - new online Counseling may start, including direct Encounters, direct Routine Interviews, and
+    `ONLINE` Appointments;
+  - scheduled `ONLINE` Counseling Appointments use E-Counseling;
+  - a direct `ONLINE` Encounter, such as a referred one, is online Counseling but not an
+    E-Counseling room.
+- **`ONLINE` absent:** this does not disable Counseling. It stops only new online initiation, so no
+  new Appointment can enter E-Counseling.
+- **Valid delivery modes:** any non-empty set of `IN_PERSON` and `ONLINE` is valid, including
+  `ONLINE` alone. A fresh bootstrap uses `IN_PERSON` only. Readiness requires neither `ONLINE` nor
+  Daily.
+- **`ONLINE` removed later:**
+  - Saved `ONLINE` Appointments stay `ONLINE`; they are never converted to `IN_PERSON`.
+  - Such an Appointment still opens E-Counseling and can be fulfilled.
+  - Because rescheduling keeps the saved mode, it cannot be rescheduled or reassigned while
+    `ONLINE` is off.
+- **`ONLINE` enabled does not mean Daily is ready.** With Daily disabled, the E-Counseling session
+  reports the provider as unavailable while the Appointment and Counseling stay valid.
+
+**Ordinary Services:** `ONLINE` means only that the Service supports online delivery. It never
+implies E-Counseling, a video room, recording, or transcription.
+
+**Administrative UI for canonical COUNSELING:**
+
+- `ONLINE` is labelled "Online counseling"; the API keeps `ONLINE`.
+- The editor states what each mode permits before either is toggled.
+- These are shown as separate facts:
+  - Online counseling;
+  - new E-Counseling appointments (also unavailable while booking is off);
+  - the video-session provider ("managed separately").
+- A Platform Health link appears only to viewers who already hold `platform_operations.view`. No
+  permission is widened, and Daily configuration stays out of the Catalog.
+
 ### API
 
 **Service request and response fields:**

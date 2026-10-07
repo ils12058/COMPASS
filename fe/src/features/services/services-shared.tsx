@@ -81,11 +81,19 @@ export const activationBlockerLabels: Record<ServiceActivationBlocker, string> =
     "Coverage is limited to selected Counselors, but no active Counselor is selected.",
 };
 
+// What the reviewed change itself does, known only to the editor that built it.
+export type ServiceConsequenceChange = {
+  counselingOnlineRemoved: boolean;
+  bookingTurnedOff: boolean;
+};
+
 // What a reviewed Service change means for Appointments that are already scheduled.
 export function ServiceConsequenceSummary({
   details,
+  change,
 }: {
   details: ServiceSchedulingConsequenceDetails | null;
+  change?: ServiceConsequenceChange;
 }) {
   if (!details) {
     return (
@@ -95,9 +103,24 @@ export function ServiceConsequenceSummary({
       </p>
     );
   }
+  const onlineRemoved = Boolean(change?.counselingOnlineRemoved);
   return (
     <>
-      {details.existingAppointmentDependencyDetected ? (
+      {details.existingAppointmentDependencyDetected && onlineRemoved ? (
+        <>
+          <p>
+            New Online Counseling work will no longer be available. Existing Online Counseling
+            appointments remain scheduled and keep their saved Online delivery mode; they are not
+            changed to in person.
+          </p>
+          <p>
+            While Online counseling is off, those appointments cannot be rescheduled or
+            reassigned.
+          </p>
+        </>
+      ) : null}
+      {details.existingAppointmentDependencyDetected &&
+      (!onlineRemoved || change?.bookingTurnedOff) ? (
         <p>
           Some upcoming Appointments use a setting this change removes. They stay scheduled and
           can still take place as booked, but rescheduling or reassigning them follows the new
@@ -113,8 +136,10 @@ export function ServiceConsequenceSummary({
       ) : null}
       {details.counselingOnlineEnabled ? (
         <p>
-          Online Counseling may become bookable where Availability permits it. This does not
-          verify that the E-Counseling provider integration is ready.
+          Enabling Online counseling allows new Online Counseling appointments to be scheduled
+          where Counselor Availability and booking requirements permit. Scheduled Online
+          Counseling appointments use E-Counseling. This change does not confirm that the
+          video-session provider is configured or available.
         </p>
       ) : null}
     </>

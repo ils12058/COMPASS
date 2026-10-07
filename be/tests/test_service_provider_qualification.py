@@ -340,8 +340,10 @@ def test_removing_online_keeps_existing_online_counseling_fulfillable():
     assert appointment.status == AppointmentStatus.SCHEDULED
     assert appointment.delivery_mode == "ONLINE"
 
-    # E-Counseling, Routine ensure, and the Encounter all trust the saved Appointment.
-    assert get_student_workspace(student=student, appointment_id=appointment.pk)
+    # E-Counseling, Routine ensure, and the Encounter all trust the saved Appointment. With Daily
+    # disabled the video session is unavailable, but the Appointment itself stays valid.
+    student_workspace = get_student_workspace(student=student, appointment_id=appointment.pk)
+    assert student_workspace["provider_readiness"]["join_state"] == "PROVIDER_DISABLED"
     assert get_counselor_workspace(counselor=counselor, appointment_id=appointment.pk)
     assert [item.pk for item in list_my_appointment_candidates(student)] == [appointment.pk]
     routine = ensure_for_appointment(
@@ -355,7 +357,19 @@ def test_removing_online_keeps_existing_online_counseling_fulfillable():
     routine.refresh_from_db()
     assert routine.counseling_encounter_id == encounter.pk  # ADR-087 linking intact.
 
-    # No new ONLINE Appointment can be booked.
+    # No new ONLINE work can start: direct Counseling, direct Routine Interviews, or booking.
+    with pytest.raises(CounselingNotPermitted, match="delivery mode"):
+        record_direct(counselor, student, mode="ONLINE")
+    with pytest.raises(RoutineInterviewAppointmentInvalid, match="delivery mode"):
+        create_direct(
+            counselor=counselor,
+            student_id=student.pk,
+            entry_mode="WALK_IN",
+            delivery_mode="ONLINE",
+            idempotency_key="online-after-removal",
+            request_fingerprint="c" * 64,
+            context=context(counselor),
+        )
     configure_availability(admin, counselor)
     with pytest.raises(AppointmentNotSchedulable, match="delivery mode"):
         create_student_appointment(

@@ -48,9 +48,51 @@ import {
 } from "@/features/appointments/appointment-booking-outcome";
 import { AppointmentsLocalNavigation, AppointmentsPageHeading, formatAppointmentDateTime, formatAppointmentTime, deliveryModeLabel } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
+import { isCounselingService } from "@/features/counseling/canonical-counseling-service";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { focusHeading } from "@/lib/focus-heading";
 import { INSTITUTION_TIME_ZONE, INSTITUTION_TIME_ZONE_LABEL } from "@/lib/institutional-time";
+
+// Offers only the modes the Service currently supports. For canonical Counseling, ONLINE is
+// explained as E-Counseling; ordinary Services' ONLINE stays a plain delivery mode.
+export function BookingDeliveryModeChoice({
+  service,
+  value,
+  onChange,
+}: {
+  service: AppointmentBookingServiceSummary;
+  value: DeliveryMode | "";
+  onChange: (mode: DeliveryMode) => void;
+}) {
+  const onlineUsesECounseling =
+    isCounselingService(service) && service.delivery_modes.includes(DeliveryMode.ONLINE);
+  return (
+    <>
+      <fieldset className="flex flex-wrap gap-3">
+        <legend className="sr-only">Delivery mode</legend>
+        {service.delivery_modes.map((mode) => (
+          <label key={mode} className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface-raised px-3 text-sm text-ink focus-within:ring-2 focus-within:ring-focus has-[:checked]:border-brand has-[:checked]:bg-brand-wash has-[:checked]:font-semibold">
+            <input
+              type="radio"
+              name="appointment-delivery-mode"
+              value={mode}
+              checked={value === mode}
+              onChange={() => onChange(mode)}
+              aria-describedby={onlineUsesECounseling && mode === DeliveryMode.ONLINE ? "booking-online-help" : undefined}
+              className="accent-brand"
+            />
+            {deliveryModeLabel(mode)}
+          </label>
+        ))}
+      </fieldset>
+      {onlineUsesECounseling ? (
+        <p id="booking-online-help" className="mt-2 text-xs leading-5 text-muted">
+          Online appointments use the E-Counseling workspace.
+        </p>
+      ) : null}
+    </>
+  );
+}
 
 function BookingWorkspace() {
   const queryClient = useQueryClient();
@@ -384,22 +426,11 @@ function BookingWorkspace() {
 
         {service ? (
           <PanelSection title="2. Choose delivery mode" titleId="booking-delivery-heading">
-            <fieldset className="flex flex-wrap gap-3">
-              <legend className="sr-only">Delivery mode</legend>
-              {service.delivery_modes.map((mode) => (
-                <label key={mode} className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface-raised px-3 text-sm text-ink focus-within:ring-2 focus-within:ring-focus has-[:checked]:border-brand has-[:checked]:bg-brand-wash has-[:checked]:font-semibold">
-                  <input
-                    type="radio"
-                    name="appointment-delivery-mode"
-                    value={mode}
-                    checked={deliveryMode === mode}
-                    onChange={() => changeDeliveryMode(mode)}
-                    className="accent-brand"
-                  />
-                  {deliveryModeLabel(mode)}
-                </label>
-              ))}
-            </fieldset>
+            <BookingDeliveryModeChoice
+              service={service}
+              value={deliveryMode}
+              onChange={changeDeliveryMode}
+            />
           </PanelSection>
         ) : null}
 

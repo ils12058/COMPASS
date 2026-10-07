@@ -2,7 +2,13 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { useState, type FormEvent, type ReactNode } from "react";
+import {
+  useState,
+  type Dispatch,
+  type FormEvent,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -17,8 +23,14 @@ import {
   serviceSchedulingConsequenceDetails,
   servicesErrorMessage,
   useServicesAction,
+  type ServiceConsequenceChange,
   type ServiceSchedulingConsequenceDetails,
 } from "@/features/services/services-shared";
+import {
+  counselingDeliveryOptions,
+  counselingOnlineStatus,
+  counselingVideoProviderNote,
+} from "@/features/services/counseling-delivery";
 import {
   ServiceProviderPicker,
   type SelectedCounselor,
@@ -138,6 +150,75 @@ function ChoiceRadio({
   );
 }
 
+// Canonical Counseling explains what each mode permits before either box is toggled. ONLINE is
+// the delivery mode; E-Counseling is what its scheduled Appointments use.
+function CounselingDeliveryFieldset({
+  values,
+  setValues,
+}: {
+  values: ServiceFormState;
+  setValues: Dispatch<SetStateAction<ServiceFormState>>;
+}) {
+  return (
+    <fieldset
+      className="mt-4"
+      aria-describedby="counseling-delivery-help counseling-delivery-status counseling-delivery-provider"
+    >
+      {/* The section heading already says "Counseling delivery"; the legend still names the group. */}
+      <legend className="sr-only">Counseling delivery modes</legend>
+      <p id="counseling-delivery-help" className="max-w-3xl text-xs leading-5 text-muted">
+        Counseling needs at least one mode. Each mode controls new Counseling work; existing
+        Appointments keep their saved mode.
+      </p>
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        {counselingDeliveryOptions.map((option) => {
+          const field = option.mode === DeliveryMode.ONLINE ? "online" : "inPerson";
+          const id = "counseling-delivery-" + field;
+          return (
+            <div
+              key={option.mode}
+              className="flex items-start gap-3 rounded-sm border border-border px-3 py-2.5 has-[:checked]:border-brand has-[:checked]:bg-brand-wash"
+            >
+              <input
+                id={id}
+                type="checkbox"
+                className="mt-1 h-4 w-4 shrink-0 accent-brand"
+                checked={values[field]}
+                aria-describedby={id + "-description"}
+                onChange={(event) =>
+                  setValues((current) => ({ ...current, [field]: event.target.checked }))
+                }
+              />
+              <span>
+                <label htmlFor={id} className="block cursor-pointer text-sm font-semibold text-ink">
+                  {option.label}
+                </label>
+                <span id={id + "-description"} className="mt-0.5 block text-xs leading-5 text-muted">
+                  {option.description}
+                </span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <p
+        id="counseling-delivery-status"
+        role="status"
+        className="mt-3 max-w-3xl text-sm leading-6 text-ink"
+      >
+        {counselingOnlineStatus({
+          inPerson: values.inPerson,
+          online: values.online,
+          bookingEnabled: values.bookingEnabled,
+        })}
+      </p>
+      <p id="counseling-delivery-provider" className="mt-1 max-w-3xl text-xs leading-5 text-muted">
+        {counselingVideoProviderNote}
+      </p>
+    </fieldset>
+  );
+}
+
 function ServiceForm({
   initial,
   active,
@@ -237,52 +318,53 @@ function ServiceForm({
         </div>
       </PanelSection>
 
-      <PanelSection title="Service delivery" titleId="service-delivery-heading">
-        <fieldset className="mt-4">
-          <legend className="text-sm font-semibold text-ink">
-            Supported delivery modes
-          </legend>
-          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-3">
-            <label className="inline-flex min-h-10 items-center gap-3 text-sm text-ink">
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-brand"
-                checked={values.inPerson}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    inPerson: event.target.checked,
-                  }))
-                }
-              />
-              In person
-            </label>
-            <label className="inline-flex min-h-10 items-center gap-3 text-sm text-ink">
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-brand"
-                checked={values.online}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    online: event.target.checked,
-                  }))
-                }
-              />
-              Online
-            </label>
-          </div>
-          <p className="mt-2 text-xs leading-5 text-muted">
-            An active Service requires at least one delivery mode. Removing a mode
-            stops new work in that mode; existing Appointments keep theirs.
-          </p>
-          {systemRequired && values.online ? (
-            <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">
-              Online Counseling may be schedulable where Availability permits it.
-              E-Counseling provider readiness is managed separately.
+      <PanelSection
+        title={systemRequired ? "Counseling delivery" : "Service delivery"}
+        titleId="service-delivery-heading"
+      >
+        {systemRequired ? (
+          <CounselingDeliveryFieldset values={values} setValues={setValues} />
+        ) : (
+          <fieldset className="mt-4" aria-describedby="service-delivery-help">
+            <legend className="text-sm font-semibold text-ink">
+              Supported delivery modes
+            </legend>
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-3">
+              <label className="inline-flex min-h-10 items-center gap-3 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-brand"
+                  checked={values.inPerson}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      inPerson: event.target.checked,
+                    }))
+                  }
+                />
+                In person
+              </label>
+              <label className="inline-flex min-h-10 items-center gap-3 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-brand"
+                  checked={values.online}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      online: event.target.checked,
+                    }))
+                  }
+                />
+                Online
+              </label>
+            </div>
+            <p id="service-delivery-help" className="mt-2 text-xs leading-5 text-muted">
+              An active Service requires at least one delivery mode. Removing a mode
+              stops new work in that mode; existing Appointments keep theirs.
             </p>
-          ) : null}
-        </fieldset>
+          </fieldset>
+        )}
       </PanelSection>
 
       <PanelSection title="Appointment booking" titleId="service-appointment-heading">
@@ -525,6 +607,22 @@ type PendingServiceConsequenceReview = {
   details: ServiceSchedulingConsequenceDetails | null;
 };
 
+function reviewedChange(
+  service: ServiceResponse,
+  changes: ServiceUpdateRequest,
+): ServiceConsequenceChange {
+  const nextModes = changes.delivery_modes;
+  return {
+    counselingOnlineRemoved:
+      service.is_system_required &&
+      service.delivery_modes.includes(DeliveryMode.ONLINE) &&
+      Array.isArray(nextModes) &&
+      !nextModes.includes(DeliveryMode.ONLINE),
+    bookingTurnedOff:
+      service.appointment_booking_enabled && changes.appointment_booking_enabled === false,
+  };
+}
+
 export function EditServicePage() {
   const params = useParams<{ serviceId: string }>();
   const serviceId = params.serviceId;
@@ -720,7 +818,10 @@ export function EditServicePage() {
         onConfirm={() => void confirmConsequenceReview()}
       >
         <p>Review what this Service change means before saving it.</p>
-        <ServiceConsequenceSummary details={review?.details ?? null} />
+        <ServiceConsequenceSummary
+          details={review?.details ?? null}
+          change={review ? reviewedChange(service, review.changes) : undefined}
+        />
       </ConsequentialActionDialog>
       {action.stepUpDialog}
     </section>
