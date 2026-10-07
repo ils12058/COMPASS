@@ -11,6 +11,11 @@ import { Notice } from "@/components/ui/notice";
 import { Panel, PanelSection } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
+  counselingECounselingExplanation,
+  newECounselingAppointmentsLabel,
+  PlatformHealthLink,
+} from "@/features/services/counseling-delivery";
+import {
   activationBlockerLabels,
   ServiceConsequenceSummary,
   serviceBookingLabel,
@@ -79,6 +84,31 @@ function BookingFacts({ service }: { service: ServiceResponse }) {
           : "None"}
       </Fact>
     </dl>
+  );
+}
+
+// Canonical Counseling: each mode's effect on new work, and what that means for E-Counseling.
+function CounselingDeliveryFacts({ service }: { service: ServiceResponse }) {
+  const state = {
+    inPerson: service.delivery_modes.includes(DeliveryMode.IN_PERSON),
+    online: service.delivery_modes.includes(DeliveryMode.ONLINE),
+    bookingEnabled: service.appointment_booking_enabled,
+  };
+  return (
+    <PanelSection title="Counseling delivery" titleId="service-delivery-heading">
+      <dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <Fact label="In person">{state.inPerson ? "Available" : "Not enabled"}</Fact>
+        <Fact label="Online counseling">{state.online ? "Available" : "Not enabled"}</Fact>
+        <Fact label="New E-Counseling appointments">
+          {newECounselingAppointmentsLabel(state)}
+        </Fact>
+        {state.online ? <Fact label="Video-session provider">Managed separately</Fact> : null}
+      </dl>
+      <p className="mt-3 max-w-4xl text-sm leading-6 text-muted">
+        {counselingECounselingExplanation(state)}
+      </p>
+      {state.online ? <PlatformHealthLink /> : null}
+    </PanelSection>
   );
 }
 
@@ -277,20 +307,17 @@ export function ServiceDetailPage() {
           </p>
         </PanelSection> : null}
 
-        <PanelSection title="Service delivery" titleId="service-delivery-heading">
-          <p className="mt-3 text-sm text-ink">
-            {service.delivery_modes.length === 0
-              ? "No delivery mode configured."
-              : serviceDeliveryLabel(service.delivery_modes)}
-          </p>
-          {systemRequired &&
-          service.delivery_modes.includes(DeliveryMode.ONLINE) ? (
-            <p className="mt-2 max-w-4xl text-xs leading-5 text-muted">
-              Online Counseling can be scheduled where Availability permits it.
-              E-Counseling provider readiness is managed separately.
+        {systemRequired ? (
+          <CounselingDeliveryFacts service={service} />
+        ) : (
+          <PanelSection title="Service delivery" titleId="service-delivery-heading">
+            <p className="mt-3 text-sm text-ink">
+              {service.delivery_modes.length === 0
+                ? "No delivery mode configured."
+                : serviceDeliveryLabel(service.delivery_modes)}
             </p>
-          ) : null}
-        </PanelSection>
+          </PanelSection>
+        )}
 
         <PanelSection title="Appointment booking" titleId="service-appointment-heading">
           <BookingFacts service={service} />
