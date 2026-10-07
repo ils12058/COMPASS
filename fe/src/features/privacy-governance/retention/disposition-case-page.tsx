@@ -31,6 +31,8 @@ import {
 } from "../privacy-governance-shared";
 import {
   categoryLabels,
+  dispositionActionLabel,
+  retentionContractLabel,
   canConfirmDispositionReview,
   dispositionConsequence,
   invalidateRetention,
@@ -217,9 +219,7 @@ export function DispositionCasePage() {
             <div>
               <dt className="text-muted">Disposition / frozen membership</dt>
               <dd>
-                {item.action === "ANONYMIZE"
-                  ? "Anonymize"
-                  : "Delete provider artifact, keep evidence"}{" "}
+                {dispositionActionLabel(item.action)} · {retentionContractLabel(item.contract_version)}{" "}
                 · {item.affected_count} record
               </dd>
             </div>
@@ -367,9 +367,7 @@ export function DispositionCasePage() {
         description={
           <p>
             One {categoryLabels[item.category]} record is reviewed for{" "}
-            {item.action === "ANONYMIZE"
-              ? "anonymization"
-              : "provider artifact deletion"}
+            {dispositionActionLabel(item.action).toLowerCase()}
             . {dispositionConsequence(item)}
           </p>
         }

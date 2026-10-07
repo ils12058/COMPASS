@@ -19,21 +19,25 @@ import {
 } from "@/lib/api/generated/e-counseling/e-counseling";
 
 type StudentAction = { consentId: string; scope: ECounselingConsentScope; decision?: ConsentDecisionRequestDecision; withdraw?: boolean };
-const consentScopes = Object.values(ECounselingConsentScope);
+const legacyScopes = [ECounselingConsentScope.AUDIO_VIDEO_RECORDING, ECounselingConsentScope.LIVE_TRANSCRIPTION, ECounselingConsentScope.TRANSCRIPT_STORAGE];
+const v2Scopes = [ECounselingConsentScope.SESSION_MEDIA_CAPTURE, ECounselingConsentScope.TRANSCRIPT_STORAGE];
 
 const scopeLabels: Record<ECounselingConsentScope, string> = {
+  [ECounselingConsentScope.SESSION_MEDIA_CAPTURE]: "Recording & live transcription",
   [ECounselingConsentScope.AUDIO_VIDEO_RECORDING]: "Audio/video recording",
   [ECounselingConsentScope.LIVE_TRANSCRIPTION]: "Session transcription",
   [ECounselingConsentScope.TRANSCRIPT_STORAGE]: "Transcript storage",
 };
 
 const scopeDescriptions: Record<ECounselingConsentScope, string> = {
+  [ECounselingConsentScope.SESSION_MEDIA_CAPTURE]: "Allows your counselor to record audio/video or use live transcription during this session. A recording is saved and may be accessed after the session. Live transcription is only saved as a transcript when you separately allow transcript storage. Approval alone does not start either operation.",
   [ECounselingConsentScope.AUDIO_VIDEO_RECORDING]: "Allows audio and video from this Counseling session to be recorded.",
   [ECounselingConsentScope.LIVE_TRANSCRIPTION]: "Allows speech from this session to be processed as text while transcription is active.",
   [ECounselingConsentScope.TRANSCRIPT_STORAGE]: "Allows the transcript of this session to be stored by the video service.",
 };
 
 const withdrawalSubjects: Record<ECounselingConsentScope, string> = {
+  [ECounselingConsentScope.SESSION_MEDIA_CAPTURE]: "recording and live transcription",
   [ECounselingConsentScope.AUDIO_VIDEO_RECORDING]: "recording",
   [ECounselingConsentScope.LIVE_TRANSCRIPTION]: "transcription",
   [ECounselingConsentScope.TRANSCRIPT_STORAGE]: "transcript storage",
@@ -68,6 +72,11 @@ export function StudentConsentPanel({
   const rows = consents.data?.data.items ?? [];
   const latestWorkspace = queryClient.getQueryData<{ data: StudentWorkspaceResponse }>(getECounselingGetMyWorkspaceQueryKey(appointmentId));
   const latestMedia = latestWorkspace?.data.media ?? media;
+  const isV2 = latestMedia.media_policy_version === 2;
+  const consentScopes = isV2 ? v2Scopes : legacyScopes;
+  const description = (scope: ECounselingConsentScope) => isV2 && scope === ECounselingConsentScope.TRANSCRIPT_STORAGE
+    ? "Allows the transcript from this session to be saved and accessed after the session. Saving requires media permission too and starts only when your counselor deliberately chooses transcript storage."
+    : scopeDescription(scope);
   const scopeRows = consentScopes.flatMap((scope): Array<{ scope: ECounselingConsentScope; row: ConsentResponse | null }> => {
     const matches = rows.filter((row) => row.scope === scope);
     return matches.length ? matches.map((row) => ({ scope, row })) : [{ scope, row: null }];
@@ -134,7 +143,7 @@ export function StudentConsentPanel({
                     <h3 className="font-semibold text-ink">{scopeLabel(scope)}</h3>
                     <span className={pending ? "text-sm font-semibold text-ink" : "text-sm text-muted"}>{row ? consentStatusLabel(row) : "Not requested"}</span>
                   </div>
-                  <p className="mt-0.5 text-sm leading-6 text-muted">{scopeDescription(scope)}</p>
+                  <p className="mt-0.5 text-sm leading-6 text-muted">{description(scope)}</p>
                   {pending && row ? <div className="mt-2.5 flex flex-wrap gap-2"><Button variant="primary" aria-label={`Allow ${scopeLabel(scope).toLowerCase()}`} disabled={decide.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.APPROVED }); }}>Allow</Button><Button variant="secondary" aria-label={`Decline ${scopeLabel(scope).toLowerCase()}`} disabled={decide.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.DENIED }); }}>Decline</Button></div> : null}
                   {canWithdraw && row ? <Button className="mt-2.5" variant="secondary" aria-label={`Withdraw ${scopeLabel(scope).toLowerCase()} consent`} disabled={withdraw.isPending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, withdraw: true }); }}>Withdraw consent</Button> : null}
                   {row?.decision === ECounselingConsentDecision.DENIED && !withdrawn ? <p className="mt-1.5 text-sm text-muted">This media option will not be requested again for this session.</p> : null}
@@ -154,7 +163,7 @@ export function StudentConsentPanel({
       <AlertDialog open={Boolean(action)} onOpenChange={(open) => { if (!open && !decide.isPending && !withdraw.isPending) setAction(null); }}>
         {action ? <AlertDialogContent>
           <AlertDialogTitle>{action.withdraw ? `Withdraw ${withdrawalSubjects[action.scope]} consent?` : `${action.decision === ConsentDecisionRequestDecision.APPROVED ? "Allow" : "Decline"} ${scopeLabel(action.scope).toLowerCase()}?`}</AlertDialogTitle>
-          <AlertDialogDescription>{action.withdraw ? "This withdraws your consent for the rest of this session. Counseling continues to be available." : action.decision === ConsentDecisionRequestDecision.APPROVED ? scopeDescription(action.scope) : "This media option will not be requested again for this session. Your decision does not affect Counseling."}</AlertDialogDescription>
+          <AlertDialogDescription>{action.withdraw ? "This withdraws your consent for the rest of this session and requests stopping affected capture. It does not immediately delete files already created; institutional retention and holds govern those files. Counseling continues to be available." : action.decision === ConsentDecisionRequestDecision.APPROVED ? description(action.scope) : "This media option will not be requested again for this session. Your decision does not affect Counseling."}</AlertDialogDescription>
           <div className="mt-6 flex justify-end gap-2"><AlertDialogCancel asChild><Button variant="secondary" disabled={decide.isPending || withdraw.isPending}>Cancel</Button></AlertDialogCancel><AlertDialogAction asChild><Button variant="secondary" disabled={decide.isPending || withdraw.isPending} onClick={(event) => { event.preventDefault(); void confirmAction(); }}>{decide.isPending || withdraw.isPending ? "Saving…" : action.withdraw ? "Withdraw consent" : action.decision === ConsentDecisionRequestDecision.APPROVED ? "Allow" : "Decline"}</Button></AlertDialogAction></div>
         </AlertDialogContent> : null}
       </AlertDialog>

@@ -42,6 +42,8 @@ import {
 } from "../privacy-governance-shared";
 import {
   categoryLabels,
+  dispositionActionLabel,
+  retentionContractLabel,
   invalidateRetention,
   isRetentionConflict,
   useRetentionAccess,
@@ -51,6 +53,7 @@ type RuleFormValues = {
   code: string;
   label: string;
   category: string;
+  contractVersion: string;
   duration: string;
   reference: string;
   effective: string;
@@ -60,6 +63,7 @@ function formValues(rule?: RetentionRuleResponse): RuleFormValues {
     code: rule?.code ?? "",
     label: rule?.label ?? "",
     category: rule?.category ?? "",
+    contractVersion: rule ? String(rule.contract_version) : "",
     duration: rule ? String(rule.duration_days) : "",
     reference: rule?.policy_reference ?? "",
     effective: rule?.effective_on ?? "",
@@ -103,8 +107,10 @@ function RuleForm({
     dirty,
     message: "Discard your unsaved retention rule?",
   });
-  const selected = safeQueryData(categories)?.data.find(
-    (item) => item.category === values.category,
+  const contracts = safeQueryData(categories)?.data ?? [];
+  const categoryChoices = [...new Map(contracts.map((item) => [item.category, item])).values()];
+  const selected = contracts.find(
+    (item) => item.category === values.category && String(item.contract_version) === values.contractVersion,
   );
   const pending = create.isPending || update.isPending;
   function field(key: keyof RuleFormValues, value: string) {
@@ -117,6 +123,7 @@ function RuleForm({
     const data = {
       label: values.label,
       category: selected.category,
+      contract_version: selected.contract_version,
       trigger: selected.trigger,
       action: selected.action,
       duration_days: Number(values.duration),
@@ -187,10 +194,10 @@ function RuleForm({
               value={values.category}
               required
               disabled={categories.isError || categories.isPending}
-              onChange={(event) => field("category", event.target.value)}
+              onChange={(event) => setValues((old) => ({ ...old, category: event.target.value, contractVersion: "" }))}
             >
               <option value="">Select category</option>
-              {safeQueryData(categories)?.data.map((item) => (
+              {categoryChoices.map((item) => (
                 <option key={item.category} value={item.category}>
                   {item.label}
                 </option>
@@ -203,6 +210,16 @@ function RuleForm({
                 onRetry={() => void categories.refetch()}
               />
             ) : null}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="rule-contract">Governance contract</Label>
+            <Select id="rule-contract" value={values.contractVersion} required disabled={!values.category || categories.isError || categories.isPending} onChange={(event) => field("contractVersion", event.target.value)}>
+              <option value="">Select contract</option>
+              {contracts.filter((item) => item.category === values.category).map((item) => (
+                <option key={item.contract_version} value={item.contract_version}>{retentionContractLabel(item.contract_version)}</option>
+              ))}
+            </Select>
+            <p className="text-xs text-muted">Each contract governs its own records. Existing sessions retain their original media policy.</p>
           </div>
           {selected ? (
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -217,9 +234,7 @@ function RuleForm({
               <div>
                 <dt className="text-muted">Disposition</dt>
                 <dd>
-                  {selected.action === "ANONYMIZE"
-                    ? "Anonymize"
-                    : "Delete provider artifact, keep evidence"}
+                  {dispositionActionLabel(selected.action)}
                 </dd>
               </div>
             </dl>
@@ -273,7 +288,7 @@ function RuleForm({
               <div>
                 <dt className="text-muted">Label / category</dt>
                 <dd>
-                  {rule.label} · {categoryLabels[rule.category]}
+                  {rule.label} · {categoryLabels[rule.category]} · {retentionContractLabel(rule.contract_version)}
                 </dd>
               </div>
               <div>
@@ -468,9 +483,7 @@ export function RetentionRuleEditor({
                 <dt className="text-muted">Category / disposition</dt>
                 <dd>
                   {categoryLabels[item.category]} ·{" "}
-                  {item.action === "ANONYMIZE"
-                    ? "Anonymize"
-                    : "Delete provider artifact, keep evidence"}
+                  {dispositionActionLabel(item.action)} · {retentionContractLabel(item.contract_version)}
                 </dd>
               </div>
               <div>

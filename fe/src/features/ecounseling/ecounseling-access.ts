@@ -9,6 +9,7 @@ export type ECounselingAccess = {
   canViewAssigned: boolean;
   canJoinAssigned: boolean;
   canManageMediaAssigned: boolean;
+  canAccessMediaAssigned: boolean;
   hasWorkspace: boolean;
 };
 
@@ -22,6 +23,7 @@ export function getECounselingAccess(user: UserSummary): ECounselingAccess {
   const canViewAssigned = isCounselor && capabilities.has("ecounseling.view_assigned");
   const canJoinAssigned = isCounselor && capabilities.has("ecounseling.join_assigned");
   const canManageMediaAssigned = isCounselor && capabilities.has("ecounseling.manage_media_assigned");
+  const canAccessMediaAssigned = canViewAssigned && capabilities.has("ecounseling.access_media_assigned");
 
   return {
     isStudent,
@@ -32,6 +34,7 @@ export function getECounselingAccess(user: UserSummary): ECounselingAccess {
     canViewAssigned,
     canJoinAssigned,
     canManageMediaAssigned,
+    canAccessMediaAssigned,
     hasWorkspace: canViewSelf || canViewAssigned,
   };
 }

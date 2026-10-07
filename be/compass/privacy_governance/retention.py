@@ -9,7 +9,12 @@ from compass.audit import actions
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.common.errors import APIError
-from compass.ecounseling.models import ECounselingMediaCapture, MediaCaptureKind, MediaCaptureStatus
+from compass.ecounseling.models import (
+    ECounselingMediaArtifact,
+    ECounselingMediaCapture,
+    MediaCaptureKind,
+    MediaCaptureStatus,
+)
 from compass.graduate_tracer.models import (
     GTS_SCHEMA_VERSION,
     GraduateTracerResponse,
@@ -39,6 +44,19 @@ SUPPORTED = {
         DispositionAction.DELETE_PROVIDER_ARTIFACT_KEEP_EVIDENCE,
     ),
 }
+SUPPORTED_CONTRACTS = {(category, 1): treatment for category, treatment in SUPPORTED.items()}
+SUPPORTED_CONTRACTS.update(
+    {
+        (category, 2): (
+            RetentionTrigger.MEDIA_READY_AT,
+            DispositionAction.DELETE_MEDIA_ARTIFACT_KEEP_EVIDENCE,
+        )
+        for category in (
+            RetentionCategory.ECOUNSELING_RECORDING,
+            RetentionCategory.ECOUNSELING_TRANSCRIPT,
+        )
+    }
+)
 REVIEW_STATES = {
     DispositionState.READY,
     DispositionState.BLOCKED,
@@ -60,6 +78,7 @@ def audit(context, action, item, *, blocker=None):
     rule = item if isinstance(item, OperationalRetentionRule) else item.rule
     metadata = {
         "category": rule.category,
+        "contract_version": rule.contract_version,
         "disposition_action": rule.action,
         "rule_id": str(rule.pk),
         "rule_revision": rule.revision,
@@ -83,7 +102,10 @@ def audit(context, action, item, *, blocker=None):
 
 
 def _validate_rule(values):
-    if SUPPORTED.get(values["category"]) != (values["trigger"], values["action"]):
+    values.setdefault("contract_version", 1)
+    if type(values["contract_version"]) is not int or SUPPORTED_CONTRACTS.get(
+        (values["category"], values["contract_version"])
+    ) != (values["trigger"], values["action"]):
         raise APIError(
             422, "invalid_retention_rule", "Unsupported category, trigger, or disposition."
         )
@@ -185,7 +207,9 @@ def transition_rule(*, actor, rule_id, expected_revision, activate, context):
             item.save()
     except IntegrityError as exc:
         raise APIError(
-            409, "retention_state_changed", "Retire the current active category rule first."
+            409,
+            "retention_state_changed",
+            "Retire the active rule for this category and contract version first.",
         ) from exc
     audit(
         context,
@@ -211,7 +235,7 @@ def active(rule, now):
     )
 
 
-def source_queryset(category):
+def source_queryset(category, contract_version=1):
     if category == RetentionCategory.GRADUATE_TRACER:
         return GraduateTracerResponse.objects.filter(
             status=GraduateTracerStatus.SUBMITTED,
@@ -225,7 +249,10 @@ def source_queryset(category):
         else MediaCaptureKind.TRANSCRIPTION
     )
     return ECounselingMediaCapture.objects.filter(
-        kind=kind, ready_at__isnull=False, artifact_disposed_at__isnull=True
+        kind=kind,
+        ready_at__isnull=False,
+        artifact_disposed_at__isnull=True,
+        room__media_policy_version=contract_version,
     )
 
 
@@ -249,15 +276,27 @@ def source_eligibility(rule, source, now):
             or source.room.room_expires_at > now
         ):
             return eligible_at, DispositionBlocker.MEDIA_NOT_TERMINAL
-        if not source.provider_artifact_id:
+        if source.room.media_policy_version != rule.contract_version:
+            return eligible_at, DispositionBlocker.SOURCE_CHANGED
+        if rule.contract_version == 2:
+            artifact = ECounselingMediaArtifact.objects.filter(capture=source).first()
+            if artifact is None:
+                return eligible_at, DispositionBlocker.LOCAL_ARTIFACT_MISSING
+            if artifact.status != "STORED":
+                return eligible_at, DispositionBlocker.INGESTION_INCOMPLETE
+            if artifact.claim_token:
+                return eligible_at, DispositionBlocker.PROVIDER_CLEANUP_UNVERIFIED
+            if not source.provider_artifact_id and artifact.provider_deleted_at is None:
+                return eligible_at, DispositionBlocker.PROVIDER_CLEANUP_UNVERIFIED
+        elif not source.provider_artifact_id:
             return eligible_at, DispositionBlocker.ARTIFACT_ID_MISSING
     return eligible_at, None
 
 
 def revalidate(case, rule, *, now, lock_source=True):
-    if case.rule_id != rule.pk:
+    if case.rule_id != rule.pk or case.contract_version != rule.contract_version:
         return None, DispositionBlocker.SOURCE_CHANGED
-    qs = source_queryset(case.category)
+    qs = source_queryset(case.category, case.contract_version)
     if lock_source:
         if case.category == RetentionCategory.GRADUATE_TRACER:
             from compass.accounts.models import User
@@ -295,11 +334,13 @@ def discover_eligibility(*, limit=200):
             anchor = (
                 "submitted_at" if rule.category == RetentionCategory.GRADUATE_TRACER else "ready_at"
             )
-            sources = source_queryset(rule.category).filter(
+            sources = source_queryset(rule.category, rule.contract_version).filter(
                 **{anchor + "__lte": now - timedelta(days=rule.duration_days)}
             )
             # Discover new records in bounded pages; refresh existing cases separately.
-            known = DispositionCase.objects.filter(category=rule.category).values("source_id")
+            known = DispositionCase.objects.filter(
+                category=rule.category, contract_version=rule.contract_version
+            ).values("source_id")
             for source in sources.exclude(pk__in=known).order_by(anchor, "id")[:limit]:
                 eligible_at, blocker = source_eligibility(rule, source, now)
                 DispositionCase.objects.get_or_create(
@@ -307,6 +348,7 @@ def discover_eligibility(*, limit=200):
                     source_id=source.pk,
                     defaults={
                         "rule": rule,
+                        "contract_version": rule.contract_version,
                         "rule_revision": rule.revision,
                         "source_updated_at": source.updated_at,
                         "eligible_at": eligible_at,
@@ -317,10 +359,18 @@ def discover_eligibility(*, limit=200):
                 changed += 1
             for case in (
                 DispositionCase.objects.select_for_update()
-                .filter(category=rule.category, state__in=REVIEW_STATES)
+                .filter(
+                    category=rule.category,
+                    contract_version=rule.contract_version,
+                    state__in=REVIEW_STATES,
+                )
                 .order_by("updated_at", "id")[:limit]
             ):
-                source = source_queryset(rule.category).filter(pk=case.source_id).first()
+                source = (
+                    source_queryset(rule.category, rule.contract_version)
+                    .filter(pk=case.source_id)
+                    .first()
+                )
                 eligible_at, blocker = (
                     source_eligibility(rule, source, now)
                     if source

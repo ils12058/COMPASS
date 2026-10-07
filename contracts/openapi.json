@@ -3277,6 +3277,7 @@
           "call_slips.view_self",
           "counseling.manage_assigned",
           "counseling.view_assigned",
+          "ecounseling.access_media_assigned",
           "ecounseling.consent_self",
           "ecounseling.join_assigned",
           "ecounseling.join_self",
@@ -7193,6 +7194,7 @@
       },
       "DispositionAction": {
         "enum": [
+          "DELETE_MEDIA_ARTIFACT_KEEP_EVIDENCE",
           "ANONYMIZE",
           "DELETE_PROVIDER_ARTIFACT_KEEP_EVIDENCE"
         ],
@@ -7201,6 +7203,11 @@
       },
       "DispositionBlocker": {
         "enum": [
+          "INGESTION_INCOMPLETE",
+          "OBJECT_STORAGE_UNAVAILABLE",
+          "OBJECT_STORAGE_UNVERIFIED",
+          "PROVIDER_CLEANUP_UNVERIFIED",
+          "LOCAL_ARTIFACT_MISSING",
           "RULE_INACTIVE",
           "SOURCE_CHANGED",
           "SOURCE_UNAVAILABLE",
@@ -7299,6 +7306,9 @@
             ],
             "title": "Completed At"
           },
+          "contract_version": {
+            "$ref": "#/components/schemas/RetentionContractVersion"
+          },
           "eligible_at": {
             "format": "date-time",
             "title": "Eligible At",
@@ -7358,6 +7368,7 @@
           "rule_id",
           "rule_code",
           "rule_revision",
+          "contract_version",
           "category",
           "action",
           "affected_count",
@@ -7552,6 +7563,7 @@
       },
       "ECounselingConsentScope": {
         "enum": [
+          "SESSION_MEDIA_CAPTURE",
           "AUDIO_VIDEO_RECORDING",
           "LIVE_TRANSCRIPTION",
           "TRANSCRIPT_STORAGE"
@@ -15018,6 +15030,37 @@
         "title": "MarkAllReadResponse",
         "type": "object"
       },
+      "MediaArtifactAccessResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expires_at"
+        ],
+        "title": "MediaArtifactAccessResponse",
+        "type": "object"
+      },
+      "MediaArtifactStatus": {
+        "enum": [
+          "PENDING",
+          "PROCESSING",
+          "STORED",
+          "FAILED",
+          "DISPOSED"
+        ],
+        "title": "MediaArtifactStatus",
+        "type": "string"
+      },
       "MediaCaptureResponse": {
         "additionalProperties": false,
         "properties": {
@@ -15040,9 +15083,20 @@
         "title": "MediaCaptureResponse",
         "type": "object"
       },
+      "MediaPolicyVersion": {
+        "enum": [
+          1,
+          2
+        ],
+        "title": "MediaPolicyVersion",
+        "type": "integer"
+      },
       "MediaWorkspaceState": {
         "additionalProperties": false,
         "properties": {
+          "media_policy_version": {
+            "$ref": "#/components/schemas/MediaPolicyVersion"
+          },
           "recording": {
             "$ref": "#/components/schemas/RecordingWorkspaceState"
           },
@@ -15051,6 +15105,7 @@
           }
         },
         "required": [
+          "media_policy_version",
           "recording",
           "transcription"
         ],
@@ -17243,6 +17298,10 @@
       "RecordingWorkspaceState": {
         "additionalProperties": false,
         "properties": {
+          "artifact_available": {
+            "title": "Artifact Available",
+            "type": "boolean"
+          },
           "artifact_disposed_at": {
             "anyOf": [
               {
@@ -17255,6 +17314,16 @@
             ],
             "title": "Artifact Disposed At"
           },
+          "artifact_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaArtifactStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "capture_status": {
             "$ref": "#/components/schemas/ECounselingCaptureStatus"
           },
@@ -17265,7 +17334,9 @@
         "required": [
           "consent_status",
           "capture_status",
-          "artifact_disposed_at"
+          "artifact_disposed_at",
+          "artifact_status",
+          "artifact_available"
         ],
         "title": "RecordingWorkspaceState",
         "type": "object"
@@ -18609,6 +18680,9 @@
           "category": {
             "$ref": "#/components/schemas/RetentionCategory"
           },
+          "contract_version": {
+            "$ref": "#/components/schemas/RetentionContractVersion"
+          },
           "label": {
             "title": "Label",
             "type": "string"
@@ -18618,6 +18692,7 @@
           }
         },
         "required": [
+          "contract_version",
           "category",
           "label",
           "trigger",
@@ -18639,6 +18714,9 @@
           "category": {
             "$ref": "#/components/schemas/RetentionCategory"
           },
+          "contract_version": {
+            "$ref": "#/components/schemas/RetentionContractVersion"
+          },
           "held_count": {
             "title": "Held Count",
             "type": "integer"
@@ -18656,6 +18734,7 @@
           }
         },
         "required": [
+          "contract_version",
           "category",
           "label",
           "trigger",
@@ -18666,6 +18745,14 @@
         ],
         "title": "RetentionCategorySummary",
         "type": "object"
+      },
+      "RetentionContractVersion": {
+        "enum": [
+          1,
+          2
+        ],
+        "title": "RetentionContractVersion",
+        "type": "integer"
       },
       "RetentionRevisionRequest": {
         "additionalProperties": false,
@@ -18696,6 +18783,14 @@
             "minLength": 1,
             "title": "Code",
             "type": "string"
+          },
+          "contract_version": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetentionContractVersion"
+              }
+            ],
+            "default": 1
           },
           "duration_days": {
             "maximum": 365000,
@@ -18796,6 +18891,9 @@
             "title": "Code",
             "type": "string"
           },
+          "contract_version": {
+            "$ref": "#/components/schemas/RetentionContractVersion"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -18859,6 +18957,7 @@
         },
         "required": [
           "label",
+          "contract_version",
           "category",
           "trigger",
           "duration_days",
@@ -18894,6 +18993,14 @@
           },
           "category": {
             "$ref": "#/components/schemas/RetentionCategory"
+          },
+          "contract_version": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetentionContractVersion"
+              }
+            ],
+            "default": 1
           },
           "duration_days": {
             "maximum": 365000,
@@ -21918,6 +22025,10 @@
       "TranscriptionWorkspaceState": {
         "additionalProperties": false,
         "properties": {
+          "artifact_available": {
+            "title": "Artifact Available",
+            "type": "boolean"
+          },
           "artifact_disposed_at": {
             "anyOf": [
               {
@@ -21929,6 +22040,16 @@
               }
             ],
             "title": "Artifact Disposed At"
+          },
+          "artifact_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaArtifactStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "capture_status": {
             "$ref": "#/components/schemas/ECounselingCaptureStatus"
@@ -21949,7 +22070,9 @@
           "storage_consent_status",
           "capture_status",
           "storage_enabled",
-          "artifact_disposed_at"
+          "artifact_disposed_at",
+          "artifact_status",
+          "artifact_available"
         ],
         "title": "TranscriptionWorkspaceState",
         "type": "object"
@@ -23210,6 +23333,7 @@
                 "call_slips.view_self",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
+                "ecounseling.access_media_assigned",
                 "ecounseling.consent_self",
                 "ecounseling.join_assigned",
                 "ecounseling.join_self",
@@ -23378,6 +23502,7 @@
                 "call_slips.view_self",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
+                "ecounseling.access_media_assigned",
                 "ecounseling.consent_self",
                 "ecounseling.join_assigned",
                 "ecounseling.join_self",
@@ -33328,6 +33453,127 @@
           }
         ],
         "summary": "Ecounseling Create Join Credential",
+        "tags": [
+          "e-counseling"
+        ]
+      }
+    },
+    "/api/v1/e-counseling/appointments/{appointment_id}/media/{kind}/access": {
+      "get": {
+        "operationId": "eCounselingAccessAssignedMedia",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "RECORDING",
+                "TRANSCRIPTION"
+              ],
+              "title": "ECounselingMediaKind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaArtifactAccessResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Ecounseling Access Assigned Media",
         "tags": [
           "e-counseling"
         ]
@@ -44724,6 +44970,21 @@
               "default": 20,
               "title": "Page Size",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "contract_version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/RetentionContractVersion"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           {

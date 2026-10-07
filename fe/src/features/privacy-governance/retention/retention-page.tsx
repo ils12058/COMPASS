@@ -34,10 +34,11 @@ import {
   usePrivacyGovernanceListDispositionCases,
   usePrivacyGovernanceRetentionSummary,
 } from "@/lib/api/generated/privacy-governance/privacy-governance";
-import { DispositionState, RetentionCategory } from "@/lib/api/generated/model";
+import { DispositionState, RetentionCategory, RetentionContractVersion } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import {
   categoryLabels,
+  retentionContractLabel,
   stateLabels,
   useRetentionAccess,
 } from "./retention-shared";
@@ -46,6 +47,7 @@ export function RetentionPage() {
   const { canView } = useRetentionAccess();
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState<RetentionCategory>();
+  const [contractVersion, setContractVersion] = useState<RetentionContractVersion>();
   const [state, setState] = useState<DispositionState>();
   const summary = usePrivacyGovernanceRetentionSummary({
     query: {
@@ -56,7 +58,7 @@ export function RetentionPage() {
     },
   });
   const cases = usePrivacyGovernanceListDispositionCases(
-    { page, page_size: 20, category, state },
+    { page, page_size: 20, category, contract_version: contractVersion, state },
     {
       query: {
         enabled: canView,
@@ -130,11 +132,11 @@ export function RetentionPage() {
             <ul className="divide-y divide-border">
               {counts.categories.map((item) => (
                 <li
-                  key={item.category}
+                  key={`${item.category}:${item.contract_version}`}
                   className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5"
                 >
                   <div>
-                    <p className="text-sm font-semibold">{item.label}</p>
+                    <p className="text-sm font-semibold">{item.label} · {retentionContractLabel(item.contract_version)}</p>
                     <p className="text-sm text-muted">
                       {item.ready_count} ready · {item.held_count} on hold ·{" "}
                       {item.blocked_count} unresolved
@@ -144,6 +146,7 @@ export function RetentionPage() {
                     variant="secondary"
                     onClick={() => {
                       setCategory(item.category);
+                      setContractVersion(item.contract_version);
                       setState("READY");
                       setPage(1);
                     }}
@@ -183,7 +186,7 @@ export function RetentionPage() {
             ) : null}
             {result.items.length === 0 ? (
               <PanelMessage>
-                {category || state
+                {category || contractVersion || state
                   ? "No cases match these filters."
                   : "No disposition cases. An active institutional retention rule is required before eligibility is discovered."}
               </PanelMessage>
@@ -206,7 +209,7 @@ export function RetentionPage() {
                             href={`/portal/privacy/retention/cases/${item.id}`}
                             className={textLinkClass}
                           >
-                            {categoryLabels[item.category]}
+                            {categoryLabels[item.category]} · {retentionContractLabel(item.contract_version)}
                           </Link>
                           <p className="mt-1 font-mono text-xs text-muted break-all">
                             {item.id}
@@ -235,9 +238,15 @@ export function RetentionPage() {
         )}
       </Panel>
       <FloatingListTools
-        filterCount={Number(Boolean(state))}
+        filterCount={Number(Boolean(state)) + Number(Boolean(contractVersion))}
         filters={
           <>
+            <FilterField label="Governance contract" htmlFor="case-contract">
+              <Select id="case-contract" value={contractVersion ?? ""} onChange={(event) => { setContractVersion(Object.values(RetentionContractVersion).find((value) => String(value) === event.target.value)); setPage(1); }}>
+                <option value="">All contracts</option>
+                {Object.values(RetentionContractVersion).map((value) => <option key={value} value={value}>{retentionContractLabel(value)}</option>)}
+              </Select>
+            </FilterField>
             <FilterField label="State" htmlFor="case-state">
               <Select
                 id="case-state"
@@ -264,11 +273,12 @@ export function RetentionPage() {
         label="Disposition case filters"
         compact
         clear={
-          category || state ? (
+          category || contractVersion || state ? (
             <Button
               variant="secondary"
               onClick={() => {
                 setCategory(undefined);
+                setContractVersion(undefined);
                 setState(undefined);
                 setPage(1);
               }}

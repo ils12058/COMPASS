@@ -24,6 +24,7 @@ from .media import (
     ECounselingConsentConflict,
     ECounselingConsentNotApproved,
     ECounselingConsentNotFound,
+    ECounselingConsentScopeIncompatible,
     ECounselingMediaConflict,
     ECounselingMediaStopPending,
     decide_my_consent,
@@ -36,7 +37,14 @@ from .media import (
     stop_transcription,
     withdraw_my_consent,
 )
-from .models import ConsentDecision, ConsentScope, MediaCaptureKind, MediaCaptureStatus
+from .models import (
+    ConsentDecision,
+    ConsentScope,
+    MediaArtifactStatus,
+    MediaCaptureKind,
+    MediaCaptureStatus,
+    MediaPolicyVersion,
+)
 from .services import (
     ECounselingAppointmentNotEligible,
     ECounselingCurrentStudentRequired,
@@ -65,6 +73,7 @@ class StrictSchema(Schema):
 
 
 class ECounselingConsentScope(StrEnum):
+    SESSION_MEDIA_CAPTURE = ConsentScope.SESSION_MEDIA_CAPTURE
     AUDIO_VIDEO_RECORDING = ConsentScope.AUDIO_VIDEO_RECORDING
     LIVE_TRANSCRIPTION = ConsentScope.LIVE_TRANSCRIPTION
     TRANSCRIPT_STORAGE = ConsentScope.TRANSCRIPT_STORAGE
@@ -146,6 +155,8 @@ class RecordingWorkspaceState(StrictSchema):
     consent_status: ECounselingConsentStatus
     capture_status: ECounselingCaptureStatus
     artifact_disposed_at: datetime | None
+    artifact_status: MediaArtifactStatus | None
+    artifact_available: bool
 
 
 class TranscriptionWorkspaceState(StrictSchema):
@@ -154,9 +165,12 @@ class TranscriptionWorkspaceState(StrictSchema):
     capture_status: ECounselingCaptureStatus
     storage_enabled: bool
     artifact_disposed_at: datetime | None
+    artifact_status: MediaArtifactStatus | None
+    artifact_available: bool
 
 
 class MediaWorkspaceState(StrictSchema):
+    media_policy_version: MediaPolicyVersion
     recording: RecordingWorkspaceState
     transcription: TranscriptionWorkspaceState
 
@@ -230,6 +244,8 @@ def _context(request) -> AuditContext:
 
 
 def _raise(exc: Exception) -> NoReturn:
+    if isinstance(exc, ECounselingConsentScopeIncompatible):
+        raise APIError(409, "ecounseling_consent_scope_incompatible", str(exc)) from exc
     if isinstance(exc, ECounselingCurrentStudentRequired):
         raise APIError(409, "current_student_required", str(exc)) from exc
     if isinstance(exc, ECounselingConsentNotFound):
@@ -277,6 +293,42 @@ def _media_response(capture) -> dict[str, object]:
         "status": capture.status,
         "storage_enabled": bool(capture.transcript_storage_enabled),
     }
+
+
+class MediaArtifactAccessResponse(StrictSchema):
+    url: str
+    expires_at: datetime
+
+
+@router.get(
+    "/appointments/{appointment_id}/media/{kind}/access",
+    response=response_with_errors(MediaArtifactAccessResponse, 401, 403, 404, 409, 410, 422, 503),
+    auth=session_auth,
+    operation_id="eCounselingAccessAssignedMedia",
+)
+def ecounseling_access_assigned_media(
+    request, appointment_id: UUID, kind: ECounselingMediaKind, response: HttpResponse
+):
+    from .artifacts import access_artifact
+
+    response["Cache-Control"] = "no-store, private"
+    response["Pragma"] = "no-cache"
+    try:
+        return access_artifact(
+            counselor=request.auth_user,
+            appointment_id=appointment_id,
+            kind=kind.value,
+            context=_context(request),
+        )
+    except ECounselingError as exc:
+        try:
+            _raise(exc)
+        except APIError as api_exc:
+            api_exc.headers.update({"Cache-Control": "no-store, private", "Pragma": "no-cache"})
+            raise
+    except APIError as exc:
+        exc.headers.update({"Cache-Control": "no-store, private", "Pragma": "no-cache"})
+        raise
 
 
 @router.get(

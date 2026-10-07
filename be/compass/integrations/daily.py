@@ -205,6 +205,14 @@ class DailyClient:
     def get_recording(self, *, artifact_id: str) -> dict[str, object]:
         return self._request("GET", f"/recordings/{quote(artifact_id, safe='')}")
 
+    def recording_access_link(self, *, artifact_id: str) -> dict[str, object]:
+        return self._request(
+            "GET", f"/recordings/{quote(artifact_id, safe='')}/access-link?valid_for_secs=900"
+        )
+
+    def transcript_access_link(self, *, artifact_id: str) -> dict[str, object]:
+        return self._request("GET", f"/transcript/{quote(artifact_id, safe='')}/access-link")
+
     def delete_recording(self, *, artifact_id: str) -> dict[str, object]:
         return self._request("DELETE", f"/recordings/{quote(artifact_id, safe='')}")
 

@@ -91,6 +91,8 @@ def _failure(case_id, token, blocker, *, transient=False):
                     DispositionBlocker.PROVIDER_UNVERIFIED,
                     DispositionBlocker.EXTERNAL_STORAGE,
                     DispositionBlocker.WORKER_INTERRUPTED,
+                    DispositionBlocker.OBJECT_STORAGE_UNVERIFIED,
+                    DispositionBlocker.PROVIDER_CLEANUP_UNVERIFIED,
                 }
                 else "FAILED"
             )
@@ -161,6 +163,14 @@ def execute_disposition(case_id):
             return
         source_version = source.updated_at
         artifact_id = source.provider_artifact_id
+
+    if rule.contract_version == 2:
+        from .media_disposition import execute_media_disposition
+
+        execute_media_disposition(
+            case_id, token, source_version=source_version, provider_id=artifact_id
+        )
+        return
 
     # Never hold a PostgreSQL transaction across Daily HTTP. PROCESSING blocks new holds/retirement.
     try:

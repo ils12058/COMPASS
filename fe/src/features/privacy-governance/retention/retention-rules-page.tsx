@@ -19,7 +19,7 @@ import {
   PrivacyQueryError,
   textLinkClass,
 } from "../privacy-governance-shared";
-import { categoryLabels, useRetentionAccess } from "./retention-shared";
+import { categoryLabels, retentionContractLabel, useRetentionAccess } from "./retention-shared";
 
 export function RetentionRulesPage() {
   const { canView, canManage } = useRetentionAccess();
@@ -93,7 +93,7 @@ export function RetentionRulesPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-sm">
-                      {categoryLabels[rule.category]} · {rule.duration_days}{" "}
+                      {categoryLabels[rule.category]} · {retentionContractLabel(rule.contract_version)} · {rule.duration_days}{" "}
                       elapsed days · {rule.code}
                     </p>
                   </li>

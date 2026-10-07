@@ -412,6 +412,97 @@ await check("mobile-icon-action-label", `/portal/call-slips/${slip.id}`, { mobil
   await noHorizontalOverflow(page);
 });
 
+const v2Workspace = (state = "NOT_STARTED", artifact = null) => {
+  const data = workspace(state);
+  data.media.media_policy_version = 2;
+  for (const value of [data.media.recording, data.media.transcription]) {
+    value.artifact_status = artifact;
+    value.artifact_available = artifact === "STORED";
+  }
+  return data;
+};
+const v2Consents = (decision = "PENDING") => ["SESSION_MEDIA_CAPTURE", "TRANSCRIPT_STORAGE"].map((scope, index) => ({ ...consents(decision)[0], id: `v2-consent-${index}`, scope }));
+const v2Overrides = (data, decision = "PENDING", student = false) => ({
+  [`/api/v1/e-counseling/${student ? "me/" : ""}appointments/${appointmentId}`]: data,
+  [`/api/v1/e-counseling/${student ? "me/" : ""}appointments/${appointmentId}/consents`]: { items: v2Consents(decision) },
+});
+
+await check("v2-student-consent-mobile", ePath, { mobile: true, role: "STUDENT", overrides: v2Overrides(v2Workspace(), "PENDING", true) }, async (page) => {
+  await shown(page.getByRole("heading", { name: "Recording & live transcription", exact: true }));
+  assert.equal(await page.getByRole("button", { name: /^Allow / }).count(), 2);
+  await hidden(page.getByRole("button", { name: "Allow audio/video recording", exact: true }));
+  assert.match(await page.locator("main").innerText(), /Approval alone does not start/);
+  assert.match(await page.locator("main").innerText(), /does not affect your ability to receive Counseling/);
+  await page.getByRole("button", { name: "Allow recording & live transcription", exact: true }).click();
+  await shown(page.getByRole("alertdialog"));
+  await page.getByRole("alertdialog").getByRole("button", { name: "Cancel", exact: true }).click();
+  await noHorizontalOverflow(page);
+  await screenshot(page, "v2-student-mobile");
+});
+
+await check("v2-counselor-preparation", ePath, { overrides: v2Overrides(v2Workspace("READY", "PROCESSING"), "APPROVED") }, async (page) => {
+  await shown(page.getByText("Preparing recording…", { exact: true }));
+  await shown(page.getByText("Preparing transcript…", { exact: true }));
+  await hidden(page.getByRole("button", { name: "Download recording", exact: true }));
+  await page.getByRole("button", { name: "Help: About E-Counseling", exact: true }).click();
+  await shown(page.getByRole("dialog").getByRole("heading", { name: "Private files", exact: true }));
+});
+
+let signedRequests = 0;
+await check("v2-fresh-download-per-click", ePath, { overrides: {
+  ...v2Overrides(v2Workspace("READY", "STORED"), "APPROVED"),
+  [`/api/v1/e-counseling/appointments/${appointmentId}/media/RECORDING/access`]: ({ reply }) => reply({ url: `${baseURL}/synthetic-media-download?token=${++signedRequests}`, expires_at: "2099-10-08T00:00:00Z" }),
+} }, async (page, { context }) => {
+  await context.route("**/synthetic-media-download?*", (route) => route.fulfill({ status: 200, contentType: "video/mp4", headers: { "Content-Disposition": 'attachment; filename="synthetic.mp4"' }, body: "synthetic" }));
+  const button = page.getByRole("button", { name: "Download recording", exact: true });
+  await shown(button);
+  for (let count = 1; count <= 2; count++) {
+    const download = page.waitForEvent("download");
+    await button.click();
+    const result = await download;
+    assert.equal(result.suggestedFilename(), "synthetic.mp4");
+    await result.delete();
+    await shown(button);
+    assert.equal(signedRequests, count);
+  }
+  assert.doesNotMatch(await page.locator("main").innerText(), /token=|synthetic-media-download/);
+  await screenshot(page, "v2-counselor-downloads");
+});
+
+await check("v2-download-error", ePath, { overrides: {
+  ...v2Overrides(v2Workspace("READY", "STORED"), "APPROVED"),
+  [`/api/v1/e-counseling/appointments/${appointmentId}/media/RECORDING/access`]: ({ reply }) => reply({ error: { code: "ecounseling_artifact_unavailable", message: "File unavailable" } }, 503),
+} }, async (page) => {
+  await page.getByRole("button", { name: "Download recording", exact: true }).click();
+  await shown(page.getByRole("alert").filter({ hasText: "file" }));
+});
+
+const retentionAuth = {
+  "/api/v1/auth/session": { user: { ...user("INSTITUTIONAL_OFFICER"), capabilities: ["privacy_governance.retention.view", "privacy_governance.retention.manage", "privacy_governance.retention.approve"] }, session: { id: "synthetic", expires_at: "2099-10-07T00:00:00Z", is_current: true } },
+};
+const versionedCategories = [1, 2].flatMap((contract_version) => ["ECOUNSELING_RECORDING", "ECOUNSELING_TRANSCRIPT"].map((category) => ({ category, contract_version, label: category.endsWith("RECORDING") ? "E-Counseling recordings" : "E-Counseling stored transcripts", trigger: "MEDIA_READY_AT", action: contract_version === 2 ? "DELETE_MEDIA_ARTIFACT_KEEP_EVIDENCE" : "DELETE_PROVIDER_ARTIFACT_KEEP_EVIDENCE" })));
+await check("v2-retention-rule-contract", "/portal/privacy/retention/rules/new", { role: "INSTITUTIONAL_OFFICER", overrides: {
+  ...retentionAuth,
+  "/api/v1/privacy/retention/categories": versionedCategories,
+} }, async (page, { requests }) => {
+  await page.getByLabel("Rule code", { exact: true }).fill("SYNTHETIC-V2");
+  await page.getByLabel("Administrative label", { exact: true }).fill("Synthetic media policy");
+  await page.getByLabel("Data category", { exact: true }).selectOption("ECOUNSELING_RECORDING");
+  await page.getByLabel("Governance contract", { exact: true }).selectOption("2");
+  await shown(page.getByText("Delete COMPASS media and remaining provider copy, keep evidence", { exact: true }));
+  await page.getByLabel("Whole elapsed days", { exact: true }).fill("30");
+  await page.getByLabel("Effective date", { exact: true }).fill("2026-10-08");
+  await page.getByLabel("Policy / basis reference", { exact: true }).fill("Synthetic test reference");
+  await page.getByRole("button", { name: "Create draft rule", exact: true }).click();
+  await shown(page.getByText("The retention draft could not be saved.", { exact: true }));
+  const request = requests.find((item) => item.method === "POST" && item.pathname.endsWith("/retention/rules"));
+  assert.ok(request);
+  const payload = JSON.parse(request.body);
+  assert.equal(payload.contract_version, 2);
+  assert.equal(payload.action, "DELETE_MEDIA_ARTIFACT_KEEP_EVIDENCE");
+  await screenshot(page, "v2-retention-rule-contract");
+});
+
 await browser.close();
 await writeFile(join(artifacts, "results.json"), `${JSON.stringify({ baseURL, results }, null, 2)}\n`);
 console.log(`${results.length - failures.length}/${results.length} browser checks passed; artifacts: ${artifacts}`);

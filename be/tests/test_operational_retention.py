@@ -444,10 +444,11 @@ class CapturingDispositionDaily:
 def media_source(kind):
     from tests.test_ecounseling_media import setup_session
 
-    _, student, counselor, appointment = setup_session()
+    _, student, counselor, appointment = setup_session(media_policy_version=2)
     room = ECounselingRoom.objects.create(
         appointment=appointment,
         daily_room_name="safe-opaque-room",
+        media_policy_version=1,
         room_expires_at=timezone.now() - timedelta(days=31),
     )
     consent = ECounselingConsent.objects.create(

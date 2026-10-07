@@ -468,6 +468,11 @@ CAPABILITY_DEFINITIONS = (
         description="Receive a short-lived join credential for the Counselor's assigned session.",
     ),
     CapabilityDefinition(
+        code="ecounseling.access_media_assigned",
+        name="Access assigned E-Counseling media",
+        description="Download stored media for the Counselor's assigned E-Counseling sessions.",
+    ),
+    CapabilityDefinition(
         code="ecounseling.manage_media_assigned",
         name="Manage assigned E-Counseling media",
         description=(
@@ -530,6 +535,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "ecounseling.view_assigned",
             "ecounseling.join_assigned",
             "ecounseling.manage_media_assigned",
+            "ecounseling.access_media_assigned",
         }
     ),
     "GUIDANCE_SERVICES_STAFF": frozenset(
@@ -641,6 +647,7 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "good_moral.manage": frozenset({"good_moral.view"}),
     "good_moral.prepare": frozenset({"good_moral.view"}),
     "good_moral.issue": frozenset({"good_moral.view"}),
+    "ecounseling.access_media_assigned": frozenset({"ecounseling.view_assigned"}),
     "counseling.manage_assigned": frozenset({"counseling.view_assigned"}),
     "referrals.manage": frozenset({"referrals.view"}),
     "call_slips.manage": frozenset({"call_slips.view"}),

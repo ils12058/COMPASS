@@ -201,3 +201,11 @@ existing aggregate/analytical allowlist remain plaintext. Authorized raw detail 
 private projections; aggregate JSON/XLSX never decrypt. Approved retention copies only the unchanged
 analytical allowlist, creates ciphertext-free anonymous contributions and deletes encrypted source
 and children without decryption. Historical workflow and retention decisions remain in force.
+
+## V2 media refinement (ADR-092)
+
+[ADR-092](ADR-092-ecounseling-media-governance-v2.md) adds explicit rule/case contract versions and
+per-category/version active uniqueness. Existing contract-1 rules/cases and the provider-only action
+remain unchanged. Contract-2 media disposition verifies private COMPASS storage and any provider
+residue before completion. Graduate Tracer, reviewed approval, holds and backup boundaries retain
+this ADR's semantics. No active V2 rule or duration is seeded.
