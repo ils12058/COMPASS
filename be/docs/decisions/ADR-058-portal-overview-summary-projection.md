@@ -1,6 +1,6 @@
 # ADR-058 — Portal Overview Summary Projection
 
-**Status:** Accepted  
+**Status:** Accepted; attention ranking and preview ordering refined by [ADR-090](ADR-090-collection-ordering-and-sortable-list-contracts.md)  
 **Date:** 2026-09-25
 
 ## Context
