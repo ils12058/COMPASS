@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
+import type { SortOption } from "@/components/ui/sort-field";
+import { FeedbackResponseOrdering } from "@/lib/api/generated/model";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import { PageHeader } from "@/components/ui/page-header";
@@ -232,3 +234,9 @@ export function FeedbackFieldLabel({
 export function FeedbackRatingLabel({ value }: { value: number }) {
   return ({ 1: "Poor", 2: "Fair", 3: "Good", 4: "Very Good", 5: "Excellent" } as Record<number, string>)[value] ?? "Not recorded";
 }
+
+// Submitted responses are history: the newest submission comes first (ADR-090).
+export const feedbackResponseOrderingOptions: readonly SortOption<FeedbackResponseOrdering>[] = [
+  { value: FeedbackResponseOrdering.NEWEST_SUBMITTED, label: "Newest submitted first" },
+  { value: FeedbackResponseOrdering.OLDEST_SUBMITTED, label: "Oldest submitted first" },
+];

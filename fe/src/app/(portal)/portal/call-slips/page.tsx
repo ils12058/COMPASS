@@ -3,7 +3,8 @@ import { Suspense } from "react";
 
 import { CallSlipListSkeleton } from "@/features/call-slips/call-slips-shared";
 import { CallSlipsPage, type CallSlipListFilters, type CallSlipStudentListFilters } from "@/features/call-slips/call-slips-page";
-import { CallSlipDestinationTypeValue, CallSlipLifecycleStateValue } from "@/lib/api/generated/model";
+import { readOrdering } from "@/features/portal/components/list-ordering";
+import { CallSlipDestinationTypeValue, CallSlipLifecycleStateValue, CallSlipOrdering } from "@/lib/api/generated/model";
 
 type SearchValue = string | string[] | undefined;
 
@@ -41,6 +42,7 @@ export default async function Page({
     toDate,
     includeVoided: singleValue(query.include_voided) === "true",
     state,
+    ordering: readOrdering(singleValue(query.ordering), CallSlipOrdering),
     page,
   };
   const studentFilters: CallSlipStudentListFilters = { fromDate, toDate, state, page };

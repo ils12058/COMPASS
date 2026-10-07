@@ -12,10 +12,12 @@ import {
   CallSlipDestinationTypeValue,
   CallSlipIssuanceModeValue,
   CallSlipLifecycleStateValue,
+  CallSlipOrdering,
 } from "@/lib/api/generated/model";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
+import type { SortOption } from "@/components/ui/sort-field";
 
 const knownCallSlipErrors: Record<string, string> = {
   permission_denied: "You do not have permission to use this Call Slip workspace.",
@@ -125,6 +127,15 @@ export function CallSlipQueryError({
 export function CallSlipNotice({ children }: { children: ReactNode }) {
   return <p role="status" className="mt-4 text-sm text-muted">{children}</p>;
 }
+
+// A Call Slip's report time is when the Student is expected to report. Active Call Slips default
+// to the nearest report time; completed, voided, and mixed lists to the latest (ADR-090).
+export const callSlipOrderingOptions: readonly SortOption<CallSlipOrdering>[] = [
+  { value: CallSlipOrdering.EARLIEST_REPORT, label: "Earliest report time first" },
+  { value: CallSlipOrdering.LATEST_REPORT, label: "Latest report time first" },
+  { value: CallSlipOrdering.STUDENT_ASC, label: "Student A–Z" },
+  { value: CallSlipOrdering.STUDENT_DESC, label: "Student Z–A" },
+];
 
 export function callSlipStateLabel(
   state: CallSlipLifecycleStateValue,

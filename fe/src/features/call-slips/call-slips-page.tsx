@@ -16,15 +16,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
-import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipListSkeleton, callSlipDestinationLabel, callSlipErrorMessage, callSlipStateLabel } from "@/features/call-slips/call-slips-shared";
+import { CallSlipAccessUnavailable, CallSlipHeading, CallSlipListSkeleton, callSlipDestinationLabel, callSlipErrorMessage, callSlipOrderingOptions, callSlipStateLabel } from "@/features/call-slips/call-slips-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { useCallSlipsList, useCallSlipsListMy } from "@/lib/api/generated/call-slips/call-slips";
-import { CallSlipDestinationTypeValue, CallSlipLifecycleStateValue } from "@/lib/api/generated/model";
+import { CallSlipDestinationTypeValue, CallSlipLifecycleStateValue, CallSlipOrdering } from "@/lib/api/generated/model";
 import type { CallSlipDestinationTypeValue as CallSlipDestinationType } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
@@ -36,6 +38,8 @@ export type CallSlipListFilters = {
   toDate: string;
   includeVoided: boolean;
   state: "" | CallSlipLifecycleStateValue;
+  // A chosen order; absent means the default for the selected status (ADR-090).
+  ordering?: CallSlipOrdering;
   page: number;
 };
 
@@ -59,6 +63,7 @@ function operationalFiltersToUrl(filters: CallSlipListFilters): string {
   if (filters.toDate) params.set("to_date", filters.toDate);
   if (filters.includeVoided) params.set("include_voided", "true");
   if (filters.state) params.set("state", filters.state);
+  if (filters.ordering) params.set("ordering", filters.ordering);
   if (filters.page > 1) params.set("page", String(filters.page));
   const query = params.toString();
   return query ? `/portal/call-slips?${query}` : "/portal/call-slips";
@@ -210,6 +215,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
       ...(filters.toDate ? { to_date: filters.toDate } : {}),
       ...(filters.includeVoided && access.canManageOperational ? { include_voided: true } : {}),
       ...(state ? { state } : {}),
+      ...(filters.ordering ? { ordering: filters.ordering } : {}),
       page: filters.page,
       page_size: 20,
     },
@@ -231,6 +237,12 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
   const hasFilters = Boolean(effectiveFilters.formRevisionId || effectiveFilters.search || effectiveFilters.destination || effectiveFilters.fromDate || effectiveFilters.toDate || effectiveFilters.includeVoided || effectiveFilters.state || effectiveFilters.page > 1);
   const advancedCount = [effectiveFilters.formRevisionId, effectiveFilters.destination, effectiveFilters.state, effectiveFilters.fromDate, effectiveFilters.toDate, effectiveFilters.includeVoided].filter(Boolean).length;
   const draftRangeInvalid = Boolean(draft.fromDate && draft.toDate && draft.fromDate > draft.toDate);
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = filters.ordering ?? data?.ordering;
+  const setOrdering = (next: CallSlipOrdering) =>
+    router.push(operationalFiltersToUrl({ ...effectiveFilters, ordering: next, page: 1 }), { scroll: false });
+  // Clearing the filters keeps the chosen order; sorting is not a filter.
+  const clearHref = filters.ordering ? `/portal/call-slips?ordering=${filters.ordering}` : "/portal/call-slips";
 
   return (
     <div className="space-y-5">
@@ -243,7 +255,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
           submits
           invalid={draftRangeInvalid}
           filterCount={advancedCount}
-          clear={hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
+          clear={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
           filters={
             <>
           <FormRevisionFilter id="call-slips-revision" selectedId={draft.formRevisionId} value={draft.formRevisionId} options={data?.filter_options.form_revisions} onChange={(event) => setDraft({ ...draft, formRevisionId: event.target.value })} />
@@ -283,6 +295,14 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
         <PanelHeader
           title="Call Slips"
           titleId="call-slips-results"
+          actions={
+            <SortField
+              id="call-slips-sort"
+              value={ordering}
+              options={callSlipOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
           context={data && items.length > 0 ? `Showing ${items.length} ${items.length === 1 ? "Call Slip" : "Call Slips"} on page ${data.page}.` : null}
         />
         {!data && slips.isError ? (
@@ -292,7 +312,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
         ) : slips.isPending ? (
           <CallSlipListSkeleton framed={false} />
         ) : items.length === 0 ? (
-          <PanelMessage action={hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>
+          <PanelMessage action={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>
             {hasFilters ? "No Call Slips match these filters." : "No Call Slips have been recorded."}
           </PanelMessage>
         ) : (
@@ -313,7 +333,9 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
               <table className={`${dataTable.table} min-w-[850px]`}>
                 <caption className="sr-only">Call Slips</caption>
                 <thead className={dataTable.head}><tr>
-                  <th scope="col" className={dataTable.headerCell}>Student</th><th scope="col" className={dataTable.headerCell}>Course / Year</th><th scope="col" className={dataTable.headerCell}>Report</th><th scope="col" className={dataTable.headerCell}>Destination</th><th scope="col" className={dataTable.headerCell}>Issuer</th><th scope="col" className={dataTable.headerCell}>State</th><th scope="col" className={dataTable.headerCell}>Referral</th>
+                  <SortableColumnHeader label="Student" ascending={CallSlipOrdering.STUDENT_ASC} descending={CallSlipOrdering.STUDENT_DESC} ascendingLabel="Student A–Z" descendingLabel="Student Z–A" current={ordering} onSort={setOrdering} className={dataTable.headerCell} />
+                  <th scope="col" className={dataTable.headerCell}>Course / Year</th>
+                  <SortableColumnHeader label="Report" ascending={CallSlipOrdering.EARLIEST_REPORT} descending={CallSlipOrdering.LATEST_REPORT} ascendingLabel="Earliest report time first" descendingLabel="Latest report time first" current={ordering} onSort={setOrdering} className={dataTable.headerCell} /><th scope="col" className={dataTable.headerCell}>Destination</th><th scope="col" className={dataTable.headerCell}>Issuer</th><th scope="col" className={dataTable.headerCell}>State</th><th scope="col" className={dataTable.headerCell}>Referral</th>
                 </tr></thead>
                 <tbody className={dataTable.body}>{items.map((slip) => (
                   <tr key={slip.id} className={dataTable.row}>

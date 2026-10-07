@@ -15,13 +15,15 @@ import { FloatingListTools, ListSearchField } from "@/components/ui/floating-lis
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
+import { ReferralOrdering } from "@/lib/api/generated/model";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import {
   ReferralAccessUnavailable,
   ReferralHeading,
   ReferralListSkeleton,
-  referralErrorMessage,
-} from "@/features/referrals/referrals-shared";
+  referralErrorMessage, referralOrderingOptions } from "@/features/referrals/referrals-shared";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useReferralsList } from "@/lib/api/generated/referrals/referrals";
@@ -33,6 +35,8 @@ export type ReferralListFilters = {
   fromDate: string;
   toDate: string;
   includeVoided: boolean;
+  // A chosen order; absent means the newest referred first (ADR-090).
+  ordering?: ReferralOrdering;
   page: number;
 };
 
@@ -43,6 +47,7 @@ function filtersToUrl(filters: ReferralListFilters): string {
   if (filters.fromDate) params.set("from_date", filters.fromDate);
   if (filters.toDate) params.set("to_date", filters.toDate);
   if (filters.includeVoided) params.set("include_voided", "true");
+  if (filters.ordering) params.set("ordering", filters.ordering);
   if (filters.page > 1) params.set("page", String(filters.page));
   const query = params.toString();
   return query ? `/portal/referrals?${query}` : "/portal/referrals";
@@ -60,6 +65,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
       ...(filters.fromDate ? { from_date: filters.fromDate } : {}),
       ...(filters.toDate ? { to_date: filters.toDate } : {}),
       ...(filters.includeVoided ? { include_voided: true } : {}),
+      ...(filters.ordering ? { ordering: filters.ordering } : {}),
       page: filters.page,
       page_size: 20,
     },
@@ -76,6 +82,12 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
 
   const advancedCount = [filters.formRevisionId, filters.fromDate, filters.toDate, filters.includeVoided].filter(Boolean).length;
   const draftRangeInvalid = Boolean(draft.fromDate && draft.toDate && draft.fromDate > draft.toDate);
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = filters.ordering ?? data?.ordering;
+  const setOrdering = (next: ReferralOrdering) =>
+    router.push(filtersToUrl({ ...filters, ordering: next, page: 1 }), { scroll: false });
+  // Clearing the filters keeps the chosen order; sorting is not a filter.
+  const clearHref = filters.ordering ? `/portal/referrals?ordering=${filters.ordering}` : "/portal/referrals";
 
   function submitFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -97,7 +109,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
           submits
           invalid={draftRangeInvalid}
           filterCount={advancedCount}
-          clear={filtered ? <Link href="/portal/referrals" className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
+          clear={filtered ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
           filters={
             <>
           <FormRevisionFilter id="referrals-revision" selectedId={draft.formRevisionId} value={draft.formRevisionId} options={data?.filter_options.form_revisions} onChange={(event) => setDraft({ ...draft, formRevisionId: event.target.value })} />
@@ -138,6 +150,14 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
         <PanelHeader
           title="Referrals"
           titleId="referrals-results-heading"
+          actions={
+            <SortField
+              id="referrals-sort"
+              value={ordering}
+              options={referralOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
           context={data && items.length > 0 ? `Showing ${items.length} ${items.length === 1 ? "Referral" : "Referrals"} on page ${data.page}.` : null}
         />
         {referrals.isError ? (
@@ -147,7 +167,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
         ) : referrals.isPending ? (
           <ReferralListSkeleton framed={false} />
         ) : items.length === 0 ? (
-          <PanelMessage action={filtered ? <Link href="/portal/referrals" className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>
+          <PanelMessage action={filtered ? <Link href={clearHref} className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>
             {filtered ? "No referrals match these filters." : "No referrals have been recorded."}
           </PanelMessage>
         ) : (
@@ -172,9 +192,28 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                 <caption className="sr-only">Referrals</caption>
                 <thead className={dataTable.head}>
                   <tr>
-                    <th scope="col" className={dataTable.headerCell}>Referral / Student</th>
+                    <SortableColumnHeader
+                      label="Referral / Student"
+                      ascending={ReferralOrdering.STUDENT_ASC}
+                      descending={ReferralOrdering.STUDENT_DESC}
+                      ascendingLabel="Student A–Z"
+                      descendingLabel="Student Z–A"
+                      current={ordering}
+                      onSort={setOrdering}
+                      className={dataTable.headerCell}
+                    />
                     <th scope="col" className={dataTable.headerCell}>Course / Year / Block</th>
-                    <th scope="col" className={dataTable.headerCell}>Referred</th>
+                    <SortableColumnHeader
+                      label="Referred"
+                      ascending={ReferralOrdering.OLDEST_REFERRED}
+                      descending={ReferralOrdering.NEWEST_REFERRED}
+                      ascendingLabel="Oldest referred first"
+                      descendingLabel="Newest referred first"
+                      firstDirection="descending"
+                      current={ordering}
+                      onSort={setOrdering}
+                      className={dataTable.headerCell}
+                    />
                     <th scope="col" className={dataTable.headerCell}>Received</th>
                     <th scope="col" className={dataTable.headerCell}>Status note</th>
                     {filters.includeVoided ? <th scope="col" className={dataTable.headerCell}>Record state</th> : null}

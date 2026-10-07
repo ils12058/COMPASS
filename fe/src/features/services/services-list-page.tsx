@@ -11,6 +11,8 @@ import { Select } from "@/components/ui/select";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { SortField } from "@/components/ui/sort-field";
+import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { describeResultPage } from "@/features/portal/components/result-context";
@@ -18,6 +20,7 @@ import {
   replaceServicesQueryParam,
   serviceBookingLabel,
   serviceDeliveryLabel,
+  serviceOrderingOptions,
   ServicesListSkeleton,
   ServicesPageHeading,
   servicesErrorMessage,
@@ -25,6 +28,7 @@ import {
   ServicesStatusBadge,
   ServicesSystemRequiredBadge,
 } from "@/features/services/services-shared";
+import { ServiceOrdering } from "@/lib/api/generated/model";
 import { useServicesList } from "@/lib/api/generated/services/services";
 
 type BookingFilter = "available" | "not_available";
@@ -54,12 +58,14 @@ export function ServicesListPage() {
     : 1;
   const includeInactive =
     canManage && searchParams.get("include_inactive") === "true";
+  const { requested: requestedOrdering, setOrdering } = useListOrdering(ServiceOrdering);
 
   const list = useServicesList(
     {
       ...(includeInactive ? { include_inactive: true } : {}),
       ...(search ? { search } : {}),
       ...(booking ? { appointment_booking_enabled: booking === "available" } : {}),
+      ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
       page,
       page_size: 20,
     },
@@ -123,7 +129,15 @@ export function ServicesListPage() {
         label="Service search and filters"
         filterCount={[booking, includeInactive].filter(Boolean).length}
         clear={hasFilters || includeInactive ? (
-          <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>
+          <Button
+            variant="quiet"
+            // Clearing the filters keeps the chosen order; sorting is not a filter.
+            onClick={() =>
+              router.replace(requestedOrdering ? `${pathname}?ordering=${requestedOrdering}` : pathname, {
+                scroll: false,
+              })
+            }
+          >
             Clear filters
           </Button>
         ) : undefined}
@@ -159,6 +173,14 @@ export function ServicesListPage() {
         <PanelHeader
           title="Service Catalog"
           titleId="services-results-heading"
+          actions={
+            <SortField
+              id="services-sort"
+              value={requestedOrdering ?? list.data?.data.ordering}
+              options={serviceOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
           context={list.isFetching && !list.isPending
             ? "Refreshing Services…"
             : list.isSuccess

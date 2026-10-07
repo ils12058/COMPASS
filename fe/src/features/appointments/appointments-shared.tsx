@@ -9,7 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
-import { AppointmentStatus, DeliveryMode } from "@/lib/api/generated/model";
+import { AppointmentListOrdering, AppointmentStatus, DeliveryMode } from "@/lib/api/generated/model";
+import type { SortOption } from "@/components/ui/sort-field";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { INSTITUTION_TIME_ZONE } from "@/lib/institutional-time";
 import { PageHeader } from "@/components/ui/page-header";
@@ -97,6 +98,13 @@ export function AppointmentStatusBadge({ status }: { status: string }) {
     </span>
   );
 }
+
+// Start time is the one Appointment ordering. Scheduled lists default to the earliest start and
+// history to the latest; the backend reports which one it applied (ADR-090).
+export const appointmentOrderingOptions: readonly SortOption<AppointmentListOrdering>[] = [
+  { value: AppointmentListOrdering.EARLIEST_START, label: "Earliest start first" },
+  { value: AppointmentListOrdering.LATEST_START, label: "Latest start first" },
+];
 
 export function deliveryModeLabel(mode: string): string {
   return mode === DeliveryMode.ONLINE ? "Online" : "In person";

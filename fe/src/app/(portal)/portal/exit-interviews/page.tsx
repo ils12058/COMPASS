@@ -5,7 +5,8 @@ import { ExitInterviewListSkeleton } from "@/features/exit-interviews/exit-inter
 import { ExitInterviewWorkspacePage } from "@/features/exit-interviews/exit-interview-workspace-page";
 import type { ExitInterviewOperationalFilters } from "@/features/exit-interviews/exit-interview-operational-list";
 import type { ExitInterviewsListOpportunitiesParams } from "@/lib/api/generated/model";
-import { ExitInterviewStatusValue } from "@/lib/api/generated/model";
+import { ExitInterviewOrdering, ExitInterviewStatusValue } from "@/lib/api/generated/model";
+import { readOrdering } from "@/features/portal/components/list-ordering";
 
 type SearchValue = string | string[] | undefined;
 
@@ -47,6 +48,7 @@ export default async function Page({
         ? statusValue
         : "",
     academicYearId: UUID_PATTERN.test(academicYearValue) ? academicYearValue : "",
+    ordering: readOrdering(singleValue(query.ordering), ExitInterviewOrdering),
     page: pageNumber(singleValue(query.page)),
     pageSize: pageSize(singleValue(query.page_size)),
   };

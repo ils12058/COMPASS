@@ -3,9 +3,13 @@
 import { keepPreviousData } from "@tanstack/react-query";
 import { Pin } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Panel, PanelMessage } from "@/components/ui/panel";
+import { SortField } from "@/components/ui/sort-field";
+import { announcementReaderOrderingOptions } from "@/features/announcements/announcement-presentation";
+import type { AnnouncementOrdering } from "@/lib/api/generated/model";
 import { AnnouncementSearch } from "@/features/public/announcements/announcement-search";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -25,17 +29,35 @@ import {
 
 type AnnouncementListProps =
   | { mode: "preview" }
-  | { mode: "index"; page: number; search?: string };
+  | { mode: "index"; page: number; search?: string; ordering?: AnnouncementOrdering };
+
+function indexHref(search: string | undefined, ordering: AnnouncementOrdering | undefined, page?: number) {
+  const query = new URLSearchParams();
+  if (search) query.set("search", search);
+  if (ordering) query.set("ordering", ordering);
+  if (page !== undefined) query.set("page", String(page));
+  const text = query.toString();
+  return text ? `/announcements?${text}` : "/announcements";
+}
 
 export function AnnouncementList(props: AnnouncementListProps) {
+  const router = useRouter();
   const isPreview = props.mode === "preview";
   const page = isPreview ? 1 : props.page;
   const search = isPreview ? undefined : props.search;
+  // The landing preview always shows the editorial order; only the full index can be re-sorted.
+  const requestedOrdering = isPreview ? undefined : props.ordering;
   const detailParams = new URLSearchParams();
   if (search) detailParams.set("search", search);
+  if (requestedOrdering) detailParams.set("ordering", requestedOrdering);
   if (!isPreview && page > 1) detailParams.set("page", String(page));
   const detailQuery = detailParams.toString();
-  const params = { page, page_size: isPreview ? 3 : 10, ...(search ? { search } : {}) };
+  const params = {
+    page,
+    page_size: isPreview ? 3 : 10,
+    ...(search ? { search } : {}),
+    ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
+  };
   const audience = useReaderAudience();
   const account = useAnnouncementsListVisible(params, {
     query: { enabled: audience === "account", placeholderData: keepPreviousData, retry: false },
@@ -47,12 +69,22 @@ export function AnnouncementList(props: AnnouncementListProps) {
     query: { enabled: audience === "public" || signedOut, placeholderData: keepPreviousData },
   });
   const query = readsAccount ? account : publicQuery;
+  const ordering = requestedOrdering ?? query.data?.data.ordering;
   // The landing page's preview panel brings its own title band; the index page frames the list here.
   const frame = (content: ReactNode) =>
     isPreview ? content : (
       <div className="grid gap-5">
-        <AnnouncementSearch search={search} />
-        <Panel as="div">{content}</Panel>
+        <AnnouncementSearch search={search} ordering={requestedOrdering} />
+        <div className="grid gap-2">
+          <SortField
+            id="announcement-sort"
+            value={ordering}
+            options={announcementReaderOrderingOptions}
+            onChange={(next) => router.push(indexHref(search, next), { scroll: false })}
+            className="justify-self-end"
+          />
+          <Panel as="div">{content}</Panel>
+        </div>
       </div>
     );
 
@@ -74,7 +106,7 @@ export function AnnouncementList(props: AnnouncementListProps) {
   if (result.items.length === 0) {
     return frame(
       <PanelMessage action={search ? (
-        <Link href="/announcements" className={buttonVariants({ variant: "secondary" })}>Clear search</Link>
+        <Link href={indexHref(undefined, requestedOrdering)} className={buttonVariants({ variant: "secondary" })}>Clear search</Link>
       ) : undefined}>
         {search ? "No announcements match this search." : readsAccount
           ? "No announcements are available right now."
@@ -122,12 +154,7 @@ export function AnnouncementList(props: AnnouncementListProps) {
         <PublicPagination
           page={result.page}
           hasNext={result.has_next}
-          buildHref={(nextPage) => {
-            const query = new URLSearchParams();
-            if (search) query.set("search", search);
-            query.set("page", String(nextPage));
-            return `/announcements?${query.toString()}`;
-          }}
+          buildHref={(nextPage) => indexHref(search, requestedOrdering, nextPage)}
         />
       ) : null}
     </div>,

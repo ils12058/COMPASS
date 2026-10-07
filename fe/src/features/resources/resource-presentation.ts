@@ -1,4 +1,31 @@
-import { ResourceKindValue, type ResourceManagementResponse } from "@/lib/api/generated/model";
+import {
+  ResourceKindValue,
+  ResourceManagementOrdering,
+  ResourceOrdering,
+  type ResourceManagementResponse,
+} from "@/lib/api/generated/model";
+import type { SortOption } from "@/components/ui/sort-field";
+
+// Readers see the curated order by default: each Resource's display order, then the newest
+// published (ADR-090). The full library may be browsed another way.
+export const resourceReaderOrderingOptions: readonly SortOption<ResourceOrdering>[] = [
+  { value: ResourceOrdering.RECOMMENDED, label: "Recommended order" },
+  { value: ResourceOrdering.NEWEST, label: "Newest first" },
+  { value: ResourceOrdering.OLDEST, label: "Oldest first" },
+  { value: ResourceOrdering.TITLE_ASC, label: "Title A–Z" },
+  { value: ResourceOrdering.TITLE_DESC, label: "Title Z–A" },
+];
+
+// Managers review recent edits first by default and can preview the readers' curated order.
+export const resourceManagementOrderingOptions: readonly SortOption<ResourceManagementOrdering>[] = [
+  { value: ResourceManagementOrdering.RECENTLY_UPDATED, label: "Recently updated first" },
+  { value: ResourceManagementOrdering.OLDEST_UPDATED, label: "Oldest updated first" },
+  { value: ResourceManagementOrdering.DISPLAY_ORDER, label: "Display order (as readers see it)" },
+  { value: ResourceManagementOrdering.NEWEST_PUBLISHED, label: "Newest published first" },
+  { value: ResourceManagementOrdering.OLDEST_PUBLISHED, label: "Oldest published first" },
+  { value: ResourceManagementOrdering.TITLE_ASC, label: "Title A–Z" },
+  { value: ResourceManagementOrdering.TITLE_DESC, label: "Title Z–A" },
+];
 
 export const resourceKindDescriptions: Record<ResourceKindValue, string> = {
   [ResourceKindValue.ARTICLE]: "Written content that readers read in COMPASS.",

@@ -12,13 +12,15 @@ import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { describeResultPage } from "@/features/portal/components/result-context";
-import { GoodMoralListSkeleton, GoodMoralHeading, GoodMoralStatus, formatGoodMoralDateTime, goodMoralErrorMessage, goodMoralVariantLabel } from "@/features/good-moral/good-moral-shared";
+import { GoodMoralListSkeleton, GoodMoralHeading, GoodMoralStatus, formatGoodMoralDateTime, goodMoralErrorMessage, goodMoralOrderingOptions, goodMoralVariantLabel } from "@/features/good-moral/good-moral-shared";
 import { useGoodMoralListRequests } from "@/lib/api/generated/good-moral/good-moral";
-import { GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
+import { GoodMoralOrdering, GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
 
 export type GoodMoralOperationalFilters = {
   search: string;
@@ -26,6 +28,8 @@ export type GoodMoralOperationalFilters = {
   academicYearId?: string;
   variant: GoodMoralVariantValue | "";
   status: GoodMoralStatusValue | "";
+  // A chosen order; absent means the default for the selected status (ADR-090).
+  ordering?: GoodMoralOrdering;
   page: number;
   pageSize?: number;
 };
@@ -37,6 +41,7 @@ function pageHref(filters: GoodMoralOperationalFilters, page: number): string {
   if (filters.search) params.set("search", filters.search);
   if (filters.variant) params.set("variant", filters.variant);
   if (filters.status) params.set("status", filters.status);
+  if (filters.ordering) params.set("ordering", filters.ordering);
   if (filters.pageSize) params.set("page_size", String(filters.pageSize));
   if (page > 1) params.set("page", String(page));
   const query = params.toString();
@@ -50,6 +55,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
     ...(filters.variant ? { variant: filters.variant } : {}),
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.academicYearId ? { academic_year_id: filters.academicYearId } : {}),
+    ...(filters.ordering ? { ordering: filters.ordering } : {}),
     page: filters.page,
     ...(filters.pageSize ? { page_size: filters.pageSize } : {}),
   };
@@ -69,7 +75,12 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
         filtered: hasFilters,
       })
     : null;
+  // Clearing the filters keeps the chosen order; sorting is not a filter.
   const clearHref = pageHref({ ...filters, search: "", formRevisionId: "", academicYearId: "", variant: "", status: "" }, 1);
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = filters.ordering ?? page?.ordering;
+  const setOrdering = (next: GoodMoralOrdering) =>
+    router.push(pageHref({ ...filters, ordering: next }, 1), { scroll: false });
 
   return (
     <section className="space-y-5" aria-labelledby="good-moral-operational-heading">
@@ -77,6 +88,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
 
       <form action="/portal/good-moral" method="get" role="search" aria-label="Good Moral requests" key={JSON.stringify(filters)}>
         {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
+        {filters.ordering ? <input type="hidden" name="ordering" value={filters.ordering} /> : null}
         <FloatingListTools
           submits
           filterCount={[filters.academicYearId, filters.formRevisionId, filters.variant, filters.status].filter(Boolean).length}
@@ -108,7 +120,19 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
       {queue.isError && page ? <RefreshFailureNotice onRetry={() => void queue.refetch()} retrying={queue.isFetching} /> : null}
 
       <Panel aria-labelledby="good-moral-queue-heading">
-        <PanelHeader title="Good Moral requests" titleId="good-moral-queue-heading" context={resultContext} />
+        <PanelHeader
+          title="Good Moral requests"
+          titleId="good-moral-queue-heading"
+          context={resultContext}
+          actions={
+            <SortField
+              id="good-moral-sort"
+              value={ordering}
+              options={goodMoralOrderingOptions(filters.status)}
+              onChange={setOrdering}
+            />
+          }
+        />
         {queue.isPending ? (
           <GoodMoralListSkeleton framed={false} />
         ) : !page ? (
@@ -131,7 +155,16 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
               <caption className="sr-only">Good Moral certificate request queue</caption>
               <thead className={dataTable.head}>
                 <tr>
-                  <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Applicant</th>
+                  <SortableColumnHeader
+                    label="Applicant"
+                    ascending={GoodMoralOrdering.APPLICANT_ASC}
+                    descending={GoodMoralOrdering.APPLICANT_DESC}
+                    ascendingLabel="Applicant A–Z"
+                    descendingLabel="Applicant Z–A"
+                    current={ordering}
+                    onSort={setOrdering}
+                    className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}
+                  />
                   <th scope="col" className={dataTable.headerCell}>Variant</th>
                   <th scope="col" className={dataTable.headerCell}>Academic Year</th>
                   <th scope="col" className={dataTable.headerCell}>Status</th>

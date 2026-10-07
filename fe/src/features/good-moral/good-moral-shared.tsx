@@ -8,9 +8,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
-import type { GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
+import { GoodMoralOrdering, GoodMoralStatusValue, type GoodMoralVariantValue } from "@/lib/api/generated/model";
+import type { SortOption } from "@/components/ui/sort-field";
 import { Notice } from "@/components/ui/notice";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
+
+// Chronology is when a request reached its current status. Requests awaiting preparation or
+// issuance default to the one waiting longest; issued and cancelled ones to the newest (ADR-090).
+export function goodMoralOrderingOptions(
+  status: GoodMoralStatusValue | "",
+): readonly SortOption<GoodMoralOrdering>[] {
+  const queue =
+    status === GoodMoralStatusValue.REQUESTED || status === GoodMoralStatusValue.READY_FOR_ISSUANCE;
+  return [
+    { value: GoodMoralOrdering.OLDEST_FIRST, label: queue ? "Waiting longest first" : "Oldest first" },
+    { value: GoodMoralOrdering.NEWEST_FIRST, label: "Newest first" },
+    { value: GoodMoralOrdering.APPLICANT_ASC, label: "Applicant A–Z" },
+    { value: GoodMoralOrdering.APPLICANT_DESC, label: "Applicant Z–A" },
+  ];
+}
 
 export function goodMoralVariantLabel(variant: GoodMoralVariantValue): string {
   return variant === "CURRENT_STUDENT" ? "Current Student" : "Graduate";

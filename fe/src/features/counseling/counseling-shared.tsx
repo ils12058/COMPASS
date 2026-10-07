@@ -6,7 +6,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
-import type { CounselingContextOverviewResponse, CounselingEntryMode, DeliveryMode } from "@/lib/api/generated/model";
+import {
+  CounselingEncounterOrdering,
+  type CounselingContextOverviewResponse,
+  type CounselingEntryMode,
+  type DeliveryMode,
+} from "@/lib/api/generated/model";
+import type { SortOption } from "@/components/ui/sort-field";
+
+// Encounters are history: the latest actual start comes first (ADR-090). Origin and delivery mode
+// stay filters.
+export const encounterOrderingOptions: readonly SortOption<CounselingEncounterOrdering>[] = [
+  { value: CounselingEncounterOrdering.LATEST_ENCOUNTER, label: "Latest encounter first" },
+  { value: CounselingEncounterOrdering.OLDEST_ENCOUNTER, label: "Oldest encounter first" },
+  { value: CounselingEncounterOrdering.STUDENT_ASC, label: "Student A–Z" },
+  { value: CounselingEncounterOrdering.STUDENT_DESC, label: "Student Z–A" },
+];
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";

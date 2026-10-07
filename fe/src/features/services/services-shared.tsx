@@ -28,8 +28,19 @@ import {
 import {
   DeliveryMode,
   ServiceActivationBlocker,
+  ServiceOrdering,
   ServiceProviderCoverage,
 } from "@/lib/api/generated/model";
+import type { SortOption } from "@/components/ui/sort-field";
+
+// The Service Catalog is reference data and reads by code A–Z (ADR-090). Active and booking state
+// stay filters.
+export const serviceOrderingOptions: readonly SortOption<ServiceOrdering>[] = [
+  { value: ServiceOrdering.CODE_ASC, label: "Code A–Z" },
+  { value: ServiceOrdering.CODE_DESC, label: "Code Z–A" },
+  { value: ServiceOrdering.NAME_ASC, label: "Name A–Z" },
+  { value: ServiceOrdering.NAME_DESC, label: "Name Z–A" },
+];
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";

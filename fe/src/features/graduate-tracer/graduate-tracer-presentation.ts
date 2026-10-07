@@ -48,6 +48,8 @@ import {
   formatInstitutionalDateTime,
   institutionalDateInputValue,
 } from "@/lib/institutional-time";
+import { GraduateTracerOrdering } from "@/lib/api/generated/model";
+import type { SortOption } from "@/components/ui/sort-field";
 
 export type GraduateTracerFormDraft = Omit<
   GraduateTracerDraftPayload,
@@ -549,3 +551,11 @@ export function getGraduateTracerSubmissionIssues(draft: GraduateTracerFormDraft
   }
   return issues;
 }
+
+// Submitted responses are history: the newest submission comes first (ADR-090).
+export const graduateTracerOrderingOptions: readonly SortOption<GraduateTracerOrdering>[] = [
+  { value: GraduateTracerOrdering.NEWEST_SUBMITTED, label: "Newest submitted first" },
+  { value: GraduateTracerOrdering.OLDEST_SUBMITTED, label: "Oldest submitted first" },
+  { value: GraduateTracerOrdering.GRADUATE_ASC, label: "Graduate A–Z" },
+  { value: GraduateTracerOrdering.GRADUATE_DESC, label: "Graduate Z–A" },
+];

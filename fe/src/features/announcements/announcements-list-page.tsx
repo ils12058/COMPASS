@@ -5,15 +5,20 @@ import Link from "next/link";
 
 import { PageActionLink } from "@/components/ui/page-action";
 import { Select } from "@/components/ui/select";
+import { SortField } from "@/components/ui/sort-field";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { readOrdering } from "@/features/portal/components/list-ordering";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { announcementErrorMessage } from "@/features/announcements/announcement-errors";
-import { announcementTimingLine } from "@/features/announcements/announcement-presentation";
+import {
+  announcementManagementOrderingOptions,
+  announcementTimingLine,
+} from "@/features/announcements/announcement-presentation";
 import {
   displayTitle,
   isPublicationAudience,
@@ -32,6 +37,7 @@ import {
 import { useContentListParams } from "@/features/content/use-content-list-params";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { useAnnouncementsListManaged } from "@/lib/api/generated/announcements/announcements";
+import { AnnouncementManagementOrdering } from "@/lib/api/generated/model";
 
 export function AnnouncementsListPage() {
   const { searchParams, page, hrefWith, update, setPage } = useContentListParams();
@@ -40,11 +46,13 @@ export function AnnouncementsListPage() {
   const search = searchParams.get("search")?.trim() || undefined;
   const status = isPublicationStatus(statusParam) ? statusParam : undefined;
   const audience = isPublicationAudience(audienceParam) ? audienceParam : undefined;
+  const requestedOrdering = readOrdering(searchParams.get("ordering"), AnnouncementManagementOrdering);
   const hasFilters = Boolean(search || status || audience);
   const detailParams = new URLSearchParams();
   if (search) detailParams.set("search", search);
   if (status) detailParams.set("status", status);
   if (audience) detailParams.set("audience", audience);
+  if (requestedOrdering) detailParams.set("ordering", requestedOrdering);
   if (page > 1) detailParams.set("page", String(page));
   const detailQuery = detailParams.toString();
 
@@ -53,12 +61,15 @@ export function AnnouncementsListPage() {
       ...(status ? { status } : {}),
       ...(audience ? { audience } : {}),
       ...(search ? { search } : {}),
+      ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
       page,
       page_size: 20,
     },
     { query: { retry: false } },
   );
   const result = safeQueryData(list)?.data;
+  // The order the records are in: the reader's choice, or the default the backend applied.
+  const ordering = requestedOrdering ?? result?.ordering;
 
   return (
     <section aria-labelledby="announcements-heading">
@@ -138,6 +149,14 @@ export function AnnouncementsListPage() {
         <PanelHeader
           title="Announcement records"
           titleId="announcement-results-heading"
+          actions={
+            <SortField
+              id="announcement-management-sort"
+              value={ordering}
+              options={announcementManagementOrderingOptions}
+              onChange={(next) => update({ ordering: next })}
+            />
+          }
           context={list.isFetching && !list.isPending
             ? "Refreshing Announcements…"
             : result

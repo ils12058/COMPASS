@@ -12,6 +12,9 @@ import { FloatingListTools, ListSearchField } from "@/components/ui/floating-lis
 import { Input } from "@/components/ui/input";
 import { PageAction } from "@/components/ui/page-action";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
+import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { Select } from "@/components/ui/select";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { describeResultPage } from "@/features/portal/components/result-context";
@@ -22,10 +25,12 @@ import {
   counselingErrorMessage,
   CounselingListSkeleton,
   CounselingPageHeading,
+  encounterOrderingOptions,
   formatCounselingDateTime,
 } from "@/features/counseling/counseling-shared";
 import { RecordEncounterForm } from "@/features/counseling/record-encounter-form";
 import {
+  CounselingEncounterOrdering,
   CounselingEntryMode,
   DeliveryMode,
 } from "@/lib/api/generated/model";
@@ -63,6 +68,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
   const page = positivePage(searchParams.get("page"));
   const search = searchParams.get("search") ?? "";
   const hasFilters = Boolean(search || entryMode || deliveryMode || fromDate || toDate);
+  const { requested: requestedOrdering, setOrdering } = useListOrdering(CounselingEncounterOrdering);
   const encounters = useCounselingListMyEncounters(
     {
       ...(search ? { search } : {}),
@@ -70,12 +76,17 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
       ...(deliveryMode ? { delivery_mode: deliveryMode } : {}),
       ...(fromDate ? { from_date: fromDate } : {}),
       ...(toDate ? { to_date: toDate } : {}),
+      ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
       page,
       page_size: 20,
     },
     { query: { enabled: access.canViewAssigned, retry: false } },
   );
   const items = encounters.data?.data.items ?? [];
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = requestedOrdering ?? encounters.data?.data.ordering;
+  // Clearing the filters keeps the chosen order; sorting is not a filter.
+  const clearedHref = requestedOrdering ? `${pathname}?ordering=${requestedOrdering}` : pathname;
 
   return (
     <div>
@@ -104,11 +115,13 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
           {/* The collection tools step aside while an encounter is being recorded. */}
           {recordOpen ? null : (
           <form action={pathname} method="get" key={searchParams.toString()} role="search" aria-label="Counseling encounters">
+          {/* Applying filters keeps the reader's chosen order. */}
+          {requestedOrdering ? <input type="hidden" name="ordering" value={requestedOrdering} /> : null}
           <FloatingListTools
             submits
             label="Counseling encounter filters"
             filterCount={[entryMode, deliveryMode, fromDate, toDate].filter(Boolean).length}
-            clear={hasFilters ? <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>Clear filters</Button> : undefined}
+            clear={hasFilters ? <Button variant="quiet" onClick={() => router.replace(clearedHref, { scroll: false })}>Clear filters</Button> : undefined}
             filters={<>
             <FilterField label="Origin" htmlFor="counseling-entry-filter"><Select id="counseling-entry-filter" name="entry_mode" defaultValue={entryMode ?? ""}><option value="">All origins</option><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></Select></FilterField>
             <FilterField label="Delivery mode" htmlFor="counseling-delivery-filter"><Select id="counseling-delivery-filter" name="delivery_mode" defaultValue={deliveryMode ?? ""}><option value="">All delivery modes</option><option value="IN_PERSON">In person</option><option value="ONLINE">Online</option></Select></FilterField>
@@ -125,6 +138,14 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
           <PanelHeader
             title="My counseling encounters"
             titleId="my-counseling-encounters-heading"
+            actions={
+              <SortField
+                id="encounter-sort"
+                value={ordering}
+                options={encounterOrderingOptions}
+                onChange={setOrdering}
+              />
+            }
             context={encounters.data && !encounters.isError ? describeResultPage({
               count: items.length,
               page: encounters.data.data.page,
@@ -145,7 +166,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
               <div className={dataTable.scroll}>
                 <table className={`${dataTable.table} min-w-[850px]`}>
                   <caption className="sr-only">Counseling Encounters assigned to you</caption>
-                  <thead className={dataTable.head}><tr><th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>Student</th><th scope="col" className={dataTable.headerCell}>Origin</th><th scope="col" className={dataTable.headerCell}>Delivery</th><th scope="col" className={dataTable.headerCell}>Actual start</th><th scope="col" className={dataTable.headerCell}>Actual end</th><th scope="col" className={dataTable.headerCell}>Appointment</th></tr></thead>
+                  <thead className={dataTable.head}><tr><SortableColumnHeader label="Student" ascending={CounselingEncounterOrdering.STUDENT_ASC} descending={CounselingEncounterOrdering.STUDENT_DESC} ascendingLabel="Student A–Z" descendingLabel="Student Z–A" current={ordering} onSort={setOrdering} className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`} /><th scope="col" className={dataTable.headerCell}>Origin</th><th scope="col" className={dataTable.headerCell}>Delivery</th><SortableColumnHeader label="Actual start" ascending={CounselingEncounterOrdering.OLDEST_ENCOUNTER} descending={CounselingEncounterOrdering.LATEST_ENCOUNTER} ascendingLabel="Oldest encounter first" descendingLabel="Latest encounter first" firstDirection="descending" current={ordering} onSort={setOrdering} className={dataTable.headerCell} /><th scope="col" className={dataTable.headerCell}>Actual end</th><th scope="col" className={dataTable.headerCell}>Appointment</th></tr></thead>
                   <tbody className={dataTable.body}>
                     {items.map((encounter) => (
                       <tr key={encounter.id} className={dataTable.row}>

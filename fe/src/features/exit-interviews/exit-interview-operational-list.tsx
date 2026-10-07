@@ -20,18 +20,23 @@ import {
   ExitInterviewHeading,
   ExitInterviewStatus,
   exitInterviewErrorMessage,
+  exitInterviewOrderingOptions,
   shouldHideExitInterviewCachedData,
 } from "@/features/exit-interviews/exit-interview-shared";
 import { formatExitInterviewDateTime } from "@/features/exit-interviews/exit-interview-presentation";
 import { useAcademicYearsList } from "@/lib/api/generated/academic-years/academic-years";
 import { useExitInterviewsList } from "@/lib/api/generated/exit-interviews/exit-interviews";
-import { ExitInterviewStatusValue } from "@/lib/api/generated/model";
+import { ExitInterviewOrdering, ExitInterviewStatusValue } from "@/lib/api/generated/model";
+import { SortField } from "@/components/ui/sort-field";
+import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
 import type { ExitInterviewStatusValue as ExitInterviewStatusCode } from "@/lib/api/generated/model";
 
 export type ExitInterviewOperationalFilters = {
   search: string;
   status: ExitInterviewStatusCode | "";
   academicYearId: string;
+  // A chosen order; absent means the default for the selected status (ADR-090).
+  ordering?: ExitInterviewOrdering;
   page: number;
   pageSize?: number;
 };
@@ -41,6 +46,7 @@ function pageHref(filters: ExitInterviewOperationalFilters, page: number): strin
   if (filters.search) params.set("search", filters.search);
   if (filters.status) params.set("status", filters.status);
   if (filters.academicYearId) params.set("academic_year_id", filters.academicYearId);
+  if (filters.ordering) params.set("ordering", filters.ordering);
   if (filters.pageSize) params.set("page_size", String(filters.pageSize));
   if (page > 1) params.set("page", String(page));
   const query = params.toString();
@@ -71,6 +77,7 @@ export function ExitInterviewOperationalList({
     ...(filters.search ? { search: filters.search } : {}),
     ...(filters.status ? { status: filters.status } : {}),
     ...(academicYearId ? { academic_year_id: academicYearId } : {}),
+    ...(filters.ordering ? { ordering: filters.ordering } : {}),
     page: filters.page,
     ...(filters.pageSize ? { page_size: filters.pageSize } : {}),
   };
@@ -80,7 +87,12 @@ export function ExitInterviewOperationalList({
   const hideStaleQueue =
     queue.isError && shouldHideExitInterviewCachedData(queue.error);
 
+  // Clearing the filters keeps the chosen order; sorting is not a filter.
   const clearHref = pageHref({ ...filters, search: "", status: "", academicYearId: "" }, 1);
+  // The order the rows are in: the reader's choice, or the default the backend applied.
+  const ordering = filters.ordering ?? page?.ordering;
+  const setOrdering = (next: ExitInterviewOrdering) =>
+    router.push(pageHref({ ...filters, ordering: next }, 1), { scroll: false });
 
   return (
     <section className="space-y-5" aria-labelledby="exit-interview-operational-heading">
@@ -103,6 +115,7 @@ export function ExitInterviewOperationalList({
         key={JSON.stringify(filters)}
       >
         {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}
+        {filters.ordering ? <input type="hidden" name="ordering" value={filters.ordering} /> : null}
         <FloatingListTools
           submits
           filterCount={[filters.status, academicYearId].filter(Boolean).length}
@@ -168,6 +181,14 @@ export function ExitInterviewOperationalList({
         <PanelHeader
           title="Exit Interview queue"
           titleId="exit-interview-queue-heading"
+          actions={
+            <SortField
+              id="exit-interview-sort"
+              value={ordering}
+              options={exitInterviewOrderingOptions}
+              onChange={setOrdering}
+            />
+          }
           context={queue.isFetching && !queue.isPending
             ? "Refreshing Exit Interview results…"
             : page && !queue.isError
@@ -212,11 +233,37 @@ export function ExitInterviewOperationalList({
                 <caption className="sr-only">Head Guidance Exit Interview review queue</caption>
                 <thead className={dataTable.head}>
                   <tr>
-                    <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell} min-w-56`}>Student</th>
+                    <SortableColumnHeader
+                      label="Student"
+                      ascending={ExitInterviewOrdering.STUDENT_ASC}
+                      descending={ExitInterviewOrdering.STUDENT_DESC}
+                      ascendingLabel="Student A–Z"
+                      descendingLabel="Student Z–A"
+                      current={ordering}
+                      onSort={setOrdering}
+                      className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell} min-w-56`}
+                    />
                     <th scope="col" className={dataTable.headerCell}>Academic Year</th>
                     <th scope="col" className={dataTable.headerCell}>Status</th>
-                    <th scope="col" className={dataTable.headerCell}>Submitted</th>
-                    <th scope="col" className={dataTable.headerCell}>Updated</th>
+                    <SortableColumnHeader
+                      label="Submitted"
+                      ascending={ExitInterviewOrdering.OLDEST_SUBMITTED}
+                      descending={ExitInterviewOrdering.NEWEST_SUBMITTED}
+                      ascendingLabel="Oldest submitted first"
+                      descendingLabel="Newest submitted first"
+                      firstDirection="descending"
+                      current={ordering}
+                      onSort={setOrdering}
+                      className={dataTable.headerCell}
+                    />
+                    <SortableColumnHeader
+                      label="Updated"
+                      descending={ExitInterviewOrdering.RECENTLY_UPDATED}
+                      descendingLabel="Recently updated first"
+                      current={ordering}
+                      onSort={setOrdering}
+                      className={dataTable.headerCell}
+                    />
                   </tr>
                 </thead>
                 <tbody className={dataTable.body}>

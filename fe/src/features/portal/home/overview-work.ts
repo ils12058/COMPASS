@@ -5,10 +5,12 @@ import { useExitInterviewsGetMyCurrent } from "@/lib/api/generated/exit-intervie
 import { useGraduateTracerGetMyResponse } from "@/lib/api/generated/graduate-tracer/graduate-tracer";
 import { useGoodMoralListRequests } from "@/lib/api/generated/good-moral/good-moral";
 import {
+  GoodMoralOrdering,
   GoodMoralStatusValue,
   InventoryStatusValue,
   RoutineEvaluationStatus,
   RoutineIntakeStatus,
+  RoutineInterviewOrdering,
   type OverviewSummaryResponse,
   type UserSummary,
 } from "@/lib/api/generated/model";
@@ -25,6 +27,12 @@ import { inventoryErrorMessage } from "@/features/inventory/inventory-shared";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { routineErrorMessage } from "@/features/routine-interviews/routine-interviews-shared";
 import { PENDING_ROUTINE_EVALUATIONS, REQUESTED_GOOD_MORAL } from "@/features/portal/home/overview-presentation";
+import {
+  AttentionPriority,
+  attentionKey,
+  rankAttention,
+  type AttentionRank,
+} from "@/features/portal/home/overview-attention-ranking";
 
 export type OverviewAttentionItem = {
   id: string;
@@ -35,6 +43,8 @@ export type OverviewAttentionItem = {
   actionLabel: string;
   onRetry?: () => void;
   isError?: boolean;
+  // Internal ranking facts; never shown (ADR-090).
+  rank: AttentionRank;
 };
 
 export type OverviewAttentionData = {
@@ -60,6 +70,7 @@ function isAuthorizationFailure(error: unknown): boolean {
   return error instanceof CompassApiError && (error.status === 401 || error.status === 403);
 }
 
+// A source that could not be read keeps its place in its own priority class.
 function addErrorRow(
   items: OverviewAttentionItem[],
   id: string,
@@ -68,8 +79,18 @@ function addErrorRow(
   href: string,
   actionLabel: string,
   onRetry: () => void,
+  priority: AttentionPriority,
 ) {
-  items.push({ id, title, detail, href, actionLabel, onRetry, isError: true });
+  items.push({
+    id,
+    title,
+    detail,
+    href,
+    actionLabel,
+    onRetry,
+    isError: true,
+    rank: { priority, stableKey: attentionKey(id, 0, id) },
+  });
 }
 
 export function useOverviewAttention(
@@ -121,6 +142,8 @@ export function useOverviewAttention(
     {
       intake_status: RoutineIntakeStatus.SUBMITTED,
       evaluation_status: RoutineEvaluationStatus.DRAFT,
+      // The queue's own order: the evaluations that have waited longest.
+      ordering: RoutineInterviewOrdering.OLDEST_WAITING,
       page: 1,
       page_size: 3,
     },
@@ -129,6 +152,8 @@ export function useOverviewAttention(
   const goodMoralRequests = useGoodMoralListRequests(
     {
       status: GoodMoralStatusValue.REQUESTED,
+      // The queue's own order: the requests that have waited longest.
+      ordering: GoodMoralOrdering.OLDEST_FIRST,
       page: 1,
       page_size: 3,
     },
@@ -149,6 +174,7 @@ export function useOverviewAttention(
         detail: "No Individual Inventory has been started for the current Academic Year.",
         href: "/portal/inventory",
         actionLabel: "Open Individual Inventory",
+        rank: { priority: AttentionPriority.INCOMPLETE_SELF_SERVICE, stableKey: "inventory:000" },
       });
     } else if (current?.status === InventoryStatusValue.DRAFT) {
       items.push({
@@ -157,6 +183,7 @@ export function useOverviewAttention(
         detail: "Your current Academic Year Inventory is still in draft.",
         href: "/portal/inventory/current",
         actionLabel: "Continue Individual Inventory",
+        rank: { priority: AttentionPriority.INCOMPLETE_SELF_SERVICE, stableKey: "inventory:000" },
       });
     }
     if (
@@ -171,6 +198,7 @@ export function useOverviewAttention(
         "/portal/inventory",
         "Open Individual Inventory",
         () => void inventory.refetch(),
+        AttentionPriority.INCOMPLETE_SELF_SERVICE,
       );
     } else if (inventory.isError && inventory.data && !isAuthorizationFailure(inventory.error)) {
       staleNotices.push("Individual Inventory status could not be refreshed. Showing the last confirmed state.");
@@ -185,15 +213,20 @@ export function useOverviewAttention(
       .filter((record) => record.intake_status === RoutineIntakeStatus.DRAFT)
       .slice(0, 3);
 
-    for (const draft of drafts) {
+    drafts.forEach((draft, position) => {
       items.push({
         id: "student-routine-" + draft.id,
         title: "Routine Interview",
         detail: "Your intake is still in draft.",
         href: "/portal/routine-interviews/" + draft.id,
         actionLabel: "Continue Routine Interview",
+        rank: {
+          priority: AttentionPriority.INCOMPLETE_SELF_SERVICE,
+          waitingSince: draft.created_at,
+          stableKey: attentionKey("student-routine", position, draft.id),
+        },
       });
-    }
+    });
     if (
       studentRoutines.isError &&
       (!studentRoutines.data || isAuthorizationFailure(studentRoutines.error))
@@ -206,6 +239,7 @@ export function useOverviewAttention(
         "/portal/routine-interviews",
         "Open Routine Interviews",
         () => void studentRoutines.refetch(),
+        AttentionPriority.INCOMPLETE_SELF_SERVICE,
       );
     } else if (studentRoutines.isError && studentRoutines.data && !isAuthorizationFailure(studentRoutines.error)) {
       staleNotices.push("Routine Interview previews could not be refreshed. Showing the last confirmed items.");
@@ -216,6 +250,7 @@ export function useOverviewAttention(
         detail: "You may still have drafts to finish. Open Routine Interviews to review them.",
         href: "/portal/routine-interviews",
         actionLabel: "Open Routine Interviews",
+        rank: { priority: AttentionPriority.INCOMPLETE_SELF_SERVICE, stableKey: "student-routine:999" },
       });
     }
   }
@@ -233,6 +268,11 @@ export function useOverviewAttention(
         detail: "Your Exit Interview is still in draft.",
         href: "/portal/exit-interviews/" + current.id,
         actionLabel: "Continue Exit Interview",
+        rank: {
+          priority: AttentionPriority.INCOMPLETE_SELF_SERVICE,
+          waitingSince: current.created_at,
+          stableKey: attentionKey("exit-interview", 0, current.id),
+        },
       });
     }
     if (
@@ -248,6 +288,7 @@ export function useOverviewAttention(
         "/portal/exit-interviews",
         "Open Exit Interviews",
         () => void currentExitInterview.refetch(),
+        AttentionPriority.INCOMPLETE_SELF_SERVICE,
       );
     } else if (
       currentExitInterview.isError &&
@@ -272,6 +313,11 @@ export function useOverviewAttention(
         detail: "Your response is still in draft.",
         href: "/portal/graduate-tracer",
         actionLabel: "Continue Graduate Tracer Survey",
+        rank: {
+          priority: AttentionPriority.INCOMPLETE_SELF_SERVICE,
+          waitingSince: current.created_at,
+          stableKey: attentionKey("graduate-tracer", 0, current.id),
+        },
       });
     }
     if (
@@ -287,6 +333,7 @@ export function useOverviewAttention(
         "/portal/graduate-tracer",
         "Open Graduate Tracer Survey",
         () => void graduateResponse.refetch(),
+        AttentionPriority.INCOMPLETE_SELF_SERVICE,
       );
     } else if (
       graduateResponse.isError &&
@@ -302,7 +349,7 @@ export function useOverviewAttention(
     const records = isAuthorizationFailure(counselorRoutines.error)
       ? []
       : counselorRoutines.data?.data.items ?? [];
-    for (const routine of records.slice(0, 3)) {
+    records.slice(0, 3).forEach((routine, position) => {
       items.push({
         id: "counselor-routine-" + routine.id,
         title: "Routine Interview",
@@ -310,8 +357,14 @@ export function useOverviewAttention(
         detail: "Student intake submitted; evaluation not finalized.",
         href: "/portal/routine-interviews/" + routine.id,
         actionLabel: "Review Routine Interview",
+        // The evaluation has waited since the Student submitted the intake.
+        rank: {
+          priority: AttentionPriority.ACTION_REQUIRED,
+          waitingSince: routine.intake_submitted_at,
+          stableKey: attentionKey("counselor-routine", position, routine.id),
+        },
       });
-    }
+    });
     if (
       counselorRoutines.isError &&
       (!counselorRoutines.data || isAuthorizationFailure(counselorRoutines.error))
@@ -324,6 +377,7 @@ export function useOverviewAttention(
         PENDING_ROUTINE_EVALUATIONS,
         "Open Routine Interviews",
         () => void counselorRoutines.refetch(),
+        AttentionPriority.ACTION_REQUIRED,
       );
     } else if (counselorRoutines.isError && counselorRoutines.data && !isAuthorizationFailure(counselorRoutines.error)) {
       staleNotices.push("Routine evaluation previews could not be refreshed. Showing the last confirmed items.");
@@ -334,6 +388,7 @@ export function useOverviewAttention(
         detail: "Evaluations may still need review. Open Routine Interviews to check them.",
         href: PENDING_ROUTINE_EVALUATIONS,
         actionLabel: "Open Routine Interviews",
+        rank: { priority: AttentionPriority.ACTION_REQUIRED, stableKey: "counselor-routine:999" },
       });
     }
   }
@@ -342,7 +397,7 @@ export function useOverviewAttention(
     const records = isAuthorizationFailure(goodMoralRequests.error)
       ? []
       : goodMoralRequests.data?.data.items ?? [];
-    for (const request of records.slice(0, 3)) {
+    records.slice(0, 3).forEach((request, position) => {
       items.push({
         id: "good-moral-" + request.id,
         title: "Good Moral request",
@@ -350,8 +405,14 @@ export function useOverviewAttention(
         detail: goodMoralVariantLabel(request.variant) + " request",
         href: "/portal/good-moral/" + request.id,
         actionLabel: "Review Good Moral request",
+        // A requested certificate has waited since the request.
+        rank: {
+          priority: AttentionPriority.ACTION_REQUIRED,
+          waitingSince: request.created_at,
+          stableKey: attentionKey("good-moral", position, request.id),
+        },
       });
-    }
+    });
     if (
       goodMoralRequests.isError &&
       (!goodMoralRequests.data || isAuthorizationFailure(goodMoralRequests.error))
@@ -364,6 +425,7 @@ export function useOverviewAttention(
         REQUESTED_GOOD_MORAL,
         "Open Good Moral",
         () => void goodMoralRequests.refetch(),
+        AttentionPriority.ACTION_REQUIRED,
       );
     } else if (goodMoralRequests.isError && goodMoralRequests.data && !isAuthorizationFailure(goodMoralRequests.error)) {
       staleNotices.push("Good Moral previews could not be refreshed. Showing the last confirmed items.");
@@ -374,6 +436,7 @@ export function useOverviewAttention(
         detail: "Requests may still be awaiting issuance. Open Good Moral to review them.",
         href: REQUESTED_GOOD_MORAL,
         actionLabel: "Open Good Moral",
+        rank: { priority: AttentionPriority.ACTION_REQUIRED, stableKey: "good-moral:999" },
       });
     }
   }
@@ -426,6 +489,14 @@ export function useOverviewAttention(
       detail,
       href: "/portal/platform/email-delivery",
       actionLabel: "Review email delivery",
+      // Failed deliveries need an operator; deliveries merely due are ordinary operational work.
+      rank: {
+        priority:
+          failedEmailCount !== null && failedEmailCount !== undefined && failedEmailCount > 0
+            ? AttentionPriority.CRITICAL
+            : AttentionPriority.ACTION_REQUIRED,
+        stableKey: "email-delivery:000",
+      },
     });
   }
 
@@ -439,7 +510,7 @@ export function useOverviewAttention(
   const isVisible = shouldShowOverviewAttention(items.length, isPending, staleNotices.length);
 
   return {
-    items,
+    items: rankAttention(items),
     isPending,
     isVisible,
     staleNotices: Array.from(new Set(staleNotices)),
