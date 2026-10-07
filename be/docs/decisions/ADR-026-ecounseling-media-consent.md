@@ -188,3 +188,10 @@ The remaining provider-level recording-enablement limitation is documented rathe
 access, retention, deletion, institutional object storage, DPO privacy-governance workflows, frontend
 consent notice text, and any stronger trusted-participant/bot provider architecture remain separate
 future decisions.
+
+## V2 refinement (ADR-092)
+
+[ADR-092](ADR-092-ecounseling-media-governance-v2.md) refines new V2 room consent to combined recording /
+live-transcription permission plus separate transcript persistence. It adds private COMPASS artifact
+custody and assigned downloads. This ADR's granular V1 decisions and historical evidence retain their
+original meaning. Capture controls remain independent, and Daily Prebuilt/browser authority is unchanged.

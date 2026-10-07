@@ -8,7 +8,7 @@ export const user = (role = "COUNSELOR") => ({
   designations: [], institutional_id: "TEST-01",
   capabilities: role === "STUDENT"
     ? ["ecounseling.view_self", "ecounseling.join_self", "ecounseling.consent_self", "appointments.view_self", "call_slips.view_self"]
-    : ["ecounseling.view_assigned", "ecounseling.join_assigned", "ecounseling.manage_media_assigned", "appointments.view_self", "appointments.manage", "counseling.view_assigned", "counseling.manage_assigned", "call_slips.view", "call_slips.manage", "organization.manage", "organization.structure.view", "institutional_forms.view", "services.catalog.view", "services.manage", "platform_operations.view", "platform_operations.manage"],
+    : ["ecounseling.view_assigned", "ecounseling.join_assigned", "ecounseling.manage_media_assigned", "ecounseling.access_media_assigned", "appointments.view_self", "appointments.manage", "counseling.view_assigned", "counseling.manage_assigned", "call_slips.view", "call_slips.manage", "organization.manage", "organization.structure.view", "institutional_forms.view", "services.catalog.view", "services.manage", "platform_operations.view", "platform_operations.manage"],
 });
 export const appointment = {
   id: appointmentId, reference_code: "APT-TEST-1024", student_id: "student",
@@ -22,8 +22,9 @@ export const appointment = {
   actions: Object.fromEntries(["cancel", "reschedule", "reassign", "complete", "mark_no_show"].map((name) => [name, { allowed: true, blocker: null, consequences: [] }])),
 };
 export const media = (capture = "NOT_STARTED") => ({
-  recording: { artifact_disposed_at: null, capture_status: capture, consent_status: "APPROVED" },
-  transcription: { artifact_disposed_at: null, capture_status: capture, consent_status: "APPROVED", storage_consent_status: "NOT_REQUESTED", storage_enabled: false },
+  media_policy_version: 1,
+  recording: { artifact_disposed_at: null, artifact_status: null, artifact_available: false, capture_status: capture, consent_status: "APPROVED" },
+  transcription: { artifact_disposed_at: null, artifact_status: null, artifact_available: false, capture_status: capture, consent_status: "APPROVED", storage_consent_status: "NOT_REQUESTED", storage_enabled: false },
 });
 export const consents = (decision = "APPROVED") => ["AUDIO_VIDEO_RECORDING", "LIVE_TRANSCRIPTION"].map((scope, index) => ({
   id: `consent-${index}`, scope, decision, effective: decision === "APPROVED", withdrawn_at: null,

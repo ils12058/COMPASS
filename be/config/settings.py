@@ -206,6 +206,14 @@ S3_COMMON_OPTIONS = {
     "verify": S3_VERIFY,
 }
 STORAGES = {
+    "ecounseling_media": {
+        "BACKEND": "compass.integrations.sensitive_storage.SensitiveMediaStorage",
+        "OPTIONS": {
+            **S3_COMMON_OPTIONS,
+            "bucket_name": env("ECOUNSELING_MEDIA_BUCKET_NAME", "") or S3_BUCKET_NAME,
+            "location": "e-counseling",
+        },
+    },
     "default": {
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {**S3_COMMON_OPTIONS, "location": "media"},
@@ -272,6 +280,12 @@ DAILY_MEETING_TOKEN_TTL_SECONDS = env_int("DAILY_MEETING_TOKEN_TTL_SECONDS", 300
 DAILY_WEBHOOK_MAX_AGE_SECONDS = env_int("DAILY_WEBHOOK_MAX_AGE_SECONDS", 300)
 ECOUNSELING_JOIN_EARLY_SECONDS = env_int("ECOUNSELING_JOIN_EARLY_SECONDS", 600)
 ECOUNSELING_REJOIN_GRACE_SECONDS = env_int("ECOUNSELING_REJOIN_GRACE_SECONDS", 900)
+ECOUNSELING_MEDIA_ACCESS_URL_TTL_SECONDS = env_int("ECOUNSELING_MEDIA_ACCESS_URL_TTL_SECONDS", 300)
+ECOUNSELING_MEDIA_MAX_BYTES = env_int("ECOUNSELING_MEDIA_MAX_BYTES", 10 * 1024**3)
+if not 60 <= ECOUNSELING_MEDIA_ACCESS_URL_TTL_SECONDS <= 600:
+    raise ValueError("ECOUNSELING_MEDIA_ACCESS_URL_TTL_SECONDS must be between 60 and 600")
+if not 1024**2 <= ECOUNSELING_MEDIA_MAX_BYTES <= 100 * 1024**3:
+    raise ValueError("ECOUNSELING_MEDIA_MAX_BYTES must be between 1 MiB and 100 GiB")
 if DAILY_HTTP_TIMEOUT_SECONDS <= 0:
     raise ValueError("DAILY_HTTP_TIMEOUT_SECONDS must be positive")
 if not 60 <= DAILY_MEETING_TOKEN_TTL_SECONDS <= 900:
@@ -643,6 +657,10 @@ CELERY_WORKER_SEND_TASK_EVENTS = False
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_IMPORTS = ("compass.tasks",)
 CELERY_BEAT_SCHEDULE = {
+    "ecounseling-artifact-recovery": {
+        "task": "compass.ecounseling.recover_media_artifacts",
+        "schedule": 60,
+    },
     "retention-eligibility-discovery": {
         "task": "compass.privacy_governance.discover_retention",
         "schedule": 300,

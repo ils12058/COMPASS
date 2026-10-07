@@ -5,7 +5,7 @@ from uuid import UUID
 
 from django.utils import timezone
 from ninja import Router, Schema, Status
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_validator
 
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
@@ -20,6 +20,7 @@ from .retention_models import (
     DispositionState,
     OperationalRetentionRule,
     RetentionCategory,
+    RetentionContractVersion,
     RetentionRuleStatus,
     RetentionTrigger,
 )
@@ -36,6 +37,7 @@ class RetentionStrictSchema(Schema):
 
 
 class RetentionCategoryResponse(RetentionStrictSchema):
+    contract_version: RetentionContractVersion
     category: RetentionCategory
     label: str
     trigger: RetentionTrigger
@@ -44,12 +46,20 @@ class RetentionCategoryResponse(RetentionStrictSchema):
 
 class RetentionRuleValues(RetentionStrictSchema):
     label: str = Field(min_length=1, max_length=160)
+    contract_version: RetentionContractVersion = RetentionContractVersion.V1
     category: RetentionCategory
     trigger: RetentionTrigger
     duration_days: int = Field(ge=1, le=365000, strict=True)
     action: DispositionAction
     policy_reference: str = Field(min_length=1, max_length=500)
     effective_on: date
+
+    @field_validator("contract_version", mode="before")
+    @classmethod
+    def require_integer_contract(cls, value):
+        if type(value) is not int and not isinstance(value, RetentionContractVersion):
+            raise ValueError("contract_version must be 1 or 2")
+        return value
 
 
 class RetentionRuleCreate(RetentionRuleValues):
@@ -65,6 +75,7 @@ class RetentionRuleUpdate(RetentionRuleValues):
 
 
 class RetentionRuleResponse(RetentionRuleCreate):
+    contract_version: RetentionContractVersion
     id: UUID
     status: RetentionRuleStatus
     revision: int
@@ -97,6 +108,7 @@ class DispositionCaseResponse(RetentionStrictSchema):
     rule_id: UUID
     rule_code: str
     rule_revision: int
+    contract_version: RetentionContractVersion
     category: RetentionCategory
     action: DispositionAction
     affected_count: int
@@ -144,6 +156,7 @@ def project_case(item):
         "rule_code": item.rule.code,
         "rule_revision": item.rule_revision,
         "category": item.category,
+        "contract_version": item.contract_version,
         "action": item.rule.action,
         "affected_count": 1,
         "eligible_at": item.eligible_at,
@@ -182,10 +195,11 @@ def page_of(qs, page, page_size, projector):
     }
 
 
-def category_projection(category):
-    trigger, action = retention.SUPPORTED[category]
+def category_projection(category, contract_version=1):
+    trigger, action = retention.SUPPORTED_CONTRACTS[(category, contract_version)]
     return {
         "category": category,
+        "contract_version": contract_version,
         "label": RetentionCategory(category).label,
         "trigger": trigger,
         "action": action,
@@ -199,7 +213,10 @@ def category_projection(category):
 )
 def categories(request):
     _require(request, VIEW)
-    return [category_projection(category) for category in retention.SUPPORTED]
+    return [
+        category_projection(category, version)
+        for category, version in retention.SUPPORTED_CONTRACTS
+    ]
 
 
 @router.get(
@@ -223,7 +240,10 @@ def create_rule(request, payload: RetentionRuleCreate):
         201,
         project_rule(
             retention.create_rule(
-                actor=request.auth_user, values=payload.model_dump(), context=_context(request)
+                actor=request.auth_user,
+                values=payload.model_dump(mode="python")
+                | {"contract_version": int(payload.contract_version)},
+                context=_context(request),
             )
         ),
     )
@@ -251,7 +271,8 @@ def update_rule(request, rule_id: UUID, payload: RetentionRuleUpdate):
             actor=request.auth_user,
             rule_id=rule_id,
             expected_revision=payload.expected_revision,
-            values=payload.model_dump(exclude={"expected_revision"}),
+            values=payload.model_dump(exclude={"expected_revision"})
+            | {"contract_version": int(payload.contract_version)},
             context=_context(request),
         )
     )
@@ -309,12 +330,17 @@ def summary(request):
             state="COMPLETED", completed_at__gte=timezone.now() - timedelta(days=30)
         ).count(),
         "categories": [
-            category_projection(category)
+            category_projection(category, version)
             | {
-                "ready_count": qs.filter(category=category, state="READY").count(),
-                "held_count": qs.filter(category=category, state="ON_HOLD").count(),
+                "ready_count": qs.filter(
+                    category=category, contract_version=version, state="READY"
+                ).count(),
+                "held_count": qs.filter(
+                    category=category, contract_version=version, state="ON_HOLD"
+                ).count(),
                 "blocked_count": qs.filter(
                     category=category,
+                    contract_version=version,
                     state__in=(
                         "BLOCKED",
                         "FAILED",
@@ -323,7 +349,7 @@ def summary(request):
                     ),
                 ).count(),
             }
-            for category in retention.SUPPORTED
+            for category, version in retention.SUPPORTED_CONTRACTS
         ],
     }
 
@@ -337,6 +363,7 @@ def cases(
     request,
     page: int = 1,
     page_size: int = 20,
+    contract_version: RetentionContractVersion | None = None,
     category: RetentionCategory | None = None,
     state: DispositionState | None = None,
 ):
@@ -344,6 +371,8 @@ def cases(
     qs = DispositionCase.objects.select_related("rule").prefetch_related("holds")
     if category:
         qs = qs.filter(category=category)
+    if contract_version:
+        qs = qs.filter(contract_version=contract_version)
     if state:
         qs = qs.filter(state=state)
     return page_of(qs, page, page_size, project_case)

@@ -19,11 +19,20 @@ class RetentionTrigger(models.TextChoices):
 
 
 class DispositionAction(models.TextChoices):
+    DELETE_MEDIA_ARTIFACT_KEEP_EVIDENCE = (
+        "DELETE_MEDIA_ARTIFACT_KEEP_EVIDENCE",
+        "Delete stored media artifact, keep evidence",
+    )
     ANONYMIZE = "ANONYMIZE", "Anonymize"
     DELETE_PROVIDER_ARTIFACT_KEEP_EVIDENCE = (
         "DELETE_PROVIDER_ARTIFACT_KEEP_EVIDENCE",
         "Delete provider artifact, keep evidence",
     )
+
+
+class RetentionContractVersion(models.IntegerChoices):
+    V1 = 1, "Contract v1"
+    V2 = 2, "Media policy v2"
 
 
 class RetentionRuleStatus(models.TextChoices):
@@ -46,6 +55,11 @@ class DispositionState(models.TextChoices):
 
 
 class DispositionBlocker(models.TextChoices):
+    INGESTION_INCOMPLETE = "INGESTION_INCOMPLETE", "File preparation is incomplete"
+    OBJECT_STORAGE_UNAVAILABLE = "OBJECT_STORAGE_UNAVAILABLE", "Stored file unavailable"
+    OBJECT_STORAGE_UNVERIFIED = "OBJECT_STORAGE_UNVERIFIED", "Stored file deletion unverified"
+    PROVIDER_CLEANUP_UNVERIFIED = "PROVIDER_CLEANUP_UNVERIFIED", "Provider cleanup unverified"
+    LOCAL_ARTIFACT_MISSING = "LOCAL_ARTIFACT_MISSING", "Stored artifact evidence unavailable"
     RULE_INACTIVE = "RULE_INACTIVE", "Rule is inactive or not yet effective"
     SOURCE_CHANGED = "SOURCE_CHANGED", "Source lifecycle changed"
     SOURCE_UNAVAILABLE = "SOURCE_UNAVAILABLE", "Source is unavailable"
@@ -64,6 +78,9 @@ class OperationalRetentionRule(models.Model):
     code = models.CharField(max_length=64, unique=True)
     label = models.CharField(max_length=160)
     category = models.CharField(max_length=32, choices=RetentionCategory.choices)
+    contract_version = models.PositiveSmallIntegerField(
+        choices=RetentionContractVersion.choices, default=1
+    )
     trigger = models.CharField(max_length=24, choices=RetentionTrigger.choices)
     duration_days = models.PositiveIntegerField()
     action = models.CharField(max_length=48, choices=DispositionAction.choices)
@@ -93,9 +110,9 @@ class OperationalRetentionRule(models.Model):
         ordering = ("code",)
         constraints = [
             models.UniqueConstraint(
-                fields=("category",),
+                fields=("category", "contract_version"),
                 condition=Q(status="ACTIVE"),
-                name="one_active_retention_category",
+                name="one_active_retention_contract",
             ),
             models.CheckConstraint(
                 condition=Q(duration_days__gte=1, duration_days__lte=365000),
@@ -107,14 +124,26 @@ class OperationalRetentionRule(models.Model):
             ),
             models.CheckConstraint(
                 condition=(
-                    Q(category="GRADUATE_TRACER", trigger="SUBMITTED_AT", action="ANONYMIZE")
+                    Q(
+                        category="GRADUATE_TRACER",
+                        contract_version=1,
+                        trigger="SUBMITTED_AT",
+                        action="ANONYMIZE",
+                    )
                     | Q(
                         category__in=("ECOUNSELING_RECORDING", "ECOUNSELING_TRANSCRIPT"),
+                        contract_version=1,
                         trigger="MEDIA_READY_AT",
                         action="DELETE_PROVIDER_ARTIFACT_KEEP_EVIDENCE",
                     )
+                    | Q(
+                        category__in=("ECOUNSELING_RECORDING", "ECOUNSELING_TRANSCRIPT"),
+                        contract_version=2,
+                        trigger="MEDIA_READY_AT",
+                        action="DELETE_MEDIA_ARTIFACT_KEEP_EVIDENCE",
+                    )
                 ),
-                name="retention_supported_treatment",
+                name="retention_supported_contract",
             ),
         ]
 
@@ -126,6 +155,9 @@ class DispositionCase(models.Model):
     )
     rule_revision = models.PositiveIntegerField()
     category = models.CharField(max_length=32, choices=RetentionCategory.choices)
+    contract_version = models.PositiveSmallIntegerField(
+        choices=RetentionContractVersion.choices, default=1
+    )
     # Internal only. Never projected through DPO APIs or copied into AuditEvent metadata.
     source_id = models.UUIDField()
     source_updated_at = models.DateTimeField()

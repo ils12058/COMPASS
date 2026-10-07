@@ -151,7 +151,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
     assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
     assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 84
+    assert RoleCapability.objects.count() == 85
     assert DesignationCapability.objects.count() == 20
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
@@ -163,8 +163,8 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 71
-    assert RoleCapability.objects.count() == 84
+    assert Capability.objects.count() == 72
+    assert RoleCapability.objects.count() == 85
     assert DesignationCapability.objects.count() == 20
 
 
@@ -255,6 +255,7 @@ def test_counselor_baseline_adds_scoped_authority_without_admin_expansion():
         "reports.view",
         "inventory.view",
         "inventory.reopen",
+        "ecounseling.access_media_assigned",
     }
     denied = {
         "availability.manage",
@@ -349,6 +350,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "ecounseling.view_assigned",
         "ecounseling.join_assigned",
         "ecounseling.manage_media_assigned",
+        "ecounseling.access_media_assigned",
     }
     assert user.has_capability("accounts.view")
     assert user.has_capability("accounts.manage")

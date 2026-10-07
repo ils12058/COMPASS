@@ -349,6 +349,7 @@ EXPECTED_OPERATION_IDS = {
     "eCounselingStopAssignedRecording",
     "eCounselingStartAssignedTranscription",
     "eCounselingStopAssignedTranscription",
+    "eCounselingAccessAssignedMedia",
     "eCounselingCreateJoinCredential",
     "eCounselingDailyWebhook",
 }
@@ -1796,6 +1797,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "ecounseling.join_assigned",
             "ecounseling.join_self",
             "ecounseling.manage_media_assigned",
+            "ecounseling.access_media_assigned",
             "ecounseling.view_assigned",
             "ecounseling.view_self",
             "exit_interviews.manage_opportunities",

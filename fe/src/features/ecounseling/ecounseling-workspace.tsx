@@ -17,7 +17,7 @@ import { type EncounterOriginPreset } from "@/features/counseling/record-encount
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { CounselorMediaControls } from "@/features/ecounseling/counselor-media-controls";
 import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
-import { ecounselingErrorMessage, hasLiveOrTransitionalMedia } from "@/features/ecounseling/ecounseling-shared";
+import { ecounselingErrorMessage, hasLiveOrTransitionalMedia, hasPreparingMediaFile } from "@/features/ecounseling/ecounseling-shared";
 import { SessionStage, useSessionJoin } from "@/features/ecounseling/session-stage";
 import { StudentConsentPanel } from "@/features/ecounseling/student-consent-panel";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
@@ -105,18 +105,20 @@ function SessionHeader({
   participant,
   appointment,
   routine,
+  mediaPolicyVersion,
 }: {
   appointmentId: string;
   participant: string;
   appointment: AppointmentWorkspaceSummary;
   routine?: { id: string; status: string } | null;
+  mediaPolicyVersion: CounselorWorkspaceResponse["media"]["media_policy_version"];
 }) {
   return (
     <PageHeader
       title={participant}
       description={formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}
       meta={<AppointmentStatusBadge status={appointment.status} />}
-      help={<ECounselingHelp />}
+      help={<ECounselingHelp mediaPolicyVersion={mediaPolicyVersion} />}
       back={(
         <GuardedPortalLink href={`/portal/appointments/${appointmentId}`} className={pageBackLinkClass}>
           ← Back to appointment
@@ -229,7 +231,7 @@ function StudentWorkspace({ appointmentId, access }: { appointmentId: string; ac
   const [localCallJoined, setLocalCallJoined] = useState(false);
   const workspace = useECounselingGetMyWorkspace(appointmentId, { query: {
     retry: false,
-    refetchInterval: (query) => localCallJoined || hasLiveOrTransitionalMedia(query.state.data?.data.media) ? 7000 : false,
+    refetchInterval: (query) => localCallJoined || (hasLiveOrTransitionalMedia(query.state.data?.data.media) || hasPreparingMediaFile(query.state.data?.data.media)) ? 7000 : false,
   } });
   const join = useSessionJoin({ appointmentId, refetchWorkspace: workspace.refetch, onCallChange: setLocalCallJoined });
   const data = workspace.data?.data;
@@ -243,6 +245,7 @@ function StudentWorkspace({ appointmentId, access }: { appointmentId: string; ac
   return (
     <div className="@container">
       <SessionHeader
+        mediaPolicyVersion={media.media_policy_version}
         appointmentId={appointmentId}
         participant={`With ${data.counselor.display_name}`}
         appointment={data.appointment}
@@ -272,7 +275,7 @@ function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; 
   const queryClient = useQueryClient();
   const workspace = useECounselingGetAssignedWorkspace(appointmentId, { query: {
     retry: false,
-    refetchInterval: (query) => localCallJoined || hasLiveOrTransitionalMedia(query.state.data?.data.media) ? 7000 : false,
+    refetchInterval: (query) => localCallJoined || (hasLiveOrTransitionalMedia(query.state.data?.data.media) || hasPreparingMediaFile(query.state.data?.data.media)) ? 7000 : false,
   } });
   const join = useSessionJoin({ appointmentId, refetchWorkspace: workspace.refetch, onCallChange: setLocalCallJoined });
   const data = workspace.data?.data;
@@ -291,6 +294,7 @@ function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; 
   return (
     <div className="@container">
       <SessionHeader
+        mediaPolicyVersion={media.media_policy_version}
         appointmentId={appointmentId}
         participant={data.student.display_name}
         appointment={data.appointment}

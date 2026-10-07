@@ -153,6 +153,15 @@ def _load_eligible_appointment(appointment_id: UUID) -> Appointment:
     return appointment
 
 
+def _load_workspace_appointment(appointment_id: UUID) -> Appointment:
+    # A saved room is historical session provenance, including completed Appointments.
+    if ECounselingRoom.objects.filter(appointment_id=appointment_id).exists():
+        from .media import _load_session_appointment
+
+        return _load_session_appointment(appointment_id)
+    return _load_eligible_appointment(appointment_id)
+
+
 def _require_student_relationship(
     *, actor: User, appointment: Appointment, capability: str
 ) -> None:
@@ -263,20 +272,28 @@ def _provider_readiness(
     now: datetime | None = None,
 ) -> dict[str, object]:
     window = _join_window(appointment, now=now)
+    eligible = (
+        appointment.status == AppointmentStatus.SCHEDULED
+        and appointment.service.is_active
+        and appointment.provider.is_active
+        and appointment.provider.role.code == "COUNSELOR"
+        and appointment.student.is_active
+        and appointment.student.role.code == "STUDENT"
+    )
     return {
         "daily_enabled": bool(settings.DAILY_ENABLED),
         "room_provisioned": bool(room and room.provisioned_at and room.daily_room_url),
-        "join_allowed": window.state == ECounselingJoinState.OPEN,
+        "join_allowed": eligible and window.state == ECounselingJoinState.OPEN,
         "join_available_from": window.available_from,
         "join_available_until": window.available_until,
-        "join_state": window.state,
+        "join_state": window.state if eligible else ECounselingJoinState.CLOSED,
     }
 
 
 def get_student_workspace(
     *, student: User, appointment_id: UUID, now: datetime | None = None
 ) -> dict[str, object]:
-    appointment = _load_eligible_appointment(appointment_id)
+    appointment = _load_workspace_appointment(appointment_id)
     _require_student_relationship(
         actor=student,
         appointment=appointment,
@@ -307,7 +324,7 @@ def get_student_workspace(
 def get_counselor_workspace(
     *, counselor: User, appointment_id: UUID, now: datetime | None = None
 ) -> dict[str, object]:
-    appointment = _load_eligible_appointment(appointment_id)
+    appointment = _load_workspace_appointment(appointment_id)
     _require_counselor_relationship(
         actor=counselor,
         appointment=appointment,

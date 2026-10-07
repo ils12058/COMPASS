@@ -35,6 +35,8 @@ import {
   useECounselingStopAssignedTranscription,
 } from "@/lib/api/generated/e-counseling/e-counseling";
 
+import { MediaArtifactDownload } from "./media-artifact-download";
+
 type StartAction = "recording" | "transcription";
 
 function consentRowsLabel(rows: ConsentResponse[], scope: ECounselingConsentScope): string {
@@ -103,8 +105,11 @@ export function CounselorMediaControls({
   const busy = request.isPending || startRecording.isPending || stopRecording.isPending || startTranscription.isPending || stopTranscription.isPending;
   const rows = consentQuery.data?.data.items ?? [];
   const canReadConsents = consentQuery.isSuccess;
-  const recordingConsent = rowFor(rows, ECounselingConsentScope.AUDIO_VIDEO_RECORDING);
-  const transcriptionConsent = rowFor(rows, ECounselingConsentScope.LIVE_TRANSCRIPTION);
+  const isV2 = workspace.media.media_policy_version === 2;
+  const recordingScope = isV2 ? ECounselingConsentScope.SESSION_MEDIA_CAPTURE : ECounselingConsentScope.AUDIO_VIDEO_RECORDING;
+  const transcriptionScope = isV2 ? ECounselingConsentScope.SESSION_MEDIA_CAPTURE : ECounselingConsentScope.LIVE_TRANSCRIPTION;
+  const recordingConsent = rowFor(rows, recordingScope);
+  const transcriptionConsent = rowFor(rows, transcriptionScope);
   const storageConsent = rowFor(rows, ECounselingConsentScope.TRANSCRIPT_STORAGE);
   const recordingApproved = isEffectivelyApproved(recordingConsent);
   const transcriptionApproved = isEffectivelyApproved(transcriptionConsent);
@@ -198,34 +203,42 @@ export function CounselorMediaControls({
           Consent couldn’t be loaded. New requests and starts are unavailable. You can still stop recording or transcription.
         </PanelMessage>
       ) : null : <PanelMessage>Media controls and consent details are unavailable to this account.</PanelMessage>}
-      {access.canManageMediaAssigned ? <>
+      {isV2 && access.canManageMediaAssigned ? <PanelSection title="Media permission" titleId="media-permission-heading" level={3}>
+        <p className="text-sm">{consentLabel(ECounselingConsentScope.SESSION_MEDIA_CAPTURE, workspace.media.recording.consent_status)}</p>
+        {canReadConsents && noRecordingRequest ? <Button className="mt-3" variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.SESSION_MEDIA_CAPTURE])}>Request media permission</Button> : null}
+        {canReadConsents && hasLiveTranscriptionRequest && noStorageRequest ? <Button className="ml-2 mt-3" variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request transcript storage</Button> : null}
+      </PanelSection> : null}
+      {access.canManageMediaAssigned || access.canAccessMediaAssigned ? <>
         <PanelSection title="Recording" titleId="recording-controls-heading" level={3}>
           <MediaFacts facts={[
-            ["Consent", consentLabel(ECounselingConsentScope.AUDIO_VIDEO_RECORDING, workspace.media.recording.consent_status)],
+            ...(!isV2 ? [["Consent", consentLabel(recordingScope, workspace.media.recording.consent_status)] as [string, ReactNode]] : []),
             ["Status", <CaptureState key="capture" status={recordingStatus} live="recording" />],
           ]} />
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {canReadConsents && noRecordingRequest ? <Button variant="secondary" aria-label="Request recording consent" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.AUDIO_VIDEO_RECORDING])}>Request consent</Button> : null}
+            {!isV2 && canReadConsents && noRecordingRequest ? <Button variant="secondary" aria-label="Request recording consent" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.AUDIO_VIDEO_RECORDING])}>Request consent</Button> : null}
             {recordingCanStart ? <Button disabled={busy} onClick={() => setPendingStart("recording")}>Start recording</Button> : null}
             {recordingCanStop ? <Button variant="secondary" disabled={busy} onClick={() => void runCommand(() => stopRecording.mutateAsync({ appointmentId }))}>Stop recording</Button> : null}
-            {recordingStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">{workspace.media.recording.artifact_disposed_at ? "The recording was deleted under an approved retention rule." : "Recording completed."}</p> : null}
+            {!isV2 && recordingStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">{workspace.media.recording.artifact_disposed_at ? "The recording was deleted under an approved retention rule." : "Recording completed."}</p> : null}
           </div>
+          {isV2 ? <MediaArtifactDownload appointmentId={appointmentId} kind="RECORDING" state={workspace.media.recording} canAccess={access.canAccessMediaAssigned} /> : null}
         </PanelSection>
         <PanelSection title="Transcription" titleId="transcription-controls-heading" level={3}>
           <MediaFacts facts={[
-            ["Consent", consentLabel(ECounselingConsentScope.LIVE_TRANSCRIPTION, workspace.media.transcription.consent_status)],
+            ...(!isV2 ? [["Consent", consentLabel(transcriptionScope, workspace.media.transcription.consent_status)] as [string, ReactNode]] : []),
             ["Storage consent", consentLabel(ECounselingConsentScope.TRANSCRIPT_STORAGE, workspace.media.transcription.storage_consent_status)],
             ["Status", <CaptureState key="capture" status={transcriptionStatus} live="transcription" />],
             ["Transcript storage", workspace.media.transcription.storage_enabled ? "On for this transcription" : "Off"],
           ]} />
           {transcriptionCanStart && storageApproved && transcriptionStatus === ECounselingCaptureStatus.NOT_STARTED ? <div className="mt-3 flex items-start gap-3"><input id="e-counseling-store-transcript" type="checkbox" checked={storeTranscript} disabled={busy} onChange={(event) => setStoreTranscript(event.target.checked)} className="mt-1 size-4 rounded border border-border accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /><div><Label htmlFor="e-counseling-store-transcript">Store transcript for this session</Label><p className="mt-1 text-sm text-muted">Optional and off by default. This choice must be made before transcription starts.</p></div></div> : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {canReadConsents && noTranscriptionRequest ? <><Button variant="secondary" aria-label="Request transcription consent" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.LIVE_TRANSCRIPTION])}>Request consent</Button>{noStorageRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.LIVE_TRANSCRIPTION, ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request transcription and storage</Button> : null}</> : null}
-            {canReadConsents && hasLiveTranscriptionRequest && noStorageRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request storage consent</Button> : null}
+            {!isV2 && canReadConsents && noTranscriptionRequest ? <><Button variant="secondary" aria-label="Request transcription consent" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.LIVE_TRANSCRIPTION])}>Request consent</Button>{noStorageRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.LIVE_TRANSCRIPTION, ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request transcription and storage</Button> : null}</> : null}
+            {!isV2 && canReadConsents && hasLiveTranscriptionRequest && noStorageRequest ? <Button variant="secondary" disabled={busy} onClick={() => void requestConsent([ECounselingConsentScope.TRANSCRIPT_STORAGE])}>Request storage consent</Button> : null}
             {transcriptionCanStart ? <Button disabled={busy} onClick={() => setPendingStart("transcription")}>Start transcription</Button> : null}
             {transcriptionCanStop ? <Button variant="secondary" disabled={busy} onClick={() => void runCommand(() => stopTranscription.mutateAsync({ appointmentId }))}>Stop transcription</Button> : null}
-            {transcriptionStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">{workspace.media.transcription.artifact_disposed_at ? "The stored transcript was deleted under an approved retention rule." : "Transcription completed."}</p> : null}
+            {!isV2 && transcriptionStatus === ECounselingCaptureStatus.READY ? <p role="status" className="basis-full text-sm text-muted">{workspace.media.transcription.artifact_disposed_at ? "The stored transcript was deleted under an approved retention rule." : "Transcription completed."}</p> : null}
           </div>
+          {isV2 ? <MediaArtifactDownload appointmentId={appointmentId} kind="TRANSCRIPTION" state={workspace.media.transcription} canAccess={access.canAccessMediaAssigned} /> : null}
+          {isV2 && !workspace.media.transcription.artifact_status && (transcriptionStatus === "STOPPED" || transcriptionStatus === "READY") ? <p className="mt-2 text-sm text-muted">No transcript file was saved.</p> : null}
         </PanelSection>
       </> : null}
       {(error && !pendingStart) || notice ? (
@@ -256,9 +269,9 @@ export function CounselorMediaControls({
       >
         <p>
           {pendingStart === "recording"
-            ? "Starting recording captures audio and video from this session. The student has approved recording."
+            ? isV2 ? "Starting recording captures audio and video from this session. The recording is saved and may be downloaded after preparation. The student has approved media permission." : "Starting recording captures audio and video from this session. The student has approved recording."
             : storeTranscript
-              ? "Speech will be processed as text while transcription is active. The transcript will be stored by the video service. The student has approved transcription and storage separately. Transcript text isn’t available here."
+              ? isV2 ? "Speech will be processed as text while transcription is active. The transcript is saved and may be downloaded after preparation. The student has approved media permission and transcript storage separately." : "Speech will be processed as text while transcription is active. The transcript will be stored by the video service. The student has approved transcription and storage separately. Transcript text isn’t available here."
               : "Speech will be processed as text while transcription is active. Transcript storage is off. Transcript text isn’t available here."}
         </p>
       </ConsequentialActionDialog>

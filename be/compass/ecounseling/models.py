@@ -11,6 +11,11 @@ from django.db.models import Q
 from compass.appointments.models import Appointment
 
 
+class MediaPolicyVersion(models.IntegerChoices):
+    LEGACY = 1, "Legacy granular consent"
+    V2 = 2, "Media policy v2"
+
+
 class ECounselingRoom(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     appointment = models.OneToOneField(
@@ -19,6 +24,9 @@ class ECounselingRoom(models.Model):
         related_name="ecounseling_room",
     )
     daily_room_name = models.CharField(max_length=128, unique=True)
+    media_policy_version = models.PositiveSmallIntegerField(
+        choices=MediaPolicyVersion.choices, default=MediaPolicyVersion.V2
+    )
     daily_room_id = models.CharField(max_length=128, null=True, blank=True)
     daily_room_url = models.URLField(max_length=500, null=True, blank=True)
     room_expires_at = models.DateTimeField(null=True, blank=True)
@@ -29,9 +37,16 @@ class ECounselingRoom(models.Model):
     class Meta:
         default_permissions = ()
         ordering = ("-created_at", "id")
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(media_policy_version__in=MediaPolicyVersion.values),
+                name="ec_room_media_policy_valid",
+            )
+        ]
 
 
 class ConsentScope(models.TextChoices):
+    SESSION_MEDIA_CAPTURE = "SESSION_MEDIA_CAPTURE", "Recording and live transcription"
     AUDIO_VIDEO_RECORDING = "AUDIO_VIDEO_RECORDING", "Audio/video recording"
     LIVE_TRANSCRIPTION = "LIVE_TRANSCRIPTION", "Live transcription"
     TRANSCRIPT_STORAGE = "TRANSCRIPT_STORAGE", "Transcript storage"
@@ -129,6 +144,9 @@ class ECounselingMediaCapture(models.Model):
         default=MediaCaptureStatus.NOT_STARTED,
     )
     transcript_storage_enabled = models.BooleanField(default=False)
+    # Historical start authorization, separate from the last confirmed provider storage switch.
+    transcript_storage_authorized = models.BooleanField(default=False)
+    media_authorized_at = models.DateTimeField(null=True)
     provider_instance_id = models.CharField(max_length=160, null=True, blank=True)
     provider_artifact_id = models.CharField(max_length=160, null=True, blank=True)
     artifact_disposed_at = models.DateTimeField(null=True, blank=True)
@@ -161,6 +179,70 @@ class ECounselingMediaCapture(models.Model):
                 condition=Q(duration_seconds__isnull=True) | Q(duration_seconds__gte=0),
                 name="ec_media_duration_nonnegative_ck",
             ),
+        ]
+
+
+class MediaArtifactStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    PROCESSING = "PROCESSING", "Processing"
+    STORED = "STORED", "Stored"
+    FAILED = "FAILED", "Failed"
+    DISPOSED = "DISPOSED", "Disposed"
+
+
+class ECounselingMediaArtifact(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    capture = models.OneToOneField(
+        ECounselingMediaCapture, on_delete=models.PROTECT, related_name="artifact"
+    )
+    status = models.CharField(max_length=16, choices=MediaArtifactStatus.choices, default="PENDING")
+    object_key = models.CharField(max_length=180, null=True)
+    content_type = models.CharField(max_length=80, null=True)
+    size = models.PositiveBigIntegerField(null=True)
+    sha256 = models.CharField(max_length=64, null=True)
+    stored_at = models.DateTimeField(null=True)
+    disposed_at = models.DateTimeField(null=True)
+    # Custody-transfer cleanup is independent of institutional disposition.
+    provider_deleted_at = models.DateTimeField(null=True)
+    attempts = models.PositiveIntegerField(default=0)
+    claim_token = models.UUIDField(null=True)
+    claimed_at = models.DateTimeField(null=True)
+    next_attempt_at = models.DateTimeField(null=True)
+    error_code = models.CharField(max_length=40, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(status__in=MediaArtifactStatus.values), name="ec_artifact_status_valid"
+            ),
+            models.CheckConstraint(
+                condition=~Q(status="STORED")
+                | Q(
+                    object_key__isnull=False,
+                    content_type__isnull=False,
+                    size__isnull=False,
+                    size__gt=0,
+                    sha256__isnull=False,
+                    stored_at__isnull=False,
+                    disposed_at__isnull=True,
+                ),
+                name="ec_artifact_stored_shape",
+            ),
+            models.CheckConstraint(
+                condition=~Q(status="DISPOSED")
+                | Q(
+                    disposed_at__isnull=False,
+                    object_key__isnull=True,
+                    sha256__isnull=True,
+                ),
+                name="ec_artifact_disposed_shape",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=("status", "next_attempt_at"), name="ec_artifact_dispatch_idx")
         ]
 
 

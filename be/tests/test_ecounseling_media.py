@@ -172,13 +172,17 @@ def make_appointment(*, student: User, counselor: User, service) -> Appointment:
     )
 
 
-def setup_session():
+def setup_session(*, media_policy_version=1):
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     student = make_user("student@example.edu", "STUDENT")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     service = create_counseling_service(admin)
     appointment = make_appointment(student=student, counselor=counselor, service=service)
+    if media_policy_version == 1:
+        # The original granular suite explicitly represents a pre-cutover room.
+        ECounselingRoom.objects.create(appointment=appointment,
+            daily_room_name=f"ec-{appointment.pk.hex}", media_policy_version=1)
     return admin, student, counselor, appointment
 
 

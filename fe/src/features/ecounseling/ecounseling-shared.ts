@@ -23,6 +23,10 @@ export function ecounselingErrorMessage(error: unknown, fallback: string): strin
     ecounseling_consent_not_found: "That consent is no longer available. Refresh the session.",
     ecounseling_consent_not_approved: "The student must approve this media permission before you can start.",
     ecounseling_consent_conflict: "The consent changed. The session has been refreshed.",
+    ecounseling_consent_scope_incompatible: "The session's media permission changed. Refresh the session.",
+    ecounseling_artifact_not_ready: "The file is still being prepared or was not saved.",
+    ecounseling_artifact_disposed: "This file was deleted under an approved retention rule.",
+    ecounseling_artifact_unavailable: "The file isn't available right now. Try again.",
     ecounseling_media_conflict: "Recording or transcription changed. The session has been refreshed.",
     ecounseling_media_stop_pending: "Stopping is still being confirmed.",
     ecounseling_provider_disabled: "Recording and transcription are not available for video sessions right now. Counseling is unaffected.",
@@ -80,6 +84,12 @@ export function hasLiveOrTransitionalMedia(media: MediaWorkspaceState | undefine
   return Boolean(media && (
     isLiveOrTransitionalCapture(media.recording.capture_status) ||
     isLiveOrTransitionalCapture(media.transcription.capture_status)
+  ));
+}
+
+export function hasPreparingMediaFile(media: MediaWorkspaceState | undefined): boolean {
+  return Boolean(media && [media.recording, media.transcription].some(
+    (item) => item.artifact_status === "PENDING" || item.artifact_status === "PROCESSING" || item.artifact_status === "FAILED",
   ));
 }
 

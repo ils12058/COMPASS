@@ -82,3 +82,48 @@ introduces no backup-retention subsystem or invented infrastructure period.
 If completed decisions cannot be recovered, restoration cannot safely be declared authoritative.
 Stop that restoration's release and obtain UCN/DPO/infrastructure disposition guidance. There is no
 blanket database delete, AuditEvent bypass or automatic backup purge in this feature.
+
+## V2 media custody and disposition
+
+Rules and cases display a fixed governance contract. Contract 1 media keeps provider-only deletion;
+contract 2 deletes the private COMPASS file and remaining provider copy. Active rules coexist per
+category/version. Select the actual supported contract in the rule editor; never convert an activated
+V1 rule, manufacture a V2 policy duration, or rewrite a frozen case's source/version.
+
+`READY` capture and `STORED` artifact are distinct. Ingestion and immediate provider-copy cleanup
+transfer custody; they do not replace institutional disposition. A stored artifact may remain
+available while provider cleanup retries. Live-only transcription has no downloadable stored file.
+Cases with incomplete custody, an active cleanup claim or missing evidence remain blocked.
+
+Before approving V2 disposition, confirm private **unversioned** storage and no overlapping lifecycle
+expiration/CDN exposure using the media rollout preflight. Execution verifies live-object absence and
+any remaining Daily copy outside SQL transactions. Uncertain storage/provider deletion produces
+reconciliation, preserving identifiers for a reviewed retry. Never manually mark a case COMPLETED,
+clear location/provider evidence, or treat a recording 404 alone as a verified provider deletion.
+Holds still revoke pending approval; release requires a fresh approval. Withdrawal stops affected
+capture and does not immediately erase already captured files.
+
+For an upload acknowledgement or DB commit failure, the precommitted UUID key and digest identify
+one recoverable object. Restore worker health and let recovery verify/adopt that object; do not create
+an alternative key or remove the only provider source. Verify claim ownership and terminate any
+old process with a lost PostgreSQL connection before recovering it. Inventory opaque keys against
+artifact rows only through a privileged operational process; preserve unmatched sensitive objects
+in private custody for evidence-based reconciliation rather than deleting by age or guessing.
+Incomplete multipart uploads may be aborted by an infrastructure rule, without expiring live files.
+
+### V2 restore and backup boundary
+
+Live-copy deletion does not claim backup erasure or recall of downloaded user files. Follow the
+actual infrastructure backup policy without inventing a duration. Before exposing a restored backup:
+
+1. Keep media access, ingestion/cleanup, disposition workers and Beat paused.
+2. Restore/reconcile the authoritative completed disposition ledger and minimized artifact evidence
+   from the newest valid governance backup; retain frozen contract/source membership and approval.
+3. Inventory the sensitive live-copy namespace against that ledger. Reconcile restored object keys,
+   provider references, stale claims and pending jobs before enabling them. Completed/disposed rows
+   must remain terminal, and restored copies of disposed media must not become available again.
+4. Use the existing approved case/reconciliation procedure to verify each live copy's absence; keep
+   uncertainty blocked. Do not infer a missing provider recording's deletion from 404 alone or
+   fabricate a hash, consent, approval or completion timestamp.
+5. Verify storage policy, current provider state and identity policy, then resume matching web,
+   worker and Beat revisions. Keep backup handling under the infrastructure's actual authority.
