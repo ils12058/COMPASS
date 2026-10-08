@@ -1029,7 +1029,7 @@ def cancel_appointment(
     current = now or timezone.now()
     with transaction.atomic():
         item = (
-            Appointment.objects.select_for_update()
+            Appointment.objects.select_for_update(of=("self",))
             .select_related("service")
             .filter(pk=appointment_id)
             .first()
@@ -1500,7 +1500,7 @@ def complete_appointment(
         raise InvalidAppointmentInput("The server time must be timezone-aware.")
     with transaction.atomic():
         item = (
-            Appointment.objects.select_for_update()
+            Appointment.objects.select_for_update(of=("self",))
             .select_related("service")
             .filter(pk=appointment_id)
             .first()
@@ -1555,7 +1555,7 @@ def mark_appointment_no_show(
         raise InvalidAppointmentInput("The server time must be timezone-aware.")
     with transaction.atomic():
         item = (
-            Appointment.objects.select_for_update()
+            Appointment.objects.select_for_update(of=("self",))
             .select_related("service")
             .filter(pk=appointment_id)
             .first()

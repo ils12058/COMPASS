@@ -112,6 +112,15 @@ def plan_accounts(config: DemoConfig) -> tuple[AccountPlan, ...]:
                 f"{persona.label} ({persona.institutional_id}) exists with role "
                 f"{user.role.code}; the demo dataset requires {persona.role}."
             )
+        if (user.first_name, user.middle_name, user.last_name) != (
+            persona.first_name,
+            persona.middle_name,
+            persona.last_name,
+        ):
+            raise DemoSeedConflict(
+                f"{persona.key} ({persona.institutional_id}) has a different canonical name; "
+                "review the identity conflict. Existing identity and credentials were preserved."
+            )
         plans.append(AccountPlan(persona=persona, email=email, existing=user))
     return tuple(plans)
 

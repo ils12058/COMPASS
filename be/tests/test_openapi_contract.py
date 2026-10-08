@@ -646,6 +646,7 @@ def test_organization_person_projection_schema_is_dedicated_and_complete() -> No
         "email",
         "role",
         "is_active",
+        "responsibility_scope",
     }
     assert set(person["properties"]) == expected_fields
     assert person["required"] == [
@@ -655,11 +656,21 @@ def test_organization_person_projection_schema_is_dedicated_and_complete() -> No
         "email",
         "role",
         "is_active",
+        "responsibility_scope",
     ]
     assert {option["type"] for option in person["properties"]["institutional_id"]["anyOf"]} == {
         "string",
         "null",
     }
+
+    assert person["properties"]["responsibility_scope"]["anyOf"] == [
+        {"$ref": "#/components/schemas/OrganizationResponsibilityScope"},
+        {"type": "null"},
+    ]
+    assert components["OrganizationResponsibilityScope"]["enum"] == [
+        "INSTITUTION_WIDE",
+        "ASSIGNED_COLLEGES",
+    ]
 
     # Other domains intentionally keep their minimal person projection.
     assert set(components["PersonSummary"]["properties"]) == {"id", "display_name"}
@@ -1375,7 +1386,10 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "NOT_MEMBER",
         "NOT_SPECIFIED",
     ]
-    assert schemas["DistributionRow"]["properties"]["percentage"]["type"] == "number"
+    assert schemas["DistributionRow"]["properties"]["percentage"]["anyOf"] == [
+        {"type": "number"},
+        {"type": "null"},
+    ]
     assert schemas["InventoryCoverage"]["properties"]["missing_count"]["anyOf"][-1] == {
         "type": "null"
     }
@@ -1400,7 +1414,12 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "reportsGetStudentProfile"
     )
     graduate_report = schemas["GraduateTracerReportResponse"]["properties"]
-    assert set(graduate_report) == {"report_context", "methodology", "sections"}
+    assert set(graduate_report) == {
+        "report_context",
+        "methodology",
+        "sections",
+        "disclosure_warnings",
+    }
     graduate_context = schemas["GraduateTracerReportContext"]["properties"]
     assert set(graduate_context) == {
         "instrument_schema_version",
@@ -1409,7 +1428,10 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "submitted_response_count",
         "generated_at",
     }
-    assert schemas["GraduateTracerDistributionRow"]["properties"]["percentage"]["type"] == "number"
+    assert schemas["GraduateTracerDistributionRow"]["properties"]["percentage"]["anyOf"] == [
+        {"type": "number"},
+        {"type": "null"},
+    ]
     graduate_operation = _operation(schema, "/api/v1/reports/graduate-tracer", "get")
     assert graduate_operation["operationId"] == "reportsGetGraduateTracer"
     assert graduate_operation["tags"] == ["reports"]

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -37,11 +36,6 @@ from compass.organization.models import AcademicYear
 from compass.privacy_governance.models import PrivacyNotice
 from compass.referrals.models import Referral
 from compass.resources.models import Resource
-from compass.routine_interviews.crypto import (
-    RoutineContentSection,
-    decrypt_section,
-    encrypt_section,
-)
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.bootstrap import (
     CanonicalIdentityPolicyMissing,
@@ -50,7 +44,7 @@ from compass.service_catalog.bootstrap import (
 )
 from compass.service_catalog.services import ServiceCatalogError
 
-from . import DEMO_DATASET_VERSION, publication_data
+from . import DEMO_DATASET_VERSION, population_feedback, publication_data
 from .accounts import (
     disable_account,
     plan_accounts,
@@ -67,10 +61,12 @@ from .configuration import (
     offboard_former_staff,
     program_for,
 )
+from .encryption import verify_encryption_keyrings
 from .feedback_content import matching_feedback
 from .guard import ensure_demo_seeding_allowed_by_settings
 from .history import check_history_preconditions, run_academic_timeline, seed_profiles
 from .narratives import CLIENT_SATISFACTION, CUSTOMER_FEEDBACK
+from .population_workflows import seed_population_forms, seed_secondary_stories
 from .publications import seed_feedback, seed_privacy_governance, seed_publications
 from .scenarios import SCENARIOS, run_scenario
 from .support import DemoSeedError, SeedSession
@@ -186,14 +182,6 @@ def verify_prerequisites() -> None:
     ready, reason = canonical_counseling_readiness()
     if not ready:
         raise DemoSeedError(f"The canonical Counseling Service is not ready ({reason}).")
-    # Prove the Routine Interview keyring can encrypt and decrypt before any content is written.
-    probe = uuid.uuid4()
-    token = encrypt_section(
-        routine_interview_id=probe,
-        section=RoutineContentSection.STUDENT_INTAKE,
-        payload={"probe": True},
-    )
-    decrypt_section(token, routine_interview_id=probe, section=RoutineContentSection.STUDENT_INTAKE)
 
 
 def finalize_account_state(session: SeedSession) -> None:
@@ -207,6 +195,7 @@ def finalize_account_state(session: SeedSession) -> None:
 
 
 def _run(session: SeedSession, config: DemoConfig) -> None:
+    _unit("Encryption preflight", verify_encryption_keyrings)
     _unit("Canonical synchronization", sync_prerequisites)
     _unit("Prerequisite verification", verify_prerequisites)
 
@@ -238,9 +227,14 @@ def _run(session: SeedSession, config: DemoConfig) -> None:
     _unit("Academic timeline", lambda: run_academic_timeline(session))
     for scenario in SCENARIOS:
         _unit(scenario.key, lambda scenario=scenario: run_scenario(session, scenario))
+    _unit("Population form coverage", lambda: seed_population_forms(session))
+    _unit("Secondary stories", lambda: seed_secondary_stories(session))
     _unit("Announcements and Resources", lambda: seed_publications(session))
     _unit("Privacy Governance", lambda: seed_privacy_governance(session))
     _unit("Customer Feedback and CSM", lambda: seed_feedback(session))
+    _unit(
+        "Population Feedback and CSM", lambda: population_feedback.seed_population_feedback(session)
+    )
     _unit("Account state", lambda: finalize_account_state(session))
 
 
@@ -292,7 +286,28 @@ def _records(session: SeedSession) -> tuple[tuple[str, str], ...]:
     routines = RoutineInterview.objects.filter(student_id__in=students)
     call_slips = CallSlip.objects.filter(student_id__in=students)
     notifications = Notification.objects.filter(recipient_id__in=[*students, *staff])
+    current_students = User.objects.filter(pk__in=students, student_lifecycle_status="CURRENT")
+    current_inventories = StudentInventory.objects.filter(
+        student__in=current_students, academic_year=current
+    )
     return (
+        (
+            "Students by lifecycle",
+            _status_breakdown(User.objects.filter(pk__in=students), "student_lifecycle_status"),
+        ),
+        (
+            "Current Students by College",
+            _status_breakdown(
+                current_students.filter(organization_student_affiliation__isnull=False),
+                "organization_student_affiliation__college__code",
+            ),
+        ),
+        (
+            "Current Inventory coverage",
+            f"{current_inventories.filter(submitted_at__isnull=False).count()} submitted, "
+            f"{current_inventories.filter(submitted_at__isnull=True).count()} draft, "
+            f"{current_students.count() - current_inventories.count()} missing",
+        ),
         (
             "Academic Years",
             f"{AcademicYear.objects.filter(label__in=DATASET_ACADEMIC_YEARS).count()} "
@@ -404,7 +419,7 @@ def _seeded_customer_feedback() -> int:
                 values["additional_feedback"],
             )
         )
-        for key, values in CUSTOMER_FEEDBACK.items()
+        for key, values in {**CUSTOMER_FEEDBACK, **population_feedback.CUSTOMER_FEEDBACK}.items()
     )
 
 
@@ -418,7 +433,7 @@ def _seeded_csm() -> int:
                 item["suggestions"],
             )
         )
-        for item in CLIENT_SATISFACTION
+        for item in (*CLIENT_SATISFACTION, *population_feedback.CLIENT_SATISFACTION)
     )
 
 

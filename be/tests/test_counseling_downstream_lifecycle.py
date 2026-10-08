@@ -13,6 +13,7 @@ from compass.counseling.services import (
     create_encounter,
     update_encounter,
 )
+from compass.feedback.confidential_content import read_feedback_confidential_content
 from compass.feedback.models import (
     CustomerFeedbackResponse,
     CustomerFeedbackService,
@@ -244,7 +245,10 @@ def test_submitted_feedback_survives_valid_completion_reconciliation_without_new
     assert opportunity.customer_feedback_submitted_at == customer_marker
     assert opportunity.csm_submitted_at == csm_marker
     assert (
-        CustomerFeedbackResponse.objects.get(pk=customer.pk).additional_feedback == "Helpful visit."
+        read_feedback_confidential_content(
+            CustomerFeedbackResponse.objects.get(pk=customer.pk)
+        ).additional_feedback
+        == "Helpful visit."
     )
     assert csm.pk is not None
     assert (

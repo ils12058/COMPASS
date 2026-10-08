@@ -42,6 +42,7 @@ from .cast import (
     ALUMNI,
     FORMER,
     RECENT_GRADUATE,
+    RICH_STUDENTS,
     STUDENTS,
     AuthState,
     Lifecycle,
@@ -76,7 +77,7 @@ FORM_STARTED_BEFORE = timedelta(minutes=45)
 def historical_inventory_plan() -> tuple[tuple[StudentPersona, str], ...]:
     return tuple(
         (persona, label)
-        for persona in STUDENTS
+        for persona in RICH_STUDENTS
         for label in inventory_years(persona)
         if label in HISTORICAL_ACADEMIC_YEARS
     )
@@ -105,7 +106,7 @@ def check_history_preconditions(session: SeedSession) -> None:
     current = get_current_academic_year()
     if current is not None and current.label not in DATASET_ACADEMIC_YEARS:
         raise DemoSeedConflict(
-            f"The current Academic Year is {current.label}; demo dataset version 1 requires "
+            f"The current Academic Year is {current.label}; demo dataset version 2 requires "
             f"{CURRENT_ACADEMIC_YEAR}. Resolve Academic Year configuration before seeding."
         )
     state = historical_state(session)
@@ -140,6 +141,11 @@ def seed_profiles(session: SeedSession, *, created_keys: set[str]) -> None:
                 "civil_status": persona.civil_status,
                 "current_address": persona.home_address,
                 "permanent_address": persona.home_address,
+                "contact_number": (
+                    f"DEMO-CONTACT-{persona.key[-2:]}"
+                    if persona.key.startswith("population_") and int(persona.key[-2:]) % 3 == 0
+                    else ""
+                ),
             },
             context=session.as_user(persona.key),
         )

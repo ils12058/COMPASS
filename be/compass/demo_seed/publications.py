@@ -242,7 +242,7 @@ def _demo_feedback_opportunity(
     persona_key: str,
 ) -> FeedbackOpportunity:
     student = session.user(persona_key)
-    if persona_key in {"second_year", "referred"}:
+    if persona_key in {"second_year", "referred", "population_27", "population_38"}:
         encounter = (
             CounselingEncounter.objects.filter(student=student).order_by("-ended_at", "-id").first()
         )
