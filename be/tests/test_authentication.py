@@ -222,6 +222,7 @@ def test_authenticated_student_contract_exposes_effective_capabilities_without_s
         "student_lifecycle_status",
         "designations",
         "capabilities",
+        "exit_interview_workspace_available",
     }
     assert set(login_user) == expected_user_keys
     assert {

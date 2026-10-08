@@ -1,9 +1,11 @@
 # Staging demo dataset (`seed_demo_staging`)
 
 `seed_demo_staging` turns a clean, migrated **local-staging** or **live-staging** database into a
-small, internally consistent demonstration world: a fictional Guidance and Counseling Office, its
-staff, and eleven Students whose accounts, cohorts, forms, sessions, referrals, certificates, and
-notifications fit together.
+deterministic Dataset v2 demonstration world: a fictional Guidance and Counseling Office, its
+staff, the original eleven rich Student personas, and 46 lightweight population Students whose
+accounts, cohorts, forms, sessions, referrals, certificates, and notifications fit together.
+Dataset content is refined by [ADR-095](decisions/ADR-095-staging-demo-dataset-v2-and-pre-deployment-validation-baseline.md);
+[ADR-068](decisions/ADR-068-staging-demo-dataset-seeder.md) remains the historical architecture.
 
 > **The dataset is synthetic and intended only for local and live staging demonstrations. It must
 > never be used as production institutional data.** Every name, identifier (`DEMO-2026-…`),
@@ -124,11 +126,13 @@ operator-controlled mailbox. The deployed image is already cached on the Droplet
 keeps this one-off run tied to that image. `-e NAME` forwards each value from the operator shell
 without putting it in the command line. The function's local variables disappear when it returns.
 
-The run first synchronizes canonical configuration by calling the same functions as
+Before any writes, the run proves all eight encrypted domain keyrings can encrypt/decrypt.
+Missing or invalid keys fail closed with the setting name only. It never generates keys.
+The run then synchronizes canonical configuration by calling the same functions as
 `sync_identity_policy`, `sync_organization_catalog`, `sync_institutional_forms`, and
-`sync_canonical_services`, then verifies prerequisites before creating anything: roles and
+`sync_canonical_services`, then verifies prerequisites before provisioning the cast: roles and
 designations, the cast's Colleges and Programs, active supported form revisions, canonical
-Counseling readiness, a working Routine Interview keyring, no conflicting demo identities, no
+Counseling readiness, no conflicting demo identities, no
 existing non-demo Counselor responsibility for the demo Colleges, and an Academic Year state the
 dataset can extend.
 
@@ -151,13 +155,13 @@ An ordinary rerun is safe and reports mostly reused state:
 
 The command never truncates, flushes, deletes, or resets data, and it has no reset option.
 Existing non-demo Counselor responsibilities, a foreign current Academic Year, a demo identity
-used by a real account, or a partially present demo history stop the run with a clear error
+used by a real account, or a partially present original v1 demo history stop the run with a clear error
 before any business record is written.
 
-Dataset version 1 is anchored to Academic Year 2026-2027 and runs when the institutional date is
+Dataset version 2 is anchored to Academic Year 2026-2027 and runs when the institutional date is
 between 2026-09-21 and 2027-04-30. Recent activity is placed on business days before and after the
 run date, so seed close to the demonstration: upcoming Appointments and the active Call Slip fall
-within the following two weeks. Current-Student Good Moral requests state the semester of their
+within roughly the following three weeks. Current-Student Good Moral requests state the semester of their
 own request date (August to December is the first semester, January to May the second).
 
 ## Cast
@@ -207,8 +211,83 @@ the current Inventory roster uses its own current-year eligibility.
 Academic Years 2024-2025, 2025-2026, and 2026-2027 (current) are created through the Academic Year
 service. On a clean database the historical years are entered first, each briefly current inside
 one transaction, so Inventory and Exit Interview services run exactly as they do for real users and
-the audit trail reads as a normal year-by-year progression. No other session ever observes a
-historical year as current.
+the original history is entered as a year-by-year progression. Population back-entry uses
+separate bounded Student transactions that restore the current year before commit. Audit events
+record these actual operations at execution time. No other session observes a historical year
+as current.
+
+## Dataset v2 population and form coverage
+
+| Composition | Count / states |
+| --- | --- |
+| Students | 57: 11 original rich personas + 46 population Students |
+| Lifecycle | 46 CURRENT, 8 GRADUATED (recent graduates and an alumna), 3 FORMER |
+| Enrollment-origin College | CCMS 15, CAS 16, CBPA 14, COED 12; graduates/former have no current affiliation |
+| Current routing | Counselor A: 25 CCMS/CAS Students; Counselor B: 21 CBPA/COED Students |
+| Population Programs | BSIT, BSIS, BSPSYCH, BSBIOL, BSBA, BSA, BSED, BEED, all canonical |
+| Current year levels | 1–5 across available Inventory records; missing Inventories cannot supply Program/year to reports |
+| Current Inventory | 34 submitted, 8 drafts (early/partial/nearly complete), 4 missing |
+| Historical Inventory | 6 in 2024-2025; 19 in 2025-2026; 67 Inventories overall |
+| Appointment | 8 scheduled, 3 completed, 3 cancelled, 2 no-show; 3 scheduled ONLINE |
+| Counseling / Shared Summary | 7 Encounters; 2 published Summaries, 1 unpublished, others legitimately absent |
+| Routine | 6: 1 draft Intake, 5 submitted, 3 finalized Evaluations, 2 pending |
+| Exit Interview | 10 submitted, 3 drafts, remaining eligible examples not started |
+| Graduate Tracer | 6 submitted, 1 draft, a graduate not started |
+| Feedback / CSM | 6 each with different score patterns; 5 written responses and 1 without optional text |
+
+Inventory answer fixtures include family income, parent/guardian circumstances, siblings (including
+only-child and multi-sibling households), school history, organization memberships, daily transport
+and fares, living circumstances, working-student context, and ordinary/support-indicator profiles.
+Most submitted profiles have no special support indicator. Three population drafts are nearly
+complete; two are early and two partial. Structured geography remains explicitly unspecified.
+
+Population Students are mostly quiet. Eight carry one reservation each; two carry compact Routine
+stories. `population_38` (Oliver Montes) has a submitted Intake and linked walk-in Encounter with
+no Inventory, demonstrating ADR-088. `population_27` (Chloe Villanueva) has a finalized career/
+entrepreneurship consultation with different evaluation ratings. Neither has a Shared Summary.
+Tracer submissions cover course-related employment, unrelated employment, self-employment,
+job-seeking, and further training/study. Exit matrices vary across 3/4/5 and draft depths.
+
+### Additive upgrade and recovery
+
+Run the same command on an existing v1 demo world. It adds population accounts and missing safe
+v2 forms; original credentials, history, markers, and answers survive. The old `demo-seed-v1`
+idempotency namespace remains intentional. Subsequent runs create no additional logical data.
+An identity/name or academic provenance conflict stops with an operator-readable error.
+An established graduate is never returned to CURRENT to fabricate missing historical forms.
+Fix a failed later unit and rerun: completed units remain committed, each new population unit is
+atomic, and the PostgreSQL advisory lock still prevents overlapping seed runs.
+
+### Availability-aware placement
+
+A desired date/time is story intent. Normal Appointment slot discovery evaluates current Service
+settings and Counselor qualification, office/provider windows, exceptions, duration, prerequisites,
+and reservations. Search is bounded to the desired day and four following calendar days, staying
+on the same side of the anchor and avoiding demo non-working days. Within the first viable day,
+the closest start to the desired local time wins, with earlier start as tie-breaker.
+
+Clean databases receive demo weekly schedules. Existing compatible institutional schedules are
+reused unchanged. If there is no compatible slot, the scenario/provider/mode/window is reported
+and the schedule is preserved. Completion/no-show and Appointment-backed Encounter timestamps
+follow the selected slot. No external provider readiness is required for canonical seed state.
+
+### Encryption keyrings
+
+All are operator-supplied; none are generated by this command:
+
+- `ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`
+- `FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`
+- `ROUTINE_INTERVIEW_ENCRYPTION_KEYS`
+- `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS`
+- `REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`
+- `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`
+- `INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`
+- `GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`
+
+The pre-deployment baseline requires the entire backend suite to have zero failures/errors,
+plus static, migration, and canonical OpenAPI checks. This slice does not authorize or perform
+live deployment, key provisioning/rotation, encryption cutover, Daily provisioning, or Spaces
+mutation. Retention periods and destructive governance approvals remain unseeded.
 
 ## Domain coverage
 

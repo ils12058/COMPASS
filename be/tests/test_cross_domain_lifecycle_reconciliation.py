@@ -32,7 +32,7 @@ from compass.routine_interviews.services import (
     routine_workflow_state,
     submit_my_intake,
 )
-from compass.service_catalog.services import set_service_active
+from compass.service_catalog.services import update_service
 from tests.test_appointments import create_affiliation
 from tests.test_routine_interviews import (
     auth_client,
@@ -220,7 +220,12 @@ def test_action_projection_matches_mutations_and_room_is_hard_cancellation_block
         )
 
     # Existing Appointment lifecycle safety is not disabled by later Service changes.
-    set_service_active(service_id=service.pk, is_active=False, context=context(admin))
+    update_service(
+        service_id=service.pk,
+        changes={"delivery_modes": ["IN_PERSON"]},
+        acknowledge_scheduling_consequences=True,
+        context=context(admin),
+    )
     still_blocked = appointment_actions_for(
         actor=counselor,
         item=appointment,
@@ -306,7 +311,7 @@ def test_cancelled_appointment_preserves_routine_content_and_blocks_every_mutati
         **csrf(student_client),
     )
     assert blocked_api.status_code == 409
-    assert blocked_api.json()["code"] == "routine_interview_closed_by_appointment"
+    assert blocked_api.json()["error"]["code"] == "routine_interview_closed_by_appointment"
 
 
 @pytest.mark.django_db

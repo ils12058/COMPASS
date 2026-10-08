@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.db import transaction
@@ -89,6 +89,7 @@ from .cast import (
     StudentPersona,
 )
 from .history import seed_annual_inventory, seed_exit_interview
+from .slots import choose_slot
 from .support import (
     SeedSession,
     align_timestamps,
@@ -114,12 +115,22 @@ def _book(
     booked_at: datetime,
     mode: str = "IN_PERSON",
 ) -> Appointment:
+    service = _counseling_service()
+    slot = choose_slot(
+        session,
+        student,
+        provider_key,
+        service_id=service.pk,
+        mode=mode,
+        desired=starts_at,
+        booked_at=booked_at,
+    )
     appointment = create_student_appointment(
         student=session.user(student.key),
-        service_id=_counseling_service().pk,
+        service_id=service.pk,
         provider_id=session.users[provider_key].pk,
         delivery_mode=mode,
-        starts_at=starts_at,
+        starts_at=slot.starts_at,
         context=session.as_user(student.key),
         now=booked_at,
     )
@@ -134,6 +145,7 @@ def _book(
 
 
 def _complete(session: SeedSession, provider_key: str, appointment: Appointment, *, at) -> None:
+    at = max(at, appointment.ends_at + timedelta(minutes=20))
     complete_appointment(
         appointment_id=appointment.pk,
         actor=session.user(provider_key),
@@ -157,6 +169,11 @@ def _encounter(
 ) -> CounselingEncounter:
     """``routine`` records the interaction from that Routine Interview's Counseling context."""
 
+    if appointment is not None:
+        padding = min(timedelta(minutes=2), (appointment.ends_at - appointment.starts_at) / 10)
+        started = appointment.starts_at + padding
+        ended = appointment.ends_at - padding
+        recorded = max(recorded, appointment.ends_at + timedelta(minutes=25))
     encounter = create_encounter(
         counselor=session.user(counselor_key),
         entry_mode=entry_mode,
@@ -188,6 +205,9 @@ def _shared_summary(
     drafted: datetime,
     published: datetime | None,
 ) -> None:
+    drafted = max(drafted, encounter.ended_at + timedelta(minutes=30))
+    if published is not None:
+        published = max(published, drafted + timedelta(minutes=15))
     counselor = session.user(counselor_key)
     item = put_assigned_shared_summary(
         encounter_id=encounter.pk, counselor=counselor, content=content
@@ -237,6 +257,9 @@ def _finalize_evaluation(
 ) -> None:
     """Finalize against the Encounter COMPASS already linked to ``routine``."""
 
+    linked = RoutineInterview.objects.select_related("counseling_encounter").get(pk=routine.pk)
+    if linked.counseling_encounter is not None:
+        at = max(at, linked.counseling_encounter.created_at + timedelta(minutes=20))
     counselor = session.user(counselor_key)
     replace_assigned_evaluation(counselor=counselor, routine_interview_id=routine.pk, values=values)
     finalize_assigned_evaluation(
@@ -532,7 +555,11 @@ def academic_adjustment(session: SeedSession) -> None:
         published=t.past(9, 11),
     )
     _book(
-        session, SECOND_YEAR, COUNSELOR_A.key, starts_at=t.future(4, 9), booked_at=t.past(9, 11, 5)
+        session,
+        SECOND_YEAR,
+        COUNSELOR_A.key,
+        starts_at=t.future(4, 9),
+        booked_at=max(t.past(9, 11, 5), encounter.created_at + timedelta(minutes=45)),
     )
 
     # Read and unread Notifications: the earlier ones were opened, the Shared Summary was not.
@@ -688,7 +715,7 @@ def completed_counseling(session: SeedSession) -> None:
         starts_at=t.past(16, 10),
         booked_at=t.past(18, 14, 20),
     )
-    no_show_at = t.past(16, 11, 10)
+    no_show_at = missed.ends_at + timedelta(minutes=10)
     mark_appointment_no_show(
         appointment_id=missed.pk,
         actor=session.user(COUNSELOR_A.key),

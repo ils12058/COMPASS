@@ -428,6 +428,7 @@ def test_seeding_makes_no_external_calls_and_sends_no_email(
             side_effect=deliver_now,
         ),
         patch("urllib.request.urlopen", side_effect=forbidden),
+        patch("requests.Session.request", side_effect=forbidden),
         django_capture_on_commit_callbacks(execute=True),
     ):
         report = seed_demo_staging()
@@ -568,7 +569,7 @@ class SeededDemoDatasetTests(TestCase):
         current_exit = ExitInterview.objects.get(student=demo_user(GRADUATING))
         assert current_exit.academic_year.label == "2026-2027"
         assert current_exit.status == ExitInterviewStatus.DRAFT
-        assert ExitInterview.objects.filter(student__in=_demo_user_ids()).count() == 3
+        assert ExitInterview.objects.filter(student__in=_demo_user_ids()).count() == 13
 
     def test_configuration_relationships_and_availability(self):
         responsibilities = {
@@ -596,11 +597,11 @@ class SeededDemoDatasetTests(TestCase):
     def test_appointments_counseling_and_shared_summaries_cover_real_lifecycles(self):
         appointments = Appointment.objects.filter(student__in=_demo_user_ids())
         statuses = sorted(appointments.values_list("status", flat=True))
-        assert statuses.count(AppointmentStatus.SCHEDULED) == 4
-        assert statuses.count(AppointmentStatus.COMPLETED) == 2
-        assert statuses.count(AppointmentStatus.CANCELLED) == 1
-        assert statuses.count(AppointmentStatus.NO_SHOW) == 1
-        assert appointments.filter(delivery_mode="ONLINE", status="SCHEDULED").count() == 1
+        assert statuses.count(AppointmentStatus.SCHEDULED) == 8
+        assert statuses.count(AppointmentStatus.COMPLETED) == 3
+        assert statuses.count(AppointmentStatus.CANCELLED) == 3
+        assert statuses.count(AppointmentStatus.NO_SHOW) == 2
+        assert appointments.filter(delivery_mode="ONLINE", status="SCHEDULED").count() == 3
         for item in appointments:
             assert item.created_at < item.starts_at
             if item.status == AppointmentStatus.SCHEDULED:
@@ -618,7 +619,10 @@ class SeededDemoDatasetTests(TestCase):
         assert sorted(encounters.values_list("entry_mode", flat=True)) == [
             "APPOINTMENT",
             "APPOINTMENT",
+            "APPOINTMENT",
             "REFERRED",
+            "WALK_IN",
+            "WALK_IN",
             "WALK_IN",
         ]
         for encounter in encounters.select_related("appointment"):
@@ -642,7 +646,7 @@ class SeededDemoDatasetTests(TestCase):
                 "appointment", "counseling_encounter", "inventory__academic_year"
             ).filter(student__in=_demo_user_ids())
         }
-        assert len(routines) == 4
+        assert len(routines) == 6
         draft = routines[demo_user(FIRST_YEAR).pk]
         assert draft.intake_submitted_at is None
         assert draft.appointment.delivery_mode == "ONLINE"
@@ -659,7 +663,9 @@ class SeededDemoDatasetTests(TestCase):
         appointment_backed = routines[demo_user(SECOND_YEAR).pk]
         assert appointment_backed.intake_submitted_at < appointment_backed.appointment.starts_at
         for item in routines.values():
-            assert item.inventory.academic_year.label == "2026-2027"
+            assert item.academic_year.label == "2026-2027"
+            if item.inventory is not None:
+                assert item.inventory.academic_year_id == item.academic_year_id
 
     def test_referrals_and_call_slips_form_believable_workflows(self):
         referrals = Referral.objects.filter(student__in=_demo_user_ids()).prefetch_related(
@@ -746,29 +752,31 @@ class SeededDemoDatasetTests(TestCase):
         assert exit_interview.self_assessment_ratings.count() == 15
         assert exit_interview.college_feedback_ratings.count() == 26
 
-        assert CustomerFeedbackResponse.objects.count() == 4
+        assert CustomerFeedbackResponse.objects.count() == 6
         overall = sorted(
             CustomerFeedbackResponse.objects.values_list("overall_satisfaction_rating", flat=True)
         )
         assert len(set(overall)) > 1
-        assert ClientSatisfactionResponse.objects.count() == 4
+        assert ClientSatisfactionResponse.objects.count() == 6
         reconciled = FeedbackOpportunity.objects.filter(
             customer_feedback_submitted_at__isnull=False,
             csm_submitted_at__isnull=False,
         )
-        assert reconciled.count() == 4
+        assert reconciled.count() == 6
         assert set(reconciled.values_list("student__email", flat=True)) == {
             demo_user(SECOND_YEAR).email,
             demo_user(GOOD_MORAL).email,
             demo_user(RECENT_GRADUATE).email,
             demo_user(REFERRED).email,
+            demo_user(next(p for p in STUDENTS if p.key == "population_27")).email,
+            demo_user(next(p for p in STUDENTS if p.key == "population_38")).email,
         }
         patterns = {
             tuple(getattr(item, f"sqd{index}") for index in range(9))
             for item in ClientSatisfactionResponse.objects.all()
         }
         assert (5,) * 9 not in patterns
-        assert len(patterns) == 4
+        assert len(patterns) == 6
 
     def test_publications_and_privacy_governance(self):
         staff_ids = [demo_user(persona).pk for persona in STAFF]
@@ -816,7 +824,7 @@ class SeededDemoDatasetTests(TestCase):
             == 1
         )
         counselor_a = build_overview_summary(demo_user(COUNSELOR_A), now=now).guidance
-        assert counselor_a.upcoming_self_appointments_count == 3
+        assert counselor_a.upcoming_self_appointments_count == 5
         counselor_b = build_overview_summary(demo_user(COUNSELOR_B), now=now).guidance
         assert counselor_b.routine_evaluation_pending_count == 1
         assert counselor_b.good_moral_requested_count == 2
@@ -847,28 +855,28 @@ class SeededDemoDatasetTests(TestCase):
 
         head_scope = resolve_report_access_scope(demo_user(HEAD_GUIDANCE))
         current_report = build_student_profiling_report(access_scope=head_scope)
-        assert current_report["report_context"]["submitted_inventory_count"] == 6
+        assert current_report["report_context"]["submitted_inventory_count"] == 34
         coverage = current_report["inventory_coverage"]
         assert (
             coverage["submitted_count"],
             coverage["draft_count"],
             coverage["missing_count"],
         ) == (
-            6,
-            1,
-            1,
+            34,
+            8,
+            4,
         )
         historical = build_student_profiling_report(
             academic_year_id=AcademicYear.objects.get(label="2025-2026").pk,
             access_scope=head_scope,
         )
-        assert historical["report_context"]["submitted_inventory_count"] == 8
+        assert historical["report_context"]["submitted_inventory_count"] == 19
         scoped = build_student_profiling_report(
             access_scope=resolve_report_access_scope(demo_user(COUNSELOR_A))
         )
-        assert scoped["report_context"]["submitted_inventory_count"] == 3
+        assert scoped["report_context"]["submitted_inventory_count"] == 17
         tracer_report = build_graduate_tracer_report(submitted_from=None, submitted_to=None)
-        assert tracer_report["report_context"]["submitted_response_count"] == 1
+        assert tracer_report["report_context"]["submitted_response_count"] == 6
 
         activity_types = {item.type for item in get_my_activity(demo_user(SECOND_YEAR)).items}
         assert {"account.created", "profile.updated"} <= activity_types
@@ -998,11 +1006,12 @@ class SeededDemoDatasetTests(TestCase):
                 "occurred_at"
             )
         ]
-        assert changes == [
+        assert changes[:3] == [
             (None, "2024-2025"),
             ("2024-2025", "2025-2026"),
             ("2025-2026", "2026-2027"),
         ]
+        assert changes[-1][1] == "2026-2027"
 
 
 # --- Idempotency and conflicts ---------------------------------------------------------------
@@ -1017,6 +1026,16 @@ def _snapshot() -> dict[str, object]:
         "supervision": StaffSupervision.objects.count(),
         "years": AcademicYear.objects.count(),
         "inventories": StudentInventory.objects.count(),
+        "inventory_children": {
+            name: sum(getattr(row, name).count() for row in StudentInventory.objects.all())
+            for name in (
+                "family_members",
+                "siblings",
+                "education_entries",
+                "organization_memberships",
+                "transportation_entries",
+            )
+        },
         "appointments": Appointment.objects.count(),
         "encounters": CounselingEncounter.objects.count(),
         "summaries": CounselingSharedSummary.objects.count(),
@@ -1082,9 +1101,9 @@ def test_feedback_opportunities_reconcile_known_demo_sources_without_recreating_
         customer_feedback_submitted_at__isnull=False,
         csm_submitted_at__isnull=False,
     )
-    assert reconciled.count() == 4
-    assert report.existing["Customer Feedback"] == 4
-    assert report.existing["CSM responses"] == 4
+    assert reconciled.count() == 6
+    assert report.existing["Customer Feedback"] == len(raw_customer_ids)
+    assert report.existing["CSM responses"] == len(raw_csm_ids)
 
 
 @pytest.mark.django_db

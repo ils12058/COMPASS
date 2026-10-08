@@ -4,4 +4,4 @@ This package is operator tooling behind the ``seed_demo_staging`` management com
 runtime feature: no API, middleware, model, or service branches on whether a record was seeded.
 """
 
-DEMO_DATASET_VERSION = 1
+DEMO_DATASET_VERSION = 2

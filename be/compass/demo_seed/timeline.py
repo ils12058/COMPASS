@@ -20,7 +20,7 @@ HISTORICAL_ACADEMIC_YEARS = ("2024-2025", "2025-2026")
 CURRENT_ACADEMIC_YEAR = "2026-2027"
 DATASET_ACADEMIC_YEARS = (*HISTORICAL_ACADEMIC_YEARS, CURRENT_ACADEMIC_YEAR)
 
-# Dataset version 1 describes the first semester of AY 2026-2027 onward. Before this window the
+# Dataset version 2 describes the first semester of AY 2026-2027 onward. Before this window the
 # current-year Inventory period would not yet be over; after it the graduating cast would already
 # have graduated.
 EARLIEST_ANCHOR = date(2026, 9, 21)
@@ -112,7 +112,7 @@ def resolve_timeline(*, anchor: date | None = None) -> DemoTimeline:
     resolved = anchor or institution_today()
     if not EARLIEST_ANCHOR <= resolved <= LATEST_ANCHOR:
         raise DemoTimelineError(
-            f"Demo dataset version 1 is anchored to Academic Year {CURRENT_ACADEMIC_YEAR}; seed it "
+            f"Demo dataset version 2 is anchored to Academic Year {CURRENT_ACADEMIC_YEAR}; seed it "
             f"between {EARLIEST_ANCHOR.isoformat()} and {LATEST_ANCHOR.isoformat()} "
             f"(institutional date is {resolved.isoformat()})."
         )

@@ -599,6 +599,10 @@ def test_demo_private_reconciliation_and_counts_use_explicit_projections(world, 
 
     first = submitted(world, NAMES[0])
     second = submitted(world, NAMES[1])
+    # This unit replaces the entire persona map with one synthetic identity. Isolate both
+    # source-controlled cohorts; the real combined v2 counts are covered by test_demo_seed_v2.
+    monkeypatch.setattr(seed.population_feedback, "CUSTOMER_FEEDBACK", {})
+    monkeypatch.setattr(seed.population_feedback, "CLIENT_SATISFACTION", [])
     monkeypatch.setattr(seed, "CUSTOMER_FEEDBACK", {"one": PRIVATE[NAMES[0]]})
     monkeypatch.setattr(
         seed, "PERSONAS_BY_KEY", {"one": SimpleNamespace(full_name=first.respondent_name_snapshot)}

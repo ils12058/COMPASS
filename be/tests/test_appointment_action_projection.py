@@ -74,7 +74,7 @@ def test_manager_actions_follow_server_time_and_linked_records():
     linked = states(appointment_actions_for(actor=manager, item=future, now=now))
     assert linked["reschedule"] == "ECOUNSELING_ROOM_LINKED"
     assert linked["reassign"] == "ECOUNSELING_ROOM_LINKED"
-    assert linked["cancel"] is None
+    assert linked["cancel"] == "ECOUNSELING_ROOM_LINKED"
 
     past = create_list_appointment(
         reference_code="APT-2099-900002",
@@ -173,14 +173,23 @@ def test_detail_api_returns_actions_for_the_requesting_actor_only():
 
     as_student = auth_client(student).get(f"/api/v1/appointments/{item.pk}")
     assert as_student.status_code == 200
-    assert as_student.json()["actions"]["cancel"] == {"allowed": True, "blocker": None}
+    assert as_student.json()["actions"]["cancel"] == {
+        "allowed": True,
+        "blocker": None,
+        "consequences": [],
+    }
     assert as_student.json()["actions"]["complete"] == {
         "allowed": False,
         "blocker": "NOT_PERMITTED",
+        "consequences": [],
     }
 
     as_manager = auth_client(manager).get(f"/api/v1/appointments/{item.pk}")
-    assert as_manager.json()["actions"]["reassign"] == {"allowed": True, "blocker": None}
+    assert as_manager.json()["actions"]["reassign"] == {
+        "allowed": True,
+        "blocker": None,
+        "consequences": [],
+    }
     assert as_manager.json()["actions"]["complete"]["blocker"] == "NOT_STARTED"
 
     listed = auth_client(manager).get("/api/v1/appointments").json()["items"][0]
