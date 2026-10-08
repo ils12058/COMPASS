@@ -329,6 +329,7 @@ export function CounselingContextPanel({
   anchorId,
   overview,
   showInteractionFacts = true,
+  showHeading = true,
   access,
   onPublished,
   onContextExpiredChange,
@@ -339,6 +340,9 @@ export function CounselingContextPanel({
   // The standalone workspace already shows these facts in its Interaction panel. Embedded
   // workspaces retain them here, including the confidential-context access deadline.
   showInteractionFacts?: boolean;
+  // False where a surrounding section already names it, such as E-Counseling's collapsible
+  // Student information.
+  showHeading?: boolean;
   access: ReturnType<typeof getCounselingAccess>;
   onPublished?: () => unknown;
   onContextExpiredChange?: (expired: boolean) => void;
@@ -384,13 +388,13 @@ export function CounselingContextPanel({
 
   return (
     <section className="min-w-0" aria-label="Student Counseling context">
-      <h2 className="font-heading text-lg font-semibold text-ink">Student information</h2>
+      {showHeading ? <h2 className="font-heading text-lg font-semibold text-ink">Student information</h2> : null}
       {contextExpired ? (
-        <Notice role="status" className="mt-3">Student information isn’t available right now.</Notice>
+        <Notice role="status" className={showHeading ? "mt-3" : undefined}>Student information isn’t available right now.</Notice>
       ) : (
         <>
           {/* Tabs sit on the canvas; each section brings its own surface. */}
-          <div role="tablist" aria-label="Counseling context sections" onKeyDown={handleTabKeyDown} className="mt-2 flex max-w-full gap-x-5 overflow-x-auto border-b border-brand-line">
+          <div role="tablist" aria-label="Counseling context sections" onKeyDown={handleTabKeyDown} className={`${showHeading ? "mt-2 " : ""}flex max-w-full gap-x-5 overflow-x-auto border-b border-brand-line`}>
             {tabs.map((tab) => <button key={tab.id} id={`counseling-context-tab-${tab.id}`} type="button" role="tab" aria-selected={activeTab === tab.id} aria-controls="counseling-context-panel" tabIndex={activeTab === tab.id ? 0 : -1} onClick={() => setActiveTab(tab.id)} className={`shrink-0 ${workspaceTabClass(activeTab === tab.id)}`}>{tab.label}</button>)}
           </div>
           <div id="counseling-context-panel" role="tabpanel" aria-labelledby={`counseling-context-tab-${activeTab}`} tabIndex={0} className="min-w-0 pt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
