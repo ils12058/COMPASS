@@ -19,7 +19,7 @@ from compass.appointments.models import Appointment
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
-from compass.call_slips.models import CallSlip, CallSlipDestinationType
+from compass.call_slips.models import CallSlip, CallSlipDestinationType, CallSlipIssuanceMode
 from compass.call_slips.services import (
     CallSlipConfigurationConflict,
     CallSlipCreationConflict,
@@ -1058,6 +1058,43 @@ def test_historical_back_entry_explicitly_suppresses_notification_regardless_of_
     assert CallSlip.objects.filter(pk=item.pk).exists()
     assert Notification.objects.count() == 0
     assert EmailDelivery.objects.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("report_offset", "notify_student"),
+    [
+        (timedelta(days=-45), False),
+        (timedelta(days=-45), True),
+        (timedelta(days=3), True),
+        (timedelta(days=3), False),
+    ],
+)
+def test_report_time_may_be_past_or_future_in_live_and_historical_issuance(
+    report_offset, notify_student
+):
+    sync_policy()
+    head = make_head("head.report-time@example.edu")
+    student = make_user("student.report-time@example.edu", "STUDENT")
+    report_at = timezone.now().replace(microsecond=0) + report_offset
+
+    before = timezone.now()
+    item = create_for(
+        head,
+        student,
+        key="report-time-matrix",
+        fingerprint="6" * 64,
+        report_at=report_at,
+        notify_student=notify_student,
+    )
+
+    assert item.report_at == report_at
+    assert item.issuance_mode == (
+        CallSlipIssuanceMode.LIVE if notify_student else CallSlipIssuanceMode.HISTORICAL
+    )
+    # report_at is the source schedule; created_at stays the real COMPASS entry time.
+    assert before <= item.created_at <= timezone.now()
+    assert Notification.objects.filter(source_id=item.pk).exists() is notify_student
 
 
 @pytest.mark.django_db

@@ -20,6 +20,7 @@ from compass.audit.actions import GRADUATE_TRACER_DRAFT_CREATED, GRADUATE_TRACER
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.institutional_time import institution_today
 from compass.common.ordering import parse_ordering
 
 from .confidential_content import (
@@ -273,7 +274,7 @@ def _birth_date(value: object) -> date | None:
         return None
     if not isinstance(value, date) or isinstance(value, datetime):
         raise InvalidGraduateTracerInput("birth_date must be a date or null.")
-    if value > timezone.localdate():
+    if value > institution_today():
         raise InvalidGraduateTracerInput("birth_date must not be in the future.")
     return value
 
@@ -379,7 +380,7 @@ def _normalize_education_rows(raw: object) -> list[dict[str, object]]:
     if not isinstance(raw, (list, tuple)):
         raise InvalidGraduateTracerInput("education must be a list.")
     normalized: list[dict[str, object]] = []
-    current_year = timezone.localdate().year
+    current_year = institution_today().year
     for position, row in enumerate(raw, start=1):
         if not isinstance(row, dict):
             raise InvalidGraduateTracerInput("education contains an invalid row.")
@@ -453,7 +454,7 @@ def _normalize_exam_rows(raw: object) -> list[dict[str, object]]:
                 raise InvalidGraduateTracerInput(
                     "professional_exams.date_taken must be a date or null."
                 )
-            if taken > timezone.localdate():
+            if taken > institution_today():
                 raise InvalidGraduateTracerInput(
                     "professional_exams.date_taken must not be in the future."
                 )

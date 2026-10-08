@@ -434,6 +434,8 @@ def test_compatible_institutional_availability_is_preserved(demo_env):
         mode_scope="ALL",
         reason="Existing institutional closure",
         context=session.system(),
+        # The closure was recorded while still upcoming.
+        now=desired.replace(hour=0) - demo.timedelta(days=1),
     )
     exception_before = OfficeUnavailability.objects.filter(pk=exception.pk).values().get()
     office = list(OfficeAvailabilityWindow.objects.order_by("pk").values())

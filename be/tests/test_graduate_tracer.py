@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from django.apps import apps
@@ -21,6 +21,7 @@ from compass.accounts.models import (
 )
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.common.institutional_time import institution_today
 from compass.graduate_tracer.confidential_content import read_confidential_content
 from compass.graduate_tracer.models import (
     GTS_SCHEMA_VERSION,
@@ -720,6 +721,47 @@ def test_server_owned_fields_and_unsupported_source_values_are_rejected():
     invalid = valid_unemployed_payload()
     invalid["region_of_origin"] = "BARMM"
     assert put_json(client, "/api/v1/graduate-tracer/me", invalid).status_code == 422
+
+
+@pytest.mark.django_db
+def test_birthday_exam_date_and_graduation_year_cannot_be_after_the_institutional_today():
+    sync_policy()
+    student = make_user("dated-gts@example.edu")
+    client = auth_client(student)
+    assert post_empty(client, "/api/v1/graduate-tracer/me").status_code == 200
+    today = institution_today()
+    tomorrow = (today + timedelta(days=1)).isoformat()
+
+    def payload(*, birth_date, date_taken, year_graduated):
+        values = valid_unemployed_payload()
+        values["birth_date"] = birth_date
+        values["education"][0]["year_graduated"] = year_graduated
+        values["professional_exams"] = [
+            {
+                "examination_name": "Civil Service Examination",
+                "date_taken": date_taken,
+                "rating": "",
+            }
+        ]
+        return values
+
+    # The picker limits are UX only; a request that bypasses them is still rejected.
+    for rejected in (
+        payload(birth_date=tomorrow, date_taken="2024-08-04", year_graduated=today.year),
+        payload(birth_date="1999-05-20", date_taken=tomorrow, year_graduated=today.year),
+        payload(birth_date="1999-05-20", date_taken="2024-08-04", year_graduated=today.year + 1),
+    ):
+        response = put_json(client, "/api/v1/graduate-tracer/me", rejected)
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "invalid_graduate_tracer_request"
+
+    for accepted in (
+        payload(birth_date="1999-05-20", date_taken="2024-08-04", year_graduated=2021),
+        payload(
+            birth_date=today.isoformat(), date_taken=today.isoformat(), year_graduated=today.year
+        ),
+    ):
+        assert put_json(client, "/api/v1/graduate-tracer/me", accepted).status_code == 200
 
 
 @pytest.mark.django_db

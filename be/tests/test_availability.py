@@ -40,6 +40,9 @@ from compass.availability.services import (
 )
 from compass.service_catalog.services import create_service, set_service_active
 
+# Fixed-calendar exceptions below are recorded while they are still upcoming.
+RECORDED_BEFORE_FIXTURE_DAY = datetime(2026, 9, 20, 9, tzinfo=ZoneInfo("Asia/Manila"))
+
 
 def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)
@@ -306,7 +309,93 @@ def test_exception_validation_requires_aware_ordered_ranges_and_bounded_reason()
             mode_scope="ALL",
             reason="x" * 256,
             context=context(actor),
+            now=RECORDED_BEFORE_FIXTURE_DAY,
         )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("scope", ["office", "provider"])
+def test_new_unavailability_may_start_in_the_past_but_must_not_have_ended(scope):
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    zone = ZoneInfo("Asia/Manila")
+    now = datetime(2026, 10, 8, 10, tzinfo=zone)
+
+    def create(starts_at, ends_at):
+        values = {
+            "starts_at": starts_at,
+            "ends_at": ends_at,
+            "mode_scope": "ALL",
+            "context": context(actor),
+            "now": now,
+        }
+        if scope == "office":
+            return create_office_exception(**values)
+        return create_provider_exception(provider_id=provider.pk, **values)
+
+    upcoming = create(datetime(2026, 10, 9, 8, tzinfo=zone), datetime(2026, 10, 9, 17, tzinfo=zone))
+    # Recording an absence that began at 8:00 while it is still in effect at 10:00.
+    ongoing = create(datetime(2026, 10, 8, 8, tzinfo=zone), datetime(2026, 10, 8, 17, tzinfo=zone))
+    assert upcoming.starts_at == datetime(2026, 10, 9, 8, tzinfo=zone)
+    assert ongoing.starts_at == datetime(2026, 10, 8, 8, tzinfo=zone)
+    # The entry timestamp is the real COMPASS time, never the period's start.
+    assert abs(ongoing.created_at - timezone.now()) < timedelta(minutes=5)
+
+    for starts_at, ends_at in (
+        (datetime(2026, 10, 7, 8, tzinfo=zone), datetime(2026, 10, 7, 17, tzinfo=zone)),
+        (datetime(2026, 10, 8, 8, tzinfo=zone), now),
+        (datetime(2026, 10, 8, 8, tzinfo=zone), now - timedelta(minutes=1)),
+    ):
+        with pytest.raises(InvalidAvailabilityInput, match="must be in the future"):
+            create(starts_at, ends_at)
+    with pytest.raises(InvalidAvailabilityInput, match="earlier than ends_at"):
+        create(datetime(2026, 10, 9, 17, tzinfo=zone), datetime(2026, 10, 9, 8, tzinfo=zone))
+    with pytest.raises(InvalidAvailabilityInput, match="earlier than ends_at"):
+        create(datetime(2026, 10, 9, 8, tzinfo=zone), datetime(2026, 10, 9, 8, tzinfo=zone))
+
+    model = OfficeUnavailability if scope == "office" else ProviderUnavailability
+    assert model.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_ended_unavailability_is_rejected_by_the_api_and_stored_past_periods_remain():
+    sync_policy()
+    counselor = make_user("counselor@example.edu", "COUNSELOR")
+    stored = ProviderUnavailability.objects.create(
+        provider=counselor,
+        starts_at=timezone.now() - timedelta(days=3),
+        ends_at=timezone.now() - timedelta(days=2),
+        mode_scope="ALL",
+    )
+    client = auth_client(counselor)
+
+    def post(starts_at, ends_at):
+        return client.post(
+            "/api/v1/availability/me/exceptions",
+            data=json.dumps(
+                {
+                    "starts_at": starts_at.isoformat(),
+                    "ends_at": ends_at.isoformat(),
+                    "mode_scope": "ALL",
+                }
+            ),
+            content_type="application/json",
+            **csrf(client),
+        )
+
+    ended = post(timezone.now() - timedelta(hours=3), timezone.now() - timedelta(hours=1))
+    assert ended.status_code == 422
+    assert ended.json()["error"]["code"] == "invalid_availability_request"
+    ongoing = post(timezone.now() - timedelta(hours=1), timezone.now() + timedelta(hours=1))
+    assert ongoing.status_code == 201
+
+    listed = client.get("/api/v1/availability/me/exceptions")
+    assert listed.status_code == 200
+    assert {item["id"] for item in listed.json()["items"]} == {
+        str(stored.pk),
+        ongoing.json()["id"],
+    }
 
 
 @pytest.mark.django_db
@@ -324,6 +413,7 @@ def test_effective_availability_intersects_office_provider_and_subtracts_provide
         ends_at=datetime(2026, 9, 21, 13, tzinfo=ZoneInfo("Asia/Manila")),
         mode_scope="ALL",
         context=context(actor),
+        now=RECORDED_BEFORE_FIXTURE_DAY,
     )
 
     result = compute_base_availability(
@@ -355,6 +445,7 @@ def test_mode_specific_office_exception_only_subtracts_matching_mode():
         ends_at=datetime(2026, 9, 21, 17, tzinfo=ZoneInfo("Asia/Manila")),
         mode_scope="IN_PERSON",
         context=context(actor),
+        now=RECORDED_BEFORE_FIXTURE_DAY,
     )
 
     in_person = compute_base_availability(
@@ -661,6 +752,7 @@ def test_student_can_read_effective_availability_but_not_raw_configuration_or_re
         mode_scope="ALL",
         reason="Private operational note",
         context=context(actor),
+        now=RECORDED_BEFORE_FIXTURE_DAY,
     )
     client = auth_client(student)
     effective = client.get(

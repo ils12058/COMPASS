@@ -225,6 +225,39 @@ def test_api_rejects_invalid_or_unsupported_rules(dpo, update):
     assert post_json(auth_client(dpo), f"{ROOT}/rules", rule_values() | update).status_code == 422
 
 
+def test_historical_effective_date_is_policy_metadata_and_activation_time_stays_real(dpo):
+    source = tracer()
+    effective_on = timezone.localdate() - timedelta(days=730)
+    item = retention.create_rule(
+        actor=dpo,
+        values={**rule_values(), "effective_on": effective_on},
+        context=AuditContext.user(dpo),
+    )
+    assert item.effective_on == effective_on
+    before = timezone.now()
+    item = retention.transition_rule(
+        actor=dpo,
+        rule_id=item.pk,
+        expected_revision=item.revision,
+        activate=True,
+        context=AuditContext.user(dpo),
+    )
+    assert item.effective_on == effective_on
+    # The policy may predate COMPASS; the activation is still recorded when it happened.
+    assert before <= item.activated_at <= timezone.now()
+    # Records whose period already elapsed become eligible at once, still awaiting approval.
+    case = discovered_case(source)
+    assert case.state == "READY" and case.approved_at is None
+
+    drafted = post_json(
+        auth_client(dpo),
+        f"{ROOT}/rules",
+        {**rule_values(), "code": "SYNTHETIC-HISTORICAL", "effective_on": effective_on},
+    )
+    assert drafted.status_code == 201, drafted.content
+    assert drafted.json()["effective_on"] == effective_on.isoformat()
+
+
 def test_no_rule_draft_future_retired_and_exact_elapsed_day_boundary(dpo):
     source = tracer()
     assert retention.discover_eligibility() == 0

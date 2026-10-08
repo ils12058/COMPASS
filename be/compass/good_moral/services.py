@@ -29,6 +29,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.institutional_time import institution_today
 from compass.common.ordering import parse_ordering
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 from compass.documents.template_specs import (
@@ -340,6 +341,16 @@ def _clean_date(value: object, label: str, *, allow_none: bool) -> date | None:
     return value
 
 
+# Dates of facts that must already have happened: a Graduate's graduation and an Official
+# Receipt. Historical dates stay valid; created_at and issued_at are never derived from them.
+OCCURRED_DATE_FIELDS = frozenset({"graduation_date", "official_receipt_date"})
+
+
+def _reject_future_occurred_date(value: object, label: str) -> None:
+    if isinstance(value, date) and value > institution_today():
+        raise InvalidGoodMoralInput(f"{label} must not be in the future.")
+
+
 def _clean_amount(value: object) -> Decimal | None:
     if value is None:
         return None
@@ -521,6 +532,7 @@ def create_my_graduate(
     major_value = _clean_optional(major, "major", 180)
     graduation_value = _clean_date(graduation_date, "graduation_date", allow_none=False)
     assert graduation_value is not None
+    _reject_future_occurred_date(graduation_value, "graduation_date")
     digest = _creation_digest(student_id=student.pk, key=key)
 
     with transaction.atomic():
@@ -805,6 +817,9 @@ def update_request(
         changed = sorted(name for name, value in normalized.items() if getattr(item, name) != value)
         if not changed:
             return _queryset().get(pk=item.pk)
+        # Only a changed value is checked, so an unrelated correction never fails on a stored date.
+        for name in OCCURRED_DATE_FIELDS.intersection(changed):
+            _reject_future_occurred_date(normalized[name], name)
 
         for name in changed:
             setattr(item, name, normalized[name])

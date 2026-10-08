@@ -11,8 +11,8 @@ from uuid import UUID
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.utils import timezone
 
+from compass.common.institutional_time import institution_today
 from compass.confidential_data.crypto import (
     decrypt_bound_json,
     encrypt_bound_json,
@@ -142,10 +142,10 @@ def validate_payload(payload, family):
             if value is not None:
                 if not isinstance(value, str) or date.fromisoformat(value).isoformat() != value:
                     raise ValueError("Invalid canonical date")
-                if date.fromisoformat(value) > timezone.localdate():
+                if date.fromisoformat(value) > institution_today():
                     raise ValueError("Future date")
         elif name == "year_graduated":
-            if type(value) is not int or not 1900 <= value <= timezone.localdate().year:
+            if type(value) is not int or not 1900 <= value <= institution_today().year:
                 raise ValueError("Invalid graduation year")
         elif name in LIST_CHOICES:
             if (

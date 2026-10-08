@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from io import BytesIO
 
@@ -25,6 +25,7 @@ from compass.accounts.models import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.common.institutional_time import institution_today
 from compass.documents.rendering import render_document_html
 from compass.feedback.models import (
     CustomerFeedbackService,
@@ -529,6 +530,96 @@ def test_counselor_corrections_are_variant_local_private_and_locked_after_issue(
             changes={"degree_snapshot": "Cannot Change"},
             context=AuditContext.user(counselor),
         )
+
+
+@pytest.mark.django_db
+def test_graduation_date_on_request_creation_may_be_historical_but_not_future():
+    sync_policy()
+    student = make_user("dated.graduate@example.edu", lifecycle=StudentLifecycleStatus.GRADUATED)
+    today = institution_today()
+
+    def create(graduation_date):
+        return create_my_graduate(
+            student=student,
+            degree="Bachelor of Arts in Psychology",
+            major="",
+            graduation_date=graduation_date,
+            context=AuditContext.user(student),
+        )
+
+    before = timezone.now()
+    historical = create(date(2019, 4, 12))
+    assert historical.graduation_date == date(2019, 4, 12)
+    # The request records when it entered COMPASS, not when the Student graduated.
+    assert historical.created_at >= before
+    assert create(today).graduation_date == today
+    with pytest.raises(InvalidGoodMoralInput, match="graduation_date must not be in the future"):
+        create(today + timedelta(days=1))
+
+    client = auth_client(student)
+    response = client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(
+            {
+                "degree": "Bachelor of Arts in Psychology",
+                "graduation_date": (today + timedelta(days=1)).isoformat(),
+            }
+        ),
+        content_type="application/json",
+        **good_moral_create_headers(client),
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_good_moral_request"
+    assert GoodMoralRequest.objects.filter(student=student).count() == 2
+
+
+@pytest.mark.django_db
+def test_corrections_reject_future_graduation_and_receipt_dates_but_keep_historical_ones():
+    sync_policy()
+    student = make_user("dated.correction@example.edu", lifecycle=StudentLifecycleStatus.GRADUATED)
+    counselor = make_user("dated.counselor@example.edu", role="COUNSELOR")
+    item = make_graduate_request(student)
+    today = institution_today()
+    tomorrow = today + timedelta(days=1)
+
+    def correct(**changes):
+        return update_request(
+            actor=counselor,
+            request_id=item.pk,
+            changes=changes,
+            context=AuditContext.user(counselor),
+        )
+
+    with pytest.raises(InvalidGoodMoralInput, match="graduation_date must not be in the future"):
+        correct(graduation_date=tomorrow)
+    with pytest.raises(
+        InvalidGoodMoralInput, match="official_receipt_date must not be in the future"
+    ):
+        correct(official_receipt_date=tomorrow)
+    item.refresh_from_db()
+    assert item.graduation_date == date(2026, 6, 30)
+    assert item.official_receipt_date is None
+
+    assert correct(graduation_date=date(2018, 3, 28)).graduation_date == date(2018, 3, 28)
+    assert correct(graduation_date=today).graduation_date == today
+    assert correct(official_receipt_date=date(2025, 1, 6)).official_receipt_date == date(2025, 1, 6)
+    assert correct(official_receipt_date=today).official_receipt_date == today
+    assert correct(official_receipt_date=None).official_receipt_date is None
+
+    # A stored date is not re-judged when another field is corrected.
+    GoodMoralRequest.objects.filter(pk=item.pk).update(graduation_date=tomorrow)
+    assert correct(official_receipt_number="OR-2026-77").official_receipt_number == "OR-2026-77"
+
+    client = auth_client(counselor)
+    for field in ("graduation_date", "official_receipt_date"):
+        response = client.patch(
+            f"/api/v1/good-moral/requests/{item.pk}",
+            data=json.dumps({field: (tomorrow + timedelta(days=1)).isoformat()}),
+            content_type="application/json",
+            **csrf(client),
+        )
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "invalid_good_moral_request"
 
 
 @pytest.mark.django_db
