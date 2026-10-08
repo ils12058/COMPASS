@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 from enum import StrEnum
 from uuid import UUID
 
@@ -17,6 +17,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.common.correlation import get_current_request_id
+from compass.common.institutional_time import institution_date, institution_day_start
 from compass.common.ordering import parse_ordering
 from compass.notifications.models import EmailDelivery, EmailDeliveryStatus
 
@@ -177,10 +178,9 @@ def _normalize_status(value: str | None) -> str | None:
 
 def get_email_delivery_summary(*, now: datetime | None = None) -> EmailDeliverySummary:
     current = now or timezone.now()
-    local_date = timezone.localtime(current).date()
-    tz = timezone.get_current_timezone()
-    day_start = timezone.make_aware(datetime.combine(local_date, time.min), tz)
-    next_day = day_start + timedelta(days=1)
+    # "Sent today" is the UCN day, not the runtime (UTC) day.
+    day_start = institution_day_start(institution_date(current))
+    next_day = institution_day_start(institution_date(current) + timedelta(days=1))
 
     aggregate = EmailDelivery.objects.aggregate(
         pending_count=Count("id", filter=Q(status=EmailDeliveryStatus.PENDING)),

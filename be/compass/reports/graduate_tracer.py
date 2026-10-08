@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
+from compass.common.institutional_time import institution_day_start
 from compass.graduate_tracer.models import (
     GTS_SCHEMA_VERSION,
     GraduateTracerResponse,
@@ -77,10 +78,7 @@ def calculate_percentage(count: int, denominator: int) -> Decimal | None:
 
 def _submission_boundary(value: date, *, following_day: bool = False) -> datetime:
     local_date = value + timedelta(days=1) if following_day else value
-    return timezone.make_aware(
-        datetime.combine(local_date, time.min),
-        timezone.get_current_timezone(),
-    )
+    return institution_day_start(local_date)
 
 
 def _base_queryset(*, submitted_from: date | None, submitted_to: date | None):

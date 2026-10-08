@@ -26,6 +26,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.institutional_time import institution_today
 from compass.common.ordering import parse_ordering
 from compass.inventory.services import (
     CurrentAcademicYearNotConfigured,
@@ -664,7 +665,7 @@ def ensure_my_current(
             profile = get_person_profile_context(locked_student)
         except AccountProfileConfidentialContentUnavailable:
             raise ExitInterviewError("The current account profile is unavailable.") from None
-        reference_date = timezone.localdate()
+        reference_date = institution_today()
         home_address = profile.current_address.strip() or profile.permanent_address.strip()
         try:
             with transaction.atomic():

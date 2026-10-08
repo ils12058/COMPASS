@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -36,6 +36,7 @@ from compass.counseling.services import (
     get_encounter_creation_options,
     list_appointment_candidates,
     list_encounter_appointment_candidates,
+    list_my_encounters,
     update_encounter,
 )
 from compass.feedback.models import (
@@ -642,6 +643,40 @@ def test_historical_encounter_keeps_actual_times_and_the_real_compass_entry_time
             changes={"ended_at": timezone.now() + timedelta(minutes=5)},
             context=context(counselor),
         )
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_encounter_dates_and_times_follow_manila_under_a_utc_runtime():
+    sync_policy()
+    admin = make_user("admin@example.edu", "IT_ADMIN")
+    counselor = make_user("counselor@example.edu", "COUNSELOR")
+    student = make_user("student@example.edu", "STUDENT")
+    create_counseling_service(admin)
+    # 16:30 UTC on 8 October is 00:30 on 9 October in Manila.
+    started_at = datetime(2026, 10, 8, 16, 30, tzinfo=UTC)
+    item = create_encounter(
+        counselor=counselor,
+        student_id=student.pk,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=started_at,
+        ended_at=started_at + timedelta(hours=1),
+        context=context(counselor),
+        now=started_at + timedelta(hours=2),
+    )
+
+    def listed(day):
+        page = list_my_encounters(counselor=counselor, from_date=day, to_date=day)
+        return [row.pk for row in page.items]
+
+    assert listed(date(2026, 10, 9)) == [item.pk]
+    assert listed(date(2026, 10, 8)) == []
+
+    detail = auth_client(counselor).get(f"/api/v1/counseling/encounters/{item.pk}")
+    assert detail.status_code == 200
+    assert detail.json()["started_at"].startswith("2026-10-09T00:30:00")
+    assert datetime.fromisoformat(detail.json()["started_at"]) == started_at
 
 
 @pytest.mark.django_db

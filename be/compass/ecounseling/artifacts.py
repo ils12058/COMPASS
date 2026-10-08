@@ -14,6 +14,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.common.errors import APIError
+from compass.common.institutional_time import institution_date
 from compass.integrations.daily import DailyClient
 from compass.integrations.media_download import stream_daily_media, validate_daily_link
 from compass.integrations.storage import ObjectStorage
@@ -325,7 +326,7 @@ def access_artifact(*, counselor, appointment_id, kind, context):
         if not storage.exists(artifact.object_key):
             raise ValueError()
         extensions = {"video/mp4": "mp4", "video/webm": "webm", "text/vtt": "vtt"}
-        date = timezone.localtime(appointment.starts_at).date().isoformat()
+        date = institution_date(appointment.starts_at).isoformat()
         subject = "recording" if kind == "RECORDING" else "transcript"
         filename = f"e-counseling-{subject}-{date}.{extensions[artifact.content_type]}"
         ttl = settings.ECOUNSELING_MEDIA_ACCESS_URL_TTL_SECONDS

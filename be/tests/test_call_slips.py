@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from io import BytesIO
 from zoneinfo import ZoneInfo
 
@@ -708,7 +708,8 @@ def test_report_date_filters_use_institution_timezone_boundaries():
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
 
-    with override_settings(TIME_ZONE="Asia/Manila"):
+    # The runtime stays UTC; the filter still uses Manila calendar days.
+    with override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila"):
         local = ZoneInfo("Asia/Manila")
         included = create_for(
             head,
@@ -730,6 +731,39 @@ def test_report_date_filters_use_institution_timezone_boundaries():
             to_date=datetime(2026, 9, 21).date(),
         )
     assert [item.pk for item in page.items] == [included.pk]
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_controlled_form_prints_manila_report_and_interview_times_under_a_utc_runtime():
+    sync_policy()
+    head = make_head()
+    student = make_user("student@example.edu", "STUDENT")
+    # 16:30 UTC on 8 October is 00:30 on 9 October in Manila (a historical back-entry).
+    report_at = datetime(2026, 10, 8, 16, 30, tzinfo=UTC)
+    item = create_for(head, student, key="manila-form", fingerprint="a" * 64, report_at=report_at)
+    record_interview_ended(
+        actor=head,
+        call_slip_id=item.pk,
+        interview_ended_at=datetime(2026, 12, 31, 16, 30, tzinfo=UTC),
+        context=audit_context(head),
+        now=datetime(2026, 12, 31, 17, tzinfo=UTC),
+    )
+    item.refresh_from_db()
+    assert item.report_at == report_at
+    assert item.issuance_mode == CallSlipIssuanceMode.HISTORICAL
+
+    context = build_call_slip_render_context(item, access_mode="GCO")
+    slip = context["call_slip"]
+    assert (slip["report_date"], slip["report_time"]) == (date(2026, 10, 9), time(0, 30))
+    assert (slip["interview_ended_date"], slip["interview_ended_time"]) == (
+        date(2027, 1, 1),
+        time(0, 30),
+    )
+    html, _ = render_document_html("call_slip", 1, context=context)
+    assert "Oct 9, 2026" in html and "12:30 AM" in html
+    assert "Jan 1, 2027 12:30 AM" in html
+    assert "Oct 8, 2026" not in html and "Dec 31, 2026" not in html
 
 
 @pytest.mark.django_db

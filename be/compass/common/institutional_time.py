@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
@@ -39,3 +39,18 @@ def institution_today(value: datetime | None = None) -> date:
 
     current = value or timezone.now()
     return to_institution_time(current).date()
+
+
+def institution_date(value: datetime) -> date:
+    """Return the institutional calendar date on which an aware instant falls."""
+
+    return to_institution_time(value).date()
+
+
+def institution_day_start(day: date) -> datetime:
+    """Return the aware instant at which an institutional calendar day begins.
+
+    Calendar-date filters use ``[institution_day_start(from), institution_day_start(to + 1))``.
+    """
+
+    return datetime.combine(day, time.min, tzinfo=institution_zone())

@@ -21,7 +21,7 @@ from compass.accounts.models import (
 )
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
-from compass.common.institutional_time import institution_today
+from compass.common.institutional_time import institution_today, institution_zone
 from compass.graduate_tracer.confidential_content import read_confidential_content
 from compass.graduate_tracer.models import (
     GTS_SCHEMA_VERSION,
@@ -812,7 +812,8 @@ def test_submitted_review_list_filters_identity_dates_employment_and_preserves_d
     draft.save(update_fields=["institutional_id", "updated_at"])
     assert post_empty(auth_client(draft), "/api/v1/graduate-tracer/me").status_code == 200
 
-    zone = timezone.get_current_timezone()
+    # Submission-date filters are institutional calendar days (ADR-097), not runtime-zone days.
+    zone = institution_zone()
     alpha_submitted = timezone.make_aware(datetime(2026, 9, 20, 23, 59), zone)
     beta_submitted = timezone.make_aware(datetime(2026, 9, 21, 0, 0), zone)
     GraduateTracerResponse.objects.filter(pk=alpha_id).update(submitted_at=alpha_submitted)

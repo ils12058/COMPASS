@@ -59,7 +59,8 @@ Rules by field:
 | Report and history filters | No minimum or maximum; only `from <= to` where a range applies. |
 
 Good Moral checks a date only when the correction changes it, so correcting another field never
-fails because of a stored date. Good Moral issuance does not re-check the graduation date.
+fails because of a stored date. Preparation and issuance re-check both dates; see
+[ADR-097](ADR-097-institutional-civil-time-independent-of-runtime-timezone.md).
 
 "Today" means the institutional calendar date (`compass.common.institutional_time.institution_today`
 in the backend, `institutionalDateInputValue` in the frontend). It does not use the browser's local
@@ -73,7 +74,5 @@ every rule and returns each domain's existing validation error (422).
   submission.
 - The demo seeder and tests that create unavailability on fixed calendar dates pass an explicit
   `now`, which these services now accept, as other domain services already do.
-- Referral, Counseling, and Call Slip still read the institutional zone from `settings.TIME_ZONE`,
-  and Retention eligibility uses `timezone.localdate()`. Both equal `INSTITUTION_TIME_ZONE` on
-  staging. A deployment that runs with `TIME_ZONE=UTC` would apply their calendar-day checks on
-  the UTC day. Aligning them is separate work.
+- Referral, Counseling, Call Slip, and Retention were later moved off `settings.TIME_ZONE` and
+  `timezone.localdate()` by [ADR-097](ADR-097-institutional-civil-time-independent-of-runtime-timezone.md).

@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
-import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 import { GoodMoralOrdering, GoodMoralStatusValue, type GoodMoralVariantValue } from "@/lib/api/generated/model";
 import type { SortOption } from "@/components/ui/sort-field";
@@ -79,6 +79,9 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
       return "Review the certificate details and mark the request ready before issuing.";
     case "good_moral_preparation_changed":
       return "This request changed. Review its latest details before continuing.";
+    case "good_moral_certificate_date_in_future":
+      // Names which date is wrong; COMPASS writes this message for staff.
+      return readApiErrorMessage(error.body) ?? "A certificate date is in the future. Correct the certificate details before issuance.";
     case "good_moral_not_found":
       return "Good Moral request not found.";
     case "good_moral_inventory_required":

@@ -9,6 +9,7 @@ from compass.audit import actions
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.common.errors import APIError
+from compass.common.institutional_time import institution_today
 from compass.ecounseling.models import (
     ECounselingMediaArtifact,
     ECounselingMediaCapture,
@@ -230,9 +231,8 @@ def transition_rule(*, actor, rule_id, expected_revision, activate, context):
 
 
 def active(rule, now):
-    return rule.status == RetentionRuleStatus.ACTIVE and rule.effective_on <= timezone.localdate(
-        now
-    )
+    # effective_on is an institutional policy date; the duration below stays instant arithmetic.
+    return rule.status == RetentionRuleStatus.ACTIVE and rule.effective_on <= institution_today(now)
 
 
 def source_queryset(category, contract_version=1):
@@ -325,7 +325,7 @@ def discover_eligibility(*, limit=200):
     now = timezone.now()
     changed = 0
     for rule_id in OperationalRetentionRule.objects.filter(
-        status="ACTIVE", effective_on__lte=timezone.localdate(now)
+        status="ACTIVE", effective_on__lte=institution_today(now)
     ).values_list("id", flat=True):
         with transaction.atomic():
             rule = get_rule(rule_id, lock=True)

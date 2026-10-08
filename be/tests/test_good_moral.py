@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from io import BytesIO
 
@@ -11,7 +11,7 @@ import pytest
 from django.apps import apps
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
-from django.test import Client
+from django.test import Client, override_settings
 from django.utils import timezone
 from pypdf import PdfReader
 
@@ -35,6 +35,7 @@ from compass.feedback.models import (
 from compass.good_moral import services as good_moral_services
 from compass.good_moral.models import GoodMoralRequest, GoodMoralStatus, GoodMoralVariant
 from compass.good_moral.services import (
+    GoodMoralCertificateDateInFuture,
     GoodMoralConfigurationConflict,
     GoodMoralConflict,
     GoodMoralCreationConflict,
@@ -620,6 +621,107 @@ def test_corrections_reject_future_graduation_and_receipt_dates_but_keep_histori
         )
         assert response.status_code == 422
         assert response.json()["error"]["code"] == "invalid_good_moral_request"
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_issuance_refuses_a_legacy_future_graduation_date_until_corrected():
+    sync_policy()
+    student = make_user("legacy.graduate@example.edu", lifecycle=StudentLifecycleStatus.GRADUATED)
+    counselor = make_user("legacy.counselor@example.edu", role="COUNSELOR")
+    item = make_graduate_request(student)
+    # 15:30 UTC is still 8 October in Manila; 16:30 UTC is already 9 October.
+    before_midnight = datetime(2026, 10, 8, 15, 30, tzinfo=UTC)
+    after_midnight = datetime(2026, 10, 8, 16, 30, tzinfo=UTC)
+    # A row saved before ADR-096 write validation, bypassing today's checks.
+    GoodMoralRequest.objects.filter(pk=item.pk).update(graduation_date=date(2026, 10, 9))
+
+    with pytest.raises(GoodMoralCertificateDateInFuture, match="Graduation date cannot be"):
+        prepare_request(
+            actor=counselor,
+            request_id=item.pk,
+            context=AuditContext.user(counselor),
+            now=before_midnight,
+        )
+    # A request already marked ready before the rule existed is refused at issuance itself.
+    GoodMoralRequest.objects.filter(pk=item.pk).update(
+        status=GoodMoralStatus.READY_FOR_ISSUANCE,
+        prepared_at=before_midnight,
+        prepared_by=counselor,
+    )
+    with pytest.raises(GoodMoralCertificateDateInFuture, match="Correct the certificate details"):
+        issue_request(
+            actor=counselor,
+            request_id=item.pk,
+            context=AuditContext.user(counselor),
+            now=before_midnight,
+        )
+    item.refresh_from_db()
+    assert item.status == GoodMoralStatus.READY_FOR_ISSUANCE
+    assert item.graduation_date == date(2026, 10, 9)
+    assert item.issued_at is None
+
+    # Through the API, issuance uses the real clock: a stored date after today is refused.
+    GoodMoralRequest.objects.filter(pk=item.pk).update(
+        graduation_date=institution_today() + timedelta(days=1)
+    )
+    client = auth_client(counselor)
+    blocked = client.post(
+        f"/api/v1/good-moral/requests/{item.pk}/issue",
+        data=json.dumps({"expected_preparation_version": item.prepared_at.isoformat()}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert blocked.status_code == 409
+    assert blocked.json()["error"]["code"] == "good_moral_certificate_date_in_future"
+
+    GoodMoralRequest.objects.filter(pk=item.pk).update(graduation_date=date(2026, 10, 9))
+    # On the Manila graduation day itself the same certificate may be issued.
+    issued = issue_request(
+        actor=counselor,
+        request_id=item.pk,
+        context=AuditContext.user(counselor),
+        now=after_midnight,
+    )
+    assert issued.status == GoodMoralStatus.ISSUED
+    assert build_certificate_render_context(issued)["certificate"]["issued_on"] == date(2026, 10, 9)
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_issuance_accepts_historical_dates_and_refuses_a_future_receipt_date():
+    sync_policy()
+    student = make_user("receipt.graduate@example.edu", lifecycle=StudentLifecycleStatus.GRADUATED)
+    counselor = make_user("receipt.counselor@example.edu", role="COUNSELOR")
+    item = make_graduate_request(student)
+    update_request(
+        actor=counselor,
+        request_id=item.pk,
+        changes={"graduation_date": date(2019, 4, 12), "official_receipt_date": date(2025, 1, 6)},
+        context=AuditContext.user(counselor),
+    )
+    # 16:30 UTC on 31 December is already 1 January 2027 in Manila.
+    new_year = datetime(2026, 12, 31, 16, 30, tzinfo=UTC)
+    GoodMoralRequest.objects.filter(pk=item.pk).update(official_receipt_date=date(2027, 1, 2))
+
+    with pytest.raises(GoodMoralCertificateDateInFuture, match="Official Receipt date cannot be"):
+        prepare_request(
+            actor=counselor, request_id=item.pk, context=AuditContext.user(counselor), now=new_year
+        )
+
+    GoodMoralRequest.objects.filter(pk=item.pk).update(official_receipt_date=date(2027, 1, 1))
+    prepare_request(
+        actor=counselor, request_id=item.pk, context=AuditContext.user(counselor), now=new_year
+    )
+    issued = issue_request(
+        actor=counselor, request_id=item.pk, context=AuditContext.user(counselor), now=new_year
+    )
+    certificate = build_certificate_render_context(issued)["certificate"]
+    assert certificate["graduation_date"] == date(2019, 4, 12)
+    assert certificate["official_receipt_date"] == date(2027, 1, 1)
+    # The certificate is dated on the Manila day of issuance, not the UTC day.
+    assert certificate["issued_on"] == date(2027, 1, 1)
+    assert issued.issued_at == new_year
 
 
 @pytest.mark.django_db

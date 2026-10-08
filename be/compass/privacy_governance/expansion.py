@@ -17,6 +17,7 @@ from compass.audit import actions
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.institutional_time import institution_today
 
 from .models import (
     PrivacyNotice,
@@ -92,7 +93,7 @@ def notice_publish_readiness(
         notice_active=revision.notice.is_active,
         status=revision.status,
         effective_on=revision.effective_on,
-        today=today or timezone.localdate(),
+        today=today or institution_today(),
     )
     return NoticePublishReadiness(ready=blocker is None, blocker=blocker)
 
@@ -417,7 +418,7 @@ def publish_revision(*, revision_id: UUID, actor: User, context: AuditContext):
             notice_active=notice.is_active,
             status=revision.status,
             effective_on=revision.effective_on,
-            today=timezone.localdate(),
+            today=institution_today(),
         )
         if blocker == NoticePublishBlocker.NOTICE_RETIRED:
             raise PrivacyConflict(

@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -23,6 +21,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.institutional_time import institution_day_start, to_institution_time
 from compass.common.ordering import parse_ordering
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 from compass.institutional_forms.filter_options import represented_form_revisions
@@ -166,15 +165,6 @@ class _CallSlipCreationInput:
     other_destination: str
     report_at: datetime
     digest: str
-
-
-def _institution_zone() -> ZoneInfo:
-    try:
-        return ZoneInfo(settings.TIME_ZONE)
-    except ZoneInfoNotFoundError as exc:
-        raise CallSlipConfigurationConflict(
-            "The configured institutional timezone is unavailable."
-        ) from exc
 
 
 def _clean_required(value: str, label: str, max_length: int) -> str:
@@ -338,15 +328,14 @@ def _normalize_destination(
 def _normalize_report_at(value: datetime) -> datetime:
     if not isinstance(value, datetime) or timezone.is_naive(value):
         raise InvalidCallSlipInput("report_at must be a timezone-aware datetime.")
-    return value.astimezone(_institution_zone())
+    return to_institution_time(value)
 
 
 def _normalize_interview_ended_at(value: datetime, *, now: datetime) -> datetime:
     if not isinstance(value, datetime) or timezone.is_naive(value):
         raise InvalidCallSlipInput("interview_ended_at must be a timezone-aware datetime.")
-    normalized = value.astimezone(_institution_zone())
-    current = now.astimezone(_institution_zone())
-    if normalized > current:
+    normalized = to_institution_time(value)
+    if normalized > now:
         raise InvalidCallSlipInput("interview_ended_at cannot be in the future.")
     return normalized
 
@@ -361,9 +350,8 @@ def _date_bounds(
         raise InvalidCallSlipInput("to_date must be a date.")
     if from_date is not None and to_date is not None and from_date > to_date:
         raise InvalidCallSlipInput("from_date must not be after to_date.")
-    zone = _institution_zone()
-    start = datetime.combine(from_date, time.min, tzinfo=zone) if from_date else None
-    end = datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=zone) if to_date else None
+    start = institution_day_start(from_date) if from_date else None
+    end = institution_day_start(to_date + timedelta(days=1)) if to_date else None
     return start, end
 
 
@@ -918,9 +906,13 @@ def build_call_slip_render_context(
     normalized_access = str(access_mode).strip().upper()
     if normalized_access not in {"SELF", "GCO"}:
         raise InvalidCallSlipInput("Call Slip document access mode is invalid.")
-    report_at = timezone.localtime(item.report_at)
+    # The controlled form prints UCN civil dates and times. Templates convert aware datetimes to the
+    # runtime zone, so only institutional dates and times are handed to them.
+    report_at = to_institution_time(item.report_at)
     interview_ended = (
-        timezone.localtime(item.interview_ended_at) if item.interview_ended_at is not None else None
+        to_institution_time(item.interview_ended_at)
+        if item.interview_ended_at is not None
+        else None
     )
     return {
         "call_slip": {
@@ -937,7 +929,10 @@ def build_call_slip_render_context(
             "report_date": report_at.date(),
             "report_time": report_at.time().replace(second=0, microsecond=0),
             "issued_by_name": item.issued_by_name_snapshot,
-            "interview_ended_at": interview_ended,
+            "interview_ended_date": interview_ended.date() if interview_ended else None,
+            "interview_ended_time": (
+                interview_ended.time().replace(second=0, microsecond=0) if interview_ended else None
+            ),
             "state": item.lifecycle_state,
             "is_voided": item.voided_at is not None,
             "void_reason": item.void_reason if normalized_access == "GCO" else "",

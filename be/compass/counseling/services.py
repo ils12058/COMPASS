@@ -5,12 +5,10 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
@@ -21,6 +19,7 @@ from compass.audit.actions import COUNSELING_ENCOUNTER_CREATED, COUNSELING_ENCOU
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.institutional_time import institution_day_start, to_institution_time
 from compass.common.ordering import parse_ordering
 from compass.feedback.models import CustomerFeedbackService, FeedbackOpportunitySourceType
 from compass.feedback.services import (
@@ -154,15 +153,6 @@ class CounselingAppointmentCandidatePage:
     has_next: bool
 
 
-def _institution_zone() -> ZoneInfo:
-    try:
-        return ZoneInfo(settings.TIME_ZONE)
-    except ZoneInfoNotFoundError as exc:
-        raise CounselingConfigurationConflict(
-            "The configured institutional timezone is unavailable."
-        ) from exc
-
-
 def _normalize_entry_mode(value: str | CounselingEntryMode) -> str:
     normalized = value.value if isinstance(value, CounselingEntryMode) else value
     if normalized not in CounselingEntryMode.values:
@@ -189,13 +179,11 @@ def _normalize_actual_times(
         raise CounselingInvalidTime("started_at and ended_at must be datetimes")
     if timezone.is_naive(started_at) or timezone.is_naive(ended_at):
         raise CounselingInvalidTime("Counseling encounter times must be timezone-aware.")
-    zone = _institution_zone()
-    normalized_start = started_at.astimezone(zone)
-    normalized_end = ended_at.astimezone(zone)
+    normalized_start = to_institution_time(started_at)
+    normalized_end = to_institution_time(ended_at)
     if normalized_start >= normalized_end:
         raise CounselingInvalidTime("started_at must be earlier than ended_at.")
-    current = (now or timezone.now()).astimezone(zone)
-    if normalized_end > current:
+    if normalized_end > (now or timezone.now()):
         raise CounselingInvalidTime("ended_at must not be in the future.")
     return normalized_start, normalized_end
 
@@ -626,9 +614,8 @@ def _date_bounds(
         raise InvalidCounselingInput("to_date must be a date")
     if from_date is not None and to_date is not None and from_date > to_date:
         raise InvalidCounselingInput("from_date must not be after to_date")
-    zone = _institution_zone()
-    start = datetime.combine(from_date, time.min, tzinfo=zone) if from_date else None
-    end = datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=zone) if to_date else None
+    start = institution_day_start(from_date) if from_date else None
+    end = institution_day_start(to_date + timedelta(days=1)) if to_date else None
     return start, end
 
 

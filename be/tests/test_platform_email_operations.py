@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, time, timedelta
+from datetime import UTC, datetime, timedelta
 from io import StringIO
 from uuid import uuid4
 
@@ -17,12 +17,14 @@ from compass.accounts.models import Role, User
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.common.institutional_time import institution_date, institution_day_start
 from compass.integrations.mail import Mailer
 from compass.notifications.delivery import due_email_delivery_ids
 from compass.notifications.models import EmailDelivery, EmailDeliveryStatus, Notification
 from compass.notifications.policy import NotificationPolicy
 from compass.platform_ops.email_operations import (
     EmailDeliveryNotRetryable,
+    get_email_delivery_summary,
     retry_email_delivery,
 )
 
@@ -87,7 +89,7 @@ def make_delivery(
 
 
 @pytest.mark.django_db
-@override_settings(TIME_ZONE="Asia/Manila")
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
 def test_email_delivery_summary_counts_and_sent_today_use_application_timezone():
     sync_policy()
     admin = make_user("summary-admin@example.edu", "IT_ADMIN")
@@ -119,9 +121,8 @@ def test_email_delivery_summary_counts_and_sent_today_use_application_timezone()
         next_attempt_at=now + timedelta(minutes=5),
     )
     EmailDelivery.objects.filter(pk=sent_today.pk).update(sent_at=now)
-    local_today = timezone.localtime(now).date()
-    local_tz = timezone.get_current_timezone()
-    local_day_start = timezone.make_aware(datetime.combine(local_today, time.min), local_tz)
+    # "Today" is the UCN day even though the runtime stays UTC.
+    local_day_start = institution_day_start(institution_date(now))
     EmailDelivery.objects.filter(pk=sent_yesterday.pk).update(
         sent_at=local_day_start - timedelta(seconds=1)
     )
@@ -137,6 +138,21 @@ def test_email_delivery_summary_counts_and_sent_today_use_application_timezone()
     assert body["sent_today"] == 1
     assert body["due_pending_count"] == 1
     assert body["oldest_pending_at"] is not None
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_sent_today_starts_at_manila_midnight_under_a_utc_runtime():
+    sync_policy()
+    recipient = make_user("midnight-recipient@example.edu")
+    # 16:30 UTC on 8 October is 00:30 on 9 October in Manila.
+    now = datetime(2026, 10, 8, 16, 30, tzinfo=UTC)
+    after_midnight = make_delivery(recipient, status=EmailDeliveryStatus.SENT)
+    before_midnight = make_delivery(recipient, status=EmailDeliveryStatus.SENT)
+    EmailDelivery.objects.filter(pk=after_midnight.pk).update(sent_at=now - timedelta(minutes=15))
+    EmailDelivery.objects.filter(pk=before_midnight.pk).update(sent_at=now - timedelta(minutes=45))
+
+    assert get_email_delivery_summary(now=now).sent_today == 1
 
 
 @pytest.mark.django_db

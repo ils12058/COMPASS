@@ -31,6 +31,7 @@ from .models import GoodMoralStatus, GoodMoralVariant
 from .services import (
     DEFAULT_PAGE_SIZE,
     GoodMoralAffiliationRequired,
+    GoodMoralCertificateDateInFuture,
     GoodMoralConfigurationConflict,
     GoodMoralConflict,
     GoodMoralCreationConflict,
@@ -279,6 +280,8 @@ def _raise(exc: GoodMoralError) -> NoReturn:
         raise APIError(409, "good_moral_not_ready", str(exc)) from exc
     if isinstance(exc, GoodMoralPreparationChanged):
         raise APIError(409, "good_moral_preparation_changed", str(exc)) from exc
+    if isinstance(exc, GoodMoralCertificateDateInFuture):
+        raise APIError(409, "good_moral_certificate_date_in_future", str(exc)) from exc
     if isinstance(exc, GoodMoralConflict):
         raise APIError(409, "good_moral_conflict", str(exc)) from exc
     if isinstance(exc, GoodMoralDocumentUnavailable):

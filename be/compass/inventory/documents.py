@@ -7,6 +7,7 @@ from datetime import date
 from decimal import Decimal
 
 from compass.common.correlation import get_current_request_id
+from compass.common.institutional_time import institution_date
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 
 from .confidential_content import InventoryPrivateProjection, read_inventory_private_projection
@@ -139,7 +140,7 @@ def build_inventory_render_context(
     for rows in organization_groups.values():
         rows.extend({} for _ in range(3 - len(rows)))
     transport = {row.mode: row for row in item.transportation_entries.all()}
-    submitted_date = item.submitted_at.date()
+    submitted_date = institution_date(item.submitted_at)
     form = {
         "name": item.full_name_snapshot,
         "nickname": private.root.nickname,

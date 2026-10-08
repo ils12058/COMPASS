@@ -7,9 +7,7 @@ from dataclasses import dataclass, replace
 from datetime import date, datetime
 from enum import StrEnum
 from uuid import UUID
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -24,6 +22,11 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.institutional_time import (
+    institution_date,
+    institution_today,
+    to_institution_time,
+)
 from compass.common.ordering import parse_ordering
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 from compass.institutional_forms.filter_options import represented_form_revisions
@@ -138,15 +141,6 @@ class ReferralPage:
     has_next: bool
     form_revisions: tuple[FormRevision, ...] = ()
     ordering: ReferralOrdering | None = None
-
-
-def _institution_zone() -> ZoneInfo:
-    try:
-        return ZoneInfo(settings.TIME_ZONE)
-    except ZoneInfoNotFoundError as exc:
-        raise ReferralConfigurationConflict(
-            "The configured institutional timezone is unavailable."
-        ) from exc
 
 
 def _clean_required(value: str, label: str, max_length: int) -> str:
@@ -295,10 +289,8 @@ def _normalize_received_at(
         return None
     if not isinstance(value, datetime) or timezone.is_naive(value):
         raise InvalidReferralInput("received_at must be a timezone-aware datetime.")
-    zone = _institution_zone()
-    normalized = value.astimezone(zone)
-    current = now.astimezone(zone)
-    if normalized > current:
+    normalized = to_institution_time(value)
+    if normalized > now:
         raise InvalidReferralInput("received_at cannot be in the future.")
     if normalized.date() < referred_on:
         raise InvalidReferralInput("received_at cannot be earlier than referred_on.")
@@ -313,11 +305,10 @@ def _normalize_occurred_at(
 ) -> datetime:
     if not isinstance(value, datetime) or timezone.is_naive(value):
         raise InvalidReferralInput("occurred_at must be a timezone-aware datetime.")
-    zone = _institution_zone()
-    normalized = value.astimezone(zone)
-    if normalized > now.astimezone(zone):
+    normalized = to_institution_time(value)
+    if normalized > now:
         raise InvalidReferralInput("occurred_at cannot be in the future.")
-    if referral.received_at is not None and normalized < referral.received_at.astimezone(zone):
+    if referral.received_at is not None and normalized < referral.received_at:
         raise InvalidReferralInput("occurred_at cannot be earlier than received_at.")
     if referral.received_at is None and normalized.date() < referral.referred_on:
         raise InvalidReferralInput("occurred_at cannot be earlier than referred_on.")
@@ -338,7 +329,7 @@ def _active_referral_revision():
 
 
 def _reference_year(at: datetime) -> int:
-    return at.astimezone(_institution_zone()).year
+    return institution_date(at).year
 
 
 def _allocate_reference(*, at: datetime) -> str:
@@ -400,7 +391,7 @@ def create_referral(
     current = now or timezone.now()
     if timezone.is_naive(current):
         raise InvalidReferralInput("The server creation time must be timezone-aware.")
-    if source_date > current.astimezone(_institution_zone()).date():
+    if source_date > institution_today(current):
         raise InvalidReferralInput("referred_on cannot be in the future.")
     normalized_received_at = _normalize_received_at(
         received_at,
@@ -573,7 +564,7 @@ def build_referral_render_context(item: Referral) -> dict[str, object]:
     action_rows: list[dict[str, object]] = []
     for action_type in ReferralActionType.values:
         action = recorded.get(action_type)
-        occurred_at = timezone.localtime(action.occurred_at) if action is not None else None
+        occurred_at = to_institution_time(action.occurred_at) if action is not None else None
         action_rows.append(
             {
                 "label": _REFERRAL_ACTION_LABELS[action_type],
@@ -588,7 +579,7 @@ def build_referral_render_context(item: Referral) -> dict[str, object]:
             }
         )
 
-    received_at = timezone.localtime(item.received_at) if item.received_at is not None else None
+    received_at = to_institution_time(item.received_at) if item.received_at is not None else None
     return {
         "referral": {
             "reference_code": item.reference_code,
